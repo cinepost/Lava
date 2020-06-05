@@ -33,6 +33,10 @@
 #include <locale>
 #include <codecvt>
 
+#ifndef _WIN32
+#include <cxxabi.h>
+#endif
+
 namespace Falcor
 {
     // String/string_View append operators missing from the spec
@@ -328,27 +332,41 @@ namespace Falcor
     template<class T>
     std::string getClassTypeName(const T* ptr = nullptr)
     {
-        std::string typeName = typeid(*ptr).name();
 #ifdef _WIN32
+        std::string typeName = typeid(*ptr).name();
+#else
+        int status;
+        char * demangled = abi::__cxa_demangle(typeid(*ptr).name(), 0, 0, &status);
+        if(!demangled) {
+            // TODO: handle demangled type name error (nullptr)
+            return "unkonwn";
+        }
+        std::string typeName(demangled);
+        free(demangled);
+#endif
         assert(hasPrefix(typeName, "class "));
         auto v = splitString(typeName.substr(6), "::");
         return v.back();
-#else
-#error getClassTypeName() not implemented for this platform
-#endif
     }
 
     template<class T>
     std::string getEnumTypeName(const T& e = T(0))
     {
-        std::string typeName = typeid(e).name();
 #ifdef _WIN32
+        std::string typeName = typeid(e).name();
+#else
+        int status;
+        char * demangled = abi::__cxa_demangle(typeid(e).name(), 0, 0, &status);
+        if(!demangled) {
+            // TODO: handle demangled type name error (nullptr)
+            return "unkonwn";
+        }
+        std::string typeName(demangled);
+        free(demangled);
+#endif
         assert(hasPrefix(typeName, "enum "));
         auto v = splitString(typeName.substr(6), "::");
         return v.back();
-#else
-#error getClassTypeName() not implemented for this platform
-#endif
     }
     /*! @} */
 };

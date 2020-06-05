@@ -35,7 +35,7 @@
 #define falcorimport __declspec(dllimport)
 #elif defined(__GNUC__) // _MSC_VER
 #define falcorexport __attribute__ ((visibility ("default")))
-#define falcorimport extern
+#define falcorimport //extern
 #endif // _MSC_VER
 
 #ifdef FALCOR_DLL
@@ -249,9 +249,9 @@ namespace Falcor
 }
 
 #if defined(FALCOR_D3D12)
-#include "Core/API/D3D12/FalcorD3D12.h"
+#include "Falcor/Core/API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
-#include "Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #else
 #error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
 #endif
@@ -325,7 +325,11 @@ namespace Falcor
     inline std::string to_string(bool b) { return b ? "True" : "False"; }
 
     template<typename A, typename B>
+#ifdef _WIN32
     std::string to_string(const std::pair<typename A, typename B>& p)
+#else
+    std::string to_string(const std::pair<A, B>& p)
+#endif
     {
         return "[" + to_string(p.first) + ", " + to_string(p.second) + "]";
     }

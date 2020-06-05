@@ -31,6 +31,7 @@
 
 namespace Falcor
 {
+
     class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass>
     {
     public:

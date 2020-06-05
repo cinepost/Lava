@@ -40,6 +40,7 @@
 
 namespace Falcor
 {
+    class RtProgram;
     class RtProgramVars;
 
     /** DXR Scene and Resources Layout:
@@ -403,7 +404,9 @@ namespace Falcor
         /** Generate data for creating a TLAS.
             #SCENE TODO: Add argument to build descs based off a draw list
         */
+#ifdef FALCOR_D3D12
         void fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry);
+#endif
 
         /** Generate top level acceleration structure for the scene. Automatically determines whether to build or refit.
             \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
@@ -514,6 +517,7 @@ namespace Falcor
         UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
         UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
 
+#ifdef FALCOR_D3D12
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
 
         struct TlasData
@@ -541,6 +545,8 @@ namespace Falcor
         };
 
         std::vector<BlasData> mBlasData;    ///< All data related to the scene's BLASes
+#endif
+        
         bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
 
         std::string mFilename;

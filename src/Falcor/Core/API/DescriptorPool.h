@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    class DescriptorSet;
+
     struct DescriptorPoolApiData;
     struct DescriptorSetApiData;
 

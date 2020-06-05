@@ -32,6 +32,7 @@
 
 namespace Falcor
 {
+    class RenderGraphUI;
     class NodeGraphEditorGui;
 
     class dlldecl RenderPassUI

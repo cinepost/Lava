@@ -117,7 +117,9 @@ namespace Falcor
 
         /** Creates a shared resource API handle.
         */
+#ifdef FALCOR_D3D12
         SharedResourceApiHandle createSharedApiHandle();
+#endif
 
         struct ViewInfoHashFunc
         {

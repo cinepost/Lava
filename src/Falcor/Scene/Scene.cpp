@@ -900,6 +900,7 @@ namespace Falcor
         }
     }
 
+#ifdef FALCOR_D3D12
     void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry)
     {
         instanceDescs.clear();
@@ -953,6 +954,7 @@ namespace Falcor
             }
         }
     }
+#endif
 
     void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry)
     {

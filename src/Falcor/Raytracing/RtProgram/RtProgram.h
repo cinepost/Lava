@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/Program.h"
-#include "Core/API/RootSignature.h"
-#include "../RtStateObject.h"
-#include "../ShaderTable.h"
-#include "Scene/Scene.h"
+#include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/API/RootSignature.h"
+#include "Falcor/Raytracing/RtStateObject.h"
+#include "Falcor/Raytracing/ShaderTable.h"
+#include "Falcor/Scene/Scene.h"
 
 namespace Falcor
 {

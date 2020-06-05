@@ -204,7 +204,7 @@ namespace Falcor::ScriptBindings
 
             if constexpr(has_shared_ptr<T>::value)
             {
-                return Class<T, T::SharedPtr, Options...>(name, mModule);
+                return Class<T, typename T::SharedPtr, Options...>(name, mModule);
             }
             else
             {

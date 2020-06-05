@@ -302,11 +302,11 @@ namespace Falcor
             See list of supported formats for typed UAV loads:
             https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads
         */
-        template<typename T>
+        template<typename T, typename Dummy = void> /* Dummy is a GCC template specialization workaround */
         struct FormatForElementType {};
 
 #define CASE(TYPE, FORMAT) \
-        template<> struct FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
+        template<typename Dummy> struct FormatForElementType<TYPE, Dummy> { static const ResourceFormat kFormat = FORMAT; }
 
         // Guaranteed supported formats on D3D12.
         CASE(float,     ResourceFormat::R32Float);

@@ -62,15 +62,20 @@ endif()
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -pedantic)
+  ADD_DEFINITIONS(-Wall -fPIC -pedantic -Wfatal-errors)
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
 
 set ( FALCOR_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src )
 include_directories(
-    ${FALCOR_INCLUDE_ROOT}/Falcor
-    ${CMAKE_CURRENT_SOURCE_DIR}/Externals
+  ${FALCOR_INCLUDE_ROOT}
+  ${FALCOR_INCLUDE_ROOT}/Falcor
+  ${FALCOR_INCLUDE_ROOT}/Falcor/Core
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/Externals
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm
 )
 
 # Documentation

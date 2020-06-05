@@ -27,7 +27,12 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+
+#ifdef _WIN32
 #include <filesystem>
+#else
+#include <experimental/filesystem>
+#endif
 
 namespace Mogwai
 {
