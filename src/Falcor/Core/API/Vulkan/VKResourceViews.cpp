@@ -32,6 +32,8 @@
 
 namespace Falcor
 {
+    using TypedBufferBase = Buffer;
+
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
     template<typename ApiHandleType>
@@ -103,7 +105,7 @@ namespace Falcor
         outInfo.buffer = pTypedBuffer->getApiHandle();
         outInfo.offset = 0;
         outInfo.range = VK_WHOLE_SIZE;
-        outInfo.format = getVkFormat(pTypedBuffer->getResourceFormat());
+        outInfo.format = getVkFormat(pTypedBuffer->getFormat());
         return outInfo;
     }
 
@@ -141,6 +143,15 @@ namespace Falcor
         }
     }
 
+    // based on D3D code
+    ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+    {
+        if (!pTexture && getNullView()) return getNullView();
+
+        Resource::ApiHandle resHandle = pTexture->getApiHandle();
+        return SharedPtr(new ShaderResourceView(pTexture, resHandle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
+    }
+    /*
     ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
@@ -152,7 +163,7 @@ namespace Falcor
         auto view = createViewCommon(pSharedPtr, mostDetailedMip, mipCount, firstArraySlice, arraySize);
         return SharedPtr(new ShaderResourceView(pResource, view, mostDetailedMip, mipCount, firstArraySlice, arraySize));
     }
-
+    */
     DepthStencilView::SharedPtr DepthStencilView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();

@@ -26,12 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/LowLevel/GpuFence.h"
-#include "API/Device.h"
-#include "API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/GpuFence.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 
 namespace Falcor
 {
+    using ApiHandle = FenceHandle;
+
     // #VKTODO This entire class seems overly complicated. Need to make sure that there are no performance issues
     VkFence createFence()
     {
@@ -184,7 +186,7 @@ namespace Falcor
         return mCpuValue - 1;
     }
 
-    const FenceHandle& GpuFence::getApiHandle() const
+    const ApiHandle& GpuFence::getApiHandle() const
     {
         const auto& fence = mpApiData->semaphoreQueue.getObject(); // #VKTODO Figure this out. It is implemented like this based on the internal usage in VkDevice.cpp, but might not be what the user expects
         mpApiData->semaphoreWaitList.push_back(fence);
@@ -214,11 +216,12 @@ namespace Falcor
         size_t wait = pApiData->semaphoreWaitList.size();
         assert(wait <= sems);
         size_t waitDelta = sems - wait;
-        size_t count = std::minwaitDelta, fenceDelta);
+        size_t count = std::min(waitDelta, fenceDelta);
         pApiData->semaphoreQueue.popFront(count);
     }
 
-    void GpuFence::syncCpu()
+    //void GpuFence::syncCpu()
+    void GpuFence::syncCpu(std::optional<uint64_t> val)
     {
         if (mpApiData->fenceQueue.hasActiveObjects() == false) return;
 

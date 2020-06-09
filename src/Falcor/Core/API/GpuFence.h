@@ -50,7 +50,7 @@ namespace Falcor
 
         /** Get the internal API handle
         */
-        const ApiHandle& getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const;// { return mApiHandle; }
 
         /** Get the last value the GPU has signaled
         */

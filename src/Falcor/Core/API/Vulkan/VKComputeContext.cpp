@@ -26,10 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/ComputeContext.h"
-#include "API/Device.h"
-#include "API/DescriptorSet.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/DescriptorSet.h"
 #include <cstring>
+
+#define VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION 256 
+//VkPhysicalDeviceLimits::maxComputeWorkGroupSize[3]
 
 namespace Falcor
 {
@@ -41,15 +44,42 @@ namespace Falcor
 
     ComputeContext::~ComputeContext() = default;
 
-    bool ComputeContext::prepareForDispatch()
+    /*
+    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
     {
-        assert(mpComputeState);
-        if(mpComputeVars) applyComputeVars();
+        assert(pState);
 
-        ComputeStateObject::SharedPtr pCso = mpComputeState->getCSO(mpComputeVars.get());
-        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCso->getApiHandle());
-        mBindComputeRootSig = false;
+        auto pCSO = pState->getCSO(pVars);
+
+        // Apply the vars. Must be first because applyComputeVars() might cause a flush
+        if (pVars)
+        {
+            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
+        }
+        else mpLowLevelData->getCommandList()->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle());
+
+        mpLastBoundComputeVars = pVars;
+        mpLowLevelData->getCommandList()->SetPipelineState(pCSO->getApiHandle());
         mCommandsPending = true;
+        return true;
+    }
+    */
+
+    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
+    {
+        assert(pState);
+
+        ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
+
+        // Apply the vars. Must be first because applyComputeVars() might cause a flush
+        if(pVars) {
+            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
+        }
+        
+        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
+        mpLastBoundComputeVars = pVars;
+        mCommandsPending = true;
+        return true;
     }
 
     template<typename ViewType, typename ClearType>
@@ -104,24 +134,35 @@ namespace Falcor
 
     void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value)
     {
-        if (pBuffer->hasUAVCounter())
+        if (pBuffer->getUAVCounter())
         {
             clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uint4(value));
         }
     }
 
+    /*
     void ComputeContext::initDispatchCommandSignature()
     {
 
     }
+    */
 
-    void ComputeContext::dispatch(uint32_t groupSizeX, uint32_t groupSizeY, uint32_t groupSizeZ)
+    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
     {
+        // Check dispatch dimensions. TODO: Should be moved into Falcor.
+        if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
+            dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
+            dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
+        {
+            logError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
+            return;
+        }
+
         if (prepareForDispatch(pState, pVars) == false) return;
-        vkCmdDispatch(mpLowLevelData->getCommandList(), groupSizeX, groupSizeY, groupSizeZ);
+        vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
 
-    void ComputeContext::dispatchIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset)
+    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
         if (prepareForDispatch(pState, pVars) == false) return;
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);

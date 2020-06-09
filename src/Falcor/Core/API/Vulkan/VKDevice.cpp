@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/Device.h"
-#include "API/LowLevel/DescriptorPool.h"
-#include "API/LowLevel/GpuFence.h"
-#include "API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/DescriptorPool.h"
+#include "Falcor/Core/API/GpuFence.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include <set>
 #include "Falcor.h"
 
@@ -126,11 +126,12 @@ namespace Falcor
         return true;
     }
 
-    bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, std::vector<ResourceHandle>& apiHandles, uint32_t& currentBackBufferIndex)
+    bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex)
     {
         uint32_t imageCount = 0;
         vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, nullptr);
-        assert(imageCount == apiHandles.size());
+        //assert(imageCount == apiHandles.size());
+        assert(imageCount == kSwapChainBuffersCount);
 
         std::vector<VkImage> swapchainImages(imageCount);
         vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
@@ -529,8 +530,9 @@ namespace Falcor
         VkExtent2D swapchainExtent = {};
         if (surfaceCapabilities.currentExtent.width == (uint32_t)-1)
         {
-            swapchainExtent.width = mpWindow->getClientAreaWidth();
-            swapchainExtent.height = mpWindow->getClientAreaWidth();
+            const uint2 windowSize = mpWindow->getClientAreaSize();
+            swapchainExtent.width = windowSize.x;
+            swapchainExtent.height = windowSize.y;
         }
         else
         {
@@ -576,6 +578,7 @@ namespace Falcor
 
         // Select present mode, FIFO for VSync, otherwise preferring MAILBOX -> IMMEDIATE -> FIFO
         VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        bool mVsyncOn = false; // TODO: make this configurable
         if (mVsyncOn == false)
         {
             for (size_t i = 0; i < presentModeCount; i++)
@@ -596,7 +599,7 @@ namespace Falcor
         VkSwapchainCreateInfoKHR info = {};
         info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         info.surface = mApiHandle;
-        uint32 maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
+        uint32_t maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
         info.minImageCount = clamp(kSwapChainBuffersCount, surfaceCapabilities.minImageCount, maxImageCount);
         info.imageFormat = requestedFormat;
         info.imageColorSpace = requestedColorSpace;
@@ -637,8 +640,10 @@ namespace Falcor
         mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
     }
 
-    bool Device::apiInit(const Desc& desc)
+    //bool Device::apiInit(const Desc& desc)
+    bool Device::apiInit()
     {
+        const Desc desc;
         mpApiData = new DeviceApiData;
         VkInstance instance = createInstance(mpApiData, desc);
         if (!instance) return false;
@@ -681,10 +686,13 @@ namespace Falcor
         return false;
     }
 
+    /*
     bool Device::isExtensionSupported(const std::string& name) const
     {
-        return Falcor::isExtensionSupported(name, mpApiData->deviceExtensions);
+        //return Falcor::isExtensionSupported(name, mpApiData->deviceExtensions);
+        return true;
     }
+    */
 
     ApiCommandQueueType Device::getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const
     {

@@ -26,10 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/DescriptorSet.h"
+#include "Falcor/Core/API/DescriptorSet.h"
 #include "VKDescriptorData.h"
-#include "API/Device.h"
-#include "API/Buffer.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Buffer.h"
 
 namespace Falcor
 {
@@ -71,20 +71,18 @@ namespace Falcor
 
         if (handle.getType() == VkResourceType::Buffer)
         {
-            TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
-            if (pTypedBuffer)
-            {
-                texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
-                write.pTexelBufferView = &texelBufferView;
-            }
-            else
-            {
+            //TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
+            //if (pTypedBuffer) 
+            //{
+            //    texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
+            //    write.pTexelBufferView = &texelBufferView;
+            //} else {
                 Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();
                 write.pBufferInfo = &buffer;
-            }
+            //}
         }
         else
         {
@@ -134,10 +132,10 @@ namespace Falcor
         vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
     }
 
-    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, const ConstantBufferView::SharedPtr& pView)
+    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView)
     {
         VkDescriptorBufferInfo info;
-        const auto& pBuffer = dynamic_cast<const ConstantBuffer*>(pView->getResource());
+        const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
         assert(pBuffer);
         info.buffer = pBuffer->getApiHandle();
         info.offset = pBuffer->getGpuAddressOffset();

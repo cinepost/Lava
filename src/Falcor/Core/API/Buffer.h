@@ -63,6 +63,13 @@ namespace Falcor
             WriteDiscard,   ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with CpuAccess::Write flag.
         };
 
+        //enum class GpuAccessFlags : uint32_t
+        //{
+        //    None = 0x0,
+        //    Read = 0x1,
+        //    Write = 0x2,   
+        //};
+
         ~Buffer();
 
         /** Create a new buffer.

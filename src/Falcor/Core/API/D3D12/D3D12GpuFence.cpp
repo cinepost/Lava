@@ -92,4 +92,8 @@ namespace Falcor
     {
         return mApiHandle->GetCompletedValue();
     }
+
+    const ApiHandle& GpuFence::getApiHandle() const { 
+        return mApiHandle; 
+    }
 }

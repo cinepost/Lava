@@ -99,7 +99,11 @@ namespace Falcor
         VkPipeline pipeline;
         if (VK_FAILED(vkCreateGraphicsPipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline)))
         {
+            #ifdef _WIN32
             throw std::exception("Could not create graphics pipeline.");
+            #else
+            throw std::runtime_error("Could not create graphics pipeline.");
+            #endif
         }
         mApiHandle = ApiHandle::create(pipeline);
     }

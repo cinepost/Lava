@@ -89,7 +89,13 @@ namespace Falcor
         ObjectType createObject()
         {
             ObjectType pObj = mNewObjFunc(mpUserData);
-            if (pObj == nullptr) throw std::exception("Failed to create new object in fenced pool");
+            if (pObj == nullptr) {
+                #ifdef _WIN32
+                throw std::exception("Failed to create new object in fenced pool");
+                #else
+                throw std::runtime_error("Failed to create new object in fenced pool");
+                #endif
+            }
             return pObj;
         }
 

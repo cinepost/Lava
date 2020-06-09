@@ -31,19 +31,34 @@
 
 namespace Falcor
 {
+    /*
+    void GpuTimer::apiBegin()
+    {
+        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart);
+    }
+
+    void GpuTimer::apiEnd()
+    {
+        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mEnd);
+    }
+    */
+
     void GpuTimer::apiBegin()
    {
+        auto mpHeap = spHeap.lock()->getApiHandle();
         vkCmdResetQueryPool(mpLowLevelData->getCommandList(), mpHeap, mStart, 2);
         vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mStart);
    }
 
     void GpuTimer::apiEnd()
     {
+        auto mpHeap = spHeap.lock()->getApiHandle();
         vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mEnd);
     }
 
     void GpuTimer::apiResolve(uint64_t result[2])
     {
+        auto mpHeap = spHeap.lock()->getApiHandle();
         vk_call(vkGetQueryPoolResults(gpDevice->getApiHandle(), mpHeap, mStart, 2, sizeof(uint64_t) * 2, result, sizeof(result[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
     }
 }

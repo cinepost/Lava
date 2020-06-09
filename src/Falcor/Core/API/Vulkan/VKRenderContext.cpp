@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/RenderContext.h"
-#include "API/LowLevel/DescriptorPool.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/DescriptorPool.h"
+#include "Falcor/Core/API/Device.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
 
@@ -176,84 +176,87 @@ namespace Falcor
         vkCmdEndRenderPass(cmdBuffer);
     }
 
-    bool RenderContext::prepareForDraw()
+    //bool RenderContext::prepareForDraw()
+    bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars)
     {
-        assert(mpGraphicsState);
+        assert(pState);
         // Vao must be valid so at least primitive topology is known
-        assert(mpGraphicsState->getVao().get());
+        assert(pState->getVao().get());
+
+        auto pGSO = pState->getGSO(pVars);
 
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags))
         {
-            if (mpGraphicsVars)
+            if (pVars)
             {
-                if (applyGraphicsVars() == false) return; // Skip the call
+                if (applyGraphicsVars(pVars, pGSO->getDesc().getRootSignature().get()) == false) return false; // Skip the call
             }
         }
         if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags))
         {
-            GraphicsStateObject::SharedPtr pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
             vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
         }
         if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags))
         {
-            transitionFboResources(this, mpGraphicsState->getFbo().get());
+            transitionFboResources(this, pState->getFbo().get());
         }
         if (is_set(StateBindFlags::SamplePositions, mBindFlags))
         {
-            if (mpGraphicsState->getFbo() && mpGraphicsState->getFbo()->getSamplePositions().size())
+            if (pState->getFbo() && pState->getFbo()->getSamplePositions().size())
             {
                 logWarning("The Vulkan backend doesn't support programmable sample positions");
             }
         }
         if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags))
         {
-            setViewports(mpLowLevelData->getCommandList(), mpGraphicsState->getViewports());
+            setViewports(mpLowLevelData->getCommandList(), pState->getViewports());
         }
         if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags))
         {
-            setScissors(mpLowLevelData->getCommandList(), mpGraphicsState->getScissors());
+            setScissors(mpLowLevelData->getCommandList(), pState->getScissors());
         }
         if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags))
         {
-            setVao(this, mpGraphicsState->getVao().get());
+            setVao(this, pState->getVao().get());
         }
-        beginRenderPass(mpLowLevelData->getCommandList(), mpGraphicsState->getFbo().get());
+        beginRenderPass(mpLowLevelData->getCommandList(), pState->getFbo().get());
     }
 
-    void RenderContext::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation)
+    void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation)
     {
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDraw(mpLowLevelData->getCommandList(), vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
         endVkDraw(mpLowLevelData->getCommandList());
     }
 
-    void RenderContext::draw(uint32_t vertexCount, uint32_t startVertexLocation)
+    void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
     {
-        drawInstanced(vertexCount, 1, startVertexLocation, 0);
+        drawInstanced(pState,pVars, vertexCount, 1, startVertexLocation, 0);
     }
 
-    void RenderContext::drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
+    void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
+    
     {
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDrawIndexed(mpLowLevelData->getCommandList(), indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
         endVkDraw(mpLowLevelData->getCommandList());
     }
 
-    void RenderContext::drawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
+    void RenderContext::drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
     {
-        drawIndexedInstanced(indexCount, 1, startIndexLocation, baseVertexLocation, 0);
+        drawIndexedInstanced(pState, pVars, indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void RenderContext::drawIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset)
+    void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDrawIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
         endVkDraw(mpLowLevelData->getCommandList());
     }
-
-    void RenderContext::drawIndexedIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset)
+    
+    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
     {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;

@@ -9259,6 +9259,7 @@ src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/API/VAO.h
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/API/VertexLayout.h
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/API/Vulkan/FalcorVK.h
+src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/API/Vulkan/VKDescriptorData.h
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/API/Vulkan/VKSmartHandle.h
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/BufferTypes/ParameterBlock.h
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/API/Vulkan/VKDescriptorPool.cpp.o: ../src/Falcor/Core/BufferTypes/VariablesBufferUI.h
@@ -19066,15 +19067,22 @@ src/Falcor/CMakeFiles/falcor_lib.dir/Core/Window.cpp.o: glm/glm/vector_relationa
 src/Falcor/CMakeFiles/falcor_lib.dir/Core/Window.cpp.o: slang/slang.h
 
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/D3D12/FalcorD3D12.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/DescriptorPool.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/FBO.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/Formats.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/GpuMemoryHeap.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/QueryHeap.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/RenderContext.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/RootSignature.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/Shader.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/Texture.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/Vulkan/FalcorVK.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/API/Vulkan/VKSmartHandle.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/FalcorConfig.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/Program/Program.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/Program/ProgramReflection.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/Program/ShaderVar.h
+src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Core/Window.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Experimental/Scene/Lights/LightCollection.h
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Experimental/Scene/Lights/MeshLightData.slang
 src/Falcor/CMakeFiles/falcor_lib.dir/stdafx.cpp.o: ../src/Falcor/Raytracing/RtStateObject.h

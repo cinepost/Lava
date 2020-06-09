@@ -26,6 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+//save compiler switches
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
 
@@ -380,3 +385,6 @@ using DllHandle = void*;
 #include "nvapi.h"
 #pragma comment(lib, "nvapi64.lib")
 #endif
+
+//restore compiler switches
+#pragma GCC diagnostic pop

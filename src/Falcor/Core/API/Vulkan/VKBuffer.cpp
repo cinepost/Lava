@@ -141,6 +141,7 @@ namespace Falcor
         }
     }
 
+    /*
     uint64_t Buffer::makeResident(Buffer::GpuAccessFlags flags) const
     {
         UNSUPPORTED_IN_VULKAN(__FUNCTION__);
@@ -151,4 +152,5 @@ namespace Falcor
     {
         UNSUPPORTED_IN_VULKAN(__FUNCTION__);
     }
+    */
 }

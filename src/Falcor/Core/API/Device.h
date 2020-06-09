@@ -26,13 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Window.h"
-#include "Core/API/Texture.h"
-#include "Core/API/FBO.h"
-#include "Core/API/RenderContext.h"
-#include "Core/API/DescriptorPool.h"
-#include "Core/API/GpuMemoryHeap.h"
-#include "Core/API/QueryHeap.h"
+#include "Falcor/Core/Window.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/FBO.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/DescriptorPool.h"
+#include "Falcor/Core/API/GpuMemoryHeap.h"
+#include "Falcor/Core/API/QueryHeap.h"
 
 namespace Falcor
 {
@@ -70,6 +70,11 @@ namespace Falcor
             // GUID list for experimental features
             std::vector<UUID> experimentalFeatures;
 #endif
+
+#ifdef FALCOR_VK
+            std::vector<std::string> requiredExtensions;
+#endif
+
         };
 
         enum class SupportedFeatures

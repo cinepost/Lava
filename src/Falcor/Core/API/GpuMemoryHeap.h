@@ -41,7 +41,8 @@ namespace Falcor
         {
             Default,
             Upload,
-            Readback
+            Readback,
+            Count     // TODO: i've put it here. no idea why exactly
         };
 
         struct BaseData

@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/LowLevel/DescriptorPool.h"
-#include "API/Device.h"
-#include "API/Vulkan/LowLevel/VKDescriptorData.h"
+#include "Falcor/Core/API/DescriptorPool.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Vulkan/VKDescriptorData.h"
 
 namespace Falcor
 {
@@ -90,7 +90,11 @@ namespace Falcor
         VkDescriptorPool pool;
         if (VK_FAILED(vkCreateDescriptorPool(gpDevice->getApiHandle(), &info, nullptr, &pool)))
         {
+            #ifdef _WIN32
             throw std::exception("Error creating descriptor pool!");
+            #else
+            throw std::runtime_error("Error creating descriptor pool!");
+            #endif
         }
         mpApiData->descriptorPool = ApiHandle::create(pool);
     }

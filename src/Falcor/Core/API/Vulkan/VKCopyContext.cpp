@@ -244,8 +244,8 @@ namespace Falcor
     {
         mpFence->syncCpu();
         // Map and read the results
-        std::vector<uint8> result(mDataSize);
-        uint8* pData = reinterpret_cast<uint8*>(mpBuffer->map(Buffer::MapType::Read));
+        std::vector<uint8_t> result(mDataSize);
+        uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
         std::memcpy(result.data(), pData, mDataSize);
         return result;
     }

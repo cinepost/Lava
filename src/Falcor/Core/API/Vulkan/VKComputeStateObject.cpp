@@ -46,7 +46,11 @@ namespace Falcor
         VkPipeline pipeline;
         if (VK_FAILED(vkCreateComputePipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline)))
         {
+            #ifdef _WIN32
             throw std::exception("Could not create compute pipeline.");
+            #else
+            throw std::runtime_error("Could not create compute pipeline.");
+            #endif
         }
         mApiHandle = ApiHandle::create(pipeline);
     }

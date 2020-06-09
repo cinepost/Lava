@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/LowLevel/LowLevelContextData.h"
-#include "API/Vulkan/FalcorVK.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/Device.h"
 
 namespace Falcor
 {
@@ -64,7 +64,7 @@ namespace Falcor
 
     LowLevelContextData::SharedPtr LowLevelContextData::create(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
     {
-        SharedPtr pThis = SharedPtr(new LowLevelContextData);
+        SharedPtr pThis = SharedPtr(new LowLevelContextData(type, queue));
         pThis->mType = type;
         pThis->mpFence = GpuFence::create();
         pThis->mpQueue = queue;
