@@ -637,15 +637,15 @@ int main(int argc, char** argv)
         char** argv = nullptr;
 #else
         args.parseCommandLine(argc, argv);
-        config.argc = argc;
-        config.argv = argv;
+        //config.argc = argc;
+        //config.argv = argv;
 #endif
 
         if (args.argExists("silent"))
         {
             config.suppressInput = true;
             config.showMessageBoxOnError = false;
-            config.windowDesc.mode = Window::WindowMode::Minimized;
+            config.windowDesc.mode = Falcor::Window::WindowMode::Minimized;
 
             // Set early to not show message box on errors that occur before setting the sample configuration.
             Logger::showBoxOnError(false);

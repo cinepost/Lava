@@ -332,7 +332,7 @@ namespace Falcor
             mReleaseRtvsAfterGenMips = false;
         }
     }
-
+#ifdef FLACOR_D3D12
     uint32_t Texture::getTextureSizeInBytes()
     {
         ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
@@ -348,6 +348,7 @@ namespace Falcor
         d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
         return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
     }
+#endif
 
     SCRIPT_BINDING(Texture)
     {

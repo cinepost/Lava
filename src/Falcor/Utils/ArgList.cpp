@@ -78,6 +78,25 @@ namespace Falcor
         }
     }
 
+    void parseCommandLine(int &argc, char **argv) 
+    {
+        for (int i=1; i < argc; ++i) {
+            std::string token = std::string(argv[i]);
+
+            size_t dashIndex = token.find('-');
+            if (dashIndex == 0 && isalpha(token[1]))
+            {
+                currentArg = token.substr(1);
+                addArg(currentArg);
+            }
+            else if(!token.empty() && token.find_first_not_of(' ') != std::string::npos)
+            {
+                addArg(currentArg, token);
+            }
+
+        }        
+    }
+
     void ArgList::addArg(const std::string& arg)
     {
         mMap.insert(std::make_pair(arg, std::vector<Arg>()));

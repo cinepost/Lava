@@ -35,7 +35,8 @@ namespace Falcor
     class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass>
     {
     public:
-        using SharedPtr = ParameterBlockSharedPtr::shared_ptr<RasterScenePass>;
+        //using SharedPtr = ParameterBlockSharedPtr::shared_ptr<RasterScenePass>;
+        using SharedPtr = ParameterBlockSharedPtr<RasterScenePass>;
 
         /** Create a new object.
             \param[in] pScene The scene object.

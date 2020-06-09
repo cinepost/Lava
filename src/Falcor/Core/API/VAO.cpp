@@ -60,7 +60,11 @@ namespace Falcor
         {
             if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false)
             {
+                #ifdef _WIN32
                 throw std::exception("Failed to create VAO");
+                #else
+                throw std::runtime_error("Failed to create VAO");
+                #endif
             }
         }
 

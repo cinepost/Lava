@@ -46,7 +46,14 @@ namespace Mogwai
             template<typename T>
             void addGlobalObject(const std::string& name, const T& obj, const std::string& desc)
             {
-                if (mGlobalObjects.find(name) != mGlobalObjects.end()) throw std::exception(("Object `" + name + "` already exists").c_str());
+                if (mGlobalObjects.find(name) != mGlobalObjects.end()) {
+                #ifdef _WIN32
+                    throw std::exception(("Object `" + name + "` already exists").c_str());
+                #else
+                    throw std::runtime_error("Object `" + name + "` already exists");
+                #endif 
+                }
+                
                 Scripting::getGlobalContext().setObject(name, obj);
                 mGlobalObjects[name] = desc;
             }

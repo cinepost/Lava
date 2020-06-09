@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/Buffer.h"
-#include "API/Device.h"
-#include "API/LowLevel/ResourceAllocator.h"
-#include "API/Vulkan/FalcorVK.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Device.h"
+//#include "Falcor/Core/API/LowLevel/ResourceAllocator.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/Device.h"
 
 namespace Falcor
 {

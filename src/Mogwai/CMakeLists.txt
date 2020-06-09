@@ -25,6 +25,11 @@ if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
   find_package(Vulkan)
 endif()
 
+find_package( Boost COMPONENTS system filesystem REQUIRED )
+include_directories( ${Boost_INCLUDE_DIRS} )
+# we will use static libs
+add_definitions(-DBOOST_LOG_DYN_LINK)
+
 if (NOT Vulkan_FOUND)
   find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR/libs/vulkan}" REQUIRED)
   if (Vulkan_LIBRARY)
@@ -41,12 +46,17 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE) # add the automatically determined p
 
 # Executable 
 add_executable ( mogwai ${SOURCES} )
-set_target_properties( mogwai PROPERTIES OUTPUT_NAME "mogwai" )
+set_target_properties( mogwai PROPERTIES 
+  OUTPUT_NAME "mogwai" 
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS ON
+)
 
 target_link_libraries( mogwai
   #falcor_lib
-  #Boost::log
-  #Boost::program_options
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_FILESYSTEM_LIBRARY}
   ${PYTHON_LIBRARIES}
   ${Vulkan_LIBRARY}
 )

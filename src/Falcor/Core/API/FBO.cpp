@@ -242,7 +242,11 @@ namespace Falcor
     {
         if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false)
         {
+            #ifdef _WIN32
             throw std::exception("Can't attach depth-stencil texture to FBO. Invalid parameters.");
+            #else
+            throw std::runtime_error("Can't attach depth-stencil texture to FBO. Invalid parameters.");
+            #endif
         }
 
         mpDesc = nullptr;
@@ -264,11 +268,19 @@ namespace Falcor
     {
         if (rtIndex >= mColorAttachments.size())
         {
+            #ifdef _WIN32
             throw std::exception(("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets").c_str());
+            #else
+            throw std::runtime_error("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets");
+            #endif
         }
         if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false)
         {
+            #ifdef _WIN32
             throw std::exception("Can't attach texture to FBO. Invalid parameters.");
+            #else
+            throw std::runtime_error("Can't attach texture to FBO. Invalid parameters.");
+            #endif
         }
 
         mpDesc = nullptr;
@@ -369,7 +381,11 @@ namespace Falcor
     {
         if (index >= mColorAttachments.size())
         {
+            #ifdef _WIN32
             throw std::exception(("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.").c_str());
+            #else
+            throw std::runtime_error("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.");
+            #endif
         }
         return mColorAttachments[index].pTexture;
     }
@@ -385,7 +401,11 @@ namespace Falcor
         {
             if (calcAndValidateProperties() == false)
             {
+                #ifdef _WIN32
                 throw std::exception("Can't finalize FBO. Invalid frame buffer object.");
+                #else
+                throw std::runtime_error("Can't finalize FBO. Invalid frame buffer object.");
+                #endif
             }
             initApiHandle();
         }
@@ -410,7 +430,11 @@ namespace Falcor
         uint32_t sampleCount = fboDesc.getSampleCount();
         if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
         {
+            #ifdef _WIN32
             throw std::exception("Can't create 2D FBO. Invalid parameters.");
+            #else
+            throw std::runtime_error("Can't create 2D FBO. Invalid parameters.");
+            #endif
         }
 
         Fbo::SharedPtr pFbo = create();
@@ -440,11 +464,19 @@ namespace Falcor
     {
         if (fboDesc.getSampleCount() > 1)
         {
+            #ifdef _WIN32
             throw std::exception("Can't create cubemap FBO. Multisampled cubemap is not supported.");
+            #else
+            throw std::runtime_error("Can't create cubemap FBO. Multisampled cubemap is not supported.");
+            #endif
         }
         if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)
         {
+            #ifdef _WIN32
             throw std::exception("Can't create cubemap FBO. Invalid parameters.");
+            #else
+            throw std::runtime_error("Can't create cubemap FBO. Invalid parameters.");
+            #endif
         }
 
         Fbo::SharedPtr pFbo = create();

@@ -33,7 +33,7 @@
 #include <sstream>
 #include <fstream>
 #include "Utils/Threading.h"
-#include "dear_imgui/imgui.h"
+#include "imgui/imgui.h"
 
 namespace Falcor
 {

@@ -59,7 +59,11 @@ namespace Falcor
         mEnd = pHeap->allocate();
         if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex)
         {
+            #ifdef _WIN32
             throw std::exception("Can't create GPU timer, no available timestamp queries.");
+            #else
+            throw std::runtime_error("Can't create GPU timer, no available timestamp queries.");
+            #endif
         }
         assert(mEnd == (mStart + 1));
         mpLowLevelData = gpDevice->getRenderContext()->getLowLevelData();

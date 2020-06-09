@@ -27,8 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "PixelDebugTypes.slang"
+
+#ifdef FALCOR_D3D12
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
+#endif
 
 namespace Falcor
 {

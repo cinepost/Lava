@@ -80,6 +80,8 @@ namespace Falcor
             Raytracing = 0x4                              // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
         };
 
+        using MemoryType = GpuMemoryHeap::Type;
+
         /** Create a new device.
             \param[in] pWindow a previously-created window object
             \param[in] desc Device configuration descriptor.

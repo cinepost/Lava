@@ -29,9 +29,11 @@
 #include "Falcor.h"
 
 #ifdef _WIN32
-#include <filesystem>
+  #include <filesystem>
+  namespace fs = std::filesystem;
 #else
-#include <experimental/filesystem>
+  #include "boost/filesystem.hpp"
+  namespace fs = boost::filesystem;
 #endif
 
 namespace Mogwai
@@ -41,7 +43,7 @@ namespace Mogwai
     class AppData
     {
     public:
-        AppData(const std::filesystem::path& path);
+        AppData(const fs::path& path);
 
         const std::vector<std::string>& getRecentScripts() const { return mRecentScripts; }
         const std::vector<std::string>& getRecentScenes() const { return mRecentScenes; }
@@ -55,10 +57,10 @@ namespace Mogwai
 
         void save();
 
-        void loadFromFile(const std::filesystem::path& path);
-        void saveToFile(const std::filesystem::path& path);
+        void loadFromFile(const fs::path& path);
+        void saveToFile(const fs::path& path);
 
-        std::filesystem::path mPath;
+        fs::path mPath;
 
         std::vector<std::string> mRecentScripts;
         std::vector<std::string> mRecentScenes;

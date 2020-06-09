@@ -47,11 +47,11 @@ namespace Mogwai
         size_t kMaxRecentFiles = 25;
     }
 
-    AppData::AppData(const std::filesystem::path& path)
+    AppData::AppData(const fs::path& path)
         : mPath(path.lexically_normal())
     {
         // Make sure directories exist.
-        std::filesystem::create_directories(mPath.parent_path());
+        fs::create_directories(mPath.parent_path());
 
         loadFromFile(mPath);
     }
@@ -88,7 +88,7 @@ namespace Mogwai
         saveToFile(mPath);
     }
 
-    void AppData::loadFromFile(const std::filesystem::path& path)
+    void AppData::loadFromFile(const fs::path& path)
     {
         rapidjson::Document document;
 
@@ -124,7 +124,7 @@ namespace Mogwai
         removeNonExistingFiles(mRecentScenes);
     }
 
-    void AppData::saveToFile(const std::filesystem::path& path)
+    void AppData::saveToFile(const fs::path& path)
     {
         rapidjson::Document document;
         document.SetObject();

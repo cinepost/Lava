@@ -44,8 +44,11 @@ namespace Falcor
             : mWaitForKey(waitForKey)
         {
             // Open console window
+#ifdef _WIN32
             AllocConsole();
-
+#else
+        // TODO: open linux console window 
+#endif
             // Redirect cout/cerr/cin streams to our console window
             mPrevCout = std::cout.rdbuf();
             mCout.open("CONOUT$");
@@ -82,7 +85,12 @@ namespace Falcor
             //fclose(mFp);
 
             // Close console window
+#ifdef _WIN32
             FreeConsole();
+#else
+            // TODO: close linux console window
+#endif
+
         }
 
         void pause() const

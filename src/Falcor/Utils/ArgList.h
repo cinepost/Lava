@@ -67,6 +67,12 @@ namespace Falcor
         */
         void parseCommandLine(const std::string& commandLine);
 
+        /** Parses command line args
+            \param argc the command line
+            \param argv the command line
+        */
+        void parseCommandLine(int &argc, char **argv);
+
         /** Adds a key with no arguments to the list 
             \param key
         */
