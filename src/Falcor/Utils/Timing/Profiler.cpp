@@ -30,8 +30,11 @@
 #include "Core/API/GpuTimer.h"
 #include <sstream>
 #include <fstream>
+
+#ifdef _WIN32
 #define USE_PIX
 #include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
+#endif
 
 namespace Falcor
 {
@@ -100,10 +103,12 @@ namespace Falcor
                 pData->registered = true;
             }
         }
+        #ifdef _WIN32
         if (is_set(flags, Flags::Pix))
         {
             PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList(), PIX_COLOR(0, 0, 0), name.c_str());
         }
+        #endif
     }
 
     void Profiler::endEvent(const std::string& name, Flags flags)
@@ -124,10 +129,12 @@ namespace Falcor
             sCurrentLevel--;
             curEventName.erase(curEventName.find_last_of("#"));
         }
+        #ifdef _WIN32
         if (is_set(flags, Flags::Pix))
         {
             PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList());
         }
+        #endif
     }
 
     double Profiler::getEventGpuTime(const std::string& name)

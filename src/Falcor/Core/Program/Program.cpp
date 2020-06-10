@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Program.h"
-#include "Slang/slang.h"
+#include "slang/slang.h"
 #include "Utils/StringUtils.h"
 
 namespace Falcor
@@ -91,7 +91,11 @@ namespace Falcor
 
         if(mActiveSource < 0)
         {
+            #ifdef _WIN32
             throw std::exception("Cannot add an entry point without first adding a source file/library");
+            #else
+            throw std::runtime_error("Cannot add an entry point without first adding a source file/library");
+            #endif
         }
 
         if(mActiveGroup < 0)
@@ -331,7 +335,11 @@ namespace Falcor
                 // On error we get false, and mActiveProgram points to the last successfully compiled version.
                 if (link() == false)
                 {
+                    #ifdef _WIN32
                     throw std::exception("Program linkage failed");
+                    #else
+                    throw std::runtime_error("Program linkage failed");
+                    #endif
                 }
                 else
                 {

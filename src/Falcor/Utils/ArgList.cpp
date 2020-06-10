@@ -78,8 +78,9 @@ namespace Falcor
         }
     }
 
-    void parseCommandLine(int &argc, char **argv) 
+    void ArgList::parseCommandLine(int &argc, char **argv) 
     {
+        std::string currentArg;
         for (int i=1; i < argc; ++i) {
             std::string token = std::string(argv[i]);
 

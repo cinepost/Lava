@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Console.h"
-#include "dear_imgui/imgui.h"
+#include "imgui/imgui.h"
 
 namespace Falcor
 {

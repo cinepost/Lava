@@ -54,7 +54,7 @@ set_target_properties( mogwai PROPERTIES
 )
 
 target_link_libraries( mogwai
-  #falcor_lib
+  falcor_lib
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_FILESYSTEM_LIBRARY}
   ${PYTHON_LIBRARIES}

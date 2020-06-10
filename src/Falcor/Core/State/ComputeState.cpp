@@ -33,7 +33,7 @@ namespace Falcor
 {
     ComputeState::ComputeState()
     {
-        mpCsoGraph = StateGraph::create();
+        mpCsoGraph = _StateGraph::create();
     }
 
     ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars)
@@ -61,7 +61,7 @@ namespace Falcor
             mDesc.setProgramKernels(pProgramKernels);
             mDesc.setRootSignature(pRoot);
 
-            StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
+            _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool
             {
                 return pCso && (desc == pCso->getDesc());
             };

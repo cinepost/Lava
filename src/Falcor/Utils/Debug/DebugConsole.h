@@ -97,7 +97,7 @@ namespace Falcor
         {
             std::cout << "Press any key to continue..." << std::endl;
             flush();
-            char c = std::cin.get();
+            std::cin.get();
         }
 
         void flush() const

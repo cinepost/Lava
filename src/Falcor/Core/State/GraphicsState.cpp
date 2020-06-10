@@ -62,7 +62,7 @@ namespace Falcor
             setViewport(i, mViewports[i], true);
         }
 
-        mpGsoGraph = StateGraph::create();
+        mpGsoGraph = _StateGraph::create();
     }
 
     GraphicsState::~GraphicsState() = default;
@@ -104,7 +104,7 @@ namespace Falcor
             mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
             mDesc.setRootSignature(pRoot);
 
-            StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool
+            _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool
             {
                 return pGso && (desc == pGso->getDesc());
             };

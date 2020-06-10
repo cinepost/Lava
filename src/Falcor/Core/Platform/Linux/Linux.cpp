@@ -27,20 +27,22 @@
  **************************************************************************/
 #include "stdafx.h"
 // #include "Utils/StringUtils.h"
-// #include "Utils/Platform/OS.h"
+#include "Falcor/Core/Platform/OS.h"
 // #include "Utils/Logger.h"
 //
 // #include <sys/types.h>
 // #include <sys/stat.h>
 // #include <sys/ptrace.h>
-// #include <gtk/gtk.h>
+#include <gtk/gtk.h>
 // #include <fstream>
-// #include <fcntl.h>
+#include <fcntl.h>
 // #include <libgen.h>
 // #include <errno.h>
 // #include <algorithm>
-// #include <experimental/filesystem>
-// #include <dlfcn.h>
+#include <dlfcn.h>
+
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
 
 namespace Falcor
 {
@@ -106,7 +108,7 @@ namespace Falcor
             }
         }
 
-        gtk_window_set_title(GTK_WINDOW(pDialog), gMsgBoxTitle);
+        gtk_window_set_title(GTK_WINDOW(pDialog), "Falcor");
         gint result = gtk_dialog_run(GTK_DIALOG(pDialog));
         gtk_widget_destroy(pDialog);
         gtk_widget_destroy(pParent);
@@ -208,7 +210,7 @@ namespace Falcor
 
     std::string getTempFilename()
     {
-        std::string filePath = std::filesystem::temp_directory_path();
+        std::string filePath = fs::temp_directory_path().string();
         filePath += "/fileXXXXXX";
 
         // The if is here to avoid the warn_unused_result attribute on mkstemp
@@ -223,7 +225,9 @@ namespace Falcor
         const char* path;
         if (count != -1)
         {
-            path = dirname(result);
+            fs::path p(result);
+            path = p.parent_path().string().c_str();
+            //path = dirname(result);
         }
         static std::string strpath(path);
         return strpath;
@@ -248,7 +252,7 @@ namespace Falcor
 
     const std::string& getExecutableName()
     {
-        static std::string filename = std::filesystem::path(program_invocation_name).filename();
+        static std::string filename = fs::path(program_invocation_name).filename().string();
         return filename;
     }
 

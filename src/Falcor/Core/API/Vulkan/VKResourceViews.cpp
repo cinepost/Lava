@@ -148,8 +148,9 @@ namespace Falcor
     {
         if (!pTexture && getNullView()) return getNullView();
 
-        Resource::ApiHandle resHandle = pTexture->getApiHandle();
-        return SharedPtr(new ShaderResourceView(pTexture, resHandle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
+        //Resource::ApiHandle resHandle = pTexture->getApiHandle();
+        //return SharedPtr(new ShaderResourceView(pTexture, resHandle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
+        return getNullView();
     }
     /*
     ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -164,6 +165,13 @@ namespace Falcor
         return SharedPtr(new ShaderResourceView(pResource, view, mostDetailedMip, mipCount, firstArraySlice, arraySize));
     }
     */
+    // based on D3D code
+    DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    {
+        if (!pTexture && getNullView()) return getNullView();
+        return getNullView();
+    }
+    /*
     DepthStencilView::SharedPtr DepthStencilView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
@@ -181,7 +189,14 @@ namespace Falcor
         auto view = createViewCommon(pSharedPtr, mipLevel, 1, firstArraySlice, arraySize);
         return SharedPtr(new DepthStencilView(pResource, view, mipLevel, firstArraySlice, arraySize));
     }
-
+    */
+    // based on D3D code
+    UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    {
+        if (!pTexture && getNullView()) return getNullView();
+        return getNullView();
+    }
+    /*
     UnorderedAccessView::SharedPtr UnorderedAccessView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
@@ -194,13 +209,19 @@ namespace Falcor
         auto view = createViewCommon(pSharedPtr, mipLevel, 1, firstArraySlice, arraySize);
         return SharedPtr(new UnorderedAccessView(pResource, view, mipLevel, firstArraySlice, arraySize));
     }
-
+    */
     RenderTargetView::~RenderTargetView()
     {
         static std::vector<RenderTargetView::ApiHandle> hdl;
         hdl.push_back(mApiHandle);
     }
-
+    // based on D3D code
+    RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    {
+        if (!pTexture && getNullView()) return getNullView();
+        return getNullView();
+    }
+    /*
     RenderTargetView::SharedPtr RenderTargetView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
@@ -229,7 +250,15 @@ namespace Falcor
             return gNullRtv;
         }
     }
+    */
 
+    // based in D3D code
+     ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
+    {
+        if (!pBuffer && getNullView()) return getNullView();
+        return getNullView();
+    }
+    /*
     ConstantBufferView::SharedPtr ConstantBufferView::create(ResourceWeakPtr pResource)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
@@ -243,5 +272,6 @@ namespace Falcor
 
         return SharedPtr(new ConstantBufferView(pResource, nullptr));
     }
+    */
 }
 

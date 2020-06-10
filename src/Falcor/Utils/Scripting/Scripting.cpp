@@ -169,6 +169,11 @@ namespace Falcor
     std::string Scripting::runScriptFromFile(const std::string& filename, Context& context)
     {
         if (std::filesystem::exists(filename)) return Scripting::runScript(readFile(filename), context);
+
+        #ifdef _WIN32
         throw std::exception(std::string("Failed to run script. Can't find the file `" + filename + "`.").c_str());
+        #else
+        throw std::runtime_error(std::string("Failed to run script. Can't find the file `" + filename + "`.").c_str());
+        #endif
     }
 }

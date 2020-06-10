@@ -159,7 +159,11 @@ namespace Falcor
         VkImage image;
         if (VK_FAILED(vkCreateImage(gpDevice->getApiHandle(), &imageInfo, nullptr, &image)))
         {
+            #ifdef _WIN32
             throw std::exception("Failed to create texture.");
+            #else
+            throw std::runtime_error("Failed to create texture.");
+            #endif
         }
 
         // Allocate the GPU memory

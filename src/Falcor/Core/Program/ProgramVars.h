@@ -31,6 +31,7 @@
 
 namespace Falcor
 {
+
     class GraphicsProgram;
     class ComputeProgram;
     class ComputeContext;

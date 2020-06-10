@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/LowLevel/GpuMemoryHeap.h"
-#include "API/Buffer.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/GpuMemoryHeap.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Device.h"
 
 namespace Falcor
 {

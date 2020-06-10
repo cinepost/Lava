@@ -32,6 +32,8 @@
 
 namespace Falcor
 {
+    typedef unsigned char byte;
+    
     namespace {
         const char kReflectPixelDebugTypesFile[] = "Utils/Debug/ReflectPixelDebugTypes.cs.slang";
     }

@@ -36,6 +36,7 @@
 
 namespace Falcor
 {
+
     static bool compareRootSets(const DescriptorSet::Layout& a, const DescriptorSet::Layout& b)
     {
         if (a.getRangeCount() != b.getRangeCount()) return false;
@@ -82,25 +83,49 @@ namespace Falcor
 
     GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        if (pReflector == nullptr) throw std::exception("Can't create a GraphicsVars object without a program reflector");
+        if (pReflector == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a GraphicsVars object without a program reflector");
+            #else
+            throw std::runtime_error("Can't create a GraphicsVars object without a program reflector");
+            #endif
+        }
         return SharedPtr(new GraphicsVars(pReflector));
     }
 
     GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg)
     {
-        if (pProg == nullptr) throw std::exception("Can't create a GraphicsVars object without a program");
+        if (pProg == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a GraphicsVars object without a program");
+            #else
+            throw std::runtime_error("Can't create a GraphicsVars object without a program");
+            #endif
+        }
         return create(pProg->getReflector());
     }
 
     ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        if (pReflector == nullptr) throw std::exception("Can't create a ComputeVars object without a program reflector");
+        if (pReflector == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a ComputeVars object without a program reflector");
+            #else
+            throw std::runtime_error("Can't create a ComputeVars object without a program reflector");
+            #endif
+        }
         return SharedPtr(new ComputeVars(pReflector));
     }
 
     ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg)
     {
-        if (pProg == nullptr) throw std::exception("Can't create a ComputeVars object without a program");
+        if (pProg == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a ComputeVars object without a program");
+            #else
+            throw std::runtime_error("Can't create a ComputeVars object without a program");
+            #endif
+        }
         return create(pProg->getReflector());
     }
 
@@ -126,6 +151,7 @@ namespace Falcor
     template<bool forGraphics>
     void bindRootDescriptor(CopyContext* pContext, uint32_t rootIndex, const Resource::SharedPtr& pResource, bool isUav)
     {
+        #ifdef _WIN32
         auto pBuffer = pResource->asBuffer();
         assert(!pResource || pBuffer); // If a resource is bound, it must be a buffer
         uint64_t gpuAddress = pBuffer ? pBuffer->getGpuAddress() : 0;
@@ -144,11 +170,13 @@ namespace Falcor
             else
                 pContext->getLowLevelData()->getCommandList()->SetComputeRootShaderResourceView(rootIndex, gpuAddress);
         }
+        #endif
     }
 
     template<bool forGraphics>
     void bindRootConstants(CopyContext* pContext, uint32_t rootIndex, ParameterBlock* pParameterBlock, const ParameterBlockReflection* pParameterBlockReflector)
     {
+        #ifdef _WIN32
         uint32_t count = uint32_t(pParameterBlockReflector->getElementType()->getByteSize() / sizeof(uint32_t));
         void const* pSrc = pParameterBlock->getRawData();
         if (forGraphics)
@@ -167,6 +195,7 @@ namespace Falcor
                 pSrc,
                 0);
         }
+        #endif
     }
 
     template<bool forGraphics>

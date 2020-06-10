@@ -41,7 +41,11 @@ namespace Falcor
         }
         else
         {
+            #ifdef _WIN32
             throw std::exception("Can't create SampleGenerator. Unknown type");
+            #else
+            throw std::runtime_error("Can't create SampleGenerator. Unknown type");
+            #endif
         }
     }
 

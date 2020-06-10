@@ -275,7 +275,13 @@ namespace Falcor
         auto loadTexture = [](const std::string& tex)
         {
             auto pTex = Texture::createFromFile("Framework/Textures/" + tex, false, true);
-            if (!pTex) throw std::exception("Failed to load texture");
+            if (!pTex) {
+                #ifdef _WIN32 
+                throw std::exception("Failed to load texture");
+                #else
+                throw std::runtime_error("Failed to load texture");
+                #endif
+            }
             return pTex;
         };
         gClockTextures.pRewind = loadTexture("Rewind.jpg");

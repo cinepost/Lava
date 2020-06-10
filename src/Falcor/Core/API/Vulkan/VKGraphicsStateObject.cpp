@@ -38,7 +38,8 @@ namespace Falcor
     {
         // Shader Stages
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
-        initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
+        //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
+        initVkShaderStageInfo(mDesc.getProgramKernels(), shaderStageInfos);
 
         // Vertex Input State
         VertexInputStateCreateInfo vertexInputInfo = {};

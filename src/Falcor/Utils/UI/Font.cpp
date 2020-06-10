@@ -42,7 +42,11 @@ namespace Falcor
     {
         if (!loadFromFile("DejaVu Sans Mono", 14))
         {
+            #ifdef _WIN32
             throw std::exception("Failed to create font resource");
+            #else
+            throw std::runtime_error("Failed to create font resource");
+            #endif
         }
     }
 

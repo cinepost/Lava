@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/LowLevel/RootSignature.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/RootSignature.h"
+#include "Falcor/Core/API/Device.h"
 #include <set>
 
 namespace Falcor

@@ -27,10 +27,15 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Utils/StringUtils.h"
+#include "OS.h"
 #include <filesystem>
 #include <fstream>
 
 namespace fs = std::filesystem;
+
+#ifndef _PROJECT_DIR_
+#define _PROJECT_DIR_ "/home/max/dev/Falcor"
+#endif
 
 namespace Falcor
 {
