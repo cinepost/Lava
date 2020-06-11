@@ -57,6 +57,7 @@ namespace Falcor
         */
         struct Options : Falcor::ScriptBindings::enable_to_string
         {
+            Options() noexcept {};
             // Build options
             LightBVHBuilder::Options buildOptions;
 

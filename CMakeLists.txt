@@ -16,7 +16,12 @@ set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT
 project( Falcor VERSION ${PROJECT_VERSION} )
 
 # Add folder where are supportive functions
-set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
+set( CMAKE_MODULE_PATH 
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake 
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
+)
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # Set PROJECT_VERSION_PATCH and PROJECT_VERSION_TWEAK to 0 if not present, needed by add_project_meta
@@ -62,7 +67,7 @@ endif()
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -fvisibility=default -Wno-reorder -Wfatal-errors) #-pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wno-reorder -Wfatal-errors) #-pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
@@ -72,10 +77,11 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}
   ${FALCOR_INCLUDE_ROOT}/Falcor
   ${FALCOR_INCLUDE_ROOT}/Falcor/Core
+  ${FALCOR_INCLUDE_ROOT}/Externals
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/Externals
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/include
 )
 
 # Documentation
@@ -87,7 +93,8 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 # thirt party libs
 # TODO: build necessary third party libs
 
-
+message("Build dir: ${CMAKE_BINARY_DIR}")
+#add_subdirectory( third_party/assimp )
 add_subdirectory( src )
 
 #install(

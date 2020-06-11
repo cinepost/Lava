@@ -251,7 +251,13 @@ namespace Falcor
 
     ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType)
     {
-        if (!pElementType) throw std::exception("Can't create a parameter block without type information");
+        if (!pElementType) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a parameter block without type information");
+            #else
+            throw std::runtime_error("Can't create a parameter block without type information");
+            #endif
+        }
         auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
         return create(pReflection);
     }

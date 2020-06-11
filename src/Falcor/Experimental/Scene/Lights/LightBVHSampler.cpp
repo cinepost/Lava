@@ -168,10 +168,21 @@ namespace Falcor
     {
         // Create the BVH and builder.
         mpBVHBuilder = LightBVHBuilder::create(mOptions.buildOptions);
-        if (!mpBVHBuilder) throw std::exception("Failed to create BVH builder");
-
+        if (!mpBVHBuilder) {
+            #ifdef _WIN32
+            throw std::exception("Failed to create BVH builder");
+            #else
+            throw std::runtime_error("Failed to create BVH builder");
+            #endif
+        }
         mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
-        if (!mpBVH) throw std::exception("Failed to create BVH");
+        if (!mpBVH) {
+            #ifdef _WIN32
+            throw std::exception("Failed to create BVH");
+            #else
+            throw std::runtime_error("Failed to create BVH");
+            #endif
+        }
     }
 
     SCRIPT_BINDING(LightBVHSampler)

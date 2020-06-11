@@ -176,7 +176,13 @@ namespace Falcor
             pTexture = Texture::createFromFile(filename, true, loadAsSrgb);
         }
 
-        if (!pTexture) throw std::exception("Failed to create light probe");
+        if (!pTexture) {
+            #ifdef _WIN32
+            throw std::exception("Failed to create light probe");
+            #else
+            throw std::runtime_error("Failed to create light probe");
+            #endif
+        }
 
         return create(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat);
     }

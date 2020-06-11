@@ -44,7 +44,13 @@ namespace Falcor
     RenderGraph::RenderGraph(const std::string& name)
         : mName(name)
     {
-        if (gpFramework == nullptr) throw std::exception("Can't construct RenderGraph - framework is not initialized");
+        if (gpFramework == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't construct RenderGraph - framework is not initialized");
+            #else
+            throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
+            #endif
+        }
         mpGraph = DirectedGraph::create();
         mpPassDictionary = Dictionary::create();
         gRenderGraphs.push_back(this);
@@ -582,7 +588,13 @@ namespace Falcor
     {
         // Store the back-buffer values
         const Texture* pColor = pTargetFbo ? pTargetFbo->getColorTexture(0).get() : nullptr;
-        if (pColor == nullptr) throw std::exception("Can't resize render graph without a frame buffer.");
+        if (pColor == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't resize render graph without a frame buffer.");
+            #else
+            throw std::runtime_error("Can't resize render graph without a frame buffer.");
+            #endif
+        }
 
         // Store the values
         mCompilerDeps.defaultResourceProps.format = pColor->getFormat();
@@ -772,7 +784,13 @@ namespace Falcor
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})
         {
             auto pPass = RenderPassLibrary::instance().createPass(gpDevice->getRenderContext(), passName.c_str(), Dictionary(d));
-            if (!pPass) throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
+            if (!pPass) { 
+                #ifdef _WIN32
+                throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
+                #else
+                throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
+                #endif
+            }
             return pPass;
         };
         passClass.ctor(createRenderPass, "name"_a, "dict"_a = pybind11::dict());

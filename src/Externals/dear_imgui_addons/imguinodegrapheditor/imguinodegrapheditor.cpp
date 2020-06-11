@@ -2,10 +2,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
-#include "dear_imgui/imgui.h"
+#include "imgui/imgui.h"
 #undef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "dear_imgui/imgui_internal.h"
+#include "imgui/imgui_internal.h"
 //-----------------------------------------------------------------------------------------------------------------
 
 #include <stdlib.h> // qsort

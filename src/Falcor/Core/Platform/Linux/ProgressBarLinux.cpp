@@ -61,6 +61,11 @@ namespace Falcor
         safe_delete(spData);
     }
 
+    bool ProgressBar::isActive()
+    {
+        return spData != nullptr;
+    }
+
     void progressBarThread(ProgressBarData* pData)
     {
         while(pData->running || gtk_events_pending())

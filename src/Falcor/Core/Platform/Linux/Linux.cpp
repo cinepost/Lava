@@ -46,6 +46,12 @@ namespace fs = boost::filesystem;
 
 namespace Falcor
 {
+
+    void setMainWindowHandle(WindowHandle windowHandle)
+    {
+        //gMainWindowHandle = windowHandle;
+    }
+
     enum class MsgResponseId
     {
         Cancel,
@@ -54,7 +60,7 @@ namespace Falcor
         Ignore
     };
 
-    MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
+    MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType, MsgBoxIcon icon)
     {
         if (!gtk_init_check(0, nullptr))
         {
@@ -533,5 +539,21 @@ namespace Falcor
     void* getDllProcAddress(DllHandle dll, const std::string& funcName)
     {
         return dlsym(dll, funcName.c_str());
+    }
+
+    void postQuitMessage(int32_t exitCode)
+    {
+        //PostQuitMessage(exitCode);
+        exit(exitCode);
+    }
+
+    void OSServices::start()
+    {
+        //d3d_call(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
+    }
+
+    void OSServices::stop()
+    {
+        //CoUninitialize();
     }
 }

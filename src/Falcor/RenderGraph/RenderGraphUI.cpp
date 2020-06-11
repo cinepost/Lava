@@ -27,9 +27,9 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "RenderGraphUI.h"
-#include "dear_imgui/imgui.h"
+#include "imgui/imgui.h"
 #include "dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
-#include "dear_imgui/imgui_internal.h"
+#include "imgui/imgui_internal.h"
 #include <fstream>
 #include "RenderPassLibrary.h"
 

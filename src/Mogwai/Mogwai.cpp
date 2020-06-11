@@ -28,7 +28,15 @@
 #include "stdafx.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
-#include <filesystem>
+
+#ifdef _WIN32
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#else
+  #include "boost/filesystem.hpp"
+  namespace fs = boost::filesystem;
+#endif
+
 #include <algorithm>
 
 namespace Mogwai

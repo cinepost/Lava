@@ -28,12 +28,26 @@
 #include "stdafx.h"
 #include "Scene.h"
 #include "HitInfo.h"
+
+#ifdef FALCOR_D3D12
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
+#endif
+
 #include <sstream>
 
 namespace Falcor
 {
+#ifdef FALCOR_VK
+typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
+  unsigned int IndexCountPerInstance;
+  unsigned int InstanceCount;
+  unsigned int StartIndexLocation;
+  int BaseVertexLocation;
+  unsigned int StartInstanceLocation;
+} D3D12_DRAW_INDEXED_ARGUMENTS;
+#endif
+
     static_assert(sizeof(MeshInstanceData) % 16 == 0, "MeshInstanceData size should be a multiple of 16");
     static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
 
@@ -160,6 +174,7 @@ namespace Falcor
         if (overrideRS) pState->setRasterizerState(pCurrentRS);
     }
 
+    #ifdef FALCOR_D3D12
     void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims)
     {
         PROFILE("raytraceScene");
@@ -179,6 +194,7 @@ namespace Falcor
 
         pContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
     }
+    #endif
 
     void Scene::initResources()
     {
@@ -451,16 +467,20 @@ namespace Falcor
         pContext->flush();
         if (is_set(mUpdates, UpdateFlags::MeshesMoved))
         {
+            #ifdef FALCOR_D3D12
             mTlasCache.clear();
+            #endif
             updateMeshInstanceFlags();
         }
 
         // If a transform in the scene changed, update BLASes with skinned meshes
+        #ifdef FALCOR_D3D12
         if (mBlasData.size() && mHasSkinnedMesh && is_set(mUpdates, UpdateFlags::SceneGraphChanged))
         {
             mTlasCache.clear();
             buildBlas(pContext);
         }
+        #endif
 
         // Update light collection
         if (mpLightCollection && mpLightCollection->update(pContext)) mUpdates |= UpdateFlags::LightCollectionChanged;
@@ -778,6 +798,7 @@ namespace Falcor
         }
     }
 
+#ifdef FALCOR_D3D12
     void Scene::initGeomDesc()
     {
         assert(mBlasData.empty());
@@ -900,7 +921,6 @@ namespace Falcor
         }
     }
 
-#ifdef FALCOR_D3D12
     void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry)
     {
         instanceDescs.clear();
@@ -954,7 +974,6 @@ namespace Falcor
             }
         }
     }
-#endif
 
     void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry)
     {
@@ -1124,6 +1143,8 @@ namespace Falcor
         // Bind TLAS.
         var["gRtScene"].setSrv(tlasIt->second.pSrv);
     }
+
+#endif
 
     void Scene::setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap)
     {

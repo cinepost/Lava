@@ -282,8 +282,9 @@ namespace Falcor
 
         /** Render the scene using raytracing
         */
+        #ifdef FALCOR_D3D12
         void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
-
+        #endif
         /** Render the UI
         */
         void renderUI(Gui::Widgets& widget);
@@ -335,6 +336,7 @@ namespace Falcor
         */
         ParameterBlock::ConstSharedPtrRef getParameterBlock() const { return mpSceneBlock; }
 
+#ifdef FALCOR_D3D12
         /** Set the BLAS geometry index into the local vars for each geometry.
             This is a workaround before GeometryIndex() is supported in shaders.
         */
@@ -347,6 +349,7 @@ namespace Falcor
             \param[in] rayTypeCount Number of ray types in raygen program. Not needed for inline raytracing.
         */
         void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
+#endif
 
         std::string getScript(const std::string& sceneVar);
 
@@ -393,6 +396,7 @@ namespace Falcor
         */
         void sortMeshes();
 
+#ifdef FALCOR_D3D12
         /** Initialize geometry descs for each BLAS
         */
         void initGeomDesc();
@@ -404,14 +408,13 @@ namespace Falcor
         /** Generate data for creating a TLAS.
             #SCENE TODO: Add argument to build descs based off a draw list
         */
-#ifdef FALCOR_D3D12
         void fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry);
-#endif
 
         /** Generate top level acceleration structure for the scene. Automatically determines whether to build or refit.
             \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
         */
         void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
+#endif
 
         UpdateFlags updateCamera(bool forceUpdate);
         UpdateFlags updateLights(bool forceUpdate);

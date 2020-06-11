@@ -38,8 +38,13 @@ namespace Falcor
 
     RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
     {
-        if (pScene == nullptr) throw std::exception("Can't create a RasterScenePass object without a scene");
-
+        if (pScene == nullptr) {
+            #ifdef _WIN32
+            throw std::exception("Can't create a RasterScenePass object without a scene");
+            #else
+            throw std::runtime_error("Can't create a RasterScenePass object without a scene");            
+            #endif
+        }
         Program::DefineList dl = programDefines;
         dl.add(pScene->getSceneDefines());
 

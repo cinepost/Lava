@@ -7,6 +7,16 @@ file( GLOB SOURCES
     ./Core/Platform/Linux/*.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
+    ./Core/BufferTypes/*.cpp
+    ./RenderGraph/*.cpp
+    ./RenderGraph/BasePasses/*.cpp
+    ./RenderPasses/*.cpp
+    ./Scene/*.cpp
+    ./Scene/Animation/*.cpp
+    ./Scene/Camera/*.cpp
+    ./Scene/Importers/*.cpp
+    ./Scene/Lights/*.cpp
+    ./Scene/Material/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -19,18 +29,42 @@ file( GLOB SOURCES
     ./Utils/Timing/*.cpp
     ./Utils/UI/*.cpp
     ./Utils/Video/*.cpp
-)
+    ./Experimental/Scene/Lights/*.cpp
 
-set( CMAKE_MODULE_PATH 
-    ${CMAKE_SOURCE_DIR}/cmake/modules
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_glfw.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_vulkan.cpp
+    ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
+    ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )
 
 # ImGui
 include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
-find_package(imgui CONFIG)
+
+# Assimp (built within project)
+#set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${CMAKE_BINARY_DIR}/third_party/assimp)# ASSIMP search path
+#find_package(assimp CONFIG REQUIRED)
+#include_directories(${assimp_INCLUDE_DIRS})
+#if (assimp_FOUND)
+#    message("Assimp inc: ${ASSIMP_INCLUDE_DIR}" )
+#endif()
+
+# set any variables you might need to set for your app and assimp
+set(BUILD_ASSIMP_TOOLS  ON)
+set(ASSIMP_BUILD_STATIC_LIB ON)
+
+# add assimp source dir as a subdirectory, effectively making 
+# assimp's CMakeLists.txt part of your build
+add_subdirectory( ${PROJECT_SOURCE_DIR}/third_party/assimp ${CMAKE_BINARY_DIR}/assimp)
+
 
 # GLFW 
-find_package(glfw CONFIG)
+find_package(glfw3 CONFIG REQUIRED)
+include_directories(${GLFW_INCLUDE_DIRS})
+link_libraries(${GLFW_LIBRARIES})
+
 
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
@@ -74,12 +108,27 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 # We use Boost static libs
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
+# SLANG
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+find_library(SLANG_LIBRARY slang HINTS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/debug)
+else ()
+find_library(SLANG_LIBRARY slang HINTS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/release)
+endif ()
+message ("SLANG lib: ${SLANG_LIBRARY}")
+
 add_definitions(-D_PROJECT_DIR_="${CMAKE_SOURCE_DIR}")
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+#add_dependencies( falcor_lib assimp )
 
 target_link_libraries(
     falcor_lib
-    ${GLFW_LIBRARIES}
+    assimp
+    glfw
+    avutil
+    avformat
+    swscale
+    stdc++fs
+    ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${PYTHON_LIBRARIES}

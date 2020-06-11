@@ -47,7 +47,11 @@ namespace Falcor
             std::string fullpath;
             if (findFileInDataDirectories(filename, fullpath) == false)
             {
+                #ifdef _WIN32
                 throw std::exception("Can't find the file");
+                #else
+                throw std::runtime_error("Can't find the file: " + filename);
+                #endif
             }
 
             std::string script = readFile(fullpath) + custom;

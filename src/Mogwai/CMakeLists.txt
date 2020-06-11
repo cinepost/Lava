@@ -13,9 +13,8 @@ include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
 find_package(PythonLibs 3.7 REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
-# Find GLFW
-find_package(PkgConfig REQUIRED)
-pkg_search_module(GLFW REQUIRED glfw3)
+# GLFW 
+find_package(glfw3 REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 link_libraries(${GLFW_LIBRARIES})
 
@@ -59,6 +58,7 @@ target_link_libraries( mogwai
   ${Boost_FILESYSTEM_LIBRARY}
   ${PYTHON_LIBRARIES}
   ${Vulkan_LIBRARY}
+  ${GLFW_LIBRARIES}
 )
 
 install(TARGETS mogwai DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

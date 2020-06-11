@@ -91,6 +91,8 @@ namespace Falcor
         Clock mClock;
         std::vector<double> mFrameTimes;
         uint64_t mFrameCount = 0;
+
+    public:
         static const uint64_t sFrameWindow = 60;
     };
 
