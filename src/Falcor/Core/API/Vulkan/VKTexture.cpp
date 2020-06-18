@@ -25,50 +25,41 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/Texture.h"
-#include "API/Device.h"
-#include "API/Resource.h"
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Resource.h"
 
-namespace Falcor
-{
+namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
-    struct TextureApiData
-    {
+    struct TextureApiData {
     };
 
-    Texture::~Texture()
-    {
+    Texture::~Texture() {
         // #VKTODO the `if` is here because of the black texture in VkResourceView.cpp
-        if(gpDevice )gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+        if (gpDevice ) gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
     }
 
     // Like getD3D12ResourceFlags but for Images specifically
-    VkImageUsageFlags getVkImageUsageFlags(Resource::BindFlags bindFlags)
-    {
+    VkImageUsageFlags getVkImageUsageFlags(Resource::BindFlags bindFlags) {
         // Assume that every image can be updated/cleared, read from, and sampled
         VkImageUsageFlags vkFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-        if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess))
-        {
+        if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess)) {
             vkFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
         }
 
-        if (is_set(bindFlags, Resource::BindFlags::DepthStencil))
-        {
-
+        if (is_set(bindFlags, Resource::BindFlags::DepthStencil)) {
             vkFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         }
 
-        if (is_set(bindFlags, Resource::BindFlags::ShaderResource))
-        {
+        if (is_set(bindFlags, Resource::BindFlags::ShaderResource)) {
             // #VKTODO what does VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT mean?
             vkFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
         }
 
-        if (is_set(bindFlags, Resource::BindFlags::RenderTarget))
-        {
+        if (is_set(bindFlags, Resource::BindFlags::RenderTarget)) {
             vkFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
 
@@ -78,58 +69,52 @@ namespace Falcor
         return vkFlags;
     }
 
-    uint32_t getMaxMipCount(const VkExtent3D& size)
-    {
-        return 1 + uint32_t(glm::log2(float(glm::max(glm::max(size.width, size.height), size.depth))));
+    uint32_t getMaxMipCount(const VkExtent3D& size) {
+        return 1 + uint32_t(glm::log2(static_cast<float>(glm::max(glm::max(size.width, size.height), size.depth))));
     }
 
-    VkImageType getVkImageType(Texture::Type type)
-    {
-        switch (type)
-        {
-        case Texture::Type::Texture1D:
-            return VK_IMAGE_TYPE_1D;
+    VkImageType getVkImageType(Texture::Type type) {
+        switch (type) {
+            case Texture::Type::Texture1D:
+                return VK_IMAGE_TYPE_1D;
 
-        case Texture::Type::Texture2D:
-        case Texture::Type::Texture2DMultisample:
-        case Texture::Type::TextureCube:
-            return VK_IMAGE_TYPE_2D;
+            case Texture::Type::Texture2D:
+            case Texture::Type::Texture2DMultisample:
+            case Texture::Type::TextureCube:
+                return VK_IMAGE_TYPE_2D;
 
-        case Texture::Type::Texture3D:
-            return VK_IMAGE_TYPE_3D;
-        default:
-            should_not_get_here();
-            return VK_IMAGE_TYPE_1D;
+            case Texture::Type::Texture3D:
+                return VK_IMAGE_TYPE_3D;
+            default:
+                should_not_get_here();
+                return VK_IMAGE_TYPE_1D;
         }
     }
 
-    static VkFormatFeatureFlags getFormatFeatureBitsFromUsage(VkImageUsageFlags usage)
-    {
+    static VkFormatFeatureFlags getFormatFeatureBitsFromUsage(VkImageUsageFlags usage) {
         VkFormatFeatureFlags bits = 0;
-        if(usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
-        if(usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-        if(usage & VK_IMAGE_USAGE_SAMPLED_BIT) bits |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
-        if(usage & VK_IMAGE_USAGE_STORAGE_BIT) bits |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
-        if(usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-        if(usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if (usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+        if (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+        if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) bits |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+        if (usage & VK_IMAGE_USAGE_STORAGE_BIT) bits |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+        if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         assert((usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) == 0);
         assert((usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) == 0);
         return bits;
     }
 
-    static VkImageTiling getFormatImageTiling(VkFormat format, VkImageUsageFlags usage)
-    {
+    static VkImageTiling getFormatImageTiling(VkFormat format, VkImageUsageFlags usage) {
         VkFormatProperties p;
         vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), format, &p);
         auto featureBits = getFormatFeatureBitsFromUsage(usage);
-        if((p.optimalTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_OPTIMAL;
-        if((p.linearTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_LINEAR;
+        if ((p.optimalTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_OPTIMAL;
+        if ((p.linearTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_LINEAR;
         should_not_get_here();
         return VkImageTiling(-1);
     }
 
-    void Texture::apiInit(const void* pData, bool autoGenMips)
-    {
+    void Texture::apiInit(const void* pData, bool autoGenMips) {
         VkImageCreateInfo imageInfo = {};
 
         imageInfo.arrayLayers = mArraySize;
@@ -148,8 +133,7 @@ namespace Falcor
         imageInfo.usage = getVkImageUsageFlags(mBindFlags);
         imageInfo.tiling = getFormatImageTiling(imageInfo.format, imageInfo.usage);
 
-        if (mType == Texture::Type::TextureCube)
-        {
+        if (mType == Texture::Type::TextureCube) {
             imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
             imageInfo.arrayLayers *= 6;
         }
@@ -157,8 +141,8 @@ namespace Falcor
         mState.global = pData ? Resource::State::PreInitialized : Resource::State::Undefined;
 
         VkImage image;
-        if (VK_FAILED(vkCreateImage(gpDevice->getApiHandle(), &imageInfo, nullptr, &image)))
-        {
+        auto result = vkCreateImage(gpDevice->getApiHandle(), &imageInfo, nullptr, &image);
+        if (VK_FAILED(result)) {
             #ifdef _WIN32
             throw std::exception("Failed to create texture.");
             #else
@@ -171,11 +155,11 @@ namespace Falcor
         vkGetImageMemoryRequirements(gpDevice->getApiHandle(), image, &memRequirements);
         VkDeviceMemory deviceMem = allocateDeviceMemory(Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
         vkBindImageMemory(gpDevice->getApiHandle(), image, deviceMem, 0);
-
         mApiHandle = ApiHandle::create(image, deviceMem);
-        if (pData != nullptr)
-        {
+  
+        if (pData != nullptr) {
             uploadInitData(pData, autoGenMips);
         }
     }
-}
+
+}  // namespace Falcor

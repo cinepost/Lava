@@ -38,6 +38,12 @@
 #endif
 
 #include <algorithm>
+#include <iostream>
+#include <chrono>
+#include <ctime>  
+
+#include <execinfo.h>
+#include <signal.h>
 
 namespace Mogwai
 {
@@ -624,12 +630,32 @@ namespace Mogwai
     }
 }
 
+std::atomic_uint32_t _dbg_i = 0;
+
+void handler(int sig) {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+
+  std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
+  fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else
 int main(int argc, char** argv)
 #endif
 {
+    signal(SIGSEGV, handler);   // install our debug handler
+
     try
     {
         msgBoxTitle("Mogwai");

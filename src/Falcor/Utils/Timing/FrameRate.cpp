@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "FrameRate.h"
+#include "Falcor/Utils/Timing/FrameRate.h"
 #include <sstream>
 
 namespace Falcor
@@ -41,3 +41,5 @@ namespace Falcor
         return s;
     }
 }
+
+ const uint64_t Falcor::FrameRate::sFrameWindow = 60;

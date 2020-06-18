@@ -25,13 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "VertexLayout.h"
 
-namespace Falcor
-{
-    SCRIPT_BINDING(VertexLayout)
-    {
+namespace Falcor {
+    SCRIPT_BINDING(VertexLayout) {
         m.regClass(VertexLayout);
     }
 }

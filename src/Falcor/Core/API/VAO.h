@@ -25,12 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_VAO_H_
+#define SRC_FALCOR_CORE_API_VAO_H_
+
 #include <vector>
+
 #include "VertexLayout.h"
 
-namespace Falcor
-{
+namespace Falcor {
     /** Abstracts vertex array objects. A VAO must at least specify a primitive topology. You may additionally specify a number of vertex buffer layouts 
         corresponding to the number of vertex buffers to be bound. The number of vertex buffers to be bound must match the number described in the layout.
     */
@@ -120,4 +122,7 @@ namespace Falcor
         ResourceFormat mIbFormat;
         Topology mTopology;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_VAO_H_

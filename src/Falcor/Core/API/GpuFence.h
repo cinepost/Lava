@@ -28,54 +28,54 @@
 #pragma once
 #include <optional>
 
-namespace Falcor
-{
-    struct FenceApiData;
+namespace Falcor {
 
-    /** This class can be used to synchronize GPU and CPU execution
-        It's value monotonically increasing - every time a signal is sent, it will change the value first
+struct FenceApiData;
+
+/** This class can be used to synchronize GPU and CPU execution
+    It's value monotonically increasing - every time a signal is sent, it will change the value first
+*/
+class dlldecl GpuFence : public std::enable_shared_from_this<GpuFence> {
+public:
+    using SharedPtr = std::shared_ptr<GpuFence>;
+    using SharedConstPtr = std::shared_ptr<const GpuFence>;
+    using ApiHandle = FenceHandle;
+    ~GpuFence();
+
+    /** Create a new GPU fence.
+        \return A new object, or throws an exception if creation failed.
     */
-    class dlldecl GpuFence : public std::enable_shared_from_this<GpuFence>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<GpuFence>;
-        using SharedConstPtr = std::shared_ptr<const GpuFence>;
-        using ApiHandle = FenceHandle;
-        ~GpuFence();
+    static SharedPtr create();
 
-        /** Create a new GPU fence.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create();
+    /** Get the internal API handle
+    */
+    const ApiHandle& getApiHandle() const;// { return mApiHandle; }
 
-        /** Get the internal API handle
-        */
-        const ApiHandle& getApiHandle() const;// { return mApiHandle; }
+    /** Get the last value the GPU has signaled
+    */
+    uint64_t getGpuValue() const;
 
-        /** Get the last value the GPU has signaled
-        */
-        uint64_t getGpuValue() const;
+    /** Get the current CPU value
+    */
+    uint64_t getCpuValue() const { return mCpuValue; }
 
-        /** Get the current CPU value
-        */
-        uint64_t getCpuValue() const { return mCpuValue; }
+    /** Tell the GPU to wait until the fence reaches the last GPU-value signaled (which is (mCpuValue - 1))
+    */
+    void syncGpu(CommandQueueHandle pQueue);
 
-        /** Tell the GPU to wait until the fence reaches the last GPU-value signaled (which is (mCpuValue - 1))
-        */
-        void syncGpu(CommandQueueHandle pQueue);
+    /** Tell the CPU to wait until the fence reaches the current value
+    */
+    void syncCpu(std::optional<uint64_t> val = {});
 
-        /** Tell the CPU to wait until the fence reaches the current value
-        */
-        void syncCpu(std::optional<uint64_t> val = {});
+    /** Insert a signal command into the command queue. This will increase the internal value
+    */
+    uint64_t gpuSignal(CommandQueueHandle pQueue);
+private:
+    GpuFence() : mCpuValue(0) {}
+    uint64_t mCpuValue;
 
-        /** Insert a signal command into the command queue. This will increase the internal value
-        */
-        uint64_t gpuSignal(CommandQueueHandle pQueue);
-    private:
-        GpuFence() : mCpuValue(0) {}
-        uint64_t mCpuValue;
+    ApiHandle mApiHandle;
+    FenceApiData* mpApiData = nullptr;
+};
 
-        ApiHandle mApiHandle;
-        FenceApiData* mpApiData = nullptr;
-    };
-}
+}  // namespace Falcor

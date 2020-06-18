@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Texture.h"
 #include "Device.h"
 #include "RenderContext.h"
-#include "Utils/Threading.h"
+#include "Falcor/Utils/Threading.h"
 
 namespace Falcor
 {
@@ -190,7 +190,10 @@ namespace Falcor
 
         if (viewMap.find(view) == viewMap.end())
         {
+            LOG_DBG("creating view");
             viewMap[view] = createFunc(pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
+        } else {
+            LOG_DBG("resusing view");
         }
 
         return viewMap[view];
@@ -228,12 +231,24 @@ namespace Falcor
 
     RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
+        LOG_DBG("getting RenderTargetView from texture");
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
-            return RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+            auto ret = RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize); 
+            if (!ret) {
+                LOG_ERR("No ret in lambda!!!");
+            } else {
+                LOG_INFO("ret is ok");
+            }
+            return ret;
         };
 
-        return findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
+        auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
+        if(!result) {
+            LOG_ERR("ERROR findViewCommon<RenderTargetView> returned NULL");
+        }
+
+        return result;
     }
 
     ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -281,6 +296,9 @@ namespace Falcor
     {
         assert(gpDevice);
         auto pRenderContext = gpDevice->getRenderContext();
+        if (!pRenderContext) {
+            throw std::runtime_error("Cannon get gpDevice rendering context !!!");
+        }
         if (autoGenMips)
         {
             // Upload just the first mip-level

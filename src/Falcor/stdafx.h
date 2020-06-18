@@ -25,5 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
+#ifndef SRC_FALCOR_STDAFX_H_
+#define SRC_FALCOR_STDAFX_H_
+
+#include "Falcor/Falcor.h"
+
+#endif  // SRC_FALCOR_STDAFX_H_

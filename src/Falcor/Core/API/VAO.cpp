@@ -25,18 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "VAO.h"
 
-namespace Falcor
-{
-    bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat)
-    {
+namespace Falcor {
+    bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat) {
         // TODO: Check number of vertex buffers match with pLayout.
-        if (pIB)
-        {
-            if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint)
-            {
+        if (pIB) {
+            if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint) {
                 logError("Invalid index buffer format (" + to_string(ibFormat) + ")");
                 return false;
             }
@@ -54,12 +50,10 @@ namespace Falcor
     {
     }
 
-    Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat)
-    {
-        if (pLayout != nullptr)
-        {
-            if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false)
-            {
+    Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat) {
+
+        if (pLayout != nullptr) {
+            if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false) {
                 #ifdef _WIN32
                 throw std::exception("Failed to create VAO");
                 #else
@@ -72,19 +66,15 @@ namespace Falcor
         return pVao;
     }
 
-    Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const
-    {
+    Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const {
         ElementDesc desc;
 
-        for(uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId)
-        {
+        for(uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId) {
             const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
             assert(pVbLayout);
 
-            for(uint32_t i = 0; i < pVbLayout->getElementCount(); ++i)
-            {
-                if(pVbLayout->getElementShaderLocation(i) == elementLocaion)
-                {
+            for(uint32_t i = 0; i < pVbLayout->getElementCount(); ++i) {
+                if(pVbLayout->getElementShaderLocation(i) == elementLocaion) {
                     desc.vbIndex = bufId;
                     desc.elementIndex = i;
                     return desc;
@@ -94,8 +84,7 @@ namespace Falcor
         return desc;
     }
 
-    SCRIPT_BINDING(Vao)
-    {
+    SCRIPT_BINDING(Vao) {
         m.regClass(Vao);
     }
 }

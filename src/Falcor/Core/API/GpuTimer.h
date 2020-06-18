@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/LowLevelContextData.h"
-#include "Core/API/QueryHeap.h"
-#include "Core/API/Buffer.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
+#include "Falcor/Core/API/QueryHeap.h"
+#include "Falcor/Core/API/Buffer.h"
 
 namespace Falcor
 { 

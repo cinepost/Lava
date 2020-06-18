@@ -25,10 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_FORMATS_H_
+#define SRC_FALCOR_CORE_API_FORMATS_H_
 
-namespace Falcor
-{
+#include <cstdint>
+#include <string>
+#include <cassert>
+
+namespace Falcor {
     /*!
     *  \addtogroup Falcor
     *  @{
@@ -36,8 +40,7 @@ namespace Falcor
 
     /** These flags are hints the driver to what pipeline stages the resource will be bound to.
 */
-    enum class ResourceBindFlags : uint32_t
-    {
+    enum class ResourceBindFlags : uint32_t {
         None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
         Vertex = 0x1,           ///< The resource will be bound as a vertex-buffer
         Index = 0x2,            ///< The resource will be bound as a index-buffer
@@ -61,8 +64,7 @@ namespace Falcor
 
     /** Resource formats
     */
-    enum class ResourceFormat : uint32_t
-    {
+    enum class ResourceFormat : uint32_t {
         Unknown,
         R8Unorm,
         R8Snorm,
@@ -118,7 +120,7 @@ namespace Falcor
 
         BGRA8Unorm,
         BGRA8UnormSrgb,
-        
+
         BGRX8Unorm,
         BGRX8UnormSrgb,
         Alpha8Unorm,
@@ -133,7 +135,7 @@ namespace Falcor
 
         // Compressed formats
         BC1Unorm,   // DXT1
-        BC1UnormSrgb, 
+        BC1UnormSrgb,
         BC2Unorm,   // DXT3
         BC2UnormSrgb,
         BC3Unorm,   // DXT5
@@ -149,11 +151,10 @@ namespace Falcor
 
         Count
     };
-    
+
     /** Falcor format Type
     */
-    enum class FormatType
-    {
+    enum class FormatType {
         Unknown,        ///< Unknown format Type
         Float,          ///< Floating-point formats
         Unorm,          ///< Unsigned normalized formats
@@ -163,21 +164,19 @@ namespace Falcor
         Sint            ///< Signed integer formats
     };
 
-    struct FormatDesc
-    {
+    struct FormatDesc {
         ResourceFormat format;
         const std::string name;
         uint32_t bytesPerBlock;
         uint32_t channelCount;
         FormatType Type;
-        struct  
-        {
+   
+        struct   {
             bool isDepth;
             bool isStencil;
             bool isCompressed;
         };
-        struct 
-        {
+        struct  {
             uint32_t width;
             uint32_t height;
         } compressionRatio;
@@ -188,184 +187,162 @@ namespace Falcor
 
     /** Get the number of bytes per format
     */
-    inline uint32_t getFormatBytesPerBlock(ResourceFormat format)
-    {
+    inline uint32_t getFormatBytesPerBlock(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].bytesPerBlock;
     }
 
-    inline uint32_t getFormatPixelsPerBlock(ResourceFormat format)
-    {
+    inline uint32_t getFormatPixelsPerBlock(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.width * kFormatDesc[(uint32_t)format].compressionRatio.height;
     }
 
     /** Check if the format has a depth component
     */
-    inline bool isDepthFormat(ResourceFormat format)
-    {
+    inline bool isDepthFormat(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isDepth;
     }
 
     /** Check if the format has a stencil component
     */
-    inline bool isStencilFormat(ResourceFormat format)
-    {
+    inline bool isStencilFormat(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isStencil;
     }
 
     /** Check if the format has depth or stencil components
     */
-    inline bool isDepthStencilFormat(ResourceFormat format)
-    {
+    inline bool isDepthStencilFormat(ResourceFormat format) {
         return isDepthFormat(format) || isStencilFormat(format);
     }
 
     /** Check if the format is a compressed format
     */
-    inline bool isCompressedFormat(ResourceFormat format)
-    {
+    inline bool isCompressedFormat(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].isCompressed;
     }
 
     /** Get the format compression ration along the x-axis
     */
-    inline uint32_t getFormatWidthCompressionRatio(ResourceFormat format)
-    {
+    inline uint32_t getFormatWidthCompressionRatio(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.width;
     }
 
     /** Get the format compression ration along the y-axis
     */
-    inline uint32_t getFormatHeightCompressionRatio(ResourceFormat format)
-    {
+    inline uint32_t getFormatHeightCompressionRatio(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].compressionRatio.height;
     }
 
     /** Get the number of channels
     */
-    inline uint32_t getFormatChannelCount(ResourceFormat format)
-    {
+    inline uint32_t getFormatChannelCount(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].channelCount;
     }
 
     /** Get the format Type
     */
-    inline FormatType getFormatType(ResourceFormat format)
-    {
+    inline FormatType getFormatType(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].Type;
     }
 
-    inline uint32_t getNumChannelBits(ResourceFormat format, int channel)
-    {
+    inline uint32_t getNumChannelBits(ResourceFormat format, int channel) {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
     }
 
     /** Check if a format represents sRGB color space
     */
-    inline bool isSrgbFormat(ResourceFormat format)
-    {
+    inline bool isSrgbFormat(ResourceFormat format) {
         return (getFormatType(format) == FormatType::UnormSrgb);
     }
 
     /** Convert an SRGB format to linear. If the format is already linear, will return it
     */
-    inline ResourceFormat srgbToLinearFormat(ResourceFormat format)
-    {
-        switch (format)
-        {
-        case ResourceFormat::BC1UnormSrgb:
-            return ResourceFormat::BC1Unorm;
-        case ResourceFormat::BC2UnormSrgb:
-            return ResourceFormat::BC2Unorm;
-        case ResourceFormat::BC3UnormSrgb:
-            return ResourceFormat::BC3Unorm;
-        case ResourceFormat::BGRA8UnormSrgb:
-            return ResourceFormat::BGRA8Unorm;
-        case ResourceFormat::BGRX8UnormSrgb:
-            return ResourceFormat::BGRX8Unorm;
-        case ResourceFormat::RGBA8UnormSrgb:
-            return ResourceFormat::RGBA8Unorm;
-        case ResourceFormat::BC7UnormSrgb:
-            return ResourceFormat::BC7Unorm;
-        default:
-            assert(isSrgbFormat(format) == false);
-            return format;
+    inline ResourceFormat srgbToLinearFormat(ResourceFormat format) {
+        switch (format) {
+            case ResourceFormat::BC1UnormSrgb:
+                return ResourceFormat::BC1Unorm;
+            case ResourceFormat::BC2UnormSrgb:
+                return ResourceFormat::BC2Unorm;
+            case ResourceFormat::BC3UnormSrgb:
+                return ResourceFormat::BC3Unorm;
+            case ResourceFormat::BGRA8UnormSrgb:
+                return ResourceFormat::BGRA8Unorm;
+            case ResourceFormat::BGRX8UnormSrgb:
+                return ResourceFormat::BGRX8Unorm;
+            case ResourceFormat::RGBA8UnormSrgb:
+                return ResourceFormat::RGBA8Unorm;
+            case ResourceFormat::BC7UnormSrgb:
+                return ResourceFormat::BC7Unorm;
+            default:
+                assert(isSrgbFormat(format) == false);
+                return format;
         }
     }
 
     /** Convert an linear format to sRGB. If the format doesn't have a matching sRGB format, will return the original
     */
-    inline ResourceFormat linearToSrgbFormat(ResourceFormat format)
-    {
-        switch (format)
-        {
-        case ResourceFormat::BC1Unorm:
-            return ResourceFormat::BC1UnormSrgb;
-        case ResourceFormat::BC2Unorm:
-            return ResourceFormat::BC2UnormSrgb;
-        case ResourceFormat::BC3Unorm:
-            return ResourceFormat::BC3UnormSrgb;
-        case ResourceFormat::BGRA8Unorm:
-            return ResourceFormat::BGRA8UnormSrgb;
-        case ResourceFormat::BGRX8Unorm:
-            return ResourceFormat::BGRX8UnormSrgb;
-        case ResourceFormat::RGBA8Unorm:
-            return ResourceFormat::RGBA8UnormSrgb;
-        case ResourceFormat::BC7Unorm:
-            return ResourceFormat::BC7UnormSrgb;
-        default:
-            return format;
+    inline ResourceFormat linearToSrgbFormat(ResourceFormat format) {
+        switch (format) {
+            case ResourceFormat::BC1Unorm:
+                return ResourceFormat::BC1UnormSrgb;
+            case ResourceFormat::BC2Unorm:
+                return ResourceFormat::BC2UnormSrgb;
+            case ResourceFormat::BC3Unorm:
+                return ResourceFormat::BC3UnormSrgb;
+            case ResourceFormat::BGRA8Unorm:
+                return ResourceFormat::BGRA8UnormSrgb;
+            case ResourceFormat::BGRX8Unorm:
+                return ResourceFormat::BGRX8UnormSrgb;
+            case ResourceFormat::RGBA8Unorm:
+                return ResourceFormat::RGBA8UnormSrgb;
+            case ResourceFormat::BC7Unorm:
+                return ResourceFormat::BC7UnormSrgb;
+            default:
+                return format;
         }
     }
     
-    inline ResourceFormat depthToColorFormat(ResourceFormat format)
-    {
-        switch (format)
-        {
-        case ResourceFormat::D16Unorm:
-            return ResourceFormat::R16Unorm;
-        case ResourceFormat::D24UnormS8:
-            return ResourceFormat::R24UnormX8;
-        case ResourceFormat::D32Float:
-            return ResourceFormat::R32Float;
-        case ResourceFormat::D32FloatS8X24:
-            should_not_get_here();
-            return ResourceFormat::Unknown;
-        default:
-            assert(isDepthFormat(format) == false);
-            return format;
+    inline ResourceFormat depthToColorFormat(ResourceFormat format) {
+        switch (format) {
+            case ResourceFormat::D16Unorm:
+                return ResourceFormat::R16Unorm;
+            case ResourceFormat::D24UnormS8:
+                return ResourceFormat::R24UnormX8;
+            case ResourceFormat::D32Float:
+                return ResourceFormat::R32Float;
+            case ResourceFormat::D32FloatS8X24:
+                should_not_get_here();
+                return ResourceFormat::Unknown;
+            default:
+                assert(isDepthFormat(format) == false);
+                return format;
         }
     }
 
-    inline bool doesFormatHasAlpha(ResourceFormat format)
-    {
-        if (getFormatChannelCount(format) == 4)
-        {
-            switch (format)
-            {
-            case ResourceFormat::BGRX8Unorm:
-            case ResourceFormat::BGRX8UnormSrgb:
-                return false;
-            default:
-                return true;
+    inline bool doesFormatHasAlpha(ResourceFormat format) {
+        if (getFormatChannelCount(format) == 4) {
+            switch (format) {
+                case ResourceFormat::BGRX8Unorm:
+                case ResourceFormat::BGRX8UnormSrgb:
+                    return false;
+                default:
+                    return true;
             }
         }
 
-        switch (format)
-        {
-        case ResourceFormat::Alpha32Float:
-        case ResourceFormat::Alpha8Unorm:
-            return true;
-        default:
-            return false;
+        switch (format) {
+            case ResourceFormat::Alpha32Float:
+            case ResourceFormat::Alpha8Unorm:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -373,36 +350,31 @@ namespace Falcor
     */
     ResourceBindFlags getFormatBindFlags(ResourceFormat format);
 
-    inline const std::string& to_string(ResourceFormat format)
-    {
+    inline const std::string& to_string(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);
         return kFormatDesc[(uint32_t)format].name;
     }
 
-    inline const std::string to_string(FormatType Type)
-    {
-#define type_2_string(a) case FormatType::a: return #a;
-        switch(Type)
-        {
-        type_2_string(Unknown);
-        type_2_string(Float);
-        type_2_string(Unorm);
-        type_2_string(UnormSrgb);
-        type_2_string(Snorm);
-        type_2_string(Uint);
-        type_2_string(Sint);
-        default:
-            should_not_get_here();
-            return "";
+    inline const std::string to_string(FormatType Type) {
+        #define type_2_string(a) case FormatType::a: return #a;
+        switch(Type) {
+            type_2_string(Unknown);
+            type_2_string(Float);
+            type_2_string(Unorm);
+            type_2_string(UnormSrgb);
+            type_2_string(Snorm);
+            type_2_string(Uint);
+            type_2_string(Sint);
+            default:
+                should_not_get_here();
+                return "";
         }
-#undef type_2_string
+        #undef type_2_string
     }
 
-    inline const std::string to_string(ResourceBindFlags flags)
-    {
+    inline const std::string to_string(ResourceBindFlags flags) {
         std::string s;
-        if (flags == ResourceBindFlags::None)
-        {
+        if (flags == ResourceBindFlags::None) {
             return "None";
         }
 
@@ -425,4 +397,6 @@ namespace Falcor
         return s;
     }
     /*! @} */
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_FORMATS_H_

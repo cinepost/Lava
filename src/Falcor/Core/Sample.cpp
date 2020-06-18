@@ -236,41 +236,40 @@ namespace Falcor
         gpFramework = this;
 
         Logger::showBoxOnError(config.showMessageBoxOnError);
-
         OSServices::start();
         startScripting();
         Threading::start();
-
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
         mClock.setTimeScale(config.timeScale);
         if (config.pauseTime) mClock.pause();
         mVsyncOn = config.deviceDesc.enableVsync;
-
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
-        if (mpWindow == nullptr)
-        {
+        if (mpWindow == nullptr) {
             logError("Failed to create device and window");
             return;
         }
-
         // Show the progress bar (unless window is minimized)
         ProgressBar::SharedPtr pBar;
         if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
-
         Device::Desc d = config.deviceDesc;
         gpDevice = Device::create(mpWindow, config.deviceDesc);
-        if (gpDevice == nullptr)
-        {
+        if (gpDevice == nullptr) {
             logError("Failed to create device");
             return;
         }
-
         Clock::start();
 
         // Get the default objects before calling onLoad()
         auto pBackBufferFBO = gpDevice->getSwapChainFbo();
+        if(!pBackBufferFBO) {
+            logError("Unable to get swap chain FBO!!!");
+        }
+        auto _width = pBackBufferFBO->getWidth();
+        auto _height = pBackBufferFBO->getHeight();
+        auto _desc = pBackBufferFBO->getDesc();
+
         mpTargetFBO = Fbo::create2D(pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
         // Init the UI

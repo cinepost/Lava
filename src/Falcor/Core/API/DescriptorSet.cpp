@@ -25,38 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "DescriptorSet.h"
 
-namespace Falcor
-{
-    DescriptorSet::SharedPtr DescriptorSet::create(const DescriptorPool::SharedPtr& pPool, const Layout& layout)
-    {
-        return SharedPtr(new DescriptorSet(pPool, layout));
-    }
+namespace Falcor {
 
-    DescriptorSet::DescriptorSet(DescriptorPool::SharedPtr pPool, const Layout& layout)
-        : mpPool(pPool)
-        , mLayout(layout)
-    {
-        apiInit();
-    }
-
-    DescriptorSet::~DescriptorSet()
-    {
-        mpPool->releaseAllocation(mpApiData);
-    }
-
-    DescriptorSet::Layout& DescriptorSet::Layout::addRange(DescriptorSet::Type type, uint32_t baseRegIndex, uint32_t descriptorCount, uint32_t regSpace)
-    {
-        Range r;
-        r.descCount = descriptorCount;
-        r.baseRegIndex = baseRegIndex;
-        r.regSpace = regSpace;
-        r.type = type;
-
-        mRanges.push_back(r);
-        return *this;
-    }
-
+DescriptorSet::SharedPtr DescriptorSet::create(const DescriptorPool::SharedPtr& pPool, const Layout& layout) {
+    return SharedPtr(new DescriptorSet(pPool, layout));
 }
+
+DescriptorSet::DescriptorSet(DescriptorPool::SharedPtr pPool, const Layout& layout) : mpPool(pPool), mLayout(layout) {
+    apiInit();
+}
+
+DescriptorSet::~DescriptorSet() {
+    mpPool->releaseAllocation(mpApiData);
+}
+
+DescriptorSet::Layout& DescriptorSet::Layout::addRange(DescriptorSet::Type type, uint32_t baseRegIndex, uint32_t descriptorCount, uint32_t regSpace) {
+    Range r;
+    r.descCount = descriptorCount;
+    r.baseRegIndex = baseRegIndex;
+    r.regSpace = regSpace;
+    r.type = type;
+
+    mRanges.push_back(r);
+    return *this;
+}
+
+}  // namespace Falcor

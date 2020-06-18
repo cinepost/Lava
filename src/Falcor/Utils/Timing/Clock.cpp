@@ -274,17 +274,22 @@ namespace Falcor
     {
         auto loadTexture = [](const std::string& tex)
         {
+            printf("Loading texture: Framework/Textures/%s \n", tex.c_str());
             auto pTex = Texture::createFromFile("Framework/Textures/" + tex, false, true);
             if (!pTex) {
+                printf("Error loading texture: Framework/Textures/%s \n", tex.c_str());
                 #ifdef _WIN32 
                 throw std::exception("Failed to load texture");
                 #else
-                throw std::runtime_error("Failed to load texture");
+                throw std::runtime_error("Failed to load texture " + tex);
                 #endif
             }
+            printf("Texture: Framework/Textures/%s loaded sucessfully !!!\n", tex.c_str());
             return pTex;
         };
+        printf("C:S - 0\n");
         gClockTextures.pRewind = loadTexture("Rewind.jpg");
+        printf("C:S - 1\n");
         gClockTextures.pPlay = loadTexture("Play.jpg");
         gClockTextures.pPause = loadTexture("Pause.jpg");
         gClockTextures.pStop = loadTexture("Stop.jpg");

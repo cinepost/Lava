@@ -27,12 +27,10 @@
  **************************************************************************/
 #pragma once
 
-namespace Falcor
-{
+namespace Falcor {
     /** Input modifiers used with some events
     */
-    struct InputModifiers
-    {
+    struct InputModifiers {
         bool isCtrlDown  = false;   ///< Any of the control keys are pressed
         bool isShiftDown = false;   ///< Any of the shift keys are pressed
         bool isAltDown   = false;   ///< Any of the alt keys are pressed
@@ -40,12 +38,10 @@ namespace Falcor
 
     /** Abstracts mouse messages
     */
-    struct MouseEvent
-    {
+    struct MouseEvent {
         /** Message Type
         */
-        enum class Type
-        {
+        enum class Type {
             LeftButtonDown,         ///< Left mouse button was pressed
             LeftButtonUp,           ///< Left mouse button was released
             MiddleButtonDown,       ///< Middle mouse button was pressed
@@ -63,12 +59,10 @@ namespace Falcor
         InputModifiers mods;    ///< Keyboard modifiers. Only valid if the event Type is one the button events
     };
 
-    struct KeyboardEvent
-    {
+    struct KeyboardEvent {
         /** Keyboard event Type
         */
-        enum class Type
-        {
+        enum class Type {
             KeyPressed,     ///< Key was pressed.
             KeyReleased,    ///< Key was released.
             Input           ///< Character input
@@ -76,8 +70,7 @@ namespace Falcor
 
         /** Use this enum to find out which key was pressed. Alpha-numeric keys use their uppercase ASCII code, so you can use that as well.
         */
-        enum class Key : uint32_t
-        {
+        enum class Key : uint32_t {
             // ASCII values. Do not change them.
             Space           = ' ',
             Apostrophe      = '\'',
@@ -180,17 +173,18 @@ namespace Falcor
             LeftShift       ,
             LeftControl     ,
             LeftAlt         ,
-            LeftSuper       , // Windows key on windows
+            LeftSuper       ,  // Windows key on windows
             RightShift      ,
             RightControl    ,
             RightAlt        ,
-            RightSuper      , // Windows key on windows
+            RightSuper      ,  // Windows key on windows
             Menu            ,
         };
 
-        Type type;              ///< The event type
-        Key  key;               ///< The last key that was pressed/released
-        InputModifiers mods;    ///< Keyboard modifiers
-        uint32_t codepoint = 0; ///< UTF-32 codepoint from GLFW for Input event types
+        Type type;               ///< The event type
+        Key  key;                ///< The last key that was pressed/released
+        InputModifiers mods;     ///< Keyboard modifiers
+        uint32_t codepoint = 0;  ///< UTF-32 codepoint from GLFW for Input event types
     };
-}
+
+}  // namespace Falcor

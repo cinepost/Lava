@@ -25,12 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/Vulkan/VKSmartHandle.h"
-#include "API/Device.h"
+#include <iostream>
+#include <chrono>
+#include <ctime>  
 
-namespace Falcor
-{
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Vulkan/VKSmartHandle.h"
+#include "Falcor/Core/API/Device.h"
+
+namespace Falcor {
+
     template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(gpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkCommandPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyCommandPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkSemaphore>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySemaphore(gpDevice->getApiHandle(), mApiHandle, nullptr); }
@@ -42,10 +46,8 @@ namespace Falcor
     template<> VkHandle<VkDescriptorPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkQueryPool>::~VkHandle() { if (mApiHandle != VK_NULL_HANDLE && gpDevice) vkDestroyQueryPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
 
-    VkDeviceData::~VkDeviceData()
-    {
-        if (mInstance != VK_NULL_HANDLE && mLogicalDevice != VK_NULL_HANDLE && mInstance != VK_NULL_HANDLE)
-        {
+    VkDeviceData::~VkDeviceData() {
+        if (mInstance != VK_NULL_HANDLE && mLogicalDevice != VK_NULL_HANDLE && mInstance != VK_NULL_HANDLE) {
             vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
             vkDestroyDevice(mLogicalDevice, nullptr);
             vkDestroyInstance(mInstance, nullptr);
@@ -53,60 +55,81 @@ namespace Falcor
     }
 
     template<>
-    VkResource<VkImage, VkBuffer>::~VkResource()
-    {
-        if (!gpDevice) return; // #VKTODO This is here because of the black texture in VkResourceViews.cpp
-        assert(mDeviceMem || mType == VkResourceType::Image); // All of our resources are allocated with memory, except for the swap-chain backbuffers that we shouldn't release
-        if (mDeviceMem)
-        {
-            switch (mType)
-            {
-            case VkResourceType::Image:
-                vkDestroyImage(gpDevice->getApiHandle(), mImage, nullptr);
-                break;
-            case VkResourceType::Buffer:
-                vkDestroyBuffer(gpDevice->getApiHandle(), mBuffer, nullptr);
-                break;
-            default:
-                should_not_get_here();
+    VkResource<VkImage, VkBuffer>::~VkResource() {
+        if (!gpDevice) {
+            // #VKTODO This is here because of the black texture in VkResourceViews.cpp
+            LOG_DBG("gpDevice is NULL");
+            return;
+        }
+        assert(mDeviceMem || mType == VkResourceType::Image);  // All of our resources are allocated with memory, except for the swap-chain backbuffers that we shouldn't release
+        if (mDeviceMem) {
+            switch (mType) {
+                case VkResourceType::Image:
+                    if (mImage) {
+                        vkDestroyImage(gpDevice->getApiHandle(), mImage, nullptr);
+                    } else {
+                        LOG_WARN("mImage is NULL");
+                    }
+                    break;
+                case VkResourceType::Buffer:
+                    if (mBuffer) {
+                        vkDestroyBuffer(gpDevice->getApiHandle(), mBuffer, nullptr);
+                    } else {
+                        LOG_WARN("mBuffer is NULL");
+                    }
+                    break;
+                default:
+                    should_not_get_here();
             }
             vkFreeMemory(gpDevice->getApiHandle(), mDeviceMem, nullptr);
+            fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
+            std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
+            LOG_DBG("memory freed");
         }
     }
 
     template<>
-    VkResource<VkImageView, VkBufferView>::~VkResource()
-    {
-        if (!gpDevice) return; // #VKTODO This is here because of the black texture in VkResourceViews.cpp
-        switch (mType)
-        {
-        case VkResourceType::Image:
-            vkDestroyImageView(gpDevice->getApiHandle(), mImage, nullptr);
-            break;
-        case VkResourceType::Buffer:
-            vkDestroyBufferView(gpDevice->getApiHandle(), mBuffer, nullptr);
-            break;
-        default:
-            should_not_get_here();
+    VkResource<VkImageView, VkBufferView>::~VkResource() {
+        if (!gpDevice) {
+            // #VKTODO This is here because of the black texture in VkResourceViews.cpp
+            LOG_DBG("gpDevice is NULL");
+            return;
+        }
+        switch (mType) {
+            case VkResourceType::Image:
+                if (mImage) {
+                    vkDestroyImageView(gpDevice->getApiHandle(), mImage, nullptr);
+                } else {
+                    LOG_WARN("mImage is NULL");
+                }
+                break;
+            case VkResourceType::Buffer:
+                if (mBuffer) {
+                    vkDestroyBufferView(gpDevice->getApiHandle(), mBuffer, nullptr);
+                } else {
+                    LOG_WARN("mBuffer is NULL");
+                }
+                break;
+            default:
+                should_not_get_here();
         }
     }
 
-    VkFbo::~VkFbo()
-    {
+    VkFbo::~VkFbo() {
         vkDestroyRenderPass(gpDevice->getApiHandle(), mVkRenderPass, nullptr);
         vkDestroyFramebuffer(gpDevice->getApiHandle(), mVkFbo, nullptr);
     }
 
-    VkRootSignature::~VkRootSignature()
-    {
+    VkRootSignature::~VkRootSignature() {
         vkDestroyPipelineLayout(gpDevice->getApiHandle(), mApiHandle, nullptr);
-        for (auto& s : mSets)
-        {
+        for (auto& s : mSets) {
             vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), s, nullptr);
         }
     }
 
+
     // Force template instantiation
+    /*
     template VkHandle<VkSwapchainKHR>::~VkHandle();
     template VkHandle<VkCommandPool>::~VkHandle();
     template VkHandle<VkSemaphore>::~VkHandle();
@@ -119,5 +142,5 @@ namespace Falcor
 
     template VkResource<VkImage, VkBuffer>::~VkResource();
     template VkResource<VkImageView, VkBufferView>::~VkResource();
-}
-
+    */
+}  // namespace Falcor

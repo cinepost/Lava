@@ -26,13 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include <stack>
 #include <unordered_map>
-#include "CpuTimer.h"
-#include "Core/API/GpuTimer.h"
+#include <vector>
 
-namespace Falcor
-{
+#include "CpuTimer.h"
+#include "Falcor/Core/API/GpuTimer.h"
+
+namespace Falcor {
+
     extern dlldecl bool gProfileEnabled;
 
     class GpuTimer;
@@ -42,16 +45,14 @@ namespace Falcor
         This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
         ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
     */
-    class dlldecl Profiler
-    {
+    class dlldecl Profiler {
     public:
 
 #if _PROFILING_LOG == 1
         static void flushLog();
 #endif
 
-        enum class Flags
-        {
+        enum class Flags {
             None = 0x0,
             Internal = 0x1,
             Pix = 0x2,
@@ -59,22 +60,22 @@ namespace Falcor
             Default = Internal | Pix
         };
 
-        struct EventData
-        {
+        struct EventData {
             virtual ~EventData() {}
             std::string name;
-            struct FrameData
-            {
+
+            struct FrameData {
                 std::vector<GpuTimer::SharedPtr> pTimers;
                 size_t currentTimer = 0;
             };
-            FrameData frameData[2]; // Double-buffering, to avoid GPU flushes
+            
+            FrameData frameData[2];  // Double-buffering, to avoid GPU flushes
             bool showInMsg;
             std::stack<size_t> callStack;
             CpuTimer::TimePoint cpuStart;
             CpuTimer::TimePoint cpuEnd;
             double cpuTotal = 0;
-            double cpuRunningAverageMS = -1.f;   // Negative value to signify invalid
+            double cpuRunningAverageMS = -1.f;  // Negative value to signify invalid
             double gpuRunningAverageMS = -1.f;
             uint32_t level;
             uint32_t triggered = 0;
@@ -184,4 +185,4 @@ namespace Falcor
 #endif
 
     enum_class_operators(Profiler::Flags);
-}
+}  // namespace Falcor

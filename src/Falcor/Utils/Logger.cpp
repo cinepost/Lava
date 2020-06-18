@@ -44,11 +44,12 @@ namespace Falcor
         {
             // Get current process name
             std::string filename = getExecutableName();
+            std::string executableDir = getExecutableDirectory();
+
+            std::string prefix = std::string(filename);
+            std::string path;
 
             // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-            std::string prefix = std::string(filename);
-            std::string executableDir = getExecutableDirectory();
-            std::string path;
             if (findAvailableFilename(prefix, executableDir, "log", path))
             {
                 return path;
@@ -132,7 +133,7 @@ namespace Falcor
             std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
             printToLogFile(s);
             if (isDebuggerPresent())
-            {
+            {   
                 printToDebugWindow(s);
             }
             else
@@ -145,7 +146,6 @@ namespace Falcor
             }
         }
 #endif
-
         if (sShowBoxOnError)
         {
             if (mbox == MsgBox::Auto)

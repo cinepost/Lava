@@ -25,9 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Window.h"
-#include "API/Device.h"
+#ifndef FALCOR_CORE_SAMPLE_H_
+#define FALCOR_CORE_SAMPLE_H_
+
+#include <set>
+#include <optional>
+#include <vector>
+#include <utility>
+#include <string>
+
+#include "Falcor/Core/Window.h"
+#include "Falcor/Core/API/Device.h"
 #include "Renderer.h"
 #include "Utils/ArgList.h"
 #include "Utils/Timing/FrameRate.h"
@@ -35,115 +43,115 @@
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/Video/VideoEncoderUI.h"
-#include <set>
-#include <optional>
 
-namespace Falcor
-{
-    /** Bootstrapper class for Falcor
-        Call Sample::run() to start the sample.
-        The render loop will then call the user's Renderer object
+
+namespace Falcor {
+/** Bootstrapper class for Falcor
+    Call Sample::run() to start the sample.
+    The render loop will then call the user's Renderer object
+*/
+class dlldecl Sample : public Window::ICallbacks, public IFramework {
+ public:
+    /** Entry-point to Sample. User should call this to start processing.
+        \param[in] config Requested sample configuration.
+        \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
+        \param[in] argc Optional. The number of strings in `argv`.
+        \param[in] argv Optional. The command line arguments.
+        Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
     */
-    class dlldecl Sample : public Window::ICallbacks, public IFramework
-    {
-    public:
-        /** Entry-point to Sample. User should call this to start processing.
-            \param[in] config Requested sample configuration.
-            \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
-            \param[in] argc Optional. The number of strings in `argv`.
-            \param[in] argv Optional. The command line arguments.
-            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
-        */
-        static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
-        /** Entry-point to Sample. User should call this to start processing.
-            \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
-            \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
-            \param[in] argc Optional. The number of strings in `argv`.
-            \param[in] argv Optional. The command line arguments.
-            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
-        */
-        static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    /** Entry-point to Sample. User should call this to start processing.
+        \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
+        \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
+        \param[in] argc Optional. The number of strings in `argv`.
+        \param[in] argv Optional. The command line arguments.
+        Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
+    */
+    static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
-        virtual ~Sample();
-    protected:
-        /************************************************************************/
-        /* Callback inherited from ICallbacks                                   */
-        /************************************************************************/
-        RenderContext* getRenderContext() override { return gpDevice ? gpDevice->getRenderContext() : nullptr; }
-        Fbo::SharedPtr getTargetFbo() override { return mpTargetFBO; }
-        Window* getWindow() override { return mpWindow.get(); }
-        Clock& getGlobalClock() override { return mClock; }
-        FrameRate& getFrameRate() override { return mFrameRate; }
-        void resizeSwapChain(uint32_t width, uint32_t height) override;
-        bool isKeyPressed(const KeyboardEvent::Key& key) override;
-        void toggleUI(bool showUI) override { mShowUI = showUI; }
-        bool isUiEnabled() override { return mShowUI; }
-        ArgList getArgList() override { return mArgList; }
-        void pauseRenderer(bool pause) override { mRendererPaused = pause; }
-        bool isRendererPaused() override { return mRendererPaused; }
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
-        void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
-        SampleConfig getConfig() override;
-        void renderGlobalUI(Gui* pGui) override;
-        std::string getKeyboardShortcutsStr() override;
-        void toggleVsync(bool on) override { mVsyncOn = on; }
-        bool isVsyncEnabled() override { return mVsyncOn; }
+    virtual ~Sample();
 
-        /** Internal data structures
-        */
-        Gui::UniquePtr mpGui;                               ///< Main sample GUI
-        Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
-        bool mRendererPaused = false;                       ///< Freezes the renderer
-        ArgList mArgList;                                   ///< Arguments passed in by command line
-        Window::SharedPtr mpWindow;                         ///< The application's window
+ protected:
+    /************************************************************************/
+    /* Callback inherited from ICallbacks                                   */
+    /************************************************************************/
+    RenderContext* getRenderContext() override { return gpDevice ? gpDevice->getRenderContext() : nullptr; }
+    Fbo::SharedPtr getTargetFbo() override { return mpTargetFBO; }
+    Window* getWindow() override { return mpWindow.get(); }
+    Clock& getGlobalClock() override { return mClock; }
+    FrameRate& getFrameRate() override { return mFrameRate; }
+    void resizeSwapChain(uint32_t width, uint32_t height) override;
+    bool isKeyPressed(const KeyboardEvent::Key& key) override;
+    void toggleUI(bool showUI) override { mShowUI = showUI; }
+    bool isUiEnabled() override { return mShowUI; }
+    ArgList getArgList() override { return mArgList; }
+    void pauseRenderer(bool pause) override { mRendererPaused = pause; }
+    bool isRendererPaused() override { return mRendererPaused; }
+    std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+    void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
+    SampleConfig getConfig() override;
+    void renderGlobalUI(Gui* pGui) override;
+    std::string getKeyboardShortcutsStr() override;
+    void toggleVsync(bool on) override { mVsyncOn = on; }
+    bool isVsyncEnabled() override { return mVsyncOn; }
 
-        void renderFrame() override;
-        void handleWindowSizeChange() override;
-        void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
-        void handleMouseEvent(const MouseEvent& mouseEvent) override;
-        void handleDroppedFile(const std::string& filename) override;
+    /** Internal data structures
+    */
+    Gui::UniquePtr mpGui;                               ///< Main sample GUI
+    Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
+    bool mRendererPaused = false;                       ///< Freezes the renderer
+    ArgList mArgList;                                   ///< Arguments passed in by command line
+    Window::SharedPtr mpWindow;                         ///< The application's window
 
-        void initVideoCapture();
+    void renderFrame() override;
+    void handleWindowSizeChange() override;
+    void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
+    void handleMouseEvent(const MouseEvent& mouseEvent) override;
+    void handleDroppedFile(const std::string& filename) override;
 
-        // Private functions
-        void initUI();
-        void saveConfigToFile();
+    void initVideoCapture();
 
-        bool startVideoCapture();
-        void endVideoCapture();
-        void captureVideoFrame();
-        void renderUI();
+    // Private functions
+    void initUI();
+    void saveConfigToFile();
 
-        void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
+    bool startVideoCapture();
+    void endVideoCapture();
+    void captureVideoFrame();
+    void renderUI();
 
-        void startScripting();
-        void registerScriptBindings(ScriptBindings::Module& m);
+    void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
-        bool mSuppressInput = false;
-        bool mVsyncOn = false;
-        bool mShowUI = true;
-        bool mCaptureScreen = false;
-        FrameRate mFrameRate;
-        Clock mClock;
+    void startScripting();
+    void registerScriptBindings(ScriptBindings::Module& m);
 
-        IRenderer::UniquePtr mpRenderer;
+    bool mSuppressInput = false;
+    bool mVsyncOn = false;
+    bool mShowUI = true;
+    bool mCaptureScreen = false;
+    FrameRate mFrameRate;
+    Clock mClock;
 
-        struct VideoCaptureData
-        {
-            VideoEncoderUI::UniquePtr pUI;
-            VideoEncoder::UniquePtr pVideoCapture;
-            std::vector<uint8_t> pFrame;
-            double fixedTimeDelta = 0;
-            double currentTime = 0;
-            bool displayUI = false;
-        } mVideoCapture;
+    IRenderer::UniquePtr mpRenderer;
 
-        std::set<KeyboardEvent::Key> mPressedKeys;
-        PixelZoom::SharedPtr mpPixelZoom;
+    struct VideoCaptureData {
+        VideoEncoderUI::UniquePtr pUI;
+        VideoEncoder::UniquePtr pVideoCapture;
+        std::vector<uint8_t> pFrame;
+        double fixedTimeDelta = 0;
+        double currentTime = 0;
+        bool displayUI = false;
+    } mVideoCapture;
 
-        Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
-        Sample(const Sample&) = delete;
-        Sample& operator=(const Sample&) = delete;
-    };
+    std::set<KeyboardEvent::Key> mPressedKeys;
+    PixelZoom::SharedPtr mpPixelZoom;
+
+    Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+    Sample(const Sample&) = delete;
+    Sample& operator=(const Sample&) = delete;
 };
+
+}  // namespace Falcor
+
+#endif  // FALCOR_CORE_SAMPLE_H_

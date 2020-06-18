@@ -25,25 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/Texture.h"
-#include "Core/API/ResourceViews.h"
+#ifndef SRC_FALCOR_CORE_API_FBO_H_
+#define SRC_FALCOR_CORE_API_FBO_H_
 
-namespace Falcor
-{
+
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/ResourceViews.h"
+
+namespace Falcor {
     /** Low level framebuffer object.
         This class abstracts the API's framebuffer creation and management.
     */
-    class dlldecl Fbo : public std::enable_shared_from_this<Fbo>
-    {
-    public:
+    class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
+     public:
         using SharedPtr = std::shared_ptr<Fbo>;
         using SharedConstPtr = std::shared_ptr<const Fbo>;
         using ApiHandle = FboHandle;
 
-        class dlldecl Desc
-        {
-        public:
+        class dlldecl Desc {
+         public:
             Desc();
 
             /** Set a render target to be a color target.
@@ -88,8 +88,7 @@ namespace Falcor
             bool operator==(const Desc& other) const;
 
         private:
-            struct TargetDesc
-            {
+            struct TargetDesc {
                 TargetDesc() = default;
                 TargetDesc(ResourceFormat f, bool uav) : format(f), allowUav(uav) {}
                 ResourceFormat format = ResourceFormat::Unknown;
@@ -217,8 +216,7 @@ namespace Falcor
         */
         RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex) const;
 
-        struct SamplePosition
-        {
+        struct SamplePosition {
             int8_t xOffset = 0;
             int8_t yOffset = 0;
         };
@@ -239,16 +237,14 @@ namespace Falcor
         */
         uint32_t getSamplePositionsPixelCount() const { return mSamplePositionsPixelCount; }
 
-        struct Attachment
-        {
+        struct Attachment {
             Texture::SharedPtr pTexture = nullptr;
             uint32_t mipLevel = 0;
             uint32_t arraySize = 1;
             uint32_t firstArraySlice = 0;
         };
 
-        struct DescHash
-        {
+        struct DescHash {
             std::size_t operator()(const Desc& d) const;
         };
 
@@ -286,4 +282,6 @@ namespace Falcor
         mutable ApiHandle mApiHandle = {};
         void* mpPrivateData = nullptr;
     };
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_FBO_H_

@@ -26,55 +26,57 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#include <memory>
+
 #include "GpuFence.h"
 
-namespace Falcor
-{
-    struct LowLevelContextApiData;
+namespace Falcor {
+struct LowLevelContextApiData;
 
-    class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
+class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData> {
+ public:
+    using SharedPtr = std::shared_ptr<LowLevelContextData>;
+    using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
 
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
+    enum class CommandQueueType {
+        Copy,
+        Compute,
+        Direct,
+        Count
+    };
 
-        ~LowLevelContextData();
+    ~LowLevelContextData();
 
-        /** Create a new low-level context data object.
-            \param[in] type Command queue type.
-            \param[in] queue Command queue handle. Can be nullptr.
-            \return A new object, or throws an expception if creation failed.
-        */
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
+    /** Create a new low-level context data object.
+        \param[in] type Command queue type.
+        \param[in] queue Command queue handle. Can be nullptr.
+        \return A new object, or throws an expception if creation failed.
+    */
+    static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
 
-        void flush();
+    void flush();
 
-        const CommandListHandle& getCommandList() const { return mpList; }
-        const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
-        const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
-        const GpuFence::SharedPtr& getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
+    const CommandListHandle& getCommandList() const { return mpList; }
+    const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
+    const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
+    const GpuFence::SharedPtr& getFence() const { return mpFence; }
+    LowLevelContextApiData* getApiData() const { return mpApiData; }
 
 #ifdef FALCOR_D3D12
-        // Used in DXR
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
+    // Used in DXR
+    void setCommandList(CommandListHandle pList) { mpList = pList; }
 #endif
-    protected:
-        LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
 
-        LowLevelContextApiData* mpApiData = nullptr;
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue; // Can be nullptr
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
-    };
-}
+ protected:
+    LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
+
+    LowLevelContextApiData* mpApiData = nullptr;
+    CommandQueueType mType;
+    CommandListHandle mpList;
+    CommandQueueHandle mpQueue;  // Can be nullptr
+    CommandAllocatorHandle mpAllocator;
+    GpuFence::SharedPtr mpFence;
+};
+
+}  // namespace Falcor

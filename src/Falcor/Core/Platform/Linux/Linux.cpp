@@ -60,6 +60,11 @@ namespace Falcor
         Ignore
     };
 
+    uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId)
+    {
+        return -1;
+    }
+
     MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType, MsgBoxIcon icon)
     {
         if (!gtk_init_check(0, nullptr))
@@ -228,12 +233,11 @@ namespace Falcor
     {
         char result[PATH_MAX] = { 0 };
         ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-        const char* path;
+        std::string path;
         if (count != -1)
         {
             fs::path p(result);
             path = p.parent_path().string().c_str();
-            //path = dirname(result);
         }
         static std::string strpath(path);
         return strpath;
@@ -252,8 +256,9 @@ namespace Falcor
 
     const std::string getAppDataDirectory()
     {
-        assert(0);
-        return std::string();
+        //assert(0);
+        //return std::string();
+        return "/home/max/dev/Falcor/src/Falcor/Data/";
     }
 
     const std::string& getExecutableName()

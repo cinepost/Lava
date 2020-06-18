@@ -397,6 +397,7 @@ namespace Falcor
 
     void Fbo::finalize() const
     {
+        LOG_DBG("finalizing...");
         if (mpDesc == nullptr)
         {
             if (calcAndValidateProperties() == false)
@@ -409,6 +410,7 @@ namespace Falcor
             }
             initApiHandle();
         }
+        LOG_DBG("done finalizing!");
     }
 
     void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[])
@@ -427,6 +429,7 @@ namespace Falcor
 
     Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
     {
+        printf("F-0\n");
         uint32_t sampleCount = fboDesc.getSampleCount();
         if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
         {
@@ -436,9 +439,9 @@ namespace Falcor
             throw std::runtime_error("Can't create 2D FBO. Invalid parameters.");
             #endif
         }
-
+        printf("F-1\n");
         Fbo::SharedPtr pFbo = create();
-
+        printf("F-2\n");
         // Create the color targets
         for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
         {
@@ -449,7 +452,7 @@ namespace Falcor
                 pFbo->attachColorTarget(pTex, i, 0, 0, kAttachEntireMipLevel);
             }
         }
-
+        printf("F-3\n");
         if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
         {
             Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());

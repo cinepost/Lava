@@ -28,17 +28,29 @@
 #include "stdafx.h"
 #include "ResourceViews.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor
 {
     static NullResourceViews gNullViews;
     Texture::SharedPtr getEmptyTexture();
+    Texture::SharedPtr createBlackTexture();
 
     void createNullViews()
     {
-        gNullViews.srv = ShaderResourceView::create(getEmptyTexture(), 0, 1, 0, 1);
-        gNullViews.dsv = DepthStencilView::create(getEmptyTexture(), 0, 0, 1);
-        gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(), 0, 0, 1);
-        gNullViews.rtv = RenderTargetView::create(getEmptyTexture(), 0, 0, 1);
+        LOG_DBG("create srv");
+        //gNullViews.srv = ShaderResourceView::create(getEmptyTexture(), 0, 1, 0, 1);
+        gNullViews.srv = ShaderResourceView::create(createBlackTexture(), 0, 1, 0, 1);
+        LOG_DBG("create dsv");
+        //gNullViews.dsv = DepthStencilView::create(getEmptyTexture(), 0, 0, 1);
+        gNullViews.dsv = DepthStencilView::create(createBlackTexture(), 0, 0, 1);
+        LOG_DBG("create uav");
+        //gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(), 0, 0, 1);
+        gNullViews.uav = UnorderedAccessView::create(createBlackTexture(), 0, 0, 1);
+        LOG_DBG("create rtv");
+        //gNullViews.rtv = RenderTargetView::create(getEmptyTexture(), 0, 0, 1);
+        gNullViews.rtv = RenderTargetView::create(createBlackTexture(), 0, 0, 1);
+        LOG_DBG("create cbv");
         gNullViews.cbv = ConstantBufferView::create(Buffer::SharedPtr());
     }
 
@@ -50,8 +62,8 @@ namespace Falcor
     ShaderResourceView::SharedPtr  ShaderResourceView::getNullView()  { return gNullViews.srv; }
     DepthStencilView::SharedPtr    DepthStencilView::getNullView()    { return gNullViews.dsv; }
     UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView() { return gNullViews.uav; }
-    RenderTargetView::SharedPtr    RenderTargetView::getNullView()    { return gNullViews.rtv;}
-    ConstantBufferView::SharedPtr  ConstantBufferView::getNullView()  { return gNullViews.cbv;}
+    RenderTargetView::SharedPtr    RenderTargetView::getNullView()    { return gNullViews.rtv; }
+    ConstantBufferView::SharedPtr  ConstantBufferView::getNullView()  { return gNullViews.cbv; }
 
     SCRIPT_BINDING(ResourceView)
     {

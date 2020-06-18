@@ -28,8 +28,7 @@
 #pragma once
 #include <queue>
 
-namespace Falcor
-{
+namespace Falcor {
     class DescriptorSet;
 
     struct DescriptorPoolApiData;
@@ -119,4 +118,5 @@ namespace Falcor
 
         std::priority_queue<DeferredRelease, std::vector<DeferredRelease>, std::greater<DeferredRelease>> mpDeferredReleases;
     };
-}
+
+}  // namespace Falcor

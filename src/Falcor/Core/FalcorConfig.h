@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_CORE_FALCORCONFIG_H_
+#define FALCOR_CORE_FALCORCONFIG_H_
 
 #define _LOG_ENABLED 1 // Set this to 0 to disable logging and most error checks
 
@@ -40,3 +41,5 @@
 #else
 #define FALCOR_VK
 #endif
+
+#endif  // FALCOR_CORE_FALCORCONFIG_H_

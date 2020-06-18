@@ -1,0 +1,2411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="Assimp"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\third_party\;CMake Files\third_party\assimp\;CMake Files\third_party\assimp\cmake\;CMake Files\third_party\assimp\include\;CMake Files\third_party\assimp\include\assimp\;CMake Files\third_party\assimp\cmake-modules\;CMake Files\third_party\assimp\contrib\;CMake Files\third_party\assimp\contrib\irrXML\;CMake Files\third_party\assimp\code\;CMake Files\third_party\assimp\tools\;CMake Files\third_party\assimp\tools\assimp_cmd\;CMake Files\third_party\assimp\test\;CMake Files\third_party\assimp\test\headercheck\;CMake Files\third_party\glm\;CMake Files\third_party\glm\cmake\;CMake Files\src\;CMake Files\src\Falcor\;CMake Files\src\Mogwai\;CMake Files\..\;CMake Files\..\..\;CMake Files\..\..\..\;CMake Files\..\..\..\..\;CMake Files\..\..\..\..\usr\;CMake Files\..\..\..\..\usr\lib\;CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\;CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\;CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\glfw3\;CMake Files\cmake\;CMake Files\cmake\modules\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="uninstall">
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 uninstall"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="IrrXML">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/lib/libIrrXMLd.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 IrrXML"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="IrrXML/fast">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/lib/libIrrXMLd.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 IrrXML/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/contrib/irrXML/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="assimp">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/lib/libassimpd.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp/code"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add option="-DMINIZ_USE_UNALIGNED_LOADS_AND_STORES=0"/>
+					<Add option="-DASSIMP_IMPORTER_GLTF_USE_OPEN3DGC=1"/>
+					<Add option="-DASSIMP_BUILD_DLL_EXPORT"/>
+					<Add option="-DOPENDDLPARSER_BUILD"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib/rapidjson/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib/openddlparser/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/minizip"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 assimp"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="assimp/fast">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/lib/libassimpd.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/assimp/code"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add option="-DMINIZ_USE_UNALIGNED_LOADS_AND_STORES=0"/>
+					<Add option="-DASSIMP_IMPORTER_GLTF_USE_OPEN3DGC=1"/>
+					<Add option="-DASSIMP_BUILD_DLL_EXPORT"/>
+					<Add option="-DOPENDDLPARSER_BUILD"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib/rapidjson/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../contrib/openddlparser/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/minizip"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 assimp/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/code/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="assimp_cmd">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/bin/assimpd" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 assimp_cmd"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="assimp_cmd/fast">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/bin/assimpd" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 assimp_cmd/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/tools/assimp_cmd/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="unit">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/bin/unit" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add option="-DASSIMP_TEST_MODELS_DIR=&quot;/home/max/dev/Falcor/third_party/assimp/test/models&quot;"/>
+					<Add option="-DASSIMP_TEST_MODELS_NONBSD_DIR=&quot;/home/max/dev/Falcor/third_party/assimp/test/models-nonbsd&quot;"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/test"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/test"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/gtest/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/gtest"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/test/unit"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 unit"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="unit/fast">
+				<Option output="/home/max/dev/Falcor/cmake-build-debug/bin/unit" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/max/dev/Falcor/cmake-build-debug/bin"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DASSIMP_BUILD_NO_OWN_ZLIB"/>
+					<Add option="-DASSIMP_BUILD_NO_C4D_IMPORTER"/>
+					<Add option="-DASSIMP_TEST_MODELS_DIR=&quot;/home/max/dev/Falcor/third_party/assimp/test/models&quot;"/>
+					<Add option="-DASSIMP_TEST_MODELS_NONBSD_DIR=&quot;/home/max/dev/Falcor/third_party/assimp/test/models-nonbsd&quot;"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/test"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/test"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/."/>
+					<Add directory="/home/max/dev/Falcor/src"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor"/>
+					<Add directory="/home/max/dev/Falcor/src/Falcor/Core"/>
+					<Add directory="/home/max/dev/Falcor/src/Externals"/>
+					<Add directory="/home/max/dev/Falcor/third_party"/>
+					<Add directory="/home/max/dev/Falcor/third_party/glm"/>
+					<Add directory="/home/max/dev/Falcor/third_party/imgui"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/gtest/include"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/contrib/gtest"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/test/unit"/>
+					<Add directory="/home/max/dev/Falcor/third_party/assimp/code/../include"/>
+					<Add directory="/home/max/dev/Falcor/cmake-build-debug/assimp/code/../include"/>
+					<Add directory="/usr/include/c++/8"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/8"/>
+					<Add directory="/usr/include/c++/8/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/8/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 unit/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/max/dev/Falcor/cmake-build-debug/assimp/test/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/max/dev/Falcor/cmake-build-debug/assimp/include/assimp/config.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSConverter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSHelper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3DS/3DSLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/3MFXmlTags.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFOpcPackage.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/3MF/D3MFOpcPackage.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AC/ACLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AC/ACLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter_Geometry.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter_Macro.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter_Material.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter_Node.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/AMF/AMFImporter_Postprocess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/ASE/ASELoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/ASE/ASELoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/ASE/ASEParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/ASE/ASEParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assbin/AssbinExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assbin/AssbinExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assbin/AssbinLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assbin/AssbinLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assjson/cencode.c">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assjson/cencode.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assjson/json_exporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assjson/mesh_splitter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assjson/mesh_splitter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assxml/AssxmlExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Assxml/AssxmlExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/B3D/B3DImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/B3D/B3DImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/BVH/BVHLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/BVH/BVHLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderBMesh.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderBMesh.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderCustomData.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderCustomData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderDNA.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderDNA.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderDNA.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderIntermediate.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderModifier.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderModifier.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderScene.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderScene.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderSceneGen.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderTessellator.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Blender/BlenderTessellator.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CApi/AssimpCExport.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CApi/CInterfaceIOWrapper.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CApi/CInterfaceIOWrapper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/COB/COBLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/COB/COBLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/COB/COBScene.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CSM/CSMLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CSM/CSMLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaHelper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Collada/ColladaParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Assimp.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/BaseImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/BaseProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/BaseProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Bitmap.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/CreateAnimMesh.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/DefaultIOStream.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/DefaultIOSystem.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/DefaultLogger.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/DefaultProgressHandler.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Exporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/FileLogStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/IFF.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Importer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Importer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/ImporterRegistry.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/PolyTools.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/PostStepRegistry.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/RemoveComments.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SGSpatialSort.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SceneCombiner.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/ScenePreprocessor.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/ScenePreprocessor.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/ScenePrivate.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SkeletonMeshBuilder.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SpatialSort.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SplitByBoneCountProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/SplitByBoneCountProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/StandardShapes.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/StdOStreamLogStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Subdivision.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/TargetAnimation.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/TargetAnimation.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Version.cpp">
+			<Option target="assimp"/>
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/VertexTriangleAdjacency.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/VertexTriangleAdjacency.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/Win32DebugLogStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/ZipArchiveIOSystem.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/scene.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/simd.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Common/simd.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/DXF/DXFHelper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/DXF/DXFLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/DXF/DXFLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXAnimation.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXBinaryTokenizer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXCommon.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXCompileConfig.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXConverter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXConverter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXDeformer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXDocument.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXDocument.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXDocumentUtil.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXDocumentUtil.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExportNode.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExportNode.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExportProperty.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExportProperty.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXImportSettings.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXMaterial.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXMeshGeometry.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXMeshGeometry.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXModel.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXNodeAttribute.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXProperties.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXProperties.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXTokenizer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXTokenizer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXUtil.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/FBX/FBXUtil.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/HMP/HMPFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/HMP/HMPLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/HMP/HMPLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/HMP/HalfLifeFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCBoolean.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCCurve.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCGeometry.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCMaterial.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCOpenings.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCProfile.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCReaderGen1_2x3.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCReaderGen2_2x3.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCReaderGen_2x3.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCUtil.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/IFC/IFCUtil.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/STEPParser/STEPFileEncoding.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/STEPParser/STEPFileEncoding.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/STEPParser/STEPFileReader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/STEPParser/STEPFileReader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepFileGen1.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepFileGen2.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepFileGen3.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepFileImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepFileImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Importer/StepFile/StepReaderGen.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRMeshLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRMeshLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRShared.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Irr/IRRShared.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOAnimation.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOAnimation.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOBLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWO/LWOMaterial.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWS/LWSLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/LWS/LWSLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD2/MD2FileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD2/MD2Loader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD2/MD2Loader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD2/MD2NormalTable.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD3/MD3FileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD3/MD3Loader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD3/MD3Loader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD5/MD5Loader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD5/MD5Loader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD5/MD5Parser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MD5/MD5Parser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDC/MDCFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDC/MDCLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDC/MDCLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDC/MDCNormalTable.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDL/MDLDefaultColorMap.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDL/MDLFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDL/MDLLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDL/MDLLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MDL/MDLMaterialLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDCpp14.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDPmdParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDPmxParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDPmxParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MMD/MMDVmdParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MS3D/MS3DLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/MS3D/MS3DLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Material/MaterialSystem.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Material/MaterialSystem.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/NDO/NDOLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/NDO/NDOLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/NFF/NFFLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/NFF/NFFLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OFF/OFFLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OFF/OFFLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileMtlImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileMtlImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjFileParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Obj/ObjTools.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreBinarySerializer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreBinarySerializer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreMaterial.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreParsingUtils.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreStructs.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreStructs.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreXmlSerializer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ogre/OgreXmlSerializer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OpenGEX/OpenGEXExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OpenGEX/OpenGEXExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OpenGEX/OpenGEXImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OpenGEX/OpenGEXImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/OpenGEX/OpenGEXStructs.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Ply/PlyParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/CalcTangentsProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/CalcTangentsProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ComputeUVMappingProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ComputeUVMappingProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ConvertToLHProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ConvertToLHProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/DeboneProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/DeboneProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/DropFaceNormalsProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/DropFaceNormalsProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/EmbedTexturesProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/EmbedTexturesProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindDegenerates.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindDegenerates.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindInstancesProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindInstancesProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindInvalidDataProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FindInvalidDataProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FixNormalsStep.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/FixNormalsStep.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenBoundingBoxesProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenBoundingBoxesProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenFaceNormalsProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenFaceNormalsProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenVertexNormalsProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/GenVertexNormalsProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ImproveCacheLocality.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ImproveCacheLocality.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/JoinVerticesProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/JoinVerticesProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/LimitBoneWeightsProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/LimitBoneWeightsProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/MakeVerboseFormat.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/MakeVerboseFormat.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/OptimizeGraph.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/OptimizeGraph.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/OptimizeMeshes.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/OptimizeMeshes.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/PretransformVertices.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/PretransformVertices.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ProcessHelper.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ProcessHelper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/RemoveRedundantMaterials.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/RemoveRedundantMaterials.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/RemoveVCProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/RemoveVCProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ScaleProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ScaleProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/SortByPTypeProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/SortByPTypeProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/SplitLargeMeshes.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/SplitLargeMeshes.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/TextureTransform.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/TextureTransform.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/TriangulateProcess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/TriangulateProcess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ValidateDataStructure.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/PostProcessing/ValidateDataStructure.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3BSP/Q3BSPFileData.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3BSP/Q3BSPFileImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3BSP/Q3BSPFileImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3BSP/Q3BSPFileParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3BSP/Q3BSPFileParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3D/Q3DLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Q3D/Q3DLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Raw/RawLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Raw/RawLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/SIB/SIBImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/SIB/SIBImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/SMD/SMDLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/SMD/SMDLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/STL/STLExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/STL/STLExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/STL/STLLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/STL/STLLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Step/STEPFile.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Step/StepExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Step/StepExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Terragen/TerragenLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Terragen/TerragenLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Unreal/UnrealLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/Unreal/UnrealLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileHelper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X/XFileParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/FIReader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/FIReader.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DExporter.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Geometry2D.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Geometry3D.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Group.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Light.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Macro.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Metadata.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Networking.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Node.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Postprocess.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Rendering.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Shape.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DImporter_Texturing.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/X3D/X3DVocabulary.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/XGL/XGLLoader.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/XGL/XGLLoader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFAsset.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFAsset.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFAssetWriter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFAssetWriter.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFCommon.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFCommon.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFExporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFExporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFImporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF/glTFImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Asset.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Asset.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2AssetWriter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2AssetWriter.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Exporter.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Exporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Importer.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/glTF2/glTF2Importer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcAdjacencyInfo.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcArithmeticCodec.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcArithmeticCodec.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcBinaryStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcCommon.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDVEncodeParams.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDynamicVector.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDynamicVectorDecoder.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDynamicVectorDecoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDynamicVectorEncoder.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcDynamicVectorEncoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcFIFO.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcIndexedFaceSet.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcIndexedFaceSet.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcSC3DMCDecoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcSC3DMCDecoder.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcSC3DMCEncodeParams.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcSC3DMCEncoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcSC3DMCEncoder.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTimer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTools.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleFans.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleFans.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleListDecoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleListDecoder.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleListEncoder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcTriangleListEncoder.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcVector.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/Open3DGC/o3dgcVector.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/clipper/clipper.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/clipper/clipper.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/gtest/src/gtest-all.cc">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/CXMLReaderImpl.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/heapsort.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/irrArray.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/irrString.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/irrTypes.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/irrXML.cpp">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/irrXML.h">
+			<Option target="IrrXML"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/DDLNode.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/OpenDDLCommon.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/OpenDDLExport.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/OpenDDLParser.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/OpenDDLStream.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/code/Value.cpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/DDLNode.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/OpenDDLCommon.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/OpenDDLExport.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/OpenDDLParser.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/OpenDDLParserUtils.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/OpenDDLStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/openddlparser/include/openddlparser/Value.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/common/shapes.cc">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/common/shapes.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/common/utils.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/advancing_front.cc">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/advancing_front.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/cdt.cc">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/cdt.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/sweep.cc">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/sweep.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/sweep_context.cc">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/poly2tri/poly2tri/sweep/sweep_context.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/zip/src/miniz.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/zip/src/zip.c">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/zip/src/zip.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/BaseImporter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Bitmap.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/BlobIOSystem.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/ByteSwapper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Compiler/poppack1.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Compiler/pstdint.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Compiler/pushpack1.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/CreateAnimMesh.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/DefaultIOStream.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/DefaultIOSystem.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/DefaultLogger.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Defines.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Exceptional.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Exporter.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/GenericProperty.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Hash.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/IOStream.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/IOStreamBuffer.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/IOSystem.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Importer.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/LineSplitter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/LogAux.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/LogStream.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Logger.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Macros.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/MathFunctions.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/MemoryIOWrapper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/NullLogger.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/ParsingUtils.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Profiler.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/ProgressHandler.hpp">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/RemoveComments.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SGSpatialSort.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SceneCombiner.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SkeletonMeshBuilder.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SmoothingGroups.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SmoothingGroups.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/SpatialSort.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/StandardShapes.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/StreamReader.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/StreamWriter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/StringComparison.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/StringUtils.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Subdivision.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/TinyFormatter.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/Vertex.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/XMLTools.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/ZipArchiveIOSystem.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/aabb.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/ai_assert.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/anim.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/camera.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/cexport.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/cfileio.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/cimport.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/color4.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/color4.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/defs.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/fast_atof.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/importerdesc.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/irrXMLWrapper.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/light.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/material.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/material.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/matrix3x3.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/matrix3x3.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/matrix4x4.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/matrix4x4.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/mesh.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/metadata.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/pbrmaterial.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/postprocess.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/qnan.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/quaternion.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/quaternion.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/scene.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/texture.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/types.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/vector2.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/vector2.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/vector3.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/vector3.inl">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/version.h">
+			<Option target="assimp"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/AbstractImportExportBase.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/AbstractImportExportBase.h">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/AssimpAPITest.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/CCompilerTest.c">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/Common/utLineSplitter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utAssjsonImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utCOBImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utExporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utNFFImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utOFFImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utOgreImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utQ3BSPFileImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ImportExport/utXGLImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/Main.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/SceneDiffer.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/SceneDiffer.h">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/TestIOSystem.h">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/TestModelFactory.h">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/UTLogStream.h">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ut3DImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/ut3DSImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utACImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utAMFImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utASEImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utAnim.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utAssbinImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utB3DImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBVHImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBatchLoader.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBlendImportAreaLight.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBlendImportMaterials.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBlenderImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBlenderIntermediate.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utBlenderWork.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utCSMImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utColladaExportCamera.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utColladaExportLight.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utColladaImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utD3MFImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utDXFImporterExporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utDefaultIOStream.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utFBXImporterExporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utFastAtof.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utFindDegenerates.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utFindInvalidData.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utFixInfacingNormals.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utGenBoundingBoxesProcess.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utGenNormals.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utHMPImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utIFCImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utIOStreamBuffer.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utIOSystem.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utImporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utImproveCacheLocality.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utIssues.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utJoinVertices.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utLWOImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utLWSImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utLimitBoneWeights.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utMDCImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utMaterialSystem.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utMatrix3x3.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utMatrix4x4.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utMetadata.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utObjImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utObjTools.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utOpenGEXImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utPLYImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utPMXImporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utPretransformVertices.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utProfiler.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utQ3DImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utRemoveComments.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utRemoveComponent.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utRemoveRedundantMaterials.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utRemoveVCProcess.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSIBImporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSMDImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSTLImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utScaleProcess.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSceneCombiner.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utScenePreprocessor.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSharedPPData.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSimd.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSortByPType.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utSplitLargeMeshes.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utStringUtils.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utTargetAnimation.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utTextureTransform.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utTriangulate.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utTypes.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utVector3.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utVersion.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utVertexTriangleAdjacency.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utX3DImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utXImporterExporter.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utglTF2ImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/unit/utglTFImportExport.cpp">
+			<Option target="unit"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/CompareDump.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/Export.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/ImageExtractor.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/Info.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/Main.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/Main.h">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/WriteDumb.cpp">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/assimp_cmd.rc">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/resource.h">
+			<Option target="assimp_cmd"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/assimp-config-version.cmake.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/assimp-config.cmake.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/assimp.pc.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/assimpTargets-debug.cmake.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/assimpTargets.cmake.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/revision.h.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake/HunterGate.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/include/assimp/config.h.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\include\assimp\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/FindDirectX.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/FindPkgMacros.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/FindRT.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/FindZLIB.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/PrecompiledHeader.cmake">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/cmake-modules/cmake_uninstall.cmake.in">
+			<Option virtualFolder="CMake Files\third_party\assimp\cmake-modules\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\contrib\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/contrib/irrXML/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\contrib\irrXML\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/code/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\code\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/tools/assimp_cmd/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\tools\assimp_cmd\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\test\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/assimp/test/headercheck/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\third_party\assimp\test\headercheck\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/third_party/glm/cmake/GNUInstallDirs.cmake">
+			<Option virtualFolder="CMake Files\third_party\glm\cmake\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/src/Falcor/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\Falcor\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/src/Mogwai/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\Mogwai\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/../../../../usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Config.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\glfw3\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/../../../../usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3ConfigVersion.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\glfw3\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/../../../../usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Targets-none.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\glfw3\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/../../../../usr/lib/x86_64-linux-gnu/cmake/glfw3/glfw3Targets.cmake">
+			<Option virtualFolder="CMake Files\..\..\..\..\usr\lib\x86_64-linux-gnu\cmake\glfw3\"/>
+		</Unit>
+		<Unit filename="/home/max/dev/Falcor/cmake/modules/FindFreeImage.cmake">
+			<Option virtualFolder="CMake Files\cmake\modules\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

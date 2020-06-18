@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libIrrXMLd.a  CMakeFiles/IrrXML.dir/irrXML.cpp.o
+/usr/bin/ranlib ../../../lib/libIrrXMLd.a

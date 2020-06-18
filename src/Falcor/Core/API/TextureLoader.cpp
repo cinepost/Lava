@@ -25,41 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Core/API/Texture.h"
-#include "Utils/Image/DDSHeader.h"
-#include "Utils/BinaryFileStream.h"
-#include "Utils/StringUtils.h"
 #include <cstring>
+
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Utils/Image/DDSHeader.h"
+#include "Falcor/Utils/BinaryFileStream.h"
+#include "Falcor/Utils/StringUtils.h"
+
 
 static const bool kTopDown = true;
 
-namespace Falcor
-{
-    using namespace DdsHelper;
+namespace Falcor {
+    
+using namespace DdsHelper;
 
-    static const uint32_t kDdsMagicNumber = 0x20534444;
+static const uint32_t kDdsMagicNumber = 0x20534444;
 
-    bool checkDdsChannelMask(const DdsHeader::PixelFormat& format, uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-    {
-        return (format.rMask == r && format.gMask == g && format.bMask == b && format.aMask == a);
+bool checkDdsChannelMask(const DdsHeader::PixelFormat& format, uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+    return (format.rMask == r && format.gMask == g && format.bMask == b && format.aMask == a);
+}
+
+uint32_t makeFourCC(const char name[4]) {
+    uint32_t fourCC = 0;
+    for(uint32_t i = 0; i < 4; i++) {
+        uint32_t shift = i * 8;
+        fourCC |= ((uint32_t)name[i]) << shift;
     }
+    return fourCC;
+}
 
-    uint32_t makeFourCC(const char name[4])
-    {
-        uint32_t fourCC = 0;
-        for(uint32_t i = 0; i < 4; i++)
-        {
-            uint32_t shift = i * 8;
-            fourCC |= ((uint32_t)name[i]) << shift;
-        }
-        return fourCC;
-    }
-
-    ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt)
-    {
-        switch (fmt)
-        {
+ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) {
+    switch (fmt) {
         case FORMAT_R32G8X24_TYPELESS:
         case FORMAT_R16G16B16A16_TYPELESS:
         case FORMAT_R32G32B32_TYPELESS:
@@ -246,192 +243,163 @@ namespace Falcor
             return ResourceFormat::BC7UnormSrgb;
         default:
             return ResourceFormat::Unknown;
-        }
     }
+}
 
-    DXFormat getRgbDxgiFormat(const DdsHeader::PixelFormat& format)
-    {
-        switch(format.bitcount)
-        {
+DXFormat getRgbDxgiFormat(const DdsHeader::PixelFormat& format) {
+    switch(format.bitcount) {
         case 32:
-            if(checkDdsChannelMask(format, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000))
-            {
+            if(checkDdsChannelMask(format, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000)) {
                 return FORMAT_R8G8B8A8_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000))
-            {
+            if(checkDdsChannelMask(format, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)) {
                 return FORMAT_B8G8R8A8_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0x00ff0000, 0x0000ff00, 0x000000ff, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0x00ff0000, 0x0000ff00, 0x000000ff, 0x00000000)) {
                 return FORMAT_B8G8R8X8_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000))
-            {
+            if(checkDdsChannelMask(format, 0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000)) {
                 return FORMAT_R10G10B10A2_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0x0000ffff, 0xffff0000, 0x00000000, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0x0000ffff, 0xffff0000, 0x00000000, 0x00000000)) {
                 return FORMAT_R16G16_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0xffffffff, 0x00000000, 0x00000000, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0xffffffff, 0x00000000, 0x00000000, 0x00000000)) {
                 return FORMAT_R32_FLOAT;
             }
             break;
 
         case 16:
-            if(checkDdsChannelMask(format, 0x7c00, 0x03e0, 0x001f, 0x8000))
-            {
+            if(checkDdsChannelMask(format, 0x7c00, 0x03e0, 0x001f, 0x8000)) {
                 return FORMAT_B5G5R5A1_UNORM;
             }
-            if(checkDdsChannelMask(format, 0xf800, 0x07e0, 0x001f, 0x0000))
-            {
+
+            if(checkDdsChannelMask(format, 0xf800, 0x07e0, 0x001f, 0x0000)) {
                 return FORMAT_B5G6R5_UNORM;
             }
 
-            if(checkDdsChannelMask(format, 0x0f00, 0x00f0, 0x000f, 0xf000))
-            {
+            if(checkDdsChannelMask(format, 0x0f00, 0x00f0, 0x000f, 0xf000)) {
                 return FORMAT_B4G4R4A4_UNORM;
             }
             break;
-        }
-        should_not_get_here();
-        return FORMAT_UNKNOWN;
     }
+    should_not_get_here();
+    return FORMAT_UNKNOWN;
+}
 
-    DXFormat getLuminanceDxgiFormat(const DdsHeader::PixelFormat& format)
-    {
-        switch(format.bitcount)
-        {
+DXFormat getLuminanceDxgiFormat(const DdsHeader::PixelFormat& format) {
+    switch(format.bitcount) {
         case 16:
-            if(checkDdsChannelMask(format, 0x0000ffff, 0x00000000, 0x00000000, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0x0000ffff, 0x00000000, 0x00000000, 0x00000000)) {
                 return FORMAT_R16_UNORM;
             }
-            if(checkDdsChannelMask(format, 0x000000ff, 0x00000000, 0x00000000, 0x0000ff00))
-            {
+            if(checkDdsChannelMask(format, 0x000000ff, 0x00000000, 0x00000000, 0x0000ff00)) {
                 return FORMAT_R8G8_UNORM;
             }
             break;
         case 8:
-            if(checkDdsChannelMask(format, 0x000000ff, 0x00000000, 0x00000000, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0x000000ff, 0x00000000, 0x00000000, 0x00000000)) {
                 return FORMAT_R8_UNORM;
             }
             break;
-        }
-        should_not_get_here();
-        return FORMAT_UNKNOWN;
     }
+    should_not_get_here();
+    return FORMAT_UNKNOWN;
+}
 
-    DXFormat getDxgiAlphaFormat(const DdsHeader::PixelFormat& format)
-    {
-        switch(format.bitcount)
-        {
+DXFormat getDxgiAlphaFormat(const DdsHeader::PixelFormat& format) {
+    switch(format.bitcount) {
         case 8:
             return FORMAT_A8_UNORM;
         default:
             should_not_get_here();
             return FORMAT_UNKNOWN;
-        }
     }
+}
 
-    DXFormat getDxgiBumpFormat(const DdsHeader::PixelFormat& format)
-    {
-        switch(format.bitcount)
-        {
+DXFormat getDxgiBumpFormat(const DdsHeader::PixelFormat& format) {
+    switch(format.bitcount) {
         case 16:
-            if(checkDdsChannelMask(format, 0x00ff, 0xff00, 0x0000, 0x0000))
-            {
+            if(checkDdsChannelMask(format, 0x00ff, 0xff00, 0x0000, 0x0000)) {
                 return FORMAT_R8G8_SNORM;
             }
             break;
         case 32:
-            if(checkDdsChannelMask(format, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000))
-            {
+            if(checkDdsChannelMask(format, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000)) {
                 return FORMAT_R8G8B8A8_SNORM;
             }
-            if(checkDdsChannelMask(format, 0x0000ffff, 0xffff0000, 0x00000000, 0x00000000))
-            {
+            if(checkDdsChannelMask(format, 0x0000ffff, 0xffff0000, 0x00000000, 0x00000000)) {
                 return FORMAT_R16G16_SNORM;
             }
             break;
-        }
-        should_not_get_here();
-        return FORMAT_UNKNOWN;
+    }
+    should_not_get_here();
+    return FORMAT_UNKNOWN;
+}
+
+DXFormat getDxgiFormatFrom4CC(uint32_t fourCC) {
+    if(fourCC == makeFourCC("DXT1")) {
+        return FORMAT_BC1_UNORM;
     }
 
-    DXFormat getDxgiFormatFrom4CC(uint32_t fourCC)
-    {
-        if(fourCC == makeFourCC("DXT1"))
-        {
-            return FORMAT_BC1_UNORM;
-        }
-        if(fourCC == makeFourCC("DXT2"))
-        {
-            return FORMAT_BC2_UNORM;
-        }
-        if(fourCC == makeFourCC("DXT3"))
-        {
-            return FORMAT_BC2_UNORM;
-        }
-        if(fourCC == makeFourCC("DXT4"))
-        {
-            return FORMAT_BC3_UNORM;
-        }
-        if(fourCC == makeFourCC("DXT5"))
-        {
-            return FORMAT_BC3_UNORM;
-        }
+    if(fourCC == makeFourCC("DXT2")) {
+        return FORMAT_BC2_UNORM;
+    }
 
-        if(fourCC == makeFourCC("ATI1"))
-        {
-            return FORMAT_BC4_UNORM;
-        }
-        if(fourCC == makeFourCC("BC4U"))
-        {
-            return FORMAT_BC4_UNORM;
-        }
-        if(fourCC == makeFourCC("BC4S"))
-        {
-            return FORMAT_BC4_SNORM;
-        }
+    if(fourCC == makeFourCC("DXT3")) {
+        return FORMAT_BC2_UNORM;
+    }
 
-        if(fourCC == makeFourCC("ATI2"))
-        {
-            return FORMAT_BC5_UNORM;
-        }
-        if(fourCC == makeFourCC("BC5U"))
-        {
-            return FORMAT_BC5_UNORM;
-        }
-        if(fourCC == makeFourCC("BC5S"))
-        {
-            return FORMAT_BC5_SNORM;
-        }
+    if(fourCC == makeFourCC("DXT4")) {
+        return FORMAT_BC3_UNORM;
+    }
 
-        if(fourCC == makeFourCC("RGBG"))
-        {
-            return FORMAT_R8G8_B8G8_UNORM;
-        }
-        if(fourCC == makeFourCC("GRGB"))
-        {
-            return FORMAT_G8R8_G8B8_UNORM;
-        }
+    if(fourCC == makeFourCC("DXT5")) {
+        return FORMAT_BC3_UNORM;
+    }
 
-        if(fourCC == makeFourCC("YUY2"))
-        {
-            return FORMAT_YUY2;
-        }
+    if(fourCC == makeFourCC("ATI1")) {
+        return FORMAT_BC4_UNORM;
+    }
 
-        switch(fourCC)
-        {
+    if(fourCC == makeFourCC("BC4U")) {
+        return FORMAT_BC4_UNORM;
+    }
+
+    if(fourCC == makeFourCC("BC4S")) {
+        return FORMAT_BC4_SNORM;
+    }
+
+    if(fourCC == makeFourCC("ATI2")) {
+        return FORMAT_BC5_UNORM;
+    }
+
+    if(fourCC == makeFourCC("BC5U")) {
+        return FORMAT_BC5_UNORM;
+    }
+
+    if(fourCC == makeFourCC("BC5S")) {
+        return FORMAT_BC5_SNORM;
+    }
+
+    if(fourCC == makeFourCC("RGBG")) {
+        return FORMAT_R8G8_B8G8_UNORM;
+    }
+
+    if(fourCC == makeFourCC("GRGB")) {
+        return FORMAT_G8R8_G8B8_UNORM;
+    }
+
+    if(fourCC == makeFourCC("YUY2")) {
+        return FORMAT_YUY2;
+    }
+
+    switch(fourCC) {
         case 36:
             return FORMAT_R16G16B16A16_UNORM;
         case 110:
@@ -448,132 +416,101 @@ namespace Falcor
             return FORMAT_R32G32_FLOAT;
         case 116:
             return FORMAT_R32G32B32A32_FLOAT;
-        }
-
-        should_not_get_here();
-        return FORMAT_UNKNOWN;
     }
 
-    DXFormat getDxgiFormatFromPixelFormat(const DdsHeader::PixelFormat& format)
-    {
-        if(format.flags & DdsHeader::PixelFormat::kRgbMask)
-        {
-            return getRgbDxgiFormat(format);
-        }
-        else if (format.flags & DdsHeader::PixelFormat::kLuminanceMask)
-        {
-            return getLuminanceDxgiFormat(format);
-        }
-        else if(format.flags & DdsHeader::PixelFormat::kAlphaMask)
-        {
-            return getDxgiAlphaFormat(format);
-        }
-        else if (format.flags & DdsHeader::PixelFormat::kBumpMask)
-        {
-            return getDxgiBumpFormat(format);
-        }
-        else if(format.flags & DdsHeader::PixelFormat::kFourCCFlag)
-        {
-            return getDxgiFormatFrom4CC(format.fourCC);
-        }
+    should_not_get_here();
+    return FORMAT_UNKNOWN;
+}
 
-        return FORMAT_UNKNOWN;
+DXFormat getDxgiFormatFromPixelFormat(const DdsHeader::PixelFormat& format) {
+    if(format.flags & DdsHeader::PixelFormat::kRgbMask) {
+        return getRgbDxgiFormat(format);
+    } else if (format.flags & DdsHeader::PixelFormat::kLuminanceMask) {
+        return getLuminanceDxgiFormat(format);
+    } else if(format.flags & DdsHeader::PixelFormat::kAlphaMask) {
+        return getDxgiAlphaFormat(format);
+    } else if (format.flags & DdsHeader::PixelFormat::kBumpMask) {
+        return getDxgiBumpFormat(format);
+    } else if(format.flags & DdsHeader::PixelFormat::kFourCCFlag) {
+        return getDxgiFormatFrom4CC(format.fourCC);
     }
 
-    ResourceFormat getDdsResourceFormat(const DdsData& data)
-    {
-        if(data.hasDX10Header)
-        {
-            return falcorFormatFromDXGIFormat(data.dx10Header.dxgiFormat);
-        }
-        else
-        {
-            return falcorFormatFromDXGIFormat(getDxgiFormatFromPixelFormat(data.header.pixelFormat));
-        }
+    return FORMAT_UNKNOWN;
+}
+
+ResourceFormat getDdsResourceFormat(const DdsData& data) {
+    if(data.hasDX10Header) {
+        return falcorFormatFromDXGIFormat(data.dx10Header.dxgiFormat);
+    } else {
+        return falcorFormatFromDXGIFormat(getDxgiFormatFromPixelFormat(data.header.pixelFormat));
     }
+}
 
-    //Flip the data so it follows opengl conventions
-    void flipData(DdsData& ddsData, ResourceFormat format, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipDepth, bool isCubemap = false)
-    {
-        if (!isCompressedFormat(format) && !kTopDown)
-        {
-            std::vector<uint8_t> oldData(ddsData.data.size());
-            oldData.swap(ddsData.data);
-            const uint8_t* currentTexture = oldData.data();
-            const uint8_t* currentDepth = oldData.data();
-            uint8_t* currentPos = ddsData.data.data();
+//Flip the data so it follows opengl conventions
+void flipData(DdsData& ddsData, ResourceFormat format, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipDepth, bool isCubemap = false) {
+    if (!isCompressedFormat(format) && !kTopDown) {
+        std::vector<uint8_t> oldData(ddsData.data.size());
+        oldData.swap(ddsData.data);
+        const uint8_t* currentTexture = oldData.data();
+        const uint8_t* currentDepth = oldData.data();
+        uint8_t* currentPos = ddsData.data.data();
 
-            for (uint32_t mipCounter = 0; mipCounter < mipDepth; ++mipCounter)
-            {
-                uint32_t heightPitch = std::max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
-                uint32_t currentMipHeight = std::max(height >> mipCounter, 1U);
-                uint32_t depthPitch = currentMipHeight * heightPitch;
+        for (uint32_t mipCounter = 0; mipCounter < mipDepth; ++mipCounter) {
+            uint32_t heightPitch = std::max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
+            uint32_t currentMipHeight = std::max(height >> mipCounter, 1U);
+            uint32_t depthPitch = currentMipHeight * heightPitch;
 
-                for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter)
-                {
-                    currentTexture = currentDepth + depthPitch * depthCounter;
+            for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter) {
+                currentTexture = currentDepth + depthPitch * depthCounter;
 
-                    if (isCubemap)
-                    {
-                        if (depthCounter % 6 == 2)
-                        {
-                            currentTexture += depthPitch;
-                        }
-                        else if (depthCounter % 6 == 3)
-                        {
-                            currentTexture -= depthPitch;
-                        }
+                if (isCubemap) {
+                    if (depthCounter % 6 == 2) {
+                        currentTexture += depthPitch;
+                    } else if (depthCounter % 6 == 3) {
+                        currentTexture -= depthPitch;
                     }
-
-                    for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter)
-                    {
-                        std::memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
-                        currentPos += heightPitch;
-                    }
-
                 }
 
-                currentDepth += depthPitch * depth;
+                for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter) {
+                    std::memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
+                    currentPos += heightPitch;
+                }
             }
+
+            currentDepth += depthPitch * depth;
         }
     }
+}
 
-    bool loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
-    {
-        BinaryFileStream stream(filename, BinaryFileStream::Mode::Read);
+bool loadDDSDataFromFile(const std::string filename, DdsData& ddsData) {
+    BinaryFileStream stream(filename, BinaryFileStream::Mode::Read);
 
-        // Check the dds identifier
-        uint32_t ddsIdentifier;
-        stream >> ddsIdentifier;
-        if (ddsIdentifier != kDdsMagicNumber)
-        {
-            logError("The dds file " + filename + " is not a valid dds file");
-            return false;
-        }
-
-        stream >> ddsData.header;
-
-        if ((ddsData.header.pixelFormat.flags & DdsHeader::PixelFormat::kFourCCFlag) && (makeFourCC("DX10") == ddsData.header.pixelFormat.fourCC))
-        {
-            ddsData.hasDX10Header = true;
-            stream >> ddsData.dx10Header;
-        }
-        else
-        {
-            ddsData.hasDX10Header = false;
-        }
-
-        uint32_t dataSize = stream.getRemainingStreamSize();
-        ddsData.data.resize(dataSize);
-        stream.read(ddsData.data.data(), dataSize);
-        return true;
+    // Check the dds identifier
+    uint32_t ddsIdentifier;
+    stream >> ddsIdentifier;
+    if (ddsIdentifier != kDdsMagicNumber) {
+        logError("The dds file " + filename + " is not a valid dds file");
+        return false;
     }
 
-    static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat format)
-    {
+    stream >> ddsData.header;
+
+    if ((ddsData.header.pixelFormat.flags & DdsHeader::PixelFormat::kFourCCFlag) && (makeFourCC("DX10") == ddsData.header.pixelFormat.fourCC)) {
+        ddsData.hasDX10Header = true;
+        stream >> ddsData.dx10Header;
+    } else {
+        ddsData.hasDX10Header = false;
+    }
+
+    uint32_t dataSize = stream.getRemainingStreamSize();
+    ddsData.data.resize(dataSize);
+    stream.read(ddsData.data.data(), dataSize);
+    return true;
+}
+
+static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat format) {
 #ifdef FALCOR_VK
-        switch (format)
-        {
+    switch (format) {
         case ResourceFormat::BGRX8Unorm:
             format = ResourceFormat::BGRA8Unorm;
             break;
@@ -582,35 +519,29 @@ namespace Falcor
             break;
         default:
             return format;
-        }
-
-        for (size_t i = 3; i < ddsData.data.size(); i+=4)
-        {
-            ddsData.data[i] = 0xFF;
-        }
-#endif
-        return format;
     }
 
-    Texture::SharedPtr createTextureFromDx10Dds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags)
-    {
-        format = convertBgrxFormatToBgra(ddsData, format);
+    for (size_t i = 3; i < ddsData.data.size(); i+=4) {
+        ddsData.data[i] = 0xFF;
+    }
+#endif
+    return format;
+}
 
-        uint32_t arraySize = ddsData.dx10Header.arraySize;
-        assert(arraySize > 0);
+Texture::SharedPtr createTextureFromDx10Dds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+    format = convertBgrxFormatToBgra(ddsData, format);
 
-        switch(ddsData.dx10Header.resourceDimension)
-        {
+    uint32_t arraySize = ddsData.dx10Header.arraySize;
+    assert(arraySize > 0);
+
+    switch(ddsData.dx10Header.resourceDimension) {
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE1D:
             return Texture::create1D(ddsData.header.width, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE2D:
-            if(ddsData.dx10Header.miscFlag & DdsHeaderDX10::kCubeMapMask)
-            {
+            if(ddsData.dx10Header.miscFlag & DdsHeaderDX10::kCubeMapMask) {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 6 * arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels, true);
                 return Texture::createCube(ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
-            }
-            else
-            {
+            } else {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
                 return Texture::create2D(ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
             }
@@ -624,106 +555,89 @@ namespace Falcor
         default:
             logError("Unknown resource dimension specified in " + filename);
             return nullptr;
-        }
+    }
+}
+
+Texture::SharedPtr createTextureFromLegacyDds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+    format = convertBgrxFormatToBgra(ddsData, format);
+
+    // Load the volume or 3D texture
+    if(ddsData.header.flags & DdsHeader::kDepthMask) {
+        flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
+        return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
+    }
+    // Load the cubemap texture
+    else if(ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask) {
+        return Texture::createCube(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
+    } else {
+        // This is a 2D Texture
+        flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 1, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
+        return Texture::create2D(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     }
 
-    Texture::SharedPtr createTextureFromLegacyDds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags)
-    {
-        format = convertBgrxFormatToBgra(ddsData, format);
+    should_not_get_here();
+    return nullptr;
+}
 
-        // Load the volume or 3D texture
-        if(ddsData.header.flags & DdsHeader::kDepthMask)
-        {
-            flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-            return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
-        }
-        // Load the cubemap texture
-        else if(ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask)
-        {
-            return Texture::createCube(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
-        }
-        // This is a 2D Texture
-        else
-        {
-            flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 1, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-            return Texture::create2D(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
-        }
+Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+    DdsData ddsData;
+    if (!loadDDSDataFromFile(filename, ddsData)) return nullptr;
 
-        should_not_get_here();
+    ResourceFormat format = getDdsResourceFormat(ddsData);
+    if (format == ResourceFormat::Unknown) {
+        logError("Unknown resource format in DDS file " + filename);
         return nullptr;
     }
 
-    Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags)
-    {
-        DdsData ddsData;
-        if (!loadDDSDataFromFile(filename, ddsData)) return nullptr;
-
-        ResourceFormat format = getDdsResourceFormat(ddsData);
-        if (format == ResourceFormat::Unknown)
-        {
-            logError("Unknown resource format in DDS file " + filename);
-            return nullptr;
-        }
-
-        if (loadAsSrgb)
-        {
-            format = linearToSrgbFormat(format);
-        }
-
-        uint32_t mipLevels;
-        if (generateMips == false || isCompressedFormat(format))
-        {
-            mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? std::max(ddsData.header.mipCount, 1U) : 1;
-        }
-        else
-        {
-            mipLevels = Texture::kMaxPossible;
-        }
-
-        if (ddsData.hasDX10Header)
-        {
-            return createTextureFromDx10Dds(ddsData, filename, format, mipLevels, bindFlags);
-        }
-        else
-        {
-            return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
-        }
+    if (loadAsSrgb) {
+        format = linearToSrgbFormat(format);
     }
 
-    Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
-    {
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
-        {
-            logError("Error when loading image file. Can't find image file " + filename);
-            return nullptr;
-        }
+    uint32_t mipLevels;
+    if (generateMips == false || isCompressedFormat(format)) {
+        mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? std::max(ddsData.header.mipCount, 1U) : 1;
+    } else {
+        mipLevels = Texture::kMaxPossible;
+    }
 
-        Texture::SharedPtr pTex;
-        if (hasSuffix(filename, ".dds"))
-        {
-            pTex = createTextureFromDDSFile(fullpath, generateMipLevels, loadAsSrgb, bindFlags);
-        }
-        else
-        {
-            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
-            if (pBitmap)
-            {
-                ResourceFormat texFormat = pBitmap->getFormat();
-                if (loadAsSrgb)
-                {
-                    texFormat = linearToSrgbFormat(texFormat);
-                }
-
-                pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
-            }
-        }
-
-        if (pTex != nullptr)
-        {
-            pTex->setSourceFilename(fullpath);
-        }
-
-        return pTex;
+    if (ddsData.hasDX10Header) {
+        return createTextureFromDx10Dds(ddsData, filename, format, mipLevels, bindFlags);
+    } else {
+        return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
     }
 }
+
+Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+    std::string fullpath;
+    printf("Searching for texture %s ...\n", filename.c_str());
+    if (findFileInDataDirectories(filename, fullpath) == false) {
+        printf("Texture %s not found !!!\n", filename.c_str());
+        logError("Error when loading image file. Can't find image file " + filename);
+        return nullptr;
+    }
+    printf("Texture %s found as %s\n", filename.c_str(), fullpath.c_str());
+
+    Texture::SharedPtr pTex;
+    if (hasSuffix(filename, ".dds"))
+    {
+        pTex = createTextureFromDDSFile(fullpath, generateMipLevels, loadAsSrgb, bindFlags);
+    } else {
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
+        if (pBitmap) {
+            ResourceFormat texFormat = pBitmap->getFormat();
+            if (loadAsSrgb) {
+                texFormat = linearToSrgbFormat(texFormat);
+            }
+
+            pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+        }
+    }
+
+    if (pTex != nullptr) {
+        pTex->setSourceFilename(fullpath);
+    }
+
+    return pTex;
+}
+
+}  // namespace Falcor

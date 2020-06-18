@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src",
+                "/usr/include/python3.7"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc-8",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "configurationProvider": "go2sh.cmake-integration",
+            "compileCommands": ""
+        }
+    ],
+    "version": 4
+}

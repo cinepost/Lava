@@ -91,9 +91,7 @@ namespace Falcor
         Clock mClock;
         std::vector<double> mFrameTimes;
         uint64_t mFrameCount = 0;
-
-    public:
-        static const uint64_t sFrameWindow = 60;
+        static const uint64_t sFrameWindow;
     };
 
     inline std::string to_string(const FrameRate& fr, bool vsyncOn = false) { return fr.getMsg(vsyncOn); }

@@ -64,10 +64,14 @@ if( NOT CMAKE_BUILD_TYPE )
   #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
 endif()
 
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+endif ()
+
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -Wno-reorder -Wfatal-errors) #-pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wno-reorder -Wfatal-errors -g3) #-pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()

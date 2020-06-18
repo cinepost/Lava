@@ -94,6 +94,7 @@ namespace Falcor
         directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
 #else
         directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
+        directories.push_back("/home/max/dev/Falcor/src/Falcor/Data");
 #endif
 
         // Add additional media folders.

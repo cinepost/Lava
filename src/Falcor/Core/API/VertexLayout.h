@@ -27,8 +27,9 @@
  **************************************************************************/
 #pragma once
 #include <vector>
-#include "Scene/VertexAttrib.slangh"
-#include "Core/Program/Program.h"
+
+#include "Falcor/Scene/VertexAttrib.slangh"
+#include "Falcor/Core/Program/Program.h"
 
 namespace Falcor
 {

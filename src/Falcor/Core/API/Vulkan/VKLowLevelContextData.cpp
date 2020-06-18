@@ -62,6 +62,11 @@ namespace Falcor
         pApiData->recordingCmds = true;
     }
 
+    LowLevelContextData::LowLevelContextData(CommandQueueType type, CommandQueueHandle queue): mType(type), mpQueue(queue)
+    {
+
+    }
+
     LowLevelContextData::SharedPtr LowLevelContextData::create(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
     {
         SharedPtr pThis = SharedPtr(new LowLevelContextData(type, queue));

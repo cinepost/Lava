@@ -148,7 +148,7 @@ namespace Falcor
         mCommandsPending = true;
         uint32_t subresourceCount = pTexture->getArraySize() * pTexture->getMipCount();
         if (pTexture->getType() == Texture::Type::TextureCube)
-        {
+        {   
             subresourceCount *= 6;
         }
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);

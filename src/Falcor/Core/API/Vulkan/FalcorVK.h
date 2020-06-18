@@ -25,9 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_VULKAN_FALCORVK_H_
+#define SRC_FALCOR_CORE_API_VULKAN_FALCORVK_H_
+
 #define NOMINMAX
-#include "API/Formats.h"
+#include "Falcor/Core/API/Formats.h"
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
@@ -49,91 +51,92 @@
     #pragma comment(lib, "vulkan-1.lib")
 #endif
 
-#include "API/Vulkan/VKSmartHandle.h"
+#include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/API/Vulkan/VKSmartHandle.h"
 
-namespace Falcor
-{
-    struct VkFormatDesc
-    {
-        ResourceFormat falcorFormat;
-        VkFormat vkFormat;
-    };
+namespace Falcor {
 
-    extern const VkFormatDesc kVkFormatDesc[];
+struct VkFormatDesc {
+    ResourceFormat falcorFormat;
+    VkFormat vkFormat;
+};
 
-    inline VkFormat getVkFormat(ResourceFormat format)
-    {
-        assert(kVkFormatDesc[(uint32_t)format].falcorFormat == format);
-        assert(kVkFormatDesc[(uint32_t)format].vkFormat != VK_FORMAT_UNDEFINED);
-        return kVkFormatDesc[(uint32_t)format].vkFormat;
-    }
+extern const VkFormatDesc kVkFormatDesc[];
 
-    using HeapCpuHandle = void*;
-    using HeapGpuHandle = void*;
+inline VkFormat getVkFormat(ResourceFormat format) {
+    assert(kVkFormatDesc[(uint32_t)format].falcorFormat == format);
+    assert(kVkFormatDesc[(uint32_t)format].vkFormat != VK_FORMAT_UNDEFINED);
+    return kVkFormatDesc[(uint32_t)format].vkFormat;
+}
 
-    class DescriptorHeapEntry;
+using HeapCpuHandle = void*;
+using HeapGpuHandle = void*;
+
+class DescriptorHeapEntry;
 
 #ifdef _WIN32
-    using WindowHandle = HWND;
+using WindowHandle = HWND;
 #else
-    struct WindowHandle
-    {
-        Display* pDisplay;
-        Window window;
-    };
+struct WindowHandle {
+    Display* pDisplay;
+    Window window;
+};
 #endif
 
-    using DeviceHandle = VkDeviceData::SharedPtr;
-    using CommandListHandle = VkCommandBuffer;
-    using CommandQueueHandle = VkQueue;
-    using ApiCommandQueueType = uint32_t;
-    using CommandAllocatorHandle = VkHandle<VkCommandPool>::SharedPtr;
-    using CommandSignatureHandle = void*;
-    using FenceHandle = VkSemaphore;
-    using ResourceHandle = VkResource<VkImage, VkBuffer>::SharedPtr;
-    using RtvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
-    using DsvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
-    using SrvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
-    using UavHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
-    using CbvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
-    using FboHandle = VkFbo::SharedPtr;
-    using SamplerHandle = VkHandle<VkSampler>::SharedPtr;
-    using GpuAddress = size_t;
-    using DescriptorSetApiHandle = VkDescriptorSet;
-    using QueryHeapHandle = VkHandle<VkQueryPool>::SharedPtr;
+using DeviceHandle = VkDeviceData::SharedPtr;
+using CommandListHandle = VkCommandBuffer;
+using CommandQueueHandle = VkQueue;
+using ApiCommandQueueType = uint32_t;
+using CommandAllocatorHandle = VkHandle<VkCommandPool>::SharedPtr;
+using CommandSignatureHandle = void*;
+using FenceHandle = VkSemaphore;
+using ResourceHandle = VkResource<VkImage, VkBuffer>::SharedPtr;
+using RtvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
+using DsvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
+using SrvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
+using UavHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
+using CbvHandle = VkResource<VkImageView, VkBufferView>::SharedPtr;
+using FboHandle = VkFbo::SharedPtr;
+using SamplerHandle = VkHandle<VkSampler>::SharedPtr;
+using GpuAddress = size_t;
+using DescriptorSetApiHandle = VkDescriptorSet;
+using QueryHeapHandle = VkHandle<VkQueryPool>::SharedPtr;
 
-    using GraphicsStateHandle = VkHandle<VkPipeline>::SharedPtr;
-    using ComputeStateHandle = VkHandle<VkPipeline>::SharedPtr;
-    using ShaderHandle = VkHandle<VkShaderModule>::SharedPtr;
-    using ShaderReflectionHandle = void*;
-    using RootSignatureHandle = VkRootSignature::SharedPtr;
-    using DescriptorHeapHandle = VkHandle<VkDescriptorPool>::SharedPtr;
+using GraphicsStateHandle = VkHandle<VkPipeline>::SharedPtr;
+using ComputeStateHandle = VkHandle<VkPipeline>::SharedPtr;
+using ShaderHandle = VkHandle<VkShaderModule>::SharedPtr;
+using ShaderReflectionHandle = void*;
+using RootSignatureHandle = VkRootSignature::SharedPtr;
+using DescriptorHeapHandle = VkHandle<VkDescriptorPool>::SharedPtr;
 
-    using VaoHandle = void*;
-    using VertexShaderHandle = void*;
-    using FragmentShaderHandle = void*;
-    using DomainShaderHandle = void*;
-    using HullShaderHandle = void*;
-    using GeometryShaderHandle = void*;
-    using ComputeShaderHandle = void*;
-    using ProgramHandle = void*;
-    using DepthStencilStateHandle = void*;
-    using RasterizerStateHandle = void*;
-    using BlendStateHandle = void*;
+using VaoHandle = void*;
+using VertexShaderHandle = void*;
+using FragmentShaderHandle = void*;
+using DomainShaderHandle = void*;
+using HullShaderHandle = void*;
+using GeometryShaderHandle = void*;
+using ComputeShaderHandle = void*;
+using ProgramHandle = void*;
+using DepthStencilStateHandle = void*;
+using RasterizerStateHandle = void*;
+using BlendStateHandle = void*;
 
-    static const uint32_t kDefaultSwapChainBuffers = 3;
+static const uint32_t kDefaultSwapChainBuffers = 3;
 
-    using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
+using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 
-    uint32_t getMaxViewportCount();
-}
+uint32_t getMaxViewportCount();
+
+}  // namespace Falcor
 
 #define VK_FAILED(res) (res != VK_SUCCESS)
 
 #if _LOG_ENABLED
-#define vk_call(a) {auto r = a; if(VK_FAILED(r)) { logError("Vulkan call failed.\n"#a); }}
+#define vk_call(a) {auto r = a; if (VK_FAILED(r)) { logError("Vulkan call failed.\n"#a); }}
 #else
 #define vk_call(a) a
 #endif
 
 #define UNSUPPORTED_IN_VULKAN(msg_) {logWarning(msg_ + std::string(" is not supported in Vulkan. Ignoring call."));}
+
+#endif  // SRC_FALCOR_CORE_API_VULKAN_FALCORVK_H_

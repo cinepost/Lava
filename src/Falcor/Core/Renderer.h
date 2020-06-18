@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/UI/UserInput.h"
-#include "Utils/ArgList.h"
 
-namespace Falcor
-{
+#include "Falcor/Utils/UI/UserInput.h"
+#include "Falcor/Utils/ArgList.h"
+
+namespace Falcor {
     class Clock;
     class FrameRate;
 

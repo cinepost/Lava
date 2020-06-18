@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/assimp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/glm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/glm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/glslang" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/slang-binaries" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/spirv-headers" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/spirv-tools" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/third_party/slang/external/tinyobjloader" vcs="Git" />
+  </component>
+</project>
