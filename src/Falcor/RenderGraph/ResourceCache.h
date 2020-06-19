@@ -26,8 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderGraph/RenderPassReflection.h"
-#include "Core/API/Resource.h"
+
+#include "Falcor/RenderGraph/RenderPassReflection.h"
+#include "Falcor/Core/API/Resource.h"
 
 namespace Falcor
 {

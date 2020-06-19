@@ -25,96 +25,92 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Console.h"
+
 #include "imgui/imgui.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        static const uint32_t kLineCount = 16;
-        class GuiWindow
-        {
-        public:
-            GuiWindow(Gui* pGui) : mpGui(pGui)
-            {
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-                height = (float)ImGui::GetTextLineHeight() * kLineCount;
-                ImGui::SetNextWindowSize({ ImGui::GetIO().DisplaySize.x, 0 }, ImGuiCond_Always);
-                ImGui::SetNextWindowPos({0, ImGui::GetIO().DisplaySize.y - height}, ImGuiCond_Always);
-                
-                ImGui::Begin("##Console", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-                ImGui::PushFont(pGui->getFont("monospace"));
-            }
+namespace Falcor {
+    
+namespace {
 
-            ~GuiWindow()
-            {
-                ImGui::PopFont();
-                ImGui::PopStyleVar();
-                ImGui::End();
-                ImGui::PopStyleVar();
-            }
-
-            float height = 0;
-        private:
-            Gui* mpGui;
-        };
-
-        std::string sLog;
-        char sCmd[2048] = {};
-        bool sFlush = false;
-        bool scrollToBottom = true;
-
-        SCRIPT_BINDING(Console)
-        {
-            auto cls = []() {sLog = {}; };
-            m.func_("cls", cls);
-        }
+static const uint32_t kLineCount = 16;
+class GuiWindow {
+ public:
+    GuiWindow(Gui* pGui) : mpGui(pGui) {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        height = (float)ImGui::GetTextLineHeight() * kLineCount;
+        ImGui::SetNextWindowSize({ ImGui::GetIO().DisplaySize.x, 0 }, ImGuiCond_Always);
+        ImGui::SetNextWindowPos({0, ImGui::GetIO().DisplaySize.y - height}, ImGuiCond_Always);
+        
+        ImGui::Begin("##Console", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::PushFont(pGui->getFont("monospace"));
     }
 
-    bool Console::flush()
-    {
-        if (!sFlush) return false;
-        std::string cmd(sCmd); // We need to use a temporary copy so that we could reset `sCmd`, otherwise we will end up with an endless loop
-        sCmd[0] = 0;
-        sFlush = false;
-
-        try
-        {
-            sLog += Scripting::runScript(cmd);
-        }
-        catch (const std::exception& e)
-        {
-            sLog += std::string(e.what()) + "\n";
-        };
-        return true;
+    ~GuiWindow() {
+        ImGui::PopFont();
+        ImGui::PopStyleVar();
+        ImGui::End();
+        ImGui::PopStyleVar();
     }
 
-    void Console::render(Gui* pGui)
-    {
-        GuiWindow w(pGui);
+    float height = 0;
+ private:
+    Gui* mpGui;
+};
 
-        ImGui::BeginChild("log", {0, w.height - ImGui::GetTextLineHeight() - 5 });
-        ImGui::TextUnformatted(sLog.c_str());
-        if(scrollToBottom)
-        {
-            ImGui::SetScrollHere(1.0f);
-            scrollToBottom = false;
-        }
-        ImGui::EndChild();
+std::string sLog;
+char sCmd[2048] = {};
+bool sFlush = false;
+bool scrollToBottom = true;
 
-        ImGui::PushItemWidth(ImGui::GetWindowWidth());
-        if(ImGui::InputText("##console", sCmd, arraysize(sCmd), ImGuiInputTextFlags_EnterReturnsTrue))
-        {
-            sFlush = true;
-            sLog += std::string(sCmd) + "\n";
-            scrollToBottom = true;
-            ImGui::SetKeyboardFocusHere();
-            ImGui::GetIO().KeysDown[(uint32_t)KeyboardEvent::Key::Enter] = false;
-        }
-        if(ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-        pGui->setActiveFont("");
-    }
+SCRIPT_BINDING(Console) {
+    auto cls = []() {sLog = {}; };
+    m.func_("cls", cls);
 }
+
+}  // namespace
+
+bool Console::flush() {
+    if (!sFlush) return false;
+    std::string cmd(sCmd); // We need to use a temporary copy so that we could reset `sCmd`, otherwise we will end up with an endless loop
+    sCmd[0] = 0;
+    sFlush = false;
+
+    try {
+        sLog += Scripting::runScript(cmd);
+    } catch (const std::exception& e) {
+        sLog += std::string(e.what()) + "\n";
+    };
+    return true;
+}
+
+void Console::render(Gui* pGui) {
+    GuiWindow w(pGui);
+
+    ImGui::BeginChild("log", {0, w.height - ImGui::GetTextLineHeight() - 5 });
+    ImGui::TextUnformatted(sLog.c_str());
+    
+    if(scrollToBottom) {
+        ImGui::SetScrollHere(1.0f);
+        scrollToBottom = false;
+    }
+    
+    ImGui::EndChild();
+
+    ImGui::PushItemWidth(ImGui::GetWindowWidth());
+    
+    if(ImGui::InputText("##console", sCmd, arraysize(sCmd), ImGuiInputTextFlags_EnterReturnsTrue)) {
+        sFlush = true;
+        sLog += std::string(sCmd) + "\n";
+        scrollToBottom = true;
+        ImGui::SetKeyboardFocusHere();
+        ImGui::GetIO().KeysDown[(uint32_t)KeyboardEvent::Key::Enter] = false;
+    }
+
+    if(ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+    pGui->setActiveFont("");
+}
+
+}  // namespace Falcor

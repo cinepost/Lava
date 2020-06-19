@@ -25,89 +25,78 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Sampler.h"
 
-namespace Falcor
-{
-    struct SamplerData
-    {
-        uint32_t objectCount = 0;
-        Sampler::SharedPtr pDefaultSampler;
-    };
-    SamplerData gSamplerData;
+namespace Falcor {
 
-    Sampler::Sampler(const Desc& desc) : mDesc(desc)
-    {
-        gSamplerData.objectCount++;
-    }
+struct SamplerData {
+    uint32_t objectCount = 0;
+    Sampler::SharedPtr pDefaultSampler;
+};
+SamplerData gSamplerData;
 
-    Sampler::~Sampler()
-    {
-        gSamplerData.objectCount--;
-        if (gSamplerData.objectCount <= 1) gSamplerData.pDefaultSampler = nullptr;
-    }
-
-    Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter)
-    {
-        mMagFilter = magFilter;
-        mMinFilter = minFilter;
-        mMipFilter = mipFilter;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setMaxAnisotropy(uint32_t maxAnisotropy)
-    {
-        mMaxAnisotropy = maxAnisotropy;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setLodParams(float minLod, float maxLod, float lodBias)
-    {
-        mMinLod = minLod;
-        mMaxLod = maxLod;
-        mLodBias = lodBias;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setComparisonMode(ComparisonMode mode)
-    {
-        mComparisonMode = mode;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW)
-    {
-        mModeU = modeU;
-        mModeV = modeV;
-        mModeW = modeW;
-        return *this;
-    }
-
-    Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor)
-    {
-        mBorderColor = borderColor;
-        return *this;
-    }
-
-    Sampler::SharedPtr Sampler::getDefault()
-    {
-        if (gSamplerData.pDefaultSampler == nullptr)
-        {
-            gSamplerData.pDefaultSampler = create(Desc());
-        }
-        return gSamplerData.pDefaultSampler;
-    }
-
-    SCRIPT_BINDING(Sampler)
-    {
-        m.regClass(Sampler);
-
-        auto filter = m.enum_<Sampler::Filter>("SamplerFilter");
-        filter.regEnumVal(Sampler::Filter::Linear).regEnumVal(Sampler::Filter::Point);
-
-        auto addressing = m.enum_<Sampler::AddressMode>("AddressMode");
-        addressing.regEnumVal(Sampler::AddressMode::Wrap).regEnumVal(Sampler::AddressMode::Mirror).regEnumVal(Sampler::AddressMode::Clamp);
-        addressing.regEnumVal(Sampler::AddressMode::Border).regEnumVal(Sampler::AddressMode::MirrorOnce);
-    }
+Sampler::Sampler(const Desc& desc) : mDesc(desc) {
+    gSamplerData.objectCount++;
 }
+
+Sampler::~Sampler() {
+    gSamplerData.objectCount--;
+    if (gSamplerData.objectCount <= 1) gSamplerData.pDefaultSampler = nullptr;
+}
+
+Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter) {
+    mMagFilter = magFilter;
+    mMinFilter = minFilter;
+    mMipFilter = mipFilter;
+    return *this;
+}
+
+Sampler::Desc& Sampler::Desc::setMaxAnisotropy(uint32_t maxAnisotropy) {
+    mMaxAnisotropy = maxAnisotropy;
+    return *this;
+}
+
+Sampler::Desc& Sampler::Desc::setLodParams(float minLod, float maxLod, float lodBias) {
+    mMinLod = minLod;
+    mMaxLod = maxLod;
+    mLodBias = lodBias;
+    return *this;
+}
+
+Sampler::Desc& Sampler::Desc::setComparisonMode(ComparisonMode mode) {
+    mComparisonMode = mode;
+    return *this;
+}
+
+Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW) {
+    mModeU = modeU;
+    mModeV = modeV;
+    mModeW = modeW;
+    return *this;
+}
+
+Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
+    mBorderColor = borderColor;
+    return *this;
+}
+
+Sampler::SharedPtr Sampler::getDefault() {
+    if (gSamplerData.pDefaultSampler == nullptr) {
+        gSamplerData.pDefaultSampler = create(Desc());
+    }
+    return gSamplerData.pDefaultSampler;
+}
+
+SCRIPT_BINDING(Sampler) {
+    m.regClass(Sampler);
+
+    auto filter = m.enum_<Sampler::Filter>("SamplerFilter");
+    filter.regEnumVal(Sampler::Filter::Linear).regEnumVal(Sampler::Filter::Point);
+
+    auto addressing = m.enum_<Sampler::AddressMode>("AddressMode");
+    addressing.regEnumVal(Sampler::AddressMode::Wrap).regEnumVal(Sampler::AddressMode::Mirror).regEnumVal(Sampler::AddressMode::Clamp);
+    addressing.regEnumVal(Sampler::AddressMode::Border).regEnumVal(Sampler::AddressMode::MirrorOnce);
+}
+
+}  // namespace Falcor

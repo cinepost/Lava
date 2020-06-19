@@ -28,7 +28,7 @@
 #include "AccumulatePass.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -41,7 +41,7 @@ static void regAccumulatePass(ScriptBindings::Module& m)
     e.regEnumVal(AccumulatePass::Precision::SingleCompensated);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("AccumulatePass", "Temporal accumulation", AccumulatePass::create);
     ScriptBindings::registerBinding(regAccumulatePass);

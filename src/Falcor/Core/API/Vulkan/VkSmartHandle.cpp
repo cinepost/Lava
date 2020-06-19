@@ -68,23 +68,23 @@ namespace Falcor {
                     if (mImage) {
                         vkDestroyImage(gpDevice->getApiHandle(), mImage, nullptr);
                     } else {
-                        LOG_WARN("mImage is NULL");
+                        //LOG_WARN("mImage is NULL");
                     }
                     break;
                 case VkResourceType::Buffer:
                     if (mBuffer) {
                         vkDestroyBuffer(gpDevice->getApiHandle(), mBuffer, nullptr);
                     } else {
-                        LOG_WARN("mBuffer is NULL");
+                        //LOG_WARN("mBuffer is NULL");
                     }
                     break;
                 default:
                     should_not_get_here();
             }
             vkFreeMemory(gpDevice->getApiHandle(), mDeviceMem, nullptr);
-            fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
-            std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
-            LOG_DBG("memory freed");
+            //fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
+            //std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
+            //LOG_DBG("memory freed");
         }
     }
 
@@ -100,14 +100,14 @@ namespace Falcor {
                 if (mImage) {
                     vkDestroyImageView(gpDevice->getApiHandle(), mImage, nullptr);
                 } else {
-                    LOG_WARN("mImage is NULL");
+                    //LOG_WARN("mImage is NULL");
                 }
                 break;
             case VkResourceType::Buffer:
                 if (mBuffer) {
                     vkDestroyBufferView(gpDevice->getApiHandle(), mBuffer, nullptr);
                 } else {
-                    LOG_WARN("mBuffer is NULL");
+                    //LOG_WARN("mBuffer is NULL");
                 }
                 break;
             default:

@@ -26,8 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
-#include "Utils/Algorithm/ComputeParallelReduction.h"
+
+#include "Falcor/Falcor.h"
+#include "Falcor/Utils/Algorithm/ComputeParallelReduction.h"
 
 using namespace Falcor;
 

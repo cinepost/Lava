@@ -25,6 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <fstream>
+#include <string>
+
 #include "stdafx.h"
 #include "AppData.h"
 #define RAPIDJSON_HAS_STDSTRING 1
@@ -33,41 +36,36 @@
 #include "rapidjson/ostreamwrapper.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/error/en.h"
-#include <fstream>
 
 using namespace Falcor;
 
-namespace Mogwai
-{
-    namespace
-    {
-        const char kRecentScripts[] = "recentScripts";
-        const char kRecentScenes[] = "recentScenes";
+namespace Mogwai {
 
-        size_t kMaxRecentFiles = 25;
-    }
+namespace {
 
-    AppData::AppData(const fs::path& path)
-        : mPath(path.lexically_normal())
-    {
+const char kRecentScripts[] = "recentScripts";
+const char kRecentScenes[] = "recentScenes";
+
+size_t kMaxRecentFiles = 25;
+
+}  // namespace
+
+    AppData::AppData(const fs::path& path): mPath(path.lexically_normal()) {
         // Make sure directories exist.
         fs::create_directories(mPath.parent_path());
 
         loadFromFile(mPath);
     }
 
-    void AppData::addRecentScript(const std::string& filename)
-    {
+    void AppData::addRecentScript(const std::string& filename) {
         addRecentFile(mRecentScripts, filename);
     }
 
-    void AppData::addRecentScene(const std::string& filename)
-    {
+    void AppData::addRecentScene(const std::string& filename) {
         addRecentFile(mRecentScenes, filename);
     }
 
-    void AppData::addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename)
-    {
+    void AppData::addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename) {
         if (!doesFileExist(filename)) return;
         std::string path = canonicalizeFilename(filename);
         recentFiles.erase(std::remove(recentFiles.begin(), recentFiles.end(), path), recentFiles.end());
@@ -76,20 +74,17 @@ namespace Mogwai
         save();
     }
 
-    void AppData::removeNonExistingFiles(std::vector<std::string>& files)
-    {
+    void AppData::removeNonExistingFiles(std::vector<std::string>& files) {
         files.erase(std::remove_if(files.begin(), files.end(), [](const std::string& filename) {
             return !doesFileExist(filename);
         }), files.end());
     }
 
-    void AppData::save()
-    {
+    void AppData::save() {
         saveToFile(mPath);
     }
 
-    void AppData::loadFromFile(const fs::path& path)
-    {
+    void AppData::loadFromFile(const fs::path& path) {
         rapidjson::Document document;
 
         std::ifstream ifs(path);
@@ -98,19 +93,15 @@ namespace Mogwai
         rapidjson::IStreamWrapper isw(ifs);
         document.ParseStream(isw);
 
-        if (document.HasParseError())
-        {
+        if (document.HasParseError()) {
             logWarning("Failed to parse Mogwai settings file " + path.string() + ": " + rapidjson::GetParseError_En(document.GetParseError()));
             return;
         }
 
-        auto readStringArray = [](const rapidjson::Value& value)
-        {
+        auto readStringArray = [](const rapidjson::Value& value) {
             std::vector<std::string> strings;
-            if (value.IsArray())
-            {
-                for (const auto& item : value.GetArray())
-                {
+            if (value.IsArray()) {
+                for (const auto& item : value.GetArray()) {
                     if (item.IsString()) strings.push_back(item.GetString());
                 }
             }
@@ -124,14 +115,12 @@ namespace Mogwai
         removeNonExistingFiles(mRecentScenes);
     }
 
-    void AppData::saveToFile(const fs::path& path)
-    {
+    void AppData::saveToFile(const fs::path& path) {
         rapidjson::Document document;
         document.SetObject();
         auto& allocator = document.GetAllocator();
 
-        auto writeStringArray = [&allocator](const std::vector<std::string>& strings)
-        {
+        auto writeStringArray = [&allocator](const std::vector<std::string>& strings) {
             rapidjson::Value value(rapidjson::kArrayType);
             for (const auto& item : strings) value.PushBack(rapidjson::StringRef(item), allocator);
             return value;
@@ -147,4 +136,5 @@ namespace Mogwai
         rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
         document.Accept(writer);
     }
-}
+
+}  // namespace Mogwai

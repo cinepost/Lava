@@ -25,64 +25,70 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_QUERYHEAP_H_
+#define SRC_FALCOR_CORE_API_QUERYHEAP_H_
+
 #include <deque>
+#include <memory>
 
-namespace Falcor
-{
-    class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<QueryHeap>;
-        using ApiHandle = QueryHeapHandle;
+#include "Falcor/Core/Framework.h"
 
-        enum class Type
-        {
-            Timestamp,
-            Occlusion,
-            PipelineStats
-        };
+namespace Falcor {
 
-        static const uint32_t kInvalidIndex = 0xffffffff;
+class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
+ public:
+    using SharedPtr = std::shared_ptr<QueryHeap>;
+    using ApiHandle = QueryHeapHandle;
 
-        /** Create a new query heap.
-            \param[in] type Type of queries.
-            \param[in] count Number of queries.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(Type type, uint32_t count) { return SharedPtr(new QueryHeap(type, count)); }
-
-        const ApiHandle& getApiHandle() const { return mApiHandle; }
-        uint32_t getQueryCount() const { return mCount; }
-        Type getType() const { return mType; }
-
-        /** Allocates a new query.
-            \return Query index, or kInvalidIndex if out of queries.
-        */
-        uint32_t allocate()
-        {
-            if (mFreeQueries.size())
-            {
-                uint32_t entry = mFreeQueries.front();
-                mFreeQueries.pop_front();
-                return entry;
-            }
-            if (mCurrentObject < mCount) return mCurrentObject++;
-            else return kInvalidIndex;
-        }
-
-        void release(uint32_t entry)
-        {
-            assert(entry != kInvalidIndex),
-            mFreeQueries.push_back(entry);
-        }
-
-    private:
-        QueryHeap(Type type, uint32_t count);
-        ApiHandle mApiHandle;
-        uint32_t mCount = 0;
-        uint32_t mCurrentObject = 0;
-        std::deque<uint32_t> mFreeQueries;
-        Type mType;
+    enum class Type {
+        Timestamp,
+        Occlusion,
+        PipelineStats
     };
-}
+
+    static const uint32_t kInvalidIndex = 0xffffffff;
+
+    /** Create a new query heap.
+        \param[in] type Type of queries.
+        \param[in] count Number of queries.
+        \return New object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(Type type, uint32_t count) { return SharedPtr(new QueryHeap(type, count)); }
+
+    const ApiHandle& getApiHandle() const { return mApiHandle; }
+    uint32_t getQueryCount() const { return mCount; }
+    Type getType() const { return mType; }
+
+    /** Allocates a new query.
+        \return Query index, or kInvalidIndex if out of queries.
+    */
+    uint32_t allocate() {
+        if (mFreeQueries.size()) {
+            uint32_t entry = mFreeQueries.front();
+            mFreeQueries.pop_front();
+            return entry;
+        }
+        if (mCurrentObject < mCount) {
+            return mCurrentObject++;
+        } else {
+            return kInvalidIndex;
+        }
+    }
+
+    void release(uint32_t entry) {
+        assert(entry != kInvalidIndex),
+        mFreeQueries.push_back(entry);
+    }
+
+ private:
+    QueryHeap(Type type, uint32_t count);
+    ApiHandle mApiHandle;
+    uint32_t mCount = 0;
+    uint32_t mCurrentObject = 0;
+    std::deque<uint32_t> mFreeQueries;
+    Type mType;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_QUERYHEAP_H_

@@ -25,8 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
+#ifndef SRC_MOGWAI_APPDATA_H_
+#define SRC_MOGWAI_APPDATA_H_
+
+#include <vector>
+#include <string>
 
 #ifdef _WIN32
   #include <filesystem>
@@ -36,33 +39,37 @@
   namespace fs = boost::filesystem;
 #endif
 
-namespace Mogwai
-{
-    /** Holds a set of persistent application data stored in the user directory.
-    */
-    class AppData
-    {
-    public:
-        AppData(const fs::path& path);
+#include "Falcor/Falcor.h"
 
-        const std::vector<std::string>& getRecentScripts() const { return mRecentScripts; }
-        const std::vector<std::string>& getRecentScenes() const { return mRecentScenes; }
+namespace Mogwai {
 
-        void addRecentScript(const std::string& filename);
-        void addRecentScene(const std::string& filename);
+/** Holds a set of persistent application data stored in the user directory.
+*/
+class AppData {
+ public:
+    explicit AppData(const fs::path& path);
 
-    private:
-        void addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename);
-        void removeNonExistingFiles(std::vector<std::string>& files);
+    const std::vector<std::string>& getRecentScripts() const { return mRecentScripts; }
+    const std::vector<std::string>& getRecentScenes() const { return mRecentScenes; }
 
-        void save();
+    void addRecentScript(const std::string& filename);
+    void addRecentScene(const std::string& filename);
 
-        void loadFromFile(const fs::path& path);
-        void saveToFile(const fs::path& path);
+ private:
+    void addRecentFile(std::vector<std::string>& recentFiles, const std::string& filename);
+    void removeNonExistingFiles(std::vector<std::string>& files);
 
-        fs::path mPath;
+    void save();
 
-        std::vector<std::string> mRecentScripts;
-        std::vector<std::string> mRecentScenes;
-    };
-}
+    void loadFromFile(const fs::path& path);
+    void saveToFile(const fs::path& path);
+
+    fs::path mPath;
+
+    std::vector<std::string> mRecentScripts;
+    std::vector<std::string> mRecentScenes;
+};
+
+}  // namespace Mogwai
+
+#endif  // SRC_MOGWAI_APPDATA_H_

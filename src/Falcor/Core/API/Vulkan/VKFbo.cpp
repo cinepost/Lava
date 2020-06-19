@@ -57,24 +57,13 @@ namespace Falcor {
         // Bind the color buffers
         uint32_t arraySize = -1;
         std::vector<VkImageView> attachments(Fbo::getMaxColorTargetCount() + 1);  // 1 is for the depth
-        LOG_DBG("vector size: %u", attachments.size());
 
         uint32_t rtCount = 0;
         for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++) {
             if (mColorAttachments[i].pTexture) {
-                LOG_DBG("texture width: %u", mColorAttachments[i].pTexture->getWidth());
-
-                LOG_DBG("getRenderTargetView getType: %s", typeid(getRenderTargetView(i)->getApiHandle().getType()).name());
-
                 assert(arraySize == -1 || arraySize == getRenderTargetView(i)->getViewInfo().arraySize);
                 arraySize = getRenderTargetView(i)->getViewInfo().arraySize;
-                LOG_DBG("arraySize: %u", arraySize);
-                auto o = getRenderTargetView(i)->getApiHandle().getImage();
-                std::string s = typeid(o).name();
-                LOG_DBG("o: %s", s.c_str());
-                LOG_DBG("ok");
                 attachments[rtCount] = getRenderTargetView(i)->getApiHandle();
-                LOG_DBG("attachments ok");
                 rtCount++;
             }
         }
@@ -127,10 +116,8 @@ namespace Falcor {
     RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
         const auto& rt = mColorAttachments[rtIndex];
         if (rt.pTexture) {
-            printf("gRTV-1\n");
             return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
         } else {
-            printf("gRTV-2\n");
             return RenderTargetView::getNullView();
         }
     }

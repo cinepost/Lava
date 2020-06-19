@@ -25,23 +25,24 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Font.h"
-#include "Core/API/Texture.h"
 #include <fstream>
+#include <string>
+#include <algorithm>
+#include <clocale>
 
-namespace Falcor
-{
-    static std::string GetFontFilename(const std::string& FontName, float size)
-    {
+#include "Falcor/stdafx.h"
+#include "Font.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Utils/Debug/debug.h"
+
+namespace Falcor {
+    static std::string GetFontFilename(const std::string& FontName, float size) {
         std::string Filename = FontName + std::to_string(size);
         return Filename;
     }
 
-    Font::Font()
-    {
-        if (!loadFromFile("DejaVu Sans Mono", 14))
-        {
+    Font::Font() {
+        if (!loadFromFile("DejaVu Sans Mono", 14)) {
             #ifdef _WIN32
             throw std::exception("Failed to create font resource");
             #else
@@ -50,16 +51,14 @@ namespace Falcor
         }
     }
 
-    Font::UniquePtr Font::create()
-    {
+    Font::UniquePtr Font::create() {
         return UniquePtr(new Font());
     }
 
     static const uint32_t FontMagicNumber = 0xDEAD0001;
 
 #pragma pack(1)
-    struct FontFileHeader
-    {
+    struct FontFileHeader {
         uint32_t StructSize;
         uint32_t CharDataSize;
         uint32_t MagicNumber;
@@ -70,8 +69,7 @@ namespace Falcor
     };
 
 #pragma pack(1)
-    struct FontCharData
-    {
+    struct FontCharData {
         char Char;
         float TopLeftX;
         float TopLeftY;
@@ -81,15 +79,15 @@ namespace Falcor
 
     Font::~Font() = default;
 
-    bool Font::loadFromFile(const std::string& FontName, float size)
-    {
+    bool Font::loadFromFile(const std::string& FontName, float size) {
+        std::setlocale(LC_NUMERIC, "C");  //  enforce a dot as decimal separator
         std::string Filename = "Framework/Fonts/" + GetFontFilename(FontName, size);
         std::string TextureFilename;
         findFileInDataDirectories(Filename + ".dds", TextureFilename);
         std::string DataFilename;
         findFileInDataDirectories(Filename + ".bin", DataFilename);
-        if((doesFileExist(TextureFilename) == false) || (doesFileExist(DataFilename) == false))
-        {
+        if ((doesFileExist(TextureFilename) == false) || (doesFileExist(DataFilename) == false)) {
+            LOG_FTL("Unable to load .bin .dds files with base name %s", Filename.c_str());
             return false;
         }
 
@@ -103,8 +101,7 @@ namespace Falcor
         bValid = bValid && (Header.CharDataSize == sizeof(FontCharData));
         bValid = bValid && (Header.CharCount == mCharCount);
 
-        if(bValid == false)
-        {
+        if (bValid == false) {
             Data.close();
             return false;
         }
@@ -114,12 +111,10 @@ namespace Falcor
 
         mLetterSpacing = 0;
         // Load the char data
-        for(auto i = 0; i < mCharCount; i++)
-        {
+        for (auto i = 0; i < mCharCount; i++) {
             FontCharData CharData;
             Data.read((char*)&CharData, sizeof(FontCharData));
-            if(CharData.Char != i + mFirstChar)
-            {
+            if (CharData.Char != i + mFirstChar) {
                 Data.close();
                 return false;
             }

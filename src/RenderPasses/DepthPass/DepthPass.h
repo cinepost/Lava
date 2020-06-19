@@ -32,9 +32,11 @@
 using namespace Falcor;
 
 #ifdef BUILD_DEPTH_PASS
-#define dllpassdecl __declspec(dllexport)
+// #define dllpassdecl __declspec(dllexport)
+#define dllpassdecl falcorexport
 #else
-#define dllpassdecl __declspec(dllimport)
+// #define dllpassdecl __declspec(dllimport)
+#define dllpassdecl falcorimport
 #endif
 
 class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass>

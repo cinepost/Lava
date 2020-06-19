@@ -562,12 +562,11 @@ Texture::SharedPtr createTextureFromLegacyDds(DdsData& ddsData, const std::strin
     format = convertBgrxFormatToBgra(ddsData, format);
 
     // Load the volume or 3D texture
-    if(ddsData.header.flags & DdsHeader::kDepthMask) {
+    if (ddsData.header.flags & DdsHeader::kDepthMask) {
         flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
         return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
-    }
-    // Load the cubemap texture
-    else if(ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask) {
+    } else if (ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask) {
+        // Load the cubemap texture
         return Texture::createCube(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     } else {
         // This is a 2D Texture
@@ -618,8 +617,7 @@ Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool gen
     printf("Texture %s found as %s\n", filename.c_str(), fullpath.c_str());
 
     Texture::SharedPtr pTex;
-    if (hasSuffix(filename, ".dds"))
-    {
+    if (hasSuffix(filename, ".dds")) {
         pTex = createTextureFromDDSFile(fullpath, generateMipLevels, loadAsSrgb, bindFlags);
     } else {
         Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);

@@ -4,6 +4,8 @@ set (SOURCES
   ./Mogwai.cpp
   ./MogwaiScripting.cpp
   ./MogwaiSettings.cpp
+  ./Extensions/Capture/*.cpp
+  ./Extensions/Profiler/*.cpp
 )
 
 # ImGui

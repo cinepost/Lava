@@ -132,7 +132,14 @@ uint32_t getMaxViewportCount();
 #define VK_FAILED(res) (res != VK_SUCCESS)
 
 #if _LOG_ENABLED
-#define vk_call(a) {auto r = a; if (VK_FAILED(r)) { logError("Vulkan call failed.\n"#a); }}
+#define vk_call(a) \
+{ \
+    auto r = a; \
+    if (VK_FAILED(r)) { \
+        LOG_ERR("Vulkan call \"a\"failed!"); \
+        logError("Vulkan call failed.\n"#a); \
+    } \
+}
 #else
 #define vk_call(a) a
 #endif

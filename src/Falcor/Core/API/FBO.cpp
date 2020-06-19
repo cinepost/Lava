@@ -390,13 +390,11 @@ namespace Falcor
         return mColorAttachments[index].pTexture;
     }
 
-    const Texture::SharedPtr& Fbo::getDepthStencilTexture() const
-    {
+    const Texture::SharedPtr& Fbo::getDepthStencilTexture() const {
         return mDepthStencil.pTexture;
     }
 
-    void Fbo::finalize() const
-    {
+    void Fbo::finalize() const {
         LOG_DBG("finalizing...");
         if (mpDesc == nullptr)
         {

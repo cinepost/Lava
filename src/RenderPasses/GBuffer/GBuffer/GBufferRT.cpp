@@ -25,6 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifdef FALCOR_D3D
+
 #include "Falcor.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
@@ -228,3 +230,5 @@ void GBufferRT::renderUI(Gui::Widgets& widget)
         mOptionsChanged = true;
     }
 }
+
+#endif  // FALCOR_D3D

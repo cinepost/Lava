@@ -27,26 +27,26 @@
  **************************************************************************/
 #pragma once
 
-namespace Falcor
-{
-    /** Flags to indicate what have changed since last frame.
-        One or more flags can be OR'ed together.
-    */
-    enum class RenderPassRefreshFlags : uint32_t
-    {
-        None                    = 0x0,
-        LightingChanged         = 0x1,      ///< Lighting has changed.
-        RenderOptionsChanged    = 0x2,      ///< Options that affect the rendering have changed.
-    };
+namespace Falcor {
 
-    /** The refresh flags above are passed to RenderPass::execute() via a
-        field with this name in the dictionary.
-    */
-    static const char kRenderPassRefreshFlags[] = "_refreshFlags";
+/** Flags to indicate what have changed since last frame.
+    One or more flags can be OR'ed together.
+*/
+enum class RenderPassRefreshFlags : uint32_t {
+    None                    = 0x0,
+    LightingChanged         = 0x1,      ///< Lighting has changed.
+    RenderOptionsChanged    = 0x2,      ///< Options that affect the rendering have changed.
+};
 
-    /** First available preudorandom number generator dimension.
-    */
-    static const char kRenderPassPRNGDimension[] = "_prngDimension";
+/** The refresh flags above are passed to RenderPass::execute() via a
+    field with this name in the dictionary.
+*/
+static const char kRenderPassRefreshFlags[] = "_refreshFlags";
 
-    enum_class_operators(RenderPassRefreshFlags);
-}
+/** First available preudorandom number generator dimension.
+*/
+static const char kRenderPassPRNGDimension[] = "_prngDimension";
+
+enum_class_operators(RenderPassRefreshFlags);
+
+}  // namespace Falcor

@@ -25,15 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include <fstream>
+#include <vector>
+
+#include "Falcor/stdafx.h"
 #include "RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
-#include "Core/API/Device.h"
+#include "Falcor/Core/API/Device.h"
 #include "RenderGraph.h"
-#include <fstream>
 
-namespace Falcor
-{
+namespace Falcor {
+
     extern std::vector<RenderGraph*> gRenderGraphs;
     static const std::string kDllSuffix = ".falcor";
 
@@ -44,25 +46,21 @@ namespace Falcor
 
 #define addClass(c, desc) registerClass(#c, desc, (PassFunc<c>)c::create)
 
-    RenderPassLibrary& RenderPassLibrary::instance()
-    {
+    RenderPassLibrary& RenderPassLibrary::instance() {
         if (!spInstance) spInstance = new RenderPassLibrary;
         return *spInstance;
     }
 
-    RenderPassLibrary::~RenderPassLibrary()
-    {
+    RenderPassLibrary::~RenderPassLibrary() {
         mPasses.clear();
         while (mLibs.size()) releaseLibrary(mLibs.begin()->first);
     }
 
-    void RenderPassLibrary::shutdown()
-    {
+    void RenderPassLibrary::shutdown() {
         safe_delete(spInstance);
     }
 
-    static bool addBuiltinPasses()
-    {
+    static bool addBuiltinPasses() {
         auto& lib = RenderPassLibrary::instance();
 
         lib.addClass(ResolvePass, ResolvePass::kDesc);
@@ -73,41 +71,33 @@ namespace Falcor
     static const bool b = addBuiltinPasses();
 
 
-    RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func)
-    {
+    RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func) {
         registerInternal(className, desc, func, nullptr);
         return *this;
     }
 
-    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle module)
-    {
-        if (mPasses.find(className) != mPasses.end())
-        {
+    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle module) {
+        if (mPasses.find(className) != mPasses.end()) {
             logWarning("Trying to register a render-pass `" + std::string(className) + "` to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
-        }
-        else
-        {
+        } else {
             mPasses[className] = ExtendedDesc(className, desc, func, module);
         }
     }
 
-    std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict)
-    {
+    std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict) {
 #ifdef _MSC_VER
         static const std::string kDllType = ".dll";
 #else
         static const std::string kDllType = ".so";
 #endif
 
-        if (mPasses.find(className) == mPasses.end())
-        {
+        if (mPasses.find(className) == mPasses.end()) {
             // See if we can load a DLL with the class's name and retry
             std::string libName = className + kDllType;
             logInfo("Can't find a render-pass named `" + std::string(className) + "`. Trying to load a render-pass library `" + libName + '`');
             loadLibrary(libName);
 
-            if (mPasses.find(className) == mPasses.end())
-            {
+            if (mPasses.find(className) == mPasses.end()) {
                 logWarning("Trying to create a render-pass named `" + std::string(className) + "`, but no such class exists in the library");
                 return nullptr;
             }
@@ -117,49 +107,41 @@ namespace Falcor
         return renderPass.func(pRenderContext, dict);
     }
 
-    RenderPassLibrary::DescVec RenderPassLibrary::enumerateClasses() const
-    {
+    RenderPassLibrary::DescVec RenderPassLibrary::enumerateClasses() const {
         DescVec v;
         v.reserve(mPasses.size());
         for (const auto& p : mPasses) v.push_back(p.second);
         return v;
     }
 
-    RenderPassLibrary::StrVec RenderPassLibrary::enumerateLibraries()
-    {
+    RenderPassLibrary::StrVec RenderPassLibrary::enumerateLibraries() {
         StrVec libNames;
-        for (const auto& lib : spInstance->mLibs)
-        {
+        for (const auto& lib : spInstance->mLibs) {
             libNames.push_back(lib.first);
         }
         return libNames;
     }
 
-    std::string RenderPassLibrary::getClassDescription(const std::string& className)
-    {
+    std::string RenderPassLibrary::getClassDescription(const std::string& className) {
         auto classDescIt = spInstance->mPasses.find(className);
         return std::string(classDescIt->second.desc);
     }
 
-    void copyDllFile(const std::string& fullpath)
-    {
+    void copyDllFile(const std::string& fullpath) {
         std::ifstream src(fullpath, std::ios::binary);
         std::ofstream dst(fullpath + kDllSuffix, std::ios::binary);
         dst << src.rdbuf();
     }
 
-    void RenderPassLibrary::loadLibrary(const std::string& filename)
-    {
+    void RenderPassLibrary::loadLibrary(const std::string& filename) {
         std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
 
-        if (doesFileExist(fullpath) == false)
-        {
+        if (doesFileExist(fullpath) == false) {
             logWarning("Can't load render-pass library `" + fullpath + "`. File not found");
             return;
         }
 
-        if (mLibs.find(fullpath) != mLibs.end())
-        {
+        if (mLibs.find(fullpath) != mLibs.end()) {
             logInfo("Render-pass library `" + fullpath + "` already loaded. Ignoring `loadLibrary()` call");
             return;
         }
@@ -172,11 +154,9 @@ namespace Falcor
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
         // Add the DLL project directory to the search paths
-        if (isDevelopmentMode())
-        {
+        if (isDevelopmentMode()) {
             auto libProjPath = (const char*(*)(void))getDllProcAddress(l, "getProjDir");
-            if (libProjPath)
-            {
+            if (libProjPath) {
                 const char* projDir = libProjPath();
                 addDataDirectory(std::string(projDir) + "/Data/");
             }
@@ -188,13 +168,11 @@ namespace Falcor
         for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
     }
 
-    void RenderPassLibrary::releaseLibrary(const std::string& filename)
-    {
+    void RenderPassLibrary::releaseLibrary(const std::string& filename) {
         std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
 
         auto libIt = mLibs.find(fullpath);
-        if (libIt == mLibs.end())
-        {
+        if (libIt == mLibs.end()) {
             logWarning("Can't unload render-pass library `" + fullpath + "`. The library wasn't loaded");
             return;
         }
@@ -203,18 +181,15 @@ namespace Falcor
 
         // Delete all the classes that were owned by the module
         DllHandle module = libIt->second.module;
-        for (auto it = mPasses.begin(); it != mPasses.end();)
-        {
+        for (auto it = mPasses.begin(); it != mPasses.end();) {
             if (it->second.module == module) it = mPasses.erase(it);
             else ++it;
         }
 
         // Remove the DLL project directory to the search paths
-        if (isDevelopmentMode())
-        {
+        if (isDevelopmentMode()) {
             auto libProjPath = (const char*(*)(void))getDllProcAddress(module, "getProjDir");
-            if (libProjPath)
-            {
+            if (libProjPath) {
                 const char* projDir = libProjPath();
                 removeDataDirectory(std::string(projDir) + "/Data/");
             }
@@ -225,8 +200,7 @@ namespace Falcor
         mLibs.erase(libIt);
     }
 
-    void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, std::string name)
-    {
+    void RenderPassLibrary::reloadLibrary(RenderContext* pRenderContext, std::string name) {
         assert(pRenderContext);
 
         auto lastTime = getFileModifiedTime(name);
@@ -234,8 +208,7 @@ namespace Falcor
 
         DllHandle module = mLibs[name].module;
 
-        struct PassesToReplace
-        {
+        struct PassesToReplace {
             RenderGraph* pGraph;
             std::string className;
             uint32_t nodeId;
@@ -243,18 +216,14 @@ namespace Falcor
 
         std::vector<PassesToReplace> passesToReplace;
 
-        for (auto& passDesc : mPasses)
-        {
+        for (auto& passDesc : mPasses) {
             if (passDesc.second.module != module) continue;
 
             // Go over all the graphs and remove this pass
-            for (auto& pGraph : gRenderGraphs)
-            {
+            for (auto& pGraph : gRenderGraphs) {
                 // Loop over the passes
-                for (auto& node : pGraph->mNodeData)
-                {
-                    if (getClassTypeName(node.second.pPass.get()) == passDesc.first)
-                    {
+                for (auto& node : pGraph->mNodeData) {
+                    if (getClassTypeName(node.second.pPass.get()) == passDesc.first) {
                         passesToReplace.push_back({ pGraph, passDesc.first, node.first });
                         node.second.pPass = nullptr;
                         pGraph->mpExe.reset();
@@ -268,15 +237,13 @@ namespace Falcor
         loadLibrary(name);
 
         // Recreate the passes
-        for (auto& r : passesToReplace)
-        {
+        for (auto& r : passesToReplace) {
             r.pGraph->mNodeData[r.nodeId].pPass = createPass(pRenderContext, r.className.c_str());
             r.pGraph->mpExe = nullptr;
         }
     }
 
-    void RenderPassLibrary::reloadLibraries(RenderContext* pRenderContext)
-    {
+    void RenderPassLibrary::reloadLibraries(RenderContext* pRenderContext) {
         // Copy the libs vector so we don't screw up the iterator
         auto libs = mLibs;
         for (const auto& l : libs) reloadLibrary(pRenderContext, l.first);

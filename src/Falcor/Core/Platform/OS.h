@@ -26,12 +26,16 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include <thread>
 #include <functional>
+#include <string>
+
+#include "Falcor/Core/Framework.h"
+
 #pragma warning (disable : 4251)
 
-namespace Falcor
-{
+namespace Falcor {
     class Window;
 
     /*!
@@ -41,9 +45,8 @@ namespace Falcor
 
     /** Utility class to start/stop OS services
     */
-    class OSServices
-    {
-    public:
+    class OSServices {
+     public:
         static void start();
         static void stop();
     };
@@ -71,8 +74,7 @@ namespace Falcor
 
     /** Message box icons.
     */
-    enum class MsgBoxIcon
-    {
+    enum class MsgBoxIcon {
         None,
         Info,
         Warning,
@@ -81,8 +83,7 @@ namespace Falcor
 
     /** Type of message box to display
     */
-    enum class MsgBoxType
-    {
+    enum class MsgBoxType {
         Ok,                 ///< Single 'OK' button
         OkCancel,           ///< OK/Cancel buttons
         RetryCancel,        ///< Retry/Cancel buttons
@@ -92,15 +93,14 @@ namespace Falcor
 
     /** Types of buttons
     */
-    enum class MsgBoxButton
-    {
-        Ok,     ///< 'OK' Button
-        Retry,  ///< Retry button
-        Cancel, ///< Cancel Button
-        Abort,  ///< Abort Button
-        Ignore, ///< Ignore Button
-        Yes,    ///< Yes Button
-        No,     ///< No Button
+    enum class MsgBoxButton {
+        Ok,      ///< 'OK' Button
+        Retry,   ///< Retry button
+        Cancel,  ///< Cancel Button
+        Abort,   ///< Abort Button
+        Ignore,  ///< Ignore Button
+        Yes,     ///< Yes Button
+        No,      ///< No Button
     };
 
     /** Display a message box. By default, shows a message box with a single 'OK' button.
@@ -113,8 +113,7 @@ namespace Falcor
 
     /** Custom message box button.
     */
-    struct MsgBoxCustomButton
-    {
+    struct MsgBoxCustomButton {
         uint32_t id;            ///< Button id used as return code. The id uint32_t(-1) is reserved.
         std::string title;      ///< Button title.
     };
@@ -163,8 +162,7 @@ namespace Falcor
 
     /** Structure to help with file dialog file-extension filters
     */
-    struct dlldecl FileDialogFilter
-    {
+    struct dlldecl FileDialogFilter {
         FileDialogFilter(const std::string& ext_, const std::string& desc_ = {}) : ext(ext_), desc(desc_) {}
         std::string desc;   // The description ("Portable Network Graphics")
         std::string ext;    // The extension, without the `.` ("png")
@@ -354,8 +352,7 @@ namespace Falcor
     */
     dlldecl time_t getFileModifiedTime(const std::string& filename);
 
-    enum class ThreadPriorityType : int32_t
-    {
+    enum class ThreadPriorityType : int32_t {
         BackgroundBegin     = -2,   //< Indicates I/O-intense thread
         BackgroundEnd       = -1,   //< Indicates the end of I/O-intense operations in the thread
         Lowest              = 0,    //< Lowest priority
@@ -417,4 +414,5 @@ namespace Falcor
     */
     dlldecl void postQuitMessage(int32_t exitCode);
     /*! @} */
-};
+
+}  // namespace Falcor

@@ -17,6 +17,7 @@ file( GLOB SOURCES
     ./Scene/Importers/*.cpp
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
+    ./Scene/ParticleSystem/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -38,6 +39,16 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_vulkan.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
+)
+
+file( GLOB SHADERS
+    ./Utils/UI/*.slang
+    ./Utils/Math/*.slang
+    ./Utils/Color/*.slang
+    ./Utils/Debug/*.slang
+    ./Utils/Algorithm/*.slang
+    ./Utils/Sampling/*.slang
+    ./Utils/Sampling/Pseudorandom/*.slang
 )
 
 # ImGui
@@ -116,7 +127,7 @@ find_library(SLANG_LIBRARY slang HINTS ${PROJECT_SOURCE_DIR}/third_party/slang/b
 endif ()
 message ("SLANG lib: ${SLANG_LIBRARY}")
 
-add_definitions(-D_PROJECT_DIR_="${CMAKE_SOURCE_DIR}")
+add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 #add_dependencies( falcor_lib assimp )
 
@@ -135,6 +146,17 @@ target_link_libraries(
     ${Vulkan_LIBRARY}
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
+)
+
+# Copy/install all needed shaders
+set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders)
+file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
+#file(COPY ${SHADERS} DESTINATION ${SHADERS_OUTPUT_DIRECTORY})
+file(
+    COPY Utils Scene
+    DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
+    FILES_MATCHING
+        PATTERN "*.slang*"
 )
 
 if(APPLE)

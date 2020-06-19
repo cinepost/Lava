@@ -25,169 +25,173 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
+#ifndef SRC_MOGWAI_MOGWAI_H_
+#define SRC_MOGWAI_MOGWAI_H_
+
+#include <vector>
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+#include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "AppData.h"
 
 using namespace Falcor;
 
-namespace Mogwai
-{
-    class Renderer;
-    class Extension
-    {
-    public:
-        class Bindings
-        {
-        public:
-            ScriptBindings::Module& getModule() { return mModule; }
-            ScriptBindings::Class<Renderer>& getMogwaiClass() { return mMogwai; }
-            template<typename T>
-            void addGlobalObject(const std::string& name, const T& obj, const std::string& desc)
-            {
-                if (mGlobalObjects.find(name) != mGlobalObjects.end()) {
-                #ifdef _WIN32
-                    throw std::exception(("Object `" + name + "` already exists").c_str());
-                #else
-                    throw std::runtime_error("Object `" + name + "` already exists");
-                #endif 
-                }
-                
-                Scripting::getGlobalContext().setObject(name, obj);
-                mGlobalObjects[name] = desc;
+namespace Mogwai {
+
+class Renderer;
+
+class Extension {
+ public:
+    class Bindings {
+     public:
+        ScriptBindings::Module& getModule() { return mModule; }
+        ScriptBindings::Class<Renderer>& getMogwaiClass() { return mMogwai; }
+        template<typename T>
+        void addGlobalObject(const std::string& name, const T& obj, const std::string& desc) {
+            if (mGlobalObjects.find(name) != mGlobalObjects.end()) {
+            #ifdef _WIN32
+                throw std::exception(("Object `" + name + "` already exists").c_str());
+            #else
+                throw std::runtime_error("Object `" + name + "` already exists");
+            #endif
             }
 
-        private:
-            Bindings(ScriptBindings::Module& m, ScriptBindings::Class<Renderer>& c) : mModule(m), mMogwai(c) {}
-            friend class Renderer;
-            std::unordered_map<std::string, std::string> mGlobalObjects;
-            ScriptBindings::Module& mModule;
-            ScriptBindings::Class<Renderer>& mMogwai;
-        };
+            Scripting::getGlobalContext().setObject(name, obj);
+            mGlobalObjects[name] = desc;
+        }
 
-        using UniquePtr = std::unique_ptr<Extension>;
-        virtual ~Extension() = default;
-
-        using CreateFunc = UniquePtr(*)(Renderer* pRenderer);
-
-        virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
-        virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {};
-        virtual void renderUI(Gui* pGui) {};
-        virtual bool mouseEvent(const MouseEvent& e) { return false; }
-        virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
-        virtual void scriptBindings(Bindings& bindings) {};
-        virtual std::string getScript() { return {}; }
-        virtual void addGraph(RenderGraph* pGraph) {};
-        virtual void removeGraph(RenderGraph* pGraph) {};
-        virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
+     private:
+        Bindings(ScriptBindings::Module& m, ScriptBindings::Class<Renderer>& c) : mModule(m), mMogwai(c) {}
+        friend class Renderer;
+        std::unordered_map<std::string, std::string> mGlobalObjects;
+        ScriptBindings::Module& mModule;
+        ScriptBindings::Class<Renderer>& mMogwai;
     };
 
-    class Renderer : public IRenderer
-    {
-    public:
-        Renderer();
-        void onLoad(RenderContext* pRenderContext) override;
-        void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-        void onResizeSwapChain(uint32_t width, uint32_t height) override;
-        bool onKeyEvent(const KeyboardEvent& e) override;
-        bool onMouseEvent(const MouseEvent& e) override;
-        void onGuiRender(Gui* pGui) override;
-        void onHotReload(HotReloadFlags reloaded) override;
-        void onShutdown() override;
-        void onDroppedFile(const std::string& filename) override;
-        void loadScriptDialog();
-        void loadScriptDeferred(const std::string& filename);
-        void loadScript(const std::string& filename);
-        void dumpConfig(std::string filename = {}) const;
-        static std::string getVersionString();
+    using UniquePtr = std::unique_ptr<Extension>;
+    virtual ~Extension() = default;
 
-        static void extend(Extension::CreateFunc func, const std::string& name);
+    using CreateFunc = UniquePtr(*)(Renderer* pRenderer);
 
-        static constexpr uint32_t kMajorVersion = 0;
-        static constexpr uint32_t kMinorVersion = 1;
+    virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {}
+    virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {}
+    virtual void renderUI(Gui* pGui) {}
+    virtual bool mouseEvent(const MouseEvent& e) { return false; }
+    virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
+    virtual void scriptBindings(Bindings& bindings) {}
+    virtual std::string getScript() { return {}; }
+    virtual void addGraph(RenderGraph* pGraph) {}
+    virtual void removeGraph(RenderGraph* pGraph) {}
+    virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {}
+};
 
-        const AppData& getAppData() const { return mAppData; }
+class Renderer : public IRenderer {
+ public:
+    Renderer();
+    void onLoad(RenderContext* pRenderContext) override;
+    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onResizeSwapChain(uint32_t width, uint32_t height) override;
+    bool onKeyEvent(const KeyboardEvent& e) override;
+    bool onMouseEvent(const MouseEvent& e) override;
+    void onGuiRender(Gui* pGui) override;
+    void onHotReload(HotReloadFlags reloaded) override;
+    void onShutdown() override;
+    void onDroppedFile(const std::string& filename) override;
+    void loadScriptDialog();
+    void loadScriptDeferred(const std::string& filename);
+    void loadScript(const std::string& filename);
+    void dumpConfig(std::string filename = {}) const;
+    static std::string getVersionString();
 
-        RenderGraph* getActiveGraph() const;
+    static void extend(Extension::CreateFunc func, const std::string& name);
+
+    static constexpr uint32_t kMajorVersion = 0;
+    static constexpr uint32_t kMinorVersion = 1;
+
+    const AppData& getAppData() const { return mAppData; }
+
+    RenderGraph* getActiveGraph() const;
 
 //    private: // MOGWAI
-        friend class Extension;
-        std::vector<Extension::UniquePtr> mpExtensions;
+    friend class Extension;
+    std::vector<Extension::UniquePtr> mpExtensions;
 
-        struct DebugWindow
-        {
-            std::string windowName;
-            std::string currentOutput;
-            static size_t index;
-        };
-
-        struct GraphData
-        {
-            RenderGraph::SharedPtr pGraph;
-            std::string mainOutput;
-            bool showAllOutputs = false;
-            std::vector<std::string> originalOutputs;
-            std::vector<DebugWindow> debugWindows;
-            std::unordered_map<std::string, uint32_t> graphOutputRefs;
-        };
-
-        Scene::SharedPtr mpScene;
-
-        void addGraph(const RenderGraph::SharedPtr& pGraph);
-        void removeGraph(const RenderGraph::SharedPtr& pGraph);
-        void removeGraph(const std::string& graphName);
-        RenderGraph::SharedPtr getGraph(const std::string& graphName) const;
-        void initGraph(const RenderGraph::SharedPtr& pGraph, GraphData* pData);
-
-        void removeActiveGraph();
-        void loadSceneDialog();
-        void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
-        void setScene(Scene::ConstSharedPtrRef pScene);
-        Scene::SharedPtr getScene() const;
-        void executeActiveGraph(RenderContext* pRenderContext);
-        void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
-        void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
-
-        std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
-        void graphOutputsGui(Gui::Widgets& widget);
-        bool renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize); // Returns false if the window was closed
-        void renderOutputUI(Gui::Widgets& widget, const Gui::DropdownList& dropdown, std::string& selectedOutput);
-        void addDebugWindow();
-        void eraseDebugWindow(size_t id);
-        void unmarkOutput(const std::string& name);
-        void markOutput(const std::string& name);
-        size_t findGraph(std::string_view name);
-
-        AppData mAppData;
-
-        std::vector<GraphData> mGraphs;
-        uint32_t mActiveGraph = 0;
-        Sampler::SharedPtr mpSampler = nullptr;
-        std::string mScriptFilename;
-
-        // Editor stuff
-        void openEditor();
-        void resetEditor();
-        void editorFileChangeCB();
-        void applyEditorChanges();
-        void setActiveGraph(uint32_t active);
-
-        static const size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
-        size_t mEditorProcess = 0;
-        std::string mEditorTempFile;
-        std::string mEditorScript;
-
-        // Scripting
-        void registerScriptBindings(ScriptBindings::Module& m);
-        std::string mGlobalHelpMessage;
+    struct DebugWindow {
+        std::string windowName;
+        std::string currentOutput;
+        static size_t index;
     };
 
-#define MOGWAI_EXTENSION(Name)                         \
-    struct ExtendRenderer##Name {                      \
-        ExtendRenderer##Name()                         \
-        {                                              \
-            Renderer::extend(Name::create, #Name);     \
-        }                                              \
-    } gRendererExtensions##Name;
-}
+    struct GraphData {
+        RenderGraph::SharedPtr pGraph;
+        std::string mainOutput;
+        bool showAllOutputs = false;
+        std::vector<std::string> originalOutputs;
+        std::vector<DebugWindow> debugWindows;
+        std::unordered_map<std::string, uint32_t> graphOutputRefs;
+    };
+
+    Scene::SharedPtr mpScene;
+
+    void addGraph(const RenderGraph::SharedPtr& pGraph);
+    void removeGraph(const RenderGraph::SharedPtr& pGraph);
+    void removeGraph(const std::string& graphName);
+    RenderGraph::SharedPtr getGraph(const std::string& graphName) const;
+    void initGraph(const RenderGraph::SharedPtr& pGraph, GraphData* pData);
+
+    void removeActiveGraph();
+    void loadSceneDialog();
+    void loadScene(std::string filename, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
+    void setScene(Scene::ConstSharedPtrRef pScene);
+    Scene::SharedPtr getScene() const;
+    void executeActiveGraph(RenderContext* pRenderContext);
+    void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
+    void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
+
+    std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
+    void graphOutputsGui(Gui::Widgets& widget);
+    bool renderDebugWindow(Gui::Widgets& widget, const Gui::DropdownList& dropdown, DebugWindow& data, const uint2& winSize); // Returns false if the window was closed
+    void renderOutputUI(Gui::Widgets& widget, const Gui::DropdownList& dropdown, std::string& selectedOutput);
+    void addDebugWindow();
+    void eraseDebugWindow(size_t id);
+    void unmarkOutput(const std::string& name);
+    void markOutput(const std::string& name);
+    size_t findGraph(std::string_view name);
+
+    AppData mAppData;
+
+    std::vector<GraphData> mGraphs;
+    uint32_t mActiveGraph = 0;
+    Sampler::SharedPtr mpSampler = nullptr;
+    std::string mScriptFilename;
+
+    // Editor stuff
+    void openEditor();
+    void resetEditor();
+    void editorFileChangeCB();
+    void applyEditorChanges();
+    void setActiveGraph(uint32_t active);
+
+    static const size_t kInvalidProcessId = -1;  // We use this to know that the editor was launching the viewer
+    size_t mEditorProcess = 0;
+    std::string mEditorTempFile;
+    std::string mEditorScript;
+
+    // Scripting
+    void registerScriptBindings(ScriptBindings::Module& m);
+    std::string mGlobalHelpMessage;
+};
+
+#define MOGWAI_EXTENSION(Name)                     \
+struct ExtendRenderer##Name {                      \
+    ExtendRenderer##Name() {                       \
+        Renderer::extend(Name::create, #Name);     \
+    }                                              \
+} gRendererExtensions##Name;
+
+}  // namespace Mogwai
+
+#endif  // SRC_MOGWAI_MOGWAI_H_

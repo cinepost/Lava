@@ -167,8 +167,8 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
 
  private:
     friend SharedPtr;
-    VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { LOG_INFO("VkResource image constructor"); }
-    VkResource(BufferType buffer, VkDeviceMemory mem) : mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { LOG_INFO("VkResource buffer constructor"); }
+    VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { }
+    VkResource(BufferType buffer, VkDeviceMemory mem) : mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { }
 
     VkResourceType mType = VkResourceType::None;
     ImageType mImage = VK_NULL_HANDLE;

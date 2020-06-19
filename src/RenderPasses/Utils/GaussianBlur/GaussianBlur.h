@@ -26,18 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 
 using namespace Falcor;
 
 #ifdef BUILD_GAUSSIAN_PASS
-#define dllpassdecl __declspec(dllexport)
+#define dllpassdecl falcorexport
 #else
-#define dllpassdecl __declspec(dllimport)
+#define dllpassdecl falcorimport
 #endif
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
 class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_this<RenderPass, GaussianBlur>
 {

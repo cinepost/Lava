@@ -549,32 +549,26 @@ namespace Falcor
         // translation unit for Slang (so that they can see and resolve
         // definitions).
         //
-        for(auto src : mDesc.mSources)
-        {
+        for (auto src : mDesc.mSources) {
             // Register the translation unit with Slang
             int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
             assert(translationUnitIndex == translationUnitsAdded);
             translationUnitsAdded++;
 
             // Add source code to the translation unit
-            if (src.type == Desc::Source::Type::File)
-            {
+            if (src.type == Desc::Source::Type::File) {
                 // If this is not an HLSL or a SLANG file, display a warning
-                if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false))
-                {
+                if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false)) {
                     logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
                 }
                 std::string fullpath;
-                if (!findFileInShaderDirectories(src.pLibrary->getFilename(), fullpath))
-                {
+                if (!findFileInShaderDirectories(src.pLibrary->getFilename(), fullpath)) {
                     logError("Can't find file " + src.pLibrary->getFilename());
                     spDestroyCompileRequest(pSlangRequest);
                     return nullptr;
                 }
                 spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullpath.c_str());
-            }
-            else
-            {
+            } else {
                 assert(src.type == Desc::Source::Type::String);
                 spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, "", src.str.c_str());
             }

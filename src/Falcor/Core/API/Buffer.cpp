@@ -43,8 +43,7 @@ namespace Falcor
             bool createCounter)
         {
             const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
-            if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer)
-            {
+            if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
                 #ifdef _WIN32
                 throw std::exception(("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.").c_str());
                 #else
@@ -62,20 +61,16 @@ namespace Falcor
 
     Buffer::Buffer(size_t size, BindFlags bindFlags, CpuAccess cpuAccess)
         : Resource(Type::Buffer, bindFlags, size)
-        , mCpuAccess(cpuAccess)
-    {
-    }
+        , mCpuAccess(cpuAccess) {}
 
-    Buffer::SharedPtr Buffer::create(size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
-    {
+    Buffer::SharedPtr Buffer::create(size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
         Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(size, bindFlags, cpuAccess));
         pBuffer->apiInit(pInitData != nullptr);
         if (pInitData) pBuffer->setBlob(pInitData, 0, size);
         return pBuffer;
     }
 
-    Buffer::SharedPtr Buffer::createTyped(ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData)
-    {
+    Buffer::SharedPtr Buffer::createTyped(ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
         size_t size = elementCount * getFormatBytesPerBlock(format);
         SharedPtr pBuffer = create(size, bindFlags, cpuAccess, pInitData);
         assert(pBuffer);

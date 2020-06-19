@@ -25,19 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Falcor/Core/API/DescriptorSet.h"
 #include "VKDescriptorData.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout);
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
 
-    void DescriptorSet::apiInit()
-    {
+    void DescriptorSet::apiInit() {
         auto layout = createDescriptorSetLayout(mLayout);
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -48,44 +47,38 @@ namespace Falcor
         mpApiData = std::make_shared<DescriptorSetApiData>(layout, mpPool->getApiHandle(0), mApiHandle);
     }
 
-    DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
-    {
+    DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const {
         UNSUPPORTED_IN_VULKAN("DescriptorSet::getCpuHandle");
         return nullptr;
     }
 
-    DescriptorSet::GpuHandle DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
-    {
+    DescriptorSet::GpuHandle DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const {
         UNSUPPORTED_IN_VULKAN("DescriptorSet::getGpuHandle");
         return nullptr;
     }
 
     template<bool isUav, typename ViewType>
-    static void setSrvUavCommon(VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type)
-    {
+    static void setSrvUavCommon(VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
 
-        if (handle.getType() == VkResourceType::Buffer)
-        {
-            //TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
-            //if (pTypedBuffer) 
-            //{
-            //    texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
-            //    write.pTexelBufferView = &texelBufferView;
-            //} else {
+        if (handle.getType() == VkResourceType::Buffer) {
+            // TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
+            // if (pTypedBuffer)
+            // {
+            //     texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
+            //     write.pTexelBufferView = &texelBufferView;
+            // } else {
                 Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();
                 write.pBufferInfo = &buffer;
-            //}
-        }
-        else
-        {
+            // }
+        } else {
             assert(handle.getType() == VkResourceType::Image);
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             image.imageView = handle;
@@ -103,18 +96,15 @@ namespace Falcor
         vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
     }
 
-    void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv)
-    {
+    void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
         setSrvUavCommon<false>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
-    void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav)
-    {
+    void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
         setSrvUavCommon<true>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
-    void DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler)
-    {
+    void DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler) {
         VkDescriptorImageInfo info;
         info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         info.imageView = nullptr;
@@ -132,8 +122,7 @@ namespace Falcor
         vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
     }
 
-    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView)
-    {
+    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
         VkDescriptorBufferInfo info;
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
         assert(pBuffer);
@@ -153,20 +142,18 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    static void bindCommon(DescriptorSet::ApiHandle set, CopyContext* pCtx, const RootSignature* pRootSig, uint32_t bindLocation)
-    {
+    static void bindCommon(DescriptorSet::ApiHandle set, CopyContext* pCtx, const RootSignature* pRootSig, uint32_t bindLocation) {
         VkPipelineBindPoint bindPoint = forGraphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
         VkDescriptorSet vkSet = set;
         vkCmdBindDescriptorSets(pCtx->getLowLevelData()->getCommandList(), bindPoint, pRootSig->getApiHandle(), bindLocation, 1, &vkSet, 0, nullptr);
     }
 
-    void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
-    {
+    void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
         bindCommon<true>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 
-    void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
-    {
+    void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
         bindCommon<false>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
-}
+
+}  // namespace Falcor

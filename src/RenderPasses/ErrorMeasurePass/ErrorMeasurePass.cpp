@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "ErrorMeasurePass.h"
 #include <sstream>
+#include "ErrorMeasurePass.h"
 
 namespace
 {
@@ -53,12 +53,12 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("ErrorMeasurePass", "Error Measurement Pass", ErrorMeasurePass::create);
 }
@@ -171,7 +171,11 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
         pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
         break;
     default:
+        #ifdef _WIN_32
         throw std::exception("Unhandled OutputId case in ErrorMeasurePass");
+        #else
+        throw std::runtime_error("Unhandled OutputId case in ErrorMeasurePass");
+        #endif
     }
 
     saveMeasurementsToFile();
@@ -203,7 +207,11 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
     float4 error;
     if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
     {
+        #ifdef _WIN_32
         throw std::exception("Error running parallel reduction in ErrorMeasurePass");
+        #else
+        throw std::runtime_error("Error running parallel reduction in ErrorMeasurePass");
+        #endif
     }
 
     const float pixelCountf = static_cast<float>(mpDifferenceTexture->getWidth() * mpDifferenceTexture->getHeight());

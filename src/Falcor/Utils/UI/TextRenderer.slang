@@ -25,12 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+[[vk::binding(0,0)]]
 cbuffer PerFrameCB : register(b0)
 {
 	float4x4 gvpTransform;
 	float3 gFontColor;
 };
 
+[[vk::binding(2,0)]]
 Texture2D gFontTex : register(t2);
 
 float4 calcColor(float2 texC)

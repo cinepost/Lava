@@ -26,17 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/ProgramVars.h"
-#include "Core/Program/ComputeProgram.h"
-#include "Core/State/ComputeState.h"
-#include "Core/State/GraphicsState.h"
-#include "Core/Program/GraphicsProgram.h"
+
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/State/ComputeState.h"
+#include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/Core/Program/GraphicsProgram.h"
 #include "ParticleData.slang"
 
-namespace Falcor
-{
-    class dlldecl ParticleSystem
-    {
+namespace Falcor {
+
+    class dlldecl ParticleSystem {
     public:
         static const char* kVertexShader;           ///< Filename for the vertex shader
         static const char* kSortShader;             ///< Filename for the sorting compute shader

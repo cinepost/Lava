@@ -25,16 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "ScriptBindings.h"
+#ifndef SRC_FALCOR_UTILS_SCRIPTING_CONSOLE_H_
+#define SRC_FALCOR_UTILS_SCRIPTING_CONSOLE_H_
+
 #include <functional>
 
-namespace Falcor
-{
-    class dlldecl Console
-    {
-    public:
+#include "Falcor/Core/Framework.h"
+#include "ScriptBindings.h"
+
+namespace Falcor {
+    class dlldecl Console {
+     public:
         static void render(Gui* pGui);
         static bool flush();
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_SCRIPTING_CONSOLE_H_

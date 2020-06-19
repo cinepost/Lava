@@ -29,6 +29,7 @@ SamplerState gSampler;
 Texture2D gFont;
 Texture2D guiImage;
 
+[[vk::binding(0,0)]]
 cbuffer PerFrameCB : register(b0)
 {
     float2 scale;

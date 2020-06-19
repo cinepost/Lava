@@ -30,12 +30,14 @@
 
 #include <map>
 #include <string>
+#include <algorithm>
+#include <memory>
 
 #include "Resource.h"
 #include "Falcor/Utils/Image/Bitmap.h"
 
 namespace Falcor {
-    
+
 class Sampler;
 class Device;
 class RenderContext;
@@ -179,11 +181,11 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     /** Get a shader-resource view for the entire resource
     */
-    virtual ShaderResourceView::SharedPtr getSRV() override;
+    ShaderResourceView::SharedPtr getSRV() override;
 
     /** Get an unordered access view for the entire resource
     */
-    virtual UnorderedAccessView::SharedPtr getUAV() override;
+    UnorderedAccessView::SharedPtr getUAV() override;
 
     /** Get a shader-resource view.
         \param[in] mostDetailedMip The most detailed mip level of the view

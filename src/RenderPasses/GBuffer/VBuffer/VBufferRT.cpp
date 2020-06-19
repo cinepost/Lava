@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifdef FALCOR_D3D
+
 #include "VBufferRT.h"
-#include "RenderGraph/RenderPassStandardFlags.h"
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 
 const char* VBufferRT::kDesc = "Ray traced V-buffer generation pass";
 
@@ -133,3 +135,5 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Dispatch the rays.
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
 }
+
+#endif  // FALCOR_D3D

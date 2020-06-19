@@ -27,25 +27,33 @@
  **************************************************************************/
 #include "GBufferBase.h"
 #include "GBuffer/GBufferRaster.h"
-#include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRaster.h"
+
+#ifdef FALCOR_D3D
+#include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRT.h"
+#endif
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
-    lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
     lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
+
+    #ifdef FALCOR_D3D
+    lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
     lib.registerClass("VBufferRT", VBufferRT::kDesc, VBufferRT::create);
+    #endif  // FALCOR_D3D
 
     Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
+    #ifdef FALCOR_D3D
     Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
+    #endif  // FALCOR_D3D
 }
 
 void GBufferBase::registerBindings(ScriptBindings::Module& m)

@@ -25,130 +25,120 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "ScriptBindings.h"
+#ifndef SRC_FALCOR_UTILS_SCRIPTING_SCRIPTING_H_
+#define SRC_FALCOR_UTILS_SCRIPTING_SCRIPTING_H_
+
 #include <functional>
-#include "Utils/StringUtils.h"
+#include <vector>
+
+#include "ScriptBindings.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Core/Framework.h"
 
 using namespace pybind11::literals;
 
-namespace Falcor
-{
-    class Gui;
+namespace Falcor {
 
-    class dlldecl Scripting
-    {
-        public:
-            static const FileDialogFilterVec kFileExtensionFilters;
+class Gui;
 
-            class Context
-            {
-            public:
-                template<typename T>
-                struct ObjectDesc
-                {
-                    ObjectDesc(const std::string& name_, const T& obj_) : name(name_), obj(obj_) {}
-                    operator const T&() const { return obj; }
-                    std::string name;
-                    T obj;
-                };
+class dlldecl Scripting {
+    public:
+        static const FileDialogFilterVec kFileExtensionFilters;
 
-                template<typename T>
-                std::vector<ObjectDesc<T>> getObjects()
-                {
-                    std::vector<ObjectDesc<T>> v;
-                    for (const auto& l : mLocals)
-                    {
-                        try
-                        {
-                            if(!l.second.is_none())
-                            {
-                                v.push_back(ObjectDesc<T>(l.first.cast<std::string>(), l.second.cast<T>()));
-                            }
-                        }
-                        catch (const std::exception&) {}
-                    }
-                    return v;
-                }
-
-                template<typename T>
-                void setObject(const std::string& name, T obj)
-                {
-                    mLocals[name.c_str()] = obj;
-                }
-
-                template<typename T>
-                T getObject(const std::string& name) const
-                {
-                    return mLocals[name.c_str()].cast<T>();
-                }
-            private:
-                friend class Scripting;
-                pybind11::dict mLocals;
+        class Context {
+         public:
+            template<typename T>
+            struct ObjectDesc {
+                ObjectDesc(const std::string& name_, const T& obj_) : name(name_), obj(obj_) {}
+                operator const T&() const { return obj; }
+                std::string name;
+                T obj;
             };
 
-            static bool start();
-            static void shutdown();
-            static std::string runScript(const std::string& script);
-            static std::string runScript(const std::string& script, Context& context);
-            static std::string runScriptFromFile(const std::string& filename, Context& context);
-            static Context getGlobalContext();
-            static bool isRunning() { return sRunning; }
-
-            static std::string makeFunc(const std::string& func)
-            {
-                return func + "()\n";
+            template<typename T>
+            std::vector<ObjectDesc<T>> getObjects() {
+                std::vector<ObjectDesc<T>> v;
+                for (const auto& l : mLocals) {
+                    try {
+                        if(!l.second.is_none()) {
+                            v.push_back(ObjectDesc<T>(l.first.cast<std::string>(), l.second.cast<T>()));
+                        }
+                    } catch (const std::exception&) {}
+                }
+                return v;
             }
 
             template<typename T>
-            static std::string getArgString(const T& arg)
-            {
-                std::string a;
-                if (std::is_enum_v<T>) a += getEnumTypeName(arg) + ".";
-                return a + to_string(arg);
+            void setObject(const std::string& name, T obj) {
+                mLocals[name.c_str()] = obj;
             }
 
-            template<typename Arg, typename...Args>
-            static std::string makeFunc(const std::string& func, Arg first, Args...args)
-            {
-                std::string s = func + "(" + getArgString(first);
-                int32_t dummy[] = { 0, (s += ", " + getArgString(args), 0)... };
-                s += ")\n";
-                return s;
+            template<typename T>
+            T getObject(const std::string& name) const {
+                return mLocals[name.c_str()].cast<T>();
             }
+        private:
+            friend class Scripting;
+            pybind11::dict mLocals;
+        };
 
-            static std::string makeMemberFunc(const std::string& var, const std::string& func)
-            {
-                return std::string(var) + "." + makeFunc(func);
-            }
+        static bool start();
+        static void shutdown();
+        static std::string runScript(const std::string& script);
+        static std::string runScript(const std::string& script, Context& context);
+        static std::string runScriptFromFile(const std::string& filename, Context& context);
+        static Context getGlobalContext();
+        static bool isRunning() { return sRunning; }
 
-            template<typename Arg, typename...Args>
-            static std::string makeMemberFunc(const std::string& var, const std::string& func, Arg first, Args...args)
-            {
-                std::string s(var);
-                s += std::string(".") + makeFunc(func, first, args...);
-                return s;
-            }
+        static std::string makeFunc(const std::string& func) {
+            return func + "()\n";
+        }
 
-            static std::string makeGetProperty(const std::string& var, const std::string& property)
-            {
-                return var + "." + property + "\n";
-            }
+        template<typename T>
+        static std::string getArgString(const T& arg) {
+            std::string a;
+            if (std::is_enum_v<T>) a += getEnumTypeName(arg) + ".";
+            return a + to_string(arg);
+        }
 
-            template<typename Arg>
-            static std::string makeSetProperty(const std::string& var, const std::string& property, Arg arg)
-            {
-                return var + "." + property + " = " + getArgString(arg) + "\n";
-            }
+        template<typename Arg, typename...Args>
+        static std::string makeFunc(const std::string& func, Arg first, Args...args) {
+            std::string s = func + "(" + getArgString(first);
+            int32_t dummy[] = { 0, (s += ", " + getArgString(args), 0)... };
+            s += ")\n";
+            return s;
+        }
 
-            static std::string getFilenameString(const std::string& s, bool stripDataDirs = true)
-            {
-                std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
-                std::replace(filename.begin(), filename.end(), '\\', '/');
-                return filename;
-            }
+        static std::string makeMemberFunc(const std::string& var, const std::string& func) {
+            return std::string(var) + "." + makeFunc(func);
+        }
 
-    private:
-        static bool sRunning;
-    };
-}
+        template<typename Arg, typename...Args>
+        static std::string makeMemberFunc(const std::string& var, const std::string& func, Arg first, Args...args) {
+            std::string s(var);
+            s += std::string(".") + makeFunc(func, first, args...);
+            return s;
+        }
+
+        static std::string makeGetProperty(const std::string& var, const std::string& property) {
+            return var + "." + property + "\n";
+        }
+
+        template<typename Arg>
+        static std::string makeSetProperty(const std::string& var, const std::string& property, Arg arg) {
+            return var + "." + property + " = " + getArgString(arg) + "\n";
+        }
+
+        static std::string getFilenameString(const std::string& s, bool stripDataDirs = true) {
+            std::string filename = stripDataDirs ? stripDataDirectories(s) : s;
+            std::replace(filename.begin(), filename.end(), '\\', '/');
+            return filename;
+        }
+
+private:
+    static bool sRunning;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_SCRIPTING_SCRIPTING_H_

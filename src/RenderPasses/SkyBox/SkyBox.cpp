@@ -29,7 +29,7 @@
 #include "glm/gtx/transform.hpp"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -41,7 +41,7 @@ static void regSkyBox(ScriptBindings::Module& m)
     c.property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("SkyBox", "Render an environment map", SkyBox::create);
     ScriptBindings::registerBinding(regSkyBox);

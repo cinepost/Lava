@@ -26,38 +26,41 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#include <memory>
+
 #include "Mogwai.h"
 
-namespace Mogwai
-{
-    class Renderer;
+namespace Mogwai {
 
-    class MogwaiSettings : public Extension
-    {
-    public:
-        using UniquePtr = std::unique_ptr<Extension>;
-        static UniquePtr create(Renderer* pRenderer);
+class Renderer;
 
-        void renderUI(Gui* pGui) override;
-        bool mouseEvent(const MouseEvent& e) override;
-        bool keyboardEvent(const KeyboardEvent& e) override;
+class MogwaiSettings : public Extension {
+ public:
+    using UniquePtr = std::unique_ptr<Extension>;
+    static UniquePtr create(Renderer* pRenderer);
 
-    private:
-        MogwaiSettings(Renderer* pRenderer);
-        Renderer* mpRenderer;
+    void renderUI(Gui* pGui) override;
+    bool mouseEvent(const MouseEvent& e) override;
+    bool keyboardEvent(const KeyboardEvent& e) override;
 
-        void mainMenu(Gui* pGui);
-        void graphs(Gui* pGui);
-        void timeSettings(Gui* pGui);
-        void windowSettings(Gui* pGui);
-        void exitIfNeeded();
+ private:
+    explicit MogwaiSettings(Renderer* pRenderer);
+    Renderer* mpRenderer;
 
-        bool mAutoHideMenu = false;
-        bool mShowFps = true;
-        bool mShowGraphUI = true;
-        bool mShowConsole = false;
-        bool mShowTime = false;
-        bool mShowWinSize = false;
-        uint2 mMousePosition;
-    };
-}
+    void mainMenu(Gui* pGui);
+    void graphs(Gui* pGui);
+    void timeSettings(Gui* pGui);
+    void windowSettings(Gui* pGui);
+    void exitIfNeeded();
+
+    bool mAutoHideMenu = false;
+    bool mShowFps = true;
+    bool mShowGraphUI = true;
+    bool mShowConsole = false;
+    bool mShowTime = false;
+    bool mShowWinSize = false;
+    uint2 mMousePosition;
+};
+
+}  // namespace Mogwai

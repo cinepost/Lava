@@ -28,7 +28,7 @@
 #include "CSM.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -59,7 +59,7 @@ static void regCSM(ScriptBindings::Module& m)
     partitionEnum.regEnumVal(CSM::PartitionMode::PSSM);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("CSM", "Generates a visibility map for a single light source using the CSM technique", CSM::create);
     ScriptBindings::registerBinding(regCSM);
@@ -457,7 +457,8 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
     }
 }
 
-forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
+// forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
+inline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
 {
     // Convert to camera space
     float minDepth = nearPlane + distanceRange.x * camDepthRange;

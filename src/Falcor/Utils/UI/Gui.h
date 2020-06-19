@@ -26,16 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include <unordered_map>
-#include "Core/Program/ProgramVars.h"
-#include "Core/API/VAO.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/State/GraphicsState.h"
+
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/API/VAO.h"
+#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/State/GraphicsState.h"
 
 struct ImFont;
 
-namespace Falcor
-{
+namespace Falcor {
+
     struct MouseEvent;
     struct KeyboardEvent;
 
@@ -50,25 +52,22 @@ namespace Falcor
 
     /** A class wrapping the external GUI library
     */
-    class dlldecl Gui
-    {
-    public:
+    class dlldecl Gui {
+     public:
         using UniquePtr = std::unique_ptr<Gui>;
         using UniqueConstPtr = std::unique_ptr<const Gui>;
         using GraphCallback = float(*)(void*, int32_t index);
 
         /** These structs used to initialize dropdowns
         */
-        struct DropdownValue
-        {
+        struct DropdownValue {
             uint32_t value;      ///< User defined index. Should be unique between different options.
             std::string label;  ///< Label of the dropdown option.
         };
 
         using DropdownList = std::vector <DropdownValue>;
 
-        struct RadioButton
-        {
+        struct RadioButton {
             uint32_t buttonID;  ///< User defined index. Should be unique between different options in the same group.
             std::string label; ///< Label of the radio button.
             bool sameLine;     ///< Whether the button should appear on the same line as the previous widget/button.
@@ -76,14 +75,12 @@ namespace Falcor
 
         using RadioButtonGroup = std::vector<RadioButton>;
 
-        enum class TextFlags
-        {
+        enum class TextFlags {
             Empty = 0x0,
             FitWindow = 0x1,  // Also hides the label
         };
 
-        enum class WindowFlags
-        {
+        enum class WindowFlags {
             Empty = 0x0,        ///< No flags
             ShowTitleBar = 0x1,        ///< Show a title bar
             AllowMove = 0x2,        ///< Allow the window move
@@ -95,16 +92,14 @@ namespace Falcor
             Default = ShowTitleBar | AllowMove | SetFocus | CloseButton
         };
 
-        enum class WidgetFlags
-        {
+        enum class WidgetFlags {
             Empty = 0x0,     ///< No flags
             SameLine = 0x1,     ///< Show a title bar
             Inactive = 0x2,     ///< Inactive widget, disallow edits
         };
 
-        class dlldecl Widgets
-        {
-        public:
+        class dlldecl Widgets {
+         public:
             /** Indent the next item
             */
             void indent(float i);
@@ -313,9 +308,8 @@ namespace Falcor
             Gui* mpGui = nullptr;
         };
 
-        class dlldecl Menu
-        {
-        public:
+        class dlldecl Menu {
+         public:
             /** Create a new menu
                 \param[in] pGui a pointer to the current Gui object
                 \param[in] name the name of the menu
@@ -328,9 +322,8 @@ namespace Falcor
             */
             void release();
 
-            class dlldecl Dropdown
-            {
-            public:
+            class dlldecl Dropdown {
+             public:
                 /** Create a new dropdown menu
                     \param[in] pGui a pointer to the current Gui object
                     \param[in] label the name of the menu
@@ -385,9 +378,8 @@ namespace Falcor
             Gui* mpGui = nullptr;
         };
 
-        class dlldecl Group : public Widgets
-        {
-        public:
+        class dlldecl Group : public Widgets {
+         public:
             Group() = default;
 
             /** Create a collapsible group block
@@ -415,9 +407,8 @@ namespace Falcor
             void release();
         };
 
-        class dlldecl Window : public Widgets
-        {
-        public:
+        class dlldecl Window : public Widgets {
+         public:
             /** Create a new window
                 \param[in] pGui a pointer to the current Gui object
                 \param[in] size size in pixels of the window
@@ -470,9 +461,8 @@ namespace Falcor
             void windowSize(uint32_t width, uint32_t height);
         };
 
-        class dlldecl MainMenu : public Menu
-        {
-        public:
+        class dlldecl MainMenu : public Menu {
+         public:
             /** Create a new main menu bar.
                 \param[in] pGui a pointer to the current Gui object
             */
@@ -533,4 +523,5 @@ namespace Falcor
 
     enum_class_operators(Gui::WindowFlags);
     enum_class_operators(Gui::TextFlags);
-}
+
+}  // namespace Falcor

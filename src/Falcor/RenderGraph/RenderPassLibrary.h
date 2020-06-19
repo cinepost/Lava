@@ -26,21 +26,20 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Scripting/Dictionary.h"
+
+#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "RenderPass.h"
 
-namespace Falcor
-{
-    class dlldecl RenderPassLibrary
-    {
-    public:
+namespace Falcor {
+
+    class dlldecl RenderPassLibrary {
+     public:
         RenderPassLibrary() = default;
         RenderPassLibrary(RenderPassLibrary&) = delete;
         ~RenderPassLibrary();
         using CreateFunc = std::function<RenderPass::SharedPtr(RenderContext*, const Dictionary&)>;
 
-        struct RenderPassDesc
-        {
+        struct RenderPassDesc {
             RenderPassDesc() = default;
             RenderPassDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
 
@@ -104,8 +103,7 @@ namespace Falcor
     private:
         static RenderPassLibrary* spInstance;
 
-        struct ExtendedDesc : RenderPassDesc
-        {
+        struct ExtendedDesc : RenderPassDesc {
             ExtendedDesc() = default;
             ExtendedDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc_, func_), module(module_) {}
 
@@ -114,8 +112,7 @@ namespace Falcor
 
         void registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle hmodule);
 
-        struct LibDesc
-        {
+        struct LibDesc {
             DllHandle module;
             time_t lastModified;
         };

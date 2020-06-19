@@ -27,9 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "ProgramReflection.h"
-#include "Core/API/Texture.h"
-#include "Core/API/Sampler.h"
-#include "Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Buffer.h"
 
 namespace Falcor
 {

@@ -25,26 +25,30 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "Sample.h"
-#include "RenderGraph/RenderPassLibrary.h"
-#include "Core/Platform/ProgressBar.h"
-#include "Utils/StringUtils.h"
 #include <sstream>
 #include <fstream>
-#include "Utils/Threading.h"
+
 #include "imgui/imgui.h"
 
-namespace Falcor
-{
-    IFramework* gpFramework = nullptr;
-    namespace
-    {
-        std::string kMonospaceFont = "monospace";
-    }
+#include "Falcor/stdafx.h"
+#include "Sample.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/Core/Platform/ProgressBar.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Threading.h"
+#include "Falcor/Utils/Debug/debug.h"
 
-    void Sample::handleWindowSizeChange()
-    {
+namespace Falcor {
+
+IFramework* gpFramework = nullptr;
+
+namespace {
+
+std::string kMonospaceFont = "monospace";
+
+}
+
+void Sample::handleWindowSizeChange() {
         if (!gpDevice) return;
         // Tell the device to resize the swap chain
         auto winSize = mpWindow->getClientAreaSize();
@@ -58,19 +62,17 @@ namespace Falcor
         gpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
         // Tell the GUI the swap-chain size changed
-        if(mpGui) mpGui->onWindowResize(width, height);
+        if (mpGui) mpGui->onWindowResize(width, height);
 
         // Resize the pixel zoom
-        if(mpPixelZoom) mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
+        if (mpPixelZoom) mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
 
         // Call the user callback
-        if(mpRenderer) mpRenderer->onResizeSwapChain(width, height);
+        if (mpRenderer) mpRenderer->onResizeSwapChain(width, height);
     }
 
-    void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
-    {
-        if (mSuppressInput)
-        {
+    void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent) {
+        if (mSuppressInput) {
             if (keyEvent.key == KeyboardEvent::Key::Escape) mpWindow->shutdown();
             return;
         }
@@ -85,14 +87,10 @@ namespace Falcor
         mpPixelZoom->onKeyboardEvent(keyEvent);
 
         // Consume system messages first
-        if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
-        {
-            if (keyEvent.mods.isShiftDown && keyEvent.key == KeyboardEvent::Key::F12)
-            {
+        if (keyEvent.type == KeyboardEvent::Type::KeyPressed) {
+            if (keyEvent.mods.isShiftDown && keyEvent.key == KeyboardEvent::Key::F12) {
                 initVideoCapture();
-            }
-            else if (keyEvent.mods.isCtrlDown)
-            {
+            } else if (keyEvent.mods.isCtrlDown) {
                 switch (keyEvent.key)
                 {
                 case KeyboardEvent::Key::Pause:
@@ -100,9 +98,7 @@ namespace Falcor
                     mRendererPaused = !mRendererPaused;
                     break;
                 }
-            }
-            else if (!keyEvent.mods.isAltDown && !keyEvent.mods.isCtrlDown && !keyEvent.mods.isShiftDown)
-            {
+            } else if (!keyEvent.mods.isAltDown && !keyEvent.mods.isCtrlDown && !keyEvent.mods.isShiftDown) {
                 switch (keyEvent.key)
                 {
                 case KeyboardEvent::Key::F12:
@@ -148,13 +144,11 @@ namespace Falcor
         }
     }
 
-    void Sample::handleDroppedFile(const std::string& filename)
-    {
+    void Sample::handleDroppedFile(const std::string& filename) {
         if(mpRenderer) mpRenderer->onDroppedFile(filename);
     }
 
-    void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
-    {
+    void Sample::handleMouseEvent(const MouseEvent& mouseEvent) {
         if (mSuppressInput) return;
         if (mShowUI && mpGui->onMouseEvent(mouseEvent)) return;
         if (mpRenderer && mpRenderer->onMouseEvent(mouseEvent)) return;
@@ -162,8 +156,7 @@ namespace Falcor
     }
 
     // Sample functions
-    Sample::~Sample()
-    {
+    Sample::~Sample() {
         mpRenderer.reset();
         if (mVideoCapture.pVideoCapture) endVideoCapture();
 
@@ -180,59 +173,47 @@ namespace Falcor
         OSServices::stop();
     }
 
-    void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
-    {
+    void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
         Sample s(pRenderer);
-        try
-        {
+        try {
             s.runInternal(config, argc, argv);
-        }
-        catch (const std::exception & e)
-        {
+        } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
-    {
+    void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
         Sample s(pRenderer);
-        try
-        {
+        try {
             auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
 
-            s.startScripting(); // We have to do that before running the script
+            s.startScripting();  // We have to do that before running the script
             std::string fullpath;
             SampleConfig c;
 
-            if (findFileInDataDirectories(filename, fullpath))
-            {
+            if (findFileInDataDirectories(filename, fullpath)) {
                 Scripting::Context ctx;
                 Scripting::runScriptFromFile(fullpath, ctx);
                 auto configs = ctx.getObjects<SampleConfig>();
-                if (configs.empty()) err("doesn't contain any SampleConfig objects");
-                else
-                {
+                if (configs.empty()) {
+                    err("doesn't contain any SampleConfig objects");
+                } else {
                     if (configs.size() > 1) err("contains multiple SampleConfig objects. Using the first one");
                     c = configs[0];
                 }
-            }
-            else
-            {
+            } else {
                 err("doesn't exist. Using default configuration");
             }
 
             s.runInternal(c, argc, argv);
-        }
-        catch (const std::exception & e)
-        {
+        } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv)
-    {
+    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv) {
         gpFramework = this;
 
         Logger::showBoxOnError(config.showMessageBoxOnError);
@@ -263,12 +244,9 @@ namespace Falcor
 
         // Get the default objects before calling onLoad()
         auto pBackBufferFBO = gpDevice->getSwapChainFbo();
-        if(!pBackBufferFBO) {
+        if (!pBackBufferFBO) {
             logError("Unable to get swap chain FBO!!!");
         }
-        auto _width = pBackBufferFBO->getWidth();
-        auto _height = pBackBufferFBO->getHeight();
-        auto _desc = pBackBufferFBO->getDesc();
 
         mpTargetFBO = Fbo::create2D(pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
@@ -280,8 +258,7 @@ namespace Falcor
         // Set the icon
         setWindowIcon("Framework\\Nvidia.ico", mpWindow->getApiHandle());
 
-        if (argc == 0 || argv == nullptr)
-        {
+        if (argc == 0 || argv == nullptr) {
             mArgList.parseCommandLine(GetCommandLineA());
         }
         else
@@ -302,10 +279,8 @@ namespace Falcor
         mpRenderer = nullptr;
     }
 
-    void screenSizeUI(Gui::Widgets& widget, uint2 screenDims)
-    {
-        static const uint2 resolutions[] =
-        {
+    void screenSizeUI(Gui::Widgets& widget, uint2 screenDims) {
+        static const uint2 resolutions[] = {
             {0, 0},
             {1280, 720},
             {1920, 1080},
@@ -314,21 +289,17 @@ namespace Falcor
             {3840, 2160},
         };
 
-        static const auto initDropDown = [](const uint2 resolutions[], uint32_t count) -> Gui::DropdownList
-        {
+        static const auto initDropDown = [](const uint2 resolutions[], uint32_t count) -> Gui::DropdownList {
             Gui::DropdownList list;
-            for (uint32_t i = 0 ; i < count; i++)
-            {
+            for (uint32_t i = 0 ; i < count; i++) {
                 list.push_back({ i, to_string(resolutions[i].x) + "x" + to_string(resolutions[i].y) });
             }
             list[0] = { 0, "Custom" };
             return list;
         };
 
-        auto initDropDownVal = [](const uint2 resolutions[], uint32_t count, uint2 screenDims)
-        {
-            for (uint32_t i = 0; i < count; i++)
-            {
+        auto initDropDownVal = [](const uint2 resolutions[], uint32_t count, uint2 screenDims) {
+            for (uint32_t i = 0; i < count; i++) {
                 if (screenDims == resolutions[i]) return i;
             }
             return 0u;
@@ -341,8 +312,7 @@ namespace Falcor
         if (widget.dropdown("Change Resolution", dropdownList, currentVal) && (currentVal != 0)) gpFramework->resizeSwapChain(resolutions[currentVal].x, resolutions[currentVal].y);
     }
 
-    std::string Sample::getKeyboardShortcutsStr()
-    {
+    std::string Sample::getKeyboardShortcutsStr() {
         constexpr char help[] =
             "  'F2'      - Show\\Hide GUI\n"
             "  'F5'      - Reload shaders\n"
@@ -363,13 +333,11 @@ namespace Falcor
         return help;
     }
 
-    void Sample::renderGlobalUI(Gui* pGui)
-    {
+    void Sample::renderGlobalUI(Gui* pGui) {
         ImGui::TextUnformatted("Keyboard Shortcuts");
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered())
-        {
+        if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::PushTextWrapPos(450.0f);
             ImGui::TextUnformatted(getKeyboardShortcutsStr().c_str());
@@ -378,8 +346,7 @@ namespace Falcor
         }
 
         auto controlsGroup = Gui::Group(pGui, "Global Controls");
-        if (controlsGroup.open())
-        {
+        if (controlsGroup.open()) {
             float t = (float)mClock.getTime();
             if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.setTime(double(t));
             if (controlsGroup.button("Reset")) mClock.setTime(0.0);
@@ -404,35 +371,31 @@ namespace Falcor
 
             controlsGroup.release();
         }
-
     }
 
-    void Sample::renderUI()
-    {
+    void Sample::renderUI() {
         PROFILE("renderUI");
 
-        if (mShowUI || gProfileEnabled)
-        {
+        mShowUI = true;
+
+        if (mShowUI || gProfileEnabled) {
             mpGui->beginFrame();
 
-            if(mShowUI) mpRenderer->onGuiRender(mpGui.get());
-            if (mVideoCapture.displayUI && mVideoCapture.pUI)
-            {
+            if (mShowUI) mpRenderer->onGuiRender(mpGui.get());
+            if (mVideoCapture.displayUI && mVideoCapture.pUI) {
                 Gui::Window w(mpGui.get(), "Video Capture", mVideoCapture.displayUI, { 350, 250 }, { 300, 280 });
                 mVideoCapture.pUI->render(w);
             }
 
-            if (gProfileEnabled)
-            {
+            if (gProfileEnabled) {
                 uint32_t y = gpDevice->getSwapChainFbo()->getHeight() - 360;
 
                 mpGui->setActiveFont(kMonospaceFont);
 
                 Gui::Window profilerWindow(mpGui.get(), "Profiler", gProfileEnabled, { 800, 350 }, { 10, y });
-                Profiler::endEvent("renderUI"); // Stop the timer
+                Profiler::endEvent("renderUI");  // Stop the timer
 
-                if(gProfileEnabled)
-                {
+                if (gProfileEnabled) {
                     profilerWindow.text(Profiler::getEventsString().c_str());
                     Profiler::startEvent("renderUI");
                     profilerWindow.release();
@@ -440,12 +403,13 @@ namespace Falcor
                 mpGui->setActiveFont("");
             }
 
+            LOG_INFO("ImGui render frame");
             mpGui->render(getRenderContext(), gpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
         }
     }
 
-    void Sample::renderFrame()
-    {
+    void Sample::renderFrame() {
+        LOG_INFO("render frame");
         if (gpDevice && gpDevice->isWindowOccluded()) return;
 
         // Check clock exit condition
@@ -459,15 +423,14 @@ namespace Falcor
             PROFILE("onFrameRender");
 
             // The swap-chain FBO might have changed between frames, so get it
-            if (!mRendererPaused)
-            {
+            if (!mRendererPaused) {
                 RenderContext* pRenderContext = gpDevice ? gpDevice->getRenderContext() : nullptr;
+                LOG_INFO("Renderer render frame");
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }
 
-        if (gpDevice)
-        {
+        if (gpDevice) {
             // Copy the render-target
             auto pSwapChainFbo = gpDevice->getSwapChainFbo();
             RenderContext* pRenderContext = getRenderContext();
@@ -478,7 +441,7 @@ namespace Falcor
             if (!captureVideoUI) captureVideoFrame();
             renderUI();
 
-            pSwapChainFbo = gpDevice->getSwapChainFbo(); // The UI might have triggered a swap-chain resize, invalidating the previous FBO
+            pSwapChainFbo = gpDevice->getSwapChainFbo();  // The UI might have triggered a swap-chain resize, invalidating the previous FBO
             if (mpPixelZoom) mpPixelZoom->render(pRenderContext, pSwapChainFbo.get());
 
 #if _PROFILING_ENABLED
@@ -495,24 +458,21 @@ namespace Falcor
         }
 
         Console::flush();
+        LOG_INFO("render frame done");
     }
 
-    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
-    {
+    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory) {
         mCaptureScreen = false;
 
         std::string filename = explicitFilename != "" ? explicitFilename : getExecutableName();
         std::string outputDirectory = explicitOutputDirectory != "" ? explicitOutputDirectory : getExecutableDirectory();
 
         std::string pngFile;
-        if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
-        {
+        if (findAvailableFilename(filename, outputDirectory, "png", pngFile)) {
             Texture::SharedPtr pTexture;
             pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
-        }
-        else
-        {
+        } else {
             logError("Could not find available filename when capturing screen");
             return "";
         }
@@ -520,8 +480,7 @@ namespace Falcor
          return pngFile;
     }
 
-    void Sample::initUI()
-    {
+    void Sample::initUI() {
         float scaling = getDisplayScaleFactor();
         const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
         mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
@@ -529,27 +488,22 @@ namespace Falcor
         TextRenderer::start();
     }
 
-    void Sample::resizeSwapChain(uint32_t width, uint32_t height)
-    {
+    void Sample::resizeSwapChain(uint32_t width, uint32_t height) {
         mpWindow->resize(width, height);
     }
 
-    bool Sample::isKeyPressed(const KeyboardEvent::Key& key)
-    {
+    bool Sample::isKeyPressed(const KeyboardEvent::Key& key) {
         return mPressedKeys.find(key) != mPressedKeys.cend();
     }
 
-    void Sample::initVideoCapture()
-    {
-        if (mVideoCapture.pUI == nullptr)
-        {
+    void Sample::initVideoCapture() {
+        if (mVideoCapture.pUI == nullptr) {
             mVideoCapture.pUI = VideoEncoderUI::create([this]() {return startVideoCapture(); }, [this]() {endVideoCapture(); });
         }
         mVideoCapture.displayUI = true;
     }
 
-    bool Sample::startVideoCapture()
-    {
+    bool Sample::startVideoCapture() {
         // Create the Capture Object and Framebuffer.
         VideoEncoder::Desc desc;
         desc.flipY = false;
@@ -568,12 +522,10 @@ namespace Falcor
 
         assert(mVideoCapture.pVideoCapture);
         mVideoCapture.pFrame.resize(desc.width*desc.height * 4);
-        mVideoCapture.fixedTimeDelta = 1 / (double)desc.fps;
+        mVideoCapture.fixedTimeDelta = 1 / static_cast<double>(desc.fps);
 
-        if (mVideoCapture.pUI->useTimeRange())
-        {
-            if (mVideoCapture.pUI->getStartTime() > mVideoCapture.pUI->getEndTime())
-            {
+        if (mVideoCapture.pUI->useTimeRange()) {
+            if (mVideoCapture.pUI->getStartTime() > mVideoCapture.pUI->getEndTime()) {
                 mVideoCapture.fixedTimeDelta = -mVideoCapture.fixedTimeDelta;
             }
             mVideoCapture.currentTime = mVideoCapture.pUI->getStartTime();
@@ -581,30 +533,22 @@ namespace Falcor
         return true;
     }
 
-    void Sample::endVideoCapture()
-    {
-        if (mVideoCapture.pVideoCapture)
-        {
+    void Sample::endVideoCapture() {
+        if (mVideoCapture.pVideoCapture) {
             mVideoCapture.pVideoCapture->endCapture();
             mShowUI = true;
         }
         mVideoCapture = {};
     }
 
-    void Sample::captureVideoFrame()
-    {
-        if (mVideoCapture.pVideoCapture)
-        {
+    void Sample::captureVideoFrame() {
+        if (mVideoCapture.pVideoCapture) {
             mVideoCapture.pVideoCapture->appendFrame(getRenderContext()->readTextureSubresource(gpDevice->getSwapChainFbo()->getColorTexture(0).get(), 0).data());
 
-            if (mVideoCapture.pUI->useTimeRange())
-            {
-                if (mVideoCapture.fixedTimeDelta >= 0)
-                {
+            if (mVideoCapture.pUI->useTimeRange()) {
+                if (mVideoCapture.fixedTimeDelta >= 0) {
                     if (mVideoCapture.currentTime >= mVideoCapture.pUI->getEndTime()) endVideoCapture();
-                }
-                else if (mVideoCapture.currentTime < mVideoCapture.pUI->getEndTime())
-                {
+                } else if (mVideoCapture.currentTime < mVideoCapture.pUI->getEndTime()) {
                     endVideoCapture();
                 }
             }
@@ -613,8 +557,7 @@ namespace Falcor
         }
     }
 
-    SampleConfig Sample::getConfig()
-    {
+    SampleConfig Sample::getConfig() {
         SampleConfig c;
         c.deviceDesc = gpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
@@ -625,26 +568,22 @@ namespace Falcor
         return c;
     }
 
-    void Sample::saveConfigToFile()
-    {
+    void Sample::saveConfigToFile() {
         std::string filename;
-        if (saveFileDialog(Scripting::kFileExtensionFilters, filename))
-        {
+        if (saveFileDialog(Scripting::kFileExtensionFilters, filename)) {
             SampleConfig c = getConfig();
             std::string s = "sampleConfig = " + ScriptBindings::to_string(c) + "\n";
             std::ofstream(filename) << s;
         }
     }
 
-    void Sample::startScripting()
-    {
+    void Sample::startScripting() {
         Scripting::start();
         auto bindFunc = [this](ScriptBindings::Module& m) { this->registerScriptBindings(m); };
         ScriptBindings::registerBinding(bindFunc);
     }
 
-    void Sample::registerScriptBindings(ScriptBindings::Module& m)
-    {
+    void Sample::registerScriptBindings(ScriptBindings::Module& m) {
         auto sampleDesc = m.regClass(SampleConfig);
 #define field(f_) rwField(#f_, &SampleConfig::f_)
         sampleDesc.field(windowDesc).field(deviceDesc).field(showMessageBoxOnError).field(timeScale);
@@ -662,4 +601,5 @@ namespace Falcor
         auto resize = [this](uint32_t width, uint32_t height) {resizeSwapChain(width, height); };
         m.func_("resizeSwapChain", resize, "width"_a, "height"_a);
     }
-}
+
+}  // namespace Falcor

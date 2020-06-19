@@ -25,20 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "RasterizerState.h"
 
-namespace Falcor
-{
-    SCRIPT_BINDING(RasterizerState)
-    {
-        m.regClass(RasterizerState)
-        auto rasterizerStateBinding = m.enum_<RasterizerState::CullMode>("CullMode");
-        rasterizerStateBinding.regEnumVal(RasterizerState::CullMode::Back).regEnumVal(RasterizerState::CullMode::Front).regEnumVal(RasterizerState::CullMode::None);
-    }
+namespace Falcor {
 
-    RasterizerState::SharedPtr RasterizerState::create(const Desc& desc)
-    {
-        return SharedPtr(new RasterizerState(desc));
-    }
+SCRIPT_BINDING(RasterizerState) {
+    m.regClass(RasterizerState)
+    auto rasterizerStateBinding = m.enum_<RasterizerState::CullMode>("CullMode");
+    rasterizerStateBinding.regEnumVal(RasterizerState::CullMode::Back).regEnumVal(RasterizerState::CullMode::Front).regEnumVal(RasterizerState::CullMode::None);
 }
+
+RasterizerState::SharedPtr RasterizerState::create(const Desc& desc) {
+    return SharedPtr(new RasterizerState(desc));
+}
+
+}  // namespace Falcor

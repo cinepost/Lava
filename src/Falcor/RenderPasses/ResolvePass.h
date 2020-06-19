@@ -26,25 +26,26 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RenderGraph/RenderPass.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 
-namespace Falcor
-{
-    class dlldecl ResolvePass : public RenderPass, public inherit_shared_from_this<RenderPass, ResolvePass>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ResolvePass>;
-        using inherit_shared_from_this<RenderPass, ResolvePass>::shared_from_this;
-        static const char* kDesc;
+namespace Falcor {
+    
+class dlldecl ResolvePass : public RenderPass, public inherit_shared_from_this<RenderPass, ResolvePass> {
+ public:
+    using SharedPtr = std::shared_ptr<ResolvePass>;
+    using inherit_shared_from_this<RenderPass, ResolvePass>::shared_from_this;
+    static const char* kDesc;
 
-        static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
+    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
 
-        void setFormat(ResourceFormat format) { mFormat = format; }
-        virtual RenderPassReflection reflect(const CompileData& compileData) override;
-        virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-        virtual std::string getDesc() override { return kDesc; }
-    private:
-        ResolvePass() = default;
-        ResourceFormat mFormat;
-    };
-}
+    void setFormat(ResourceFormat format) { mFormat = format; }
+    virtual RenderPassReflection reflect(const CompileData& compileData) override;
+    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual std::string getDesc() override { return kDesc; }
+
+ private:
+    ResolvePass() = default;
+    ResourceFormat mFormat;
+};
+
+}  // namespace Falcor

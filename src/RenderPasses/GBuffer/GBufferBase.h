@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Falcor/Falcor.h"
 
 using namespace Falcor;
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib);
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */

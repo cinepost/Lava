@@ -26,47 +26,49 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
 
-namespace Falcor
+#include "Falcor/Falcor.h"
+
+namespace Falcor {
+
+class HitInfo
 {
-    class HitInfo
+public:
+    static const uint32_t kInvalidIndex = 0xffffffff;
+
+    /** Returns defines needed packing/unpacking a HitInfo struct.
+    */
+    static Shader::DefineList getDefines(const Scene* pScene)
     {
-    public:
-        static const uint32_t kInvalidIndex = 0xffffffff;
+        // Setup bit allocations for encoding the meshInstanceID and primitive indices.
 
-        /** Returns defines needed packing/unpacking a HitInfo struct.
-        */
-        static Shader::DefineList getDefines(const Scene* pScene)
+        uint32_t meshInstanceCount = pScene->getMeshInstanceCount();
+        uint32_t maxInstanceID = meshInstanceCount > 0 ? meshInstanceCount - 1 : 0;
+        uint32_t instanceIndexBits = maxInstanceID > 0 ? bitScanReverse(maxInstanceID) + 1 : 0;
+
+        uint32_t maxTriangleCount = 0;
+        for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++)
         {
-            // Setup bit allocations for encoding the meshInstanceID and primitive indices.
-
-            uint32_t meshInstanceCount = pScene->getMeshInstanceCount();
-            uint32_t maxInstanceID = meshInstanceCount > 0 ? meshInstanceCount - 1 : 0;
-            uint32_t instanceIndexBits = maxInstanceID > 0 ? bitScanReverse(maxInstanceID) + 1 : 0;
-
-            uint32_t maxTriangleCount = 0;
-            for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++)
-            {
-                uint32_t triangleCount = pScene->getMesh(meshID).indexCount / 3;
-                maxTriangleCount = std::max(triangleCount, maxTriangleCount);
-            }
-            uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
-            uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
-
-            assert(instanceIndexBits > 0 && triangleIndexBits > 0);
-            if (instanceIndexBits + triangleIndexBits > 32 ||
-                (instanceIndexBits + triangleIndexBits == 32 && ((maxInstanceID << triangleIndexBits) | maxTriangleID) == kInvalidIndex))
-            {
-                logError("Scene requires > 32 bits for encoding meshInstanceID/triangleIndex. This is currently not supported.");
-            }
-
-            // Setup defines for the shader program.
-            Shader::DefineList defines;
-            defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(instanceIndexBits));
-            defines.add("HIT_TRIANGLE_INDEX_BITS", std::to_string(triangleIndexBits));
-
-            return defines;
+            uint32_t triangleCount = pScene->getMesh(meshID).indexCount / 3;
+            maxTriangleCount = std::max(triangleCount, maxTriangleCount);
         }
-    };
-}
+        uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
+        uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
+
+        assert(instanceIndexBits > 0 && triangleIndexBits > 0);
+        if (instanceIndexBits + triangleIndexBits > 32 ||
+            (instanceIndexBits + triangleIndexBits == 32 && ((maxInstanceID << triangleIndexBits) | maxTriangleID) == kInvalidIndex))
+        {
+            logError("Scene requires > 32 bits for encoding meshInstanceID/triangleIndex. This is currently not supported.");
+        }
+
+        // Setup defines for the shader program.
+        Shader::DefineList defines;
+        defines.add("HIT_INSTANCE_INDEX_BITS", std::to_string(instanceIndexBits));
+        defines.add("HIT_TRIANGLE_INDEX_BITS", std::to_string(triangleIndexBits));
+
+        return defines;
+    }
+};
+
+}  // namespace Falcor

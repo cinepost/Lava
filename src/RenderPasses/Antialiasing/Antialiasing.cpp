@@ -28,7 +28,7 @@
 #include "FXAA/FXAA.h"
 #include "TAA/TAA.h"
 
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -49,7 +49,7 @@ static void regTAA(ScriptBindings::Module& m)
     c.property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
     lib.registerClass("TAA", "Temporal Anti-Aliasing", TAA::create);

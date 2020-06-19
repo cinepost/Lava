@@ -25,10 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_
+#define SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_
 
 #include <memory>
 
+#include "Falcor/Core/Framework.h"
 #include "GpuFence.h"
 
 namespace Falcor {
@@ -80,3 +82,5 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_

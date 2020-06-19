@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#ifdef FALCOR_D3D
+
 #include "GBuffer.h"
 #include "Utils/Sampling/SampleGenerator.h"
 
@@ -91,3 +94,5 @@ inline std::string to_string(GBufferRT::LODMode st)
     }
 }
 #undef lod_mode_cm
+
+#endif  // FALCOR_D3D

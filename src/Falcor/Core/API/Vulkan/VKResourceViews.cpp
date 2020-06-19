@@ -215,8 +215,14 @@ RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pT
 ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer) {
     if (!pBuffer && getNullView()) return getNullView();
 
-    auto view = createViewCommon(pBuffer, 0, 0, 0, 0);
-    return SharedPtr(new ConstantBufferView(pBuffer, view));
+    //DescriptorSet::Layout layout;
+    //layout.addRange(DescriptorSet::Type::Cbv, 0, 1);
+    //auto handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+    VkBufferView bufferView = {};
+    auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+
+
+    return SharedPtr(new ConstantBufferView(pBuffer, handle));
 }
 
 }  // namespace Falcor

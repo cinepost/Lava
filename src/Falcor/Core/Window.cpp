@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
-#include "Core/Window.h"
-#include "Utils/UI/UserInput.h"
+#include "Falcor/Core/Window.h"
+#include "Falcor/Utils/UI/UserInput.h"
 
 // Don't include GL/GLES headers
 #define GLFW_INCLUDE_NONE

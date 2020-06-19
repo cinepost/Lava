@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "ParticleSystem.h"
-#include "Core/API/RenderContext.h"
-#include "Utils/UI/Gui.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/UI/Gui.h"
 #include "glm/gtc/random.hpp"
 
 namespace Falcor

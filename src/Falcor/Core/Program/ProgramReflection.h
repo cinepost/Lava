@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/DescriptorSet.h"
+
+#include "Falcor/Core/API/DescriptorSet.h"
 
 #include <slang/slang.h>
 

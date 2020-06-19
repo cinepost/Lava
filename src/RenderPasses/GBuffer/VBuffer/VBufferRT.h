@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
+#ifdef FALCOR_D3D
+
 #include "../GBufferBase.h"
 #include "Utils/Sampling/SampleGenerator.h"
 
@@ -65,3 +68,5 @@ private:
     static const char* kDesc;
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
+
+#endif  // FALCOR_D3D

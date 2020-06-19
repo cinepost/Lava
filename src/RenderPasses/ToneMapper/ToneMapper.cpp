@@ -76,7 +76,7 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -104,7 +104,7 @@ static void regToneMapper(ScriptBindings::Module& m)
     op.regEnumVal(ToneMapper::Operator::Aces);
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("ToneMapper", "Tone-map a color-buffer", ToneMapper::create);
     ScriptBindings::registerBinding(regToneMapper);

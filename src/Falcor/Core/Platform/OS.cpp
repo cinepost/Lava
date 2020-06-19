@@ -33,39 +33,34 @@
 
 namespace fs = std::filesystem;
 
-#ifndef _PROJECT_DIR_
-#define _PROJECT_DIR_ "/home/max/dev/Falcor"
+#ifndef PROJECT_DIR
+#define PROJECT_DIR "/home/max/dev/Falcor"
 #endif
 
-namespace Falcor
-{
+namespace Falcor {
+
     std::string gMsgBoxTitle = "Falcor";
 
-    void msgBoxTitle(const std::string& title)
-    {
+    void msgBoxTitle(const std::string& title) {
         gMsgBoxTitle = title;
     }
 
-    uint32_t getLowerPowerOf2(uint32_t a)
-    {
+    uint32_t getLowerPowerOf2(uint32_t a) {
         assert(a != 0);
         return 1 << bitScanReverse(a);
     }
 
-    inline std::vector<std::string> getInitialShaderDirectories()
-    {
-        std::vector<std::string> developmentDirectories =
-        {
+    inline std::vector<std::string> getInitialShaderDirectories() {
+        std::vector<std::string> developmentDirectories = {
             // First we search in source folders.
-            std::string(_PROJECT_DIR_),
-            std::string(_PROJECT_DIR_) + "../",
-            std::string(_PROJECT_DIR_) + "../Tools/FalcorTest/",
+            std::string(PROJECT_DIR),
+            std::string(PROJECT_DIR) + "../",
+            std::string(PROJECT_DIR) + "../Tools/FalcorTest/",
             // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
-            getExecutableDirectory() + "/Shaders"
+            getExecutableDirectory() + "/Shaders",
         };
 
-        std::vector<std::string> deploymentDirectories =
-        {
+        std::vector<std::string> deploymentDirectories = {
             getExecutableDirectory() + "/Shaders"
         };
 
@@ -74,16 +69,13 @@ namespace Falcor
 
     static std::vector<std::string> gShaderDirectories = getInitialShaderDirectories();
 
-    inline std::vector<std::string> getInitialDataDirectories()
-    {
-        std::vector<std::string> developmentDirectories =
-        {
-            std::string(_PROJECT_DIR_) + "/Data",
+    inline std::vector<std::string> getInitialDataDirectories() {
+        std::vector<std::string> developmentDirectories = {
+            std::string(PROJECT_DIR) + "/Data",
             getExecutableDirectory() + "/Data",
         };
 
-        std::vector<std::string> deploymentDirectories =
-        {
+        std::vector<std::string> deploymentDirectories = {
             getExecutableDirectory() + "/Data"
         };
 
@@ -94,13 +86,12 @@ namespace Falcor
         directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
 #else
         directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
-        directories.push_back("/home/max/dev/Falcor/src/Falcor/Data");
+        directories.push_back(std::string(PROJECT_DIR) + "/src/Falcor/Data");
 #endif
 
         // Add additional media folders.
         std::string mediaFolders;
-        if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", mediaFolders))
-        {
+        if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", mediaFolders)) {
             auto folders = splitString(mediaFolders, ";");
             directories.insert(directories.end(), folders.begin(), folders.end());
         }
@@ -110,63 +101,55 @@ namespace Falcor
 
     static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
 
-    const std::vector<std::string>& getDataDirectoriesList()
-    {
+    const std::vector<std::string>& getDataDirectoriesList() {
         return gDataDirectories;
     }
 
-    void addDataDirectory(const std::string& dir)
-    {
-        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end())
-        {
+    void addDataDirectory(const std::string& dir) {
+        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end()) {
             gDataDirectories.push_back(dir);
         }
     }
 
-    void removeDataDirectory(const std::string& dir)
-    {
+    void removeDataDirectory(const std::string& dir) {
         auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dir);
-        if (it != gDataDirectories.end())
-        {
+        if (it != gDataDirectories.end()) {
             gDataDirectories.erase(it);
         }
     }
 
-    bool isDevelopmentMode()
-    {
+    bool isDevelopmentMode() {
         static bool initialized = false;
         static bool devMode = false;
 
-        if (!initialized)
-        {
+        if (!initialized) {
             std::string value;
+            #ifdef DEBUG
+            devMode = true;
+            #else
             devMode = getEnvironmentVariable("FALCOR_DEVMODE", value) && value == "1";
+            #endif
             initialized = true;
         }
 
         return devMode;
     }
 
-    std::string canonicalizeFilename(const std::string& filename)
-    {
+    std::string canonicalizeFilename(const std::string& filename) {
         fs::path path(replaceSubstring(filename, "\\", "/"));
         return fs::exists(path) ? fs::canonical(path).string() : "";
     }
 
-    bool findFileInDataDirectories(const std::string& filename, std::string& fullPath)
-    {
+    bool findFileInDataDirectories(const std::string& filename, std::string& fullPath) {
         // Check if this is an absolute path
-        if (fs::path(filename).is_absolute())
-        {
+        if (fs::path(filename).is_absolute()) {
             fullPath = canonicalizeFilename(filename);
             return !fullPath.empty(); // Empty fullPath means path doesn't exist
         }
 
-        for (const auto& dir : gDataDirectories)
-        {
+        for (const auto& dir : gDataDirectories) {
             fullPath = canonicalizeFilename(dir + '/' + filename);
-            if (doesFileExist(fullPath))
-            {
+            if (doesFileExist(fullPath)) {
                 return true;
             }
         }
@@ -174,22 +157,17 @@ namespace Falcor
         return false;
     }
 
-    const std::vector<std::string>& getShaderDirectoriesList()
-    {
+    const std::vector<std::string>& getShaderDirectoriesList() {
         return gShaderDirectories;
     }
 
-    bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath)
-    {
-        for (const auto& dir : gShaderDirectories)
-        {
+    bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath) {
+        for (const auto& dir : gShaderDirectories) {
             fullPath = canonicalizeFilename(dir + '/' + filename);
-            if (doesFileExist(fullPath))
-            {
+            if (doesFileExist(fullPath)) {
                 return true;
             }
         }
-
         return false;
     }
 

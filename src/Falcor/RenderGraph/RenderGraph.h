@@ -30,7 +30,7 @@
 #include "ResourceCache.h"
 #include "Scene/Scene.h"
 #include "RenderPass.h"
-#include "Utils/Algorithm/DirectedGraph.h"
+#include "Falcor/Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"
 #include "RenderGraphCompiler.h"
 
