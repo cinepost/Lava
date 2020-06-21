@@ -247,9 +247,9 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     Sample::run(config, pRenderer);
 #else
-    config.argc = (uint32_t)argc;
-    config.argv = argv;
-    Sample::run(config, pRenderer);
+    //config.argc = (uint32_t)argc;
+    //config.argv = argv;
+    Sample::run(config, pRenderer, argc, argv);
 #endif
     return 0;
 }

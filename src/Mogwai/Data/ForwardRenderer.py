@@ -1,11 +1,11 @@
 def render_graph_forward_renderer():
-    loadRenderPassLibrary("Antialiasing.dll")
-    loadRenderPassLibrary("BlitPass.dll")
-    loadRenderPassLibrary("CSM.dll")
-    loadRenderPassLibrary("DepthPass.dll")
-    loadRenderPassLibrary("ForwardLightingPass.dll")
-    loadRenderPassLibrary("SSAO.dll")
-    loadRenderPassLibrary("ToneMapper.dll")
+    loadRenderPassLibrary("Antialiasing_pass")
+    loadRenderPassLibrary("BlitPass_pass")
+    loadRenderPassLibrary("CSM_pass")
+    loadRenderPassLibrary("DepthPass_pass")
+    loadRenderPassLibrary("ForwardLightingPass_pass")
+    loadRenderPassLibrary("SSAO_pass")
+    loadRenderPassLibrary("ToneMapper_pass")
 
     skyBox = RenderPass("SkyBox")
 

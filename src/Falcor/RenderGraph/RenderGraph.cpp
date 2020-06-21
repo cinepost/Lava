@@ -31,25 +31,18 @@
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     std::vector<RenderGraph*> gRenderGraphs;
     const FileDialogFilterVec RenderGraph::kFileExtensionFilters = { { "py", "Render Graph Files"} };
 
-    RenderGraph::SharedPtr RenderGraph::create(const std::string& name)
-    {
+    RenderGraph::SharedPtr RenderGraph::create(const std::string& name) {
         return SharedPtr(new RenderGraph(name));
     }
 
-    RenderGraph::RenderGraph(const std::string& name)
-        : mName(name)
-    {
+    RenderGraph::RenderGraph(const std::string& name): mName(name) {
         if (gpFramework == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't construct RenderGraph - framework is not initialized");
-            #else
             throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
-            #endif
         }
         mpGraph = DirectedGraph::create();
         mpPassDictionary = Dictionary::create();
@@ -560,11 +553,7 @@ namespace Falcor
         // Store the back-buffer values
         const Texture* pColor = pTargetFbo ? pTargetFbo->getColorTexture(0).get() : nullptr;
         if (pColor == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't resize render graph without a frame buffer.");
-            #else
             throw std::runtime_error("Can't resize render graph without a frame buffer.");
-            #endif
         }
 
         // Store the values
@@ -727,11 +716,7 @@ namespace Falcor
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {}) {
             auto pPass = RenderPassLibrary::instance().createPass(gpDevice->getRenderContext(), passName.c_str(), Dictionary(d));
             if (!pPass) { 
-                #ifdef _WIN32
-                throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
-                #else
                 throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
-                #endif
             }
             return pPass;
         };

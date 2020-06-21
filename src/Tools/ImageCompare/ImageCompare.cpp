@@ -25,9 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "args.h"
-#include "FreeImage.h"
-
 #include <iostream>
 #include <memory>
 #include <string>
@@ -35,6 +32,11 @@
 #include <stdexcept>
 #include <map>
 #include <functional>
+#include <cstring>
+#include <cmath>
+
+#include "args.h"
+#include "FreeImage.h"
 
 template<typename T>
 T sqr(T x) { return x * x; }

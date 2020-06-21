@@ -25,52 +25,50 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "UnitTest.h"
 #include <algorithm>
 #include <chrono>
 #include <regex>
 #include <inttypes.h>
 
-namespace Falcor
-{
-    namespace
-    {
-        struct Test
-        {
-            std::string getTitle() const
-            {
-                return getFilenameFromPath(filename) + "/" + name + " (" + (cpuFunc ? "CPU" : "GPU") + ")";
-            }
+#include "stdafx.h"
+#include "UnitTest.h"
 
-            std::string filename;
-            std::string name;
-            std::string skipMessage;
-            CPUTestFunc cpuFunc;
-            GPUTestFunc gpuFunc;
-        };
+namespace Falcor {
 
-        struct TestResult
-        {
-            enum class Status
-            {
-                Passed,
-                Failed,
-                Skipped
-            };
+namespace {
 
-            Status status;
-            std::vector<std::string> messages;
-            uint64_t elapsedMS = 0;
-        };
+struct Test {
+    std::string getTitle() const {
+        return getFilenameFromPath(filename) + "/" + name + " (" + (cpuFunc ? "CPU" : "GPU") + ")";
+    }
 
-        /** testRegistry is declared as pointer so that we can ensure it can be explicitly
-             allocated when register[CG]PUTest() is called.  (The C++ static object
-             initialization fiasco.)
-         */
-        std::vector<Test>* testRegistry;
+    std::string filename;
+    std::string name;
+    std::string skipMessage;
+    CPUTestFunc cpuFunc;
+    GPUTestFunc gpuFunc;
+};
 
-    }   // end anonymous namespace
+struct TestResult {
+    enum class Status {
+        Passed,
+        Failed,
+        Skipped
+    };
+
+    Status status;
+    std::vector<std::string> messages;
+    uint64_t elapsedMS = 0;
+};
+
+/** testRegistry is declared as pointer so that we can ensure it can be explicitly
+     allocated when register[CG]PUTest() is called.  (The C++ static object
+     initialization fiasco.)
+ */
+std::vector<Test>* testRegistry;
+
+}   // end anonymous namespace
+
 
     void registerCPUTest(const std::string& filename, const std::string& name,
                          const std::string& skipMessage, CPUTestFunc func)

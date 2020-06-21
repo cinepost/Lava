@@ -45,7 +45,7 @@ class dlldecl Scripting {
     public:
         static const FileDialogFilterVec kFileExtensionFilters;
 
-        class Context {
+        class __attribute__((visibility("default"))) Context {
          public:
             template<typename T>
             struct ObjectDesc {

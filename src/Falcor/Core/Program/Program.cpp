@@ -84,18 +84,12 @@ namespace Falcor
         return *this;
     }
 
-    Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name)
-    {
+    Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name) {
         if(name.size() == 0)
             return *this;
 
-        if(mActiveSource < 0)
-        {
-            #ifdef _WIN32
-            throw std::exception("Cannot add an entry point without first adding a source file/library");
-            #else
+        if(mActiveSource < 0) {
             throw std::runtime_error("Cannot add an entry point without first adding a source file/library");
-            #endif
         }
 
         if(mActiveGroup < 0)
@@ -324,25 +318,15 @@ namespace Falcor
         return false;
     }
 
-    const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const
-    {
-        if (mLinkRequired)
-        {
+    const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
+        if (mLinkRequired) {
             const auto& it = mProgramVersions.find(mDefineList);
-            if (it == mProgramVersions.end())
-            {
+            if (it == mProgramVersions.end()) {
                 // Note that link() updates mActiveProgram only if the operation was successful.
                 // On error we get false, and mActiveProgram points to the last successfully compiled version.
-                if (link() == false)
-                {
-                    #ifdef _WIN32
-                    throw std::exception("Program linkage failed");
-                    #else
+                if (link() == false) {
                     throw std::runtime_error("Program linkage failed");
-                    #endif
-                }
-                else
-                {
+                } else {
                     mProgramVersions[mDefineList] = mpActiveVersion;
                 }
             }
@@ -420,8 +404,7 @@ namespace Falcor
         // the data directories to Slang.
         //
         std::vector<const char*> slangSearchPaths;
-        for (auto& path : getShaderDirectoriesList())
-        {
+        for (auto& path : getShaderDirectoriesList()) {
             slangSearchPaths.push_back(path.c_str());
         }
         sessionDesc.searchPaths = slangSearchPaths.data();
@@ -431,8 +414,7 @@ namespace Falcor
         targetDesc.format = SLANG_TARGET_UNKNOWN;
         targetDesc.profile = pSlangGlobalSession->findProfile(getSlangProfileString(mDesc.mShaderModel).c_str());
 
-        if (targetDesc.profile == SLANG_PROFILE_UNKNOWN)
-        {
+        if (targetDesc.profile == SLANG_PROFILE_UNKNOWN) {
             logError("Can't find Slang profile for shader model " + mDesc.mShaderModel);
             return nullptr;
         }
@@ -440,8 +422,8 @@ namespace Falcor
         // Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
         bool flagFast = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModeFast);
         bool flagPrecise = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModePrecise);
-        if (flagFast && flagPrecise)
-        {
+        
+        if (flagFast && flagPrecise) {
             logWarning("Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring 'FloatingPointModeFast'.");
             flagFast = false;
         }
@@ -473,14 +455,12 @@ namespace Falcor
         // own preprocessing any more.
         //
         std::vector<slang::PreprocessorMacroDesc> slangDefines;
-        const auto addSlangDefine = [&slangDefines] (const char* name, const char* value)
-        {
+        const auto addSlangDefine = [&slangDefines] (const char* name, const char* value) {
             slangDefines.push_back({ name, value });
         };
 
         // Add global defines.
-        for (const auto& shaderDefine : sGlobalDefineList)
-        {
+        for (const auto& shaderDefine : sGlobalDefineList) {
             addSlangDefine(shaderDefine.first.c_str(), shaderDefine.second.c_str());
         }
 
@@ -1021,4 +1001,5 @@ namespace Falcor
     {
         m.regClass(Program);
     }
-}
+
+}  // namespace Falcor

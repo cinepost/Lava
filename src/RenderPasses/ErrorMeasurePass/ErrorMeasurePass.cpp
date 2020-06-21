@@ -171,7 +171,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
         pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
         break;
     default:
-        #ifdef _WIN_32
+        #ifdef _WIN32
         throw std::exception("Unhandled OutputId case in ErrorMeasurePass");
         #else
         throw std::runtime_error("Unhandled OutputId case in ErrorMeasurePass");
@@ -207,7 +207,7 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
     float4 error;
     if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
     {
-        #ifdef _WIN_32
+        #ifdef _WIN32
         throw std::exception("Error running parallel reduction in ErrorMeasurePass");
         #else
         throw std::runtime_error("Error running parallel reduction in ErrorMeasurePass");

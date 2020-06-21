@@ -37,12 +37,12 @@
 #include "Falcor/Core/Window.h"
 #include "Falcor/Core/API/Device.h"
 #include "Renderer.h"
-#include "Utils/ArgList.h"
-#include "Utils/Timing/FrameRate.h"
-#include "Utils/UI/Gui.h"
-#include "Utils/UI/TextRenderer.h"
-#include "Utils/UI/PixelZoom.h"
-#include "Utils/Video/VideoEncoderUI.h"
+#include "Falcor/Utils/ArgList.h"
+#include "Falcor/Utils/Timing/FrameRate.h"
+#include "Falcor/Utils/UI/Gui.h"
+#include "Falcor/Utils/UI/TextRenderer.h"
+#include "Falcor/Utils/UI/PixelZoom.h"
+#include "Falcor/Utils/Video/VideoEncoderUI.h"
 
 
 namespace Falcor {
@@ -128,7 +128,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
 
     bool mSuppressInput = false;
     bool mVsyncOn = false;
-    bool mShowUI = true;
+    bool mShowUI = false;
     bool mCaptureScreen = false;
     FrameRate mFrameRate;
     Clock mClock;

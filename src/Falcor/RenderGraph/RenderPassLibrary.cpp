@@ -28,6 +28,14 @@
 #include <fstream>
 #include <vector>
 
+#ifdef _MSC_VER
+#include <filesystem>
+namespace fs = filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
 #include "Falcor/stdafx.h"
 #include "RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
@@ -37,7 +45,14 @@
 namespace Falcor {
 
     extern std::vector<RenderGraph*> gRenderGraphs;
-    static const std::string kDllSuffix = ".falcor";
+
+    #ifdef _MSC_VER
+    static const std::string kPassLibExt = ".dll";
+    #else
+    static const std::string kPassLibExt = ".dso";
+    #endif
+
+    static const std::string kPassTempLibSuffix = ".falcor";
 
     RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
 
@@ -85,16 +100,10 @@ namespace Falcor {
     }
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict) {
-#ifdef _MSC_VER
-        static const std::string kDllType = ".dll";
-#else
-        static const std::string kDllType = ".so";
-#endif
-
         if (mPasses.find(className) == mPasses.end()) {
             // See if we can load a DLL with the class's name and retry
-            std::string libName = className + kDllType;
-            logInfo("Can't find a render-pass named `" + std::string(className) + "`. Trying to load a render-pass library `" + libName + '`');
+            std::string libName = std::string(className) + "_pass" + kPassLibExt;
+            logInfo("Can't find a render-pass named `" + std::string(className) + "`. Trying to load a render-pass library `" + libName + '`' + kPassLibExt);
             loadLibrary(libName);
 
             if (mPasses.find(className) == mPasses.end()) {
@@ -129,12 +138,17 @@ namespace Falcor {
 
     void copyDllFile(const std::string& fullpath) {
         std::ifstream src(fullpath, std::ios::binary);
-        std::ofstream dst(fullpath + kDllSuffix, std::ios::binary);
+        std::ofstream dst(fullpath + kPassTempLibSuffix, std::ios::binary);
         dst << src.rdbuf();
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename) {
-        std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
+        fs::path filePath = filename;
+        
+        // render-pass name was privided without an extension and that's fine
+        if (filePath.extension() != kPassLibExt) filePath += kPassLibExt;
+
+        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filePath.string());
 
         if (doesFileExist(fullpath) == false) {
             logWarning("Can't load render-pass library `" + fullpath + "`. File not found");
@@ -149,7 +163,7 @@ namespace Falcor {
         // Copy the library to a temp file
         copyDllFile(fullpath);
 
-        DllHandle l = loadDll(fullpath + kDllSuffix);
+        DllHandle l = loadDll(fullpath + kPassTempLibSuffix);
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
@@ -165,11 +179,13 @@ namespace Falcor {
         RenderPassLibrary lib;
         func(lib);
 
-        for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
+        for (auto& p : lib.mPasses) {
+            registerInternal(p.second.className, p.second.desc, p.second.func, l);
+        }
     }
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename) {
-        std::string fullpath = getExecutableDirectory() + "/" + getFilenameFromPath(filename);
+        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filename);
 
         auto libIt = mLibs.find(fullpath);
         if (libIt == mLibs.end()) {
@@ -196,7 +212,7 @@ namespace Falcor {
         }
 
         releaseDll(module);
-        std::remove((fullpath + kDllSuffix).c_str());
+        std::remove((fullpath + kPassTempLibSuffix).c_str());
         mLibs.erase(libIt);
     }
 

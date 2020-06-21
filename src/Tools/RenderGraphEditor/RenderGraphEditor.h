@@ -26,13 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Falcor.h"
+
+#include <string>
+#include <vector>
+#include <unordered_map>
+
+#include "Falcor/Falcor.h"
 
 using namespace Falcor;
 
-class RenderGraphEditor : public IRenderer
-{
-public:
+class RenderGraphEditor : public IRenderer {
+ public:
     void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(uint32_t width, uint32_t height) override;
@@ -42,7 +46,7 @@ public:
     RenderGraphEditor();
     ~RenderGraphEditor();
 
-private:
+ private:
     void createNewGraph(const std::string& renderGraphName);
     void loadGraphsFromFile(const std::string& fileName, const std::string& graphName = "");
     void serializeRenderGraph(const std::string& fileName);

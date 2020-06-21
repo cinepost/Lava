@@ -27,12 +27,9 @@
  **************************************************************************/
 #include "ShaderToy.h"
 
-ShaderToy::~ShaderToy()
-{
-}
+ShaderToy::~ShaderToy(){}
 
-void ShaderToy::onLoad(RenderContext* pRenderContext)
-{
+void ShaderToy::onLoad(RenderContext* pRenderContext) {
     // create rasterizer state
     RasterizerState::Desc rsDesc;
     mpNoCullRastState = RasterizerState::create(rsDesc);
@@ -55,8 +52,7 @@ void ShaderToy::onLoad(RenderContext* pRenderContext)
     mpMainPass = FullScreenPass::create("Samples/ShaderToy/Toy.ps.slang");
 }
 
-void ShaderToy::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-{
+void ShaderToy::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
     // iResolution
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
@@ -67,16 +63,12 @@ void ShaderToy::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPt
     mpMainPass->execute(pRenderContext, pTargetFbo);
 }
 
-void ShaderToy::onShutdown()
-{
-}
+void ShaderToy::onShutdown(){}
 
-bool ShaderToy::onKeyEvent(const KeyboardEvent& keyEvent)
-{
+bool ShaderToy::onKeyEvent(const KeyboardEvent& keyEvent) {
     bool bHandled = false;
     {
-        if(keyEvent.type == KeyboardEvent::Type::KeyPressed)
-        {
+        if(keyEvent.type == KeyboardEvent::Type::KeyPressed) {
             //switch(keyEvent.key)
             //{
             //default:
@@ -87,14 +79,12 @@ bool ShaderToy::onKeyEvent(const KeyboardEvent& keyEvent)
     return bHandled;
 }
 
-bool ShaderToy::onMouseEvent(const MouseEvent& mouseEvent)
-{
+bool ShaderToy::onMouseEvent(const MouseEvent& mouseEvent) {
     bool bHandled = false;
     return bHandled;
 }
 
-void ShaderToy::onResizeSwapChain(uint32_t width, uint32_t height)
-{
+void ShaderToy::onResizeSwapChain(uint32_t width, uint32_t height) {
     mAspectRatio = (float(width) / float(height));
 }
 
@@ -114,9 +104,9 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     Sample::run(config, pRenderer);
 #else
-    config.argc = (uint32_t)argc;
-    config.argv = argv;
-    Sample::run(config, pRenderer);
+    // config.argc = (uint32_t)argc;
+    // config.argv = argv;
+    Sample::run(config, pRenderer, argc, argv);
 #endif
     return 0;
 }

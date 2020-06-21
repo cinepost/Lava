@@ -170,10 +170,10 @@ typename ViewClass::SharedPtr findViewCommon(Texture* pTexture, uint32_t mostDet
     ResourceViewInfo view = ResourceViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize);
 
     if (viewMap.find(view) == viewMap.end()) {
-        LOG_DBG("creating view");
+        //LOG_DBG("creating view");
         viewMap[view] = createFunc(pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
     } else {
-        LOG_DBG("resusing view");
+        //LOG_DBG("resusing view");
     }
 
     return viewMap[view];
@@ -204,15 +204,9 @@ UnorderedAccessView::SharedPtr Texture::getUAV() {
 }
 
 RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    LOG_DBG("getting RenderTargetView from texture");
+    //LOG_DBG("getting RenderTargetView from texture");
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        auto ret = RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
-        if (!ret) {
-            LOG_ERR("No ret in lambda!!!");
-        } else {
-            LOG_INFO("ret is ok");
-        }
-        return ret;
+        return RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);

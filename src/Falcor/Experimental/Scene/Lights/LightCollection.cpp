@@ -299,13 +299,8 @@ namespace Falcor
             "gMeshData",
             uint32_t(mMeshLights.size()),
             ResourceBindFlags::ShaderResource);
-        if (mpMeshData->getStructSize() != sizeof(MeshLightData))
-        {
-            #ifdef _WIN32
-            throw std::exception("Size mismatch for structured buffer of MeshLightData");
-            #else
+        if (mpMeshData->getStructSize() != sizeof(MeshLightData)) {
             throw std::runtime_error("Size mismatch for structured buffer of MeshLightData");
-            #endif
         }
         size_t meshDataSize = mMeshLights.size() * sizeof(mMeshLights[0]);
         assert(mpMeshData->getSize() == meshDataSize);
@@ -582,11 +577,7 @@ namespace Falcor
         const float2* vertexTexCrd = reinterpret_cast<const float2*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize());
         assert(mpTriangleData);
         if (mpTriangleData->getStructSize() != sizeof(EmissiveTriangle)) {
-            #ifdef _WIN32
-            throw std::exception("Struct EmissiveTriangle size mismatch between CPU/GPU");
-            #else
             throw std::runtime_error("Struct EmissiveTriangle size mismatch between CPU/GPU");
-            #endif
         }
         const EmissiveTriangle* triangleData = reinterpret_cast<const EmissiveTriangle*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize() + mpMeshLightsTexCoords->getSize());
 

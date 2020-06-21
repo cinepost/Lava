@@ -51,7 +51,6 @@
 #endif  // BUILDING_SHARED_DLL
 
 #include <stdint.h>
-#include <memory>
 #include <iostream>
 #include <locale>
 #include <codecvt>
@@ -60,6 +59,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <memory>
 
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Logger.h"
@@ -88,7 +88,7 @@
 #else  // _DEBUG
 
 #ifdef _AUTOTESTING
-#define assert(a) if (!(a)) throw std::exception("Assertion Failure");
+#define assert(a) if (!(a)) throw std::runtime_error("Assertion Failure");
 #else  // _AUTOTESTING
 #define assert(a) ((void)(a))
 #endif  // _AUTOTESTING
@@ -365,8 +365,8 @@ using DllHandle = void*;
 #endif
 
 #include "Falcor/Core/Platform/OS.h"
-#include "Falcor/Utils/Timing/Profiler.h"
-#include "Falcor/Utils/Scripting/Scripting.h"
+//#include "Falcor/Utils/Timing/Profiler.h"
+//#include "Falcor/Utils/Scripting/Scripting.h"
 
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"

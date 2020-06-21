@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "RenderPassReflection.h"
 #include "ResourceCache.h"
-#include "Scene/Scene.h"
+#include "Falcor/Scene/Scene.h"
 #include "RenderPass.h"
 #include "Falcor/Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"

@@ -25,17 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Vulkan/VKDescriptorData.h"
 
-namespace Falcor
-{
-    VkDescriptorType falcorToVkDescType(DescriptorPool::Type type)
-    {
-        switch (type)
-        {
+namespace Falcor {
+
+VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
+    switch (type) {
         case DescriptorPool::Type::TextureSrv:
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         case DescriptorPool::Type::TextureUav:
@@ -59,48 +57,40 @@ namespace Falcor
         default:
             should_not_get_here();
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
-        }
-    }
-
-    void DescriptorPool::apiInit()
-    {
-        mpApiData = std::make_shared<DescriptorPool::ApiData>();
-        uint32_t totalDescCount = 0;
-        VkDescriptorPoolSize poolSizeForType[kTypeCount];
-
-        uint32_t usedSlots = 0;
-        for (uint32_t i = 0; i < kTypeCount; i++)
-        {
-            if(mDesc.mDescCount[i])
-            {
-                poolSizeForType[usedSlots].type = falcorToVkDescType((DescriptorPool::Type)i);
-                poolSizeForType[usedSlots].descriptorCount = mDesc.mDescCount[i];
-                totalDescCount += mDesc.mDescCount[usedSlots];
-                usedSlots++;
-            }
-        }
-
-        VkDescriptorPoolCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        info.maxSets = totalDescCount;
-        info.poolSizeCount = usedSlots;
-        info.pPoolSizes = poolSizeForType;
-        info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-
-        VkDescriptorPool pool;
-        if (VK_FAILED(vkCreateDescriptorPool(gpDevice->getApiHandle(), &info, nullptr, &pool)))
-        {
-            #ifdef _WIN32
-            throw std::exception("Error creating descriptor pool!");
-            #else
-            throw std::runtime_error("Error creating descriptor pool!");
-            #endif
-        }
-        mpApiData->descriptorPool = ApiHandle::create(pool);
-    }
-
-    const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const
-    {
-        return mpApiData->descriptorPool;
     }
 }
+
+void DescriptorPool::apiInit() {
+    mpApiData = std::make_shared<DescriptorPool::ApiData>();
+    uint32_t totalDescCount = 0;
+    VkDescriptorPoolSize poolSizeForType[kTypeCount];
+
+    uint32_t usedSlots = 0;
+    for (uint32_t i = 0; i < kTypeCount; i++) {
+        if(mDesc.mDescCount[i]) {
+            poolSizeForType[usedSlots].type = falcorToVkDescType((DescriptorPool::Type)i);
+            poolSizeForType[usedSlots].descriptorCount = mDesc.mDescCount[i];
+            totalDescCount += mDesc.mDescCount[usedSlots];
+            usedSlots++;
+        }
+    }
+
+    VkDescriptorPoolCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    info.maxSets = totalDescCount;
+    info.poolSizeCount = usedSlots;
+    info.pPoolSizes = poolSizeForType;
+    info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+    VkDescriptorPool pool;
+    if (VK_FAILED(vkCreateDescriptorPool(gpDevice->getApiHandle(), &info, nullptr, &pool))) {
+        throw std::runtime_error("Error creating descriptor pool!");
+    }
+    mpApiData->descriptorPool = ApiHandle::create(pool);
+}
+
+const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const {
+    return mpApiData->descriptorPool;
+}
+
+}  // namespace Falcor

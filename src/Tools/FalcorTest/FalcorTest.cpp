@@ -25,14 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "FalcorTest.h"
-#include "Testing/UnitTest.h"
 #include <cstdio>
 #include <string>
 #include <vector>
 
-static std::vector<std::string> librariesWithTests =
-{
+#include "Falcor/Core/Window.h"
+#include "Falcor/Testing/UnitTest.h"
+#include "FalcorTest.h"
+
+
+using namespace Falcor;
+
+static std::vector<std::string> librariesWithTests = {
+
 };
 
 /** Global to hold return code.
@@ -40,46 +45,40 @@ static std::vector<std::string> librariesWithTests =
 */
 static int sReturnCode = 1;
 
-void FalcorTest::onLoad(RenderContext* pRenderContext)
-{
+void FalcorTest::onLoad(RenderContext* pRenderContext) {
     // Load all the DLLs so that they can register their tests.
-    for (const auto& lib : librariesWithTests)
-    {
+    for (const auto& lib : librariesWithTests) {
         RenderPassLibrary::instance().loadLibrary(lib);
     }
 }
 
-void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-{
+void FalcorTest::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
     const char* kTestFilterSwitch = "test_filter";
     ArgList argList = gpFramework->getArgList();
     std::string testFilterRegex;
-    if (argList.argExists(kTestFilterSwitch))
-    {
+    
+    if (argList.argExists(kTestFilterSwitch)) {
         testFilterRegex = argList[kTestFilterSwitch].asString();
         std::cout << "No test_filter regex provided." << std::endl;
         sReturnCode = 1;
     }
-    if (argList.argExists("h") || argList.argExists("help"))
-    {
+
+    if (argList.argExists("h") || argList.argExists("help")) {
         std::cout << R"(usage: FalcorTest [-test_filter filter]
             Where, if |filter| is provided, only tests whose source filename or test name
             have |filter| as a substring are executed.
             )";
-    }
-    else
-    {
+    } else {
         sReturnCode = runTests(std::cout, pRenderContext, testFilterRegex);
     }
     gpFramework->shutdown();
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     FalcorTest::UniquePtr pRenderer = std::make_unique<FalcorTest>();
     SampleConfig config;
     config.windowDesc.title = "FalcorTest";
-    config.windowDesc.mode = Window::WindowMode::Minimized;
+    config.windowDesc.mode = Falcor::Window::WindowMode::Minimized;
     config.windowDesc.resizableWindow = true;
     config.windowDesc.width = config.windowDesc.height = 2;
     Sample::run(config, pRenderer, argc, argv);

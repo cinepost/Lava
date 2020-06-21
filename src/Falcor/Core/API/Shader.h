@@ -49,7 +49,7 @@ struct dlldecl ComPtr {
 
     /// Initialize to a null pointer.
     ComPtr() : mpObject(nullptr) {}
-    ComPtr(nullptr_t) : mpObject(nullptr) {}
+    ComPtr(std::nullptr_t) : mpObject(nullptr) {}
 
     /// Release reference to the pointed-to object.
     ~ComPtr() { if (mpObject) (mpObject)->Release(); }

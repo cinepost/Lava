@@ -25,15 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "FalcorExperimental.h"
+#ifndef SRC_TOOLS_FALCORTEST_FALCORTEST_H_
+#define SRC_TOOLS_FALCORTEST_FALCORTEST_H_
+
+#include "Falcor/Falcor.h"
+#include "Falcor/FalcorExperimental.h"
 
 using namespace Falcor;
 
-class FalcorTest : public IRenderer
-{
-public:
+class FalcorTest : public IRenderer {
+ public:
     void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
 };
+
+#endif  // SRC_TOOLS_FALCORTEST_FALCORTEST_H_

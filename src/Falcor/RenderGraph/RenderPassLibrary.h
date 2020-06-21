@@ -74,25 +74,25 @@ namespace Falcor {
         */
         DescVec enumerateClasses() const;
 
-        /** Load a new render-pass DLL
+        /** Load a new render-pass library (DLL/DSO)
         */
         void loadLibrary(const std::string& filename);
 
-        /** Release a previously loaded DLL
+        /** Release a previously loaded render-pass library (DLL/DSO)
         */
         void releaseLibrary(const std::string& filename);
 
-        /** Reload libraries
+        /** Reload render-pass libraries
         */
         void reloadLibraries(RenderContext* pRenderContext);
 
-        /** A render-pass DLL should implement a function called `getPasses` with the following signature
+        /** A render-pass library should implement a function called `getPasses` with the following signature
         */
         using LibraryFunc = void(*)(RenderPassLibrary& lib);
 
         using StrVec = std::vector<std::string>;
 
-        /** Get list of registered libraries
+        /** Get list of registered render-pass libraries
         */
         static StrVec enumerateLibraries();
 

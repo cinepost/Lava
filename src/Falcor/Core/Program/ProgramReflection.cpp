@@ -892,11 +892,7 @@ namespace Falcor
             return nullptr;
         case TypeReflection::Kind::GenericTypeParameter:
             // TODO: How to handle this type? Let it generate an error for now.
-            #ifdef _WIN32
-            throw std::exception("Unexpected Slang type");
-            #else
             throw std::runtime_error("Unexpected Slang type");
-            #endif
         default:
             should_not_get_here();
         }

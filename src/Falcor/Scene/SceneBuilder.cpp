@@ -39,9 +39,12 @@ namespace Falcor
         public:
             static std::vector<float3> generateBitangents(const float3* pPositions, const float3* pNormals, const float2* pTexCrd, const uint32_t* pIndices, size_t vertexCount, size_t indexCount)
             {
-                if (!pNormals || !pPositions || !pTexCrd || !pIndices)
-                {
-                    logWarning("Can't generate tangent space. The mesh doesn't have positions/normals/texCrd/indices");
+                if (!pNormals || !pPositions || !pTexCrd || !pIndices) {
+
+                    if (pNormals) logWarning("Can't generate tangent space. The mesh doesn't have normals");
+                    if (pPositions) logWarning("Can't generate tangent space. The mesh doesn't have positions");
+                    if (pTexCrd) logWarning("Can't generate tangent space. The mesh doesn't have texture coordinates");
+                    if (pIndices) logWarning("Can't generate tangent space. The mesh doesn't have indices");
                     return std::vector<float3>(vertexCount, float3(0, 0, 0));
                 }
 

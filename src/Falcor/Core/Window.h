@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_CORE_WINDOW_H_
 #define SRC_FALCOR_CORE_WINDOW_H_
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 struct GLFWwindow;
 

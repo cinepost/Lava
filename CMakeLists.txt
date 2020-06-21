@@ -84,7 +84,7 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Externals
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
   #${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/include
 )
 

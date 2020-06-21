@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "CopyContext.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/State/ComputeState.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/State/ComputeState.h"
 
 namespace Falcor
 {

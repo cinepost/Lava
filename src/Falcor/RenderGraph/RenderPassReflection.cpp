@@ -195,17 +195,11 @@ namespace Falcor
         return nullptr;
     }
 
-    RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPassReflection::Field& other)
-    {
-        auto err = [&](const std::string& msg)
-        {
+    RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPassReflection::Field& other) {
+        auto err = [&](const std::string& msg) {
             const std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
 
-            #ifdef _WIN32
-            throw std::exception((s + msg).c_str());
-            #else
             throw std::runtime_error((s + msg).c_str());
-            #endif
         };
 
         if (mType != other.mType) err("mismatching types");

@@ -26,15 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFViewer.h"
-#include "Experimental/Scene/Material/BxDFConfig.slangh"
+#include "Falcor/Experimental/Scene/Material/BxDFConfig.slangh"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("BSDFViewer", BSDFViewer::sDesc, BSDFViewer::create);
 }
@@ -167,7 +167,14 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     mParams.cameraViewportScale = std::tan(glm::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
 
     // Set resources.
-    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) throw std::exception("Failed to bind sample generator");
+    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) {
+        #ifdef _WIN32
+        throw std::exception("Failed to bind sample generator");
+        #else
+        throw std::runtime_error("Failed to bind sample generator");
+        #endif
+    }
+
     mpViewerPass["gOutput"] = renderData[kOutput]->asTexture();
     mpViewerPass["gPixelData"] = mPixelDataBuffer;
     mpViewerPass["PerFrameCB"]["gParams"].setBlob(mParams);
@@ -447,7 +454,11 @@ bool BSDFViewer::loadEnvMap(RenderContext* pRenderContext, const std::string& fi
     auto pVars = mpViewerPass->getVars();
     if (!mpEnvProbe->setShaderData(pVars["PerFrameCB"]["gEnvProbe"]))
     {
+        #ifdef _WIN32
         throw std::exception("Failed to bind EnvProbe to program");
+        #else
+        throw std::runtime_error("Failed to bind EnvProbe to program");
+        #endif
     }
 
     return true;

@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 
+#ifdef FALCOR_D3D12
+
 // TODO: Replace DirectXPackedVector.h by a platform-independent alternative that
 // allows configuring the rounding modes to match what we detect on the GPU.
 #include <DirectXPackedVector.h>
@@ -337,3 +339,6 @@ namespace Falcor
         ctx.unmapBuffer("resultFloat");
     }
 }
+
+
+#endif  // FALCOR_D3D12

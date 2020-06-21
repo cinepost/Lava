@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "Resource.h"
+#include "Buffer.h"
 #include "LowLevelContextData.h"
 
 namespace Falcor

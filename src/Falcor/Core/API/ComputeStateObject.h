@@ -26,48 +26,48 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/ProgramVersion.h"
-#include "Core/API/RootSignature.h"
 
-namespace Falcor
-{
-    class dlldecl ComputeStateObject
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeStateObject>;
-        using SharedConstPtr = std::shared_ptr<const ComputeStateObject>;
-        using ApiHandle = ComputeStateHandle;
+#include "Falcor/Core/Program/ProgramVersion.h"
+#include "Falcor/Core/API/RootSignature.h"
 
-        class dlldecl Desc
-        {
-        public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
-            Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
-            const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-            ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
-            bool operator==(const Desc& other) const;
-        private:
-            friend class ComputeStateObject;
-            ProgramKernels::SharedConstPtr mpProgram;
-            RootSignature::SharedPtr mpRootSignature;
-        };
+namespace Falcor {
 
-        ~ComputeStateObject();
+class dlldecl ComputeStateObject {
+ public:
+    using SharedPtr = std::shared_ptr<ComputeStateObject>;
+    using SharedConstPtr = std::shared_ptr<const ComputeStateObject>;
+    using ApiHandle = ComputeStateHandle;
 
-        /** Create a compute state object.
-            \param[in] desc State object description.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Desc& desc);
-
-        const ApiHandle& getApiHandle() { return mApiHandle; }
-        const Desc& getDesc() const { return mDesc; }
-
-    private:
-        ComputeStateObject(const Desc& desc);
-        void apiInit();
-
-        Desc mDesc;
-        ApiHandle mApiHandle;
+    class dlldecl Desc {
+     public:
+        Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
+        Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
+        const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
+        ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+        bool operator==(const Desc& other) const;
+     private:
+        friend class ComputeStateObject;
+        ProgramKernels::SharedConstPtr mpProgram;
+        RootSignature::SharedPtr mpRootSignature;
     };
-}
+
+    ~ComputeStateObject();
+
+    /** Create a compute state object.
+        \param[in] desc State object description.
+        \return New object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(const Desc& desc);
+
+    const ApiHandle& getApiHandle() { return mApiHandle; }
+    const Desc& getDesc() const { return mDesc; }
+
+ private:
+    ComputeStateObject(const Desc& desc);
+    void apiInit();
+
+    Desc mDesc;
+    ApiHandle mApiHandle;
+};
+
+}  // namespace Falcor

@@ -36,11 +36,7 @@ namespace Falcor
     BitonicSort::BitonicSort()
     {
 #if !(_ENABLE_NVAPI == true)
-        #ifdef _WIN32
-        throw std::exception("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
-        #else
         throw std::runtime_error("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
-        #endif
 #endif
         mSort.pState = ComputeState::create();
 

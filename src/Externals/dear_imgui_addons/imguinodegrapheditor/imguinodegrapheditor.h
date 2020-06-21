@@ -5,9 +5,9 @@
 #ifndef IMGUINODEGRAPHEDITOR_H_
 #define IMGUINODEGRAPHEDITOR_H_
 
-#ifndef IMGUI_API
-#include "Externals/dear_imgui/imgui.h"
-#endif //IMGUI_API
+// #ifndef IMGUI_API
+#include "imgui/imgui.h"
+// #endif //IMGUI_API
 
 /*
  *   // Basic usage:

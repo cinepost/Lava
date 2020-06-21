@@ -160,28 +160,20 @@ namespace Falcor
     {
         assert(gpDevice);
         Texture::SharedPtr pTexture;
-        if (overrideFormat != ResourceFormat::Unknown)
-        {
+        if (overrideFormat != ResourceFormat::Unknown) {
             Texture::SharedPtr pOrigTex = Texture::createFromFile(filename, false, loadAsSrgb);
-            if (pOrigTex)
-            {
+            if (pOrigTex) {
                 pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
                 pTexture->setSourceFilename(pOrigTex->getSourceFilename());
                 gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
                 pTexture->generateMips(gpDevice->getRenderContext());
             }
-        }
-        else
-        {
+        } else {
             pTexture = Texture::createFromFile(filename, true, loadAsSrgb);
         }
 
         if (!pTexture) {
-            #ifdef _WIN32
-            throw std::exception("Failed to create light probe");
-            #else
             throw std::runtime_error("Failed to create light probe");
-            #endif
         }
 
         return create(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat);
@@ -189,8 +181,7 @@ namespace Falcor
 
     LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
     {
-        if (pTexture->getMipCount() == 1)
-        {
+        if (pTexture->getMipCount() == 1) {
             logWarning("Source textures used for generating light probes should have a valid mip chain.");
         }
 

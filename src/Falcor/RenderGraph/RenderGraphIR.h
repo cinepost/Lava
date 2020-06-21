@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/Scripting/Dictionary.h"
+
+#include "Falcor/Utils/Scripting/Dictionary.h"
 
 namespace Falcor
 {

@@ -25,34 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/ComputeStateObject.h"
+#include <vector>
+
+#include "Falcor/stdafx.h"
+
+#include "Falcor/Core/API/ComputeStateObject.h"
 #include "VKState.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
-    void ComputeStateObject::apiInit()
-    {
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
-        //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
-        initVkShaderStageInfo(mDesc.getProgramKernels(), shaderStageInfos);
-        assert(shaderStageInfos.size() == 1);
+namespace Falcor {
 
-        VkComputePipelineCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        info.stage = shaderStageInfos[0];
-        info.layout = mDesc.mpRootSignature->getApiHandle();
+void ComputeStateObject::apiInit() {
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
+    //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
+    initVkShaderStageInfo(mDesc.getProgramKernels(), shaderStageInfos);
+    assert(shaderStageInfos.size() == 1);
 
-        VkPipeline pipeline;
-        if (VK_FAILED(vkCreateComputePipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline)))
-        {
-            #ifdef _WIN32
-            throw std::exception("Could not create compute pipeline.");
-            #else
-            throw std::runtime_error("Could not create compute pipeline.");
-            #endif
-        }
-        mApiHandle = ApiHandle::create(pipeline);
+    VkComputePipelineCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    info.stage = shaderStageInfos[0];
+    info.layout = mDesc.mpRootSignature->getApiHandle();
+
+    VkPipeline pipeline;
+    if (VK_FAILED(vkCreateComputePipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))) {
+        throw std::runtime_error("Could not create compute pipeline.");
     }
+    mApiHandle = ApiHandle::create(pipeline);
 }
+
+}  // namespace Falcor

@@ -27,7 +27,7 @@
  **************************************************************************/
 #include <set>
 
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuFence.h"
@@ -37,6 +37,8 @@
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
 
 namespace Falcor {
+
+#define DEFAULT_ENABLE_DEBUG_LAYER
 
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(

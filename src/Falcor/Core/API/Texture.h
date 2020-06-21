@@ -262,6 +262,13 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     friend class Device;
 };
 
+inline std::string to_string(const std::shared_ptr<Texture>& tex) {
+    std::string s = "Texture: " + std::to_string(tex->getWidth()) + "x" + std::to_string(tex->getHeight());
+    s += " source " + tex->getSourceFilename();
+    //s += ",map type " + to_string(buff->getType());
+    return s;
+}
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_TEXTURE_H_

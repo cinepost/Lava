@@ -106,7 +106,9 @@ namespace Falcor
         // Get the lane count. We abort the test if it is an unsupported count.
         const uint32_t laneCount = *(const uint32_t*)pLaneCount->map(Buffer::MapType::Read);
         pLaneCount->unmap();
-        if (laneCount < 4 || laneCount > 128) throw std::exception("Unsupported wave lane count");
+        if (laneCount < 4 || laneCount > 128) {
+            throw std::runtime_error("Unsupported wave lane count");
+        }
 
         // Verify results of wave match.
         std::vector<uint4> expectedResult = computeMatchResult(matchData, laneCount);

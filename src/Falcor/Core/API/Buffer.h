@@ -368,6 +368,13 @@ protected:
 #undef CASE
 };
 
+inline std::string to_string(const std::shared_ptr<Buffer>& buff) {
+    std::string s = "Buffer: ";
+    s += "cpu access " + to_string(buff->getType());
+    //s += ",map type " + to_string(buff->getType());
+    return s;
+}
+
 inline std::string to_string(Buffer::CpuAccess c) {
 #define a2s(ca_) case Buffer::CpuAccess::ca_: return #ca_;
     switch (c) {
@@ -392,6 +399,7 @@ inline std::string to_string(Buffer::MapType mt) {
             return "";
     }
 #undef t2s
+
 }
 
 }  // namespace Falcor

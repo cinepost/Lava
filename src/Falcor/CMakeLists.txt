@@ -31,6 +31,7 @@ file( GLOB SOURCES
     ./Utils/UI/*.cpp
     ./Utils/Video/*.cpp
     ./Experimental/Scene/Lights/*.cpp
+    ./Testing/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
@@ -39,16 +40,6 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_vulkan.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
-)
-
-file( GLOB SHADERS
-    ./Utils/UI/*.slang
-    ./Utils/Math/*.slang
-    ./Utils/Color/*.slang
-    ./Utils/Debug/*.slang
-    ./Utils/Algorithm/*.slang
-    ./Utils/Sampling/*.slang
-    ./Utils/Sampling/Pseudorandom/*.slang
 )
 
 # ImGui
@@ -151,12 +142,17 @@ target_link_libraries(
 # Copy/install all needed shaders
 set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders)
 file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
-#file(COPY ${SHADERS} DESTINATION ${SHADERS_OUTPUT_DIRECTORY})
 file(
-    COPY Utils Scene
+    COPY Utils Scene Experimental RenderGraph Testing
     DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
     FILES_MATCHING
         PATTERN "*.slang*"
+)
+
+# Copy/install falcor data
+file(
+    COPY Data
+    DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
 if(APPLE)

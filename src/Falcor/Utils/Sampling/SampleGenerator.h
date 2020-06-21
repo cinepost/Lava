@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Program/Program.h"
+
+#include "Falcor/Core/Program/Program.h"
 #include "SampleGeneratorType.slangh"
 
 namespace Falcor

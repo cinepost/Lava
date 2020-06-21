@@ -39,7 +39,7 @@ namespace fs = boost::filesystem;
 #include "Falcor/stdafx.h"
 #include "Scripting.h"
 
-#include "pybind11/embed.h"
+#include <pybind11/embed.h>
 
 namespace Falcor {
 

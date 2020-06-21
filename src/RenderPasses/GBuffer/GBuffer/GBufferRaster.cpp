@@ -123,7 +123,7 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
 
     if (pScene) {
         if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
-            #ifdef _WIN_32
+            #ifdef _WIN32
             throw std::exception("GBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
             #else
             throw std::runtime_error("GBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");

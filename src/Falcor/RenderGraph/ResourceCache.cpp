@@ -91,13 +91,8 @@ namespace Falcor
         assert(mNameToIndex.find(name) == mNameToIndex.end());
 
         bool addAlias = (alias.empty() == false);
-        if (addAlias && mNameToIndex.count(alias) == 0)
-        {
-            #ifdef _WIN32
-            throw std::exception(("Field named " + alias + " not found. Cannot register " + name + " as an alias.").c_str());
-            #else
+        if (addAlias && mNameToIndex.count(alias) == 0) {
             throw std::runtime_error(("Field named " + alias + " not found. Cannot register " + name + " as an alias.").c_str());
-            #endif
         }
 
         // Add a new field

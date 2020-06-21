@@ -25,8 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
+#ifndef SRC_FALCOR_TESTING_UNITTEST_H_
+#define SRC_FALCOR_TESTING_UNITTEST_H_
 
 #include <exception>
 #include <functional>
@@ -37,11 +37,18 @@
 #include <type_traits>
 #include <vector>
 
+#include "Falcor/Falcor.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Resource.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Experimental/Scene/Lights/EnvProbe.h"
+
 /** This file defines both the user-visible API for the unit testing framework as well as the various classes that implement it
 */
 
-namespace Falcor
-{
+namespace Falcor {
+
     static constexpr int kMaxTestFailures = 25;
 
     class CPUUnitTestContext;
@@ -224,17 +231,47 @@ namespace Falcor
         */
         StreamSink(UnitTestContext* ctx) : mpCtx(ctx) {}
 
-        ~StreamSink()
-        {
+        ~StreamSink() {
             if (mpCtx) mpCtx->reportFailure(mSs.str());
         }
 
+        /* 
+        // TODO: make this move semantic work
         template <typename T>
-        StreamSink& operator<<(T&&s)
-        {
-            if (mpCtx) mSs << std::move(s);
+        StreamSink& operator<<(T&&s) {
+            if (mpCtx) { 
+                mSs << std::move(s);
+            }
             return *this;
         }
+        */
+
+        template <typename T>
+        StreamSink& operator<<(T&s) {
+            if (mpCtx) { mSs << to_string(s); }
+            return *this;
+        }
+
+        StreamSink& operator<<(const char *s) {
+            if (mpCtx) { mSs << std::string(s); }
+            return *this;
+        }
+
+        StreamSink& operator<<(int s) {
+            if (mpCtx) { mSs << std::to_string(s); }
+            return *this;
+        }
+
+        StreamSink& operator<<(const std::shared_ptr<Buffer> &s) {
+            if (mpCtx) { mSs << to_string(s.get()); }
+            return *this;
+        }
+
+        StreamSink& operator<<(std::nullptr_t &n) {
+            if (mpCtx) { mSs << "std::nullptr_t"; }
+            return *this;
+        }
+
 
     private:
         std::stringstream mSs;
@@ -249,8 +286,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " == " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " == " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -262,8 +298,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " != " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " != " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -275,8 +310,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " >= " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " >= " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -288,8 +322,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " > " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " > " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -301,8 +334,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " <= " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " <= " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -314,8 +346,7 @@ namespace Falcor
         if (++ctx.mNumFailures == kMaxTestFailures) throw TooManyFailedTestsException();
 
         StreamSink ss(&ctx);
-        ss << file << ":" << line << " Test failed: " << xString << " < " <<
-            yString << " (" << x << " vs. " << y << ") ";
+        ss << file << ":" << line << " Test failed: " << xString << " < " << yString << " (" << x << " vs. " << y << ") ";
         return ss;
     }
 
@@ -391,3 +422,5 @@ namespace Falcor
 #define EXPECT(x)       expectInternal((x), #x, ctx, __FILE__, __LINE__)
 
 } // namespace Falcor
+
+#endif  // SRC_FALCOR_TESTING_UNITTEST_H_

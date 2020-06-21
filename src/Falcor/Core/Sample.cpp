@@ -49,7 +49,9 @@ std::string kMonospaceFont = "monospace";
 }
 
 void Sample::handleWindowSizeChange() {
-        if (!gpDevice) return;
+        if (!gpDevice) {
+            return;
+        }
         // Tell the device to resize the swap chain
         auto winSize = mpWindow->getClientAreaSize();
         auto pBackBufferFBO = gpDevice->resizeSwapChain(winSize.x, winSize.y);
@@ -62,13 +64,22 @@ void Sample::handleWindowSizeChange() {
         gpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
         // Tell the GUI the swap-chain size changed
-        if (mpGui) mpGui->onWindowResize(width, height);
+        if (mpGui) {
+            LOG_DBG("Call mpGui to resize: %u %u", width, height);
+            mpGui->onWindowResize(width, height);
+        }
 
         // Resize the pixel zoom
-        if (mpPixelZoom) mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
+        if (mpPixelZoom) {
+            LOG_DBG("Call mpPixelZoom to resize: %u %u", width, height);
+            mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
+        }
 
         // Call the user callback
-        if (mpRenderer) mpRenderer->onResizeSwapChain(width, height);
+        if (mpRenderer) {
+            LOG_DBG("Call mpRenderer to resize: %u %u", width, height);
+            mpRenderer->onResizeSwapChain(width, height);
+        }
     }
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent) {
@@ -376,10 +387,10 @@ void Sample::handleWindowSizeChange() {
     void Sample::renderUI() {
         PROFILE("renderUI");
 
-        mShowUI = true;
-
         if (mShowUI || gProfileEnabled) {
             mpGui->beginFrame();
+
+            ImGui::TextUnformatted("TEST");
 
             if (mShowUI) mpRenderer->onGuiRender(mpGui.get());
             if (mVideoCapture.displayUI && mVideoCapture.pUI) {
@@ -409,7 +420,7 @@ void Sample::handleWindowSizeChange() {
     }
 
     void Sample::renderFrame() {
-        LOG_INFO("render frame");
+        //LOG_INFO("render frame");
         if (gpDevice && gpDevice->isWindowOccluded()) return;
 
         // Check clock exit condition
@@ -425,7 +436,6 @@ void Sample::handleWindowSizeChange() {
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused) {
                 RenderContext* pRenderContext = gpDevice ? gpDevice->getRenderContext() : nullptr;
-                LOG_INFO("Renderer render frame");
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }
@@ -458,7 +468,7 @@ void Sample::handleWindowSizeChange() {
         }
 
         Console::flush();
-        LOG_INFO("render frame done");
+        //LOG_INFO("render frame done");
     }
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory) {

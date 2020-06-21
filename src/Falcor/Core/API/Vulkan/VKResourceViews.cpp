@@ -111,7 +111,7 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
-            LOG_DBG("VkResourceType Image");
+            //LOG_DBG("VkResourceType Image");
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
             vk_call(vkCreateImageView(gpDevice->getApiHandle(), &info, nullptr, &imageView));
@@ -119,7 +119,7 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
         }
 
         case VkResourceType::Buffer: {
-            LOG_DBG("VkResourceType Buffer");
+            //LOG_DBG("VkResourceType Buffer");
             // We only create views for TypedBuffers
             VkBufferView bufferView = {};
             const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pResource);
@@ -140,7 +140,12 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 }
 
 ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-    if (!pTexture && getNullView()) return getNullView();
+    if (!pTexture && getNullView()) {
+        LOG_WARN("return nullview");
+        return getNullView();
+    } else if (!pTexture) {
+        LOG_WARN("return nullview but not ready!");
+    }
 
     // Resource::ApiHandle resHandle = pTexture->getApiHandle();
     auto view = createViewCommon(pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
@@ -148,8 +153,9 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRe
 }
 
 ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
-    if (!pBuffer && getNullView()) return getNullView();
-
+    if (!pBuffer && getNullView()) {
+        return getNullView();
+    }
     // Resource::ApiHandle resHandle = nullptr;
     // if (pBuffer) {
     //    desc = createBufferSrvDesc(pBuffer.get(), firstElement, elementCount);

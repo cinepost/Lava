@@ -608,13 +608,13 @@ Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool gen
 
 Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     std::string fullpath;
-    printf("Searching for texture %s ...\n", filename.c_str());
+    //printf("Searching for texture %s ...\n", filename.c_str());
     if (findFileInDataDirectories(filename, fullpath) == false) {
-        printf("Texture %s not found !!!\n", filename.c_str());
+        //printf("Texture %s not found !!!\n", filename.c_str());
         logError("Error when loading image file. Can't find image file " + filename);
         return nullptr;
     }
-    printf("Texture %s found as %s\n", filename.c_str(), fullpath.c_str());
+    //printf("Texture %s found as %s\n", filename.c_str(), fullpath.c_str());
 
     Texture::SharedPtr pTex;
     if (hasSuffix(filename, ".dds")) {

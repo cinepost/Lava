@@ -86,7 +86,6 @@ namespace Falcor {
         directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
 #else
         directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
-        directories.push_back(std::string(PROJECT_DIR) + "/src/Falcor/Data");
 #endif
 
         // Add additional media folders.

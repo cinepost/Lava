@@ -44,11 +44,7 @@ namespace Falcor
         {
             const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
             if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
-                #ifdef _WIN32
-                throw std::exception(("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.").c_str());
-                #else
                 throw std::runtime_error("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.");
-                #endif
             }
 
             assert(pResourceType->getSize() <= UINT32_MAX);
@@ -124,13 +120,8 @@ namespace Falcor
     {
         const auto& pDefaultBlock = pProgram->getReflector()->getDefaultParameterBlock();
         const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
-        if (pVar == nullptr)
-        {
-            #ifdef _WIN32
-            throw std::exception(("Can't find a structured buffer named `" + name + "` in the program").c_str());
-            #else
-             throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
-            #endif
+        if (pVar == nullptr) {
+            throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
         }
         return createStructuredFromType(pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
     }

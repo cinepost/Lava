@@ -26,89 +26,82 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include <queue>
+#include <memory>
+
 #include "GpuFence.h"
+#include "Falcor/Core/Framework.h"
 
-namespace Falcor
-{
-    template<typename ObjectType>
-    class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>>
+namespace Falcor {
+
+template<typename ObjectType>
+class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>> {
+ public:
+    using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
+    using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
+    using NewObjectFuncType = ObjectType(*)(void*);
+
+    /** Create a new fenced pool.
+        \param[in] pFence GPU fence to use for synchronization.
+        \param[in] newFunc Ptr to function called to create new objects.
+        \param[in] pUserData Optional ptr to user data passed to the object creation function.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) {
+        return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+    }
+
+    /** Return an object.
+        \return An object, or throws an exception on failure.
+    */
+    ObjectType newObject() {
+        // Retire the active object
+        Data data;
+        data.alloc = mActiveObject;
+        data.timestamp = mpFence->getCpuValue();
+        mQueue.push(data);
+
+        // The queue is sorted based on time. Check if the first object is free
+        data = mQueue.front();
+        if (data.timestamp <= mpFence->getGpuValue()) {
+            mQueue.pop();
+        } else {
+            data.alloc = createObject();
+        }
+
+        mActiveObject = data.alloc;
+        return mActiveObject;
+    }
+
+private:
+    FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
+        : mpUserData(pUserData)
+        , mpFence(pFence)
+        , mNewObjFunc(newFunc)
     {
-    public:
-        using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
-        using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
-        using NewObjectFuncType = ObjectType(*)(void*);
+        assert(pFence && newFunc);
+        mActiveObject = createObject();
+    }
 
-        /** Create a new fenced pool.
-            \param[in] pFence GPU fence to use for synchronization.
-            \param[in] newFunc Ptr to function called to create new objects.
-            \param[in] pUserData Optional ptr to user data passed to the object creation function.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
-        {
-            return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+    ObjectType createObject() {
+        ObjectType pObj = mNewObjFunc(mpUserData);
+        if (pObj == nullptr) {
+            throw std::runtime_error("Failed to create new object in fenced pool");
         }
+        return pObj;
+    }
 
-        /** Return an object.
-            \return An object, or throws an exception on failure.
-        */
-        ObjectType newObject()
-        {
-            // Retire the active object
-            Data data;
-            data.alloc = mActiveObject;
-            data.timestamp = mpFence->getCpuValue();
-            mQueue.push(data);
-
-            // The queue is sorted based on time. Check if the first object is free
-            data = mQueue.front();
-            if (data.timestamp <= mpFence->getGpuValue())
-            {
-                mQueue.pop();
-            }
-            else
-            {
-                data.alloc = createObject();
-            }
-
-            mActiveObject = data.alloc;
-            return mActiveObject;
-        }
-
-    private:
-        FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
-            : mpUserData(pUserData)
-            , mpFence(pFence)
-            , mNewObjFunc(newFunc)
-        {
-            assert(pFence && newFunc);
-            mActiveObject = createObject();
-        }
-
-        ObjectType createObject()
-        {
-            ObjectType pObj = mNewObjFunc(mpUserData);
-            if (pObj == nullptr) {
-                #ifdef _WIN32
-                throw std::exception("Failed to create new object in fenced pool");
-                #else
-                throw std::runtime_error("Failed to create new object in fenced pool");
-                #endif
-            }
-            return pObj;
-        }
-
-        struct Data
-        {
-            ObjectType alloc;
-            uint64_t timestamp;
-        };
-
-        ObjectType mActiveObject;
-        NewObjectFuncType mNewObjFunc = nullptr;
-        std::queue<Data> mQueue;
-        GpuFence::SharedConstPtr mpFence;
-        void* mpUserData;
+    struct Data {
+        ObjectType alloc;
+        uint64_t timestamp;
     };
-}
+
+    ObjectType mActiveObject;
+    NewObjectFuncType mNewObjFunc = nullptr;
+    std::queue<Data> mQueue;
+    GpuFence::SharedConstPtr mpFence;
+    void* mpUserData;
+};
+
+}  // namespace Falcor

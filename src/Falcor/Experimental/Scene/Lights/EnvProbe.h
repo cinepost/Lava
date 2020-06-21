@@ -27,47 +27,56 @@
  **************************************************************************/
 #pragma once
 
-namespace Falcor
-{
-    /** Environment map based radiance probe.
-        Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/Framework.h"
+
+namespace Falcor {
+/** Environment map based radiance probe.
+    Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
+*/
+class dlldecl EnvProbe : public std::enable_shared_from_this<EnvProbe> {
+ public:
+    using SharedPtr = std::shared_ptr<EnvProbe>;
+    using SharedConstPtr = std::shared_ptr<const EnvProbe>;
+
+    virtual ~EnvProbe() = default;
+
+    /** Create a new object
+        \param[in] pRenderContext A render-context that will be used for processing
+        \param[in] filename The env-map texture filename
     */
-    class dlldecl EnvProbe : public std::enable_shared_from_this<EnvProbe>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<EnvProbe>;
-        using SharedConstPtr = std::shared_ptr<const EnvProbe>;
+    static SharedPtr create(RenderContext* pRenderContext, const std::string& filename);
 
-        virtual ~EnvProbe() = default;
+    /** Bind the environment map probe to a given shader variable.
+        \param[in] var Shader variable.
+        \return True if successful, false otherwise.
+    */
+    bool setShaderData(const ShaderVar& var) const;
 
-        /** Create a new object
-            \param[in] pRenderContext A render-context that will be used for processing
-            \param[in] filename The env-map texture filename
-        */
-        static SharedPtr create(RenderContext* pRenderContext, const std::string& filename);
+    const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
+    const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
 
-        /** Bind the environment map probe to a given shader variable.
-            \param[in] var Shader variable.
-            \return True if successful, false otherwise.
-        */
-        bool setShaderData(const ShaderVar& var) const;
+ protected:
+    EnvProbe() = default;
 
-        const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
-        const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
-        const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
+    bool init(RenderContext* pRenderContext, const std::string& filename);
+    bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
 
-    protected:
-        EnvProbe() = default;
+    ComputePass::SharedPtr  mpSetupPass;        ///< Compute pass for creating the importance map.
 
-        bool init(RenderContext* pRenderContext, const std::string& filename);
-        bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
+    Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
+    Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
 
-        ComputePass::SharedPtr  mpSetupPass;        ///< Compute pass for creating the importance map.
+    Sampler::SharedPtr      mpEnvSampler;
+    Sampler::SharedPtr      mpImportanceSampler;
+};
 
-        Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
-        Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
-
-        Sampler::SharedPtr      mpEnvSampler;
-        Sampler::SharedPtr      mpImportanceSampler;
-    };
+inline std::string to_string(const std::shared_ptr<Falcor::EnvProbe>& probe) {
+    std::string s = "EnvProbe";
+    return s;
 }
+
+}  // namespace Falcor

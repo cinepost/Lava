@@ -216,8 +216,7 @@ namespace Falcor {
         mGuiImageLoc = mpProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("guiImage");
     }
 
-    void GuiImpl::createVao(uint32_t vertexCount, uint32_t indexCount)
-    {
+    void GuiImpl::createVao(uint32_t vertexCount, uint32_t indexCount) {
         static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImDrawIdx expected size is a word");
         uint32_t requiredVbSize = vertexCount * sizeof(ImDrawVert);
         uint32_t requiredIbSize = indexCount * sizeof(uint16_t);
@@ -621,34 +620,23 @@ namespace Falcor {
     }
 
     template<typename T>
-    bool GuiImpl::addScalarVar(const char label[], T& var, T minVal, T maxVal, float step, bool sameLine, const char* displayFormat)
-    {
-        if (std::is_same<T, int32_t>::value)
-        {
+    bool GuiImpl::addScalarVar(const char label[], T& var, T minVal, T maxVal, float step, bool sameLine, const char* displayFormat) {
+        if (std::is_same<T, int32_t>::value) {
             return addScalarVarHelper(label, var, ImGuiDataType_S32, minVal, maxVal, step, sameLine, displayFormat);
-        }
-        else if (std::is_same<T, uint32_t>::value)
-        {
+        } else if (std::is_same<T, uint32_t>::value) {
             return addScalarVarHelper(label, var, ImGuiDataType_U32, minVal, maxVal, step, sameLine, displayFormat);
-        }
-        else if (std::is_same<T, float>::value)
-        {
+        } else if (std::is_same<T, float>::value) {
             return addScalarVarHelper(label, var, ImGuiDataType_Float, minVal, maxVal, step, sameLine, displayFormat);
-        }
-        else if (std::is_same<T, uint64_t>::value)
-        {
+        } else if (std::is_same<T, uint64_t>::value) {
             return addScalarVarHelper(label, var, ImGuiDataType_U64, minVal, maxVal, step, sameLine, displayFormat);
-        }
-        else
-        {
+        } else {
             logError("Unsupported slider type");
             return false;
         }
     }
 
     template<typename T>
-    bool addScalarSliderHelper(const char label[], T& var, ImGuiDataType_ imguiType, T minVal, T maxVal, bool sameLine, const char* displayFormat)
-    {
+    bool addScalarSliderHelper(const char label[], T& var, ImGuiDataType_ imguiType, T minVal, T maxVal, bool sameLine, const char* displayFormat) {
         ImGui::PushItemWidth(200);
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::SliderScalar(label, imguiType, &var, &minVal, &maxVal, displayFormat);
@@ -657,22 +645,14 @@ namespace Falcor {
     }
 
     template<typename T>
-    bool GuiImpl::addScalarSlider(const char label[], T& var, T minVal, T maxVal, bool sameLine, const char* displayFormat)
-    {
-        if (std::is_same<T, int32_t>::value)
-        {
+    bool GuiImpl::addScalarSlider(const char label[], T& var, T minVal, T maxVal, bool sameLine, const char* displayFormat) {
+        if (std::is_same<T, int32_t>::value) {
             return addScalarSliderHelper(label, var, ImGuiDataType_S32, minVal, maxVal, sameLine, displayFormat);
-        }
-        else if (std::is_same<T, uint32_t>::value)
-        {
+        } else if (std::is_same<T, uint32_t>::value) {
             return addScalarSliderHelper(label, var, ImGuiDataType_U32, minVal, maxVal, sameLine, displayFormat);
-        }
-        else if (std::is_same<T, float>::value)
-        {
+        } else if (std::is_same<T, float>::value) {
             return addScalarSliderHelper(label, var, ImGuiDataType_Float, minVal, maxVal, sameLine, displayFormat);
-        }
-        else
-        {
+        } else {
             logError("Unsupported slider type");
             return false;
         }
@@ -878,6 +858,7 @@ namespace Falcor {
         vp.height = ImGui::GetIO().DisplaySize.y;
         vp.minDepth = 0;
         vp.maxDepth = 1;
+        LOG_DBG("viewport size: %.3f %.3f", vp.width, vp.height);
         mpWrapper->mpPipelineState->setViewport(0, vp);
 
         // Render command lists
@@ -901,6 +882,8 @@ namespace Falcor {
             }
             vtxOffset += pCmdList->VtxBuffer.Size;
         }
+
+
 
         // Prepare for the next frame
         ImGuiIO& io = ImGui::GetIO();

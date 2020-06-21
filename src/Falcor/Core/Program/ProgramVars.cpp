@@ -25,24 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
+
 #include "ProgramVars.h"
 #include "GraphicsProgram.h"
 #include "ComputeProgram.h"
-#include "Core/API/ComputeContext.h"
-#include "Core/API/RenderContext.h"
+#include "Falcor/Core/API/ComputeContext.h"
+#include "Falcor/Core/API/RenderContext.h"
 
 #include <slang/slang.h>
 
-namespace Falcor
-{
+namespace Falcor {
 
-    static bool compareRootSets(const DescriptorSet::Layout& a, const DescriptorSet::Layout& b)
-    {
+    static bool compareRootSets(const DescriptorSet::Layout& a, const DescriptorSet::Layout& b) {
         if (a.getRangeCount() != b.getRangeCount()) return false;
         if (a.getVisibility() != b.getVisibility()) return false;
-        for (uint32_t i = 0; i < a.getRangeCount(); i++)
-        {
+        for (uint32_t i = 0; i < a.getRangeCount(); i++) {
             const auto& rangeA = a.getRange(i);
             const auto& rangeB = b.getRange(i);
             if (rangeA.baseRegIndex != rangeB.baseRegIndex) return false;
@@ -63,12 +61,11 @@ namespace Falcor
         assert(pReflector);
     }
 
-    void ProgramVars::addSimpleEntryPointGroups()
-    {
+    void ProgramVars::addSimpleEntryPointGroups() {
         auto& entryPointGroups = mpReflector->getEntryPointGroups();
         auto groupCount = entryPointGroups.size();
-        for( size_t gg = 0; gg < groupCount; ++gg )
-        {
+
+        for( size_t gg = 0; gg < groupCount; ++gg ) {
             auto pGroup = entryPointGroups[gg];
             auto pGroupVars = EntryPointGroupVars::create(pGroup, uint32_t(gg));
             mpEntryPointGroupVars.push_back(pGroupVars);
@@ -81,50 +78,30 @@ namespace Falcor
         addSimpleEntryPointGroups();
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector)
-    {
+    GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't create a GraphicsVars object without a program reflector");
-            #else
             throw std::runtime_error("Can't create a GraphicsVars object without a program reflector");
-            #endif
         }
         return SharedPtr(new GraphicsVars(pReflector));
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg)
-    {
+    GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg) {
         if (pProg == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't create a GraphicsVars object without a program");
-            #else
             throw std::runtime_error("Can't create a GraphicsVars object without a program");
-            #endif
         }
         return create(pProg->getReflector());
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector)
-    {
+    ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't create a ComputeVars object without a program reflector");
-            #else
             throw std::runtime_error("Can't create a ComputeVars object without a program reflector");
-            #endif
         }
         return SharedPtr(new ComputeVars(pReflector));
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg)
-    {
+    ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg) {
         if (pProg == nullptr) {
-            #ifdef _WIN32
-            throw std::exception("Can't create a ComputeVars object without a program");
-            #else
             throw std::runtime_error("Can't create a ComputeVars object without a program");
-            #endif
         }
         return create(pProg->getReflector());
     }
@@ -156,15 +133,12 @@ namespace Falcor
         assert(!pResource || pBuffer); // If a resource is bound, it must be a buffer
         uint64_t gpuAddress = pBuffer ? pBuffer->getGpuAddress() : 0;
 
-        if (forGraphics)
-        {
+        if (forGraphics) {
             if (isUav)
                 pContext->getLowLevelData()->getCommandList()->SetGraphicsRootUnorderedAccessView(rootIndex, gpuAddress);
             else
                 pContext->getLowLevelData()->getCommandList()->SetGraphicsRootShaderResourceView(rootIndex, gpuAddress);
-        }
-        else
-        {
+        } else {
             if (isUav)
                 pContext->getLowLevelData()->getCommandList()->SetComputeRootUnorderedAccessView(rootIndex, gpuAddress);
             else
@@ -174,21 +148,17 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    void bindRootConstants(CopyContext* pContext, uint32_t rootIndex, ParameterBlock* pParameterBlock, const ParameterBlockReflection* pParameterBlockReflector)
-    {
+    void bindRootConstants(CopyContext* pContext, uint32_t rootIndex, ParameterBlock* pParameterBlock, const ParameterBlockReflection* pParameterBlockReflector) {
         #ifdef _WIN32
         uint32_t count = uint32_t(pParameterBlockReflector->getElementType()->getByteSize() / sizeof(uint32_t));
         void const* pSrc = pParameterBlock->getRawData();
-        if (forGraphics)
-        {
+        if (forGraphics) {
             pContext->getLowLevelData()->getCommandList()->SetGraphicsRoot32BitConstants(
                 rootIndex,
                 count,
                 pSrc,
                 0);
-        }
-        else
-        {
+        } else {
             pContext->getLowLevelData()->getCommandList()->SetComputeRoot32BitConstants(
                 rootIndex,
                 count,
@@ -314,16 +284,11 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
-    {
-        if (bindRootSig)
-        {
-            if (forGraphics)
-            {
+    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
+        if (bindRootSig) {
+            if (forGraphics) {
                 pRootSignature->bindForGraphics(pContext);
-            }
-            else
-            {
+            } else {
                 pRootSignature->bindForCompute(pContext);
             }
         }
@@ -331,12 +296,10 @@ namespace Falcor
         return bindRootSetsCommon<forGraphics>(pVars, pContext, bindRootSig, pRootSignature);
     }
 
-    bool ProgramVars::updateSpecializationImpl() const
-    {
+    bool ProgramVars::updateSpecializationImpl() const {
         ParameterBlock::SpecializationArgs specializationArgs;
         collectSpecializationArgs(specializationArgs);
-        if( specializationArgs.size() == 0 )
-        {
+        if( specializationArgs.size() == 0 ) {
             mpSpecializedReflector = ParameterBlock::mpReflector;
             return false;
         }
@@ -348,13 +311,12 @@ namespace Falcor
         return false;
     }
 
-    bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
-    {
+    bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
         return applyProgramVarsCommon<false>(this, pContext, bindRootSig, pRootSignature);
     }
 
-    bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
-    {
+    bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
         return applyProgramVarsCommon<true>(this, pContext, bindRootSig, pRootSignature);
     }
-}
+
+}  // namespace Falcor

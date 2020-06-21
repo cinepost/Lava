@@ -26,11 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/API/GraphicsStateObject.h"
+
+#include "Falcor/Core/API/GraphicsStateObject.h"
 #include "StateGraph.h"
-#include "Core/API/FBO.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ProgramVars.h"
+#include "Falcor/Core/API/FBO.h"
+#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 
 namespace Falcor
 {
@@ -51,8 +52,7 @@ namespace Falcor
 
         /** Defines the region to render to.
         */
-        struct Viewport
-        {
+        struct Viewport {
             Viewport() = default;
             Viewport(float x, float y, float w, float h, float minZ, float maxZ)
                 : originX(x), originY(y), width(w), height(h), minDepth(minZ), maxDepth(maxZ) {}

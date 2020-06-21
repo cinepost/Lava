@@ -34,7 +34,7 @@
 #include <unordered_map>
 
 #include "Falcor/Falcor.h"
-#include "FalcorExperimental.h"
+#include "Falcor/FalcorExperimental.h"
 #include "AppData.h"
 
 using namespace Falcor;

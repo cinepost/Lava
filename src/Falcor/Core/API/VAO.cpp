@@ -53,11 +53,7 @@ Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Bu
 Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat) {
     if (pLayout != nullptr) {
         if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false) {
-            #ifdef _WIN32
-            throw std::exception("Failed to create VAO");
-            #else
             throw std::runtime_error("Failed to create VAO");
-            #endif
         }
     }
 

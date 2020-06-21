@@ -242,11 +242,7 @@ namespace Falcor
     {
         if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false)
         {
-            #ifdef _WIN32
-            throw std::exception("Can't attach depth-stencil texture to FBO. Invalid parameters.");
-            #else
             throw std::runtime_error("Can't attach depth-stencil texture to FBO. Invalid parameters.");
-            #endif
         }
 
         mpDesc = nullptr;
@@ -268,19 +264,11 @@ namespace Falcor
     {
         if (rtIndex >= mColorAttachments.size())
         {
-            #ifdef _WIN32
-            throw std::exception(("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets").c_str());
-            #else
             throw std::runtime_error("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets");
-            #endif
         }
         if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false)
         {
-            #ifdef _WIN32
-            throw std::exception("Can't attach texture to FBO. Invalid parameters.");
-            #else
             throw std::runtime_error("Can't attach texture to FBO. Invalid parameters.");
-            #endif
         }
 
         mpDesc = nullptr;
@@ -316,22 +304,19 @@ namespace Falcor
             mDepth = std::min(mDepth, pTexture->getDepth(attachment.mipLevel));
 
             {
-                if ( (pTexture->getSampleCount() > mTempDesc.getSampleCount()) && isDepthStencilFormat(pTexture->getFormat()) )
-                {
+                if ( (pTexture->getSampleCount() > mTempDesc.getSampleCount()) && isDepthStencilFormat(pTexture->getFormat()) ) {
                     // We're using target-independent raster (more depth samples than color samples).  This is OK.
                     mTempDesc.setSampleCount(pTexture->getSampleCount());
                     return true;
                 }
 
-                if (mTempDesc.getSampleCount() != pTexture->getSampleCount())
-                {
+                if (mTempDesc.getSampleCount() != pTexture->getSampleCount()) {
                     logError("Error when validating FBO. Different sample counts in attachments\n");
                     return false;
                 }
 
     
-                if (mIsLayered != (attachment.arraySize > 1))
-                {
+                if (mIsLayered != (attachment.arraySize > 1)) {
                     logError("Error when validating FBO. Can't bind both layered and non-layered textures\n");
                     return false;
                 }
@@ -349,10 +334,8 @@ namespace Falcor
         mIsLayered = false;
 
         // Check color
-        for (const auto& attachment : mColorAttachments)
-        {
-            if (verifyAttachment(attachment) == false)
-            {
+        for (const auto& attachment : mColorAttachments) {
+            if (verifyAttachment(attachment) == false) {
                 return false;
             }
         }
@@ -361,11 +344,9 @@ namespace Falcor
         if (verifyAttachment(mDepthStencil) == false) return false;
 
         // In case there are sample positions, make sure they are valid
-        if (mSamplePositions.size())
-        {
+        if (mSamplePositions.size()) {
             uint32_t expectedCount = mSamplePositionsPixelCount * mTempDesc.getSampleCount();
-            if (expectedCount != mSamplePositions.size())
-            {
+            if (expectedCount != mSamplePositions.size()) {
                 logError("Error when validating FBO. The sample-positions array-size has the wrong size.\n");
                 return false;
             }
@@ -377,15 +358,9 @@ namespace Falcor
         return true;
     }
 
-    Texture::SharedPtr Fbo::getColorTexture(uint32_t index) const
-    {
-        if (index >= mColorAttachments.size())
-        {
-            #ifdef _WIN32
-            throw std::exception(("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.").c_str());
-            #else
+    Texture::SharedPtr Fbo::getColorTexture(uint32_t index) const {
+        if (index >= mColorAttachments.size()) {
             throw std::runtime_error("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.");
-            #endif
         }
         return mColorAttachments[index].pTexture;
     }
@@ -395,64 +370,44 @@ namespace Falcor
     }
 
     void Fbo::finalize() const {
-        LOG_DBG("finalizing...");
-        if (mpDesc == nullptr)
-        {
-            if (calcAndValidateProperties() == false)
-            {
-                #ifdef _WIN32
-                throw std::exception("Can't finalize FBO. Invalid frame buffer object.");
-                #else
+        //LOG_DBG("finalizing...");
+        if (mpDesc == nullptr) {
+            if (calcAndValidateProperties() == false) {
                 throw std::runtime_error("Can't finalize FBO. Invalid frame buffer object.");
-                #endif
             }
             initApiHandle();
         }
-        LOG_DBG("done finalizing!");
+        //LOG_DBG("done finalizing!");
     }
 
-    void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[])
-    {
-        if (positions)
-        {
+    void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]) {
+        if (positions) {
             mSamplePositions = std::vector<SamplePosition>(positions, positions + (samplesPerPixel * pixelCount));
             mSamplePositionsPixelCount = pixelCount;
-        }
-        else
-        {
+        } else {
             mSamplePositionsPixelCount = 0;
             mSamplePositions.clear();
         }
     }
 
-    Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
-    {
-        printf("F-0\n");
+    Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
         uint32_t sampleCount = fboDesc.getSampleCount();
-        if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
-        {
-            #ifdef _WIN32
-            throw std::exception("Can't create 2D FBO. Invalid parameters.");
-            #else
+        if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false) {
             throw std::runtime_error("Can't create 2D FBO. Invalid parameters.");
-            #endif
         }
-        printf("F-1\n");
+        
         Fbo::SharedPtr pFbo = create();
-        printf("F-2\n");
+        
         // Create the color targets
-        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
-        {
-            if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown)
-            {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++) {
+            if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown) {
                 Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
                 Texture::SharedPtr pTex = createTexture2D(width, height, fboDesc.getColorTargetFormat(i), sampleCount, arraySize, mipLevels, flags);
                 pFbo->attachColorTarget(pTex, i, 0, 0, kAttachEntireMipLevel);
             }
         }
-        printf("F-3\n");
-        if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
-        {
+        
+        if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown) {
             Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
             Texture::SharedPtr pDepth = createTexture2D(width, height, fboDesc.getDepthStencilFormat(), sampleCount, arraySize, mipLevels, flags);
             pFbo->attachDepthStencilTarget(pDepth, 0, 0, kAttachEntireMipLevel);
@@ -461,37 +416,24 @@ namespace Falcor
         return pFbo;
     }
 
-    Fbo::SharedPtr Fbo::createCubemap(uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
-    {
-        if (fboDesc.getSampleCount() > 1)
-        {
-            #ifdef _WIN32
-            throw std::exception("Can't create cubemap FBO. Multisampled cubemap is not supported.");
-            #else
+    Fbo::SharedPtr Fbo::createCubemap(uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
+        if (fboDesc.getSampleCount() > 1) {
             throw std::runtime_error("Can't create cubemap FBO. Multisampled cubemap is not supported.");
-            #endif
         }
-        if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)
-        {
-            #ifdef _WIN32
-            throw std::exception("Can't create cubemap FBO. Invalid parameters.");
-            #else
+        if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false) {
             throw std::runtime_error("Can't create cubemap FBO. Invalid parameters.");
-            #endif
         }
 
         Fbo::SharedPtr pFbo = create();
 
         // Create the color targets
-        for (uint32_t i = 0; i < getMaxColorTargetCount(); i++)
-        {
+        for (uint32_t i = 0; i < getMaxColorTargetCount(); i++) {
             Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
             auto pTex = Texture::createCube(width, height, fboDesc.getColorTargetFormat(i), arraySize, mipLevels, nullptr, flags);
             pFbo->attachColorTarget(pTex, i, 0, kAttachEntireMipLevel);
         }
 
-        if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
-        {
+        if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown) {
             Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
             auto pDepth = Texture::createCube(width, height, fboDesc.getDepthStencilFormat(), arraySize, mipLevels, nullptr, flags);
             pFbo->attachDepthStencilTarget(pDepth, 0, kAttachEntireMipLevel);
@@ -500,15 +442,13 @@ namespace Falcor
         return pFbo;
     }
 
-    Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth)
-    {
+    Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth) {
         Desc d;
         d.setColorTarget(0, color).setDepthStencilTarget(depth);
         return create2D(width, height, d);
     }
 
-    SCRIPT_BINDING(Fbo)
-    {
+    SCRIPT_BINDING(Fbo) {
         m.regClass(Fbo);
     }
 }

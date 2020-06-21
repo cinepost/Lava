@@ -25,11 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "RenderPass.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
         : mName(passName)
         , mpResources(pResourceCache)
@@ -40,8 +40,8 @@ namespace Falcor
         if (!mpDictionary) mpDictionary = Dictionary::create();
     }
 
-    const Resource::SharedPtr& RenderData::getResource(const std::string& name) const
-    {
+    const Resource::SharedPtr& RenderData::getResource(const std::string& name) const {
         return mpResources->getResource(mName + '.' + name);
     }
-}
+
+}  // namespace Falcor

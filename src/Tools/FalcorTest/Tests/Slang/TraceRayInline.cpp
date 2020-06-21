@@ -27,11 +27,14 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 
-namespace Falcor
-{
-    GPU_TEST(testTraceRayInlineAPI, "Requires shader model 6.5")
-    {
-        // We don't actually run the program, just make sure it compiles.
-        ctx.createProgram("Tests/Slang/TraceRayInline.cs.slang", "testTraceRayInlineAPI", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
-    }
+#ifdef FALCOR_D3D12
+namespace Falcor {
+
+GPU_TEST(testTraceRayInlineAPI, "Requires shader model 6.5") {
+    // We don't actually run the program, just make sure it compiles.
+    ctx.createProgram("Tests/Slang/TraceRayInline.cs.slang", "testTraceRayInlineAPI", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
 }
+
+}  // namespace Falcor
+
+#endif  // FALCOR_D3D12

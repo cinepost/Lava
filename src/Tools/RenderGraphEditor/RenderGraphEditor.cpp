@@ -25,12 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "RenderGraphEditor.h"
 #include <fstream>
-#include <filesystem>
+
+#ifdef _WIN32
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#else
+  #include "boost/filesystem.hpp"
+  namespace fs = boost::filesystem;
+#endif
+
+
 #include "RenderGraphEditor.h"
-#include "dear_imgui/imgui.h"
-#include "dear_imgui/imgui_internal.h"
+#include "Falcor/Utils/Debug/debug.h"
+
+#include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
 
 const char* kViewerExecutableName = "Mogwai";
 const char* kScriptSwitch = "script";
@@ -39,40 +49,45 @@ const char* kGraphNameSwitch = "graphName";
 const char* kEditorSwitch = "editor";
 const char* kDefaultPassIcon = "DefaultPassIcon.png";
 
-RenderGraphEditor::RenderGraphEditor()
-    : mCurrentGraphIndex(0)
-{
+#ifdef _MSC_VER
+static const std::string kPassLibExt = "dll";
+#else
+static const std::string kPassLibExt = "dso";
+#endif
+
+RenderGraphEditor::RenderGraphEditor(): mCurrentGraphIndex(0) {
     mNextGraphString.resize(255, 0);
     mCurrentGraphOutput = "";
     mGraphOutputEditString = mCurrentGraphOutput;
     mGraphOutputEditString.resize(255, 0);
 }
 
-RenderGraphEditor::~RenderGraphEditor()
-{
-    if (mViewerProcess)
-    {
+RenderGraphEditor::~RenderGraphEditor() {
+    if (mViewerProcess) {
         terminateProcess(mViewerProcess);
         mViewerProcess = 0;
     }
 }
 
-void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
-{
+void RenderGraphEditor::onLoad(RenderContext* pRenderContext) {
     const auto& argList = gpFramework->getArgList();
     std::string filePath;
-    if (argList.argExists(kGraphFileSwitch))
-    {
+    if (argList.argExists(kGraphFileSwitch)) {
         filePath = argList[kGraphFileSwitch].asString();
     }
 
     mpDefaultIconTex = Texture::createFromFile(kDefaultPassIcon, false, false);
-    if (!mpDefaultIconTex) throw std::exception("Failed to load icon");
+    if (!mpDefaultIconTex) {
+        #ifdef _WIN32
+        throw std::exception("Failed to load icon");
+        #else
+        throw std::runtime_error("Failed to load icon");
+        #endif
+    }
 
     loadAllPassLibraries();
 
-    if (filePath.size())
-    {
+    if (filePath.size()) {
         std::string graphName;
         if (argList.argExists(kGraphNameSwitch)) graphName = argList[kGraphNameSwitch].asString();
 
@@ -84,11 +99,10 @@ void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
     else createNewGraph("DefaultRenderGraph");
 }
 
-void RenderGraphEditor::onDroppedFile(const std::string& filename)
-{
+void RenderGraphEditor::onDroppedFile(const std::string& filename) {
     std::string ext = getExtensionFromFile(filename);
 
-    if ((ext == "dll") || (ext == "so")) {
+    if (ext == kPassLibExt) {
         RenderPassLibrary::instance().loadLibrary(filename);
     } else if (ext == "py") {
         if (mViewerRunning) { msgBox("Viewer is running. Please close the viewer before loading a graph file.", MsgBoxType::Ok); }
@@ -182,7 +196,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
 
     if (fileMenu.item("Load Pass Library")) {
         std::string passLib;
-        FileDialogFilterVec filters = { {"dll"} };
+        FileDialogFilterVec filters = { {kPassLibExt} };
         if (openFileDialog(filters, passLib)) {
             RenderPassLibrary::instance().loadLibrary(passLib);
         }
@@ -343,21 +357,18 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
     }
 
     // pop up window for naming a new render graph
-    if (mShowCreateGraphWindow)
-    {
+    if (mShowCreateGraphWindow) {
         Gui::Window createWindow(pGui, "CreateNewGraph", { 256, 128 }, { screenWidth / 2 - 128, screenHeight / 2 - 64 });
         createWindow.textbox("Graph Name", mNextGraphString);
 
-        if (createWindow.button("Create Graph") && mNextGraphString[0])
-        {
+        if (createWindow.button("Create Graph") && mNextGraphString[0]) {
             createNewGraph(mNextGraphString);
             mNextGraphString.clear();
             mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
         }
 
-        if (createWindow.button("Cancel", true))
-        {
+        if (createWindow.button("Cancel", true)) {
             mNextGraphString.clear();
             mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
@@ -369,24 +380,25 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
     mResetGuiWindows = false;
 }
 
-void RenderGraphEditor::loadAllPassLibraries()
-{
+void RenderGraphEditor::loadAllPassLibraries() {
     std::string executableDirectory = getExecutableDirectory();
 
     // iterate through and find all render pass libraries
-    for (auto& file : std::filesystem::directory_iterator(executableDirectory))
-    {
+    LOG_DBG("Loading render-pass libraries from %s directory...", executableDirectory.c_str());
+    for (auto& file : fs::directory_iterator(executableDirectory)) {
         std::string filename = file.path().string();
-        if (getExtensionFromFile(filename) == "dll")
-        {
+        
+        if (getExtensionFromFile(filename) == kPassLibExt) {
+            LOG_DBG("Trying to load %s", filename.c_str());
             // check for addPasses()
             DllHandle l = loadDll(filename);
             auto pGetPass = (RenderPassLibrary::LibraryFunc)getDllProcAddress(l, "getPasses");
 
-            if (pGetPass)
-            {
+            if (pGetPass) {
                 releaseDll(l);
                 RenderPassLibrary::instance().loadLibrary(filename);
+            } else {
+                LOG_DBG("%s is not a valid render-pass library", filename.c_str());
             }
         }
     }
@@ -505,12 +517,20 @@ int main(int argc, char** argv)
 {
     RenderGraphEditor::UniquePtr pEditor = std::make_unique<RenderGraphEditor>();
     SampleConfig config;
-#ifndef _WIN32
-    config.argv = argv;
-    config.argc = (uint32_t)argc;
-#endif
+
+// #ifndef _WIN32
+//     config.argv = argv;
+//     config.argc = (uint32_t)argc;
+// #endif
+
     config.windowDesc.title = "Render Graph Editor";
     config.windowDesc.resizableWindow = true;
+    
+    #ifdef _WIN32
     Sample::run(config, pEditor);
+    #else
+    Sample::run(config, pEditor, argc, argv);
+    #endif
+
     return 0;
 }

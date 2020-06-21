@@ -25,17 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/GraphicsStateObject.h"
-#include "API/FBO.h"
-#include "API/Texture.h"
-#include "API/Device.h"
-#include "API/Vulkan/VKState.h"
+#include <vector>
 
-namespace Falcor
-{
-    void GraphicsStateObject::apiInit()
-    {
+#include "Falcor/stdafx.h"
+
+#include "Falcor/Core/API/GraphicsStateObject.h"
+#include "Falcor/Core/API/FBO.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Vulkan/VKState.h"
+
+namespace Falcor {
+
+    void GraphicsStateObject::apiInit() {
         // Shader Stages
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
         //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
@@ -98,14 +100,10 @@ namespace Falcor
         pipelineCreateInfo.subpass = 0;
 
         VkPipeline pipeline;
-        if (VK_FAILED(vkCreateGraphicsPipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline)))
-        {
-            #ifdef _WIN32
-            throw std::exception("Could not create graphics pipeline.");
-            #else
+        if (VK_FAILED(vkCreateGraphicsPipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline))) {
             throw std::runtime_error("Could not create graphics pipeline.");
-            #endif
         }
         mApiHandle = ApiHandle::create(pipeline);
     }
-}
+
+}  // namespace Falcor

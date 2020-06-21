@@ -100,11 +100,7 @@ namespace Falcor
         if (mGraph.getOutputCount() == 0) err += "Graph must have at least one output.\n";
 
         if (err.size()) {
-            #ifdef _WIN23
-            throw std::exception(err.c_str());
-            #else
             throw std::runtime_error(err.c_str());
-            #endif
         }
     }
 
