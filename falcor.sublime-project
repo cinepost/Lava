@@ -10,6 +10,7 @@
 		"working_dir":".",
     
     "SublimeLinter.linters.clang++.disable": false,
+    "SublimeLinter.linters.clang++.args": ["-std=c++17"],
     "SublimeLinter.linters.clang++.I": [
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
@@ -17,9 +18,9 @@
       "${project_path}/src/Externals/GLM/", 
       "${file_path}", 
       "/usr/include/python3.7"],
-    "SublimeLinter.linters.clang++.args": ["-std=c++17"],
 
-    "SublimeLinter.linters.gcc.disable": false,
+    "SublimeLinter.linters.gcc.disable": true,
+    "SublimeLinter.linters.gcc.args": ["-std=c99"],
     "SublimeLinter.linters.gcc.I": [
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
@@ -27,9 +28,9 @@
       "${project_path}/src/Externals/GLM/", 
       "${file_path}", 
       "/usr/include/python3.7"],
-    "SublimeLinter.linters.gcc.args": ["-fsyntax-only", "-std=c99"],
 
     "SublimeLinter.linters.g++.disable": false,
+    "SublimeLinter.linters.g++.args": ["-std=c++17"],
     "SublimeLinter.linters.g++.I": [
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
@@ -37,7 +38,6 @@
       "${project_path}/src/Externals/GLM/", 
       "${file_path}", 
       "/usr/include/python3.7"],
-    "SublimeLinter.linters.g++.args": ["-fsyntax-only", "-std=c++17"],
 
     "SublimeLinter.linters.cppcheck.args": [
       "-sourcepath", 

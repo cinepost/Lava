@@ -25,6 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
 #include "stdafx.h"
 #include "SceneImporter.h"
 #include "rapidjson/document.h"
@@ -32,7 +40,6 @@
 #include "Core/API/Device.h"
 #include "glm/gtx/euler_angles.hpp"
 #include "glm/gtx/transform.hpp"
-#include <filesystem>
 
 namespace Falcor
 {
@@ -369,7 +376,7 @@ namespace Falcor
             }
         }
 
-        assert(std::filesystem::path(file).extension() != ".fscene"); // #SCENE this will cause an endless recursion. We may want to fix it
+        assert(fs::path(file).extension() != ".fscene"); // #SCENE this will cause an endless recursion. We may want to fix it
         mBuilder.import(file.c_str(), instances);
 
         return true;

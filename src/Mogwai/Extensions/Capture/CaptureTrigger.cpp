@@ -25,9 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#ifdef _WIN32
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#else
+  #include "boost/filesystem.hpp"
+  namespace fs = boost::filesystem;
+#endif
+
+#include "Falcor/stdafx.h"
 #include "CaptureTrigger.h"
-#include <filesystem>
+
 
 namespace Mogwai
 {
@@ -38,21 +46,17 @@ namespace Mogwai
         const std::string kOutputDir = "outputDir";
         const std::string kBaseFilename = "baseFilename";
 
-        void throwIfOverlapping(uint64_t xStart, uint64_t xCount, uint64_t yStart, uint64_t yCount)
-        {
+        void throwIfOverlapping(uint64_t xStart, uint64_t xCount, uint64_t yStart, uint64_t yCount) {
             uint64_t xEnd = xStart + xCount - 1;
             uint64_t yEnd = yStart + yCount - 1;
-            if (xStart <= yEnd && yStart <= xEnd)
-            {
-                throw std::exception("This range overlaps an existing range!");
+            if (xStart <= yEnd && yStart <= xEnd) {
+                throw std::runtime_error("This range overlaps an existing range!");
             }
         }
 
         template<typename T>
-        std::optional<typename T::value_type> findRange(const T& frames, uint64_t startFrame)
-        {
-            for (auto r : frames)
-            {
+        std::optional<typename T::value_type> findRange(const T& frames, uint64_t startFrame) {
+            for (auto r : frames) {
                 if (r.first == startFrame) return r;
             }
             return std::nullopt;
@@ -149,7 +153,10 @@ namespace Mogwai
         w.textbox("Base Filename", mBaseFilename);
         w.text("Output Directory\n" + mOutputDir);
         std::string folder;
-        bool changed = w.button("Change Folder") && chooseFolderDialog(mOutputDir);
+        
+        // TODO: make linux version on chooseFolderDialog
+        bool changed = false; // changed = w.button("Change Folder") && chooseFolderDialog(mOutputDir);
+        
         changed = w.checkbox("Absolute Path", mAbsolutePath, true) || changed; // Avoid short-circuit
         if (changed) setOutputDirectory(mOutputDir);
         w.tooltip("If checked, will use an absolute path. Otherwise, the path will be relative to the executable directory");
@@ -157,9 +164,9 @@ namespace Mogwai
 
     void CaptureTrigger::setOutputDirectory(const std::string& outDir)
     {
-        bool absolute = std::filesystem::path(outDir).is_absolute();
-        if (absolute && !mAbsolutePath) mOutputDir = std::filesystem::relative(outDir, getExecutableDirectory()).string();
-        else if (!absolute && mAbsolutePath) mOutputDir = std::filesystem::absolute(getExecutableDirectory() + "/" + outDir).string();
+        bool absolute = fs::path(outDir).is_absolute();
+        if (absolute && !mAbsolutePath) mOutputDir = fs::relative(outDir, getExecutableDirectory()).string();
+        else if (!absolute && mAbsolutePath) mOutputDir = fs::absolute(getExecutableDirectory() + "/" + outDir).string();
         else mOutputDir = outDir;
     }
 
@@ -192,8 +199,8 @@ namespace Mogwai
 
     std::string CaptureTrigger::getOutputNamePrefix(const std::string& output) const
     {
-        auto outDir = std::filesystem::path(mOutputDir);
-        if (outDir.is_absolute() == false) outDir = std::filesystem::absolute(getExecutableDirectory() + "/" + outDir.string());
+        auto outDir = fs::path(mOutputDir);
+        if (outDir.is_absolute() == false) outDir = fs::absolute(getExecutableDirectory() + "/" + outDir.string());
         std::string absPath = outDir.string();
         std::string filename = absPath + "/" + mBaseFilename + "." + output + ".";
         return filename;

@@ -1,4 +1,4 @@
-set (SOURCES
+file ( GLOB SOURCES
   ./stdafx.cpp
   ./AppData.cpp
   ./Mogwai.cpp

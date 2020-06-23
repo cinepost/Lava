@@ -66,18 +66,17 @@ namespace Falcor {
         VkBufferView texelBufferView = {};
 
         if (handle.getType() == VkResourceType::Buffer) {
+             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
             // TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
-            // if (pTypedBuffer)
-            // {
-            //     texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
-            //     write.pTexelBufferView = &texelBufferView;
-            // } else {
-                Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
+            if (pBuffer->isTyped()) {
+                 texelBufferView = pBuffer->getUAV()->getApiHandle();
+                 write.pTexelBufferView = &texelBufferView;
+            } else {
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();
                 write.pBufferInfo = &buffer;
-            // }
+            }
         } else {
             assert(handle.getType() == VkResourceType::Image);
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

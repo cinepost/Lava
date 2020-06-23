@@ -25,17 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <cstring>
+
 #include "stdafx.h"
 #include "Falcor/Core/API/ComputeContext.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DescriptorSet.h"
-#include <cstring>
+#include "Falcor/Utils/Debug/debug.h"
 
 #define VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION 256 
 //VkPhysicalDeviceLimits::maxComputeWorkGroupSize[3]
 
-namespace Falcor
-{
+namespace Falcor {
+
     ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
         : CopyContext(type, queue)
     {
@@ -65,8 +67,7 @@ namespace Falcor
     }
     */
 
-    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
-    {
+    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
         assert(pState);
 
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
@@ -152,19 +153,24 @@ namespace Falcor
         // Check dispatch dimensions. TODO: Should be moved into Falcor.
         if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
-            dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
-        {
+            dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION) {
             logError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
             return;
         }
 
-        if (prepareForDispatch(pState, pVars) == false) return;
+        if (prepareForDispatch(pState, pVars) == false) {
+            LOG_WARN("prepareForDispatch failed !");
+            return;
+        }
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
 
     void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
-        if (prepareForDispatch(pState, pVars) == false) return;
+        if (prepareForDispatch(pState, pVars) == false) {
+            LOG_WARN("prepareForDispatch failed !");
+            return;
+        }
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         vkCmdDispatchIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), pArgBuffer->getGpuAddressOffset() + argBufferOffset);
     }

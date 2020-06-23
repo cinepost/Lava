@@ -25,98 +25,101 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_DESCRIPTORPOOL_H_
+#define SRC_FALCOR_CORE_API_DESCRIPTORPOOL_H_
+
 #include <queue>
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/GpuFence.h"
+
 namespace Falcor {
-    class DescriptorSet;
 
-    struct DescriptorPoolApiData;
-    struct DescriptorSetApiData;
+class DescriptorSet;
 
-    class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPool>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<DescriptorPool>;
-        using SharedConstPtr = std::shared_ptr<const DescriptorPool>;
-        using ApiHandle = DescriptorHeapHandle;
-        using CpuHandle = HeapCpuHandle;
-        using GpuHandle = HeapGpuHandle;
-        using ApiData = DescriptorPoolApiData;
+struct DescriptorPoolApiData;
+struct DescriptorSetApiData;
 
-        ~DescriptorPool();
+class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPool> {
+ public:
+    using SharedPtr = std::shared_ptr<DescriptorPool>;
+    using SharedConstPtr = std::shared_ptr<const DescriptorPool>;
+    using ApiHandle = DescriptorHeapHandle;
+    using CpuHandle = HeapCpuHandle;
+    using GpuHandle = HeapGpuHandle;
+    using ApiData = DescriptorPoolApiData;
 
-        enum class Type
-        {
-            TextureSrv,
-            TextureUav,
-            RawBufferSrv,
-            RawBufferUav,
-            TypedBufferSrv,
-            TypedBufferUav,
-            Cbv,
-            StructuredBufferUav,
-            StructuredBufferSrv,
-            Dsv,
-            Rtv,
-            Sampler,
+    ~DescriptorPool();
 
-            Count
-        };
+    enum class Type {
+        TextureSrv,
+        TextureUav,
+        RawBufferSrv,
+        RawBufferUav,
+        TypedBufferSrv,
+        TypedBufferUav,
+        Cbv,
+        StructuredBufferUav,
+        StructuredBufferSrv,
+        Dsv,
+        Rtv,
+        Sampler,
 
-        static const uint32_t kTypeCount = uint32_t(Type::Count);
-
-        class dlldecl Desc
-        {
-        public:
-            Desc& setDescCount(Type type, uint32_t count)
-            {
-                uint32_t t = (uint32_t)type;
-                mTotalDescCount -= mDescCount[t];
-                mTotalDescCount += count;
-                mDescCount[t] = count;
-                return *this;
-            }
-
-            Desc& setShaderVisible(bool visible) { mShaderVisible = visible; return *this; }
-        private:
-            friend DescriptorPool;
-            uint32_t mDescCount[kTypeCount] = { 0 };
-            uint32_t mTotalDescCount = 0;
-            bool mShaderVisible = false;
-        };
-
-        /** Create a new descriptor pool.
-            \param[in] desc Description of the desriptor type and count.
-            \param[in] pFence Fence object for synchronization.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Desc& desc, const GpuFence::SharedPtr& pFence);
-
-        uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
-        uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
-        bool isShaderVisible() const { return mDesc.mShaderVisible; }
-        const ApiHandle& getApiHandle(uint32_t heapIndex) const;
-        const ApiData* getApiData() const { return mpApiData.get(); }
-        void executeDeferredReleases();
-
-    private:
-        friend DescriptorSet;
-        DescriptorPool(const Desc& desc, const GpuFence::SharedPtr & pFence);
-        void apiInit();
-        void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
-        Desc mDesc;
-        std::shared_ptr<ApiData> mpApiData;
-        GpuFence::SharedPtr mpFence;
-
-        struct DeferredRelease
-        {
-            std::shared_ptr<DescriptorSetApiData> pData;
-            uint64_t fenceValue;
-            bool operator>(const DeferredRelease& other) const { return fenceValue > other.fenceValue; }
-        };
-
-        std::priority_queue<DeferredRelease, std::vector<DeferredRelease>, std::greater<DeferredRelease>> mpDeferredReleases;
+        Count
     };
 
+    static const uint32_t kTypeCount = uint32_t(Type::Count);
+
+    class dlldecl Desc {
+     public:
+        Desc& setDescCount(Type type, uint32_t count) {
+            uint32_t t = (uint32_t)type;
+            mTotalDescCount -= mDescCount[t];
+            mTotalDescCount += count;
+            mDescCount[t] = count;
+            return *this;
+        }
+
+        Desc& setShaderVisible(bool visible) { mShaderVisible = visible; return *this; }
+     private:
+        friend DescriptorPool;
+        uint32_t mDescCount[kTypeCount] = { 0 };
+        uint32_t mTotalDescCount = 0;
+        bool mShaderVisible = false;
+    };
+
+    /** Create a new descriptor pool.
+        \param[in] desc Description of the desriptor type and count.
+        \param[in] pFence Fence object for synchronization.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(const Desc& desc, const GpuFence::SharedPtr& pFence);
+
+    uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
+    uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
+    bool isShaderVisible() const { return mDesc.mShaderVisible; }
+    const ApiHandle& getApiHandle(uint32_t heapIndex) const;
+    const ApiData* getApiData() const { return mpApiData.get(); }
+    void executeDeferredReleases();
+
+ private:
+    friend DescriptorSet;
+    DescriptorPool(const Desc& desc, const GpuFence::SharedPtr & pFence);
+    void apiInit();
+    void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
+    Desc mDesc;
+    std::shared_ptr<ApiData> mpApiData;
+    GpuFence::SharedPtr mpFence;
+
+    struct DeferredRelease {
+        std::shared_ptr<DescriptorSetApiData> pData;
+        uint64_t fenceValue;
+        bool operator>(const DeferredRelease& other) const { return fenceValue > other.fenceValue; }
+    };
+
+    std::priority_queue<DeferredRelease, std::vector<DeferredRelease>, std::greater<DeferredRelease>> mpDeferredReleases;
+};
+
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_DESCRIPTORPOOL_H_

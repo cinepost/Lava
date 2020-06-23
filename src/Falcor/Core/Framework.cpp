@@ -25,15 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 
-namespace Falcor
-{
-    SCRIPT_BINDING(ComparisonFunc)
-    {
-        auto comparison = m.enum_<ComparisonFunc>("Comparison");
-        comparison.regEnumVal(ComparisonFunc::Disabled).regEnumVal(ComparisonFunc::LessEqual).regEnumVal(ComparisonFunc::GreaterEqual);
-        comparison.regEnumVal(ComparisonFunc::Less).regEnumVal(ComparisonFunc::Greater).regEnumVal(ComparisonFunc::Equal);
-        comparison.regEnumVal(ComparisonFunc::NotEqual).regEnumVal(ComparisonFunc::Always).regEnumVal(ComparisonFunc::Never);
-    }
+namespace Falcor {
+
+SCRIPT_BINDING(ComparisonFunc) {
+    auto comparison = m.enum_<ComparisonFunc>("Comparison");
+    comparison.regEnumVal(ComparisonFunc::Disabled).regEnumVal(ComparisonFunc::LessEqual).regEnumVal(ComparisonFunc::GreaterEqual);
+    comparison.regEnumVal(ComparisonFunc::Less).regEnumVal(ComparisonFunc::Greater).regEnumVal(ComparisonFunc::Equal);
+    comparison.regEnumVal(ComparisonFunc::NotEqual).regEnumVal(ComparisonFunc::Always).regEnumVal(ComparisonFunc::Never);
 }
+
+}  // namespace Falcor

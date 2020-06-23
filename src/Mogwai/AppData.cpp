@@ -87,7 +87,7 @@ size_t kMaxRecentFiles = 25;
     void AppData::loadFromFile(const fs::path& path) {
         rapidjson::Document document;
 
-        std::ifstream ifs(path);
+        std::ifstream ifs(path.string());
         if (!ifs.good()) return;
 
         rapidjson::IStreamWrapper isw(ifs);
@@ -129,7 +129,7 @@ size_t kMaxRecentFiles = 25;
         document.AddMember(kRecentScripts, writeStringArray(mRecentScripts), allocator);
         document.AddMember(kRecentScenes, writeStringArray(mRecentScenes), allocator);
 
-        std::ofstream ofs(path);
+        std::ofstream ofs(path.string());
         if (!ofs.good()) return;
 
         rapidjson::OStreamWrapper osw(ofs);

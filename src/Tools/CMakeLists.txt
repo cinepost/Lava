@@ -26,13 +26,27 @@ function (makeFalcorTool tool_dir)
 	)
 
 	# Copy/install tool data
-	set(TOOL_DATA_DIR ${tool_dir}/Data)
-	if(EXISTS ${TOOL_DATA_DIR})
+	set(TOOL_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${tool_dir}/Data")
+  if(IS_DIRECTORY ${TOOL_DATA_DIR})
 		file(
     		COPY ${TOOL_DATA_DIR}
     		DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 		)
 	endif()
+
+  # Copy/install all needed shaders
+  if( ${tool_dir} STREQUAL "FalcorTest" )
+    message ("Copy FalcorTest shaders...")
+    set( SHADERS_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders" )
+    file( MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY} )
+    set( TEST_SHADERS_DIRECTORY "${tool_dir}/Tests" )
+    file(
+        COPY ${TEST_SHADERS_DIRECTORY}
+        DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
+        FILES_MATCHING
+          PATTERN "*.slang*"
+    )
+  endif()
 endfunction()
 
 # Now make passes

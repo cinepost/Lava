@@ -1,7 +1,13 @@
 cmake_minimum_required( VERSION 3.5 )
 
-set(CMAKE_C_COMPILER gcc)
-set(CMAKE_CXX_COMPILER g++)
+#set(CMAKE_C_COMPILER gcc)
+#set(CMAKE_CXX_COMPILER g++)
+
+set(CMAKE_C_COMPILER gcc-7)
+set(CMAKE_CXX_COMPILER g++-7)
+
+#set(CMAKE_C_COMPILER clang)
+#set(CMAKE_CXX_COMPILER clang++)
 
 set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )

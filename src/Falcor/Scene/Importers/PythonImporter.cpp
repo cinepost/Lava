@@ -25,74 +25,74 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
 #include "stdafx.h"
 #include "PythonImporter.h"
-#include <filesystem>
 
-namespace Falcor
-{
-    class PythonImporterImpl
-    {
-    public:
-        PythonImporterImpl(SceneBuilder& builder) : mBuilder(builder) {}
-        bool load(const std::string& filename);
+namespace Falcor {
 
-    private:
-        bool error(const std::string& msg);
+class PythonImporterImpl {
+ public:
+    PythonImporterImpl(SceneBuilder& builder) : mBuilder(builder) {}
+    bool load(const std::string& filename);
 
-        SceneBuilder& mBuilder;
-        std::string mFilename;
-        std::string mDirectory;
-    };
+ private:
+    bool error(const std::string& msg);
 
-    bool PythonImporterImpl::error(const std::string& msg)
-    {
-        logError("Error when parsing scene file \"" + mFilename + "\".\n" + msg);
+    SceneBuilder& mBuilder;
+    std::string mFilename;
+    std::string mDirectory;
+};
+
+bool PythonImporterImpl::error(const std::string& msg) {
+    logError("Error when parsing scene file \"" + mFilename + "\".\n" + msg);
+    return false;
+}
+
+bool PythonImporterImpl::load(const std::string& filename) {
+    std::string fullpath;
+
+    if (findFileInDataDirectories(filename, fullpath)) {
+        // Get the directory of the script file
+        const std::string directory = fullpath.substr(0, fullpath.find_last_of("/\\"));
+
+        // Load the script file
+        const std::string script = removeLeadingWhitespaces(readFile(fullpath));
+
+        // Get filename of referenced scene from first line "# [scene filename]"
+        size_t endOfFirstLine = script.find_first_of("\r\n");
+        if (script.length() < 2 || script[0] != '#' || script[1] != ' ' || endOfFirstLine == std::string::npos) {
+            return error("Script file is missing header with reference to scene file.");
+        }
+
+        addDataDirectory(directory);
+
+        // Load referenced scene
+        const std::string sceneFile = script.substr(2, endOfFirstLine - 2);
+        mBuilder.import(sceneFile.c_str());
+
+        // Execute scene script
+        Scripting::Context context;
+        context.setObject("scene", mBuilder.getScene());
+        Scripting::runScriptFromFile(fullpath, context);
+
+        removeDataDirectory(directory);
+        return true;
+    } else {
         return false;
     }
-
-    bool PythonImporterImpl::load(const std::string& filename)
-    {
-        std::string fullpath;
-
-        if (findFileInDataDirectories(filename, fullpath))
-        {
-            // Get the directory of the script file
-            const std::string directory = fullpath.substr(0, fullpath.find_last_of("/\\"));
-
-            // Load the script file
-            const std::string script = removeLeadingWhitespaces(readFile(fullpath));
-
-            // Get filename of referenced scene from first line "# [scene filename]"
-            size_t endOfFirstLine = script.find_first_of("\r\n");
-            if (script.length() < 2 || script[0] != '#' || script[1] != ' ' || endOfFirstLine == std::string::npos)
-            {
-                return error("Script file is missing header with reference to scene file.");
-            }
-
-            addDataDirectory(directory);
-
-            // Load referenced scene
-            const std::string sceneFile = script.substr(2, endOfFirstLine - 2);
-            mBuilder.import(sceneFile.c_str());
-
-            // Execute scene script
-            Scripting::Context context;
-            context.setObject("scene", mBuilder.getScene());
-            Scripting::runScriptFromFile(fullpath, context);
-
-            removeDataDirectory(directory);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    bool PythonImporter::import(const std::string& filename, SceneBuilder& builder)
-    {
-        PythonImporterImpl importer(builder);
-        return importer.load(filename);
-    }
 }
+
+bool PythonImporter::import(const std::string& filename, SceneBuilder& builder) {
+    PythonImporterImpl importer(builder);
+    return importer.load(filename);
+}
+
+}  // namespace Falcor

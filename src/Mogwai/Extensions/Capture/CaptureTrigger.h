@@ -33,7 +33,7 @@ namespace Mogwai
     class CaptureTrigger : public Extension
     {
     public:
-        virtual ~CaptureTrigger() = 0 {}
+        virtual ~CaptureTrigger(){};
 
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
         virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;

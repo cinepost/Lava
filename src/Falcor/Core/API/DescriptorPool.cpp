@@ -25,39 +25,33 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "DescriptorPool.h"
 
-namespace Falcor
-{
-    DescriptorPool::SharedPtr DescriptorPool::create(const Desc& desc, const GpuFence::SharedPtr& pFence)
-    {
-        return SharedPtr(new DescriptorPool(desc, pFence));
-    }
+namespace Falcor {
 
-    DescriptorPool::DescriptorPool(const Desc& desc, const GpuFence::SharedPtr& pFence)
-        : mDesc(desc)
-        , mpFence(pFence)
-    {
-        apiInit();
-    }
+DescriptorPool::SharedPtr DescriptorPool::create(const Desc& desc, const GpuFence::SharedPtr& pFence) {
+    return SharedPtr(new DescriptorPool(desc, pFence));
+}
 
-    DescriptorPool::~DescriptorPool() = default;
+DescriptorPool::DescriptorPool(const Desc& desc, const GpuFence::SharedPtr& pFence): mDesc(desc), mpFence(pFence) {
+    apiInit();
+}
 
-    void DescriptorPool::executeDeferredReleases()
-    {
-        uint64_t gpuVal = mpFence->getGpuValue();
-        while (mpDeferredReleases.size() && mpDeferredReleases.top().fenceValue <= gpuVal)
-        {
-            mpDeferredReleases.pop();
-        }
-    }
+DescriptorPool::~DescriptorPool() = default;
 
-    void DescriptorPool::releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData)
-    {
-        DeferredRelease d;
-        d.pData = pData;
-        d.fenceValue = mpFence->getCpuValue();
-        mpDeferredReleases.push(d);
+void DescriptorPool::executeDeferredReleases() {
+    uint64_t gpuVal = mpFence->getGpuValue();
+    while (mpDeferredReleases.size() && mpDeferredReleases.top().fenceValue <= gpuVal) {
+        mpDeferredReleases.pop();
     }
 }
+
+void DescriptorPool::releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData) {
+    DeferredRelease d;
+    d.pData = pData;
+    d.fenceValue = mpFence->getCpuValue();
+    mpDeferredReleases.push(d);
+}
+
+}  // namespace Falcor

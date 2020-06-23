@@ -29,10 +29,14 @@
 #include "Falcor/Core/API/ResourceViews.h"
 #include "Falcor/Core/API/Resource.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/DescriptorSet.h"
+#include "Falcor/Core/API/Formats.h"
+
 
 namespace Falcor {
 
 using TypedBufferBase = Buffer;
+
 
 VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
@@ -74,6 +78,7 @@ VkImageViewCreateInfo initializeImageViewInfo(const Texture* pTexture, uint32_t 
     VkImageViewCreateInfo outInfo = {};
 
     ResourceFormat texFormat = pTexture->getFormat();
+    LOG_DBG("Texture format: %s", to_string(texFormat).c_str()); 
 
     outInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     outInfo.image = pTexture->getApiHandle();
@@ -96,11 +101,15 @@ VkImageViewCreateInfo initializeImageViewInfo(const Texture* pTexture, uint32_t 
 
 VkBufferViewCreateInfo initializeBufferViewInfo(const TypedBufferBase* pTypedBuffer) {
     VkBufferViewCreateInfo outInfo = {};
+
+    ResourceFormat buffFormat = pTypedBuffer->getFormat();
+    LOG_DBG("Buffer format: %s", to_string(buffFormat).c_str()); 
+
     outInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     outInfo.buffer = pTypedBuffer->getApiHandle();
     outInfo.offset = 0;
     outInfo.range = VK_WHOLE_SIZE;
-    outInfo.format = getVkFormat(pTypedBuffer->getFormat());
+    outInfo.format = getVkFormat(buffFormat);
     return outInfo;
 }
 
@@ -111,7 +120,6 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
-            //LOG_DBG("VkResourceType Image");
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
             vk_call(vkCreateImageView(gpDevice->getApiHandle(), &info, nullptr, &imageView));
@@ -119,13 +127,12 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
         }
 
         case VkResourceType::Buffer: {
-            //LOG_DBG("VkResourceType Buffer");
             // We only create views for TypedBuffers
             VkBufferView bufferView = {};
-            const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pResource);
+            const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
 
-            if (pTypedBuffer) {
-                VkBufferViewCreateInfo info = initializeBufferViewInfo(pTypedBuffer);
+            if (pBuffer->isTyped()) {
+                VkBufferViewCreateInfo info = initializeBufferViewInfo(pBuffer);
                 vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
             }
 
@@ -190,13 +197,47 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtr
     return SharedPtr(new UnorderedAccessView(pTexture, view, mipLevel, firstArraySlice, arraySize));
 }
 
+/*
+UnorderedAccessView::ApiHandle createUavDescriptor(const DescriptorSet& desc, Resource::ApiHandle resHandle, Resource::ApiHandle counterHandle) {
+    DescriptorSet::Layout layout;
+    layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
+    UnorderedAccessView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+    gpDevice->getApiHandle()->CreateUnorderedAccessView(resHandle, counterHandle, &desc, handle->getCpuHandle(0));
+    return handle;
+}
+*/
+
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
     if (!pBuffer && getNullView()) return getNullView();
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create UnorderedAccessView from a texture!");
-        return getNullView();;
+        return getNullView();
     }
+
+    const Resource* pResource = pBuffer.get();
+    assert(pResource);
+
+    VkBufferView bufferView = {};
+    const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pResource);
+
+    if (pTypedBuffer) {
+        VkBufferViewCreateInfo info = initializeBufferViewInfo(pTypedBuffer);
+        vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+    } else {
+        LOG_WARN("Buffer is NULL");
+    }
+
+    auto view =  VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+
+    DescriptorSet::Layout layout;
+    layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
+    auto desc = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+
+    auto uav = new UnorderedAccessView(pBuffer, view, firstElement, elementCount);
+    //desc->setUav(0, 1, uav);
+
+    return SharedPtr(uav);
 }
 
 RenderTargetView::~RenderTargetView() {

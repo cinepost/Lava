@@ -160,11 +160,11 @@
 #include "Falcor/Utils/Debug/DebugConsole.h"
 #include "Falcor/Utils/Debug/PixelDebug.h"
 
-#ifdef FALCOR_D3D12
-#include "Falcor/Raytracing/RtProgramVars.h"
-#include "Falcor/Raytracing/RtStateObject.h"
-#include "Falcor/Raytracing/RtProgram/RtProgram.h"
-#endif
+// #ifdef FALCOR_D3D12
+// #include "Falcor/Raytracing/RtProgramVars.h"
+// #include "Falcor/Raytracing/RtStateObject.h"
+// #include "Falcor/Raytracing/RtProgram/RtProgram.h"
+// #endif
 
 #define FALCOR_MAJOR_VERSION 4
 #define FALCOR_REVISION 1

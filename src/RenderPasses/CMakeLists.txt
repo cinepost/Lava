@@ -46,11 +46,13 @@ function (makeRenderPassLib pass_dir)
     )
 
     # Copy comliped render-pass library
+    set ( PASS_LIBRARY_INSTALL_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Passes")
+    file(MAKE_DIRECTORY ${PASS_LIBRARY_INSTALL_DIRECTORY})
     add_custom_command(
         TARGET ${PASS_LIB} 
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:${PASS_LIB}> ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Passes
+            $<TARGET_FILE:${PASS_LIB}> ${PASS_LIBRARY_INSTALL_DIRECTORY}
     )
 
 endfunction()
