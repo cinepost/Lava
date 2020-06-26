@@ -32,6 +32,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 #pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
 
@@ -858,7 +859,7 @@ namespace Falcor {
         vp.height = ImGui::GetIO().DisplaySize.y;
         vp.minDepth = 0;
         vp.maxDepth = 1;
-        LOG_DBG("viewport size: %.3f %.3f", vp.width, vp.height);
+        
         mpWrapper->mpPipelineState->setViewport(0, vp);
 
         // Render command lists
@@ -877,6 +878,7 @@ namespace Falcor {
                     mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
                 }
                 mpWrapper->mpPipelineState->setScissors(0, scissor);
+                
                 pContext->drawIndexed(mpWrapper->mpPipelineState.get(), mpWrapper->mpProgramVars.get(), pCmd->ElemCount, idxOffset, vtxOffset);
                 idxOffset += pCmd->ElemCount;
             }

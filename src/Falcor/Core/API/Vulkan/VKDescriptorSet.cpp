@@ -88,17 +88,8 @@ namespace Falcor {
 
                 texelBufferView = pBuffer->getUAV()->getApiHandle();
                 write.pTexelBufferView = &texelBufferView;
-            } else if (pBuffer->isStructured()) {
-                LOG_DBG("Structured buffer");
-                buffer.buffer = pBuffer->getApiHandle();
-                buffer.offset = pBuffer->getGpuAddressOffset();
-                buffer.range = pBuffer->getSize();
-                write.pBufferInfo = &buffer;
-
-                //texelBufferView = pBuffer->getUAV()->getApiHandle();
-                //write.pTexelBufferView = &texelBufferView;
             } else {
-                LOG_DBG("Buffer");
+                LOG_DBG("Buffer/Structured Buffer");
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();

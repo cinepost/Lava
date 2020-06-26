@@ -114,6 +114,7 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
     static SharedPtr getNullView();
+    static SharedPtr getNullBufferView();
 
     // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
     ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -145,6 +146,7 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
     static SharedPtr getNullView();
+    static SharedPtr getNullBufferView();
 
  private:
     UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
@@ -179,11 +181,16 @@ class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
 };
 
 struct NullResourceViews {
-    ShaderResourceView::SharedPtr srv;
-    ConstantBufferView::SharedPtr cbv;
-    RenderTargetView::SharedPtr   rtv;
+    ShaderResourceView::SharedPtr  srv;
+    ConstantBufferView::SharedPtr  cbv;
+    RenderTargetView::SharedPtr    rtv;
     UnorderedAccessView::SharedPtr uav;
-    DepthStencilView::SharedPtr dsv;
+    DepthStencilView::SharedPtr    dsv;
+};
+
+struct NullResourceBufferViews {
+    ShaderResourceView::SharedPtr  srv;
+    UnorderedAccessView::SharedPtr uav;
 };
 
 }  // namespace Falcor

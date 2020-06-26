@@ -65,19 +65,16 @@ void Sample::handleWindowSizeChange() {
 
         // Tell the GUI the swap-chain size changed
         if (mpGui) {
-            LOG_DBG("Call mpGui to resize: %u %u", width, height);
             mpGui->onWindowResize(width, height);
         }
 
         // Resize the pixel zoom
         if (mpPixelZoom) {
-            LOG_DBG("Call mpPixelZoom to resize: %u %u", width, height);
             mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
         }
 
         // Call the user callback
         if (mpRenderer) {
-            LOG_DBG("Call mpRenderer to resize: %u %u", width, height);
             mpRenderer->onResizeSwapChain(width, height);
         }
     }
@@ -390,8 +387,6 @@ void Sample::handleWindowSizeChange() {
         if (mShowUI || gProfileEnabled) {
             mpGui->beginFrame();
 
-            ImGui::TextUnformatted("TEST");
-
             if (mShowUI) mpRenderer->onGuiRender(mpGui.get());
             if (mVideoCapture.displayUI && mVideoCapture.pUI) {
                 Gui::Window w(mpGui.get(), "Video Capture", mVideoCapture.displayUI, { 350, 250 }, { 300, 280 });
@@ -414,7 +409,7 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont("");
             }
 
-            LOG_INFO("ImGui render frame");
+            // LOG_INFO("ImGui render frame");
             mpGui->render(getRenderContext(), gpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
         }
     }

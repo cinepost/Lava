@@ -27,8 +27,7 @@
  **************************************************************************/
 #include "ModelViewer.h"
 
-void ModelViewer::setModelString(double loadTime)
-{
+void ModelViewer::setModelString(double loadTime) {
     assert(mpScene != nullptr);
 
     mModelString = "Loading took " + std::to_string(loadTime) + " seconds.\n";
@@ -42,8 +41,7 @@ void ModelViewer::setModelString(double loadTime)
     //mModelString += std::to_string(pModel->getBufferCount()) + " buffers.\n";
 }
 
-void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat fboFormat)
-{
+void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat fboFormat) {
     CpuTimer timer;
     timer.update();
 
@@ -54,8 +52,7 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
 
     SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
 
-    if(!pBuilder)
-    {
+    if(!pBuilder) {
         msgBox("Could not load model");
         return;
     }
@@ -70,22 +67,19 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
     setModelString(timer.delta());
 }
 
-void ModelViewer::loadModel(ResourceFormat fboFormat)
-{
+void ModelViewer::loadModel(ResourceFormat fboFormat) {
     std::string Filename;
-    if(openFileDialog(Scene::kFileExtensionFilters, Filename))
-    {
+
+    if(openFileDialog(Scene::kFileExtensionFilters, Filename)) {
         loadModelFromFile(Filename, fboFormat);
     }
 }
 
-void ModelViewer::onGuiRender(Gui* pGui)
-{
+void ModelViewer::onGuiRender(Gui* pGui) {
     Gui::Window w(pGui, "Model Viewer", { 400, 300 }, { 0, 100 });
 
     // Load model group
-    if (w.button("Load Model"))
-    {
+    if (w.button("Load Model")) {
         loadModel(gpFramework->getTargetFbo()->getColorTexture(0)->getFormat());
     }
 
@@ -100,12 +94,10 @@ void ModelViewer::onGuiRender(Gui* pGui)
     w.separator();
     w.checkbox("Wireframe", mDrawWireframe);
 
-    if(mDrawWireframe == false)
-    {
+    if(mDrawWireframe == false) {
         w.checkbox("Override Rasterizer State", mOverrideRS);
 
-        if(mOverrideRS)
-        {
+        if(mOverrideRS) {
             Gui::DropdownList cullList;
             cullList.push_back({ 0, "No Culling" });
             cullList.push_back({ 1, "Backface Culling" });
@@ -123,8 +115,7 @@ void ModelViewer::onGuiRender(Gui* pGui)
     if (mpScene) mpScene->renderUI(w);
 }
 
-void ModelViewer::onLoad(RenderContext* pRenderContext)
-{
+void ModelViewer::onLoad(RenderContext* pRenderContext) {
     mpProgram = GraphicsProgram::createFromFile("Samples/ModelViewer/ModelViewer.ps.slang", "", "main");
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
@@ -159,31 +150,28 @@ void ModelViewer::onLoad(RenderContext* pRenderContext)
     resetCamera();
 }
 
-void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-{
+void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
+
     const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraphicsState->setFbo(pTargetFbo);
 
-    if(mpScene)
-    {
+    if(mpScene) {
         mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
 
         // Set render state
         Scene::RenderFlags renderFlags = Scene::RenderFlags::None;
-        if(mDrawWireframe)
-        {
+        
+        if(mDrawWireframe) {
             renderFlags |= Scene::RenderFlags::UserRasterizerState;
             mpGraphicsState->setRasterizerState(mpWireframeRS);
             mpGraphicsState->setDepthStencilState(mpNoDepthDS);
             mpProgramVars["PerFrameCB"]["gConstColor"] = true;
-        }
-        else
-        {
+        } else {
             mpProgramVars["PerFrameCB"]["gConstColor"] = false;
             mpGraphicsState->setDepthStencilState(mpDepthTestDS);
-            if (mOverrideRS)
-            {
+            
+            if (mOverrideRS) {
                 renderFlags |= Scene::RenderFlags::UserRasterizerState;
                 mpGraphicsState->setRasterizerState(mpCullRastState[mCullMode]);
             }
@@ -196,38 +184,31 @@ void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
     TextRenderer::render(pRenderContext, mModelString, pTargetFbo, float2(10, 30));
 }
 
-bool ModelViewer::onKeyEvent(const KeyboardEvent& keyEvent)
-{
+bool ModelViewer::onKeyEvent(const KeyboardEvent& keyEvent) {
     if (mpScene && mpScene->onKeyEvent(keyEvent)) return true;
 
-    if ((keyEvent.type == KeyboardEvent::Type::KeyPressed) && (keyEvent.key == KeyboardEvent::Key::R))
-    {
+    if ((keyEvent.type == KeyboardEvent::Type::KeyPressed) && (keyEvent.key == KeyboardEvent::Key::R)) {
         resetCamera();
         return true;
     }
     return false;
 }
 
-bool ModelViewer::onMouseEvent(const MouseEvent& mouseEvent)
-{
+bool ModelViewer::onMouseEvent(const MouseEvent& mouseEvent) {
     return mpScene ? mpScene->onMouseEvent(mouseEvent) : false;
 }
 
-void ModelViewer::onResizeSwapChain(uint32_t width, uint32_t height)
-{
+void ModelViewer::onResizeSwapChain(uint32_t width, uint32_t height) {
     float h = (float)height;
     float w = (float)width;
 }
 
-void ModelViewer::setCamController()
-{
+void ModelViewer::setCamController() {
     if(mpScene) mpScene->setCameraController(mCameraType);
 }
 
-void ModelViewer::resetCamera()
-{
-    if(mpScene)
-    {
+void ModelViewer::resetCamera() {
+    if(mpScene) {
         mpScene->resetCamera(true);
         setCamController();
     }

@@ -51,10 +51,20 @@ Texture::SharedPtr createBlackTexture() {
     return Texture::create2D(1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
 }
 
+Buffer::SharedPtr createZeroBuffer() {
+    static const uint32_t zero = 0;
+    return Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+}
+
 // ResourceWeakPtr getEmptyTexture() Why it was weak_ptr at all !?
 Texture::SharedPtr getEmptyTexture() {
     static Texture::SharedPtr sBlackTexture = createBlackTexture();
     return sBlackTexture;
+}
+
+Buffer::SharedPtr getEmptyBuffer() {
+    static Buffer::SharedPtr sZeroBuffer = createZeroBuffer();
+    return sZeroBuffer;
 }
 
 VkImageViewType getViewType(Resource::Type type, bool isArray) {
@@ -159,14 +169,20 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRe
 }
 
 ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
-    if (!pBuffer && getNullView()) {
-        LOG_WARN("getNullView");
-        return getNullView();
+    if (!pBuffer && getNullBufferView()) {
+        LOG_WARN("getNullBufferView");
+        return getNullBufferView();
+    }
+
+    if (!pBuffer) {
+        VkBufferView bufferView = {};
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+        return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create DepthStencilView from a texture!");
-        return getNullView();
+        return getNullBufferView();
     }
     
     // Resource::ApiHandle resHandle = nullptr;
@@ -239,14 +255,20 @@ UnorderedAccessView::ApiHandle createUavDescriptor(const DescriptorSet& desc, Re
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
     LOG_DBG("UnorderedAccessView::create buffer");
-    if (!pBuffer && getNullView()) {
-        LOG_WARN("getNullView");
-        return getNullView();
+    if (!pBuffer && getNullBufferView()) {
+        LOG_WARN("getNullBufferView");
+        return getNullBufferView();
+    } 
+
+    if (!pBuffer) {
+        VkBufferView bufferView = {};
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+        return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create UnorderedAccessView from a texture!");
-        return getNullView();
+        return getNullBufferView();
     }
 
     const Resource* pResource = pBuffer.get();

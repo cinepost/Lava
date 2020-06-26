@@ -133,12 +133,12 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         explicit SharedPtr(VkResource<ImageType, BufferType>* pRes) : std::shared_ptr<VkResource<ImageType, BufferType>>(pRes) {}
 
         static SharedPtr create(ImageType image, VkDeviceMemory mem) {
-            LOG_INFO("SharedPtr create image");
+            // LOG_INFO("SharedPtr create image");
             return SharedPtr(new VkResource<ImageType, BufferType>(image, mem));
         }
 
         static SharedPtr create(BufferType buffer, VkDeviceMemory mem) {
-            LOG_INFO("SharedPtr create buffer");
+            // LOG_INFO("SharedPtr create buffer");
             return SharedPtr(new VkResource<ImageType, BufferType>(buffer, mem));
         }
 
@@ -168,11 +168,11 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
  private:
     friend SharedPtr;
     VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { 
-        LOG_INFO("VkResource create image");
+        // LOG_INFO("VkResource create image");
     }
     
     VkResource(BufferType buffer, VkDeviceMemory mem) : mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { 
-        LOG_INFO("VkResource create buffer");
+        // LOG_INFO("VkResource create buffer");
     }
 
     VkResourceType mType = VkResourceType::None;

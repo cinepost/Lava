@@ -34,6 +34,8 @@ namespace Falcor {
     
 void createNullViews();
 void releaseNullViews();
+void createNullBufferViews();
+void releaseNullBufferViews();
 
 Device::SharedPtr gpDevice;
 
@@ -75,6 +77,7 @@ bool Device::init() {
     mpUploadHeap = GpuMemoryHeap::create(GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
     mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     createNullViews();
+    createNullBufferViews();
     mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     assert(mpRenderContext);
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -168,6 +171,7 @@ void Device::cleanup() {
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
     mDeferredReleases = decltype(mDeferredReleases)();
     releaseNullViews();
+    releaseNullBufferViews();
     mpRenderContext.reset();
     mpUploadHeap.reset();
     mpCpuDescPool.reset();

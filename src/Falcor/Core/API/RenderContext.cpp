@@ -30,6 +30,8 @@
 #include "FBO.h"
 #include "Texture.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor {
 
     RenderContext::SharedPtr RenderContext::create(CommandQueueHandle queue) {

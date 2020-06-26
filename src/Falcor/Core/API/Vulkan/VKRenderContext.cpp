@@ -29,6 +29,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Debug/debug.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
 
@@ -47,14 +48,14 @@ namespace Falcor
     template<typename ViewType, typename ClearType>
     void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal);
 
-    void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color)
-    {
+    void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
+        // LOG_DBG("clear rtv");
         clearColorImageCommon(this, pRtv, color);
         mCommandsPending = true;
     }
 
-    void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil)
-    {
+    void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
+        // LOG_DBG("clear dsv");
         resourceBarrier(pDsv->getResource(), Resource::State::CopyDest);
 
         VkClearDepthStencilValue val;
@@ -74,8 +75,8 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void setViewports(CommandListHandle cmdList, const std::vector<GraphicsState::Viewport>& viewports)
-    {
+    void setViewports(CommandListHandle cmdList, const std::vector<GraphicsState::Viewport>& viewports) {
+        // LOG_DBG("set viewports");
         static_assert(offsetof(GraphicsState::Viewport, originX) == offsetof(VkViewport, x), "VP originX offset");
         static_assert(offsetof(GraphicsState::Viewport, originY) == offsetof(VkViewport, y), "VP originY offset");
         static_assert(offsetof(GraphicsState::Viewport, width) == offsetof(VkViewport, width), "VP width offset");
@@ -86,11 +87,10 @@ namespace Falcor
         vkCmdSetViewport(cmdList, 0, (uint32_t)viewports.size(), (VkViewport*)viewports.data());
     }
 
-    void setScissors(CommandListHandle cmdList, const std::vector<GraphicsState::Scissor>& scissors)
-    {
+    void setScissors(CommandListHandle cmdList, const std::vector<GraphicsState::Scissor>& scissors) {
+        // LOG_DBG("set scissors");
         std::vector<VkRect2D> vkScissors(scissors.size());
-        for (size_t i = 0; i < scissors.size(); i++)
-        {
+        for (size_t i = 0; i < scissors.size(); i++) {
             vkScissors[i].offset.x = scissors[i].left;
             vkScissors[i].offset.y = scissors[i].top;
             vkScissors[i].extent.width = scissors[i].right - scissors[i].left;
@@ -99,25 +99,22 @@ namespace Falcor
         vkCmdSetScissor(cmdList, 0, (uint32_t)scissors.size(), vkScissors.data());
     }
 
-    static VkIndexType getVkIndexType(ResourceFormat format)
-    {
-        switch (format)
-        {
-        case ResourceFormat::R16Uint:
-            return VK_INDEX_TYPE_UINT16;
-        case ResourceFormat::R32Uint:
-            return VK_INDEX_TYPE_UINT32;
-        default:
-            should_not_get_here();
-            return VK_INDEX_TYPE_MAX_ENUM;
+    static VkIndexType getVkIndexType(ResourceFormat format) {
+        switch (format) {
+            case ResourceFormat::R16Uint:
+                return VK_INDEX_TYPE_UINT16;
+            case ResourceFormat::R32Uint:
+                return VK_INDEX_TYPE_UINT32;
+            default:
+                should_not_get_here();
+                return VK_INDEX_TYPE_MAX_ENUM;
         }
     }
 
-    void setVao(CopyContext* pCtx, const Vao* pVao)
-    {
+    void setVao(CopyContext* pCtx, const Vao* pVao) {
+        // LOG_DBG("set vao");
         CommandListHandle cmdList = pCtx->getLowLevelData()->getCommandList();
-        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++)
-        {
+        for (uint32_t i = 0; i < pVao->getVertexBuffersCount(); i++) {
             const Buffer* pVB = pVao->getVertexBuffer(i).get();
             VkDeviceSize offset = pVB->getGpuAddressOffset();
             VkBuffer handle = pVB->getApiHandle();
@@ -126,8 +123,7 @@ namespace Falcor
         }
 
         const Buffer* pIB = pVao->getIndexBuffer().get();
-        if (pIB)
-        {
+        if (pIB) {
             VkDeviceSize offset = pIB->getGpuAddressOffset();
             VkBuffer handle = pIB->getApiHandle();
             vkCmdBindIndexBuffer(cmdList, handle, offset, getVkIndexType(pVao->getIndexBufferFormat()));
@@ -135,8 +131,8 @@ namespace Falcor
         }
     }
 
-    void beginRenderPass(CommandListHandle cmdList, const Fbo* pFbo)
-    {
+    void beginRenderPass(CommandListHandle cmdList, const Fbo* pFbo) {
+        // LOG_DBG("begin render pass");
         // Begin Render Pass
         const auto& fboHandle = pFbo->getApiHandle();
         VkRenderPassBeginInfo beginInfo = {};
@@ -153,15 +149,12 @@ namespace Falcor
         vkCmdBeginRenderPass(cmdList, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    static void transitionFboResources(RenderContext* pCtx, const Fbo* pFbo)
-    {
+    static void transitionFboResources(RenderContext* pCtx, const Fbo* pFbo) {
         // We are setting the entire RTV array to make sure everything that was previously bound is detached
         uint32_t colorTargets = Fbo::getMaxColorTargetCount();
 
-        if (pFbo)
-        {
-            for (uint32_t i = 0; i < colorTargets; i++)
-            {
+        if (pFbo) {
+            for (uint32_t i = 0; i < colorTargets; i++) {
                 auto pTexture = pFbo->getColorTexture(i);
                 if (pTexture) pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget);
             }
@@ -171,14 +164,19 @@ namespace Falcor
         }
     }
 
-    static void endVkDraw(VkCommandBuffer cmdBuffer)
-    {
-        vkCmdEndRenderPass(cmdBuffer);
+    static void endVkDraw(CommandListHandle cmdList) {
+        // LOG_ERR("end vk draw");
+        vkCmdEndRenderPass(cmdList);
     }
 
+    //static void endVkDraw(VkCommandBuffer cmdBuffer) {
+    //    LOG_ERR("end vk draw 2");
+    //    vkCmdEndRenderPass(cmdBuffer);
+    //}
+
     //bool RenderContext::prepareForDraw()
-    bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars)
-    {
+    bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars) {
+        // LOG_DBG("prepare for draw");
         assert(pState);
         // Vao must be valid so at least primitive topology is known
         assert(pState->getVao().get());
@@ -186,78 +184,84 @@ namespace Falcor
         auto pGSO = pState->getGSO(pVars);
 
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
-        if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags))
-        {
-            if (pVars)
-            {
+        if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags)) {
+            if (pVars) {
                 if (applyGraphicsVars(pVars, pGSO->getDesc().getRootSignature().get()) == false) return false; // Skip the call
             }
         }
-        if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags))
-        {
+
+        if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags)) {
             vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
         }
-        if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags))
-        {
+        
+        if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags)) {
             transitionFboResources(this, pState->getFbo().get());
         }
-        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
-        {
-            if (pState->getFbo() && pState->getFbo()->getSamplePositions().size())
-            {
+
+        if (is_set(StateBindFlags::SamplePositions, mBindFlags)) {
+            if (pState->getFbo() && pState->getFbo()->getSamplePositions().size()) {
                 logWarning("The Vulkan backend doesn't support programmable sample positions");
             }
         }
-        if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags))
-        {
+
+        if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags)) {
             setViewports(mpLowLevelData->getCommandList(), pState->getViewports());
         }
-        if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags))
-        {
+        
+        if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags)) {
             setScissors(mpLowLevelData->getCommandList(), pState->getScissors());
         }
-        if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags))
-        {
+
+        if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags)) {
             setVao(this, pState->getVao().get());
         }
+
         beginRenderPass(mpLowLevelData->getCommandList(), pState->getFbo().get());
+
+        return true;
     }
 
-    void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation)
-    {
+    void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
+        if (vertexCount == 0) return;  // early termination
+
+        // LOG_DBG("draw instanced");
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDraw(mpLowLevelData->getCommandList(), vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
         endVkDraw(mpLowLevelData->getCommandList());
     }
 
-    void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
-    {
+    void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation) {
+        // LOG_DBG("draw");
         drawInstanced(pState,pVars, vertexCount, 1, startVertexLocation, 0);
     }
 
-    void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
-    
-    {
-        if (prepareForDraw(pState, pVars) == false) return;
+    void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
+        // LOG_DBG("draw indexed instanced");
+        if (prepareForDraw(pState, pVars) == false) {
+            // LOG_WARN("prepareForDraw test failed !!!");
+            return;
+        }
+        // LOG_ERR("call vkCmdDrawIndexed");
         vkCmdDrawIndexed(mpLowLevelData->getCommandList(), indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
+        // LOG_ERR("call endVkDraw");
         endVkDraw(mpLowLevelData->getCommandList());
     }
 
-    void RenderContext::drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
-    {
+    void RenderContext::drawIndexed(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation){
+        // LOG_DBG("draw indexed");
         drawIndexedInstanced(pState, pVars, indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
 
-    void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
-    {
+    void RenderContext::drawIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+        // LOG_DBG("draw indirect");
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDrawIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
         endVkDraw(mpLowLevelData->getCommandList());
     }
     
-    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset)
-    {
+    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+        // LOG_DBG("draw indexed indirect");
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
@@ -265,8 +269,7 @@ namespace Falcor
     }
 
     template<uint32_t offsetCount, typename ViewType>
-    void initBlitData(const ViewType* pView, const uint4& rect, VkImageSubresourceLayers& layer, VkOffset3D offset[offsetCount])
-    {
+    void initBlitData(const ViewType* pView, const uint4& rect, VkImageSubresourceLayers& layer, VkOffset3D offset[offsetCount]) {
         const Texture* pTex = dynamic_cast<const Texture*>(pView->getResource());
 
         layer.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Can't blit depth texture
@@ -288,14 +291,12 @@ namespace Falcor
         }
     }
 
-    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter)
-    {
+    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter) {
         const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource());
         resourceBarrier(pSrc->getResource(), Resource::State::CopySource, &pSrc->getViewInfo());
         resourceBarrier(pDst->getResource(), Resource::State::CopyDest, &pDst->getViewInfo());
 
-        if (pTexture && pTexture->getSampleCount() > 1)
-        {
+        if (pTexture && pTexture->getSampleCount() > 1) {
             // Resolve
             VkImageResolve resolve;
             initBlitData<1>(pSrc.get(), srcRect, resolve.srcSubresource, &resolve.srcOffset);
@@ -306,9 +307,7 @@ namespace Falcor
             resolve.extent.depth = 1;
 
             vkCmdResolveImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &resolve);
-        }
-        else
-        {
+        } else {
             VkImageBlit blt;
             initBlitData<2>(pSrc.get(), srcRect, blt.srcSubresource, blt.srcOffsets);
             initBlitData<2>(pDst.get(), dstRect, blt.dstSubresource, blt.dstOffsets);
@@ -320,14 +319,12 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
-    {
+    void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst) {
         // Just blit. It will work
         blit(pSrc->getSRV(), pDst->getRTV());
     }
 
-    void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)
-    {
+    void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource) {
         uint32_t srcArray = pSrc->getSubresourceArraySlice(srcSubresource);
         uint32_t srcMip = pSrc->getSubresourceMipLevel(srcSubresource);
         const auto& pSrcSrv = pSrc->getSRV(srcMip, 1, srcArray, 1);

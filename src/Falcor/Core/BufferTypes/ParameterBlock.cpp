@@ -1241,6 +1241,15 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                         }
                         break;
                     case DescriptorSet::Type::TextureSrv:
+                        {
+                            auto pView = mSRVs[flatIndex].pView;
+                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) pView = ShaderResourceView::getNullView();
+                            if(!pView) pView = ShaderResourceView::getNullView();
+                            pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
+                        }
+                        break;
                     case DescriptorSet::Type::RawBufferSrv:
                     case DescriptorSet::Type::TypedBufferSrv:
                     case DescriptorSet::Type::StructuredBufferSrv:
@@ -1248,25 +1257,32 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             LOG_DBG("1");
                             auto pView = mSRVs[flatIndex].pView;
                             if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             //if(!pView) pView = ShaderResourceView::getNullView();
-                            LOG_DBG("1.2");
+                            if(!pView) pView = ShaderResourceView::getNullBufferView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::TextureUav:
+                        {
+                            auto pView = mUAVs[flatIndex].pView;
+                            if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
+                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) pView = ShaderResourceView::getNullView();
+                            if(!pView) pView = UnorderedAccessView::getNullView();
+                            pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
+                        }
+                        break;
                     case DescriptorSet::Type::RawBufferUav:
                     case DescriptorSet::Type::TypedBufferUav:
                     case DescriptorSet::Type::StructuredBufferUav:
                         {
-                            LOG_DBG("2");
                             auto pView = mUAVs[flatIndex].pView;
-                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no pResource at flat index %zu", flatIndex); }
+                            if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
+                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             //if(!pView) pView = UnorderedAccessView::getNullView();
-                            LOG_DBG("2.2");
-                            if(pView) {
+                            if(!pView) pView = UnorderedAccessView::getNullBufferView();
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
-                            }
                         }
                         break;
 

@@ -45,6 +45,7 @@
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
 
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Mogwai {
 
@@ -54,7 +55,7 @@ std::map<std::string, Extension::CreateFunc>* gExtensions;  // Map ensures order
 
 const char* kEditorExecutableName = "RenderGraphEditor";
 const char* kEditorSwitch = "editor";
-const char* kOutfileDirSwitch = "outputdir";
+// const char* kOutfileDirSwitch = "outputdir"; // TODO: remove
 const char* kScriptSwitch = "script";
 const char* kGraphFileSwitch = "graphFile";
 const char* kGraphNameSwitch = "graphName";
@@ -464,6 +465,7 @@ void Renderer::executeActiveGraph(RenderContext* pRenderContext) {
 }
 
 void Renderer::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
+    LOG_DBG("begin frame");
     for (auto& pe : mpExtensions)  pe->beginFrame(pRenderContext, pTargetFbo);
 }
 
@@ -472,6 +474,7 @@ void Renderer::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTa
 }
 
 void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
+    LOG_DBG("on frame render");
     if (mScriptFilename.size()) {
         std::string s = mScriptFilename;
         mScriptFilename.clear();

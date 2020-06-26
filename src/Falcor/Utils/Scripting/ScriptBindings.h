@@ -89,7 +89,7 @@ typename std::enable_if_t<std::is_base_of_v<enable_to_string, T>, std::string> t
 /* Class                                                                */
 /************************************************************************/
 template<typename T, typename... Options>
-class Class {
+class __attribute__((visibility("default"))) Class {
  public:
     template<typename D, typename... Extra>
     Class& rwField(const char* name, D std::remove_pointer_t<T>::* pm, const Extra&... extra) {

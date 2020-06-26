@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "ForwardLightingPass.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir()
 {
@@ -145,8 +147,9 @@ void ForwardLightingPass::initDepth(const RenderData& renderData)
     }
 }
 
-void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData)
-{
+void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData) {
+    LOG_ERR("init FBO!!");
+
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
     mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
     mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
