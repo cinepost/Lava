@@ -25,27 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "API/Device.h"
+#ifndef SRC_FALCOR_CORE_API_VULKAN_VKDESCRIPTORDATA_H_
+#define SRC_FALCOR_CORE_API_VULKAN_VKDESCRIPTORDATA_H_
 
-namespace Falcor
-{
-    struct DescriptorPoolApiData
-    {
-        DescriptorHeapHandle descriptorPool;
-    };
+#include "Falcor/Core/API/Device.h"
 
-    struct DescriptorSetApiData
-    {
-        DescriptorSetApiData(VkDescriptorSetLayout l, VkDescriptorPool p, VkDescriptorSet s) : layout(l), set(s), pool(p) {}
-        VkDescriptorSetLayout layout;
-        VkDescriptorPool pool;
-        VkDescriptorSet set;
+namespace Falcor {
 
-        ~DescriptorSetApiData()
-        {
-            vkFreeDescriptorSets(gpDevice->getApiHandle(), pool, 1, &set);
-            vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), layout, nullptr);
-        }
-    };
-}
+struct DescriptorPoolApiData {
+    DescriptorHeapHandle descriptorPool;
+};
+
+struct DescriptorSetApiData {
+    DescriptorSetApiData(VkDescriptorSetLayout l, VkDescriptorPool p, VkDescriptorSet s) : layout(l), set(s), pool(p) {}
+    VkDescriptorSetLayout layout;
+    VkDescriptorPool pool;
+    VkDescriptorSet set;
+
+    ~DescriptorSetApiData() {
+        vkFreeDescriptorSets(gpDevice->getApiHandle(), pool, 1, &set);
+        vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), layout, nullptr);
+    }
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_VULKAN_VKDESCRIPTORDATA_H_

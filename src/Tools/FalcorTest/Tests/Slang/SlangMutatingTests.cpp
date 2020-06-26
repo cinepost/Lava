@@ -31,7 +31,12 @@ namespace Falcor
 {
     GPU_TEST(SlangMutating)
     {
+        #ifdef FALCOR_VK
+        ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::DumpIntermediates, "450");
+        #else
         ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::DumpIntermediates, "6_3");
+        #endif
+
         ctx.allocateStructuredBuffer("result", 1);
 
         ShaderVar var = ctx.vars().getRootVar();

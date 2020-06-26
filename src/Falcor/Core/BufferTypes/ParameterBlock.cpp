@@ -32,6 +32,7 @@
 #include "Falcor/stdafx.h"
 #include "ParameterBlock.h"
 #include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/API/CopyContext.h"
 #include "Falcor/Core/API/Device.h"
 
@@ -546,20 +547,47 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
     size_t flatIndex = getFlatIndex(bindLoc);
 
     if (isUavType(bindLoc.getType())) {
+        LOG_DBG("uav");
+        if(pResource) { 
+            LOG_DBG("pResource present. getting pUAV"); 
+        } else {
+            LOG_WARN("pResource absent. getting getNullView");
+        }
         auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView();
-        if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) return false;
+        
+        if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) {
+            LOG_WARN("!checkDescriptorSrvUavCommon");
+            return false;
+        }
+        
         auto& assignedUAV = mUAVs[flatIndex];
         if (assignedUAV.pView == pUAV) return true;
+
         assignedUAV.pView = pUAV;
+        if (!pUAV) { LOG_ERR("assignedUAV is NULL!!!"); }
         assignedUAV.pResource = pResource;
+        LOG_INFO("assignedUAV flat index is %zu", flatIndex);
     } else if (isSrvType(bindLoc.getType())) {
+        LOG_DBG("srv");
+        if(pResource) { 
+            LOG_DBG("pResource present. getting pSRV");
+        } else {
+            LOG_WARN("pResource absent. getting getNullView");
+        }
         auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView();
-        if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) return false;
+        
+        if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
+            LOG_WARN("!checkDescriptorSrvUavCommon");
+            return false;
+        }
+
         auto& assignedSRV = mSRVs[flatIndex];
         if (assignedSRV.pView == pSRV) return true;
         assignedSRV.pView = pSRV;
         assignedSRV.pResource = pResource;
+        LOG_INFO("assignedSRV flat index is %zu", flatIndex);
     } else {
+        LOG_INFO("error bind resource at flat index is %zu", flatIndex);
         logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
         return false;
     }
@@ -1174,6 +1202,8 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
 }
 
     bool ParameterBlock::bindResourcesIntoDescriptorSet(const ParameterBlockReflection* pReflector, DescriptorSet::SharedPtr pDescSet, uint32_t setIndex, uint32_t& ioDestRangeIndex) {
+        LOG_DBG("bindResourcesIntoDescriptorSet");
+
         auto& setInfo = pReflector->getDescriptorSetInfo(setIndex);
 
         for(auto resourceRangeIndex : setInfo.resourceRangeIndices) {
@@ -1215,8 +1245,11 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TypedBufferSrv:
                     case DescriptorSet::Type::StructuredBufferSrv:
                         {
+                            LOG_DBG("1");
                             auto pView = mSRVs[flatIndex].pView;
-                            if(!pView) pView = ShaderResourceView::getNullView();
+                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            //if(!pView) pView = ShaderResourceView::getNullView();
+                            LOG_DBG("1.2");
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1225,9 +1258,15 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TypedBufferUav:
                     case DescriptorSet::Type::StructuredBufferUav:
                         {
+                            LOG_DBG("2");
                             auto pView = mUAVs[flatIndex].pView;
-                            if(!pView) pView = UnorderedAccessView::getNullView();
+                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no pResource at flat index %zu", flatIndex); }
+                            //if(!pView) pView = UnorderedAccessView::getNullView();
+                            LOG_DBG("2.2");
+                            if(pView) {
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
+                            }
                         }
                         break;
 
@@ -1454,6 +1493,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
     }
 
     bool ParameterBlock::prepareDescriptorSets(CopyContext* pContext, const ParameterBlockReflection* pReflector) {
+        LOG_DBG("prepareDescriptorSets");
         // We first need to check for "indirect" changes, where a write to
         // a sub-block (e.g., a constant buffer) will require invalidation
         // and re-creation of descriptor sets for this parameter block.
@@ -1474,6 +1514,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
         //    bind additional descriptor sets also prepare themsevles,
         //    recursively.
         //
+        LOG_DBG("test prepareDefaultConstantBufferAndResources");
         if (!prepareDefaultConstantBufferAndResources(pContext, pReflector)) {
             return false;
         }
@@ -1483,14 +1524,19 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
         // have been invalidated in one way or another.
         //
         uint32_t setCount = pReflector->getDescriptorSetCount();
+        LOG_DBG("iterate %u descriptor sets", setCount);
         for (uint32_t setIndex = 0; setIndex < setCount; ++setIndex) {
             auto& pSet = mSets[setIndex].pSet;
             if (pSet) continue;
 
+            LOG_DBG("get descriptor set layout");
             auto pSetLayout = pReflector->getDescriptorSetLayout(setIndex);
+
+            LOG_DBG("create descriptor set");
             pSet = DescriptorSet::create(gpDevice->getGpuDescriptorPool(), pSetLayout);
 
             uint32_t destRangeIndex = 0;
+            LOG_DBG("bind into descriptor set");
             bindIntoDescriptorSet(
                 pReflector,
                 pSet,

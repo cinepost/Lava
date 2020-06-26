@@ -33,6 +33,8 @@
 #include "stdafx.h"
 #include "UnitTest.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor {
 
 namespace {
@@ -195,8 +197,7 @@ std::vector<Test>* testRegistry;
         if (createShaderVars) createVars();
     }
 
-    void GPUUnitTestContext::createVars()
-    {
+    void GPUUnitTestContext::createVars() {
         // Create shader variables.
         ProgramReflection::SharedConstPtr pReflection = mpProgram->getReflector();
         mpVars = ComputeVars::create(pReflection);
@@ -208,13 +209,11 @@ std::vector<Test>* testRegistry;
         assert(mThreadGroupSize.x >= 1 && mThreadGroupSize.y >= 1 && mThreadGroupSize.z >= 1);
     }
 
-    void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
-    {
+    void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize) {
         assert(mpVars);
         mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
         assert(mStructuredBuffers[name].pBuffer);
-        if (pInitData)
-        {
+        if (pInitData) {
             size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
             if (initDataSize == 0) initDataSize = expectedDataSize;
             else if (initDataSize != expectedDataSize) throw ErrorRunningTestException("StructuredBuffer '" + name + "' initial data size mismatch");
@@ -222,45 +221,42 @@ std::vector<Test>* testRegistry;
         }
     }
 
-    void GPUUnitTestContext::runProgram(const uint3& dimensions)
-    {
+    void GPUUnitTestContext::runProgram(const uint3& dimensions) {
         assert(mpVars);
-        for (const auto& buffer : mStructuredBuffers)
-        {
+        for (const auto& buffer : mStructuredBuffers) {
+            LOG_DBG("setBuffer");
             mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
         }
 
+        LOG_DBG("groups");
         uint3 groups = div_round_up(dimensions, mThreadGroupSize);
 
-#ifdef FALCOR_D3D12
-        // Check dispatch dimensions. TODO: Should be moved into Falcor.
-        if (groups.x > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
-            groups.y > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
-            groups.z > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
-        {
-            throw ErrorRunningTestException("GPUUnitTestContext::runProgram() - Dispatch dimension exceeds maximum.");
-        }
-#endif  // FALCOR_D3D12
-
+        LOG_DBG("dispatch");
         mpContext->dispatch(mpState.get(), mpVars.get(), groups);
     }
 
-    void GPUUnitTestContext::unmapBuffer(const char* bufferName)
-    {
+    void GPUUnitTestContext::unmapBuffer(const char* bufferName) {
         assert(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
-        if (!mStructuredBuffers[bufferName].mapped) throw ErrorRunningTestException(std::string(bufferName) + ": buffer not mapped");
+        
+        if (!mStructuredBuffers[bufferName].mapped) {
+            throw ErrorRunningTestException("buffer \"" + std::string(bufferName) + "\" not mapped");
+        }
+        
         mStructuredBuffers[bufferName].pBuffer->unmap();
         mStructuredBuffers[bufferName].mapped = false;
     }
 
-    const void* GPUUnitTestContext::mapRawRead(const char* bufferName)
-    {
+    const void* GPUUnitTestContext::mapRawRead(const char* bufferName) {
         assert(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
-        if (mStructuredBuffers.find(bufferName) == mStructuredBuffers.end())
-        {
-            throw ErrorRunningTestException(std::string(bufferName) + ": couldn't find buffer to map");
+
+        if (mStructuredBuffers.find(bufferName) == mStructuredBuffers.end()) {
+            throw ErrorRunningTestException("couldn't find buffer \"" + std::string(bufferName) + "\" to map");
         }
-        if (mStructuredBuffers[bufferName].mapped) throw ErrorRunningTestException(std::string(bufferName) + ": buffer already mapped");
+        
+        if (mStructuredBuffers[bufferName].mapped) {
+            throw ErrorRunningTestException("buffer \"" + std::string(bufferName) + "\" already mapped");
+        }
+
         mStructuredBuffers[bufferName].mapped = true;
         return mStructuredBuffers[bufferName].pBuffer->map(Buffer::MapType::Read);
     }

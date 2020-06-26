@@ -121,7 +121,7 @@ using DepthStencilStateHandle = void*;
 using RasterizerStateHandle = void*;
 using BlendStateHandle = void*;
 
-static const uint32_t kDefaultSwapChainBuffers = 3;
+static const uint32_t kDefaultSwapChainBuffers = 5;
 
 using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 
@@ -136,7 +136,7 @@ uint32_t getMaxViewportCount();
 { \
     auto r = a; \
     if (VK_FAILED(r)) { \
-        LOG_ERR("Vulkan call \"a\"failed!"); \
+        /* LOG_ERR("Vulkan call \"a\"failed!"); */ \
         logError("Vulkan call failed.\n"#a); \
     } \
 }

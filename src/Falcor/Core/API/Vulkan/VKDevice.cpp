@@ -32,13 +32,12 @@
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuFence.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
 
 namespace Falcor {
-
-#define DEFAULT_ENABLE_DEBUG_LAYER
 
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
@@ -52,7 +51,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     void*                       pUserData) {
     std::string type = "FalcorVK ";
     type += ((flags | VK_DEBUG_REPORT_ERROR_BIT_EXT) ? "Error: " : "Warning: ");
-    printToDebugWindow(type + std::string(pMessage) + "\n");
+    //printToDebugWindow(type + std::string(pMessage) + "\n");
+    LOG_WARN("%s %s", type.c_str(), pMessage);
+    //if(flags | VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+    //    throw std::runtime_error("VK my abort!");
+    // }
     return VK_FALSE;
 }
 #endif
@@ -554,6 +557,7 @@ bool Device::createSwapChain(ResourceFormat colorFormat) {
 
     uint32_t swapChainCount = 0;
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &swapChainCount, nullptr);
+    LOG_DBG("swapChainCount is %u", swapChainCount);
     assert(swapChainCount == kSwapChainBuffersCount);
 
     return true;

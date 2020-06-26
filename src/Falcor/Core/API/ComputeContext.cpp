@@ -25,41 +25,41 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "ComputeContext.h"
+#include "Falcor/Utils/Debug/debug.h"
 
-namespace Falcor
-{
-    ComputeContext::SharedPtr ComputeContext::create(CommandQueueHandle queue)
-    {
-        auto pCtx = SharedPtr(new ComputeContext(LowLevelContextData::CommandQueueType::Compute, queue));
-        pCtx->bindDescriptorHeaps(); // TODO: Should this be done here?
-        return pCtx;
-    }
-    
-    bool ComputeContext::applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature)
-    {
-        bool varsChanged = (pVars != mpLastBoundComputeVars);
 
-        // FIXME TODO Temporary workaround
-        varsChanged = true;
+namespace Falcor {
 
-        if (pVars->apply(this, varsChanged, pRootSignature) == false)
-        {
-            logWarning("ComputeContext::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
-            flush(true);
-            if (!pVars->apply(this, varsChanged, pRootSignature))
-            {
-                logError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    void ComputeContext::flush(bool wait)
-    {
-        CopyContext::flush(wait);
-        mpLastBoundComputeVars = nullptr;
-    }
+ComputeContext::SharedPtr ComputeContext::create(CommandQueueHandle queue) {
+    auto pCtx = SharedPtr(new ComputeContext(LowLevelContextData::CommandQueueType::Compute, queue));
+    pCtx->bindDescriptorHeaps(); // TODO: Should this be done here?
+    return pCtx;
 }
+
+bool ComputeContext::applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature) {
+    LOG_DBG("applyComputeVars");
+    bool varsChanged = (pVars != mpLastBoundComputeVars);
+
+    // FIXME TODO Temporary workaround
+    varsChanged = true;
+
+    if (pVars->apply(this, varsChanged, pRootSignature) == false) {
+        logWarning("ComputeContext::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
+        flush(true);
+
+        if (!pVars->apply(this, varsChanged, pRootSignature)) {
+            logError("ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors");
+            return false;
+        }
+    }
+    return true;
+}
+
+void ComputeContext::flush(bool wait) {
+    CopyContext::flush(wait);
+    mpLastBoundComputeVars = nullptr;
+}
+
+}  // namespace Falcor

@@ -85,9 +85,14 @@ namespace Falcor
     GPU_TEST(SlangEnum)
     {
         testEnum(ctx, "");      // Use default shader model for the unit test system
+
+        #ifdef FALCOR_VK
+        testEnum(ctx, "450");
+        #else
         testEnum(ctx, "5_1");   // Test SM 5.1 and higher explicitly
         testEnum(ctx, "6_0");
         testEnum(ctx, "6_3");
+        #endif
     }
 
     /** Test fixed-width scalar type support including 16-bit types (shader model 6.2+).
@@ -100,7 +105,12 @@ namespace Falcor
     {
         const uint32_t maxTests = 100;
 
+        #ifdef FALCOR_VK
+        ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", Program::DefineList(), Shader::CompilerFlags::None, "450");
+        #else 
         ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", Program::DefineList(), Shader::CompilerFlags::None, "6_2");
+        #endif
+
         ctx.allocateStructuredBuffer("result", maxTests);
         ctx.runProgram(1, 1, 1);
 
@@ -173,10 +183,14 @@ namespace Falcor
 
         // Test the default shader model, followed by specific models.
         test("");
+        #ifdef FALCOR_VK
+        test("450");
+        #else
         test("5_1");
         test("6_0");
         test("6_1");
         test("6_2");
         test("6_3");
+        #endif
     }
 }

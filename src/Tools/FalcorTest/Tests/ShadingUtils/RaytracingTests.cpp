@@ -29,6 +29,7 @@
 #include <random>
 #include <glm/gtx/io.hpp>
 
+#ifdef FALCOR_D3D12
 namespace Falcor
 {
     namespace
@@ -102,3 +103,5 @@ namespace Falcor
         ctx.unmapBuffer("result");
     }
 }
+
+#endif  // FALCOR_D3D12

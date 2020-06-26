@@ -225,7 +225,7 @@ bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
     }
     return true;
 }
-
+// Buffer::MapType::Read
 void* Buffer::map(MapType type) {
     if (type == MapType::Write) {
         if (mCpuAccess != CpuAccess::Write) {
@@ -265,6 +265,7 @@ void* Buffer::map(MapType type) {
             // For buffers without CPU access we must copy the contents to a staging buffer.
             logWarning("Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work");
             if (mpStagingResource == nullptr) {
+                LOG_DBG("create buffer");
                 mpStagingResource = Buffer::create(mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
             }
 

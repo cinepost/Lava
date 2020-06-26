@@ -96,6 +96,10 @@ namespace Falcor
         }
     }
 
+    #ifdef FALCOR_VK
+    GPU_TEST(RootBufferStructSRV_450) { testRootBufferInStruct(ctx, "450", false); }
+    GPU_TEST(RootBufferStructUAV_450) { testRootBufferInStruct(ctx, "450", true); }
+    #else
     GPU_TEST(RootBufferStructSRV_5_1) { testRootBufferInStruct(ctx, "5_1", false); }
     GPU_TEST(RootBufferStructUAV_5_1) { testRootBufferInStruct(ctx, "5_1", true); }
 
@@ -104,4 +108,5 @@ namespace Falcor
 
     GPU_TEST(RootBufferStructSRV_6_3) { testRootBufferInStruct(ctx, "6_3", false); }
     GPU_TEST(RootBufferStructUAV_6_3) { testRootBufferInStruct(ctx, "6_3", true); }
+    #endif
 }

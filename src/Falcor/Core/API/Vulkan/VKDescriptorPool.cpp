@@ -29,32 +29,73 @@
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Vulkan/VKDescriptorData.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
 
 VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
     switch (type) {
         case DescriptorPool::Type::TextureSrv:
+            LOG_INFO("DescriptorPool::Type::TextureSrv");
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        
         case DescriptorPool::Type::TextureUav:
+            LOG_INFO("DescriptorPool::Type::TextureUav");
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        
+// Raw buffer
+
         case DescriptorPool::Type::RawBufferSrv:
-        case DescriptorPool::Type::TypedBufferSrv:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        case DescriptorPool::Type::RawBufferUav:
-        case DescriptorPool::Type::TypedBufferUav:
-            return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        case DescriptorPool::Type::Cbv:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case DescriptorPool::Type::StructuredBufferSrv:
-        case DescriptorPool::Type::StructuredBufferUav:
+            LOG_INFO("DescriptorPool::Type::RawBufferSrv");
+            //return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        case DescriptorPool::Type::RawBufferUav:
+            LOG_INFO("DescriptorPool::Type::RawBufferUav");
+            //return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            //return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+// Typed buffer
+
+        case DescriptorPool::Type::TypedBufferSrv:
+            LOG_INFO("DescriptorPool::Type::TypedBufferSrv");
+            //return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        case DescriptorPool::Type::TypedBufferUav:
+            LOG_INFO("DescriptorPool::Type::TypedBufferUav");
+            return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            //return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        
+// Structured buffer
+
+        case DescriptorPool::Type::StructuredBufferSrv:
+            LOG_INFO("DescriptorPool::Type::StructuredBufferSrv");
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        
+        case DescriptorPool::Type::StructuredBufferUav:
+            LOG_INFO("DescriptorPool::Type::StructuredBufferUav");
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        case DescriptorPool::Type::Cbv:
+            LOG_INFO("DescriptorPool::Type::Cbv");
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            
         case DescriptorPool::Type::Dsv:
-        case DescriptorPool::Type::Rtv:
+            LOG_INFO("DescriptorPool::Type::Dsv");
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        case DescriptorPool::Type::Rtv:
+            LOG_INFO("DescriptorPool::Type::Rtv");
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        
         case DescriptorPool::Type::Sampler:
+            LOG_INFO("DescriptorPool::Type::Sampler");
             return VK_DESCRIPTOR_TYPE_SAMPLER;
+        
         default:
+            LOG_INFO("should_not_get_here");
             should_not_get_here();
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }

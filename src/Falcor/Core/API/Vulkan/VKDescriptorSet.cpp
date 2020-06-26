@@ -27,9 +27,12 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 #include "Falcor/Core/API/DescriptorSet.h"
-#include "VKDescriptorData.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Utils/Debug/debug.h"
+
+#include "VKDescriptorData.h"
+
 
 namespace Falcor {
 
@@ -59,25 +62,53 @@ namespace Falcor {
 
     template<bool isUav, typename ViewType>
     static void setSrvUavCommon(VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
+        LOG_DBG("setSrvUavCommon");
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
 
+        LOG_DBG("buffer name: %s", pView->getResource()->getName().c_str());
+
         if (handle.getType() == VkResourceType::Buffer) {
+            LOG_DBG("VkResourceType::Buffer");
              Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
             // TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
             if (pBuffer->isTyped()) {
-                 texelBufferView = pBuffer->getUAV()->getApiHandle();
-                 write.pTexelBufferView = &texelBufferView;
-            } else {
+                LOG_DBG("Typed buffer");
+
+                // ----
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();
                 write.pBufferInfo = &buffer;
+
+                //----
+
+                texelBufferView = pBuffer->getUAV()->getApiHandle();
+                write.pTexelBufferView = &texelBufferView;
+            } else if (pBuffer->isStructured()) {
+                LOG_DBG("Structured buffer");
+                buffer.buffer = pBuffer->getApiHandle();
+                buffer.offset = pBuffer->getGpuAddressOffset();
+                buffer.range = pBuffer->getSize();
+                write.pBufferInfo = &buffer;
+
+                //texelBufferView = pBuffer->getUAV()->getApiHandle();
+                //write.pTexelBufferView = &texelBufferView;
+            } else {
+                LOG_DBG("Buffer");
+                buffer.buffer = pBuffer->getApiHandle();
+                buffer.offset = pBuffer->getGpuAddressOffset();
+                buffer.range = pBuffer->getSize();
+                write.pBufferInfo = &buffer;
+
+                //texelBufferView = pBuffer->getUAV()->getApiHandle();
+                //write.pTexelBufferView = &texelBufferView;
             }
         } else {
+            LOG_DBG("VkResourceType::Image");
             assert(handle.getType() == VkResourceType::Image);
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             image.imageView = handle;
@@ -96,10 +127,12 @@ namespace Falcor {
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
+        LOG_DBG("setSrv");
         setSrvUavCommon<false>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
+        LOG_DBG("setUav");
         setSrvUavCommon<true>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
@@ -122,6 +155,7 @@ namespace Falcor {
     }
 
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
+        LOG_DBG("setCbv");
         VkDescriptorBufferInfo info;
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
         assert(pBuffer);
@@ -142,16 +176,19 @@ namespace Falcor {
 
     template<bool forGraphics>
     static void bindCommon(DescriptorSet::ApiHandle set, CopyContext* pCtx, const RootSignature* pRootSig, uint32_t bindLocation) {
+        LOG_DBG("bind common");
         VkPipelineBindPoint bindPoint = forGraphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
         VkDescriptorSet vkSet = set;
         vkCmdBindDescriptorSets(pCtx->getLowLevelData()->getCommandList(), bindPoint, pRootSig->getApiHandle(), bindLocation, 1, &vkSet, 0, nullptr);
     }
 
     void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
+        LOG_DBG("bind for graphics");
         bindCommon<true>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 
     void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
+        LOG_DBG("bind for compute");
         bindCommon<false>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 

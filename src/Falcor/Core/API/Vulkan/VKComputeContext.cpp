@@ -68,6 +68,7 @@ namespace Falcor {
     */
 
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
+        LOG_DBG("prepare for dispatch");
         assert(pState);
 
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
@@ -76,8 +77,17 @@ namespace Falcor {
         if(pVars) {
             if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
         }
+
+        LOG_DBG("get command list");
+        auto cmd_list = mpLowLevelData->getCommandList();
+
+        LOG_DBG("get pCSO api handle");
+        auto cso_api_handle = pCSO->getApiHandle();
         
-        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
+        LOG_DBG("vkCmdBindPipeline");
+        //vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
+        vkCmdBindPipeline(cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, cso_api_handle);
+
         mpLastBoundComputeVars = pVars;
         mCommandsPending = true;
         return true;

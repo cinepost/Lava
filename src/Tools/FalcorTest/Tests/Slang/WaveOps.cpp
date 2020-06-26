@@ -72,7 +72,11 @@ namespace Falcor
 
     GPU_TEST(WaveGetLaneCount)
     {
+        #ifdef FALCOR_VK
+        ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveGetLaneCount", Program::DefineList(), Shader::CompilerFlags::None, "450");
+        #else
         ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveGetLaneCount", Program::DefineList(), Shader::CompilerFlags::None, "6_0");
+        #endif
 
         auto var = ctx.vars().getRootVar();
         uint32_t zero = 0;

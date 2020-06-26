@@ -27,48 +27,65 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        const uint32_t elems = 256;
+#include "Falcor/Utils/Debug/debug.h"
 
-        /** Create buffer with the given CPU access and elements initialized to 0,1,2,...
-        */
-        Buffer::SharedPtr createTestBuffer(Buffer::CpuAccess cpuAccess, bool initialize = true)
-        {
-            std::vector<uint32_t> initData(elems);
-            for (uint32_t i = 0; i < elems; i++) initData[i] = i;
-            return Buffer::create(elems * sizeof(uint32_t), Resource::BindFlags::ShaderResource, cpuAccess, initialize ? initData.data() : nullptr);
-        }
+namespace Falcor {
 
-        /** Tests readback from buffer created with the given CPU access flag work.
-            The test binds the buffer to a compute program which reads back the data.
-        */
-        void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess)
-        {
-            auto pBuf = createTestBuffer(cpuAccess);
+namespace {
 
-            // Run program that copies the buffer elements into result buffer.
-            ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
-            ctx.allocateStructuredBuffer("result", elems);
-            ctx["buffer"] = pBuf;
-            ctx.runProgram(elems, 1, 1);
+const uint32_t elems = 256;
 
-            const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
-            for (uint32_t i = 0; i < elems; i++)
-            {
-                EXPECT_EQ(result[i], i) << "i = " << i;
-            }
-            ctx.unmapBuffer("result");
-        }
+/** Create buffer with the given CPU access and elements initialized to 0,1,2,...
+*/
+Buffer::SharedPtr createTestBuffer(Buffer::CpuAccess cpuAccess, bool initialize = true) {
+    std::vector<uint32_t> initData(elems);
+    for (uint32_t i = 0; i < elems; i++) initData[i] = i;
+    return Buffer::create(elems * sizeof(uint32_t), Resource::BindFlags::ShaderResource, cpuAccess, initialize ? initData.data() : nullptr);
+}
+
+/** Tests readback from buffer created with the given CPU access flag work.
+    The test binds the buffer to a compute program which reads back the data.
+*/
+void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess) {
+    LOG_DBG("Create buffer ...");
+    auto pBuf = createTestBuffer(cpuAccess);
+    LOG_DBG("Create buffer done.");
+
+    // Run program that copies the buffer elements into result buffer.
+    LOG_DBG("Create program ...");
+    ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
+    LOG_DBG("Create program done.");
+
+    LOG_DBG("Allocate result buffer ...");
+    ctx.allocateStructuredBuffer("result", elems);
+    LOG_DBG("Allocate result buffer done.");
+    
+    LOG_DBG("Assign buffer ...");
+    ctx["buffer"] = pBuf;
+    LOG_DBG("Assign buffer done.");
+    
+    LOG_DBG("Run program ...");
+    ctx.runProgram(elems, 1, 1);
+    LOG_DBG("Run program done.");
+
+    LOG_DBG("Map buffer ...");
+    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    LOG_DBG("Map buffer done.");
+
+    LOG_DBG("Check result buffer");
+    for (uint32_t i = 0; i < elems; i++) {
+        EXPECT_EQ(result[i], i) << "i = " << i;
     }
+    LOG_DBG("Unmap buffer");
+    ctx.unmapBuffer("result");
+}
+
+}  // namespace
 
     /** Test that initialization of buffer with CPU write access works.
         The test copies the data to a staging buffer on the GPU.
     */
-    GPU_TEST(CopyBufferCpuAccessWrite)
-    {
+    GPU_TEST(CopyBufferCpuAccessWrite) {
         auto pBuf = createTestBuffer(Buffer::CpuAccess::Write);
 
         // Copy buffer to staging buffer on the GPU.
@@ -93,8 +110,7 @@ namespace Falcor
 
     /** Test setBlob() into buffer with CPU write access.
     */
-    GPU_TEST(SetBlobBufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for resources on the upload heap (#638)")
-    {
+    GPU_TEST(SetBlobBufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for resources on the upload heap (#638)") {
         auto pBuf = createTestBuffer(Buffer::CpuAccess::Write, false);
 
         // Set data into buffer using its setBlob() function.
@@ -109,8 +125,8 @@ namespace Falcor
         ctx.runProgram(elems, 1, 1);
 
         const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
-        for (uint32_t i = 0; i < elems; i++)
-        {
+        
+        for (uint32_t i = 0; i < elems; i++) {
             EXPECT_EQ(result[i], i) << "i = " << i;
         }
         ctx.unmapBuffer("result");
@@ -118,15 +134,13 @@ namespace Falcor
 
     /** Test that GPU reads from buffer created without CPU access works.
     */
-    GPU_TEST(BufferCpuAccessNone)
-    {
+    GPU_TEST(BufferCpuAccessNone) {
         testBufferReadback(ctx, Buffer::CpuAccess::None);
     }
 
     /** Test that GPU reads from buffer created with CPU read access works.
     */
-    GPU_TEST(BufferCpuAccessRead)
-    {
+    GPU_TEST(BufferCpuAccessRead) {
         testBufferReadback(ctx, Buffer::CpuAccess::Read);
     }
 
@@ -135,8 +149,7 @@ namespace Falcor
 
     /** Test that GPU reads from buffer created with CPU write access works.
     */
-    GPU_TEST(BufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for resources on the upload heap (#638)")
-    {
+    GPU_TEST(BufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for resources on the upload heap (#638)") {
         testBufferReadback(ctx, Buffer::CpuAccess::Write);
     }
 }

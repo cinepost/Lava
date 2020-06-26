@@ -31,6 +31,7 @@
 //  #include "Falcor/Core/API/LowLevel/ResourceAllocator.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
     
@@ -51,14 +52,27 @@ void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
     return pData;
 }
 
-VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {       
+VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
+    LOG_DBG("Buffer usage flag from bind flags: %s", to_string(bindFlags).c_str());       
     // Assume every buffer can be read from and written into
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    auto setBit = [&flags, &bindFlags](Buffer::BindFlags f, VkBufferUsageFlags vkBit) {if (is_set(bindFlags, f)) flags |= vkBit; };
+
+    auto setBit = [&flags, &bindFlags](Buffer::BindFlags f, VkBufferUsageFlags vkBit) {
+        if (is_set(bindFlags, f)) {
+            flags |= vkBit;
+        }
+    };
+    
     setBit(Buffer::BindFlags::Vertex,           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     setBit(Buffer::BindFlags::Index,            VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+    //setBit(Buffer::BindFlags::UnorderedAccess,  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     setBit(Buffer::BindFlags::UnorderedAccess,  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
+    
+    //setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
+    setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    
+
     setBit(Buffer::BindFlags::IndirectArg,      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
     setBit(Buffer::BindFlags::Constant,         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
@@ -72,6 +86,7 @@ size_t getBufferDataAlignment(const Buffer* pBuffer) {
 }
 
 Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
+    LOG_DBG("Create buffer with bind flags: %s", to_string(bindFlags).c_str());
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;

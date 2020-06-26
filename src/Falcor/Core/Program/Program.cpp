@@ -898,6 +898,7 @@ namespace Falcor
             {
                 std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
                 logError(error, Logger::MsgBox::RetryAbort);
+                throw std::runtime_error("Failed to link program");
 
                 // Continue loop to keep trying...
             }

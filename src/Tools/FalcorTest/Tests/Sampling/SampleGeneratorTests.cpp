@@ -78,7 +78,12 @@ namespace Falcor
 
             // Setup GPU test.
             // We defer the creation of the vars until after shader specialization.
+            #ifdef FALCOR_VK
+            ctx.createProgram(kShaderFile, "test", Program::DefineList(), Shader::CompilerFlags::None, "450", false);
+            #else
             ctx.createProgram(kShaderFile, "test", Program::DefineList(), Shader::CompilerFlags::None, "6_0", false);
+            #endif
+
             pSampleGenerator->prepareProgram(ctx.getProgram());
 
             ctx.createVars();

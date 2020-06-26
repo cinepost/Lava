@@ -48,6 +48,9 @@ namespace Falcor
         }
     }
 
+    #ifdef FALCOR_VK
+    GPU_TEST(ShaderModel5_0) { test(ctx, "450"); }
+    #else
     GPU_TEST(ShaderModel5_0) { test(ctx, "5_0"); }
     GPU_TEST(ShaderModel5_1) { test(ctx, "5_1"); }
     GPU_TEST(ShaderModel6_0) { test(ctx, "6_0"); }
@@ -56,4 +59,5 @@ namespace Falcor
     GPU_TEST(ShaderModel6_3) { test(ctx, "6_3"); }
     GPU_TEST(ShaderModel6_4, "Requires shader model 6.4") { test(ctx, "6_4"); }
     GPU_TEST(ShaderModel6_5, "Requires shader model 6.5") { test(ctx, "6_5"); }
+    #endif
 }

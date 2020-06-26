@@ -39,17 +39,18 @@ Texture::SharedPtr createBlackTexture();
 
 void createNullViews() {
     LOG_DBG("create srv");
-    // gNullViews.srv = ShaderResourceView::create(getEmptyTexture(), 0, 1, 0, 1);
-    gNullViews.srv = ShaderResourceView::create(createBlackTexture(), 0, 1, 0, 1);
+    gNullViews.srv = ShaderResourceView::create(getEmptyTexture(), 0, 1, 0, 1);
+    //gNullViews.srv = ShaderResourceView::create(Buffer::SharedPtr(), 0, 0);
+    // gNullViews.srv = ShaderResourceView::create(createBlackTexture(), 0, 1, 0, 1);
     LOG_DBG("create dsv");
-    // gNullViews.dsv = DepthStencilView::create(getEmptyTexture(), 0, 0, 1);
-    gNullViews.dsv = DepthStencilView::create(createBlackTexture(), 0, 0, 1);
+    gNullViews.dsv = DepthStencilView::create(getEmptyTexture(), 0, 0, 1);
+    // gNullViews.dsv = DepthStencilView::create(createBlackTexture(), 0, 0, 1);
     LOG_DBG("create uav");
-    // gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(), 0, 0, 1);
-    gNullViews.uav = UnorderedAccessView::create(createBlackTexture(), 0, 0, 1);
+    gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(), 0, 0, 1);
+    // gNullViews.uav = UnorderedAccessView::create(createBlackTexture(), 0, 0, 1);
     LOG_DBG("create rtv");
-    // gNullViews.rtv = RenderTargetView::create(getEmptyTexture(), 0, 0, 1);
-    gNullViews.rtv = RenderTargetView::create(createBlackTexture(), 0, 0, 1);
+    gNullViews.rtv = RenderTargetView::create(getEmptyTexture(), 0, 0, 1);
+    // gNullViews.rtv = RenderTargetView::create(createBlackTexture(), 0, 0, 1);
     LOG_DBG("create cbv");
     gNullViews.cbv = ConstantBufferView::create(Buffer::SharedPtr());
 }

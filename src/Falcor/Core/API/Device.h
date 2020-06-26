@@ -44,11 +44,11 @@
 
 namespace Falcor {
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
 #define DEFAULT_ENABLE_DEBUG_LAYER true
-#else
-#define DEFAULT_ENABLE_DEBUG_LAYER false
-#endif
+// #else
+// #define DEFAULT_ENABLE_DEBUG_LAYER false
+// #endif
 
 struct DeviceApiData;
 
@@ -178,7 +178,7 @@ class dlldecl Device {
 #endif
 
  private:
-    static constexpr uint32_t kSwapChainBuffersCount = 3;
+    static constexpr uint32_t kSwapChainBuffersCount = 5;
 
     struct ResourceRelease {
         size_t frameID;
