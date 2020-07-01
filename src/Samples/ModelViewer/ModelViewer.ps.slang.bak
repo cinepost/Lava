@@ -25,31 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "RasterPass.h"
-#include "Falcor/Core/API/RenderContext.h"
+import Scene.Shading;
+import Scene.Raster;
 
-namespace Falcor {
+cbuffer PerFrameCB : register(b0)
+{
+    bool gConstColor;
+};
 
-RasterPass::SharedPtr RasterPass::create(const Program::Desc& desc, const Program::DefineList& defines) {
-    return SharedPtr(new RasterPass(desc, defines));
+float4 main(VSOut vOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+{
+    if(gConstColor)
+    {
+        return float4(0, 1, 0, 1);
+    }
+    else
+    {
+        float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
+        ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
+        float4 finalColor = float4(0, 0, 0, 1);
+
+        for (int i = 0; i < gScene.getLightCount(); i++)
+        {
+            finalColor.rgb += evalMaterial(sd, gScene.getLight(i), 1).color.rgb;
+        }
+
+        // return finalColor;
+        return float4(1, 1, 0, 1);
+    }
 }
-
-RasterPass::SharedPtr RasterPass::create(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
-    Program::Desc d;
-    d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
-    return create(d, defines);
-}
-
-RasterPass::RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(progDesc, programDefines) {
-}
-
-void RasterPass::drawIndexed(RenderContext* pContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {
-    pContext->drawIndexed(mpState.get(), mpVars.get(), indexCount, startIndexLocation, baseVertexLocation);
-}
-
-void RasterPass::draw(RenderContext* pContext, uint32_t vertexCount, uint32_t startVertexLocation) {
-    pContext->draw(mpState.get(), mpVars.get(), vertexCount, startVertexLocation);
-}
-
-}  // namespace Falcor

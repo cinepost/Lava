@@ -40,6 +40,7 @@ namespace fs = boost::filesystem;
 #include "RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Debug/debug.h"
 #include "RenderGraph.h"
 
 namespace Falcor {

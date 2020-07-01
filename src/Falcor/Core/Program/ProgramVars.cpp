@@ -231,6 +231,7 @@ namespace Falcor {
         uint32_t&                       rootDescIndex)
     {
         auto rootDescriptorRangeCount = pParameterBlockReflector->getRootDescriptorRangeCount();
+        //LOG_DBG("for loop rootDescriptorRangeCount");
         for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i)
         {
             auto resourceRangeIndex = pParameterBlockReflector->getRootDescriptorRangeIndex(i);
@@ -241,11 +242,12 @@ namespace Falcor {
 
             bindRootDescriptor<forGraphics>(pContext, rootDescIndex++, pResource, isUav);
         }
+        //LOG_DBG("for loop rootDescriptorRangeCount done");
 
         // Iterate over constant buffers and parameter blocks to recursively bind their root descriptors.
         uint32_t resourceRangeCount = pParameterBlockReflector->getResourceRangeCount();
-        for (uint32_t resourceRangeIndex = 0; resourceRangeIndex < resourceRangeCount; ++resourceRangeIndex)
-        {
+        //LOG_DBG("for loop resourceRangeCount");
+        for (uint32_t resourceRangeIndex = 0; resourceRangeIndex < resourceRangeCount; ++resourceRangeIndex) {
             auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
             auto& bindingInfo = pParameterBlockReflector->getResourceRangeBindingInfo(resourceRangeIndex);
 
@@ -256,36 +258,39 @@ namespace Falcor {
             auto pSubObjectReflector = bindingInfo.pSubObjectReflector;
             auto objectCount = resourceRange.count;
 
-            for (uint32_t i = 0; i < objectCount; ++i)
-            {
+            //LOG_DBG("subloop resourceRangeCount");
+            for (uint32_t i = 0; i < objectCount; ++i) {
                 auto pSubBlock = pParameterBlock->getParameterBlock(resourceRangeIndex, i);
-                if (!bindParameterBlockRootDescs<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, rootDescIndex))
-                {
+                if (!bindParameterBlockRootDescs<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, rootDescIndex)) {
                     return false;
                 }
             }
+            //LOG_DBG("subloop resourceRangeCount done");
         }
+        //LOG_DBG("for loop resourceRangeCount done");
+
+        //LOG_DBG("return true");
 
         return true;
     }
 
     template<bool forGraphics>
     bool bindRootSetsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
-        LOG_DBG("bind root sets common");
+        //LOG_DBG("bind root sets common");
         if(!pVars->prepareDescriptorSets(pContext)) return false;
 
-        LOG_DBG("descSetIndex");
+        //LOG_DBG("descSetIndex");
         uint32_t descSetIndex = pRootSignature->getDescriptorSetBaseIndex();
         
-        LOG_DBG("rootDescIndex");
+        //LOG_DBG("rootDescIndex");
         uint32_t rootDescIndex = pRootSignature->getRootDescriptorBaseIndex();
         
-        LOG_DBG("rootConstIndex");
+        //LOG_DBG("rootConstIndex");
         uint32_t rootConstIndex = pRootSignature->getRootConstantBaseIndex();
 
-        LOG_DBG("test bindParameterBlockSets");
+        //LOG_DBG("test bindParameterBlockSets");
         if (!bindParameterBlockSets<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex)) return false;
-        LOG_DBG("test bindParameterBlockRootDescs");
+        //LOG_DBG("test bindParameterBlockRootDescs");
         if (!bindParameterBlockRootDescs<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, rootDescIndex)) return false;
 
         return true;

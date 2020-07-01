@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Testing/UnitTest.h"
 #include <random>
+
+#include "Testing/UnitTest.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor
 {
@@ -86,8 +88,7 @@ namespace Falcor
                 block["bufB"][j] = Buffer::createTyped<float>(kNumElems, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, bufB[j].data());
             }
             std::vector<uint32_t> bufC[4];
-            for (uint32_t j = 0; j < 4; j++)
-            {
+            for (uint32_t j = 0; j < 4; j++) {
                 bufC[j].resize(kNumElems);
                 for (uint32_t i = 0; i < kNumElems; i++) bufC[j][i] = r();
                 block["bufC"][j] = Buffer::createTyped<uint32_t>(kNumElems, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, bufC[j].data());
@@ -97,7 +98,7 @@ namespace Falcor
             std::vector<uint32_t> testBuffer(kNumElems);
             {
                 for (uint32_t i = 0; i < kNumElems; i++) testBuffer[i] = r();
-                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
+                auto pTestBuffer = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? Resource::BindFlags::UnorderedAccess : Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, testBuffer.data());
                 bool ret = pParamBlock->setBuffer(kRootBufferName, pTestBuffer);
                 EXPECT(ret);
 
@@ -106,6 +107,7 @@ namespace Falcor
             }
 
             // Create test program and bind the parameter block.
+            LOG_DBG("Create test program");
             ctx.createProgram(kTestProgram, "main", defines, compilerFlags, shaderModel);
             ctx.allocateStructuredBuffer("result", kNumElems);
 
@@ -122,12 +124,14 @@ namespace Falcor
             std::vector<uint32_t> globalTestBuffer(kNumElems);
             {
                 for (uint32_t i = 0; i < kNumElems; i++) globalTestBuffer[i] = r();
-                var[kGlobalRootBufferName] = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, globalTestBuffer.data());
+                var[kGlobalRootBufferName] = Buffer::create(kNumElems * sizeof(uint32_t), useUav ? Resource::BindFlags::UnorderedAccess : Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, globalTestBuffer.data());
             }
 
             // Test that reading from all the resources in the block works.
+            LOG_DBG("Run program");
             ctx.runProgram(kNumElems, 1, 1);
 
+            LOG_DBG("Map test buffer");
             const float* result = ctx.mapBuffer<const float>("result");
             for (uint32_t i = 0; i < kNumElems; i++)
             {
@@ -152,8 +156,8 @@ namespace Falcor
     }
 
     #ifdef FALCOR_VK
-    GPU_TEST(RootBufferParamBlockSRV_450) { testRootBuffer(ctx, "450", false); }
     GPU_TEST(RootBufferParamBlockUAV_450) { testRootBuffer(ctx, "450", true); }
+    //GPU_TEST(RootBufferParamBlockSRV_450) { testRootBuffer(ctx, "450", false); }
     #else
     GPU_TEST(RootBufferParamBlockSRV_5_1) { testRootBuffer(ctx, "5_1", false); }
     GPU_TEST(RootBufferParamBlockUAV_5_1) { testRootBuffer(ctx, "5_1", true); }

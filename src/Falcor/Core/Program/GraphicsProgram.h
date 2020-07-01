@@ -25,40 +25,44 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_GRAPHICSPROGRAM_H_
+#define SRC_FALCOR_CORE_PROGRAM_GRAPHICSPROGRAM_H_
+
 #include "Program.h"
 
-namespace Falcor
-{
-    /** Graphics program. See ComputeProgram to manage compute programs.
+namespace Falcor {
+
+/** Graphics program. See ComputeProgram to manage compute programs.
+*/
+class dlldecl GraphicsProgram : public Program, public inherit_shared_from_this<Program, GraphicsProgram> {
+ public:
+    using SharedPtr = std::shared_ptr<GraphicsProgram>;
+    using SharedConstPtr = std::shared_ptr<const GraphicsProgram>;
+    using inherit_shared_from_this<Program, GraphicsProgram>::shared_from_this;
+
+    ~GraphicsProgram() = default;
+
+    /** Create a new graphics program.
+        Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+        \param[in] desc Description of the source files and entry points to use.
+        \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
+        \return A new object, or an exception is thrown if creation failed.
     */
-    class dlldecl GraphicsProgram : public Program, public inherit_shared_from_this<Program, GraphicsProgram>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<GraphicsProgram>;
-        using SharedConstPtr = std::shared_ptr<const GraphicsProgram>;
-        using inherit_shared_from_this<Program, GraphicsProgram>::shared_from_this;
+    static SharedPtr create(const Desc& desc, const Program::DefineList& programDefines = DefineList());
 
-        ~GraphicsProgram() = default;
+    /** Create a new graphics program from file.
+        \param[in] filename Graphics program filename.
+        \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader, which transforms and outputs all default vertex attributes.
+        \param[in] psEntry Pixel shader entry point
+        \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr createFromFile(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines = DefineList());
 
-        /** Create a new graphics program.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] desc Description of the source files and entry points to use.
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const Desc& desc, const Program::DefineList& programDefines = DefineList());
+ private:
+    GraphicsProgram() = default;
+};
 
-        /** Create a new graphics program from file.
-            \param[in] filename Graphics program filename.
-            \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader, which transforms and outputs all default vertex attributes.
-            \param[in] psEntry Pixel shader entry point
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr createFromFile(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines = DefineList());
+}  // namespace Flacor
 
-    private:
-        GraphicsProgram() = default;
-    };
-}
+#endif  // SRC_FALCOR_CORE_PROGRAM_GRAPHICSPROGRAM_H_

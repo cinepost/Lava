@@ -25,11 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/CopyContext.h"
-#include "API/Buffer.h"
-#include "API/Texture.h"
 #include <cstring>
+
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+
 
 namespace Falcor
 {
@@ -57,35 +59,34 @@ namespace Falcor
         return size;
     }
 
-    VkImageLayout getImageLayout(Resource::State state)
-    {
-        switch (state)
-        {
-        case Resource::State::Undefined:
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-        case Resource::State::PreInitialized:
-            return VK_IMAGE_LAYOUT_PREINITIALIZED;
-        case Resource::State::Common:
-        case Resource::State::UnorderedAccess:
-            return VK_IMAGE_LAYOUT_GENERAL;
-        case Resource::State::RenderTarget:
-            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        case Resource::State::DepthStencil:
-            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        case Resource::State::ShaderResource:
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        case Resource::State::ResolveDest:
-        case Resource::State::CopyDest:
-            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        case Resource::State::ResolveSource:
-        case Resource::State::CopySource:
-            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            break;
-        case Resource::State::Present:
-            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        default:
-            should_not_get_here();
-            return VkImageLayout(-1);
+    VkImageLayout getImageLayout(Resource::State state) {
+        LOG_DBG("get Image Layout");
+        switch (state) {
+            case Resource::State::Undefined:
+                return VK_IMAGE_LAYOUT_UNDEFINED;
+            case Resource::State::PreInitialized:
+                return VK_IMAGE_LAYOUT_PREINITIALIZED;
+            case Resource::State::Common:
+            case Resource::State::UnorderedAccess:
+                return VK_IMAGE_LAYOUT_GENERAL;
+            case Resource::State::RenderTarget:
+                return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            case Resource::State::DepthStencil:
+                return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            case Resource::State::ShaderResource:
+                return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            case Resource::State::ResolveDest:
+            case Resource::State::CopyDest:
+                return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            case Resource::State::ResolveSource:
+            case Resource::State::CopySource:
+                return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                break;
+            case Resource::State::Present:
+                return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            default:
+                should_not_get_here();
+                return VkImageLayout(-1);
         }
     }
 

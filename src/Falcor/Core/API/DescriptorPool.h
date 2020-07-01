@@ -120,6 +120,31 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
     std::priority_queue<DeferredRelease, std::vector<DeferredRelease>, std::greater<DeferredRelease>> mpDeferredReleases;
 };
 
+inline const std::string to_string(DescriptorPool::Type type)
+{
+#define type_2_string(a) case DescriptorPool::Type::a: return #a;
+    switch (type)
+    {
+        type_2_string(TextureSrv);
+        type_2_string(TextureUav);
+        type_2_string(RawBufferSrv);
+        type_2_string(RawBufferUav);
+        type_2_string(TypedBufferSrv);
+        type_2_string(TypedBufferUav);
+        type_2_string(Cbv);
+        type_2_string(StructuredBufferUav);
+        type_2_string(StructuredBufferSrv);
+        type_2_string(Dsv);
+        type_2_string(Rtv);
+        type_2_string(Sampler);
+
+    default:
+        should_not_get_here();
+        return "";
+    }
+#undef type_2_string
+}
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_DESCRIPTORPOOL_H_

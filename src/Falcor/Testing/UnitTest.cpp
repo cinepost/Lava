@@ -99,23 +99,18 @@ std::vector<Test>* testRegistry;
 
         std::string extraMessage;
 
-        try
-        {
+        try {
             if (test.cpuFunc) test.cpuFunc(cpuCtx);
             else test.gpuFunc(gpuCtx);
-        }
-        catch (const ErrorRunningTestException& e)
-        {
+        
+        } catch (const ErrorRunningTestException& e) {
             result.status = TestResult::Status::Failed;
             extraMessage = e.what();
-        }
-        catch (const TooManyFailedTestsException&)
-        {
+        
+        } catch (const TooManyFailedTestsException&) {
             result.status = TestResult::Status::Failed;
             extraMessage = "Gave up after " + std::to_string(kMaxTestFailures) + " failures.";
-        }
-        catch (const std::exception& e)
-        {
+        } catch (const std::exception& e) {
             result.status = TestResult::Status::Failed;
             extraMessage = e.what();
         }
@@ -128,6 +123,10 @@ std::vector<Test>* testRegistry;
 
         auto endTime = std::chrono::steady_clock::now();
         result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+        if (result.status == TestResult::Status::Failed) {
+            throw std::runtime_error("Test failed. Abort testing");
+        }
 
         return result;
     }
@@ -192,7 +191,7 @@ std::vector<Test>* testRegistry;
         mpProgram = ComputeProgram::createFromFile(path, entry, programDefines, flags, shaderModel);
         mpState = ComputeState::create();
         mpState->setProgram(mpProgram);
-
+        
         // Create vars unless it should be deferred.
         if (createShaderVars) createVars();
     }
@@ -224,15 +223,13 @@ std::vector<Test>* testRegistry;
     void GPUUnitTestContext::runProgram(const uint3& dimensions) {
         assert(mpVars);
         for (const auto& buffer : mStructuredBuffers) {
-            LOG_DBG("setBuffer");
             mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
         }
 
-        LOG_DBG("groups");
         uint3 groups = div_round_up(dimensions, mThreadGroupSize);
 
-        LOG_DBG("dispatch");
         mpContext->dispatch(mpState.get(), mpVars.get(), groups);
+        mpContext->flush(true);
     }
 
     void GPUUnitTestContext::unmapBuffer(const char* bufferName) {

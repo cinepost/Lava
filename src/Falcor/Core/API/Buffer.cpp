@@ -265,7 +265,6 @@ void* Buffer::map(MapType type) {
             // For buffers without CPU access we must copy the contents to a staging buffer.
             logWarning("Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work");
             if (mpStagingResource == nullptr) {
-                LOG_DBG("create buffer");
                 mpStagingResource = Buffer::create(mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
             }
 
@@ -274,6 +273,7 @@ void* Buffer::map(MapType type) {
             assert(mGpuVaOffset == 0);
             pContext->copyResource(mpStagingResource.get(), this);
             pContext->flush(true);
+
             return mpStagingResource->map(MapType::Read);
         }
     }

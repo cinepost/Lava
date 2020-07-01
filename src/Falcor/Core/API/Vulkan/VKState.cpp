@@ -25,37 +25,36 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "VKState.h"
-#include "API/FBO.h"
-#include "API/Device.h"
+#include "Falcor/Core/API/FBO.h"
+#include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
-    inline VkBool32 vkBool(bool b)
-    {
+#include "Falcor/Utils/Debug/debug.h"
+
+namespace Falcor {
+
+    inline VkBool32 vkBool(bool b) {
         return b ? VK_TRUE : VK_FALSE;
     }
 
-    VkShaderStageFlagBits getVkShaderStage(ShaderType type)
-    {
-        switch (type)
-        {
-        case ShaderType::Vertex:
-            return VK_SHADER_STAGE_VERTEX_BIT;
-        case ShaderType::Pixel:
-            return VK_SHADER_STAGE_FRAGMENT_BIT;
-        case ShaderType::Geometry:
-            return VK_SHADER_STAGE_GEOMETRY_BIT;
-        case ShaderType::Hull:
-            return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-        case ShaderType::Domain:
-            return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-        case ShaderType::Compute:
-            return VK_SHADER_STAGE_COMPUTE_BIT;
-        default:
-            should_not_get_here();
-            return (VkShaderStageFlagBits)0;
+    VkShaderStageFlagBits getVkShaderStage(ShaderType type) {
+        switch (type) {
+            case ShaderType::Vertex:
+                return VK_SHADER_STAGE_VERTEX_BIT;
+            case ShaderType::Pixel:
+                return VK_SHADER_STAGE_FRAGMENT_BIT;
+            case ShaderType::Geometry:
+                return VK_SHADER_STAGE_GEOMETRY_BIT;
+            case ShaderType::Hull:
+                return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            case ShaderType::Domain:
+                return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            case ShaderType::Compute:
+                return VK_SHADER_STAGE_COMPUTE_BIT;
+            default:
+                should_not_get_here();
+                return (VkShaderStageFlagBits)0;
         }
     }
     /*
@@ -81,30 +80,32 @@ namespace Falcor
         }
     }
     */
-    void initVkShaderStageInfo(const ProgramKernels::SharedConstPtr& pProgramKernels, std::vector<VkPipelineShaderStageCreateInfo>& infosOut)
-    {
+    void initVkShaderStageInfo(const ProgramKernels::SharedConstPtr& pProgramKernels, std::vector<VkPipelineShaderStageCreateInfo>& infosOut) {
+        LOG_DBG("initVkShaderStageInfo");
+
         infosOut.clear();
 
-        for (uint32_t i = 0; i < (uint32_t)ShaderType::Count; i++)
-        {
+        for (uint32_t i = 0; i < (uint32_t)ShaderType::Count; i++) {
             ShaderType type = (ShaderType)i;
+            LOG_DBG("ShaderType %s", to_string(type).c_str());
             //const Shader* pShader = pProgram->getShader(type);
             const Shader* pShader = pProgramKernels->getShader(type);
 
-            if (pShader != nullptr)
-            {
+            if (pShader != nullptr) {
                 VkPipelineShaderStageCreateInfo info = {};
                 info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                 info.stage = getVkShaderStage(type);
                 info.module = pShader->getApiHandle();
                 info.pName = "main";
+                LOG_DBG("push_back at %zu", infosOut.size());
                 infosOut.push_back(info);
+            } else {
+                LOG_ERR("!pShader");
             }
         }
     }
 
-    VkBlendFactor getVkBlendFactor(BlendState::BlendFunc func)
-    {
+    VkBlendFactor getVkBlendFactor(BlendState::BlendFunc func) {
         switch (func)
         {
         case BlendState::BlendFunc::Zero:

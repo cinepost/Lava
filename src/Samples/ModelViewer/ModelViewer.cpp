@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "ModelViewer.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 void ModelViewer::setModelString(double loadTime) {
     assert(mpScene != nullptr);
 
@@ -53,11 +55,16 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
     SceneBuilder::SharedPtr pBuilder = SceneBuilder::create(filename, flags);
 
     if(!pBuilder) {
-        msgBox("Could not load model");
+        msgBox("Could not load model !");
         return;
     }
 
     mpScene = pBuilder->getScene();
+
+    if(!mpScene) {
+        msgBox("Failed to build scene !");
+    }
+
     mpProgram->addDefines(mpScene->getSceneDefines());
     mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
     mpScene->bindSamplerToMaterials(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
@@ -179,6 +186,8 @@ void ModelViewer::onFrameRender(RenderContext* pRenderContext, const Fbo::Shared
 
         mpGraphicsState->setProgram(mpProgram);
         mpScene->render(pRenderContext, mpGraphicsState.get(), mpProgramVars.get(), renderFlags);
+    } else {
+        LOG_ERR("No scene to render !!!");
     }
 
     TextRenderer::render(pRenderContext, mModelString, pTargetFbo, float2(10, 30));

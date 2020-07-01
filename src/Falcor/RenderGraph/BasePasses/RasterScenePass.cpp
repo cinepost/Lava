@@ -25,46 +25,42 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "RasterScenePass.h"
 
-namespace Falcor
-{
-    RasterScenePass::RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines)
-        : BaseGraphicsPass(progDesc, programDefines), mpScene(pScene)
-    {
-        assert(pScene);
-    }
+namespace Falcor {
 
-    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) {
-        if (pScene == nullptr) {
-            throw std::runtime_error("Can't create a RasterScenePass object without a scene");            
-        }
-        Program::DefineList dl = programDefines;
-        dl.add(pScene->getSceneDefines());
-
-        return SharedPtr(new RasterScenePass(pScene, progDesc, dl));
-    }
-
-    RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines) {
-        Program::Desc d;
-        d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
-        return create(pScene, d, programDefines);
-    }
-
-    void RasterScenePass::renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo)
-    {
-        mpState->setFbo(pDstFbo);
-        mpScene->render(pContext, mpState.get(), mpVars.get());
-    }
-
-    bool RasterScenePass::onMouseEvent(const MouseEvent& mouseEvent)
-    {
-        return mpScene->onMouseEvent(mouseEvent);
-    }
-
-    bool RasterScenePass::onKeyEvent(const KeyboardEvent& keyEvent)
-    {
-        return mpScene->onKeyEvent(keyEvent);
-    }
+RasterScenePass::RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(progDesc, programDefines), mpScene(pScene) {
+    assert(pScene);
 }
+
+RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) {
+    if (pScene == nullptr) {
+        throw std::runtime_error("Can't create a RasterScenePass object without a scene");            
+    }
+    Program::DefineList dl = programDefines;
+    dl.add(pScene->getSceneDefines());
+
+    return SharedPtr(new RasterScenePass(pScene, progDesc, dl));
+}
+
+RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines) {
+    Program::Desc d;
+    d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
+    return create(pScene, d, programDefines);
+}
+
+void RasterScenePass::renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo) {
+    mpState->setFbo(pDstFbo);
+    mpScene->render(pContext, mpState.get(), mpVars.get());
+}
+
+bool RasterScenePass::onMouseEvent(const MouseEvent& mouseEvent) {
+    return mpScene->onMouseEvent(mouseEvent);
+}
+
+bool RasterScenePass::onKeyEvent(const KeyboardEvent& keyEvent) {
+    return mpScene->onKeyEvent(keyEvent);
+}
+
+}  // namespace Falcor

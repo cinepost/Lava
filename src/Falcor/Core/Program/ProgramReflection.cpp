@@ -25,11 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "ProgramReflection.h"
-#include "Utils/StringUtils.h"
-#include "slang/slang.h"
 #include <map>
+
+#include "Falcor/stdafx.h"
+#include "ProgramReflection.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Debug/debug.h"
+#include "slang/slang.h"
+
 using namespace slang;
 
 namespace Falcor
@@ -603,28 +606,28 @@ namespace Falcor
         bool isRootDescriptor = pVar->findUserAttributeByName(pProgramVersion->getSlangSession()->getGlobalSession(), kRootDescriptorAttribute) != nullptr;
 
         // Check that the root descriptor type is supported.
-        if (isRootDescriptor)
-        {
-            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer)
-            {
+        if (isRootDescriptor) {
+            LOG_WARN("ROOT descriptor !!!");
+
+            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer) {
                 logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw and structured buffers are supported.");
+                LOG_ERR("root descriptor test faild !!!");
                 return nullptr;
             }
-            if (shaderAccess != ReflectionResourceType::ShaderAccess::Read &&
-                shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite)
-            {
+            
+            if (shaderAccess != ReflectionResourceType::ShaderAccess::Read && shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite) {
                 logError("Buffer '" + name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
+                LOG_ERR("root descriptor test faild !!!");
                 return nullptr;
             }
             // Check that it's not an append/consume structured buffer, which is unsupported for root descriptors.
             // RWStructuredBuffer with counter is also not supported, but we cannot see that on the type declaration.
             // At bind time, we'll validate that the buffer has not been created with a UAV counter.
-            if (type == ReflectionResourceType::Type::StructuredBuffer)
-            {
+            if (type == ReflectionResourceType::Type::StructuredBuffer) {
                 assert(structuredType != ReflectionResourceType::StructuredType::Invalid);
-                if (structuredType == ReflectionResourceType::StructuredType::Append || structuredType == ReflectionResourceType::StructuredType::Consume)
-                {
+                if (structuredType == ReflectionResourceType::StructuredType::Append || structuredType == ReflectionResourceType::StructuredType::Consume) {
                     logError("StructuredBuffer '" + name + "' cannot be bound as root descriptor. Only regular structured buffers are supported, not append/consume buffers.");
+                    LOG_ERR("root descriptor test faild !!!");
                     return nullptr;
                 }
             }
@@ -640,73 +643,73 @@ namespace Falcor
 
         if (isRootDescriptor) bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor;
 
-        switch (type)
-        {
-        default:
-            break;
+        switch (type) {
+            //default:
+            //    break;
 
-        case ReflectionResourceType::Type::StructuredBuffer:
-        {
-            const auto& pElementLayout = pSlangType->getElementTypeLayout();
-            auto pBufferType = reflectType(
-                pElementLayout,
-                pBlock,
-                pPath,
-                pProgramVersion);
-            pType->setStructType(pBufferType);
+            case ReflectionResourceType::Type::StructuredBuffer:
+                {
+                    const auto& pElementLayout = pSlangType->getElementTypeLayout();
+                    auto pBufferType = reflectType(
+                        pElementLayout,
+                        pBlock,
+                        pPath,
+                        pProgramVersion);
+                    pType->setStructType(pBufferType);
+                }
+                break;
+
+            // TODO: The fact that constant buffers (and parameter blocks, since Falcor currently
+            // pretends that parameter blocks are constant buffers in its reflection types) are
+            // treated so differently from other resource types is a huge sign that they should
+            // *not* be resource types to begin with (and they *aren't* resource types in Slang).
+            //
+            case ReflectionResourceType::Type::ConstantBuffer:
+                {
+                    // We have a sub-parameter-block (whether a true parameter block, or just a constant buffer)
+                    auto pSubBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
+                    const auto& pElementLayout = pSlangType->getElementTypeLayout();
+                    auto pElementType = reflectType(
+                        pElementLayout,
+                        pSubBlock.get(),
+                        pPath,
+                        pProgramVersion);
+                    pSubBlock->setElementType(pElementType);
+
+                    if (pElementType->getByteSize() != 0) {
+                        ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
+                        defaultConstantBufferInfo.regIndex = bindingInfo.regIndex;
+                        defaultConstantBufferInfo.regSpace = bindingInfo.regSpace;
+                        pSubBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
+                    }
+
+                    pSubBlock->finalize();
+
+                    pType->setStructType(pElementType);
+                    pType->setParameterBlockReflector(pSubBlock);
+
+                    // TODO: `pSubBlock` should probably get stored on the
+                    // `ReflectionResourceType` somwhere, so that we can
+                    // retrieve it later without having to use a parent
+                    // `ParameterBlockReflection` to look it up.
+
+                    if (pSlangType->getKind() == slang::TypeReflection::Kind::ParameterBlock)
+                    {
+                        bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock;
+                    }
+                    else
+                    {
+                        bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer;
+                    }
+                    bindingInfo.pSubObjectReflector = pSubBlock;
+                }
+                break;
+            
+            default:
+                break;
         }
-        break;
 
-        // TODO: The fact that constant buffers (and parameter blocks, since Falcor currently
-        // pretends that parameter blocks are constant buffers in its reflection types) are
-        // treated so differently from other resource types is a huge sign that they should
-        // *not* be resource types to begin with (and they *aren't* resource types in Slang).
-        //
-        case ReflectionResourceType::Type::ConstantBuffer:
-        {
-            // We have a sub-parameter-block (whether a true parameter block, or just a constant buffer)
-            auto pSubBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
-            const auto& pElementLayout = pSlangType->getElementTypeLayout();
-            auto pElementType = reflectType(
-                pElementLayout,
-                pSubBlock.get(),
-                pPath,
-                pProgramVersion);
-            pSubBlock->setElementType(pElementType);
-
-            if (pElementType->getByteSize() != 0)
-            {
-                ParameterBlockReflection::DefaultConstantBufferBindingInfo defaultConstantBufferInfo;
-                defaultConstantBufferInfo.regIndex = bindingInfo.regIndex;
-                defaultConstantBufferInfo.regSpace = bindingInfo.regSpace;
-                pSubBlock->setDefaultConstantBufferBindingInfo(defaultConstantBufferInfo);
-            }
-
-            pSubBlock->finalize();
-
-            pType->setStructType(pElementType);
-            pType->setParameterBlockReflector(pSubBlock);
-
-            // TODO: `pSubBlock` should probably get stored on the
-            // `ReflectionResourceType` somwhere, so that we can
-            // retrieve it later without having to use a parent
-            // `ParameterBlockReflection` to look it up.
-
-            if (pSlangType->getKind() == slang::TypeReflection::Kind::ParameterBlock)
-            {
-                bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock;
-            }
-            else
-            {
-                bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer;
-            }
-            bindingInfo.pSubObjectReflector = pSubBlock;
-        }
-        break;
-        }
-
-        if (pBlock)
-        {
+        if (pBlock) {
             pBlock->addResourceRange(bindingInfo);
         }
 
@@ -866,35 +869,34 @@ namespace Falcor
     {
         assert(pSlangType);
         auto kind = pSlangType->getType()->getKind();
-        switch (kind)
-        {
-        case TypeReflection::Kind::ParameterBlock:
-            kind = kind;
-        case TypeReflection::Kind::Resource:
-        case TypeReflection::Kind::SamplerState:
-        case TypeReflection::Kind::ConstantBuffer:
-        case TypeReflection::Kind::ShaderStorageBuffer:
-        case TypeReflection::Kind::TextureBuffer:
-            return reflectResourceType(pSlangType, pBlock, pPath, pProgramVersion);
-        case TypeReflection::Kind::Struct:
-            return reflectStructType(pSlangType, pBlock, pPath, pProgramVersion);
-        case TypeReflection::Kind::Array:
-            return reflectArrayType(pSlangType, pBlock, pPath, pProgramVersion);
-        case TypeReflection::Kind::Interface:
-            return reflectInterfaceType(pSlangType, pBlock, pPath, pProgramVersion);
-        case TypeReflection::Kind::Specialized:
-            return reflectSpecializedType(pSlangType, pBlock, pPath, pProgramVersion);
-        case TypeReflection::Kind::Scalar:
-        case TypeReflection::Kind::Matrix:
-        case TypeReflection::Kind::Vector:
-            return reflectBasicType(pSlangType);
-        case TypeReflection::Kind::None:
-            return nullptr;
-        case TypeReflection::Kind::GenericTypeParameter:
-            // TODO: How to handle this type? Let it generate an error for now.
-            throw std::runtime_error("Unexpected Slang type");
-        default:
-            should_not_get_here();
+        switch (kind) {
+            case TypeReflection::Kind::ParameterBlock:
+                kind = kind;
+            case TypeReflection::Kind::Resource:
+            case TypeReflection::Kind::SamplerState:
+            case TypeReflection::Kind::ConstantBuffer:
+            case TypeReflection::Kind::ShaderStorageBuffer:
+            case TypeReflection::Kind::TextureBuffer:
+                return reflectResourceType(pSlangType, pBlock, pPath, pProgramVersion);
+            case TypeReflection::Kind::Struct:
+                return reflectStructType(pSlangType, pBlock, pPath, pProgramVersion);
+            case TypeReflection::Kind::Array:
+                return reflectArrayType(pSlangType, pBlock, pPath, pProgramVersion);
+            case TypeReflection::Kind::Interface:
+                return reflectInterfaceType(pSlangType, pBlock, pPath, pProgramVersion);
+            case TypeReflection::Kind::Specialized:
+                return reflectSpecializedType(pSlangType, pBlock, pPath, pProgramVersion);
+            case TypeReflection::Kind::Scalar:
+            case TypeReflection::Kind::Matrix:
+            case TypeReflection::Kind::Vector:
+                return reflectBasicType(pSlangType);
+            case TypeReflection::Kind::None:
+                return nullptr;
+            case TypeReflection::Kind::GenericTypeParameter:
+                // TODO: How to handle this type? Let it generate an error for now.
+                throw std::runtime_error("Unexpected Slang type");
+            default:
+                should_not_get_here();
         }
         return nullptr;
     }

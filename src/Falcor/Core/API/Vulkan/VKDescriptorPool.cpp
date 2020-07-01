@@ -54,14 +54,15 @@ VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
             LOG_INFO("DescriptorPool::Type::RawBufferUav");
             //return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
             //return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 
 // Typed buffer
 
         case DescriptorPool::Type::TypedBufferSrv:
             LOG_INFO("DescriptorPool::Type::TypedBufferSrv");
-            //return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+            //return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
         case DescriptorPool::Type::TypedBufferUav:
             LOG_INFO("DescriptorPool::Type::TypedBufferUav");

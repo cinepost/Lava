@@ -129,7 +129,6 @@ namespace Falcor {
 
 
     // Force template instantiation
-    /*
     template VkHandle<VkSwapchainKHR>::~VkHandle();
     template VkHandle<VkCommandPool>::~VkHandle();
     template VkHandle<VkSemaphore>::~VkHandle();
@@ -142,5 +141,4 @@ namespace Falcor {
 
     template VkResource<VkImage, VkBuffer>::~VkResource();
     template VkResource<VkImageView, VkBufferView>::~VkResource();
-    */
 }  // namespace Falcor

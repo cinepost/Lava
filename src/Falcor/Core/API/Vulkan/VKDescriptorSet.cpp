@@ -69,8 +69,6 @@ namespace Falcor {
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
 
-        LOG_DBG("buffer name: %s", pView->getResource()->getName().c_str());
-
         if (handle.getType() == VkResourceType::Buffer) {
             LOG_DBG("VkResourceType::Buffer");
              Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
@@ -79,10 +77,10 @@ namespace Falcor {
                 LOG_DBG("Typed buffer");
 
                 // ----
-                buffer.buffer = pBuffer->getApiHandle();
-                buffer.offset = pBuffer->getGpuAddressOffset();
-                buffer.range = pBuffer->getSize();
-                write.pBufferInfo = &buffer;
+                //buffer.buffer = pBuffer->getApiHandle();
+                //buffer.offset = pBuffer->getGpuAddressOffset();
+                //buffer.range = pBuffer->getSize();
+                //write.pBufferInfo = &buffer;
 
                 //----
 
@@ -148,6 +146,11 @@ namespace Falcor {
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
         LOG_DBG("setCbv");
         VkDescriptorBufferInfo info;
+        
+        if (!pView->getResource()) {
+            LOG_ERR("!!!!!!!! no resource for ConstantBufferView !!!!!!!!");
+        }
+
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
         assert(pBuffer);
         info.buffer = pBuffer->getApiHandle();

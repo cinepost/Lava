@@ -25,106 +25,95 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_STATE_STATEGRAPH_H_
+#define SRC_FALCOR_CORE_STATE_STATEGRAPH_H_
+
 #include <functional>
+#include <memory>
 
-namespace Falcor
-{
-    template<typename NodeType, typename EdgeType, typename EdgeHashType = std::hash<EdgeType>>
-    class StateGraph
-    {
-    public:
-        using SharedPtr = std::shared_ptr<StateGraph>;
-        using SharedConstPtr = std::shared_ptr<const StateGraph>;
+namespace Falcor {
 
-        using CompareFunc = std::function<bool(const NodeType& data)>;
+template<typename NodeType, typename EdgeType, typename EdgeHashType = std::hash<EdgeType>>
+class StateGraph {
+ public:
+    using SharedPtr = std::shared_ptr<StateGraph>;
+    using SharedConstPtr = std::shared_ptr<const StateGraph>;
 
-        StateGraph() : mGraph(1) {}
+    using CompareFunc = std::function<bool(const NodeType& data)>;
 
-        /** Create a new state graph.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create() // #SHADER_VAR remove this
-        {
-            return SharedPtr(new StateGraph());
-        }
+    StateGraph() : mGraph(1) {}
 
-        bool isEdgeExists(const EdgeType& e) const 
-        {
-            return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());
-        }
+    /** Create a new state graph.
+        \return New object, or throws an exception if creation failed.
+    */
+    // #SHADER_VAR remove this
+    static SharedPtr create() {
+        return SharedPtr(new StateGraph());
+    }
 
-        bool walk(const EdgeType& e)
-        {
-            if (isEdgeExists(e))
-            {
-                mCurrentNode = getEdgeIt(e)->second;
-                return true;
-            }
-            else
-            {
-                // Scan the graph and see if anode w
-                uint32_t newIndex = (uint32_t)mGraph.size();
-                mGraph[mCurrentNode].edges[e] = newIndex;
-                mGraph.push_back(Node());
-                mCurrentNode = newIndex;
-                return false;
-            }
-        }
-        
-        const NodeType& getCurrentNode() const
-        {
-            return mGraph[mCurrentNode].data;
-        }
+    bool isEdgeExists(const EdgeType& e) const  {
+        return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());
+    }
 
-        void setCurrentNodeData(const NodeType& data)
-        {
-            mGraph[mCurrentNode].data = data;
-        }
-
-        bool scanForMatchingNode(CompareFunc cmpFunc)
-        {
-            for (uint32_t i = 0 ; i < (uint32_t)mGraph.size() ; i++)
-            {
-                if(i != mCurrentNode)
-                {
-                    if (cmpFunc(mGraph[i].data))
-                    {
-                        // Reconnect
-                        for (uint32_t n = 0 ; n < (uint32_t)mGraph.size() ; n++)
-                        {
-                            for (auto& e : mGraph[n].edges)
-                            {
-                                if (e.second == mCurrentNode)
-                                {
-                                    e.second = i;
-                                }
-                            }
-                        }
-                        mCurrentNode = i;
-                        return true;
-                    }
-                }
-            }
+    bool walk(const EdgeType& e) {
+        if (isEdgeExists(e)) {
+            mCurrentNode = getEdgeIt(e)->second;
+            return true;
+        } else {
+            // Scan the graph and see if anode w
+            uint32_t newIndex = (uint32_t)mGraph.size();
+            mGraph[mCurrentNode].edges[e] = newIndex;
+            mGraph.push_back(Node());
+            mCurrentNode = newIndex;
             return false;
         }
+    }
+    
+    const NodeType& getCurrentNode() const {
+        return mGraph[mCurrentNode].data;
+    }
 
-    private:
-        using edge_map = std::unordered_map<EdgeType, uint32_t, EdgeHashType>;
-        
-        const auto getEdgeIt(const EdgeType& e) const
-        {
-            const Node& n = mGraph[mCurrentNode];
-            return n.edges.find(e);
+    void setCurrentNodeData(const NodeType& data) {
+        mGraph[mCurrentNode].data = data;
+    }
+
+    bool scanForMatchingNode(CompareFunc cmpFunc) {
+        for (uint32_t i = 0 ; i < (uint32_t)mGraph.size() ; i++) {
+            if(i != mCurrentNode) {
+                if (cmpFunc(mGraph[i].data)) {
+                    // Reconnect
+                    for (uint32_t n = 0 ; n < (uint32_t)mGraph.size() ; n++) {
+                        for (auto& e : mGraph[n].edges) {
+                            if (e.second == mCurrentNode) {
+                                e.second = i;
+                            }
+                        }
+                    }
+                    mCurrentNode = i;
+                    return true;
+                }
+            }
         }
+        return false;
+    }
 
-        struct Node
-        {
-            NodeType data = { 0 };
-            edge_map edges;
-        };
+ private:
+    using edge_map = std::unordered_map<EdgeType, uint32_t, EdgeHashType>;
+    
+    const auto getEdgeIt(const EdgeType& e) const {
+        const Node& n = mGraph[mCurrentNode];
+        return n.edges.find(e);
+    }
 
-        std::vector<Node> mGraph;
-        uint32_t mCurrentNode = 0;
+    struct Node {
+        NodeType data = { 0 };
+        edge_map edges;
     };
-}
+
+    std::vector<Node> mGraph;
+    uint32_t mCurrentNode = 0;
+};
+
+}  // namsepace Falcor
+
+#endif  // SRC_FALCOR_CORE_STATE_STATEGRAPH_H_

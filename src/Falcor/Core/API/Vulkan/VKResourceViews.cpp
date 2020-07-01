@@ -145,6 +145,8 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
             if (pBuffer->isTyped()) {
                 VkBufferViewCreateInfo info = initializeBufferViewInfo(pBuffer);
                 vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+            }  else {
+                LOG_WARN("buffer not typed!");
             }
 
             return VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
@@ -205,7 +207,10 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef
     if (buffer->isTyped()) {
         VkBufferViewCreateInfo info = initializeBufferViewInfo(buffer);
         vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+    } else {
+        LOG_WARN("buffer not typed!");   
     }
+
     auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
 
     return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
@@ -261,6 +266,7 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrR
     } 
 
     if (!pBuffer) {
+        LOG_WARN("!pBuffer creating null buffer view!!!");
         VkBufferView bufferView = {};
         auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
         return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
@@ -282,11 +288,15 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrR
     const Buffer* buffer = dynamic_cast<const Buffer*>(pResource);
 
     if (buffer->isTyped()) {
+        LOG_WARN("buffer is typed!");
         VkBufferViewCreateInfo info = initializeBufferViewInfo(buffer);
         vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+    } else {
+        LOG_WARN("buffer not typed!");
+        
     }
-    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
 
+    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
 
     //DescriptorSet::Layout layout;
     //layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);

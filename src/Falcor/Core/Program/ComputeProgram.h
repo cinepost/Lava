@@ -25,42 +25,46 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_COMPUTEPROGRAM_H_
+#define SRC_FALCOR_CORE_PROGRAM_COMPUTEPROGRAM_H_
+
 #include "Program.h"
 
-namespace Falcor
-{
-    /** Compute program. See GraphicsProgram to manage graphics programs.
+namespace Falcor {
+
+/** Compute program. See GraphicsProgram to manage graphics programs.
+*/
+class dlldecl ComputeProgram : public Program, public inherit_shared_from_this<Program, ComputeProgram> {
+ public:
+    using SharedPtr = std::shared_ptr<ComputeProgram>;
+    using SharedConstPtr = std::shared_ptr<const ComputeProgram>;
+    using inherit_shared_from_this<Program, ComputeProgram>::shared_from_this;
+
+    ~ComputeProgram() = default;
+
+    /** Create a new compute program from file.
+        Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+        \param[in] filename Compute program filename.
+        \param[in] csEntry Name of the entry point in the program.
+        \param[in] programDefines Optional list of macro definitions to set into the program.
+        \param[in] flags Optional program compilation flags.
+        \param[in] shaderModel Optional string desribing which shader model to use.
+        \return A new object, or an exception is thrown if creation failed.
     */
-    class dlldecl ComputeProgram : public Program, public inherit_shared_from_this<Program, ComputeProgram>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeProgram>;
-        using SharedConstPtr = std::shared_ptr<const ComputeProgram>;
-        using inherit_shared_from_this<Program, ComputeProgram>::shared_from_this;
+    static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
 
-        ~ComputeProgram() = default;
+    /** Create a new compute program.
+        Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+        \param[in] desc The program description.
+        \param[in] programDefines Optional list of macro definitions to set into the program.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr create(const Program::Desc& desc, const DefineList& programDefines = DefineList());
 
-        /** Create a new compute program from file.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] filename Compute program filename.
-            \param[in] csEntry Name of the entry point in the program.
-            \param[in] programDefines Optional list of macro definitions to set into the program.
-            \param[in] flags Optional program compilation flags.
-            \param[in] shaderModel Optional string desribing which shader model to use.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
+ private:
+    ComputeProgram() = default;
+};
 
-        /** Create a new compute program.
-            Note that this call merely creates a program object. The actual compilation and link happens at a later time.
-            \param[in] desc The program description.
-            \param[in] programDefines Optional list of macro definitions to set into the program.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const Program::Desc& desc, const DefineList& programDefines = DefineList());
+}  // namespace Falcor
 
-    private:
-        ComputeProgram() = default;
-    };
-}
+#endif  // SRC_FALCOR_CORE_PROGRAM_COMPUTEPROGRAM_H_

@@ -121,6 +121,27 @@ class dlldecl DescriptorSet {
     ApiHandle mApiHandle = {};
 };
 
+inline const std::string to_string(ShaderVisibility visibility)
+{
+#define type_2_string(a) case ShaderVisibility::a: return #a;
+    switch (visibility)
+    {
+    type_2_string(None);
+    type_2_string(Vertex);
+    type_2_string(Pixel);
+    type_2_string(Hull);
+    type_2_string(Domain);
+    type_2_string(Geometry);
+    type_2_string(Compute);
+    type_2_string(All);
+
+    default:
+        should_not_get_here();
+        return "";
+    }
+#undef type_2_string
+}
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_DESCRIPTORSET_H_

@@ -25,37 +25,35 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "FullScreenPass.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        struct FullScreenPassData
-        {
-            Buffer::SharedPtr pVertexBuffer;
-            Vao::SharedPtr pVao;
-            uint64_t objectCount = 0;
-        };
+namespace Falcor {
 
-        FullScreenPassData gFullScreenData;
+namespace {
 
-        bool checkForViewportArray2Support()
-        {
+struct FullScreenPassData {
+    Buffer::SharedPtr pVertexBuffer;
+    Vao::SharedPtr pVao;
+    uint64_t objectCount = 0;
+};
+
+FullScreenPassData gFullScreenData;
+
+bool checkForViewportArray2Support() {
 #ifdef FALCOR_D3D12
-            return false;
+    return false;
 #elif defined FALCOR_VK
-            return false;
+    return false;
 #else
 #error Unknown API
 #endif
-        }
-        struct Vertex
-        {
-            float2 screenPos;
-            float2 texCoord;
-        };
+}
+
+struct Vertex {
+    float2 screenPos;
+    float2 texCoord;
+};
 
 #ifdef FALCOR_VK
 #define ADJUST_Y(a) (-(a))
@@ -63,99 +61,88 @@ namespace Falcor
 #define ADJUST_Y(a) a
 #endif
 
-        const Vertex kVertices[] =
-        {
-            {float2(-1, ADJUST_Y(1)), float2(0, 0)},
-            {float2(-1, ADJUST_Y(-1)), float2(0, 1)},
-            {float2(1, ADJUST_Y(1)), float2(1, 0)},
-            {float2(1, ADJUST_Y(-1)), float2(1, 1)},
-        };
+const Vertex kVertices[] = {
+    {float2(-1, ADJUST_Y(1)), float2(0, 0)},
+    {float2(-1, ADJUST_Y(-1)), float2(0, 1)},
+    {float2(1, ADJUST_Y(1)), float2(1, 0)},
+    {float2(1, ADJUST_Y(-1)), float2(1, 1)},
+};
 #undef ADJUST_Y
 
-        void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao)
-        {
-            // First time we got here. create VB and VAO
-            const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
-            pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-            assert(pVB);
+void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
+    // First time we got here. create VB and VAO
+    const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
+    pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
+    assert(pVB);
 
-            // Create VAO
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
-            pLayout->addBufferLayout(0, pBufLayout);
+    // Create VAO
+    VertexLayout::SharedPtr pLayout = VertexLayout::create();
+    VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
+    pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
+    pBufLayout->addElement("TEXCOORD", 8, ResourceFormat::RG32Float, 1, 1);
+    pLayout->addBufferLayout(0, pBufLayout);
 
-            Vao::BufferVec buffers{ pVB };
-            pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
-            assert(pVao);
-        }
+    Vao::BufferVec buffers{ pVB };
+    pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
+    assert(pVao);
+}
+
+}  // namespace
+
+FullScreenPass::FullScreenPass(const Program::Desc& progDesc, const Program::DefineList& programDefines): BaseGraphicsPass(progDesc, programDefines) {
+    gFullScreenData.objectCount++;
+
+    // Create depth stencil state
+    assert(mpState);
+    auto pDsState = DepthStencilState::create(DepthStencilState::Desc().setDepthEnabled(false));
+    mpState->setDepthStencilState(pDsState);
+
+    if (gFullScreenData.pVertexBuffer == nullptr) {
+        initFullScreenData(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
     }
+    assert(gFullScreenData.pVao);
+    mpState->setVao(gFullScreenData.pVao);
+}
 
-    FullScreenPass::FullScreenPass(const Program::Desc& progDesc, const Program::DefineList& programDefines)
-        : BaseGraphicsPass(progDesc, programDefines)
-    {
-        gFullScreenData.objectCount++;
+FullScreenPass::~FullScreenPass() {
+    assert(gFullScreenData.objectCount > 0);
 
-        // Create depth stencil state
-        assert(mpState);
-        auto pDsState = DepthStencilState::create(DepthStencilState::Desc().setDepthEnabled(false));
-        mpState->setDepthStencilState(pDsState);
+    gFullScreenData.objectCount--;
 
-        if (gFullScreenData.pVertexBuffer == nullptr)
-        {
-            initFullScreenData(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
-        }
-        assert(gFullScreenData.pVao);
-        mpState->setVao(gFullScreenData.pVao);
-    }
-
-    FullScreenPass::~FullScreenPass()
-    {
-        assert(gFullScreenData.objectCount > 0);
-
-        gFullScreenData.objectCount--;
-        if (gFullScreenData.objectCount == 0)
-        {
-            gFullScreenData.pVao = nullptr;
-            gFullScreenData.pVertexBuffer = nullptr;
-        }
-    }
-
-    FullScreenPass::SharedPtr FullScreenPass::create(const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask)
-    {
-        Program::Desc d = desc;
-        Program::DefineList defs = defines;
-        std::string gs;
-
-        if (viewportMask)
-        {
-            defs.add("_VIEWPORT_MASK", std::to_string(viewportMask));
-            if (checkForViewportArray2Support())
-            {
-                defs.add("_USE_VP2_EXT");
-            }
-            else
-            {
-                defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
-                d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.gs.slang").gsEntry("main");
-            }
-        }
-        if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
-
-        return SharedPtr(new FullScreenPass(d, defs));
-    }
-
-    FullScreenPass::SharedPtr FullScreenPass::create(const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask)
-    {
-        Program::Desc d;
-        d.addShaderLibrary(filename).psEntry("main");
-        return create(d, defines, viewportMask);
-    }
-
-    void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const
-    {
-        mpState->setFbo(pFbo, autoSetVpSc);
-        pRenderContext->draw(mpState.get(), mpVars.get(), arraysize(kVertices), 0);
+    if (gFullScreenData.objectCount == 0) {
+        gFullScreenData.pVao = nullptr;
+        gFullScreenData.pVertexBuffer = nullptr;
     }
 }
+
+FullScreenPass::SharedPtr FullScreenPass::create(const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+    Program::Desc d = desc;
+    Program::DefineList defs = defines;
+    std::string gs;
+
+    if (viewportMask) {
+        defs.add("_VIEWPORT_MASK", std::to_string(viewportMask));
+        if (checkForViewportArray2Support()) {
+            defs.add("_USE_VP2_EXT");
+        } else {
+            defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
+            d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.gs.slang").gsEntry("main");
+        }
+    }
+    if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
+
+    return SharedPtr(new FullScreenPass(d, defs));
+}
+
+FullScreenPass::SharedPtr FullScreenPass::create(const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
+    Program::Desc d;
+    d.addShaderLibrary(filename).psEntry("main");
+    return create(d, defines, viewportMask);
+}
+
+void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const {
+    mpState->setFbo(pFbo, autoSetVpSc);
+    pRenderContext->draw(mpState.get(), mpVars.get(), arraysize(kVertices), 0);
+}
+
+}  // namespace Falcor

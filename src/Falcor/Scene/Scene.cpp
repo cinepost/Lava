@@ -34,6 +34,8 @@
 #include "Raytracing/RtProgramVars.h"
 #endif
 
+#include "Falcor/Utils/Debug/debug.h"
+
 #include <sstream>
 
 namespace Falcor
@@ -153,20 +155,24 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
     {
         PROFILE("renderScene");
 
+        LOG_ERR("render");
+
         pState->setVao(mpVao);
         pVars->setParameterBlock("gScene", mpSceneBlock);
 
         bool overrideRS = !is_set(flags, RenderFlags::UserRasterizerState);
         auto pCurrentRS = pState->getRasterizerState();
 
-        if (mDrawCounterClockwiseMeshes.count)
-        {
+        if (mDrawCounterClockwiseMeshes.count) {
+            LOG_ERR("draw indexed inderect call ccw");
+            LOG_WARN("mDrawCounterClockwiseMeshes.count %u", mDrawCounterClockwiseMeshes.count);
             if (overrideRS) pState->setRasterizerState(nullptr);
             pContext->drawIndexedIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
         }
 
-        if (mDrawClockwiseMeshes.count)
-        {
+        if (mDrawClockwiseMeshes.count) {
+            LOG_ERR("draw indexed inderect call cw");
+            LOG_WARN("mDrawClockwiseMeshes.count %u", mDrawClockwiseMeshes.count);
             if (overrideRS) pState->setRasterizerState(mpFrontClockwiseRS);
             pContext->drawIndexedIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
         }
@@ -209,8 +215,7 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
 
         mpMaterialsBuffer = Buffer::createStructured(mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 
-        if (mLights.size())
-        {
+        if (mLights.size()) {
             mpLightsBuffer = Buffer::createStructured(mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         }
     }

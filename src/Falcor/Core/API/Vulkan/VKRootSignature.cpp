@@ -25,53 +25,54 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <set>
+
 #include "stdafx.h"
 #include "Falcor/Core/API/RootSignature.h"
 #include "Falcor/Core/API/Device.h"
-#include <set>
+#include "Falcor/Utils/Debug/debug.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
 
-    VkShaderStageFlags getShaderVisibility(ShaderVisibility visibility)
-    {
+    VkShaderStageFlags getShaderVisibility(ShaderVisibility visibility) {
         VkShaderStageFlags flags = 0;
 
-        if ((visibility & ShaderVisibility::Vertex) != ShaderVisibility::None)
-        {
+        if ((visibility & ShaderVisibility::Vertex) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_VERTEX_BIT;
         }
-        if ((visibility & ShaderVisibility::Pixel) != ShaderVisibility::None)
-        {
+
+        if ((visibility & ShaderVisibility::Pixel) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
         }
-        if ((visibility & ShaderVisibility::Geometry) != ShaderVisibility::None)
-        {
+        
+        if ((visibility & ShaderVisibility::Geometry) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_GEOMETRY_BIT;
         }
-        if ((visibility & ShaderVisibility::Domain) != ShaderVisibility::None)
-        {
+        
+        if ((visibility & ShaderVisibility::Domain) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;;
         }
-        if ((visibility & ShaderVisibility::Hull) != ShaderVisibility::None)
-        {
+        
+        if ((visibility & ShaderVisibility::Hull) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         }
-        if ((visibility & ShaderVisibility::Compute) != ShaderVisibility::None)
-        {
+        
+        if ((visibility & ShaderVisibility::Compute) != ShaderVisibility::None) {
             flags |= VK_SHADER_STAGE_COMPUTE_BIT;
         }
+        
         return flags;
     }
 
-    VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout)
-    {
+    VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout) {
+        LOG_DBG("createDescriptorSetLayout");
         std::vector<VkDescriptorSetLayoutBinding> bindings(layout.getRangeCount());
 
         uint32_t space;
-        for (uint32_t r = 0; r < layout.getRangeCount(); r++)
-        {
+        LOG_DBG("creating %zu VkDescriptorSetLayoutBinding's", layout.getRangeCount());
+        for (uint32_t r = 0; r < layout.getRangeCount(); r++) {
             VkDescriptorSetLayoutBinding& b = bindings[r];
             const auto& range = layout.getRange(r);
             assert(r == 0 || space == range.regSpace);
@@ -81,6 +82,7 @@ namespace Falcor
             b.descriptorType = falcorToVkDescType(range.type);
             b.pImmutableSamplers = nullptr;
             b.stageFlags = getShaderVisibility(layout.getVisibility());
+            LOG_DBG("VkDescriptorSetLayoutBinding space %u, binding %u, desc count %u, desc type %s, vis %s", space, range.baseRegIndex, range.descCount, to_string(falcorToVkDescType(range.type)).c_str(),  to_string(getShaderVisibility(layout.getVisibility())).c_str());
         }
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -92,31 +94,39 @@ namespace Falcor
         return vkHandle;
     }
 
-    void RootSignature::apiInit()
-    {
+    void RootSignature::apiInit() {
+        LOG_DBG("api init");
         // Find the max set index
         uint32_t maxIndex = 0;
-        for (const auto& set : mDesc.mSets)
-        {
+        
+        for (const auto& set : mDesc.mSets) {
             maxIndex = std::max(set.getRange(0).regSpace, maxIndex);
         }
 
+        LOG_DBG("create empty createDescriptorSetLayout");
         static VkDescriptorSetLayout emptyLayout = createDescriptorSetLayout({});   // #VKTODO This gets deleted multiple times on exit
         std::vector<VkDescriptorSetLayout> vkSetLayouts(maxIndex + 1, emptyLayout);
-        for (const auto& set : mDesc.mSets)
-        {
+        
+        for (const auto& set : mDesc.mSets) {
+            LOG_DBG("createDescriptorSetLayout");
             vkSetLayouts[set.getRange(0).regSpace] = createDescriptorSetLayout(set); //createDescriptorSetLayout() verifies that all ranges use the same register space
         }
 
+        LOG_DBG("creating VkPipelineLayoutCreateInfo for %zu vkSetLayouts", vkSetLayouts.size());
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+        pipelineLayoutInfo.pNext = nullptr;
+        pipelineLayoutInfo.flags = 0;
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.pSetLayouts = vkSetLayouts.data();
         pipelineLayoutInfo.setLayoutCount = (uint32_t)vkSetLayouts.size();
+
         VkPipelineLayout layout;
+        LOG_DBG("vkCreatePipelineLayout");
         vk_call(vkCreatePipelineLayout(gpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout));
         mApiHandle = ApiHandle::create(layout, vkSetLayouts);
     }
 
     void RootSignature::bindForGraphics(CopyContext* pCtx) {}
     void RootSignature::bindForCompute(CopyContext* pCtx) {}
-}
+
+}  // namespace Falcor

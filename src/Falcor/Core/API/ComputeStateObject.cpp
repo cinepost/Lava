@@ -25,33 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "ComputeStateObject.h"
 #include "Device.h"
 
-namespace Falcor
-{
-    bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const
-    {
-        bool b = true;
-        b = b && (mpProgram == other.mpProgram);
-        b = b && (mpRootSignature == other.mpRootSignature);
-        return b;
-    }
+namespace Falcor {
 
-    ComputeStateObject::~ComputeStateObject()
-    {
-        gpDevice->releaseResource(mApiHandle);
-    }
-
-    ComputeStateObject::ComputeStateObject(const Desc& desc)
-        : mDesc(desc)
-    {
-        apiInit();
-    }
-
-    ComputeStateObject::SharedPtr ComputeStateObject::create(const Desc& desc)
-    {
-        return SharedPtr(new ComputeStateObject(desc));
-    }
+bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
+    bool b = true;
+    b = b && (mpProgram == other.mpProgram);
+    b = b && (mpRootSignature == other.mpRootSignature);
+    return b;
 }
+
+ComputeStateObject::~ComputeStateObject() {
+    gpDevice->releaseResource(mApiHandle);
+}
+
+ComputeStateObject::ComputeStateObject(const Desc& desc) : mDesc(desc) {
+    apiInit();
+}
+
+ComputeStateObject::SharedPtr ComputeStateObject::create(const Desc& desc) {
+    return SharedPtr(new ComputeStateObject(desc));
+}
+
+}  // namespace Falcor

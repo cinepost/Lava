@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "API/GraphicsStateObject.h"
+#include "Falcor/Core/API/GraphicsStateObject.h"
 
 namespace Falcor
 {

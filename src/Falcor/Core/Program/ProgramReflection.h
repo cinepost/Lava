@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 
+#include <map>
 #include "Falcor/Core/API/DescriptorSet.h"
 
 #include <slang/slang.h>

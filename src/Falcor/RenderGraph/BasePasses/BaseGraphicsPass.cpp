@@ -25,35 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "BaseGraphicsPass.h"
 
-namespace Falcor
-{
-    BaseGraphicsPass::BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines)
-    {
-        auto pProg = GraphicsProgram::create(progDesc, programDefines);
+namespace Falcor {
 
-        mpState = GraphicsState::create();
-        mpState->setProgram(pProg);
+BaseGraphicsPass::BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines) {
+    auto pProg = GraphicsProgram::create(progDesc, programDefines);
 
-        mpVars = GraphicsVars::create(pProg.get());
-    }
+    mpState = GraphicsState::create();
+    mpState->setProgram(pProg);
 
-    void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars)
-    {
-        mpState->getProgram()->addDefine(name, value);
-        if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
-    }
-
-    void BaseGraphicsPass::removeDefine(const std::string& name, bool updateVars)
-    {
-        mpState->getProgram()->removeDefine(name);
-        if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
-    }
-
-    void BaseGraphicsPass::setVars(const GraphicsVars::SharedPtr& pVars)
-    {
-        mpVars = pVars ? pVars : GraphicsVars::create(mpState->getProgram().get());
-    }
+    mpVars = GraphicsVars::create(pProg.get());
 }
+
+void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars) {
+    mpState->getProgram()->addDefine(name, value);
+    if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+}
+
+void BaseGraphicsPass::removeDefine(const std::string& name, bool updateVars) {
+    mpState->getProgram()->removeDefine(name);
+    if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+}
+
+void BaseGraphicsPass::setVars(const GraphicsVars::SharedPtr& pVars) {
+    mpVars = pVars ? pVars : GraphicsVars::create(mpState->getProgram().get());
+}
+
+}  // namespace Falcor

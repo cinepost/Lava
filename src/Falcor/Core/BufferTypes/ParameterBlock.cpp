@@ -1243,29 +1243,33 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TextureSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
+                            LOG_WARN("TextureSrv");
                             if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
                             if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             //if(!pView) pView = ShaderResourceView::getNullView();
-                            if(!pView) pView = ShaderResourceView::getNullView();
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::RawBufferSrv:
+                        LOG_WARN("RawBufferSrv");
                     case DescriptorSet::Type::TypedBufferSrv:
+                        LOG_WARN("TypedBufferSrv");
                     case DescriptorSet::Type::StructuredBufferSrv:
                         {
-                            LOG_DBG("1");
+                            LOG_WARN("StructuredBufferSrv");
                             auto pView = mSRVs[flatIndex].pView;
                             if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
                             if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             //if(!pView) pView = ShaderResourceView::getNullView();
-                            if(!pView) pView = ShaderResourceView::getNullBufferView();
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::TextureUav:
                         {
                             auto pView = mUAVs[flatIndex].pView;
+                            LOG_WARN("TextureUav");
                             if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
                             if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             //if(!pView) pView = ShaderResourceView::getNullView();
@@ -1274,9 +1278,12 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                         }
                         break;
                     case DescriptorSet::Type::RawBufferUav:
+                        LOG_WARN("RawBufferUav");
                     case DescriptorSet::Type::TypedBufferUav:
+                        LOG_WARN("TypedBufferUav");
                     case DescriptorSet::Type::StructuredBufferUav:
                         {
+                            LOG_WARN("StructuredBufferUav");
                             auto pView = mUAVs[flatIndex].pView;
                             if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
                             if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
@@ -1509,7 +1516,8 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
     }
 
     bool ParameterBlock::prepareDescriptorSets(CopyContext* pContext, const ParameterBlockReflection* pReflector) {
-        LOG_DBG("prepareDescriptorSets");
+        //LOG_DBG("prepareDescriptorSets");
+        
         // We first need to check for "indirect" changes, where a write to
         // a sub-block (e.g., a constant buffer) will require invalidation
         // and re-creation of descriptor sets for this parameter block.
@@ -1530,7 +1538,8 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
         //    bind additional descriptor sets also prepare themsevles,
         //    recursively.
         //
-        LOG_DBG("test prepareDefaultConstantBufferAndResources");
+        
+        //LOG_DBG("test prepareDefaultConstantBufferAndResources");
         if (!prepareDefaultConstantBufferAndResources(pContext, pReflector)) {
             return false;
         }
@@ -1540,19 +1549,19 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
         // have been invalidated in one way or another.
         //
         uint32_t setCount = pReflector->getDescriptorSetCount();
-        LOG_DBG("iterate %u descriptor sets", setCount);
+        //LOG_DBG("iterate %u descriptor sets", setCount);
         for (uint32_t setIndex = 0; setIndex < setCount; ++setIndex) {
             auto& pSet = mSets[setIndex].pSet;
             if (pSet) continue;
 
-            LOG_DBG("get descriptor set layout");
+            //LOG_DBG("get descriptor set layout");
             auto pSetLayout = pReflector->getDescriptorSetLayout(setIndex);
 
-            LOG_DBG("create descriptor set");
+            //LOG_DBG("create descriptor set");
             pSet = DescriptorSet::create(gpDevice->getGpuDescriptorPool(), pSetLayout);
 
             uint32_t destRangeIndex = 0;
-            LOG_DBG("bind into descriptor set");
+            //LOG_DBG("bind into descriptor set");
             bindIntoDescriptorSet(
                 pReflector,
                 pSet,
