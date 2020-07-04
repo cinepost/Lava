@@ -367,11 +367,11 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
     data = prepareMaterial(v, -rayDir);
 
     float3 output = 0;
-    output = float3(1.0f, 0.0f, 0.5f); // TODO: remove !!!
+    // output = float3(1.0f, 0.0f, 0.5f); // TODO: remove !!!
     BSDFSample s = {};
     if (generateBSDFSample(data.sd, sg, s))
     {
-        output = float3(0.0f, 0.0f, 1.0f);
+        // output = float3(0.0f, 0.0f, 1.0f);
 
         data.wi = s.wi;
         float3 L = evalLighting(s.wi);

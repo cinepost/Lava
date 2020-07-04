@@ -247,7 +247,7 @@ namespace Falcor
     }
 
     void RenderContext::drawIndexedInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation) {
-         LOG_DBG("draw indexed instanced");
+         LOG_DBG("draw indexed instanced: indexCount %u instanceCount %u", indexCount, instanceCount);
         if (prepareForDraw(pState, pVars) == false) return;
         
         // LOG_ERR("call vkCmdDrawIndexed");

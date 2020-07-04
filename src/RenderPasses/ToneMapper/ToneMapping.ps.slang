@@ -27,7 +27,10 @@
  **************************************************************************/
 import RenderPasses.ToneMapper.ToneMapperParams;
 
+[[vk::binding(0, 0)]]
 SamplerState gLuminanceTexSampler : register(s0);
+
+[[vk::binding(0, 1)]]
 SamplerState gColorSampler : register(s1);
 
 Texture2D gColorTex;
@@ -37,6 +40,7 @@ static const uint kOperator = _TONE_MAPPER_OPERATOR;
 static const float kExposureKey = 0.042;
 static const float kLuminanceLod = 16.0; // Lookup highest mip level to get average luminance
 
+[[vk::binding(0, 2)]]
 cbuffer PerImageCB : register(b0)
 {
     ToneMapperParams gParams;

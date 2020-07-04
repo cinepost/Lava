@@ -180,7 +180,7 @@ void SkyBox::renderUI(Gui::Widgets& widget)
 void SkyBox::loadImage()
 {
     std::string filename;
-    FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };
+    FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"}, {"exr"} };
     if (openFileDialog(filters, filename))
     {
         mpTexture = Texture::createFromFile(filename, false, mLoadSrgb);

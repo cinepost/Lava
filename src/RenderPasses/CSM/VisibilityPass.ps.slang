@@ -35,6 +35,7 @@ struct VisibilityPassData
     uint mapBitsPerChannel;
 };
 
+[[vk::binding(0, 0)]]
 cbuffer PerFrameCB : register(b0)
 {
     CsmData gCsmData;

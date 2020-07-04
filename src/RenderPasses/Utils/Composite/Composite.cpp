@@ -50,7 +50,7 @@ Composite::Composite(const Dictionary& dict)
 {
     mCompositePass = ComputePass::create(kShaderFile);
 
-    if (!parseDictionary(dict)) throw std::exception("Invalid dictionary");
+    if (!parseDictionary(dict)) throw std::runtime_error("Invalid dictionary");
 }
 
 bool Composite::parseDictionary(const Dictionary& dict)

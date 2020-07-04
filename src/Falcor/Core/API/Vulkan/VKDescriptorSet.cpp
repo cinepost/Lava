@@ -170,19 +170,20 @@ namespace Falcor {
 
     template<bool forGraphics>
     static void bindCommon(DescriptorSet::ApiHandle set, CopyContext* pCtx, const RootSignature* pRootSig, uint32_t bindLocation) {
-        LOG_DBG("bind common");
+        LOG_ERR("bind common: bindLocation %u", bindLocation);
         VkPipelineBindPoint bindPoint = forGraphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
         VkDescriptorSet vkSet = set;
         vkCmdBindDescriptorSets(pCtx->getLowLevelData()->getCommandList(), bindPoint, pRootSig->getApiHandle(), bindLocation, 1, &vkSet, 0, nullptr);
+        LOG_WARN("bind common done");
     }
 
     void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
-        LOG_DBG("bind for graphics");
+        LOG_ERR("bind for graphics");
         bindCommon<true>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 
     void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex) {
-        LOG_DBG("bind for compute");
+        LOG_ERR("bind for compute");
         bindCommon<false>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 

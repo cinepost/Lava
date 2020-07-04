@@ -11,12 +11,24 @@ find_package(PythonLibs 3.7 REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
 # This function builds render pass library
-function (makeRenderPassLib pass_dir)
-	file( GLOB_RECURSE SOURCES
-		./${pass_dir}/*.cpp
+function (makeRenderPassLib)
+    cmake_parse_arguments(
+        ARGS # prefix of output variables
+        "" # list of names of the boolean arguments (only defined ones will be true)
+        "NAME" # list of names of mono-valued arguments
+        "SRCS;DEPS" # list of names of multi-valued arguments (output variables are lists)
+        ${ARGN} # arguments of the function to parse, here we take the all original ones
     )
 
-    set( PASS_LIB ${pass_dir}_pass)
+    if(NOT ARGS_NAME)
+        message(FATAL_ERROR "You must provide a render pass name")
+    endif(NOT ARGS_NAME)
+
+	file( GLOB_RECURSE SOURCES
+		./${ARGS_NAME}/*.cpp
+    )
+
+    set( PASS_LIB ${ARGS_NAME}_pass)
 
     add_library( ${PASS_LIB} SHARED ${SOURCES} ${HEADERS} )
 
@@ -29,9 +41,15 @@ function (makeRenderPassLib pass_dir)
     set_target_properties( ${PASS_LIB} PROPERTIES SUFFIX ".dso" )
     #endif
 
+    link_directories(
+        /home/max/dev/Falcor/build/lib/passes/
+        ${PASS_LIBRARY_OUTPUT_DIRECTORY}
+    )
+
     target_link_libraries(
     	${PASS_LIB}
     	falcor_lib
+        ${ARGS_DEPS}
     	${PYTHON_LIBRARIES}
     )
 
@@ -58,18 +76,19 @@ function (makeRenderPassLib pass_dir)
 endfunction()
 
 # Now make passes
-makeRenderPassLib("GBuffer")
-makeRenderPassLib("DepthPass")
-makeRenderPassLib("BlitPass")
-makeRenderPassLib("SSAO")
-makeRenderPassLib("ToneMapper")
-makeRenderPassLib("ImageLoader")
-makeRenderPassLib("ForwardLightingPass")
-makeRenderPassLib("SkyBox")
-makeRenderPassLib("PixelInspectorPass")
-makeRenderPassLib("AccumulatePass")
-makeRenderPassLib("Antialiasing")
-makeRenderPassLib("ErrorMeasurePass")
-makeRenderPassLib("CSM")
-makeRenderPassLib("DebugPasses")
-makeRenderPassLib("BSDFViewer")
+makeREnderPassLib(NAME "Utils")
+makeRenderPassLib(NAME "GBuffer")
+makeRenderPassLib(NAME "DepthPass")
+makeRenderPassLib(NAME "BlitPass")
+makeRenderPassLib(NAME "ToneMapper")
+makeRenderPassLib(NAME "ImageLoader")
+makeRenderPassLib(NAME "ForwardLightingPass")
+makeRenderPassLib(NAME "SkyBox")
+makeRenderPassLib(NAME "PixelInspectorPass")
+makeRenderPassLib(NAME "AccumulatePass")
+makeRenderPassLib(NAME "Antialiasing")
+makeRenderPassLib(NAME "ErrorMeasurePass")
+makeRenderPassLib(NAME "DebugPasses")
+makeRenderPassLib(NAME "BSDFViewer")
+makeRenderPassLib(NAME "SSAO" DEPS /home/max/dev/Falcor/build/lib/passes/Utils_pass.dso)
+makeRenderPassLib(NAME "CSM" DEPS /home/max/dev/Falcor/build/lib/passes/Utils_pass.dso)

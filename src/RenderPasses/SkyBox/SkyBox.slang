@@ -36,6 +36,7 @@ TextureCube gTexture;
 #endif
 SamplerState gSampler;
 
+[[vk::binding(0, 0)]]
 cbuffer PerFrameCB : register(b0)
 {
     float4x4 gWorld;

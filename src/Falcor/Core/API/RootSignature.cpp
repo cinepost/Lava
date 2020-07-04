@@ -153,6 +153,7 @@ static void addParamBlockSets(const ParameterBlockReflection* pBlock, RootSignat
 // Add the root descriptors from `pBlock` to the root signature being built.
 static void addRootDescriptors(const ParameterBlockReflection* pBlock, RootSignature::Desc& ioDesc) {
     LOG_DBG("addRootDescriptors");
+
     uint32_t rootDescriptorRangeCount = pBlock->getRootDescriptorRangeCount();
     LOG_DBG("rootDescriptorRangeCount: %u", rootDescriptorRangeCount);
     for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i) {
@@ -201,7 +202,9 @@ RootSignature::SharedPtr RootSignature::createLocal(const EntryPointBaseReflecti
 #ifdef FALCOR_D3D12
     d.setLocal(true);
 #else
+    LOG_FTL("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
     logWarning("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
+    throw std::runtime_error("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
 #endif
 
     return RootSignature::create(d);

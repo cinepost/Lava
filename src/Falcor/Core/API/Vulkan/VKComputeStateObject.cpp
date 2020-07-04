@@ -45,8 +45,8 @@ void ComputeStateObject::apiInit() {
 
     VkComputePipelineCreateInfo info = {};
     info.pNext = nullptr;
-    info.basePipelineHandle = VK_NULL_HANDLE;
     info.flags = 0;
+    info.basePipelineHandle = VK_NULL_HANDLE;
     info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.stage = shaderStageInfos[0];
     info.layout = mDesc.mpRootSignature->getApiHandle();

@@ -45,30 +45,21 @@ namespace Falcor
         b = b && (mpRootSignature           == other.mpRootSignature);
         b = b && (mPrimType                 == other.mPrimType);
 
-        if (mpRasterizerState)
-        {
+        if (mpRasterizerState) {
             b = b && (mpRasterizerState == other.mpRasterizerState);
-        }
-        else
-        {
+        } else {
             b = b && (other.mpRasterizerState == nullptr || other.mpRasterizerState == spDefaultRasterizerState);
         }
 
-        if (mpBlendState)
-        {
+        if (mpBlendState) {
             b = b && (mpBlendState == other.mpBlendState);
-        }
-        else
-        {
+        } else {
             b = b && (other.mpBlendState == nullptr || other.mpBlendState == spDefaultBlendState);
         }
 
-        if (mpDepthStencilState)
-        {
+        if (mpDepthStencilState) {
             b = b && (mpDepthStencilState == other.mpDepthStencilState);
-        }
-        else
-        {
+        } else {
             b = b && (other.mpDepthStencilState == nullptr || other.mpDepthStencilState == spDefaultDepthStencilState);
         }
 
@@ -80,11 +71,8 @@ namespace Falcor
         gpDevice->releaseResource(mApiHandle);
     }
 
-    GraphicsStateObject::GraphicsStateObject(const Desc& desc)
-        : mDesc(desc)
-    {
-        if (spDefaultBlendState == nullptr)
-        {
+    GraphicsStateObject::GraphicsStateObject(const Desc& desc) : mDesc(desc) {
+        if (spDefaultBlendState == nullptr) {
             // Create default objects
             spDefaultBlendState = BlendState::create(BlendState::Desc());
             spDefaultDepthStencilState = DepthStencilState::create(DepthStencilState::Desc());

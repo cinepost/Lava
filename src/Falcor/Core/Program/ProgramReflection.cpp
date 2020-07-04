@@ -1698,39 +1698,54 @@ namespace Falcor
                 const auto& range = pReflector->getElementType()->getResourceRange(rangeIndex);
                 auto& rangeBindingInfo = pReflector->mResourceRanges[rangeIndex];
 
-                switch (rangeBindingInfo.flavor)
-                {
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Simple:
-                {
-                    auto setIndex = computeDescriptorSetIndex(range, rangeBindingInfo);
-
-                    rangeBindingInfo.descriptorSetIndex = setIndex;
-                    auto& setInfo = pReflector->mDescriptorSets[setIndex];
-
-                    setInfo.layout.addRange(
-                        range.descriptorType,
-                        rangeBindingInfo.regIndex,
-                        range.count,
-                        rangeBindingInfo.regSpace);
-
-                    setInfo.resourceRangeIndices.push_back(rangeIndex);
-                }
-                break;
-
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor:
-                    if (range.count > 1)
+                switch (rangeBindingInfo.flavor) {
+                    case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Simple:
                     {
-                        logError("Root descriptor at register index " + std::to_string(rangeBindingInfo.regIndex) + " in space " + std::to_string(rangeBindingInfo.regSpace) + " is illegal. Root descriptors cannot be arrays.");
+                        auto setIndex = computeDescriptorSetIndex(range, rangeBindingInfo);
+
+                        rangeBindingInfo.descriptorSetIndex = setIndex;
+                        auto& setInfo = pReflector->mDescriptorSets[setIndex];
+
+                        setInfo.layout.addRange(
+                            range.descriptorType,
+                            rangeBindingInfo.regIndex,
+                            range.count,
+                            rangeBindingInfo.regSpace);
+
+                        setInfo.resourceRangeIndices.push_back(rangeIndex);
                     }
-                    pReflector->mRootDescriptorRangeIndices.push_back(rangeIndex);
                     break;
 
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer:
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock:
-                case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface:
-                    break;
-                default:
-                    should_not_get_here();
+                    case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor:
+                        if (range.count > 1)
+                        {
+                            logError("Root descriptor at register index " + std::to_string(rangeBindingInfo.regIndex) + " in space " + std::to_string(rangeBindingInfo.regSpace) + " is illegal. Root descriptors cannot be arrays.");
+                        }
+                        // ----------------------------------------
+                        {
+                        auto setIndex = computeDescriptorSetIndex(range, rangeBindingInfo);
+
+                        rangeBindingInfo.descriptorSetIndex = setIndex;
+                        auto& setInfo = pReflector->mDescriptorSets[setIndex];
+
+                        setInfo.layout.addRange(
+                            range.descriptorType,
+                            rangeBindingInfo.regIndex,
+                            range.count,
+                            rangeBindingInfo.regSpace);
+
+                        setInfo.resourceRangeIndices.push_back(rangeIndex);
+                    }
+                        // ----------------------------------------
+                        pReflector->mRootDescriptorRangeIndices.push_back(rangeIndex);
+                        break;
+
+                    case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer:
+                    case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock:
+                    case ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface:
+                        break;
+                    default:
+                        should_not_get_here();
                 }
             }
 
