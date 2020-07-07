@@ -32,6 +32,8 @@
 #include <string>
 #include <cassert>
 
+#include "Falcor/Core/Framework.h"
+
 namespace Falcor {
     /*!
     *  \addtogroup Falcor

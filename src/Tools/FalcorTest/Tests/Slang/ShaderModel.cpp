@@ -49,7 +49,11 @@ namespace Falcor
     }
 
     #ifdef FALCOR_VK
-    GPU_TEST(ShaderModel5_0) { test(ctx, "450"); }
+    GPU_TEST(ShaderModel410) { test(ctx, "410"); }
+    GPU_TEST(ShaderModel420) { test(ctx, "420"); }
+    GPU_TEST(ShaderModel430) { test(ctx, "430"); }
+    GPU_TEST(ShaderModel440) { test(ctx, "440"); }
+    GPU_TEST(ShaderModel450) { test(ctx, "450"); }
     #else
     GPU_TEST(ShaderModel5_0) { test(ctx, "5_0"); }
     GPU_TEST(ShaderModel5_1) { test(ctx, "5_1"); }

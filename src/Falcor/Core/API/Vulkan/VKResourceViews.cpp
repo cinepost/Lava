@@ -56,6 +56,11 @@ Buffer::SharedPtr createZeroBuffer() {
     return Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
+Buffer::SharedPtr createZeroTypedBuffer() {
+    static const uint32_t zero = 0;
+    return Buffer::createTyped<uint32_t>(1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+}
+
 // ResourceWeakPtr getEmptyTexture() Why it was weak_ptr at all !?
 Texture::SharedPtr getEmptyTexture() {
     static Texture::SharedPtr sBlackTexture = createBlackTexture();
@@ -65,6 +70,11 @@ Texture::SharedPtr getEmptyTexture() {
 Buffer::SharedPtr getEmptyBuffer() {
     static Buffer::SharedPtr sZeroBuffer = createZeroBuffer();
     return sZeroBuffer;
+}
+
+Buffer::SharedPtr getEmptyTypedBuffer() {
+    static Buffer::SharedPtr sZeroTypedBuffer = createZeroTypedBuffer();
+    return sZeroTypedBuffer;
 }
 
 VkImageViewType getViewType(Resource::Type type, bool isArray) {

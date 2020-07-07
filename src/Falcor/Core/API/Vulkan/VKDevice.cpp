@@ -238,6 +238,7 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
     // Extensions to use when creating instance
     std::vector<const char*> requiredExtensions = {
         "VK_KHR_surface",
+        //"VK_AMD_gpu_shader_int16",
 #ifdef _WIN32
         "VK_KHR_win32_surface"
 #else

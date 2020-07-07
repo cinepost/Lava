@@ -307,11 +307,11 @@ protected:
         See list of supported formats for typed UAV loads:
         https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads
     */
-    template<typename T, typename Dummy = void> /* Dummy is a GCC template specialization workaround */
+    template<typename T>
     struct FormatForElementType {};
 
-#define CASE(TYPE, FORMAT) \
-    template<typename Dummy> struct FormatForElementType<TYPE, Dummy> { static const ResourceFormat kFormat = FORMAT; }
+/*
+#define CASE(TYPE, FORMAT) template<> struct Buffer::FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
 
     // Guaranteed supported formats on D3D12.
     CASE(float,     ResourceFormat::R32Float);
@@ -366,7 +366,64 @@ protected:
     CASE(float3,    ResourceFormat::RGB32Float);
 
 #undef CASE
+*/
 };
+
+#define CASE(TYPE, FORMAT) template<> struct Buffer::FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
+
+    // Guaranteed supported formats on D3D12.
+    CASE(float,     ResourceFormat::R32Float);
+    CASE(uint32_t,  ResourceFormat::R32Uint);
+    CASE(int32_t,   ResourceFormat::R32Int);
+
+    // Optionally supported formats as a set on D3D12. If one is supported all are supported.
+    CASE(float4,    ResourceFormat::RGBA32Float);
+    CASE(uint4,     ResourceFormat::RGBA32Uint);
+    CASE(int4,      ResourceFormat::RGBA32Int);
+    //R16G16B16A16_FLOAT
+    //R16G16B16A16_UINT
+    //R16G16B16A16_SINT
+    //R8G8B8A8_UNORM
+    //R8G8B8A8_UINT
+    //R8G8B8A8_SINT
+    //R16_FLOAT
+    CASE(uint16_t,  ResourceFormat::R16Uint);
+    CASE(int16_t,   ResourceFormat::R16Int);
+    //R8_UNORM
+    CASE(uint8_t,   ResourceFormat::R8Uint);
+    CASE(int8_t,    ResourceFormat::R8Int);
+
+    // Optionally and individually supported formats on D3D12. Query for support individually.
+    //R16G16B16A16_UNORM
+    //R16G16B16A16_SNORM
+    CASE(float2,    ResourceFormat::RG32Float);
+    CASE(uint2,     ResourceFormat::RG32Uint);
+    CASE(int2,      ResourceFormat::RG32Int);
+    //R10G10B10A2_UNORM
+    //R10G10B10A2_UINT
+    //R11G11B10_FLOAT
+    //R8G8B8A8_SNORM
+    //R16G16_FLOAT
+    //R16G16_UNORM
+    //R16G16_UINT
+    //R16G16_SNORM
+    //R16G16_SINT
+    //R8G8_UNORM
+    //R8G8_UINT
+    //R8G8_SNORM
+    //8G8_SINT
+    //R16_UNORM
+    //R16_SNORM
+    //R8_SNORM
+    //A8_UNORM
+    //B5G6R5_UNORM
+    //B5G5R5A1_UNORM
+    //B4G4R4A4_UNORM
+
+    // Additional formats that may be supported on some hardware.
+    CASE(float3,    ResourceFormat::RGB32Float);
+    
+#undef CASE
 
 inline std::string to_string(const std::shared_ptr<Buffer>& buff) {
     std::string s = "Buffer: ";

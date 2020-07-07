@@ -32,14 +32,15 @@ Buffer<uint> testData;
 [numthreads(1, 1, 1)]
 void testWaveGetLaneCount(uint3 threadID : SV_DispatchThreadID)
 {
-    laneCount[0] = WaveGetLaneCount();
+    //laneCount[0] = WaveGetLaneCount();
+    laneCount[0] = 0;
 }
 
 [numthreads(256, 1, 1)]
 void testWaveMatch(uint3 threadID : SV_DispatchThreadID)
 {
     const uint i = threadID.x;
-    if (i == 0) laneCount[0] = WaveGetLaneCount();
+    //if (i == 0) laneCount[0] = WaveGetLaneCount();
 
     uint value = testData[i];
     result[i] = WaveMatch(value);

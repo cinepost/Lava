@@ -144,6 +144,12 @@ namespace Falcor
     }
 
     #ifdef FALCOR_VK
+    GPU_TEST(RootBufferSRV_430) { testRootBuffer(ctx, "430", false); }
+    GPU_TEST(RootBufferUAV_430) { testRootBuffer(ctx, "430", true); }
+
+    GPU_TEST(RootBufferSRV_440) { testRootBuffer(ctx, "440", false); }
+    GPU_TEST(RootBufferUAV_440) { testRootBuffer(ctx, "440", true); }
+
     GPU_TEST(RootBufferSRV_450) { testRootBuffer(ctx, "450", false); }
     GPU_TEST(RootBufferUAV_450) { testRootBuffer(ctx, "450", true); }
     #else

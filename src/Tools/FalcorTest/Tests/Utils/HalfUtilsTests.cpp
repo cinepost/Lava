@@ -321,7 +321,12 @@ namespace Falcor
 
         // TODO: The precise flag does not seem to be respected on pre-SM6.2 for this shader
         // The computation of the quantized value using 'y = f16tof32(f32tof16(x))' gets optimized to 'y = x' in the shader, despite the global precise flag.
+        #ifdef FLACOR_VK
+        ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise, "450");
+        #else
         ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise, "6_2");
+        #endif
+
         ctx.allocateStructuredBuffer("inputFloat", (uint32_t)input.size(), input.data(), input.size() * sizeof(decltype(input)::value_type));
         ctx.allocateStructuredBuffer("resultFloat", (uint32_t)expected.size());
         ctx["CB"]["testSize"] = (uint32_t)input.size();

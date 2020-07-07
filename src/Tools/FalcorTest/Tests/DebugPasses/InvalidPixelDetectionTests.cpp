@@ -31,7 +31,12 @@ namespace Falcor
 {
     GPU_TEST(InvalidPixelDetectionPass)
     {
+        #ifdef _WIN32
         RenderPassLibrary::instance().loadLibrary("DebugPasses.dll");
+        #else 
+        RenderPassLibrary::instance().loadLibrary("DebugPasses_pass.dso");
+        #endif
+        
         float pInitData[8] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::signaling_NaN(), std::numeric_limits<float>::infinity(),
             -1 * std::numeric_limits<float>::infinity(), 0.0f, 255.0f, 125.8f, 1.0f};
         RenderContext* pRenderContext = ctx.getRenderContext();

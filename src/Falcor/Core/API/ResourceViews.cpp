@@ -35,9 +35,12 @@ namespace Falcor {
 
 static NullResourceViews gNullViews;
 static NullResourceViews gNullBufferViews;
+static NullResourceViews gNullTypedBufferViews;
 
 Buffer::SharedPtr getEmptyBuffer();
+Buffer::SharedPtr getEmptyTypedBuffer();
 Buffer::SharedPtr createZeroBuffer();
+Buffer::SharedPtr createZeroTypedBuffer();
 
 Texture::SharedPtr getEmptyTexture();
 Texture::SharedPtr createBlackTexture();
@@ -55,12 +58,21 @@ void createNullBufferViews() {
     gNullBufferViews.uav = UnorderedAccessView::create(getEmptyBuffer(), 0, 0);
 }
 
+void createNullTypedBufferViews() {
+    gNullTypedBufferViews.srv = ShaderResourceView::create(getEmptyTypedBuffer(), 0, 0);
+    gNullTypedBufferViews.uav = UnorderedAccessView::create(getEmptyTypedBuffer(), 0, 0);
+}
+
 void releaseNullViews() {
     gNullViews = {};
 }
 
 void releaseNullBufferViews() {
     gNullBufferViews = {};
+}
+
+void releaseNullTypedBufferViews() {
+    gNullTypedBufferViews = {};
 }
 
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullView()  { return gNullViews.srv; }
@@ -71,6 +83,9 @@ ConstantBufferView::SharedPtr  ConstantBufferView::getNullView()  { return gNull
 
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullBufferView()  { return gNullBufferViews.srv; }
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView() { return gNullBufferViews.uav; }
+
+ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView()  { return gNullTypedBufferViews.srv; }
+UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView() { return gNullTypedBufferViews.uav; }
 
 SCRIPT_BINDING(ResourceView) {
     m.regClass(ShaderResourceView);

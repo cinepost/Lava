@@ -115,6 +115,7 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
     static SharedPtr getNullView();
     static SharedPtr getNullBufferView();
+    static SharedPtr getNullTypedBufferView();
 
     // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
     ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -147,6 +148,7 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
     static SharedPtr getNullView();
     static SharedPtr getNullBufferView();
+    static SharedPtr getNullTypedBufferView();
 
  private:
     UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :

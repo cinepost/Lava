@@ -50,6 +50,7 @@ Buffer::SharedPtr createStructuredFromType(
     }
 
     assert(pResourceType->getSize() <= UINT32_MAX);
+    LOG_WARN("Creating structured buffer with elem size %u", (uint32_t)pResourceType->getSize());
     return Buffer::createStructured((uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
@@ -265,7 +266,16 @@ void* Buffer::map(MapType type) {
             // For buffers without CPU access we must copy the contents to a staging buffer.
             logWarning("Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work");
             if (mpStagingResource == nullptr) {
-                mpStagingResource = Buffer::create(mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                if(isStructured()) {
+                    LOG_WARN("map structured buffer if struct size %u", mStructSize);
+                    mpStagingResource = Buffer::createStructured(mStructSize, mElementCount, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                } else if (isTyped()){
+                    LOG_WARN("map typed buffer");
+                    mpStagingResource = Buffer::createTyped(mFormat, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                } else {
+                    LOG_WARN("map buffer");
+                    mpStagingResource = Buffer::create(mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                }
             }
 
             // Copy the buffer and flush the pipeline

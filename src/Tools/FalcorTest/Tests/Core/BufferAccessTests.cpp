@@ -47,36 +47,22 @@ Buffer::SharedPtr createTestBuffer(Buffer::CpuAccess cpuAccess, bool initialize 
     The test binds the buffer to a compute program which reads back the data.
 */
 void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess) {
-    LOG_DBG("Create buffer ...");
     auto pBuf = createTestBuffer(cpuAccess);
-    LOG_DBG("Create buffer done.");
 
     // Run program that copies the buffer elements into result buffer.
-    LOG_DBG("Create program ...");
     ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
-    LOG_DBG("Create program done.");
 
-    LOG_DBG("Allocate result buffer ...");
     ctx.allocateStructuredBuffer("result", elems);
-    LOG_DBG("Allocate result buffer done.");
     
-    LOG_DBG("Assign buffer ...");
     ctx["buffer"] = pBuf;
-    LOG_DBG("Assign buffer done.");
     
-    LOG_DBG("Run program ...");
     ctx.runProgram(elems, 1, 1);
-    LOG_DBG("Run program done.");
 
-    LOG_DBG("Map buffer ...");
     const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
-    LOG_DBG("Map buffer done.");
 
-    LOG_DBG("Check result buffer");
     for (uint32_t i = 0; i < elems; i++) {
         EXPECT_EQ(result[i], i) << "i = " << i;
     }
-    LOG_DBG("Unmap buffer");
     ctx.unmapBuffer("result");
 }
 

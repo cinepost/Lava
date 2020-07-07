@@ -34,7 +34,10 @@ namespace Falcor
         std::vector<std::string> kShaderModels =
         {
             #ifdef FALCOR_VK
+            { "430" },
+            { "440" },
             { "450" },
+            { "460" },
             #else
             { "6_0" },
             { "6_1" },

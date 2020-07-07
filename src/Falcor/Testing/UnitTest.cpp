@@ -86,8 +86,7 @@ std::vector<Test>* testRegistry;
         testRegistry->push_back({ filename, name, skipMessage, {}, std::move(func) });
     }
 
-    inline TestResult runTest(const Test& test, RenderContext* pRenderContext)
-    {
+    inline TestResult runTest(const Test& test, RenderContext* pRenderContext) {
         if (!test.skipMessage.empty()) return { TestResult::Status::Skipped, { test.skipMessage } };
 
         TestResult result { TestResult::Status::Passed };
@@ -125,14 +124,18 @@ std::vector<Test>* testRegistry;
         result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
         if (result.status == TestResult::Status::Failed) {
-            throw std::runtime_error("Test failed. Abort testing");
+            if( !result.messages.empty()) {
+                for(auto const& msg: result.messages) {
+                    std::cerr << msg << std::endl;
+                }
+            }
+            throw std::runtime_error("Test failed !!! Abort testing.");
         }
 
         return result;
     }
 
-    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter)
-    {
+    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter) {
         if (testRegistry == nullptr) return 0;
 
         std::vector<Test> tests;
@@ -146,9 +149,7 @@ std::vector<Test>* testRegistry;
         });
 
         // Sort tests by name.
-        std::sort(tests.begin(), tests.end(),
-            [](const Test &a, const Test &b)
-        {
+        std::sort(tests.begin(), tests.end(), [](const Test &a, const Test &b) {
             return (a.filename + "/" + a.name) < (b.filename + "/" + b.name);
         });
 
@@ -156,17 +157,15 @@ std::vector<Test>* testRegistry;
 
         int32_t failureCount = 0;
 
-        for (const auto& test : tests)
-        {
+        for (const auto& test : tests) {
             stream << "  " << padStringToLength(test.getTitle(), 60) << ": " << std::flush;
 
             TestResult result = runTest(test, pRenderContext);
 
-            switch (result.status)
-            {
-            case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
-            case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
-            case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
+            switch (result.status) {
+                case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
+                case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
+                case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
             }
 
             stream << " (" << std::to_string(result.elapsedMS) << " ms)" << std::endl;
@@ -212,6 +211,7 @@ std::vector<Test>* testRegistry;
         assert(mpVars);
         mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
         assert(mStructuredBuffers[name].pBuffer);
+        LOG_WARN("StructuredBuffer format: %s", to_string(mStructuredBuffers[name].pBuffer->getFormat()).c_str());
         if (pInitData) {
             size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
             if (initDataSize == 0) initDataSize = expectedDataSize;

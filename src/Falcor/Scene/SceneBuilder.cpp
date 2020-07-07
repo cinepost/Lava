@@ -140,16 +140,11 @@ namespace Falcor
     bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances)
     {
         bool success = false;
-        if (fs::path(filename).extension() == ".py")
-        {
+        if (fs::path(filename).extension() == ".py") {
             success = PythonImporter::import(filename, *this);
-        }
-        else if (fs::path(filename).extension() == ".fscene")
-        {
+        } else if (fs::path(filename).extension() == ".fscene") {
             success = SceneImporter::import(filename, *this);
-        }
-        else
-        {
+        } else {
             success = AssimpImporter::import(filename, *this, instances);
         }
         mFilename = filename;

@@ -36,6 +36,18 @@ cbuffer CB
 };
 
 [numthreads(1, 1, 1)]
+void testAABB2(uint3 threadId : SV_DispatchThreadID)
+{
+    const uint idx = threadId.x;
+    uint i = 0;
+
+    result[i++] = float3( 1.00f, 2.00f, 3.00f);
+    result[i++] = float3( 4.00f, 5.00f, 6.00f);
+    result[i++] = result[0];
+    result[i++] = result[1];
+}
+
+[numthreads(1, 1, 1)]
 void testAABB(uint3 threadId : SV_DispatchThreadID)
 {
     const uint idx = threadId.x;
@@ -47,7 +59,7 @@ void testAABB(uint3 threadId : SV_DispatchThreadID)
         b.set(testData[0]);
         result[i++] = b.minPoint;
         result[i++] = b.maxPoint;
-
+        
         b.set(testData[1], testData[2]);
         result[i++] = b.minPoint;
         result[i++] = b.maxPoint;

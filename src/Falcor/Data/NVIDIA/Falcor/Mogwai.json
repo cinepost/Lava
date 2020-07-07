@@ -1,9 +1,14 @@
 {
     "recentScripts": [
+        "/home/max/dev/Falcor/build/gbuff.py",
         "/home/max/dev/Falcor/src/Mogwai/Data/BSDFViewer.py",
         "/home/max/dev/Falcor/src/Mogwai/Data/ForwardRenderer.py"
     ],
     "recentScenes": [
+        "/home/max/dev/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",
+        "/home/max/Documents/gltf/drone/model/BusterDrone.fbx",
+        "/home/max/Documents/gltf/drone/BusterDrone.fbx",
+        "/home/max/Documents/gltf/adam/adamHead.gltf",
         "/home/max/dev/Falcor/Media/models/source/Pony_cartoon.obj",
         "/home/max/Documents/orca/SunTemple_v3/SunTemple/SunTemple.fscene"
     ]

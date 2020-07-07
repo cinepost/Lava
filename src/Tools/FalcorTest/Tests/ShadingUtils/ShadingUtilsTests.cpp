@@ -197,6 +197,7 @@ namespace Falcor
         ctx.unmapBuffer("result");
     }
 
+    #ifdef FALCOR_D3D12
     GPU_TEST(RaySphereIntersection)
     {
         std::mt19937 rng;
@@ -285,5 +286,6 @@ namespace Falcor
         ctx.unmapBuffer("isectResult");
         ctx.unmapBuffer("isectLoc");
     }
+    #endif
 
 }  // namespace Falcor

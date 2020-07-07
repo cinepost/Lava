@@ -36,6 +36,8 @@ void createNullViews();
 void releaseNullViews();
 void createNullBufferViews();
 void releaseNullBufferViews();
+void createNullTypedBufferViews();
+void releaseNullTypedBufferViews();
 
 Device::SharedPtr gpDevice;
 
@@ -78,6 +80,7 @@ bool Device::init() {
     mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     createNullViews();
     createNullBufferViews();
+    createNullTypedBufferViews();
     mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     assert(mpRenderContext);
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -172,6 +175,7 @@ void Device::cleanup() {
     mDeferredReleases = decltype(mDeferredReleases)();
     releaseNullViews();
     releaseNullBufferViews();
+    releaseNullTypedBufferViews();
     mpRenderContext.reset();
     mpUploadHeap.reset();
     mpCpuDescPool.reset();

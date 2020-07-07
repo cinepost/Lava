@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor
 {
     namespace
@@ -69,8 +71,8 @@ namespace Falcor
             return masks;
         }
     }
-
-    GPU_TEST(WaveGetLaneCount)
+    
+    GPU_TEST(WaveGetLaneCount, "Disabled due to issue with WaveGetLaneCount Op in Slang on Vulkan")
     {
         #ifdef FALCOR_VK
         ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveGetLaneCount", Program::DefineList(), Shader::CompilerFlags::None, "450");
@@ -81,6 +83,11 @@ namespace Falcor
         auto var = ctx.vars().getRootVar();
         uint32_t zero = 0;
         auto pLaneCount = Buffer::createTyped<uint32_t>(1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+
+        if(!pLaneCount->isTyped()) {
+            LOG_FTL("NOT TYPED!");
+        }
+
         var["laneCount"] = pLaneCount;
 
         ctx.runProgram(1, 1, 1);
@@ -93,7 +100,12 @@ namespace Falcor
 
     GPU_TEST(WaveMatch, "Requires shader model 6.5")
     {
+        #ifdef FALCOR_VK
+        ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "450");
+        #else
         ctx.createProgram("Tests/Slang/WaveOps.cs.slang", "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+        #endif
+
         ctx.allocateStructuredBuffer("result", kNumElems);
 
         auto var = ctx.vars().getRootVar();
