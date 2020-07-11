@@ -65,7 +65,12 @@ namespace Falcor
             pLeafUpdaterVars["CB"]["gNodeCount"] = nodeCount;
 
             mLeafUpdater->execute(pRenderContext, nodeCount, 1u, 1u);
+
+            #ifdef FALCOR_D3D12
             pRenderContext->uavBarrier(mpBVHNodesBuffer.get());
+            #else
+            pRenderContext->flush(true);
+            #endif
         }
 
         // Update all internal nodes.
@@ -78,7 +83,12 @@ namespace Falcor
             pInternalUpdaterVars["CB"]["gNodeCount"] = nodeCount;
 
             mInternalUpdater->execute(pRenderContext, nodeCount, 1u, 1u);
+            
+            #ifdef FALCOR_D3D12
             pRenderContext->uavBarrier(mpBVHNodesBuffer.get());
+            #else
+            pRenderContext->flush(true);
+            #endif
         }
 
         mIsCpuDataValid = false;

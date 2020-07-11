@@ -33,7 +33,7 @@
 #include "Falcor/Core/API/DescriptorSet.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#define VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION 1024 
+#define VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION 65536 //1024 
 //VkPhysicalDeviceLimits::maxComputeWorkGroupSize[3]
 
 namespace Falcor {

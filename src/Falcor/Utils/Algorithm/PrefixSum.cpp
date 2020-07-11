@@ -100,8 +100,14 @@ namespace Falcor
 
         // Add UAV barriers for our buffers to make sure writes from the previous pass finish before the next pass.
         // This is necessary since the buffers are bound as UAVs in both passes and there are no resource transitions.
+        
+        #ifdef FALCOR_D3D12
         pRenderContext->uavBarrier(pData.get());
         pRenderContext->uavBarrier(mpPrefixGroupSums.get());
+        #else 
+        pRenderContext->flush(true);
+        #endif
+
 
         // Pass 2: finalize prefix sum by adding the sums to the left to each group.
         // This is only necessary if we have more than one group.

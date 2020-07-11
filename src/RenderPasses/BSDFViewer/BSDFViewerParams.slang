@@ -73,11 +73,11 @@ struct BSDFViewerParams
     int     useEnvMap = 0;                      ///< Use environment light (as opposed to omnidirectional).
     int2    _pad3;
 
-    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
     float3  lightColor = { 1.f, 1.f, 1.f };     ///< Light color.
+    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
 
-    int     useDirectionalLight = 0;            ///< Use directional light (as opposed to omnidirectional/envmap).
     float3  lightDir = { 0.f, 0.f, -1.f };      ///< Light direction to use when 'useDirectionalLight' is true (note: not normalized).
+    int     useDirectionalLight = 0;            ///< Use directional light (as opposed to omnidirectional/envmap).
 
     // Camera settings
     int     orthographicCamera = 0;             ///< Use orthographic camera.

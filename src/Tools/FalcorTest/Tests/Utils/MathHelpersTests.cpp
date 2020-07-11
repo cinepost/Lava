@@ -190,7 +190,7 @@ namespace Falcor
         testRandomBBoxes(ctx, "testBoundingConeAngleCenter");
     }
 
-    GPU_TEST(BoxSubtendedConeAngleAverageRandoms)
+    GPU_TEST(BoxSubtendedConeAngleAverageRandoms, "Disabled due to unsipported <float3> buffers in Vulkan (glsl)")
     {
         testRandomBBoxes(ctx, "testBoundingConeAngleAverage");
     }

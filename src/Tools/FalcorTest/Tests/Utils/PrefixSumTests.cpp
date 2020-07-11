@@ -25,9 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Testing/UnitTest.h"
-#include "Utils/Algorithm/PrefixSum.h"
 #include <random>
+
+#include "Testing/UnitTest.h"
+#include "Falcor/Utils/Algorithm/PrefixSum.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor
 {
@@ -100,12 +102,19 @@ namespace Falcor
         PrefixSum::SharedPtr pPrefixSum = PrefixSum::create();
 
         // Test prefix sums on varying size buffers.
+        LOG_WARN("test 1");
         testPrefixSum(ctx, pPrefixSum, 1);
+        LOG_WARN("test 27");
         testPrefixSum(ctx, pPrefixSum, 27);
+        LOG_WARN("test 64");
         testPrefixSum(ctx, pPrefixSum, 64);
+        LOG_WARN("test 2049");
         testPrefixSum(ctx, pPrefixSum, 2049);
+        LOG_WARN("test 10201");
         testPrefixSum(ctx, pPrefixSum, 10201);
+        LOG_WARN("test 231917");
         testPrefixSum(ctx, pPrefixSum, 231917);
+        LOG_WARN("test 1088921");
         testPrefixSum(ctx, pPrefixSum, 1088921);
     }
 }

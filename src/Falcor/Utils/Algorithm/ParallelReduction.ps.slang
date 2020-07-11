@@ -25,7 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+[[vk::binding(0, 0)]]
 SamplerState gSampler : register(s0);
+
+[[vk::binding(1, 0)]]
 #if defined(_FIRST_ITERATION) && _SAMPLE_COUNT > 1
 Texture2DMS gInputTex : register(t1);
 #else

@@ -1161,7 +1161,12 @@ static void prepareResource(CopyContext* pContext, Resource* pResource, bool isU
     const Buffer* pBuffer = pResource->asBuffer().get();
     if (isUav && pBuffer && pBuffer->getUAVCounter()) {
         pContext->resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
+
+        #ifdef FALCOR_D3D12
         pContext->uavBarrier(pBuffer->getUAVCounter().get());
+        #else
+        pContext->flush(true);
+        #endif
     }
 
     bool insertBarrier = true;
@@ -1174,7 +1179,13 @@ static void prepareResource(CopyContext* pContext, Resource* pResource, bool isU
 
     // Insert UAV barrier automatically if the resource is an UAV that is already in UnorderedAccess state.
     // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
-    if (insertBarrier && isUav) pContext->uavBarrier(pResource);
+    if (insertBarrier && isUav) {
+        #ifdef FALCOR_D3D12
+        pContext->uavBarrier(pResource);
+        #else
+        pContext->flush(true);
+        #endif
+    }
 }
 
 ParameterBlock::SharedPtr const& ParameterBlock::getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const {

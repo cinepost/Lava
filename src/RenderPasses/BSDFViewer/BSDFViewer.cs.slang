@@ -367,23 +367,20 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
     data = prepareMaterial(v, -rayDir);
 
     float3 output = 0;
-    // output = float3(1.0f, 0.0f, 0.5f); // TODO: remove !!!
+    output = float3(1.0f, 0.0f, 0.0f); // TODO: Debug only. remove !!!
+    
     BSDFSample s = {};
-    if (generateBSDFSample(data.sd, sg, s))
-    {
-        // output = float3(0.0f, 0.0f, 1.0f);
-
+    
+    if (generateBSDFSample(data.sd, sg, s)) {
         data.wi = s.wi;
         float3 L = evalLighting(s.wi);
 
         // Use computed pdf explicitly (for debugging).
-        if (gParams.usePdf)
-        {
+        if (gParams.usePdf) {
             output = L * evalBSDFCosine(data.sd, s.wi) / s.pdf;
-        }
-        else
-        {
+        } else {
             output = L * s.weight;
+            output = gParams.lightColor;
         }
     }
 

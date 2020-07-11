@@ -216,7 +216,7 @@ namespace Falcor
         }
     }
 
-    GPU_TEST(ParallelReduction)
+    GPU_TEST(ParallelReduction, "Disabled. SPIR-V 1.3 required")
     {
         // Quick test of the snorm/unorm data types we use.
         assert((float)unorm8_t(163.499f / 255.f) == (163 / 255.f));

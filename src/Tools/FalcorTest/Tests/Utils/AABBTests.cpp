@@ -25,10 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+
 #include "Testing/UnitTest.h"
 #include "Falcor/Utils/Debug/debug.h"
-
-#define GLM_ENABLE_EXPERIMENTAL
 
 #include <glm/gtx/io.hpp>
 
@@ -46,22 +45,33 @@ namespace Falcor
         };
     }
 
+#if _ENABLE_NVAPI
     GPU_TEST(AABB)
+#else
+    GPU_TEST(AABB, "Requires D3D12")
+#endif
     {
-        const uint32_t resultSize = 5;
+        const uint32_t resultSize = 100;
 
         // Setup and run GPU test.
-        ctx.createProgram("Tests/Utils/AABBTests.cs.slang", "testAABB2");
+        ctx.createProgram("Tests/Utils/AABBTests.cs.slang", "testAABB", Program::DefineList(), Shader::CompilerFlags::None, "450");
         ctx.allocateStructuredBuffer("result", resultSize);
         ctx.allocateStructuredBuffer("testData", arraysize(kTestData), kTestData, sizeof(kTestData));
         ctx["CB"]["n"] = (uint32_t)arraysize(kTestData);
         ctx.runProgram();
 
+        const float* resultf = ctx.mapBuffer<const float>("result");
+        for(uint ii = 0; ii < 12; ii+=3) {
+            std::cout << " " << resultf[ii] << " " << resultf[ii+1] << " " << resultf[ii+2] << std::endl;
+        }
+        std::cout << std::endl;
+        ctx.unmapBuffer("result");
+
         // Verify results.
         const float3* result = ctx.mapBuffer<const float3>("result");
         size_t i = 0;
 
-        for(uint ii = 0; ii < 5; ii++) {
+        for(uint ii = 0; ii < 4; ii++) {
             std::cout << result[ii] << std::endl;
         }
 
@@ -70,6 +80,91 @@ namespace Falcor
         EXPECT_EQ(result[i], kTestData[0]) << "i = " << i; i++;
         EXPECT_EQ(result[i], kTestData[1]) << "i = " << i; i++;
         EXPECT_EQ(result[i], kTestData[2]) << "i = " << i; i++;
+
+        // Test 1
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+
+        EXPECT_EQ(result[i], kTestData[0]) << "i = " << i++;
+        EXPECT_EQ(result[i], kTestData[0] + float3(1.f, 1.f, -0.5f)) << "i = " << i++;
+
+        // Test 2
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(FLT_MAX)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(-FLT_MAX)) << "i = " << i++;
+
+        // Test 3
+        EXPECT_EQ(result[i], float3(-3.50f, 0.00f, -1.25f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3( 1.00f, 2.50f, -0.50f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3( 0.50f, 1.25f, -2.50f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3( 4.00f, 2.75f,  4.50f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(-3.50f, 0.00f, -2.50f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3( 4.00f, 2.75f,  4.50f)) << "i = " << i++;
+
+        // Test 4
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(1)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+
+        // Test 5
+        EXPECT_EQ(result[i], kTestData[0]) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0)) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.f) << "i = " << i++;
+
+        EXPECT_EQ(result[i], kTestData[0] - float3(0.f, 0.5f, 0.f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(0.f, 1.f, 0.f)) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.5f) << "i = " << i++;
+
+        EXPECT_EQ(result[i], float3(0.25f, 1.375f, 1.00f)) << "i = " << i++;
+        EXPECT_EQ(result[i], float3(7.50f, 2.75f, 7.00f)) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 184.75f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 144.375f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.5f*std::sqrt(7.50f*7.50f + 2.75f*2.75f + 7.00f*7.00f)) << "i = " << i++;
+
+        // Test 6
+        EXPECT_EQ(result[i].x, 1.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 1.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 1.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 1.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 1.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 1.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 1.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 1.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i;
+        EXPECT_EQ(result[i].y, 0.0f) << "i = " << i++;
+
+        // Test 7
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 2.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 2.5f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 5.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 5.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 13.0f) << "i = " << i++;
+
+        // Test 8
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 0.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 1.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 5.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 5.0f) << "i = " << i++;
+        EXPECT_EQ(result[i].x, 13.0f) << "i = " << i++;
 
         assert(i <= resultSize);
         ctx.unmapBuffer("result");

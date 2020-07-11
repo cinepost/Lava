@@ -902,8 +902,12 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
             {
                 assert(blas.pScratchBuffer != nullptr);
 
+                #ifdef FALCOR_D3D12
                 pContext->uavBarrier(blas.pBlas.get());
                 pContext->uavBarrier(blas.pScratchBuffer.get());
+                #else
+                pContext->flush(true);
+                #endif
             }
 
             // Build BLAS
@@ -919,7 +923,11 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
             pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
             // Insert a UAV barrier
+            #ifdef FALCOR_D3D12
             pContext->uavBarrier(blas.pBlas.get());
+            #else
+            pContext->flush(true);
+            #endif
 
             if (!blas.hasSkinnedMesh) blas.pScratchBuffer.reset(); // Release
             else blas.updateMode = mBlasUpdateMode;
@@ -1024,18 +1032,21 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
         asDesc.Inputs = inputs;
 
         // If first time building this TLAS
-        if (tlas.pTlas == nullptr)
-        {
+        if (tlas.pTlas == nullptr) {
             assert(tlas.pInstanceDescs == nullptr); // Instance desc should also be null if no TLAS
             tlas.pTlas = Buffer::create(mTlasPrebuildInfo.ResultDataMaxSizeInBytes, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
             tlas.pInstanceDescs = Buffer::create((uint32_t)mInstanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
-        }
-        // Else update instance descs and barrier TLAS buffers
-        else
-        {
+        } else {
+            // Else update instance descs and barrier TLAS buffers
             assert(mpAnimationController->hasAnimations());
+
+            #ifdef FALCOR_D3D12
             pContext->uavBarrier(tlas.pTlas.get());
             pContext->uavBarrier(mpTlasScratch.get());
+            #else
+            pContext->flush(true);
+            #endif
+
             tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.NumDescs * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
             asDesc.SourceAccelerationStructureData = tlas.pTlas->getGpuAddress(); // Perform the update in-place
         }
@@ -1056,8 +1067,7 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
         pContext->uavBarrier(tlas.pTlas.get());
 
         // Create TLAS SRV
-        if (tlas.pSrv == nullptr)
-        {
+        if (tlas.pSrv == nullptr) {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
