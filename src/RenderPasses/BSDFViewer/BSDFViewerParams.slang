@@ -51,7 +51,12 @@ struct BSDFViewerParams
     int     useFixedTexCoords = 0;               ///< Use fixed texture coordinates.
 
     float3  baseColor = { 0.5f, 0.5f, 0.5f };   ///< Material base color.
+    float   _mpad1;
+
     float   linearRoughness = 1.f;              ///< Linear roughness in [0,1].
+    float   _mpad2;
+    float   _mpad3;
+    float   _mpad4;
 
     float   metallic = 0.f;                     ///< Metallic factor in [0,1]. This blends between the dielectric BSDF and the metallic BRDF.
     float   IoR = 1.5f;                         ///< Index of refraction in [1,inf). This is used to compute the specular reflectance/transmittance for dielectrics.
@@ -74,10 +79,15 @@ struct BSDFViewerParams
     int2    _pad3;
 
     float3  lightColor = { 1.f, 1.f, 1.f };     ///< Light color.
-    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
+    float   _mapd5;
 
     float3  lightDir = { 0.f, 0.f, -1.f };      ///< Light direction to use when 'useDirectionalLight' is true (note: not normalized).
+    float   _mpad6;
+
     int     useDirectionalLight = 0;            ///< Use directional light (as opposed to omnidirectional/envmap).
+    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
+    int     _mpad7;
+    int     _mpad8;
 
     // Camera settings
     int     orthographicCamera = 0;             ///< Use orthographic camera.
@@ -92,7 +102,9 @@ struct BSDFViewerParams
 
     int     useLegacyBSDF = 1;
     //int     debugSwitch0 = 0;
-    int3    _pad6;
+    int     _pad6;
+    int     _pad7;
+    int     _pad8;
 };
 
 /** Struct for readback of per-pixel data.

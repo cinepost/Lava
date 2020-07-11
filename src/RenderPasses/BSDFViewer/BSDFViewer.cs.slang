@@ -334,7 +334,6 @@ float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
 */
 bool generateBSDFSample(const ShadingData sd, inout SampleGenerator sg, out BSDFSample s)
 {
-    return true;
     if (gParams.useDirectionalLight)
     {
         // With directional light, disable BSDF sampling and just return a sample in the light's direction.
@@ -367,7 +366,6 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
     data = prepareMaterial(v, -rayDir);
 
     float3 output = 0;
-    output = float3(1.0f, 0.0f, 0.0f); // TODO: Debug only. remove !!!
     
     BSDFSample s = {};
     
@@ -380,7 +378,6 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
             output = L * evalBSDFCosine(data.sd, s.wi) / s.pdf;
         } else {
             output = L * s.weight;
-            output = gParams.lightColor;
         }
     }
 

@@ -1,10 +1,10 @@
 {
     "recentScripts": [
-        "/home/max/dev/Falcor/build/gbuff.py",
         "/home/max/dev/Falcor/src/Mogwai/Data/BSDFViewer.py",
         "/home/max/dev/Falcor/src/Mogwai/Data/ForwardRenderer.py"
     ],
     "recentScenes": [
+        "/home/max/Desktop/gears.fbx",
         "/home/max/dev/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",
         "/home/max/Documents/gltf/drone/model/BusterDrone.fbx",
         "/home/max/Documents/gltf/drone/BusterDrone.fbx",
