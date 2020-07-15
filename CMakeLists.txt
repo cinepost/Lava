@@ -52,10 +52,24 @@ elseif(UNIX)
   set( CMAKE_INSTALL_PREFIX "/opt/falcor" )
 endif()
 
+# Handle build mode
+if( NOT CMAKE_BUILD_TYPE )
+  SET( CMAKE_BUILD_TYPE "DEBUG" )
+  #SET(CMAKE_BUILD_TYPE "RELEASE")
+  #SET(CMAKE_BUILD_TYPE "RELWITHDEBINFO")
+  #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
+  message("CMAKE_BUILD_TYPE not set! Using default ${CMAKE_BUILD_TYPE} mode.")
+endif()
+
 # Specify build paths
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
+set( BUILD_SUBDIR "")
+string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_SUBDIR)
+
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/bin )
+
+
 if (WIN32 OR APPLE)
   if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     # We don't want to install in default system location, install is really for the SDK, so call it that
@@ -63,12 +77,6 @@ if (WIN32 OR APPLE)
   endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(WIN32 OR APPLE)
 
-if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE "DEBUG" )
-  #SET(CMAKE_BUILD_TYPE "RELEASE")
-  #SET(CMAKE_BUILD_TYPE "RELWITHDEBINFO")
-  #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
-endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -91,7 +99,6 @@ include_directories(
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/include
 )
 
 # Documentation
@@ -103,7 +110,7 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 # thirt party libs
 # TODO: build necessary third party libs
 
-message("Build dir: ${CMAKE_BINARY_DIR}")
+message("Build dir: ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}")
 #add_subdirectory( third_party/assimp )
 add_subdirectory( src )
 

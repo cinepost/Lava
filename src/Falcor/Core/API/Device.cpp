@@ -52,7 +52,6 @@ Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc&
 }
 
 bool Device::init() {
-    LOG_DBG("Device init...");
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
     if (apiInit() == false) return false;
@@ -88,10 +87,8 @@ bool Device::init() {
 
     // Update the FBOs
     if (updateDefaultFBO(mpWindow->getClientAreaSize().x, mpWindow->getClientAreaSize().y, mDesc.colorFormat, mDesc.depthFormat) == false) {
-        LOG_ERR("Device init failed !!!");
         return false;
     }
-    LOG_DBG("Device init done.");
     return true;
 }
 
@@ -192,7 +189,9 @@ void Device::present() {
     mpRenderContext->flush();
     apiPresent();
     mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
-    if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) mpFrameFence->syncCpu(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
+    if (mpFrameFence->getCpuValue() >= kSwapChainBuffersCount) {
+        mpFrameFence->syncCpu(mpFrameFence->getCpuValue() - kSwapChainBuffersCount);
+    }
     executeDeferredReleases();
     mFrameID++;
 }

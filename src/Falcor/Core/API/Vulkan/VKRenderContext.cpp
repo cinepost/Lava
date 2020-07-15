@@ -253,10 +253,13 @@ namespace Falcor
         endVkDraw(mpLowLevelData->getCommandList());
     }
     
+    //pContext->drawIndexedIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
+
     void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;
-        vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
+        //vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
+        vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), maxCommandCount, sizeof(VkDrawIndexedIndirectCommand));
         endVkDraw(mpLowLevelData->getCommandList());
     }
 

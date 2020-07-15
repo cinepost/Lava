@@ -1,7 +1,7 @@
 def render_graph_BSDFViewerGraph():
     g = RenderGraph("BSDFViewerGraph")
-    loadRenderPassLibrary("AccumulatePass_pass")
-    loadRenderPassLibrary("BSDFViewer_pass")
+    loadRenderPassLibrary("AccumulatePass")
+    loadRenderPassLibrary("BSDFViewer")
     BSDFViewer = RenderPass("BSDFViewer")
     g.addPass(BSDFViewer, "BSDFViewer")
     AccumulatePass = RenderPass("AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Double})

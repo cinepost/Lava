@@ -58,7 +58,6 @@ namespace Falcor {
     VkResource<VkImage, VkBuffer>::~VkResource() {
         if (!gpDevice) {
             // #VKTODO This is here because of the black texture in VkResourceViews.cpp
-            LOG_DBG("gpDevice is NULL");
             return;
         }
         assert(mDeviceMem || mType == VkResourceType::Image);  // All of our resources are allocated with memory, except for the swap-chain backbuffers that we shouldn't release
@@ -92,7 +91,6 @@ namespace Falcor {
     VkResource<VkImageView, VkBufferView>::~VkResource() {
         if (!gpDevice) {
             // #VKTODO This is here because of the black texture in VkResourceViews.cpp
-            LOG_DBG("gpDevice is NULL");
             return;
         }
         switch (mType) {

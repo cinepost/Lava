@@ -25,186 +25,143 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "ArgList.h"
 #include <sstream>
 
-namespace Falcor
-{
-    static std::string readToken(std::stringstream& args)
-    {
+#include "Falcor/stdafx.h"
+#include "ArgList.h"
+
+namespace Falcor {
+
+    static std::string readToken(std::stringstream& args) {
         std::string token;
 
-        while(1)
-        {
+        while(1) {
             std::string tmp;
             std::getline(args, tmp, ' ');
             token += tmp;
             // If there are odd number of '"', read some more
-            if (std::count(token.begin(), token.end(), '"') % 2)
-            {
+            if (std::count(token.begin(), token.end(), '"') % 2) {
                 // Read until the next '"'
                 std::string s;
                 std::getline(args, s, '"');
                 token += ' ' + s + '"';
                 // If there is a space after the '"', we're done, otherwise keep reading
                 if (args.eof() || args.peek() == ' ') return token;
-            }
-            else
-            {
+            } else {
                 return token;
             }
         }
     }
 
-    void ArgList::parseCommandLine(const std::string& cmdLine)
-    {
+    void ArgList::parseCommandLine(const std::string& cmdLine) {
         std::stringstream args(cmdLine);
         std::string currentArg;
-        while (!args.eof())
-        {
+
+        while (!args.eof()) {
             std::string token = readToken(args);
 
             size_t dashIndex = token.find('-');
-            if (dashIndex == 0 && isalpha(token[1]))
-            {
+
+            if (dashIndex == 0 && isalpha(token[1])) {
                 currentArg = token.substr(1);
                 addArg(currentArg);
-            }
-            else if(!token.empty() && token.find_first_not_of(' ') != std::string::npos)
-            {
+            } else if(!token.empty() && token.find_first_not_of(' ') != std::string::npos) {
                 addArg(currentArg, token);
             }
         }
     }
 
-    void ArgList::parseCommandLine(int &argc, char **argv) 
-    {
+    void ArgList::parseCommandLine(int &argc, char **argv)  {
         std::string currentArg;
         for (int i=1; i < argc; ++i) {
             std::string token = std::string(argv[i]);
 
             size_t dashIndex = token.find('-');
-            if (dashIndex == 0 && isalpha(token[1]))
-            {
+            if (dashIndex == 0 && isalpha(token[1])) {
                 currentArg = token.substr(1);
                 addArg(currentArg);
-            }
-            else if(!token.empty() && token.find_first_not_of(' ') != std::string::npos)
-            {
+            } else if(!token.empty() && token.find_first_not_of(' ') != std::string::npos) {
                 addArg(currentArg, token);
             }
 
         }        
     }
 
-    void ArgList::addArg(const std::string& arg)
-    {
+    void ArgList::addArg(const std::string& arg) {
         mMap.insert(std::make_pair(arg, std::vector<Arg>()));
     }
 
-    void ArgList::addArg(const std::string& key, Arg arg)
-    {
+    void ArgList::addArg(const std::string& key, Arg arg) {
         mMap[key].push_back(arg);
     }
 
-    bool ArgList::argExists(const std::string& arg) const
-    {
+    bool ArgList::argExists(const std::string& arg) const {
         return mMap.find(arg) != mMap.end();
     }
 
-    std::vector<ArgList::Arg> ArgList::getValues(const std::string& key) const
-    {
-        try 
-        {
+    std::vector<ArgList::Arg> ArgList::getValues(const std::string& key) const {
+        try  {
             return mMap.at(key);
-        }
-        catch(const std::out_of_range&)
-        {
+        } catch(const std::out_of_range&) {
             return std::vector<ArgList::Arg>();
         }
     }
 
-    const ArgList::Arg& ArgList::operator[](const std::string& key) const
-    {
+    const ArgList::Arg& ArgList::operator[](const std::string& key) const {
         assert(mMap.at(key).size() == 1);
         return mMap.at(key)[0];
     }
 
-    int32_t ArgList::Arg::asInt() const
-    {
-        try
-        {
+    int32_t ArgList::Arg::asInt() const {
+        try {
             return std::stoi(mValue);
-        }
-        catch (const std::invalid_argument& e)
-        {
+        } catch (const std::invalid_argument& e) {
             logWarning("Unable to convert " + mValue + " to int. Exception: " + e.what());
             return -1;
-        }
-        catch (const std::out_of_range& e)
-        {
+        } catch (const std::out_of_range& e) {
             logWarning("Unable to convert " + mValue + " to int. Exception: " + e.what());
             return -1;
         }
     }
 
-    uint32_t ArgList::Arg::asUint() const
-    {
-        try
-        {
+    uint32_t ArgList::Arg::asUint() const {
+        try {
             return std::stoul(mValue);
-        }
-        catch (const std::invalid_argument& e)
-        {
+        } catch (const std::invalid_argument& e) {
             logWarning("Unable to convert " + mValue + " to unsigned. Exception: " + e.what());
             return -1;
-        }
-        catch (const std::out_of_range& e)
-        {
+        } catch (const std::out_of_range& e) {
             logWarning("Unable to convert " + mValue + " to unsigned. Exception: " + e.what());
             return -1;
         }
     }
 
-    uint64_t ArgList::Arg::asUint64() const
-    {
-        try
-        {
+    uint64_t ArgList::Arg::asUint64() const {
+        try {
             return std::stoull(mValue);
-        }
-        catch (const std::invalid_argument& e)
-        {
+        } catch (const std::invalid_argument& e) {
             logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
             return -1;
-        }
-        catch (const std::out_of_range& e)
-        {
+        } catch (const std::out_of_range& e) {
             logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
             return -1;
         }
     }
 
-    float ArgList::Arg::asFloat() const
-    {
-        try
-        {
+    float ArgList::Arg::asFloat() const {
+        try {
             return std::stof(mValue);
-        }
-        catch (const std::invalid_argument& e)
-        {
+        } catch (const std::invalid_argument& e) {
             logWarning("Unable to convert " + mValue + " to float. Exception: " + e.what());
             return -1;
-        }
-        catch (const std::out_of_range& e)
-        {
+        } catch (const std::out_of_range& e) {
             logWarning("Unable to convert " + mValue + " to float. Exception: " + e.what());
             return -1;
         }
     }
 
-    std::string ArgList::Arg::asString() const
-    {
+    std::string ArgList::Arg::asString() const {
         return mValue;
     }
-}
+
+}  // namespace Falcor

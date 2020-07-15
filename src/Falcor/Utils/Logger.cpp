@@ -25,186 +25,163 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Logger.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        std::string sLogFilePath;
-        bool sShowBoxOnError = true;
-        Logger::Level sVerbosity = Logger::Level::Warning;
+namespace Falcor {
+    
+namespace {
+    
+std::string sLogFilePath;
+bool sShowBoxOnError = true;
+Logger::Level sVerbosity = Logger::Level::Warning;
 
 #if _LOG_ENABLED
-        bool sInitialized = false;
-        FILE* sLogFile = nullptr;
+bool sInitialized = false;
+FILE* sLogFile = nullptr;
 
-        std::string generateLogFilePath()
-        {
-            // Get current process name
-            std::string filename = getExecutableName();
-            std::string executableDir = getExecutableDirectory();
+std::string generateLogFilePath() {
+    // Get current process name
+    std::string filename = getExecutableName();
+    std::string executableDir = getExecutableDirectory();
 
-            std::string prefix = std::string(filename);
-            std::string path;
+    std::string prefix = std::string(filename);
+    std::string path;
 
-            // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-            if (findAvailableFilename(prefix, executableDir, "log", path))
-            {
-                return path;
-            }
-            should_not_get_here();
-            return "";
-        }
-
-        FILE* openLogFile()
-        {
-            FILE* pFile = nullptr;
-
-            if (sLogFilePath.empty())
-            {
-                sLogFilePath = generateLogFilePath();
-            }
-
-            pFile = std::fopen(sLogFilePath.c_str(), "w");
-            if (pFile != nullptr)
-            {
-                // Success
-                return pFile;
-            }
-
-            // If we got here, we couldn't create a log file
-            should_not_get_here();
-            return pFile;
-        }
-
-        void printToLogFile(const std::string& s)
-        {
-            if (!sInitialized)
-            {
-                sLogFile = openLogFile();
-                sInitialized = true;
-            }
-
-            if (sLogFile)
-            {
-                std::fprintf(sLogFile, "%s", s.c_str());
-                std::fflush(sLogFile);
-            }
-        }
-#endif
+    // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
+    if (findAvailableFilename(prefix, executableDir, "log", path)) {
+        return path;
     }
-
-    void Logger::shutdown()
-    {
-#if _LOG_ENABLED
-        if(sLogFile)
-        {
-            fclose(sLogFile);
-            sLogFile = nullptr;
-            sInitialized = false;
-        }
-#endif
-    }
-
-    const char* getLogLevelString(Logger::Level L)
-    {
-        const char* c = nullptr;
-#define create_level_case(_l) case _l: c = "(" #_l ")" ;break;
-        switch(L)
-        {
-            create_level_case(Logger::Level::Info);
-            create_level_case(Logger::Level::Warning);
-            create_level_case(Logger::Level::Error);
-            create_level_case(Logger::Level::Fatal);
-        default:
-            should_not_get_here();
-        }
-#undef create_level_case
-        return c;
-    }
-
-    void Logger::log(Level L, const std::string& msg, MsgBox mbox)
-    {
-#if _LOG_ENABLED
-        if(L >= sVerbosity)
-        {
-            std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
-            printToLogFile(s);
-            if (isDebuggerPresent())
-            {   
-                printToDebugWindow(s);
-            }
-            else
-            {
-                // Log errors to stderr if no debugger is attached.
-                if (L >= Logger::Level::Error)
-                {
-                    std::cerr << s;
-                }
-            }
-        }
-#endif
-        if (sShowBoxOnError)
-        {
-            if (mbox == MsgBox::Auto)
-            {
-                mbox = (L >= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
-            }
-
-            if (mbox != MsgBox::None)
-            {
-                enum ButtonId {
-                    ContinueOrRetry,
-                    Debug,
-                    Abort
-                };
-
-                // Setup message box buttons
-                std::vector<MsgBoxCustomButton> buttons;
-                if (L != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
-                if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
-                buttons.push_back({Abort, "Abort"});
-
-                // Setup icon
-                MsgBoxIcon icon = MsgBoxIcon::Info;
-                if (L == Level::Warning) icon = MsgBoxIcon::Warning;
-                else if (L >= Level::Error) icon = MsgBoxIcon::Error;
-
-                // Show message box
-                auto result = msgBox(msg, buttons, icon);
-                if (result == Debug) debugBreak();
-                else if (result == Abort) exit(1);
-            }
-        }
-
-        // Terminate on errors if showBoxOnError is not set
-        if (L == Level::Error && sShowBoxOnError == false) exit(1);
-
-        // Always terminate on fatal errors
-        if (L == Level::Fatal) exit(1);
-    }
-
-    bool Logger::setLogFilePath(const std::string& path)
-    {
-#if _LOG_ENABLED
-        if (sLogFile)
-        {
-            return false;
-        }
-        else
-        {
-            sLogFilePath = path;
-            return true;
-        }
-#else
-        return false;
-#endif
-    }
-
-    const std::string& Logger::getLogFilePath() { return sLogFilePath; }
-    void Logger::showBoxOnError(bool showBox) { sShowBoxOnError = showBox; }
-    bool Logger::isBoxShownOnError() { return sShowBoxOnError; }
-    void Logger::setVerbosity(Level level) { sVerbosity = level; }
+    should_not_get_here();
+    return "";
 }
+
+FILE* openLogFile() {
+    FILE* pFile = nullptr;
+
+    if (sLogFilePath.empty()) {
+        sLogFilePath = generateLogFilePath();
+    }
+
+    pFile = std::fopen(sLogFilePath.c_str(), "w");
+    if (pFile != nullptr) {
+        // Success
+        return pFile;
+    }
+
+    // If we got here, we couldn't create a log file
+    should_not_get_here();
+    return pFile;
+}
+
+void printToLogFile(const std::string& s) {
+    if (!sInitialized) {
+        sLogFile = openLogFile();
+        sInitialized = true;
+    }
+
+    if (sLogFile) {
+        std::fprintf(sLogFile, "%s", s.c_str());
+        std::fflush(sLogFile);
+    }
+}
+#endif
+
+}  // namespace
+
+void Logger::shutdown() {
+#if _LOG_ENABLED
+    if(sLogFile) {
+        fclose(sLogFile);
+        sLogFile = nullptr;
+        sInitialized = false;
+    }
+#endif
+}
+
+const char* getLogLevelString(Logger::Level L) {
+    const char* c = nullptr;
+#define create_level_case(_l) case _l: c = "(" #_l ")" ;break;
+    switch(L) {
+        create_level_case(Logger::Level::Info);
+        create_level_case(Logger::Level::Warning);
+        create_level_case(Logger::Level::Error);
+        create_level_case(Logger::Level::Fatal);
+    default:
+        should_not_get_here();
+    }
+#undef create_level_case
+    return c;
+}
+
+void Logger::log(Level L, const std::string& msg, MsgBox mbox) {
+#if _LOG_ENABLED
+    if(L >= sVerbosity) {
+        std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
+        printToLogFile(s);
+        if (isDebuggerPresent()) {   
+            printToDebugWindow(s);
+        } else {
+            // Log errors to stderr if no debugger is attached.
+            if (L >= Logger::Level::Error) {
+                std::cerr << s;
+            }
+        }
+    }
+#endif
+    if (sShowBoxOnError) {
+        if (mbox == MsgBox::Auto) {
+            mbox = (L >= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
+        }
+
+        if (mbox != MsgBox::None) {
+            enum ButtonId {
+                ContinueOrRetry,
+                Debug,
+                Abort
+            };
+
+            // Setup message box buttons
+            std::vector<MsgBoxCustomButton> buttons;
+            if (L != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
+            if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
+            buttons.push_back({Abort, "Abort"});
+
+            // Setup icon
+            MsgBoxIcon icon = MsgBoxIcon::Info;
+            if (L == Level::Warning) icon = MsgBoxIcon::Warning;
+            else if (L >= Level::Error) icon = MsgBoxIcon::Error;
+
+            // Show message box
+            auto result = msgBox(msg, buttons, icon);
+            if (result == Debug) debugBreak();
+            else if (result == Abort) exit(1);
+        }
+    }
+
+    // Terminate on errors if showBoxOnError is not set
+    if (L == Level::Error && sShowBoxOnError == false) exit(1);
+
+    // Always terminate on fatal errors
+    if (L == Level::Fatal) exit(1);
+}
+
+bool Logger::setLogFilePath(const std::string& path) {
+#if _LOG_ENABLED
+    if (sLogFile) {
+        return false;
+    } else {
+        sLogFilePath = path;
+        return true;
+    }
+#else
+    return false;
+#endif
+}
+
+const std::string& Logger::getLogFilePath() { return sLogFilePath; }
+void Logger::showBoxOnError(bool showBox) { sShowBoxOnError = showBox; }
+bool Logger::isBoxShownOnError() { return sShowBoxOnError; }
+void Logger::setVerbosity(Level level) { sVerbosity = level; }
+
+}  // namespace Falcor

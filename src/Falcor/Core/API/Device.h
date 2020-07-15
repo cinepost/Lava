@@ -44,11 +44,11 @@
 
 namespace Falcor {
 
-// #ifdef _DEBUG
-#define DEFAULT_ENABLE_DEBUG_LAYER true
-// #else
-// #define DEFAULT_ENABLE_DEBUG_LAYER false
-// #endif
+#ifdef _DEBUG
+    #define DEFAULT_ENABLE_DEBUG_LAYER true
+#else
+    #define DEFAULT_ENABLE_DEBUG_LAYER false
+#endif
 
 struct DeviceApiData;
 

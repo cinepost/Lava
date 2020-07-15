@@ -63,8 +63,13 @@ VSOut vsMain(VSIn vsIn)
     return defaultVS(vsIn);
 }
 
+
 [earlydepthstencil]
+#ifdef __D3D12__
 GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
+#else 
+GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
+#endif
 {
     GBufferPSOut psOut;
 
@@ -137,7 +142,13 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
         HitInfo hit;
         hit.meshInstanceID = vsOut.meshInstanceID;
         hit.primitiveIndex = triangleIndex;
+        
+        #ifdef __D3D12__
         hit.barycentrics = barycentrics.yz;
+        #else
+        //hit.barycentrics = gl_BaryCoordSmoothAMD.xy;
+        #endif
+
         gVBuffer[ipos] = hit.encode();
     }
 

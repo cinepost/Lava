@@ -38,7 +38,6 @@
 namespace Falcor {
 
     void GraphicsStateObject::apiInit() {
-        LOG_WARN("GraphicsStateObject apiInit");
         // Shader Stages
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
         //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
@@ -102,7 +101,6 @@ namespace Falcor {
 
         VkPipeline pipeline;
         if (VK_FAILED(vkCreateGraphicsPipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline))) {
-            LOG_FTL("apiInit failed!");
             throw std::runtime_error("Could not create graphics pipeline.");
         }
         mApiHandle = ApiHandle::create(pipeline);

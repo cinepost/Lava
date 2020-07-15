@@ -41,7 +41,6 @@ struct GBufferParams
     float2  invFrameSize;       ///< 1.0 / frameSize.
     uint    frameCount;
     uint    rayFlags;           ///< Ray flags for TraceRay(). See D3D12_RAY_FLAG_* in d3d12.h.
-    int2   _pad0;
 };
 
 END_NAMESPACE_FALCOR

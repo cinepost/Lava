@@ -43,7 +43,6 @@ RootSignature::Desc& RootSignature::Desc::addDescriptorSet(const DescriptorSetLa
 }
 
 RootSignature::Desc& RootSignature::Desc::addRootDescriptor(DescType type, uint32_t regIndex, uint32_t spaceIndex, ShaderVisibility visibility) {
-    LOG_DBG("addRootDescriptor spaceIndex %u regIndex %u type: %s visibility: %s", spaceIndex, regIndex, to_string(type).c_str(), to_string(visibility).c_str());
     RootDescriptorDesc desc;
     desc.type = type;
     desc.regIndex = regIndex;
@@ -54,7 +53,6 @@ RootSignature::Desc& RootSignature::Desc::addRootDescriptor(DescType type, uint3
 }
 
 RootSignature::Desc& RootSignature::Desc::addRootConstants(uint32_t regIndex, uint32_t spaceIndex, uint32_t count) {
-    LOG_DBG("addRootConstants spaceIndex %u regIndex %u", spaceIndex, regIndex);
     assert(mSets.empty());  // For now we disallow both root-constants and descriptor-sets
     RootConstantsDesc desc;
     desc.count = count;
@@ -83,14 +81,11 @@ RootSignature::SharedPtr RootSignature::getEmpty() {
 }
 
 RootSignature::SharedPtr RootSignature::create(const Desc& desc) {
-    LOG_DBG("create root signature");
     bool empty = desc.mSets.empty() && desc.mRootDescriptors.empty() && desc.mRootConstants.empty();
     if (empty && spEmptySig) {
-        LOG_WARN("return empty root signature");
         return spEmptySig;
     }
 
-    LOG_DBG("creating root signature");
     SharedPtr pSig = SharedPtr(new RootSignature(desc));
     if (empty) spEmptySig = pSig;
 
@@ -121,23 +116,19 @@ ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::Desc
 // of descriptor set layouts being built for a root signature.
 //
 static void addParamBlockSets(const ParameterBlockReflection* pBlock, RootSignature::Desc& ioDesc) {
-    LOG_DBG("addParamBlockSets");
     auto defaultConstantBufferInfo = pBlock->getDefaultConstantBufferBindingInfo();
     if( defaultConstantBufferInfo.useRootConstants ) {
-        LOG_DBG("useRootConstants");
         uint32_t count = uint32_t(pBlock->getElementType()->getByteSize() / sizeof(uint32_t));
         ioDesc.addRootConstants(defaultConstantBufferInfo.regIndex, defaultConstantBufferInfo.regSpace, count);
     }
 
     uint32_t setCount = pBlock->getDescriptorSetCount();
-    LOG_DBG("setCount: %u", setCount);
     for (uint32_t s = 0; s < setCount; ++s) {
         auto& setLayout = pBlock->getDescriptorSetLayout(s);
         ioDesc.addDescriptorSet(setLayout);
     }
 
     uint32_t parameterBlockRangeCount = pBlock->getParameterBlockSubObjectRangeCount();
-    LOG_DBG("parameterBlockRangeCount: %u", parameterBlockRangeCount);
     for (uint32_t i = 0; i < parameterBlockRangeCount; ++i ) {
         uint32_t rangeIndex = pBlock->getParameterBlockSubObjectRangeIndex(i);
 
@@ -152,10 +143,7 @@ static void addParamBlockSets(const ParameterBlockReflection* pBlock, RootSignat
 
 // Add the root descriptors from `pBlock` to the root signature being built.
 static void addRootDescriptors(const ParameterBlockReflection* pBlock, RootSignature::Desc& ioDesc) {
-    LOG_DBG("addRootDescriptors");
-
     uint32_t rootDescriptorRangeCount = pBlock->getRootDescriptorRangeCount();
-    LOG_DBG("rootDescriptorRangeCount: %u", rootDescriptorRangeCount);
     for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i) {
         uint32_t rangeIndex = pBlock->getRootDescriptorRangeIndex(i);
 
@@ -169,7 +157,6 @@ static void addRootDescriptors(const ParameterBlockReflection* pBlock, RootSigna
 
     // Iterate over constant buffers and parameter blocks to recursively add their root descriptors.
     uint32_t resourceRangeCount = pBlock->getResourceRangeCount();
-    LOG_DBG("resourceRangeCount: %u", resourceRangeCount);
     for (uint32_t rangeIndex = 0; rangeIndex < resourceRangeCount; ++rangeIndex) {
         auto& bindingInfo = pBlock->getResourceRangeBindingInfo(rangeIndex);
 
@@ -185,7 +172,6 @@ static void addRootDescriptors(const ParameterBlockReflection* pBlock, RootSigna
 }
 
 RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector) {
-    LOG_DBG("RootSignature::create");
     assert(pReflector);
     RootSignature::Desc d;
     addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
@@ -202,7 +188,6 @@ RootSignature::SharedPtr RootSignature::createLocal(const EntryPointBaseReflecti
 #ifdef FALCOR_D3D12
     d.setLocal(true);
 #else
-    LOG_FTL("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
     logWarning("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
     throw std::runtime_error("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
 #endif

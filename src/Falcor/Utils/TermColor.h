@@ -25,9 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_TERMCOLOR_H_
+#define SRC_FALCOR_UTILS_TERMCOLOR_H_
+
 #include <string>
 #include <cstdio>
+#include <iostream>
 
 namespace Falcor
 {
@@ -48,4 +51,7 @@ namespace Falcor
         \return Returns string wrapped in color codes if stream is not a terminal, original string otherwise.
     */
     std::string colored(const std::string& str, TermColor color, const std::ostream& stream = std::cout);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_TERMCOLOR_H_

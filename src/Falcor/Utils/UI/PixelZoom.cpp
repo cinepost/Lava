@@ -25,10 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "PixelZoom.h"
-#include "Core/API/RenderContext.h"
-#include "Utils/UI/UserInput.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/UI/UserInput.h"
 
 namespace Falcor
 {
@@ -38,51 +38,40 @@ namespace Falcor
         float2 negOffset = pix - float2(offset, offset);
 
         //x
-        if (posOffset.x > width)
-        {
+        if (posOffset.x > width) {
             pix.x = pix.x - (posOffset.x - width);
-        }
-        else if (negOffset.x < 0)
-        {
+        } else if (negOffset.x < 0) {
             pix.x = pix.x - negOffset.x;
         }
 
         //y
-        if (posOffset.y > height)
-        {
+        if (posOffset.y > height) {
             pix.y = pix.y - (posOffset.y - height);
-        }
-        else if (negOffset.y < 0)
-        {
+        } else if (negOffset.y < 0) {
             pix.y = pix.y - negOffset.y;
         }
     }
 
-    PixelZoom::PixelZoom(const Fbo* pBackbuffer)
-    {
+    PixelZoom::PixelZoom(const Fbo* pBackbuffer) {
         onResizeSwapChain(pBackbuffer);
     }
 
-    PixelZoom::SharedPtr PixelZoom::create(const Fbo* pBackbuffer)
-    {
+    PixelZoom::SharedPtr PixelZoom::create(const Fbo* pBackbuffer) {
         return SharedPtr(new PixelZoom(pBackbuffer));
     }
 
-    void PixelZoom::onResizeSwapChain(const Fbo* pBackbuffer)
-    {
+    void PixelZoom::onResizeSwapChain(const Fbo* pBackbuffer) {
         assert(pBackbuffer);
         const Fbo::Desc& desc = pBackbuffer->getDesc();
         mpSrcBlitFbo = Fbo::create2D(pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
-        if (mpDstBlitFbo == nullptr)
-        {
+        
+        if (mpDstBlitFbo == nullptr) {
             mpDstBlitFbo = Fbo::create2D(mDstZoomSize, mDstZoomSize, desc);
         }
     }
 
-    void PixelZoom::render(RenderContext* pCtx, Fbo* backBuffer)
-    {
-        if (mShouldZoom)
-        {
+    void PixelZoom::render(RenderContext* pCtx, Fbo* backBuffer) {
+        if (mShouldZoom) {
             //copy backbuffer into src blit fbo
             pCtx->copyResource(mpSrcBlitFbo->getColorTexture(0).get(), backBuffer->getColorTexture(0).get());
 
@@ -103,10 +92,8 @@ namespace Falcor
         }
     }
 
-    bool PixelZoom::onMouseEvent(const MouseEvent& me)
-    {
-        if (mShouldZoom)
-        {
+    bool PixelZoom::onMouseEvent(const MouseEvent& me) {
+        if (mShouldZoom) {
             mMousePos = me.pos;
             //negative to swap scroll up to zoom in and scroll down to zoom out
             int32_t zoomDelta = -1 * mZoomCoefficient * (int32_t)me.wheelDelta.y;
@@ -116,12 +103,9 @@ namespace Falcor
         return false;
     }
 
-    bool PixelZoom::onKeyboardEvent(const KeyboardEvent& ke)
-    {
-        if (ke.type == KeyboardEvent::Type::KeyPressed || ke.type == KeyboardEvent::Type::KeyReleased)
-        {
-            if (ke.key == KeyboardEvent::Key::Z)
-            {
+    bool PixelZoom::onKeyboardEvent(const KeyboardEvent& ke) {
+        if (ke.type == KeyboardEvent::Type::KeyPressed || ke.type == KeyboardEvent::Type::KeyReleased) {
+            if (ke.key == KeyboardEvent::Key::Z) {
                 mShouldZoom = (ke.type == KeyboardEvent::Type::KeyPressed);
                 return true;
             }
@@ -129,4 +113,4 @@ namespace Falcor
         return false;
     }
 
-}
+}  // namespace Falcor

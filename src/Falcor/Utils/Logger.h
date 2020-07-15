@@ -25,21 +25,21 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_LOGGER_H_
+#define SRC_FALCOR_UTILS_LOGGER_H_
 
-namespace Falcor
-{
+#include "Falcor/Core/Framework.h"
+
+namespace Falcor {
     /** Container class for logging messages.
     *   To enable log messages, make sure _LOG_ENABLED is set to true in FalcorConfig.h.
     *   Messages are printed to a log file in the application directory. Using Logger#ShowBoxOnError() you can control if a message box will be shown as well.
     */
-    class dlldecl Logger
-    {
-    public:
+    class dlldecl Logger {
+     public:
         /** Log messages severity
         */
-        enum class Level
-        {
+        enum class Level {
             Info = 0,       ///< Informative messages.
             Warning = 1,    ///< Warning messages.
             Error = 2,      ///< Error messages. Application might be able to continue running, but incorrectly.
@@ -49,8 +49,7 @@ namespace Falcor
 
         /** Message box behavior
         */
-        enum class MsgBox
-        {
+        enum class MsgBox {
             Auto,           ///< Use `ContinueAbort` mode if the verbosity is `Error` or higher **and** `isBoxShownOnError()` returns `true`, otherwise use `None` mode.
             ContinueAbort,  ///< Show a message box with options to continue or abort (and an option to enter the debugger if present).
             RetryAbort,     ///< Show a message box with options to retry or abort (and an option to enter the debugger if present).
@@ -106,4 +105,7 @@ namespace Falcor
     inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Warning, msg, mbox); }
     inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Error, msg, mbox); }
     inline void logFatal(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Fatal, msg, mbox); }
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_LOGGER_H_

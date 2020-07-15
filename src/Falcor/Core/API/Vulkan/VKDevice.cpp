@@ -199,9 +199,11 @@ static void initDebugCallback(VkInstance instance, VkDebugReportCallbackEXT* pCa
     VkDebugReportCallbackCreateInfoEXT callbackCreateInfo = {};
     callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
     callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+
 #ifdef VK_REPORT_PERF_WARNINGS
     callbackCreateInfo.flags |= VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 #endif
+
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
     callbackCreateInfo.pfnCallback = &debugReportCallback;
 #endif
@@ -238,7 +240,6 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
     // Extensions to use when creating instance
     std::vector<const char*> requiredExtensions = {
         "VK_KHR_surface",
-        //"VK_AMD_gpu_shader_int16",
 #ifdef _WIN32
         "VK_KHR_win32_surface"
 #else
@@ -517,16 +518,18 @@ bool Device::createSwapChain(ResourceFormat colorFormat) {
     std::vector<VkPresentModeKHR> presentModes(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(mApiHandle, mApiHandle, &presentModeCount, presentModes.data());
 
-    // Select present mode, FIFO for VSync, otherwise preferring MAILBOX -> IMMEDIATE -> FIFO
+    // Select present mode, FIFO for VSync, otherwise preferring IMMEDIATE -> MAILBOX -> FIFO
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    
     bool mVsyncOn = false; // TODO: make this configurable
+    
     if (mVsyncOn == false) {
         for (size_t i = 0; i < presentModeCount; i++) {
-            if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+                presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            } else if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
                 presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
                 break;
-            } else if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-                presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
             }
         }
     }

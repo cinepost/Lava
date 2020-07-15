@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_HITINFO_H_
+#define SRC_FALCOR_SCENE_HITINFO_H_
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Utils/Debug/debug.h"
@@ -42,22 +43,17 @@ class HitInfo {
         // Setup bit allocations for encoding the meshInstanceID and primitive indices.
 
         uint32_t meshInstanceCount = pScene->getMeshInstanceCount();
-        LOG_DBG("Mesh instance count: %u", meshInstanceCount);
         uint32_t maxInstanceID = meshInstanceCount > 0 ? meshInstanceCount - 1 : 0;
         uint32_t instanceIndexBits = maxInstanceID > 0 ? bitScanReverse(maxInstanceID) + 1 : 0;
 
         uint32_t maxTriangleCount = 0;
         for (uint32_t meshID = 0; meshID < pScene->getMeshCount(); meshID++) {
             uint32_t triangleCount = pScene->getMesh(meshID).indexCount / 3;
-            LOG_DBG("Mesh triangle count: %u", triangleCount);
             maxTriangleCount = std::max(triangleCount, maxTriangleCount);
         }
 
         uint32_t maxTriangleID = maxTriangleCount > 0 ? maxTriangleCount - 1 : 0;
         uint32_t triangleIndexBits = maxTriangleID > 0 ? bitScanReverse(maxTriangleID) + 1 : 0;
-
-        LOG_WARN("instanceIndexBits: %u", instanceIndexBits);
-        LOG_WARN("triangleIndexBits: %u", triangleIndexBits);
 
         // assert(instanceIndexBits > 0 && triangleIndexBits > 0);
         if (instanceIndexBits + triangleIndexBits > 32 || (instanceIndexBits + triangleIndexBits == 32 && ((maxInstanceID << triangleIndexBits) | maxTriangleID) == kInvalidIndex)) {
@@ -74,3 +70,5 @@ class HitInfo {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_HITINFO_H_

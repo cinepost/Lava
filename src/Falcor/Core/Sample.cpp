@@ -409,13 +409,11 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont("");
             }
 
-            // LOG_INFO("ImGui render frame");
             mpGui->render(getRenderContext(), gpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
         }
     }
 
     void Sample::renderFrame() {
-        //LOG_INFO("render frame");
         if (gpDevice && gpDevice->isWindowOccluded()) return;
 
         // Check clock exit condition
@@ -463,7 +461,6 @@ void Sample::handleWindowSizeChange() {
         }
 
         Console::flush();
-        //LOG_INFO("render frame done");
     }
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory) {

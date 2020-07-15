@@ -37,7 +37,6 @@
 namespace Falcor {
 
 void ComputeStateObject::apiInit() {
-    LOG_DBG("apiInit");
     std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
     //initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
     initVkShaderStageInfo(mDesc.getProgramKernels(), shaderStageInfos);
@@ -51,15 +50,12 @@ void ComputeStateObject::apiInit() {
     info.stage = shaderStageInfos[0];
     info.layout = mDesc.mpRootSignature->getApiHandle();
 
-    LOG_DBG("info.layout %s", to_string(info.layout).c_str());
 
     VkPipeline pipeline;
     if (VK_FAILED(vkCreateComputePipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))) {
-        LOG_FTL("apiInit failed!");
         throw std::runtime_error("Could not create compute pipeline.");
     }
     mApiHandle = ApiHandle::create(pipeline);
-    LOG_DBG("apiInit done");
 }
 
 }  // namespace Falcor

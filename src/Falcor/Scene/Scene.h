@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/VAO.h"
+#ifndef SRC_FALCOR_SCENE_SCENE_H_
+#define SRC_FALCOR_SCENE_SCENE_H_
+
+#include "Falcor/Core/API/VAO.h"
 #include "Animation/Animation.h"
 #include "Lights/Light.h"
 #include "Lights/LightProbe.h"
@@ -38,8 +40,8 @@
 #include "Experimental/Scene/Lights/LightCollection.h"
 #include "SceneTypes.slang"
 
-namespace Falcor
-{
+namespace Falcor {
+
     class RtProgram;
     class RtProgramVars;
 
@@ -71,9 +73,8 @@ namespace Falcor
         - This is wrapped in getGlobalHitID() in Raytracing.slang.
     */
 
-    class dlldecl Scene : public std::enable_shared_from_this<Scene>
-    {
-    public:
+    class dlldecl Scene : public std::enable_shared_from_this<Scene> {
+     public:
         using SharedPtr = std::shared_ptr<Scene>;
         using ConstSharedPtrRef = const SharedPtr&;
         using LightList = std::vector<Light::SharedPtr>;
@@ -85,8 +86,7 @@ namespace Falcor
         // #SCENE: we should get rid of this. We can't right now because we can't create a structured-buffer of materials (MaterialData contains textures)
         Shader::DefineList getSceneDefines() const;
 
-        enum class RenderFlags
-        {
+        enum class RenderFlags {
             None                    = 0x0,
             UserRasterizerState     = 0x1,  ///< Use the rasterizer state currently bound to `pState`. If this flag is not set, the default rasterizer state will be used.
                                             ///< Note that we need to change the rasterizer state during rendering because some meshes have a negative scale factor, and hence the triangles will have a different winding order.
@@ -95,8 +95,7 @@ namespace Falcor
 
         /** Flags indicating if and what was updated in the scene
         */
-        enum class UpdateFlags
-        {
+        enum class UpdateFlags {
             None                        = 0x0,  ///< Nothing happened
             MeshesMoved                 = 0x1,  ///< Meshes moved
             CameraMoved                 = 0x2,  ///< The camera moved
@@ -113,14 +112,12 @@ namespace Falcor
 
         /** Settings for how the scene is updated
         */
-        enum class UpdateMode
-        {
+        enum class UpdateMode {
             Rebuild,    ///< Recreate acceleration structure when updates are needed
             Refit       ///< Update acceleration structure when updates are needed
         };
 
-        enum class CameraControllerType
-        {
+        enum class CameraControllerType {
             FirstPerson,
             Orbiter,
             SixDOF
@@ -422,8 +419,7 @@ namespace Falcor
 
         void updateGeometryStats();
 
-        struct GeometryStats
-        {
+        struct GeometryStats {
             size_t uniqueTriangleCount = 0;     ///< Number of unique triangles. A triangle can exist in multiple instances.
             size_t uniqueVertexCount = 0;       ///< Number of unique vertices. A vertex can be referenced by multiple triangles/instances.
             size_t instancedTriangleCount = 0;  ///< Number of instanced triangles. This is the total number of rendered triangles.
@@ -431,8 +427,7 @@ namespace Falcor
         };
 
         template<typename Object>
-        struct AnimatedObject
-        {
+        struct AnimatedObject {
             typename Object::SharedPtr pObject;
             bool animate = true;
             uint32_t nodeID = kInvalidNode;
@@ -446,16 +441,14 @@ namespace Falcor
 
         // Scene Geometry
         Vao::SharedPtr mpVao;
-        struct DrawArgs
-        {
+        struct DrawArgs {
             Buffer::SharedPtr pBuffer;
             uint32_t count = 0;
         } mDrawClockwiseMeshes, mDrawCounterClockwiseMeshes;
 
         static const uint32_t kInvalidNode = -1;
 
-        struct Node
-        {
+        struct Node {
             Node() = default;
             Node(const std::string& n, uint32_t p, const glm::mat4& t, const glm::mat4& l2b) : parent(p), name(n), transform(t), localToBindSpace(l2b) {};
             std::string name;
@@ -464,8 +457,7 @@ namespace Falcor
             glm::mat4 localToBindSpace; // Local to bind space transformation
         };
 
-        struct MeshGroup
-        {
+        struct MeshGroup {
             std::vector<uint32_t> meshList;     ///< List of meshId's that are part of the group.
         };
 
@@ -502,8 +494,7 @@ namespace Falcor
         float mCameraSpeed = 1.0f;
 
         // Saved Camera Viewpoints
-        struct Viewpoint
-        {
+        struct Viewpoint {
             float3 position;
             float3 target;
             float3 up;
@@ -523,8 +514,7 @@ namespace Falcor
 #ifdef FALCOR_D3D12
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
 
-        struct TlasData
-        {
+        struct TlasData {
             Buffer::SharedPtr pTlas;
             ShaderResourceView::SharedPtr pSrv;         ///< Shader Resource View for binding the TLAS
             Buffer::SharedPtr pInstanceDescs;           ///< Buffer holding instance descs for the TLAS
@@ -536,8 +526,7 @@ namespace Falcor
         Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
 
-        struct BlasData
-        {
+        struct BlasData {
             Buffer::SharedPtr pBlas;
             Buffer::SharedPtr pScratchBuffer;
 
@@ -557,4 +546,7 @@ namespace Falcor
 
     enum_class_operators(Scene::RenderFlags);
     enum_class_operators(Scene::UpdateFlags);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_SCENE_H_

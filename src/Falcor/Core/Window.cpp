@@ -33,9 +33,11 @@
 #define GLFW_INCLUDE_NONE
 
 #ifdef _WIN32
+
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "glfw3.h"
 #include "glfw3native.h"
+
 #else // LINUX
 
 // Replace the defines we undef'd in FalcorVK.h, because glfw will need them when it includes Xlib
@@ -44,79 +46,71 @@
 #define Status int
 #define Always 2
 
+#ifdef FALCOR_VK
+#define GLFW_INCLUDE_VULKAN
+#endif  // FALCOR_VK
+
 #define GLFW_EXPOSE_NATIVE_X11
 #include "GLFW/glfw3.h"
 #include "GLFW/glfw3native.h"
-#endif
 
-namespace Falcor
-{
-    class ApiCallbacks
-    {
-    public:
-        static void windowSizeCallback(GLFWwindow* pGlfwWindow, int width, int height)
-        {
-            // We also get here in case the window was minimized, so we need to ignore it
-            if (width == 0 || height == 0)
-            {
-                return;
-            }
+#endif  // _WIN32
 
-            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow != nullptr)
-            {
-                pWindow->resize(width, height); // Window callback is handled in here
-            }
+namespace Falcor {
+
+class ApiCallbacks {
+ public:
+    static void windowSizeCallback(GLFWwindow* pGlfwWindow, int width, int height) {
+        // We also get here in case the window was minimized, so we need to ignore it
+        if (width == 0 || height == 0) {
+            return;
         }
 
-        static void keyboardCallback(GLFWwindow* pGlfwWindow, int key, int scanCode, int action, int modifiers)
-        {
-            KeyboardEvent event;
-            if (prepareKeyboardEvent(key, action, modifiers, event))
-            {
-                Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-                if (pWindow != nullptr)
-                {
-                    pWindow->mpCallbacks->handleKeyboardEvent(event);
-                }
-            }
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        if (pWindow != nullptr) {
+            pWindow->resize(width, height); // Window callback is handled in here
         }
+    }
 
-        static void charInputCallback(GLFWwindow* pGlfwWindow, uint32_t input)
-        {
-            KeyboardEvent event;
-            event.type = KeyboardEvent::Type::Input;
-            event.codepoint = input;
-
+    static void keyboardCallback(GLFWwindow* pGlfwWindow, int key, int scanCode, int action, int modifiers) {
+        KeyboardEvent event;
+        if (prepareKeyboardEvent(key, action, modifiers, event)) {
             Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow != nullptr)
-            {
+            if (pWindow != nullptr) {
                 pWindow->mpCallbacks->handleKeyboardEvent(event);
             }
         }
+    }
 
-        static void mouseMoveCallback(GLFWwindow* pGlfwWindow, double mouseX, double mouseY)
-        {
-            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow != nullptr)
-            {
-                // Prepare the mouse data
-                MouseEvent event;
-                event.type = MouseEvent::Type::Move;
-                event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
-                event.screenPos = { mouseX, mouseY };
-                event.wheelDelta = float2(0, 0);
+    static void charInputCallback(GLFWwindow* pGlfwWindow, uint32_t input) {
+        KeyboardEvent event;
+        event.type = KeyboardEvent::Type::Input;
+        event.codepoint = input;
 
-                pWindow->mpCallbacks->handleMouseEvent(event);
-            }
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        if (pWindow != nullptr) {
+            pWindow->mpCallbacks->handleKeyboardEvent(event);
         }
+    }
 
-        static void mouseButtonCallback(GLFWwindow* pGlfwWindow, int button, int action, int modifiers)
-        {
-            MouseEvent event;
+    static void mouseMoveCallback(GLFWwindow* pGlfwWindow, double mouseX, double mouseY) {
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        if (pWindow != nullptr) {
             // Prepare the mouse data
-            switch (button)
-            {
+            MouseEvent event;
+            event.type = MouseEvent::Type::Move;
+            event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
+            event.screenPos = { mouseX, mouseY };
+            event.wheelDelta = float2(0, 0);
+
+            pWindow->mpCallbacks->handleMouseEvent(event);
+        }
+    }
+
+    static void mouseButtonCallback(GLFWwindow* pGlfwWindow, int button, int action, int modifiers) {
+        MouseEvent event;
+        // Prepare the mouse data
+        switch (button) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 event.type = (action == GLFW_PRESS) ? MouseEvent::Type::LeftButtonDown : MouseEvent::Type::LeftButtonUp;
                 break;
@@ -129,68 +123,61 @@ namespace Falcor
             default:
                 // Other keys are not supported
                 break;
-            }
-
-            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow != nullptr)
-            {
-                // Modifiers
-                event.mods = getInputModifiers(modifiers);
-                double x, y;
-                glfwGetCursorPos(pGlfwWindow, &x, &y);
-                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-
-                pWindow->mpCallbacks->handleMouseEvent(event);
-            }
         }
 
-        static void mouseWheelCallback(GLFWwindow* pGlfwWindow, double scrollX, double scrollY)
-        {
-            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow != nullptr)
-            {
-                MouseEvent event;
-                event.type = MouseEvent::Type::Wheel;
-                double x, y;
-                glfwGetCursorPos(pGlfwWindow, &x, &y);
-                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-                event.wheelDelta = (float2(float(scrollX), float(scrollY)));
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        
+        if (pWindow != nullptr) {
+            // Modifiers
+            event.mods = getInputModifiers(modifiers);
+            double x, y;
+            glfwGetCursorPos(pGlfwWindow, &x, &y);
+            event.pos = calcMousePos(x, y, pWindow->getMouseScale());
 
-                pWindow->mpCallbacks->handleMouseEvent(event);
+            pWindow->mpCallbacks->handleMouseEvent(event);
+        }
+    }
+
+    static void mouseWheelCallback(GLFWwindow* pGlfwWindow, double scrollX, double scrollY) {
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        
+        if (pWindow != nullptr) {
+            MouseEvent event;
+            event.type = MouseEvent::Type::Wheel;
+            double x, y;
+            glfwGetCursorPos(pGlfwWindow, &x, &y);
+            event.pos = calcMousePos(x, y, pWindow->getMouseScale());
+            event.wheelDelta = (float2(float(scrollX), float(scrollY)));
+
+            pWindow->mpCallbacks->handleMouseEvent(event);
+        }
+    }
+
+    static void errorCallback(int errorCode, const char* pDescription) {
+        std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
+        logError(errorMsg.c_str());
+    }
+
+    static void droppedFileCallback(GLFWwindow* pGlfwWindow, int count, const char** paths) {
+        Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+        if (pWindow) {
+            for (int i = 0; i < count; i++) {
+                std::string filename(paths[i]);
+                pWindow->mpCallbacks->handleDroppedFile(filename);
             }
         }
+    }
 
-        static void errorCallback(int errorCode, const char* pDescription)
-        {
-            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
-            logError(errorMsg.c_str());
+ private:
+
+    static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey) {
+        static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
+        if (glfwKey < GLFW_KEY_ESCAPE) {
+            // Printable keys are expected to have the same value
+            return (KeyboardEvent::Key)glfwKey;
         }
 
-        static void droppedFileCallback(GLFWwindow* pGlfwWindow, int count, const char** paths)
-        {
-            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            if (pWindow)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    std::string filename(paths[i]);
-                    pWindow->mpCallbacks->handleDroppedFile(filename);
-                }
-            }
-        }
-    private:
-
-        static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
-        {
-            static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
-            if (glfwKey < GLFW_KEY_ESCAPE)
-            {
-                // Printable keys are expected to have the same value
-                return (KeyboardEvent::Key)glfwKey;
-            }
-
-            switch (glfwKey)
-            {
+        switch (glfwKey) {
             case GLFW_KEY_ESCAPE:
                 return KeyboardEvent::Key::Escape;
             case GLFW_KEY_ENTER:
@@ -309,219 +296,189 @@ namespace Falcor
                 should_not_get_here();
                 return (KeyboardEvent::Key)0;
             }
-        }
-
-        static inline InputModifiers getInputModifiers(int mask)
-        {
-            InputModifiers mods;
-            mods.isAltDown = (mask & GLFW_MOD_ALT) != 0;
-            mods.isCtrlDown = (mask & GLFW_MOD_CONTROL) != 0;
-            mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
-            return mods;
-        }
-
-        static inline float2 calcMousePos(double xPos, double yPos, const float2& mouseScale)
-        {
-            float2 pos = float2(float(xPos), float(yPos));
-            pos *= mouseScale;
-            return pos;
-        }
-
-        static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event)
-        {
-            if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
-            {
-                return false;
-            }
-
-            event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
-            event.key = glfwToFalcorKey(key);
-            event.mods = getInputModifiers(modifiers);
-            return true;
-        }
-    };
-
-    Window::Window(ICallbacks* pCallbacks, const Desc& desc)
-        : mpCallbacks(pCallbacks)
-        , mDesc(desc)
-        , mMouseScale(1.0f / (float)desc.width, 1.0f / (float)desc.height)
-    {
     }
 
-    void Window::updateWindowSize()
-    {
-        // Actual window size may be clamped to slightly lower than monitor resolution
-        int32_t width, height;
-        glfwGetWindowSize(mpGLFWWindow, &width, &height);
-        setWindowSize(width, height);
+    static inline InputModifiers getInputModifiers(int mask) {
+        InputModifiers mods;
+        mods.isAltDown = (mask & GLFW_MOD_ALT) != 0;
+        mods.isCtrlDown = (mask & GLFW_MOD_CONTROL) != 0;
+        mods.isShiftDown = (mask & GLFW_MOD_SHIFT) != 0;
+        return mods;
     }
 
-    void Window::setWindowSize(uint32_t width, uint32_t height)
-    {
-        assert(width > 0 && height > 0);
-
-        mDesc.width = width;
-        mDesc.height = height;
-        mMouseScale.x = 1.0f / (float)mDesc.width;
-        mMouseScale.y = 1.0f / (float)mDesc.height;
+    static inline float2 calcMousePos(double xPos, double yPos, const float2& mouseScale) {
+        float2 pos = float2(float(xPos), float(yPos));
+        pos *= mouseScale;
+        return pos;
     }
 
-    Window::~Window()
-    {
-        glfwDestroyWindow(mpGLFWWindow);
-        glfwTerminate();
+    static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event) {
+        if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN) {
+            return false;
+        }
+
+        event.type = (action == GLFW_RELEASE ? KeyboardEvent::Type::KeyReleased : KeyboardEvent::Type::KeyPressed);
+        event.key = glfwToFalcorKey(key);
+        event.mods = getInputModifiers(modifiers);
+        return true;
+    }
+};
+
+Window::Window(ICallbacks* pCallbacks, const Desc& desc): mpCallbacks(pCallbacks), mDesc(desc), mMouseScale(1.0f / (float)desc.width, 1.0f / (float)desc.height) {}
+
+void Window::updateWindowSize() {
+    // Actual window size may be clamped to slightly lower than monitor resolution
+    int32_t width, height;
+    glfwGetWindowSize(mpGLFWWindow, &width, &height);
+    setWindowSize(width, height);
+}
+
+void Window::setWindowSize(uint32_t width, uint32_t height) {
+    assert(width > 0 && height > 0);
+
+    mDesc.width = width;
+    mDesc.height = height;
+    mMouseScale.x = 1.0f / (float)mDesc.width;
+    mMouseScale.y = 1.0f / (float)mDesc.height;
+}
+
+Window::~Window() {
+    glfwDestroyWindow(mpGLFWWindow);
+    glfwTerminate();
+}
+
+void Window::shutdown() {
+    glfwSetWindowShouldClose(mpGLFWWindow, 1);
+}
+
+Window::SharedPtr Window::create(const Desc& desc, ICallbacks* pCallbacks) {
+    // Set error callback
+    glfwSetErrorCallback(ApiCallbacks::errorCallback);
+
+    // Init GLFW
+    if (glfwInit() == GLFW_FALSE) {
+        logError("GLFW initialization failed");
+        return nullptr;
     }
 
-    void Window::shutdown()
-    {
-        glfwSetWindowShouldClose(mpGLFWWindow, 1);
+    SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc));
+
+    // Create the window
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    uint32_t w = desc.width;
+    uint32_t h = desc.height;
+
+    if (desc.mode == WindowMode::Fullscreen) {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        auto mon = glfwGetPrimaryMonitor();
+        auto mod = glfwGetVideoMode(mon);
+        w = mod->width;
+        h = mod->height;
+    } else if (desc.mode == WindowMode::Minimized) {
+        // Start with window being invisible
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     }
 
-    Window::SharedPtr Window::create(const Desc& desc, ICallbacks* pCallbacks)
-    {
-        // Set error callback
-        glfwSetErrorCallback(ApiCallbacks::errorCallback);
+    if (desc.resizableWindow == false) {
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    }
 
-        // Init GLFW
-        if (glfwInit() == GLFW_FALSE)
-        {
-            logError("GLFW initialization failed");
-            return nullptr;
-        }
+    GLFWwindow* pGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
 
-        SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc));
+    if (pGLFWWindow == nullptr) {
+        logError("Window creation failed!");
+        return nullptr;
+    }
 
-        // Create the window
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        uint32_t w = desc.width;
-        uint32_t h = desc.height;
+    // Init handles
+    pWindow->mpGLFWWindow = pGLFWWindow;
 
-        if (desc.mode == WindowMode::Fullscreen)
-        {
-            glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-            auto mon = glfwGetPrimaryMonitor();
-            auto mod = glfwGetVideoMode(mon);
-            w = mod->width;
-            h = mod->height;
-        }
-        else if (desc.mode == WindowMode::Minimized)
-        {
-            // Start with window being invisible
-            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        }
-
-        if (desc.resizableWindow == false)
-        {
-            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-        }
-
-        GLFWwindow* pGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
-
-        if (pGLFWWindow == nullptr)
-        {
-            logError("Window creation failed!");
-            return nullptr;
-        }
-
-        // Init handles
-        pWindow->mpGLFWWindow = pGLFWWindow;
 #ifdef _WIN32
-        pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-        assert(pWindow->mApiHandle);
+    pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
+    assert(pWindow->mApiHandle);
 #else
-        pWindow->mApiHandle.pDisplay = glfwGetX11Display();
-        pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
-        assert(pWindow->mApiHandle.pDisplay != nullptr);
+    pWindow->mApiHandle.pDisplay = glfwGetX11Display();
+    pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
+    assert(pWindow->mApiHandle.pDisplay != nullptr);
 #endif
-        setMainWindowHandle(pWindow->mApiHandle);
+    setMainWindowHandle(pWindow->mApiHandle);
 
-        pWindow->updateWindowSize();
+    pWindow->updateWindowSize();
 
-        glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
+    glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
 
-        // Set callbacks
-        glfwSetWindowSizeCallback(pGLFWWindow, ApiCallbacks::windowSizeCallback);
-        glfwSetKeyCallback(pGLFWWindow, ApiCallbacks::keyboardCallback);
-        glfwSetMouseButtonCallback(pGLFWWindow, ApiCallbacks::mouseButtonCallback);
-        glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
-        glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
-        glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
-        glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
+    // Set callbacks
+    glfwSetWindowSizeCallback(pGLFWWindow, ApiCallbacks::windowSizeCallback);
+    glfwSetKeyCallback(pGLFWWindow, ApiCallbacks::keyboardCallback);
+    glfwSetMouseButtonCallback(pGLFWWindow, ApiCallbacks::mouseButtonCallback);
+    glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
+    glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
+    glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
+    glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
 
-        if (desc.mode == WindowMode::Minimized)
-        {
-            // Iconify and show window to make it available if user clicks on it
-            glfwIconifyWindow(pWindow->mpGLFWWindow);
-            glfwShowWindow(pWindow->mpGLFWWindow);
-        }
-
-        return pWindow;
+    if (desc.mode == WindowMode::Minimized) {
+        // Iconify and show window to make it available if user clicks on it
+        glfwIconifyWindow(pWindow->mpGLFWWindow);
+        glfwShowWindow(pWindow->mpGLFWWindow);
     }
 
-    void Window::resize(uint32_t width, uint32_t height)
-    {
-        glfwSetWindowSize(mpGLFWWindow, width, height);
+    return pWindow;
+}
 
-        // In minimized mode GLFW reports incorrect window size
-        if (mDesc.mode == WindowMode::Minimized)
-        {
-            setWindowSize(width, height);
-        }
-        else
-        {
-            updateWindowSize();
-        }
+void Window::resize(uint32_t width, uint32_t height) {
+    glfwSetWindowSize(mpGLFWWindow, width, height);
 
-        mpCallbacks->handleWindowSizeChange();
+    // In minimized mode GLFW reports incorrect window size
+    if (mDesc.mode == WindowMode::Minimized) {
+        setWindowSize(width, height);
+    } else {
+        updateWindowSize();
     }
 
-    void Window::msgLoop()
-    {
-        // Samples often rely on a size change event as part of initialization
-        // This would have happened from a WM_SIZE message when calling ShowWindow on Win32
-        mpCallbacks->handleWindowSizeChange();
+    mpCallbacks->handleWindowSizeChange();
+}
 
-        if (mDesc.mode != WindowMode::Minimized)
-        {
-            glfwShowWindow(mpGLFWWindow);
-            glfwFocusWindow(mpGLFWWindow);
-        }
+void Window::msgLoop() {
+    // Samples often rely on a size change event as part of initialization
+    // This would have happened from a WM_SIZE message when calling ShowWindow on Win32
+    mpCallbacks->handleWindowSizeChange();
 
-        while (glfwWindowShouldClose(mpGLFWWindow) == false)
-        {
-            glfwPollEvents();
-            mpCallbacks->renderFrame();
-        }
+    if (mDesc.mode != WindowMode::Minimized) {
+        glfwShowWindow(mpGLFWWindow);
+        glfwFocusWindow(mpGLFWWindow);
     }
 
-    void Window::setWindowPos(int32_t x, int32_t y)
-    {
-        glfwSetWindowPos(mpGLFWWindow, x, y);
-    }
-
-    void Window::setWindowTitle(const std::string& title)
-    {
-        glfwSetWindowTitle(mpGLFWWindow, title.c_str());
-    }
-
-    void Window::pollForEvents()
-    {
+    while (glfwWindowShouldClose(mpGLFWWindow) == false) {
         glfwPollEvents();
-    }
-
-    SCRIPT_BINDING(Window)
-    {
-        auto w = m.class_<Window>("Window");
-        w.func_("setWindowPos", &Window::setWindowPos);
-
-        auto windowMode = m.enum_<Window::WindowMode>("WindowMode");
-        windowMode.regEnumVal(Window::WindowMode::Normal);
-        windowMode.regEnumVal(Window::WindowMode::Fullscreen);
-        windowMode.regEnumVal(Window::WindowMode::Minimized);
-
-        auto winDesc = m.class_<Window::Desc>("WindowDesc");
-#define desc_field(f_) rwField(#f_, &Window::Desc::f_)
-        winDesc.desc_field(width).desc_field(height).desc_field(title).desc_field(mode).desc_field(resizableWindow);
-#undef desc_field
+        mpCallbacks->renderFrame();
     }
 }
+
+void Window::setWindowPos(int32_t x, int32_t y) {
+    glfwSetWindowPos(mpGLFWWindow, x, y);
+}
+
+void Window::setWindowTitle(const std::string& title) {
+    glfwSetWindowTitle(mpGLFWWindow, title.c_str());
+}
+
+void Window::pollForEvents() {
+    glfwPollEvents();
+}
+
+SCRIPT_BINDING(Window) {
+    auto w = m.class_<Window>("Window");
+    w.func_("setWindowPos", &Window::setWindowPos);
+
+    auto windowMode = m.enum_<Window::WindowMode>("WindowMode");
+    windowMode.regEnumVal(Window::WindowMode::Normal);
+    windowMode.regEnumVal(Window::WindowMode::Fullscreen);
+    windowMode.regEnumVal(Window::WindowMode::Minimized);
+
+    auto winDesc = m.class_<Window::Desc>("WindowDesc");
+#define desc_field(f_) rwField(#f_, &Window::Desc::f_)
+    winDesc.desc_field(width).desc_field(height).desc_field(title).desc_field(mode).desc_field(resizableWindow);
+#undef desc_field
+}
+
+}  // namespace Falcor

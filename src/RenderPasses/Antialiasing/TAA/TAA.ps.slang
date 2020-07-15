@@ -27,6 +27,7 @@
  **************************************************************************/
 import Utils.Color.ColorHelpers;
 
+[[vk::binding(0, 0)]]
 cbuffer PerFrameCB : register(b0)
 {
     float gAlpha;

@@ -38,9 +38,7 @@
 
 namespace Falcor {
 
-    ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
-        : CopyContext(type, queue)
-    {
+    ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) : CopyContext(type, queue) {
         assert(queue);
     }
 
@@ -68,17 +66,13 @@ namespace Falcor {
     */
 
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
-        LOG_DBG("prepare for dispatch");
         assert(pState);
 
-        LOG_WARN("getCSO");
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
 
         // Apply the vars. Must be first because applyComputeVars() might cause a flush
         if(pVars) {
-            LOG_WARN("trying applyComputeVars");
             if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) {
-                LOG_ERR("applyComputeVars failed !!!");
                 return false;
             }
         } 
@@ -95,7 +89,6 @@ namespace Falcor {
 
         mpLastBoundComputeVars = pVars;
         mCommandsPending = true;
-        LOG_DBG("prepare for dispatch done ");
         return true;
     }
 
@@ -175,7 +168,6 @@ namespace Falcor {
         }
 
         if (prepareForDispatch(pState, pVars) == false) {
-            LOG_WARN("prepareForDispatch failed !");
             return;
         }
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
@@ -184,7 +176,6 @@ namespace Falcor {
     void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
     {
         if (prepareForDispatch(pState, pVars) == false) {
-            LOG_WARN("prepareForDispatch failed !");
             return;
         }
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);

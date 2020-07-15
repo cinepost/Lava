@@ -25,12 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "HaltonSamplePattern.h"
 
-namespace Falcor
-{
-    const float2 HaltonSamplePattern::kPattern[8] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
+namespace Falcor {
+
+    const float2 HaltonSamplePattern::kPattern[8] = 
+  { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
     { 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
     { 3.0f / 4.0f - 0.5f, 1.0f / 9.0f - 0.5f },
     { 1.0f / 8.0f - 0.5f, 4.0f / 9.0f - 0.5f },
@@ -39,10 +40,10 @@ namespace Falcor
     { 7.0f / 8.0f - 0.5f, 5.0f / 9.0f - 0.5f },
     { 0.5f / 8.0f - 0.5f, 8.0f / 9.0f - 0.5f } };
 
-    HaltonSamplePattern::HaltonSamplePattern(uint32_t sampleCount)
-    {
+    HaltonSamplePattern::HaltonSamplePattern(uint32_t sampleCount) {
         // FIXME: Support arbitrary sample counts by computing the sequence instead of using a table
         if (sampleCount < 1 || sampleCount > 8) logWarning("HaltonSamplePattern() requires sampleCount in the range [1,8]. Clamping to that range.");
         mSampleCount = std::max(1u, std::min(8u, sampleCount));
     }
-}
+
+}  // namespace Falcor

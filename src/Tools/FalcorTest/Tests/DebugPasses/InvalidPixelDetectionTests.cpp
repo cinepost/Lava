@@ -34,7 +34,7 @@ namespace Falcor
         #ifdef _WIN32
         RenderPassLibrary::instance().loadLibrary("DebugPasses.dll");
         #else 
-        RenderPassLibrary::instance().loadLibrary("DebugPasses_pass.dso");
+        RenderPassLibrary::instance().loadLibrary("DebugPasses.rpl");
         #endif
         
         float pInitData[8] = {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::signaling_NaN(), std::numeric_limits<float>::infinity(),

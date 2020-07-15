@@ -96,27 +96,31 @@ ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
 
 
 # Python
-find_package(PythonLibs 3.7 REQUIRED)
-include_directories(${PYTHON_INCLUDE_DIRS})
+find_package( PythonLibs 3.7 REQUIRED )
+include_directories( ${PYTHON_INCLUDE_DIRS} )
 
 # FreeImage
 find_package(FreeImage REQUIRED)
-include_directories(${FREEIMAGE_INCLUDE_DIRS})
+include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
 
 # Find Boost libs
 find_package( Boost COMPONENTS system filesystem REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # We use Boost static libs
-add_definitions(-DBOOST_LOG_DYN_LINK)
+add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
-if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-find_library(SLANG_LIBRARY slang HINTS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/debug)
-else ()
-find_library(SLANG_LIBRARY slang HINTS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/release)
-endif ()
-message ("SLANG lib: ${SLANG_LIBRARY}")
+find_library( SLANG_LIBRARY_DEBUG slang PATHS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/debug )
+
+find_library( SLANG_LIBRARY_RELEASE slang PATHS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/release )
+
+set( SLANG_LIBRARY
+  debug ${SLANG_LIBRARY_DEBUG}
+  optimized ${SLANG_LIBRARY_RELEASE}
+)
+
+message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )

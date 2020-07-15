@@ -39,7 +39,6 @@ ComputeContext::SharedPtr ComputeContext::create(CommandQueueHandle queue) {
 }
 
 bool ComputeContext::applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature) {
-    LOG_DBG("applyComputeVars");
     bool varsChanged = (pVars != mpLastBoundComputeVars);
 
     // FIXME TODO Temporary workaround

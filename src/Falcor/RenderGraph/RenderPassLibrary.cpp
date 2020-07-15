@@ -50,7 +50,7 @@ namespace Falcor {
     #ifdef _MSC_VER
     static const std::string kPassLibExt = ".dll";
     #else
-    static const std::string kPassLibExt = ".dso";
+    static const std::string kPassLibExt = ".rpl";
     #endif
 
     static const std::string kPassTempLibSuffix = ".falcor";
@@ -103,7 +103,7 @@ namespace Falcor {
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(RenderContext* pRenderContext, const char* className, const Dictionary& dict) {
         if (mPasses.find(className) == mPasses.end()) {
             // See if we can load a DLL with the class's name and retry
-            std::string libName = std::string(className) + "_pass" + kPassLibExt;
+            std::string libName = std::string(className) + kPassLibExt;
             logInfo("Can't find a render-pass named `" + std::string(className) + "`. Trying to load a render-pass library `" + libName + '`' + kPassLibExt);
             loadLibrary(libName);
 

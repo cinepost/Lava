@@ -148,8 +148,6 @@ void ForwardLightingPass::initDepth(const RenderData& renderData)
 }
 
 void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData) {
-    LOG_ERR("init FBO!!");
-
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
     mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
     mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);

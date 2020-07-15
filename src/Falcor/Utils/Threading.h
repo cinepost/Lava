@@ -25,52 +25,56 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_THREADING_H_
+#define SRC_FALCOR_UTILS_THREADING_H_
+
 #include <thread>
+#include "Falcor/Core/Framework.h"
 
-namespace Falcor
-{
-    class dlldecl Threading
-    {
-    public:
-        const static uint32_t kDefaultThreadCount = 16;
+namespace Falcor {
 
-        /** Handle to a dispatched task
+class dlldecl Threading {
+ public:
+    const static uint32_t kDefaultThreadCount = 16;
 
-            TODO: Implementation
+    /** Handle to a dispatched task
+
+        TODO: Implementation
+    */
+    class Task {
+     public:
+        /** Check if task is still executing
         */
-        class Task
-        {
-        public:
-            /** Check if task is still executing
-            */
-            bool isRunning();
+        bool isRunning();
 
-            /** Wait for task to finish executing
-            */
-            void finish();
-
-        private:
-            Task();
-            friend class Threading;
-        };
-
-        /** Initializes the global thread pool
-            \param[in] threadCount Number of threads in the pool
+        /** Wait for task to finish executing
         */
-        static void start(uint32_t threadCount = kDefaultThreadCount);
+        void finish();
 
-        /** Waits for all currently executing threads to finish and shuts down the thread pool
-        */
-        static void shutdown();
-
-        /** Returns the maximum number of concurrent threads supported by the hardware
-        */
-        static uint32_t getLogicalThreadCount() { return std::thread::hardware_concurrency(); }
-
-        /** Starts a task on an available thread.
-            \return Handle to the task
-        */
-        static Task dispatchTask(const std::function<void(void)>& func);
+     private:
+        Task();
+        friend class Threading;
     };
-}
+
+    /** Initializes the global thread pool
+        \param[in] threadCount Number of threads in the pool
+    */
+    static void start(uint32_t threadCount = kDefaultThreadCount);
+
+    /** Waits for all currently executing threads to finish and shuts down the thread pool
+    */
+    static void shutdown();
+
+    /** Returns the maximum number of concurrent threads supported by the hardware
+    */
+    static uint32_t getLogicalThreadCount() { return std::thread::hardware_concurrency(); }
+
+    /** Starts a task on an available thread.
+        \return Handle to the task
+    */
+    static Task dispatchTask(const std::function<void(void)>& func);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_THREADING_H_

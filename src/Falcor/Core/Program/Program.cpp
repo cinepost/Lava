@@ -476,6 +476,12 @@ namespace Falcor
         std::string sm = "__SM_" + mDesc.mShaderModel + "__";
         addSlangDefine(sm.c_str(), "1");
 
+#ifdef FALCOR_VK
+        addSlangDefine("__VULKAN__", "1");
+#else
+        addSlangDefine("__D3D12__", "1");
+#endif
+
         sessionDesc.preprocessorMacros = slangDefines.data();
         sessionDesc.preprocessorMacroCount = (SlangInt) slangDefines.size();
 

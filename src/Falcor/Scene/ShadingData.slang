@@ -37,27 +37,51 @@ import Utils.Helpers;
 struct ShadingData
 {
     float3  posW;                   ///< Shading hit position in world space
+    float   _pad0;
+
     float3  V;                      ///< Direction to the eye at shading hit
+    float   _pad1;
+
     float3  N;                      ///< Shading normal at shading hit
+    float   _pad2;
+
     float3  T;                      ///< Shading tangent at shading hit
+    float   _pad3;
+
     float3  B;                      ///< Shading bitangent at shading hit
+    float   _pad4;
+
     float2  uv;                     ///< Texture mapping coordinates
     float   NdotV;                  // Unclamped, can be negative.
+    float   _pad5;
 
     // Primitive data
     float3  faceN;                  ///< Face normal in world space, always on the front-facing side.
+    float   _pad6;
+
     bool    frontFacing;            ///< True if primitive seen from the front-facing side.
     bool    doubleSided;            ///< Material double-sided flag, if false only shade front face.
+    int     _ppad1;
+    int     _ppad2;
 
     // Pre-loaded texture data
     uint    materialID;             ///< Material ID at shading location.
-    float3  diffuse;                ///< Diffuse albedo.
     float   opacity;
-    float3  specular;               ///< Specular albedo.
     float   linearRoughness;        ///< This is the original roughness, before re-mapping.
     float   ggxAlpha;               ///< This is the re-mapped roughness value, which should be used for GGX computations. It equals `roughness^2`
+
+
+    float3  diffuse;                ///< Diffuse albedo.
+    float   _pad7;
+
+    float3  specular;               ///< Specular albedo.
+    float   _pad8;
+    
     float3  emissive;
+    float   _pad9;
+
     float4  occlusion;
+
     float   IoR;                    ///< Index of refraction of the medium "behind" the surface.
     float   metallic;               ///< Metallic parameter, blends between dielectric and conducting BSDFs.
     float   specularTransmission;   ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.

@@ -63,8 +63,14 @@ struct MeshInstanceData
 struct StaticVertexData
 {
     float3 position;
+    float  _pad1;
+
     float3 normal;
+    float  _pad2;
+
     float3 bitangent;
+    float  _pad3;
+
     float2 texCrd;
 };
 
@@ -144,10 +150,20 @@ struct DynamicVertexData
 struct VertexData
 {
     float3 posW;            ///< Position in world space.
+    float  _pad1;
+
     float3 normalW;         ///< Shading normal in world space.
+    float  _pad2;
+
     float3 bitangentW;      ///< Shading bitangent in world space.
+    float  _pad3;
+
     float2 texC;            ///< Texture coordinate.
+    float  _pad4;
+
     float3 faceNormalW;     ///< Face normal in world space.
+    float  _pad5;
+    
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used
 };
 

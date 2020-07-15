@@ -37,42 +37,24 @@ ComputeState::ComputeState() {
 }
 
 ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
-    LOG_WARN("1");
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
     bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
     
-     LOG_WARN("2");
     if (newProgram) {
-        LOG_WARN("2.1");
         mCachedData.pProgramKernels = pProgramKernels.get();
         mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
     }
 
-    LOG_WARN("3");
-    if(!pProgramKernels) {
-        LOG_WARN("get RootSignature::getEmpty");
-    } else {
-        LOG_WARN("pProgramKernels->getRootSignature");
-    }
     RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty();
 
-    if(!pRoot.get()) {
-        LOG_FTL("no pRoot.get()!!!");
-    }
-
-    LOG_WARN("4");
     if (mCachedData.pRootSig != pRoot.get()) {
-        LOG_WARN("4.1");
         mCachedData.pRootSig = pRoot.get();
         mpCsoGraph->walk((void*)mCachedData.pRootSig);
     }
 
-    LOG_WARN("5");
     ComputeStateObject::SharedPtr pCso = mpCsoGraph->getCurrentNode();
 
-    LOG_WARN("6");
     if(pCso == nullptr) {
-        LOG_WARN("6.1");
         mDesc.setProgramKernels(pProgramKernels);
         mDesc.setRootSignature(pRoot);
 
@@ -80,22 +62,14 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
             return pCso && (desc == pCso->getDesc());
         };
 
-        LOG_WARN("6.2");
         if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
-            LOG_WARN("6.2.1");
             pCso = mpCsoGraph->getCurrentNode();
         } else {
-            LOG_WARN("6.2.2");
             pCso = ComputeStateObject::create(mDesc);
-            if(!pCso) {
-                LOG_ERR("pCso creation error!!!");
-            }
-            LOG_WARN("6.2.3");
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }
 
-    LOG_WARN("return ");
     return pCso;
 }
 

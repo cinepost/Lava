@@ -102,19 +102,12 @@ namespace Falcor
         PrefixSum::SharedPtr pPrefixSum = PrefixSum::create();
 
         // Test prefix sums on varying size buffers.
-        LOG_WARN("test 1");
         testPrefixSum(ctx, pPrefixSum, 1);
-        LOG_WARN("test 27");
         testPrefixSum(ctx, pPrefixSum, 27);
-        LOG_WARN("test 64");
         testPrefixSum(ctx, pPrefixSum, 64);
-        LOG_WARN("test 2049");
         testPrefixSum(ctx, pPrefixSum, 2049);
-        LOG_WARN("test 10201");
         testPrefixSum(ctx, pPrefixSum, 10201);
-        LOG_WARN("test 231917");
         testPrefixSum(ctx, pPrefixSum, 231917);
-        LOG_WARN("test 1088921");
         testPrefixSum(ctx, pPrefixSum, 1088921);
     }
 }

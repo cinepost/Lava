@@ -52,7 +52,7 @@ const char* kDefaultPassIcon = "DefaultPassIcon.png";
 #ifdef _MSC_VER
 static const std::string kPassLibExt = "dll";
 #else
-static const std::string kPassLibExt = "dso";
+static const std::string kPassLibExt = "rpl";
 #endif
 
 RenderGraphEditor::RenderGraphEditor(): mCurrentGraphIndex(0) {

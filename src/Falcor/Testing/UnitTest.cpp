@@ -211,7 +211,6 @@ std::vector<Test>* testRegistry;
         assert(mpVars);
         mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
         assert(mStructuredBuffers[name].pBuffer);
-        LOG_WARN("StructuredBuffer format: %s", to_string(mStructuredBuffers[name].pBuffer->getFormat()).c_str());
         if (pInitData) {
             size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
             if (initDataSize == 0) initDataSize = expectedDataSize;

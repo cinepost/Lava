@@ -465,7 +465,6 @@ void Renderer::executeActiveGraph(RenderContext* pRenderContext) {
 }
 
 void Renderer::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
-    LOG_DBG("begin frame");
     for (auto& pe : mpExtensions)  pe->beginFrame(pRenderContext, pTargetFbo);
 }
 
@@ -474,7 +473,6 @@ void Renderer::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTa
 }
 
 void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
-    LOG_DBG("on frame render");
     if (mScriptFilename.size()) {
         std::string s = mScriptFilename;
         mScriptFilename.clear();
@@ -554,8 +552,6 @@ std::string Renderer::getVersionString() {
 
 }  // namespace Mogwai
 
-std::atomic_uint32_t _dbg_i = 0;
-
 void handler(int sig) {
   void *array[10];
   size_t size;
@@ -566,7 +562,6 @@ void handler(int sig) {
   // print out all the frames to stderr
 
   std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
-  fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
   fprintf(stderr, "Error: signal %d:\n", sig);
   backtrace_symbols_fd(array, size, STDERR_FILENO);
   exit(1);
@@ -578,7 +573,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
+
+#ifdef DEBUG
     signal(SIGSEGV, handler);   // install our debug handler
+#endif
 
     try {
         msgBoxTitle("Mogwai");

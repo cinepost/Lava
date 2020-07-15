@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_FBO_H_
 #define SRC_FALCOR_CORE_API_FBO_H_
 
+#include <unordered_set>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceViews.h"

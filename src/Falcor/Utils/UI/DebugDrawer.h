@@ -25,85 +25,88 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/VAO.h"
+#ifndef SRC_FACLOR_UTILS_UI_DEBUGDRAWER_H_
+#define SRC_FACLOR_UTILS_UI_DEBUGDRAWER_H_
 
-namespace Falcor
-{
-    struct BoundingBox;
-    class RenderContext;
-    class Camera;
-    class GraphicsState;
-    class GraphicsVars;
+#include "Falcor/Core/API/VAO.h"
 
-    /** Utility class to assist in drawing debug geometry
+namespace Falcor {
+
+struct BoundingBox;
+class RenderContext;
+class Camera;
+class GraphicsState;
+class GraphicsVars;
+
+/** Utility class to assist in drawing debug geometry
+*/
+class dlldecl DebugDrawer {
+ public:
+
+    using SharedPtr = std::shared_ptr<DebugDrawer>;
+    using SharedConstPtr = std::shared_ptr<const DebugDrawer>;
+
+    static const uint32_t kMaxVertices = 10000;     ///< Default max number of vertices per DebugDrawer instance
+    static const uint32_t kPathDetail = 10;         ///< Segments between keyframes
+
+    using Quad = std::array<float3, 4>;
+
+    /** Create a new object for drawing debug geometry.
+        \param[in] maxVertices Maximum number of vertices that will be drawn.
+        \return New object, or throws an exception if creation failed.
     */
-    class dlldecl DebugDrawer
-    {
-    public:
+    static SharedPtr create(uint32_t maxVertices = kMaxVertices);
 
-        using SharedPtr = std::shared_ptr<DebugDrawer>;
-        using SharedConstPtr = std::shared_ptr<const DebugDrawer>;
+    /** Sets the color for following geometry
+    */
+    void setColor(const float3& color) { mCurrentColor = color; }
 
-        static const uint32_t kMaxVertices = 10000;     ///< Default max number of vertices per DebugDrawer instance
-        static const uint32_t kPathDetail = 10;         ///< Segments between keyframes
+    /** Adds a line segment
+    */
+    void addLine(const float3& a, const float3& b);
 
-        using Quad = std::array<float3, 4>;
+    /** Adds a quad described by four corner points
+    */
+    void addQuad(const Quad& quad);
 
-        /** Create a new object for drawing debug geometry.
-            \param[in] maxVertices Maximum number of vertices that will be drawn.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(uint32_t maxVertices = kMaxVertices);
+    /** Adds a world space AABB
+    */
+    void addBoundingBox(const BoundingBox& aabb);
 
-        /** Sets the color for following geometry
-        */
-        void setColor(const float3& color) { mCurrentColor = color; }
+    /** Renders the contents of the debug drawer
+    */
+    void render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, Camera *pCamera);
 
-        /** Adds a line segment
-        */
-        void addLine(const float3& a, const float3& b);
+    /** Get how many vertices are currently pushed
+    */
+    uint32_t getVertexCount() const { return (uint32_t)mVertexData.size(); }
 
-        /** Adds a quad described by four corner points
-        */
-        void addQuad(const Quad& quad);
+    /** Get the Vao of vertex data
+    */
+    const Vao::SharedPtr& getVao() const { return mpVao; };
 
-        /** Adds a world space AABB
-        */
-        void addBoundingBox(const BoundingBox& aabb);
+    /** Clears vertices
+    */
+    void clear() { mVertexData.clear(); mDirty = true; }
 
-        /** Renders the contents of the debug drawer
-        */
-        void render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, Camera *pCamera);
+private:
 
-        /** Get how many vertices are currently pushed
-        */
-        uint32_t getVertexCount() const { return (uint32_t)mVertexData.size(); }
+    void uploadBuffer();
 
-        /** Get the Vao of vertex data
-        */
-        const Vao::SharedPtr& getVao() const { return mpVao; };
+    DebugDrawer(uint32_t maxVertices);
 
-        /** Clears vertices
-        */
-        void clear() { mVertexData.clear(); mDirty = true; }
+    float3 mCurrentColor;
 
-    private:
-
-        void uploadBuffer();
-
-        DebugDrawer(uint32_t maxVertices);
-
-        float3 mCurrentColor;
-
-        struct LineVertex
-        {
-            float3 position;
-            float3 color;
-        };
-
-        Vao::SharedPtr mpVao;
-        std::vector<LineVertex> mVertexData;
-        bool mDirty = true;
+    struct LineVertex {
+        float3 position;
+        float3 color;
     };
-}
+
+    Vao::SharedPtr mpVao;
+    std::vector<LineVertex> mVertexData;
+    bool mDirty = true;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FACLOR_UTILS_UI_DEBUGDRAWER_H_

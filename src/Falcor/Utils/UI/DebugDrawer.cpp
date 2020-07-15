@@ -25,73 +25,67 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "DebugDrawer.h"
-#include "Utils/Math/AABB.h"
-#include "Core/API/RenderContext.h"
-#include "Scene/Camera/Camera.h"
+#include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Scene/Camera/Camera.h"
 
-namespace Falcor
-{
-    DebugDrawer::SharedPtr DebugDrawer::create(uint32_t maxVertices)
-    {
-        return SharedPtr(new DebugDrawer(maxVertices));
+namespace Falcor {
+
+DebugDrawer::SharedPtr DebugDrawer::create(uint32_t maxVertices) {
+    return SharedPtr(new DebugDrawer(maxVertices));
+}
+
+void DebugDrawer::addLine(const float3& a, const float3& b) {
+    if (mVertexData.capacity() - mVertexData.size() >= 2) {
+        mVertexData.push_back({a, mCurrentColor});
+        mVertexData.push_back({b, mCurrentColor});
+        mDirty = true;
     }
+}
 
-    void DebugDrawer::addLine(const float3& a, const float3& b)
-    {
-        if (mVertexData.capacity() - mVertexData.size() >= 2)
-        {
-            mVertexData.push_back({a, mCurrentColor});
-            mVertexData.push_back({b, mCurrentColor});
-            mDirty = true;
-        }
-    }
+void DebugDrawer::addQuad(const Quad& quad) {
+    addLine(quad[0], quad[1]);
+    addLine(quad[1], quad[2]);
+    addLine(quad[2], quad[3]);
+    addLine(quad[3], quad[0]);
+}
 
-    void DebugDrawer::addQuad(const Quad& quad)
-    {
-        addLine(quad[0], quad[1]);
-        addLine(quad[1], quad[2]);
-        addLine(quad[2], quad[3]);
-        addLine(quad[3], quad[0]);
-    }
+void DebugDrawer::addBoundingBox(const BoundingBox& aabb) {
+    float3 min = aabb.center - aabb.extent;
+    float3 max = aabb.center + aabb.extent;
 
-    void DebugDrawer::addBoundingBox(const BoundingBox& aabb)
-    {
-        float3 min = aabb.center - aabb.extent;
-        float3 max = aabb.center + aabb.extent;
+    Quad bottomFace = { min, float3(max.x, min.y, min.z), float3(max.x, min.y, max.z), float3(min.x, min.y, max.z) };
+    addQuad(bottomFace);
 
-        Quad bottomFace = { min, float3(max.x, min.y, min.z), float3(max.x, min.y, max.z), float3(min.x, min.y, max.z) };
-        addQuad(bottomFace);
+    Quad topFace = { float3(min.x, max.y, min.z), float3(max.x, max.y, min.z), max, float3(min.x, max.y, max.z) };
+    addQuad(topFace);
 
-        Quad topFace = { float3(min.x, max.y, min.z), float3(max.x, max.y, min.z), max, float3(min.x, max.y, max.z) };
-        addQuad(topFace);
+    addLine(bottomFace[0], topFace[0]);
+    addLine(bottomFace[1], topFace[1]);
+    addLine(bottomFace[2], topFace[2]);
+    addLine(bottomFace[3], topFace[3]);
+}
 
-        addLine(bottomFace[0], topFace[0]);
-        addLine(bottomFace[1], topFace[1]);
-        addLine(bottomFace[2], topFace[2]);
-        addLine(bottomFace[3], topFace[3]);
-    }
+DebugDrawer::Quad buildQuad(const float3& center, const float3& up, const float3& right) {
+    // Length of each quad side
+    static const float size = 0.08f;
 
-    DebugDrawer::Quad buildQuad(const float3& center, const float3& up, const float3& right)
-    {
-        // Length of each quad side
-        static const float size = 0.08f;
+    // Half widths based on size constant
+    float3 upOffset = glm::normalize(up) * size / 2.0f;
+    float3 rightOffset = glm::normalize(right) * size / 2.0f;
 
-        // Half widths based on size constant
-        float3 upOffset = glm::normalize(up) * size / 2.0f;
-        float3 rightOffset = glm::normalize(right) * size / 2.0f;
+    // CCW from top left
+    DebugDrawer::Quad quad;
+    quad[0] = center + upOffset - rightOffset; // Top left
+    quad[1] = center - upOffset - rightOffset; // Bottom left
+    quad[2] = center - upOffset + rightOffset; // Bottom right
+    quad[3] = center + upOffset + rightOffset; // Top right
+    return quad;
+}
 
-        // CCW from top left
-        DebugDrawer::Quad quad;
-        quad[0] = center + upOffset - rightOffset; // Top left
-        quad[1] = center - upOffset - rightOffset; // Bottom left
-        quad[2] = center - upOffset + rightOffset; // Bottom right
-        quad[3] = center + upOffset + rightOffset; // Top right
-        return quad;
-    }
-
-    // Generates a quad centered at currFrame's position facing nextFrame's position
+// Generates a quad centered at currFrame's position facing nextFrame's position
 //     DebugDrawer::Quad createQuadForFrame(const ObjectPath::Frame& currFrame, const ObjectPath::Frame& nextFrame)
 //     {
 //         float3 forward = nextFrame.position - currFrame.position;
@@ -182,40 +176,36 @@ namespace Falcor
 //         }
 //     }
 
-    void DebugDrawer::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, Camera *pCamera)
-    {
+void DebugDrawer::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, Camera *pCamera) {
 //      ParameterBlock* pCB = pVars->getParameterBlock("InternalPerFrameCB").get();
 //      if (pCB != nullptr) pCamera->setShaderData(pCB, 0);
 
-        uploadBuffer();
-        pState->setVao(mpVao);
-        pContext->draw(pState, pVars, (uint32_t)mVertexData.size(), 0);
-    }
-
-    void DebugDrawer::uploadBuffer()
-    {
-        if (mDirty)
-        {
-            auto pVertexBuffer = mpVao->getVertexBuffer(0);
-            pVertexBuffer->setBlob(mVertexData.data(), 0, sizeof(LineVertex) * mVertexData.size());
-            mDirty = false;
-        }
-    }
-
-    DebugDrawer::DebugDrawer(uint32_t maxVertices)
-    {
-        Buffer::SharedPtr pVertexBuffer = Buffer::create(sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
-
-        VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
-        pBufferLayout->addElement("POSITION", 0, ResourceFormat::RGB32Float, 1, 0);
-        pBufferLayout->addElement("COLOR", sizeof(float3), ResourceFormat::RGB32Float, 1, 1);
-
-        VertexLayout::SharedPtr pVertexLayout = VertexLayout::create();
-        pVertexLayout->addBufferLayout(0, pBufferLayout);
-
-        mpVao = Vao::create(Vao::Topology::LineList, pVertexLayout, { pVertexBuffer });
-
-        mVertexData.resize(maxVertices);
-    }
-
+    uploadBuffer();
+    pState->setVao(mpVao);
+    pContext->draw(pState, pVars, (uint32_t)mVertexData.size(), 0);
 }
+
+void DebugDrawer::uploadBuffer() {
+    if (mDirty) {
+        auto pVertexBuffer = mpVao->getVertexBuffer(0);
+        pVertexBuffer->setBlob(mVertexData.data(), 0, sizeof(LineVertex) * mVertexData.size());
+        mDirty = false;
+    }
+}
+
+DebugDrawer::DebugDrawer(uint32_t maxVertices) {
+    Buffer::SharedPtr pVertexBuffer = Buffer::create(sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+
+    VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
+    pBufferLayout->addElement("POSITION", 0, ResourceFormat::RGB32Float, 1, 0);
+    pBufferLayout->addElement("COLOR", sizeof(float3), ResourceFormat::RGB32Float, 1, 1);
+
+    VertexLayout::SharedPtr pVertexLayout = VertexLayout::create();
+    pVertexLayout->addBufferLayout(0, pBufferLayout);
+
+    mpVao = Vao::create(Vao::Topology::LineList, pVertexLayout, { pVertexBuffer });
+
+    mVertexData.resize(maxVertices);
+}
+
+}  // namespace Falcor

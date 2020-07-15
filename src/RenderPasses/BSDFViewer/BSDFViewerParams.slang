@@ -112,17 +112,36 @@ struct BSDFViewerParams
 struct PixelData
 {
     float2 texC;
+
     float3 baseColor;
+    float  _pad0;
+
     float3 diffuse;
+    float  _pad1;
+
     float3 specular;
+    float  _pad2;
+
     float  linearRoughness;
     float  metallic;
+    
     float3 T;
+    float  _pad3;
+
     float3 B;
+    float  _pad4;
+
     float3 N;
+    float  _pad5;
+
     float3 wo;
+    float  _pad6;
+
     float3 wi;
+    float  _pad7;
+
     float3 output;
+    float  _pad8;
 };
 
 END_NAMESPACE_FALCOR

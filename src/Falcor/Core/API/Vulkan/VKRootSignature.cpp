@@ -67,11 +67,9 @@ namespace Falcor {
     }
 
     VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout) {
-        LOG_DBG("createDescriptorSetLayout");
         std::vector<VkDescriptorSetLayoutBinding> bindings(layout.getRangeCount());
 
         uint32_t space;
-        LOG_DBG("creating %zu VkDescriptorSetLayoutBinding's", layout.getRangeCount());
         for (uint32_t r = 0; r < layout.getRangeCount(); r++) {
             VkDescriptorSetLayoutBinding& b = bindings[r];
             const auto& range = layout.getRange(r);
@@ -82,7 +80,6 @@ namespace Falcor {
             b.descriptorType = falcorToVkDescType(range.type);
             b.pImmutableSamplers = nullptr;
             b.stageFlags = getShaderVisibility(layout.getVisibility());
-            LOG_DBG("VkDescriptorSetLayoutBinding space %u, binding %u, desc count %u, desc type %s, vis %s", space, range.baseRegIndex, range.descCount, to_string(falcorToVkDescType(range.type)).c_str(),  to_string(getShaderVisibility(layout.getVisibility())).c_str());
         }
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -99,7 +96,6 @@ namespace Falcor {
     }
 
     void RootSignature::apiInit() {
-        LOG_DBG("root signature api init");
         // Find the max set index
         uint32_t maxIndex = 0;
 
@@ -123,15 +119,10 @@ namespace Falcor {
             maxIndex = std::max(set.getRange(0).regSpace, maxIndex);
         }
 
-        LOG_DBG("max index %u", maxIndex);
-
-        LOG_DBG("create empty createDescriptorSetLayout");
         static VkDescriptorSetLayout emptyLayout = createDescriptorSetLayout({});   // #VKTODO This gets deleted multiple times on exit
         std::vector<VkDescriptorSetLayout> vkSetLayouts(maxIndex + 1, emptyLayout);
-        LOG_DBG("vec size %zu", vkSetLayouts.size());
 
         for (const auto& set : mDesc.mSets) {
-            LOG_DBG("createDescriptorSetLayout regSpace %u", set.getRange(0).regSpace);
             vkSetLayouts[set.getRange(0).regSpace] = createDescriptorSetLayout(set); //createDescriptorSetLayout() verifies that all ranges use the same register space
         }
 
@@ -167,7 +158,6 @@ namespace Falcor {
         //----------------------------------------------------
         */
 
-        LOG_DBG("creating VkPipelineLayoutCreateInfo for %zu vkSetLayouts", vkSetLayouts.size());
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.pNext = nullptr;
         pipelineLayoutInfo.flags = 0;
@@ -176,14 +166,12 @@ namespace Falcor {
         pipelineLayoutInfo.setLayoutCount = (uint32_t)vkSetLayouts.size();
 
         VkPipelineLayout layout;
-        LOG_DBG("vkCreatePipelineLayout");
         //vk_call(vkCreatePipelineLayout(gpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout));
         if (VK_FAILED(vkCreatePipelineLayout(gpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout))){
             LOG_FTL("vkCreatePipelineLayout failed !!!");
         }
         mApiHandle = ApiHandle::create(layout, vkSetLayouts);
 
-        LOG_DBG("root signature api init done!");
     }
 
     void RootSignature::bindForGraphics(CopyContext* pCtx) {

@@ -159,13 +159,13 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     /** Conversions to derived classes
     */
     std::shared_ptr<Texture> asTexture() { 
-        // return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
-        return std::dynamic_pointer_cast<Texture>(shared_from_this());
+        return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+        //return std::dynamic_pointer_cast<Texture>(shared_from_this());
     }
     
     std::shared_ptr<Buffer> asBuffer() { 
-        // return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
-        return std::dynamic_pointer_cast<Buffer>(shared_from_this());
+        return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+        //return std::dynamic_pointer_cast<Buffer>(shared_from_this());
     }
 
  protected:

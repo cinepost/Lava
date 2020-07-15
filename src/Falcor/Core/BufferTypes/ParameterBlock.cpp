@@ -547,16 +547,9 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
     size_t flatIndex = getFlatIndex(bindLoc);
 
     if (isUavType(bindLoc.getType())) {
-        LOG_DBG("uav");
-        if(pResource) { 
-            LOG_DBG("pResource present. getting pUAV"); 
-        } else {
-            LOG_WARN("pResource absent. getting getNullView");
-        }
         auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView();
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) {
-            LOG_WARN("!checkDescriptorSrvUavCommon");
             return false;
         }
         
@@ -564,20 +557,11 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         if (assignedUAV.pView == pUAV) return true;
 
         assignedUAV.pView = pUAV;
-        if (!pUAV) { LOG_ERR("assignedUAV is NULL!!!"); }
         assignedUAV.pResource = pResource;
-        LOG_INFO("assignedUAV flat index is %zu", flatIndex);
     } else if (isSrvType(bindLoc.getType())) {
-        LOG_DBG("srv");
-        if(pResource) { 
-            LOG_DBG("pResource present. getting pSRV");
-        } else {
-            LOG_WARN("pResource absent. getting getNullView");
-        }
         auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView();
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
-            LOG_WARN("!checkDescriptorSrvUavCommon");
             return false;
         }
 
@@ -585,9 +569,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         if (assignedSRV.pView == pSRV) return true;
         assignedSRV.pView = pSRV;
         assignedSRV.pResource = pResource;
-        LOG_INFO("assignedSRV flat index is %zu", flatIndex);
     } else {
-        LOG_INFO("error bind resource at flat index is %zu", flatIndex);
         logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
         return false;
     }
@@ -1213,8 +1195,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
 }
 
     bool ParameterBlock::bindResourcesIntoDescriptorSet(const ParameterBlockReflection* pReflector, DescriptorSet::SharedPtr pDescSet, uint32_t setIndex, uint32_t& ioDestRangeIndex) {
-        LOG_DBG("bindResourcesIntoDescriptorSet");
-
         auto& setInfo = pReflector->getDescriptorSetInfo(setIndex);
 
         for(auto resourceRangeIndex : setInfo.resourceRangeIndices) {
@@ -1254,9 +1234,8 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TextureSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
-                            LOG_WARN("TextureSrv");
-                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1264,22 +1243,19 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
 
                     case DescriptorSet::Type::TypedBufferSrv:
                         {
-                            LOG_WARN("TypedBufferSrv");
                             auto pView = mSRVs[flatIndex].pView;
-                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullTypedBufferView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::RawBufferSrv:
-                        LOG_WARN("RawBufferSrv");
                     case DescriptorSet::Type::StructuredBufferSrv:
                         {
-                            LOG_WARN("StructuredBufferSrv");
                             auto pView = mSRVs[flatIndex].pView;
-                            if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
+                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView();
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1287,31 +1263,27 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TextureUav:
                         {
                             auto pView = mUAVs[flatIndex].pView;
-                            LOG_WARN("TextureUav");
-                            if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
+                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullView();
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::TypedBufferUav:
                         {
-                            LOG_WARN("TypedBufferUav");
                             auto pView = mUAVs[flatIndex].pView;
-                            if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
+                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullTypedBufferView();
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
                     case DescriptorSet::Type::RawBufferUav:
-                        LOG_WARN("RawBufferUav");
                     case DescriptorSet::Type::StructuredBufferUav:
                         {
-                            LOG_WARN("StructuredBufferUav");
                             auto pView = mUAVs[flatIndex].pView;
-                            if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
+                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
+                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullBufferView();
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }

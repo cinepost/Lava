@@ -25,8 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/FBO.h"
+#ifndef SRC_FALCOR_UTILS_UI_PIXELZOOM_H_
+#define SRC_FALCOR_UTILS_UI_PIXELZOOM_H_
+
+#include "Falcor/Core/API/FBO.h"
 
 namespace Falcor
 {
@@ -79,4 +81,7 @@ namespace Falcor
         float2 mMousePos = {};
         bool mShouldZoom = false;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_UI_PIXELZOOM_H_

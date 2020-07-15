@@ -115,7 +115,6 @@ namespace Falcor {
 
     template<bool forGraphics>
     void bindRootSet(DescriptorSet::SharedPtr const& pSet, CopyContext* pContext, RootSignature* pRootSignature, uint32_t rootIndex) {
-        LOG_WARN("bind root set");
         if (forGraphics) {
             pSet->bindForGraphics(pContext, pRootSignature, rootIndex);
         } else {
@@ -125,7 +124,6 @@ namespace Falcor {
 
     template<bool forGraphics>
     void bindRootDescriptor(CopyContext* pContext, uint32_t rootIndex, const Resource::SharedPtr& pResource, bool isUav) {
-        LOG_ERR("bind root descriptor");
         #ifdef _WIN32
         auto pBuffer = pResource->asBuffer();
         assert(!pResource || pBuffer); // If a resource is bound, it must be a buffer
@@ -229,7 +227,6 @@ namespace Falcor {
     {
         auto rootDescriptorRangeCount = pParameterBlockReflector->getRootDescriptorRangeCount();
         
-        LOG_WARN("for loop rootDescriptorRangeCount %u", rootDescriptorRangeCount);
         for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i)
         {
             auto resourceRangeIndex = pParameterBlockReflector->getRootDescriptorRangeIndex(i);
@@ -240,7 +237,6 @@ namespace Falcor {
 
             bindRootDescriptor<forGraphics>(pContext, rootDescIndex++, pResource, isUav);
         }
-        LOG_DBG("for loop rootDescriptorRangeCount done");
 
         // Iterate over constant buffers and parameter blocks to recursively bind their root descriptors.
         uint32_t resourceRangeCount = pParameterBlockReflector->getResourceRangeCount();
@@ -274,40 +270,29 @@ namespace Falcor {
 
     template<bool forGraphics>
     bool bindRootSetsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
-        LOG_DBG("bind root sets common");
         if(!pVars->prepareDescriptorSets(pContext)) {
-            LOG_ERR("prepare failed");
             return false;
         }
 
         uint32_t descSetIndex = pRootSignature->getDescriptorSetBaseIndex();
-        LOG_DBG("descSetIndex %u", descSetIndex);
         
         uint32_t rootDescIndex = pRootSignature->getRootDescriptorBaseIndex();
-        LOG_DBG("rootDescIndex %u", rootDescIndex);
         
         uint32_t rootConstIndex = pRootSignature->getRootConstantBaseIndex();
-        LOG_DBG("rootConstIndex %u", rootConstIndex);
 
-        LOG_DBG("test bindParameterBlockSets");
         if (!bindParameterBlockSets<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex)) {
-            LOG_ERR("test failed");
             return false;
         }
 
-        LOG_DBG("test bindParameterBlockRootDescs");
         if (!bindParameterBlockRootDescs<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, rootDescIndex)) {
-            LOG_ERR("test failed");
             return false;
         }
 
-        LOG_DBG("bind root sets common done");
         return true;
     }
 
     template<bool forGraphics>
     bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
-        LOG_DBG("apply program vars common");
         if (bindRootSig) {
             if (forGraphics) {
                 pRootSignature->bindForGraphics(pContext);
@@ -335,12 +320,10 @@ namespace Falcor {
     }
 
     bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
-        LOG_DBG("apply ComputeVars");
         return applyProgramVarsCommon<false>(this, pContext, bindRootSig, pRootSignature);
     }
 
     bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature) {
-        LOG_DBG("apply GraphicsVars");
         return applyProgramVarsCommon<true>(this, pContext, bindRootSig, pRootSignature);
     }
 

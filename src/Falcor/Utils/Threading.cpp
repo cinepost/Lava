@@ -28,60 +28,53 @@
 #include "stdafx.h"
 #include "Threading.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        struct ThreadingData
-        {
-            bool initialized = false;
-            std::vector<std::thread> threads;
-            uint32_t current;
-        } gData;
-    }
+namespace Falcor {
 
-    void Threading::start(uint32_t threadCount)
-    {
-        if (gData.initialized) return;
+namespace {
 
-        gData.threads.resize(threadCount);
-        gData.initialized = true;
-    }
+struct ThreadingData {
+    bool initialized = false;
+    std::vector<std::thread> threads;
+    uint32_t current;
+} gData;
 
-    void Threading::shutdown()
-    {
-        for (auto& t : gData.threads)
-        {
-            if (t.joinable()) t.join();
-        }
+}  // namespace
 
-        gData.initialized = false;
-    }
+void Threading::start(uint32_t threadCount) {
+    if (gData.initialized) return;
 
-    Threading::Task Threading::dispatchTask(const std::function<void(void)>& func)
-    {
-        assert(gData.initialized);
-
-        std::thread& t = gData.threads[gData.current];
-        if (t.joinable()) t.join();
-        t = std::thread(func);
-        gData.current = (gData.current + 1) % gData.threads.size();
-
-        return Task();
-    }
-
-    Threading::Task::Task()
-    {
-    }
-
-    bool Threading::Task::isRunning()
-    {
-        logError("Threading::Task::isRunning() not implemented");
-        return true;
-    }
-
-    void Threading::Task::finish()
-    {
-        logError("Threading::Task::finish() not implemented");
-    }
+    gData.threads.resize(threadCount);
+    gData.initialized = true;
 }
+
+void Threading::shutdown() {
+    for (auto& t : gData.threads) {
+        if (t.joinable()) t.join();
+    }
+
+    gData.initialized = false;
+}
+
+Threading::Task Threading::dispatchTask(const std::function<void(void)>& func) {
+    assert(gData.initialized);
+
+    std::thread& t = gData.threads[gData.current];
+    if (t.joinable()) t.join();
+    t = std::thread(func);
+    gData.current = (gData.current + 1) % gData.threads.size();
+
+    return Task();
+}
+
+Threading::Task::Task() {}
+
+bool Threading::Task::isRunning() {
+    logError("Threading::Task::isRunning() not implemented");
+    return true;
+}
+
+void Threading::Task::finish() {
+    logError("Threading::Task::finish() not implemented");
+}
+
+}  // namespace Falcor

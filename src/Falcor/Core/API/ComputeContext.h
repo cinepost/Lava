@@ -31,59 +31,58 @@
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "Falcor/Core/State/ComputeState.h"
 
-namespace Falcor
-{
-    class dlldecl ComputeContext : public CopyContext
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeContext>;
-        using SharedConstPtr = std::shared_ptr<const ComputeContext>;
+namespace Falcor {
 
-        ~ComputeContext();
+class dlldecl ComputeContext : public CopyContext {
+ public:
+    using SharedPtr = std::shared_ptr<ComputeContext>;
+    using SharedConstPtr = std::shared_ptr<const ComputeContext>;
 
-        /** Create a new compute context.
-            \param[in] queue Command queue handle.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(CommandQueueHandle queue);
+    ~ComputeContext();
 
-        /** Dispatch a compute task
-            \param[in] dispatchSize 3D dispatch group size
-        */
-        void dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize);
+    /** Create a new compute context.
+        \param[in] queue Command queue handle.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(CommandQueueHandle queue);
 
-        /** Executes a dispatch call. Args to the dispatch call are contained in pArgBuffer
-        */
-        void dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
+    /** Dispatch a compute task
+        \param[in] dispatchSize 3D dispatch group size
+    */
+    void dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize);
 
-        /** Clear an unordered-access view
-            \param[in] pUav The UAV to clear
-            \param[in] value The clear value
-        */
-        void clearUAV(const UnorderedAccessView* pUav, const float4& value);
+    /** Executes a dispatch call. Args to the dispatch call are contained in pArgBuffer
+    */
+    void dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset);
 
-        /** Clear an unordered-access view
-            \param[in] pUav The UAV to clear
-            \param[in] value The clear value
-        */
-        void clearUAV(const UnorderedAccessView* pUav, const uint4& value);
+    /** Clear an unordered-access view
+        \param[in] pUav The UAV to clear
+        \param[in] value The clear value
+    */
+    void clearUAV(const UnorderedAccessView* pUav, const float4& value);
 
-        /** Clear a structured buffer's UAV counter
-            \param[in] pBuffer Structured Buffer containing UAV counter
-            \param[in] value Value to clear counter to
-        */
-        void clearUAVCounter(Buffer::ConstSharedPtrRef& pBuffer, uint32_t value);
+    /** Clear an unordered-access view
+        \param[in] pUav The UAV to clear
+        \param[in] value The clear value
+    */
+    void clearUAV(const UnorderedAccessView* pUav, const uint4& value);
 
-        /** Submit the command list
-        */
-        virtual void flush(bool wait = false) override;
+    /** Clear a structured buffer's UAV counter
+        \param[in] pBuffer Structured Buffer containing UAV counter
+        \param[in] value Value to clear counter to
+    */
+    void clearUAVCounter(Buffer::ConstSharedPtrRef& pBuffer, uint32_t value);
 
-    protected:
-        ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
-        bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
-        bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
+    /** Submit the command list
+    */
+    virtual void flush(bool wait = false) override;
 
-        const ComputeVars* mpLastBoundComputeVars = nullptr;
-    };
+ protected:
+    ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
+    bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
 
-}
+    const ComputeVars* mpLastBoundComputeVars = nullptr;
+};
+
+}  // namespace Falcor

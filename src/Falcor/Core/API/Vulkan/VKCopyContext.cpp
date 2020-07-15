@@ -60,7 +60,6 @@ namespace Falcor
     }
 
     VkImageLayout getImageLayout(Resource::State state) {
-        LOG_DBG("get Image Layout");
         switch (state) {
             case Resource::State::Undefined:
                 return VK_IMAGE_LAYOUT_UNDEFINED;

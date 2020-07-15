@@ -144,11 +144,6 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
 
         VkResourceType getType() const { return get()->mType; }
         ImageType getImage() const {
-            if (!get()) {
-                LOG_ERR("No gt!!!");
-            } else {
-                LOG_INFO("gt seems ok");
-            }
             return get()->mImage;
         }
         operator ImageType() const {assert(get()->mType == VkResourceType::Image); return get()->mImage; }

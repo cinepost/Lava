@@ -1,5 +1,7 @@
 set( PASS_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/passes )
 
+message("Rende passes build dir: ${PASS_LIBRARY_OUTPUT_DIRECTORY}")
+
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 
 # external passes (can also be made built-in)
@@ -28,7 +30,7 @@ function (makeRenderPassLib)
 		./${ARGS_NAME}/*.cpp
     )
 
-    set( PASS_LIB ${ARGS_NAME}_pass)
+    set( PASS_LIB ${ARGS_NAME})
 
     add_library( ${PASS_LIB} SHARED ${SOURCES} ${HEADERS} )
 
@@ -38,11 +40,10 @@ function (makeRenderPassLib)
 
     #ifdef(UNIX)
     set_target_properties( ${PASS_LIB} PROPERTIES PREFIX "" )
-    set_target_properties( ${PASS_LIB} PROPERTIES SUFFIX ".dso" )
+    set_target_properties( ${PASS_LIB} PROPERTIES SUFFIX ".rpl" ) # .rpl stands for "render pass library"
     #endif
 
     link_directories(
-        /home/max/dev/Falcor/build/lib/passes/
         ${PASS_LIBRARY_OUTPUT_DIRECTORY}
     )
 
@@ -56,12 +57,25 @@ function (makeRenderPassLib)
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
+    if (WIN32)
     file(
-        COPY ${pass_dir}
+        COPY ${ARGS_NAME}
         DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
         FILES_MATCHING
             PATTERN "*.slang*"
     )
+    else()
+    add_custom_command(
+        TARGET ${PASS_LIB} 
+        #POST_BUILD
+        PRE_LINK
+        COMMAND rsync
+        ARGS -r --include='*.slang' --include='*/' --exclude='*'
+            ${CMAKE_CURRENT_SOURCE_DIR}/${ARGS_NAME}
+            ${SHADERS_OUTPUT_DIRECTORY}
+        COMMENT "Copying ${ARGS_NAME} shaders"
+    )
+    endif (WIN32)
 
     # Copy comliped render-pass library
     set ( PASS_LIBRARY_INSTALL_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Passes")
@@ -75,8 +89,8 @@ function (makeRenderPassLib)
 
 endfunction()
 
-# Now make passes
-makeREnderPassLib(NAME "Utils")
+# Now make bundled render passes
+makeRenderPassLib(NAME "Utils")
 makeRenderPassLib(NAME "DepthPass")
 makeRenderPassLib(NAME "BlitPass")
 makeRenderPassLib(NAME "ToneMapper")
@@ -89,6 +103,8 @@ makeRenderPassLib(NAME "Antialiasing")
 makeRenderPassLib(NAME "ErrorMeasurePass")
 makeRenderPassLib(NAME "DebugPasses")
 makeRenderPassLib(NAME "BSDFViewer")
-makeRenderPassLib(NAME "GBuffer" DEPS /home/max/dev/Falcor/build/lib/passes/DepthPass_pass.dso)
-makeRenderPassLib(NAME "SSAO" DEPS /home/max/dev/Falcor/build/lib/passes/Utils_pass.dso)
-makeRenderPassLib(NAME "CSM" DEPS /home/max/dev/Falcor/build/lib/passes/Utils_pass.dso)
+
+# Render passes with dependecies
+makeRenderPassLib(NAME "GBuffer" DEPS DepthPass)
+makeRenderPassLib(NAME "SSAO" DEPS Utils)
+makeRenderPassLib(NAME "CSM" DEPS Utils)

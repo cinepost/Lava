@@ -25,81 +25,87 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_ARGLIST_H_
+#define SRC_FALCOR_UTILS_ARGLIST_H_
 
-namespace Falcor
-{
-    /** Parses command line arguments and stores them for look-up by the user.
-    */
-    class dlldecl ArgList
-    {
-    public:
-        class dlldecl Arg
-        {
-        public:
-            Arg(const std::string& s) : mValue(s) {}
+#include "Falcor/Core/Framework.h"
 
-            /** Attempts to return internal string as an Int, -1 if fail
-            */
-            int32_t asInt() const;
+namespace Falcor {
 
-            /** Attempts to return internal string as an uint, -1(max unsigned) if fail
-            */
-            uint32_t asUint() const;
+/** Parses command line arguments and stores them for look-up by the user.
+*/
+class dlldecl ArgList {
+ public:
+    
+    class dlldecl Arg {
+     public:
+        Arg(const std::string& s) : mValue(s) {}
 
-            /** Attempts to return internal string as an uint64, -1(max unsigned) if fail
-           */
-            uint64_t asUint64() const;
-
-            /** Attempts to return internal string as a float, -1 if fail
-            */
-            float asFloat() const;
-
-            /** Returns the internal string representing the argument value
-            */
-            std::string asString() const;
-        private:
-            std::string mValue;
-        };
-
-        /** Parses command line string
-            \param commandLine the command line string
+        /** Attempts to return internal string as an Int, -1 if fail
         */
-        void parseCommandLine(const std::string& commandLine);
+        int32_t asInt() const;
 
-        /** Parses command line args
-            \param argc the command line
-            \param argv the command line
+        /** Attempts to return internal string as an uint, -1(max unsigned) if fail
         */
-        void parseCommandLine(int &argc, char **argv);
+        uint32_t asUint() const;
 
-        /** Adds a key with no arguments to the list 
-            \param key
+        /** Attempts to return internal string as an uint64, -1(max unsigned) if fail
         */
-        void addArg(const std::string& key);
+        uint64_t asUint64() const;
 
-        /** Adds an arg to an existing key or creates an key for the arg
-            \param key the key the arg is associated with
-            \param arg the value
+        /** Attempts to return internal string as a float, -1 if fail
         */
-        void addArg(const std::string& key, Arg arg); 
+        float asFloat() const;
 
-        /** Check if the key already exists within the map
-            \param key the key to check for
+        /** Returns the internal string representing the argument value
         */
-        bool argExists(const std::string& key) const;
-
-        /** Return the values associated with an arg, or an empty vector if none
-            \param key the key to get the values for 
-        */
-        std::vector<Arg> getValues(const std::string& key) const;
-
-        /** Return the value associated with key, or asserts if key has no values or multiple values
-            \param key the key to get the value for
-        */
-        const Arg& operator[](const std::string& key) const;
-    private:
-        std::unordered_map<std::string, std::vector<Arg>> mMap;
+        std::string asString() const;
+    
+     private:
+        std::string mValue;
     };
 
-}//namespace falcor
+    /** Parses command line string
+        \param commandLine the command line string
+    */
+    void parseCommandLine(const std::string& commandLine);
+
+    /** Parses command line args
+        \param argc the command line
+        \param argv the command line
+    */
+    void parseCommandLine(int &argc, char **argv);
+
+    /** Adds a key with no arguments to the list 
+        \param key
+    */
+    void addArg(const std::string& key);
+
+    /** Adds an arg to an existing key or creates an key for the arg
+        \param key the key the arg is associated with
+        \param arg the value
+    */
+    void addArg(const std::string& key, Arg arg); 
+
+    /** Check if the key already exists within the map
+        \param key the key to check for
+    */
+    bool argExists(const std::string& key) const;
+
+    /** Return the values associated with an arg, or an empty vector if none
+        \param key the key to get the values for 
+    */
+    std::vector<Arg> getValues(const std::string& key) const;
+
+    /** Return the value associated with key, or asserts if key has no values or multiple values
+        \param key the key to get the value for
+    */
+    const Arg& operator[](const std::string& key) const;
+
+ private:
+    std::unordered_map<std::string, std::vector<Arg>> mMap;
+};
+
+}  //namespace falcor
+
+#endif  // SRC_FALCOR_UTILS_ARGLIST_H_

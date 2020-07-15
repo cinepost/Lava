@@ -607,17 +607,14 @@ namespace Falcor
 
         // Check that the root descriptor type is supported.
         if (isRootDescriptor) {
-            LOG_WARN("ROOT descriptor !!!");
 
             if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer) {
                 logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw and structured buffers are supported.");
-                LOG_ERR("root descriptor test faild !!!");
                 return nullptr;
             }
             
             if (shaderAccess != ReflectionResourceType::ShaderAccess::Read && shaderAccess != ReflectionResourceType::ShaderAccess::ReadWrite) {
                 logError("Buffer '" + name + "' cannot be bound as root descriptor. Only SRV/UAVs are supported.");
-                LOG_ERR("root descriptor test faild !!!");
                 return nullptr;
             }
             // Check that it's not an append/consume structured buffer, which is unsupported for root descriptors.
@@ -627,7 +624,6 @@ namespace Falcor
                 assert(structuredType != ReflectionResourceType::StructuredType::Invalid);
                 if (structuredType == ReflectionResourceType::StructuredType::Append || structuredType == ReflectionResourceType::StructuredType::Consume) {
                     logError("StructuredBuffer '" + name + "' cannot be bound as root descriptor. Only regular structured buffers are supported, not append/consume buffers.");
-                    LOG_ERR("root descriptor test faild !!!");
                     return nullptr;
                 }
             }

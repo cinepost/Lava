@@ -50,7 +50,6 @@ Buffer::SharedPtr createStructuredFromType(
     }
 
     assert(pResourceType->getSize() <= UINT32_MAX);
-    LOG_WARN("Creating structured buffer with elem size %u", (uint32_t)pResourceType->getSize());
     return Buffer::createStructured((uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 

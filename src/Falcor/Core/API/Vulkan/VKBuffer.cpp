@@ -53,7 +53,6 @@ void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
 }
 
 VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
-    LOG_DBG("Buffer usage flag from bind flags: %s", to_string(bindFlags).c_str());       
     // Assume every buffer can be read from and written into
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
@@ -87,7 +86,6 @@ size_t getBufferDataAlignment(const Buffer* pBuffer) {
 }
 
 Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
-    LOG_DBG("Create buffer with bind flags: %s", to_string(bindFlags).c_str());
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
