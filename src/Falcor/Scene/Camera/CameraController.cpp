@@ -31,10 +31,9 @@
 #include "Utils/Math/FalcorMath.h"
 #include "Camera.h"
 
-namespace Falcor
-{
-    float2 convertCamPosRange(const float2 pos)
-    {
+namespace Falcor {
+
+    float2 convertCamPosRange(const float2 pos) {
         // Convert [0,1] range to [-1, 1], and inverse the Y (screen-space y==0 is top)
         const float2 scale(2, -2);
         const float2 offset(-1, 1);
@@ -42,8 +41,7 @@ namespace Falcor
         return res;
     }
 
-    void OrbiterCameraController::setModelParams(const float3& center, float radius, float distanceInRadius)
-    {
+    void OrbiterCameraController::setModelParams(const float3& center, float radius, float distanceInRadius) {
         mModelCenter = center;
         mModelRadius = radius;
         mCameraDistance = distanceInRadius;
@@ -51,49 +49,44 @@ namespace Falcor
         mbDirty = true;
     }
 
-    bool OrbiterCameraController::onMouseEvent(const MouseEvent& mouseEvent)
-    {
+    bool OrbiterCameraController::onMouseEvent(const MouseEvent& mouseEvent) {
         bool handled = false;
-        switch(mouseEvent.type)
-        {
-        case MouseEvent::Type::Wheel:
-            mCameraDistance -= (mouseEvent.wheelDelta.y * 0.2f);
-            mbDirty = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::LeftButtonDown:
-            mLastVector = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
-            mIsLeftButtonDown = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::LeftButtonUp:
-            handled = mIsLeftButtonDown;
-            mIsLeftButtonDown = false;
-            break;
-        case MouseEvent::Type::Move:
-            if(mIsLeftButtonDown)
-            {
-                float3 curVec = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
-                glm::quat q = createQuaternionFromVectors(mLastVector, curVec);
-                glm::mat3x3 rot = (glm::mat3x3)q;
-                mRotation = rot * mRotation;
+        switch(mouseEvent.type) {
+            case MouseEvent::Type::Wheel:
+                mCameraDistance -= (mouseEvent.wheelDelta.y * 0.2f);
                 mbDirty = true;
-                mLastVector = curVec;
                 handled = true;
-                mShouldRotate = true;
-            }
-            break;
-        default:
-            break;
+                break;
+            case MouseEvent::Type::LeftButtonDown:
+                mLastVector = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
+                mIsLeftButtonDown = true;
+                handled = true;
+                break;
+            case MouseEvent::Type::LeftButtonUp:
+                handled = mIsLeftButtonDown;
+                mIsLeftButtonDown = false;
+                break;
+            case MouseEvent::Type::Move:
+                if(mIsLeftButtonDown) {
+                    float3 curVec = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
+                    glm::quat q = createQuaternionFromVectors(mLastVector, curVec);
+                    glm::mat3x3 rot = (glm::mat3x3)q;
+                    mRotation = rot * mRotation;
+                    mbDirty = true;
+                    mLastVector = curVec;
+                    handled = true;
+                    mShouldRotate = true;
+                }
+                break;
+            default:
+                break;
         }
 
         return handled;
     }
 
-    bool OrbiterCameraController::update()
-    {
-        if(mpCamera && mbDirty)
-        {
+    bool OrbiterCameraController::update() {
+        if(mpCamera && mbDirty) {
             mbDirty = false;
             mShouldRotate = false;
             mpCamera->setTarget(mModelCenter);
@@ -111,51 +104,47 @@ namespace Falcor
     }
 
     template<bool b6DoF>
-    FirstPersonCameraControllerCommon<b6DoF>::FirstPersonCameraControllerCommon(Camera::ConstSharedPtrRef pCamera) : CameraController(pCamera)
-    {
+    FirstPersonCameraControllerCommon<b6DoF>::FirstPersonCameraControllerCommon(Camera::ConstSharedPtrRef pCamera) : CameraController(pCamera) {
         mTimer.update();
     }
 
     template<bool b6DoF>
-    bool FirstPersonCameraControllerCommon<b6DoF>::onKeyEvent(const KeyboardEvent& event)
-    {
+    bool FirstPersonCameraControllerCommon<b6DoF>::onKeyEvent(const KeyboardEvent& event) {
         bool handled = false;
 
-        if (event.type == KeyboardEvent::Type::KeyPressed || event.type == KeyboardEvent::Type::KeyReleased)
-        {
+        if (event.type == KeyboardEvent::Type::KeyPressed || event.type == KeyboardEvent::Type::KeyReleased) {
             bool keyPressed = (event.type == KeyboardEvent::Type::KeyPressed);
 
-            switch(event.key)
-            {
-            case KeyboardEvent::Key::W:
-                mMovement[Direction::Forward] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::S:
-                mMovement[Direction::Backward] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::A:
-                mMovement[Direction::Right] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::D:
-                mMovement[Direction::Left] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::Q:
-                mMovement[Direction::Down] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::E:
-                mMovement[Direction::Up] = keyPressed;
-                handled = true;
-                break;
-            default:
-                break;
+            switch(event.key) {
+                case KeyboardEvent::Key::W:
+                    mMovement[Direction::Forward] = keyPressed;
+                    handled = true;
+                    break;
+                case KeyboardEvent::Key::S:
+                    mMovement[Direction::Backward] = keyPressed;
+                    handled = true;
+                    break;
+                case KeyboardEvent::Key::A:
+                    mMovement[Direction::Right] = keyPressed;
+                    handled = true;
+                    break;
+                case KeyboardEvent::Key::D:
+                    mMovement[Direction::Left] = keyPressed;
+                    handled = true;
+                    break;
+                case KeyboardEvent::Key::Q:
+                    mMovement[Direction::Down] = keyPressed;
+                    handled = true;
+                    break;
+                case KeyboardEvent::Key::E:
+                    mMovement[Direction::Up] = keyPressed;
+                    handled = true;
+                    break;
+                default:
+                    break;
             }
 
-            mSpeedModifier = 1.0f;
+            mSpeedModifier = 50.0f;
             if (event.mods.isCtrlDown) mSpeedModifier = 0.25f;
             else if (event.mods.isShiftDown) mSpeedModifier = 10.0f;
         }

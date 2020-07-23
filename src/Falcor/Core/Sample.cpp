@@ -49,19 +49,19 @@ std::string kMonospaceFont = "monospace";
 }
 
 void Sample::handleWindowSizeChange() {
-        if (!gpDevice) {
+        if (!mpDevice) {
             return;
         }
         // Tell the device to resize the swap chain
         auto winSize = mpWindow->getClientAreaSize();
-        auto pBackBufferFBO = gpDevice->resizeSwapChain(winSize.x, winSize.y);
+        auto pBackBufferFBO = mpDevice->resizeSwapChain(winSize.x, winSize.y);
         auto width = pBackBufferFBO->getWidth();
         auto height = pBackBufferFBO->getHeight();
 
         // Recreate target fbo
         auto pCurrentFbo = mpTargetFBO;
         mpTargetFBO = Fbo::create2D(width, height, pBackBufferFBO->getDesc());
-        gpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
+        mpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
         // Tell the GUI the swap-chain size changed
         if (mpGui) {
@@ -70,7 +70,7 @@ void Sample::handleWindowSizeChange() {
 
         // Resize the pixel zoom
         if (mpPixelZoom) {
-            mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
+            mpPixelZoom->onResizeSwapChain(mpDevice->getSwapChainFbo().get());
         }
 
         // Call the user callback
@@ -99,54 +99,49 @@ void Sample::handleWindowSizeChange() {
             if (keyEvent.mods.isShiftDown && keyEvent.key == KeyboardEvent::Key::F12) {
                 initVideoCapture();
             } else if (keyEvent.mods.isCtrlDown) {
-                switch (keyEvent.key)
-                {
-                case KeyboardEvent::Key::Pause:
-                case KeyboardEvent::Key::Space:
-                    mRendererPaused = !mRendererPaused;
-                    break;
+                switch (keyEvent.key) {
+                    case KeyboardEvent::Key::Pause:
+                    case KeyboardEvent::Key::Space:
+                        mRendererPaused = !mRendererPaused;
+                        break;
                 }
             } else if (!keyEvent.mods.isAltDown && !keyEvent.mods.isCtrlDown && !keyEvent.mods.isShiftDown) {
-                switch (keyEvent.key)
-                {
-                case KeyboardEvent::Key::F12:
-                    mCaptureScreen = true;
-                    break;
-#if _PROFILING_ENABLED
-                case KeyboardEvent::Key::P:
-                    gProfileEnabled = !gProfileEnabled;
-                    break;
-#endif
-                case KeyboardEvent::Key::V:
-                    mVsyncOn = !mVsyncOn;
-                    gpDevice->toggleVSync(mVsyncOn);
-                    mFrameRate.reset();
-                    mClock.setTime(0);
-                    break;
-                case KeyboardEvent::Key::F2:
-                    toggleUI(!mShowUI);
-                    break;
-                case KeyboardEvent::Key::F5:
-                    {
-                        HotReloadFlags reloaded = HotReloadFlags::None;
-                        if (Program::reloadAllPrograms()) reloaded |= HotReloadFlags::Program;
-                        if (mpRenderer) mpRenderer->onHotReload(reloaded);
-                    }
-                    break;
-                case KeyboardEvent::Key::Escape:
-                    if (mVideoCapture.pVideoCapture)
-                    {
-                        endVideoCapture();
-                    }
-                    else
-                    {
-                        mpWindow->shutdown();
-                    }
-                    break;
-                case KeyboardEvent::Key::Pause:
-                case KeyboardEvent::Key::Space:
-                    mClock.isPaused() ? mClock.play() : mClock.pause();
-                    break;
+                switch (keyEvent.key) {
+                    case KeyboardEvent::Key::F12:
+                        mCaptureScreen = true;
+                        break;
+    #if _PROFILING_ENABLED
+                    case KeyboardEvent::Key::P:
+                        gProfileEnabled = !gProfileEnabled;
+                        break;
+    #endif
+                    case KeyboardEvent::Key::V:
+                        mVsyncOn = !mVsyncOn;
+                        mpDevice->toggleVSync(mVsyncOn);
+                        mFrameRate.reset();
+                        mClock.setTime(0);
+                        break;
+                    case KeyboardEvent::Key::F2:
+                        toggleUI(!mShowUI);
+                        break;
+                    case KeyboardEvent::Key::F5:
+                        {
+                            HotReloadFlags reloaded = HotReloadFlags::None;
+                            if (Program::reloadAllPrograms()) reloaded |= HotReloadFlags::Program;
+                            if (mpRenderer) mpRenderer->onHotReload(reloaded);
+                        }
+                        break;
+                    case KeyboardEvent::Key::Escape:
+                        if (mVideoCapture.pVideoCapture) {
+                            endVideoCapture();
+                        } else {
+                            mpWindow->shutdown();
+                        }
+                        break;
+                    case KeyboardEvent::Key::Pause:
+                    case KeyboardEvent::Key::Space:
+                        mClock.isPaused() ? mClock.play() : mClock.pause();
+                        break;
                 }
             }
         }
@@ -176,8 +171,8 @@ void Sample::handleWindowSizeChange() {
         mpGui.reset();
         mpTargetFBO.reset();
         mpPixelZoom.reset();
-        if(gpDevice) gpDevice->cleanup();
-        gpDevice.reset();
+        if(mpDevice) mpDevice->cleanup();
+        mpDevice.reset();
         OSServices::stop();
     }
 
@@ -243,15 +238,17 @@ void Sample::handleWindowSizeChange() {
         ProgressBar::SharedPtr pBar;
         if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
         Device::Desc d = config.deviceDesc;
-        gpDevice = Device::create(mpWindow, config.deviceDesc);
-        if (gpDevice == nullptr) {
+
+        mpDevice = Device::create(mpWindow, config.deviceDesc);
+        
+        if (mpDevice == nullptr) {
             logError("Failed to create device");
             return;
         }
         Clock::start();
 
         // Get the default objects before calling onLoad()
-        auto pBackBufferFBO = gpDevice->getSwapChainFbo();
+        auto pBackBufferFBO = mpDevice->getSwapChainFbo();
         if (!pBackBufferFBO) {
             logError("Unable to get swap chain FBO!!!");
         }
@@ -283,7 +280,7 @@ void Sample::handleWindowSizeChange() {
         mpWindow->msgLoop();
 
         mpRenderer->onShutdown();
-        if (gpDevice) gpDevice->flushAndSync();
+        if (mpDevice) mpDevice->flushAndSync();
         mpRenderer = nullptr;
     }
 
@@ -394,7 +391,7 @@ void Sample::handleWindowSizeChange() {
             }
 
             if (gProfileEnabled) {
-                uint32_t y = gpDevice->getSwapChainFbo()->getHeight() - 360;
+                uint32_t y = mpDevice->getSwapChainFbo()->getHeight() - 360;
 
                 mpGui->setActiveFont(kMonospaceFont);
 
@@ -409,12 +406,12 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont("");
             }
 
-            mpGui->render(getRenderContext(), gpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
+            mpGui->render(getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
         }
     }
 
     void Sample::renderFrame() {
-        if (gpDevice && gpDevice->isWindowOccluded()) return;
+        if (mpDevice && mpDevice->isWindowOccluded()) return;
 
         // Check clock exit condition
         if (mClock.shouldExit()) postQuitMessage(0);
@@ -428,14 +425,14 @@ void Sample::handleWindowSizeChange() {
 
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused) {
-                RenderContext* pRenderContext = gpDevice ? gpDevice->getRenderContext() : nullptr;
+                RenderContext* pRenderContext = mpDevice ? mpDevice->getRenderContext() : nullptr;
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }
 
-        if (gpDevice) {
+        if (mpDevice) {
             // Copy the render-target
-            auto pSwapChainFbo = gpDevice->getSwapChainFbo();
+            auto pSwapChainFbo = mpDevice->getSwapChainFbo();
             RenderContext* pRenderContext = getRenderContext();
             pRenderContext->copyResource(pSwapChainFbo->getColorTexture(0).get(), mpTargetFBO->getColorTexture(0).get());
 
@@ -444,7 +441,7 @@ void Sample::handleWindowSizeChange() {
             if (!captureVideoUI) captureVideoFrame();
             renderUI();
 
-            pSwapChainFbo = gpDevice->getSwapChainFbo();  // The UI might have triggered a swap-chain resize, invalidating the previous FBO
+            pSwapChainFbo = mpDevice->getSwapChainFbo();  // The UI might have triggered a swap-chain resize, invalidating the previous FBO
             if (mpPixelZoom) mpPixelZoom->render(pRenderContext, pSwapChainFbo.get());
 
 #if _PROFILING_ENABLED
@@ -456,7 +453,7 @@ void Sample::handleWindowSizeChange() {
 
             {
                 PROFILE("present", Profiler::Flags::Internal);
-                gpDevice->present();
+                mpDevice->present();
             }
         }
 
@@ -472,7 +469,7 @@ void Sample::handleWindowSizeChange() {
         std::string pngFile;
         if (findAvailableFilename(filename, outputDirectory, "png", pngFile)) {
             Texture::SharedPtr pTexture;
-            pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+            pTexture = mpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
         } else {
             logError("Could not find available filename when capturing screen");
@@ -484,7 +481,7 @@ void Sample::handleWindowSizeChange() {
 
     void Sample::initUI() {
         float scaling = getDisplayScaleFactor();
-        const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
+        const auto& pSwapChainFbo = mpDevice->getSwapChainFbo();
         mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
         mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
         TextRenderer::start();
@@ -511,7 +508,7 @@ void Sample::handleWindowSizeChange() {
         desc.flipY = false;
         desc.codec = mVideoCapture.pUI->getCodec();
         desc.filename = mVideoCapture.pUI->getFilename();
-        const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
+        const auto& pSwapChainFbo = mpDevice->getSwapChainFbo();
         desc.format = pSwapChainFbo->getColorTexture(0)->getFormat();
         desc.fps = mVideoCapture.pUI->getFPS();
         desc.height = pSwapChainFbo->getHeight();
@@ -545,7 +542,7 @@ void Sample::handleWindowSizeChange() {
 
     void Sample::captureVideoFrame() {
         if (mVideoCapture.pVideoCapture) {
-            mVideoCapture.pVideoCapture->appendFrame(getRenderContext()->readTextureSubresource(gpDevice->getSwapChainFbo()->getColorTexture(0).get(), 0).data());
+            mVideoCapture.pVideoCapture->appendFrame(getRenderContext()->readTextureSubresource(mpDevice->getSwapChainFbo()->getColorTexture(0).get(), 0).data());
 
             if (mVideoCapture.pUI->useTimeRange()) {
                 if (mVideoCapture.fixedTimeDelta >= 0) {
@@ -561,7 +558,7 @@ void Sample::handleWindowSizeChange() {
 
     SampleConfig Sample::getConfig() {
         SampleConfig c;
-        c.deviceDesc = gpDevice->getDesc();
+        c.deviceDesc = mpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
         c.showMessageBoxOnError = Logger::isBoxShownOnError();
         c.timeScale = (float)mClock.getTimeScale();

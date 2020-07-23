@@ -35,8 +35,10 @@
 
 #include "ResourceViews.h"
 
+
 namespace Falcor {
 
+class Device;
 class Texture;
 class Buffer;
 class ParameterBlock;
@@ -168,10 +170,13 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         //return std::dynamic_pointer_cast<Buffer>(shared_from_this());
     }
 
+ private:
+    std::shared_ptr<Device> mpDevice;
+
  protected:
     friend class CopyContext;
 
-    Resource(Type type, BindFlags bindFlags, uint64_t size) : mType(type), mBindFlags(bindFlags), mSize(size) {}
+    Resource(Device device, Type type, BindFlags bindFlags, uint64_t size) : mpDevice = device, mType(type), mBindFlags(bindFlags), mSize(size) {}
 
     Type mType;
     BindFlags mBindFlags;

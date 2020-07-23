@@ -40,17 +40,39 @@ void createNullTypedBufferViews();
 void releaseNullTypedBufferViews();
 
 Device::SharedPtr gpDevice;
+Device::SharedPtr gpDeviceHeadless;
 
-Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
-    if (gpDevice) {
-        logError("Falcor only supports a single device");
-        return nullptr;
-    }
-    gpDevice = SharedPtr(new Device(pWindow, desc));
-    if (gpDevice->init() == false) { gpDevice = nullptr;}
-    return gpDevice;
+Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc) {
+    if (!pWindow) headless = true;
 }
 
+Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
+    if(pWindow) {
+        // Swapchain enabled device
+        if (gpDevice) {
+            logError("Falcor only supports a single device");
+            return nullptr;
+        }
+
+        gpDevice = SharedPtr(new Device(pWindow, desc));
+        if (gpDevice->init() == false) { gpDevice = nullptr;}
+        return gpDevice;
+    } else {
+        // Headless device
+        if (gpDeviceHeadless) {
+            logError("Falcor only supports a single headless device");
+            return nullptr;
+        }
+
+        gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
+        if (gpDeviceHeadless->init() == false) { gpDeviceHeadless = nullptr;}
+        return gpDeviceHeadless;
+    }
+}
+
+/**
+ * Initialize device
+ */
 bool Device::init() {
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
@@ -94,13 +116,42 @@ bool Device::init() {
 
 void Device::releaseFboData() {
     // First, delete all FBOs
-    for (auto& pFbo : mpSwapChainFbos) {
-        pFbo->attachColorTarget(nullptr, 0);
-        pFbo->attachDepthStencilTarget(nullptr);
+    if (!headless) {
+        // Delete swapchain FBOs
+        for (auto& pFbo : mpSwapChainFbos) {
+            pFbo->attachColorTarget(nullptr, 0);
+            pFbo->attachDepthStencilTarget(nullptr);
+        }
+    } else {
+        // Delete headless FBO
+        mpOffscreenFbo->attachColorTarget(nullptr, 0);
+        mpOffscreenFbo->attachDepthStencilTarget(nullptr);
     }
 
     // Now execute all deferred releases
-    decltype(mDeferredReleases)().swap(mDeferredReleases);
+    release();
+}
+
+void Device::release() {
+    decltype(mDeferredReleases)().swap(mDeferredReleases);  
+}
+
+bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
+    // Create a texture object
+    auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+    //pColorTex->mApiHandle = apiHandles[i];
+    
+    // Create the FBO if it's required
+    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create();
+    mpOffscreenFbo->attachColorTarget(pColorTex, 0);
+
+    // Create a depth texture
+    if (depthFormat != ResourceFormat::Unknown) {
+        auto pDepth = Texture::create2D(width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+        mpOffscreenFbo->attachDepthStencilTarget(pDepth);
+    }
+
+    return true;
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
@@ -125,7 +176,13 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
 }
 
 Fbo::SharedPtr Device::getSwapChainFbo() const {
+    assert(!headless);
     return mpSwapChainFbos[mCurrentBackBufferIndex];
+}
+
+Fbo::SharedPtr Device::getOffscreenFbo() const {
+    assert(headless);
+    return mpOffscreenFbo;
 }
 
 std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
@@ -185,6 +242,7 @@ void Device::cleanup() {
 }
 
 void Device::present() {
+    assert(!headless);
     mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
     mpRenderContext->flush();
     apiPresent();

@@ -35,9 +35,10 @@
 #include <vector>
 
 #include "Falcor/Core/Window.h"
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/FBO.h"
+//#include "Falcor/Core/API/Texture.h"
+//#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
@@ -51,6 +52,8 @@ namespace Falcor {
 #endif
 
 struct DeviceApiData;
+
+class Engine;
 
 class dlldecl Device {
  public:
@@ -80,6 +83,9 @@ class dlldecl Device {
 #ifdef FALCOR_VK
         std::vector<std::string> requiredExtensions;
 #endif
+
+        uint32_t width = 1280;                                          ///< Headless FBO width
+        uint32_t height = 720;                                          ///< Headless FBO height
     };
 
     enum class SupportedFeatures {
@@ -107,6 +113,8 @@ class dlldecl Device {
     */
     void toggleVSync(bool enable);
 
+    bool isHeadless() { return headless; };
+
     /** Check if the window is occluded
     */
     bool isWindowOccluded() const;
@@ -115,6 +123,11 @@ class dlldecl Device {
         This can change each frame, depending on the API used
     */
     Fbo::SharedPtr getSwapChainFbo() const;
+
+    /** Get the FBO object used for headless rendering.
+        This can change each frame, depending on the API used
+    */
+    Fbo::SharedPtr getOffscreenFbo() const;
 
     /** Get the default render-context.
         The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
@@ -155,6 +168,10 @@ class dlldecl Device {
     */
     const Desc& getDesc() const { return mDesc; }
 
+    /** Get window
+    */
+    const Window::SharedPtr& getWindow() const { return mpWindow; }
+
     /** Create a new query heap.
         \param[in] type Type of queries.
         \param[in] count Number of queries.
@@ -189,12 +206,16 @@ class dlldecl Device {
 
     uint32_t mCurrentBackBufferIndex;
     Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffersCount];
+    Fbo::SharedPtr mpOffscreenFbo;
 
-    Device(Window::SharedPtr pWindow, const Desc& desc) : mpWindow(pWindow), mDesc(desc) {}
-    bool init();
+    Device(Window::SharedPtr pWindow, const Desc& desc);
+
     void executeDeferredReleases();
     void releaseFboData();
+    void release();
+
     bool updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
+    bool updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat);
 
     Desc mDesc;
     ApiHandle mApiHandle;
@@ -212,19 +233,33 @@ class dlldecl Device {
     double mGpuTimestampFrequency;
     std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
+    bool headless = false;
+
     SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
 
     // API specific functions
+    bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle);
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
     void destroyApiObjects();
     void apiPresent();
     bool apiInit();
+
     bool createSwapChain(ResourceFormat colorFormat);
+    bool createOffscreenFBO(ResourceFormat colorFormat);
+
     void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
+    void apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat);
+
     void toggleFullScreen(bool fullscreen);
+
+ protected:
+    bool init();
+
+    friend class Engine;
 };
 
 dlldecl extern Device::SharedPtr gpDevice;
+dlldecl extern Device::SharedPtr gpDeviceHeadless;
 
 enum_class_operators(Device::SupportedFeatures);
 

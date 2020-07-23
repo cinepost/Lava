@@ -123,6 +123,13 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
     return true;
 }
 
+bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
+    VkImage image;
+    
+    apiHandle = ResourceHandle::create(image, nullptr);
+    return true;
+}
+
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex) {
     uint32_t imageCount = 0;
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, nullptr);
@@ -469,6 +476,10 @@ VkSurfaceKHR createSurface(VkInstance instance, VkPhysicalDevice physicalDevice,
     return surface;
 }
 
+bool Device::createOffscreenFBO(ResourceFormat colorFormat) {
+    return true;
+}
+
 bool Device::createSwapChain(ResourceFormat colorFormat) {
     // Select/Validate SwapChain creation settings
     // Surface size
@@ -568,6 +579,7 @@ bool Device::createSwapChain(ResourceFormat colorFormat) {
 }
 
 void Device::apiPresent() {
+    assert(!headless);  // presenting makes no sense in headless mode
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.swapchainCount = 1;
     info.pSwapchains = &mpApiData->swapchain;
@@ -578,9 +590,12 @@ void Device::apiPresent() {
     mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
 }
 
-//bool Device::apiInit(const Desc& desc)
+/**
+ * Initialize swapchain enabled vulkan device
+ */
 bool Device::apiInit() {
     const Desc desc;
+
     mpApiData = new DeviceApiData;
     VkInstance instance = createInstance(mpApiData, desc);
     if (!instance) return false;
@@ -595,23 +610,36 @@ bool Device::apiInit() {
     mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
 
-    if (createSwapChain(desc.colorFormat) == false) {
-        return false;
-    }
-
-    mpApiData->presentFences.f.resize(kSwapChainBuffersCount);
-    for (auto& f : mpApiData->presentFences.f) {
-        VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_call(vkCreateFence(device, &info, nullptr, &f));
+    if(!headless) {
+        if (createSwapChain(desc.colorFormat) == false) {
+            return false;
+        }
+    
+        mpApiData->presentFences.f.resize(kSwapChainBuffersCount);
+        for (auto& f : mpApiData->presentFences.f) {
+            VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+            info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            vk_call(vkCreateFence(device, &info, nullptr, &f));
+        }
+    } else {
+        if (createOffscreenFBO(desc.colorFormat) == false) {
+            return false;
+        }
     }
 
     return true;
 }
 
 void Device::apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
+    assert(!headless);  // swapchain resize makes no sense in headless mode
     vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
     createSwapChain(colorFormat);
+}
+
+void Device::apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
+    assert(headless);
+    mpOffscreenFbo = nullptr;
+    createOffscreenFBO(colorFormat);
 }
 
 bool Device::isWindowOccluded() const {

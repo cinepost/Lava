@@ -251,13 +251,10 @@ namespace Falcor
         }
     }
 
-    bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex)
-    {
-        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
-        {
+    bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex) {
+        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
             HRESULT hr = mpApiData->pSwapChain->GetBuffer(i, IID_PPV_ARGS(&apiHandles[i]));
-            if (FAILED(hr))
-            {
+            if (FAILED(hr)) {
                 d3dTraceHR("Failed to get back-buffer " + std::to_string(i) + " from the swap-chain", hr);
                 return false;
             }
@@ -266,38 +263,31 @@ namespace Falcor
         return true;
     }
 
-    void Device::toggleFullScreen(bool fullscreen)
-    {
+    void Device::toggleFullScreen(bool fullscreen) {
         mpApiData->pSwapChain->SetFullscreenState(fullscreen, nullptr);
     }
 
-    void Device::destroyApiObjects()
-    {
+    void Device::destroyApiObjects() {
         safe_delete(mpApiData);
         mpWindow.reset();
     }
 
-    void Device::apiPresent()
-    {
+    void Device::apiPresent() {
         mpApiData->pSwapChain->Present(mDesc.enableVsync ? 1 : 0, 0);
         mCurrentBackBufferIndex = (mCurrentBackBufferIndex + 1) % kSwapChainBuffersCount;
     }
 
-    bool Device::apiInit()
-    {
+    bool Device::apiInit() {
         DeviceApiData* pData = new DeviceApiData;
         mpApiData = pData;
         UINT dxgiFlags = 0;
-        if (mDesc.enableDebugLayer)
-        {
+
+        if (mDesc.enableDebugLayer) {
             ID3D12DebugPtr pDx12Debug;
-            if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug))))
-            {
+            if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug)))) {
                 pDx12Debug->EnableDebugLayer();
                 dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
-            }
-            else
-            {
+            } else {
                 logWarning("The D3D12 debug layer is not available. Please install Graphics Tools.");
                 mDesc.enableDebugLayer = false;
             }

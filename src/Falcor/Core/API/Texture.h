@@ -38,6 +38,7 @@
 
 namespace Falcor {
 
+class Engine;
 class Sampler;
 class Device;
 class RenderContext;
@@ -260,6 +261,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     int3 mSparsePageRes = int3(0);
 
     friend class Device;
+    friend class Engine;
 };
 
 inline std::string to_string(const std::shared_ptr<Texture>& tex) {

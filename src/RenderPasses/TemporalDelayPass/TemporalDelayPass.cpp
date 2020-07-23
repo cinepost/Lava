@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "TemporalDelayPass.h"
 
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
@@ -38,7 +38,7 @@ void regTemporalDelayPass(ScriptBindings::Module& m)
     c.property("delay", &TemporalDelayPass::getDelay, &TemporalDelayPass::setDelay);
 }
 
-extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(RenderPassLibrary& lib)
 {
     lib.registerClass("TemporalDelayPass", TemporalDelayPass::kDesc, TemporalDelayPass::create);
     ScriptBindings::registerBinding(regTemporalDelayPass);

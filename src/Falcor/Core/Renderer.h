@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_RENDERER_H_
+#define SRC_FALCOR_CORE_RENDERER_H_
 
 #include "Falcor/Utils/UI/UserInput.h"
 #include "Falcor/Utils/ArgList.h"
@@ -175,3 +176,5 @@ class IRenderer {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_RENDERER_H_

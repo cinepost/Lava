@@ -30,8 +30,7 @@
 
 const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
 
-namespace
-{
+namespace {
     const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
     const std::string kShaderModel = "6_1";
 
@@ -39,10 +38,9 @@ namespace
     const std::string kOutputDesc = "V-buffer packed into 64 bits (indices + barys)";
 
     const std::string kDepthName = "depth";
-}
+}  // namespace
 
-RenderPassReflection VBufferRaster::reflect(const CompileData& compileData)
-{
+RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil);
@@ -51,14 +49,11 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData)
     return reflector;
 }
 
-VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferRaster(dict));
 }
 
-VBufferRaster::VBufferRaster(const Dictionary& dict)
-    : GBufferBase()
-{
+VBufferRaster::VBufferRaster(const Dictionary& dict) : GBufferBase() {
     parseDictionary(dict);
 
     // Create raster program
@@ -80,8 +75,7 @@ VBufferRaster::VBufferRaster(const Dictionary& dict)
     mpFbo = Fbo::create();
 }
 
-void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBufferBase::setScene(pRenderContext, pScene);
 
     mRaster.pVars = nullptr;
@@ -95,11 +89,9 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     }
 }
 
-void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Update refresh flag if options that affect the output have changed.
-    if (mOptionsChanged)
-    {
+    if (mOptionsChanged) {
         Dictionary& dict = renderData.getDictionary();
         auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
         dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
@@ -113,8 +105,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
 
     // If there is no scene, we're done.
-    if (mpScene == nullptr)
-    {
+    if (mpScene == nullptr) {
         return;
     }
 
@@ -122,8 +113,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
 
     // Create program vars.
-    if (!mRaster.pVars)
-    {
+    if (!mRaster.pVars) {
         mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
     }
 

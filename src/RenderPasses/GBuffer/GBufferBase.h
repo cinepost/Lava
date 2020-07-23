@@ -34,11 +34,9 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
 /** Base class for the different types of G-buffer passes (including V-buffer).
 */
-class GBufferBase : public RenderPass, public inherit_shared_from_this<RenderPass, GBufferBase>
-{
-public:
-    enum class SamplePattern : uint32_t
-    {
+class GBufferBase : public RenderPass, public inherit_shared_from_this<RenderPass, GBufferBase> {
+ public:
+    enum class SamplePattern : uint32_t {
         Center,
         DirectX,
         Halton,
@@ -50,7 +48,7 @@ public:
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
-protected:
+ protected:
     GBufferBase() = default;
     virtual void parseDictionary(const Dictionary& dict);
     void updateSamplePattern();
@@ -72,17 +70,15 @@ protected:
 };
 
 #define str(a) case GBufferBase::SamplePattern::a: return #a
-inline std::string to_string(GBufferBase::SamplePattern type)
-{
-    switch (type)
-    {
+inline std::string to_string(GBufferBase::SamplePattern type) {
+    switch (type) {
         str(Center);
         str(DirectX);
         str(Halton);
         str(Stratified);
-    default:
-        should_not_get_here();
-        return "";
+        default:
+            should_not_get_here();
+            return "";
     }
 }
 #undef str

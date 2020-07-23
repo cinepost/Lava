@@ -25,24 +25,28 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_DEBUG_DEBUGCONSOLE_H_
+#define SRC_FALCOR_UTILS_DEBUG_DEBUGCONSOLE_H_
+
 #include <fstream>
 #include <iostream>
 
-namespace Falcor
-{
+#ifdef UNIX
+#include <stdlib.h>
+#include <fcntl.h>
+#endif
+
+namespace Falcor {
+
     /** Opens a console window and redirects std::cout, std::cerr, and std::cin there.
         Upon destruction of the object, the console is closed and the streams are restored to the previous state.
     */
-    class DebugConsole
-    {
-    public:
+    class DebugConsole {
+     public:
         /** Opens a console window. The destructor closes it again.
             \param[in] waitForKey If true, the console waits for a key press before closing.
         */
-        DebugConsole(bool waitForKey = true)
-            : mWaitForKey(waitForKey)
-        {
+        DebugConsole(bool waitForKey = true) : mWaitForKey(waitForKey) {
             // Open console window
 #ifdef _WIN32
             AllocConsole();
@@ -67,11 +71,9 @@ namespace Falcor
             //std::cout.clear();
         }
 
-        virtual ~DebugConsole()
-        {
+        virtual ~DebugConsole() {
             flush();
-            if (mWaitForKey)
-            {
+            if (mWaitForKey) {
                 pause();
             }
 
@@ -93,15 +95,13 @@ namespace Falcor
 
         }
 
-        void pause() const
-        {
+        void pause() const {
             std::cout << "Press any key to continue..." << std::endl;
             flush();
             std::cin.get();
         }
 
-        void flush() const
-        {
+        void flush() const {
             std::cout.flush();
             std::cerr.flush();
         }
@@ -117,4 +117,7 @@ namespace Falcor
 
         bool mWaitForKey = true;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_DEBUG_DEBUGCONSOLE_H_

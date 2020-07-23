@@ -133,12 +133,10 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         explicit SharedPtr(VkResource<ImageType, BufferType>* pRes) : std::shared_ptr<VkResource<ImageType, BufferType>>(pRes) {}
 
         static SharedPtr create(ImageType image, VkDeviceMemory mem) {
-            // LOG_INFO("SharedPtr create image");
             return SharedPtr(new VkResource<ImageType, BufferType>(image, mem));
         }
 
         static SharedPtr create(BufferType buffer, VkDeviceMemory mem) {
-            // LOG_INFO("SharedPtr create buffer");
             return SharedPtr(new VkResource<ImageType, BufferType>(buffer, mem));
         }
 

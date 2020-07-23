@@ -58,20 +58,20 @@ Buffer::SharedPtr createStructuredFromType(
 size_t getBufferDataAlignment(const Buffer* pBuffer);
 void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
 
-Buffer::Buffer(size_t size, BindFlags bindFlags, CpuAccess cpuAccess)
-    : Resource(Type::Buffer, bindFlags, size)
+Buffer::Buffer(Device device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess)
+    : Resource(device, Type::Buffer, bindFlags, size)
     , mCpuAccess(cpuAccess) {}
 
-Buffer::SharedPtr Buffer::create(size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(size, bindFlags, cpuAccess));
+Buffer::SharedPtr Buffer::create(Device device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
+    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(device, size, bindFlags, cpuAccess));
     pBuffer->apiInit(pInitData != nullptr);
     if (pInitData) pBuffer->setBlob(pInitData, 0, size);
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createTyped(ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
+Buffer::SharedPtr Buffer::createTyped(Device device, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
     size_t size = elementCount * getFormatBytesPerBlock(format);
-    SharedPtr pBuffer = create(size, bindFlags, cpuAccess, pInitData);
+    SharedPtr pBuffer = create(device, size, bindFlags, cpuAccess, pInitData);
     assert(pBuffer);
 
     pBuffer->mFormat = format;
@@ -80,6 +80,7 @@ Buffer::SharedPtr Buffer::createTyped(ResourceFormat format, uint32_t elementCou
 }
 
 Buffer::SharedPtr Buffer::createStructured(
+    Device device,
     uint32_t structSize,
     uint32_t elementCount,
     ResourceBindFlags bindFlags,
@@ -88,7 +89,7 @@ Buffer::SharedPtr Buffer::createStructured(
     bool createCounter)
 {
     size_t size = structSize * elementCount;
-    Buffer::SharedPtr pBuffer = create(size, bindFlags, cpuAccess, pInitData);
+    Buffer::SharedPtr pBuffer = create(device, size, bindFlags, cpuAccess, pInitData);
     assert(pBuffer);
 
     pBuffer->mElementCount = elementCount;
@@ -96,7 +97,7 @@ Buffer::SharedPtr Buffer::createStructured(
     static const uint32_t zero = 0;
     
     if (createCounter) {
-        pBuffer->mpUAVCounter = Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+        pBuffer->mpUAVCounter = Buffer::create(device, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
     }
     return pBuffer;
 }

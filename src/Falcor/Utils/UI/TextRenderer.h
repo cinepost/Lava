@@ -25,20 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/FBO.h"
+#ifndef SRC_FALCOR_UTILS_UI_TEXTRENDERER_H_
+#define SRC_FALCOR_UTILS_UI_TEXTRENDERER_H_
 
-namespace Falcor
-{
+#include "Falcor/Core/API/FBO.h"
+
+namespace Falcor {
     class RenderContext;
 
     /** Class that renders text into the screen.
     */
-    class dlldecl TextRenderer
-    {
-    public:
-        enum class Flags
-        {
+    class dlldecl TextRenderer {
+     public:
+
+        enum class Flags {
             None     = 0x0,
             Shadowed = 0x1
         };
@@ -77,9 +77,13 @@ namespace Falcor
         /** Set the flags
         */
         static void setFlags(Flags f);
-    private:
+    
+     private:
         TextRenderer() = default;
     };
 
     enum_class_operators(TextRenderer::Flags);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_UI_TEXTRENDERER_H_

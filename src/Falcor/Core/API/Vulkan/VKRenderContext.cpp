@@ -224,7 +224,7 @@ namespace Falcor
     }
 
     void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
-        if (vertexCount == 0) return;  // early termination
+        //if (vertexCount == 0) return;  // early termination
 
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDraw(mpLowLevelData->getCommandList(), vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
@@ -253,12 +253,9 @@ namespace Falcor
         endVkDraw(mpLowLevelData->getCommandList());
     }
     
-    //pContext->drawIndexedIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
-
     void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         if (prepareForDraw(pState, pVars) == false) return;
-        //vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
         vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), maxCommandCount, sizeof(VkDrawIndexedIndirectCommand));
         endVkDraw(mpLowLevelData->getCommandList());
     }

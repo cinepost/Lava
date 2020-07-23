@@ -1,5 +1,7 @@
 {
     "recentScripts": [
+        "/home/max/Documents/orca/Bistro/BistroExterior.fbx",
+        "/home/max/Desktop/compos.py",
         "/home/max/dev/Falcor/src/Mogwai/Data/ForwardRendererAA.py",
         "/home/max/Desktop/gbuffer2.py",
         "/home/max/Desktop/gbuffer.py",
@@ -7,6 +9,8 @@
         "/home/max/dev/Falcor/src/Mogwai/Data/ForwardRenderer.py"
     ],
     "recentScenes": [
+        "/home/max/Documents/orca/Bistro/BistroExterior.fbx",
+        "/home/max/Desktop/gears_tex_anim.fbx",
         "/home/max/Desktop/gears_tex.fbx",
         "/home/max/Desktop/gears.fbx",
         "/home/max/dev/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",

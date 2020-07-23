@@ -34,6 +34,7 @@
 #include "Resource.h"
 #include "GpuMemoryHeap.h"
 
+
 namespace Falcor {
 
 class Program;
@@ -82,6 +83,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr create(
+        Device device,
         size_t size,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
@@ -96,6 +98,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createTyped(
+        Device device,
         ResourceFormat format,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -111,6 +114,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     */
     template<typename T>
     static SharedPtr createTyped(
+        Device device,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
@@ -129,6 +133,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
+        Device device,
         uint32_t structSize,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -147,6 +152,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
+        Device device,
         const Program* pProgram,
         const std::string& name,
         uint32_t elementCount,
@@ -165,6 +171,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
+        Device device,
         const ShaderVar& shaderVar,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,

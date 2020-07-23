@@ -28,56 +28,45 @@
 #include "DepthPass.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("DepthPass", "Creates a depth-buffer using the scene's active camera", DepthPass::create);
 }
 
 const char* DepthPass::kDesc = "Creates a depth-buffer using the scene's active camera";
 
-namespace
-{
+namespace {
     const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.ps.slang";
 
     const std::string kDepth = "depth";
     const std::string kDepthFormat = "depthFormat";
-}
+}  // namespace
 
-void DepthPass::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& v : dict)
-    {
-        if (v.key() == kDepthFormat)
-        {
+void DepthPass::parseDictionary(const Dictionary& dict) {
+    for (const auto& v : dict) {
+        if (v.key() == kDepthFormat) {
             ResourceFormat f = (ResourceFormat)v.val();
             setDepthBufferFormat(f);
-        }
-        else
-        {
+        } else {
             logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
         }
     }
 }
 
-Dictionary DepthPass::getScriptingDictionary()
-{
+Dictionary DepthPass::getScriptingDictionary() {
     Dictionary d;
     d[kDepthFormat] = mDepthFormat;
     return d;
 }
 
-DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new DepthPass(dict));
 }
 
-DepthPass::DepthPass(const Dictionary& dict)
-{
+DepthPass::DepthPass(const Dictionary& dict) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).psEntry("main");
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc);
@@ -88,22 +77,19 @@ DepthPass::DepthPass(const Dictionary& dict)
     parseDictionary(dict);
 }
 
-RenderPassReflection DepthPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kDepth, "Depth-buffer").bindFlags(Resource::BindFlags::DepthStencil).format(mDepthFormat).texture2D(0, 0, 0);
     return reflector;
 }
 
-void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
     mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
 }
 
-void DepthPass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void DepthPass::execute(RenderContext* pContext, const RenderData& renderData) {
     const auto& pDepth = renderData[kDepth]->asTexture();
     mpFbo->attachDepthStencilTarget(pDepth);
 
@@ -113,36 +99,29 @@ void DepthPass::execute(RenderContext* pContext, const RenderData& renderData)
     if (mpScene) mpScene->render(pContext, mpState.get(), mpVars.get());
 }
 
-DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
-{
-    if (isDepthStencilFormat(format) == false)
-    {
+DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {
+    if (isDepthStencilFormat(format) == false) {
         logWarning("DepthPass buffer format must be a depth-stencil format");
-    }
-    else
-    {
+    } else {
         mDepthFormat = format;
         mPassChangedCB();
     }
     return *this;
 }
 
-DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState)
-{
+DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {
     mpState->setDepthStencilState(pDsState);
     return *this;
 }
 
-static const Gui::DropdownList kDepthFormats =
-{
+static const Gui::DropdownList kDepthFormats = {
     { (uint32_t)ResourceFormat::D16Unorm, "D16Unorm"},
     { (uint32_t)ResourceFormat::D32Float, "D32Float" },
     { (uint32_t)ResourceFormat::D24UnormS8, "D24UnormS8" },
     { (uint32_t)ResourceFormat::D32FloatS8X24, "D32FloatS8X24" },
 };
 
-void DepthPass::renderUI(Gui::Widgets& widget)
-{
+void DepthPass::renderUI(Gui::Widgets& widget) {
     uint32_t depthFormat = (uint32_t)mDepthFormat;
 
     if (widget.dropdown("Buffer Format", kDepthFormats, depthFormat)) setDepthBufferFormat(ResourceFormat(depthFormat));

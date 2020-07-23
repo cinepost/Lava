@@ -30,57 +30,56 @@
 
 #include "Falcor/Core/API/FBO.h"
 
-namespace Falcor
-{
-    class RenderContext;
-    struct MouseEvent;
-    struct KeyboardEvent;
+namespace Falcor {
 
-    /** Magnifies a region of the screen to assist with inspecting details
+class RenderContext;
+struct MouseEvent;
+struct KeyboardEvent;
+
+/** Magnifies a region of the screen to assist with inspecting details
+*/
+class PixelZoom {
+ public:
+    using SharedPtr = std::shared_ptr<PixelZoom>;
+
+    /** Create a new object
+        \param[in] pBackBuffer Pointer to the back buffer FBO
+        \return New object, or throws an exception if creation failed.
     */
-    class PixelZoom
-    {
-    public:
-        using SharedPtr = std::shared_ptr<PixelZoom>;
+    static SharedPtr create(const Fbo* pBackbuffer);
 
-        /** Create a new object
-            \param[in] pBackBuffer Pointer to the back buffer FBO
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Fbo* pBackbuffer);
+    /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
+        \param pCtx Pointer to the render context
+        \param backbuffer Pointer to the swap chain FBO
+    */
+    void render(RenderContext* pCtx, Fbo* backBuffer);
 
-        /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
-            \param pCtx Pointer to the render context
-            \param backbuffer Pointer to the swap chain FBO
-        */
-        void render(RenderContext* pCtx, Fbo* backBuffer);
+    /** Stores data about mouse needed for zooming
+        \param me the mouse event
+    */
+    bool onMouseEvent(const MouseEvent& me);
 
-        /** Stores data about mouse needed for zooming
-            \param me the mouse event
-        */
-        bool onMouseEvent(const MouseEvent& me);
+    /** Checks if it should zoom
+        \param ke Keyboard event
+    */
+    bool onKeyboardEvent(const KeyboardEvent& ke);
 
-        /** Checks if it should zoom
-            \param ke Keyboard event
-        */
-        bool onKeyboardEvent(const KeyboardEvent& ke);
+    /** Handle resize events
+    */
+    void onResizeSwapChain(const Fbo* pBackbuffer);
 
-        /** Handle resize events
-        */
-        void onResizeSwapChain(const Fbo* pBackbuffer);
+ private:
+    PixelZoom(const Fbo* pBackbuffer);
 
-    private:
-        PixelZoom(const Fbo* pBackbuffer);
+    int32_t mSrcZoomSize = 5;
+    const uint32_t mDstZoomSize = 200;
+    const uint32_t mZoomCoefficient = 4;
 
-        int32_t mSrcZoomSize = 5;
-        const uint32_t mDstZoomSize = 200;
-        const uint32_t mZoomCoefficient = 4;
-
-        Fbo::SharedPtr mpSrcBlitFbo;
-        Fbo::SharedPtr mpDstBlitFbo;
-        float2 mMousePos = {};
-        bool mShouldZoom = false;
-    };
+    Fbo::SharedPtr mpSrcBlitFbo;
+    Fbo::SharedPtr mpDstBlitFbo;
+    float2 mMousePos = {};
+    bool mShouldZoom = false;
+};
 
 }  // namespace Falcor
 

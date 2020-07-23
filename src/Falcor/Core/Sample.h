@@ -150,6 +150,8 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
     Sample(const Sample&) = delete;
     Sample& operator=(const Sample&) = delete;
+
+    Device::SharedPtr mpDevice;
 };
 
 }  // namespace Falcor

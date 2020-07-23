@@ -386,24 +386,21 @@ Dictionary CSM::getScriptingDictionary()
     return dict;
 }
 
-static ResourceFormat getVisBufferFormat(uint32_t bitsPerChannel, bool visualizeCascades)
-{
-    switch (bitsPerChannel)
-    {
-    case 8:
-        return visualizeCascades ? ResourceFormat::RGBA8Unorm : ResourceFormat::R8Unorm;
-    case 16:
-        return visualizeCascades ? ResourceFormat::RGBA16Float : ResourceFormat::R16Float;
-    case 32:
-        return visualizeCascades ? ResourceFormat::RGBA32Float : ResourceFormat::R32Float;
-    default:
-        should_not_get_here();
-        return ResourceFormat::Unknown;
+static ResourceFormat getVisBufferFormat(uint32_t bitsPerChannel, bool visualizeCascades) {
+    switch (bitsPerChannel) {
+        case 8:
+            return visualizeCascades ? ResourceFormat::RGBA8Unorm : ResourceFormat::R8Unorm;
+        case 16:
+            return visualizeCascades ? ResourceFormat::RGBA16Float : ResourceFormat::R16Float;
+        case 32:
+            return visualizeCascades ? ResourceFormat::RGBA32Float : ResourceFormat::R32Float;
+        default:
+            should_not_get_here();
+            return ResourceFormat::Unknown;
     }
 }
 
-RenderPassReflection CSM::reflect(const CompileData& compileData)
-{
+RenderPassReflection CSM::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kVisibility, "Visibility map. Values are [0,1] where 0 means the pixel is completely shadowed and 1 means it's not shadowed at all")
         .format(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
@@ -412,8 +409,7 @@ RenderPassReflection CSM::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void CSM::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void CSM::compile(RenderContext* pContext, const CompileData& compileData) {
     mpBlurGraph = RenderGraph::create("Gaussian Blur");
     GaussianBlur::SharedPtr pBlurPass = GaussianBlur::create(pContext, mBlurDict);
     mpBlurGraph->addPass(pBlurPass, kBlurPass);
@@ -422,10 +418,8 @@ void CSM::compile(RenderContext* pContext, const CompileData& compileData)
     mVisibilityPass.pFbo->attachColorTarget(nullptr, 0);
 }
 
-void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], float3& center, float& radius)
-{
-    float3 clipSpace[8] =
-    {
+void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], float3& center, float& radius) {
+    float3 clipSpace[8] = {
         float3(-1.0f, 1.0f, 0),
         float3(1.0f, 1.0f, 0),
         float3(1.0f, -1.0f, 0),
@@ -439,8 +433,7 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
     glm::mat4 invViewProj = pCamera->getInvViewProjMatrix();
     center = float3(0, 0, 0);
 
-    for (uint32_t i = 0; i < 8; i++)
-    {
+    for (uint32_t i = 0; i < 8; i++) {
         float4 crd = invViewProj * float4(clipSpace[i], 1);
         viewFrustum[i] = float3(crd) / crd.w;
         center += viewFrustum[i];
@@ -450,16 +443,13 @@ void camClipSpaceToWorldSpace(const Camera* pCamera, float3 viewFrustum[8], floa
 
     // Calculate bounding sphere radius
     radius = 0;
-    for (uint32_t i = 0; i < 8; i++)
-    {
+    for (uint32_t i = 0; i < 8; i++) {
         float d = glm::length(center - viewFrustum[i]);
         radius = std::max(d, radius);
     }
 }
 
-// forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
-inline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
-{
+inline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const float2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount) {
     // Convert to camera space
     float minDepth = nearPlane + distanceRange.x * camDepthRange;
     float maxDepth = nearPlane + distanceRange.y * camDepthRange;
@@ -478,13 +468,12 @@ inline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const fl
     return distance;
 }
 
-void getCascadeCropParams(const float3 crd[8], const glm::mat4& lightVP, float4& scale, float4& offset)
-{
+void getCascadeCropParams(const float3 crd[8], const glm::mat4& lightVP, float4& scale, float4& offset) {
     // Transform the frustum into light clip-space and calculate min-max
     float4 maxCS(-1, -1, 0, 1);
     float4 minCS(1, 1, 1, 1);
-    for (uint32_t i = 0; i < 8; i++)
-    {
+    
+    for (uint32_t i = 0; i < 8; i++) {
         float4 c = lightVP * float4(crd[i], 1.0f);
         c /= c.w;
         maxCS = glm::max(maxCS, c);
@@ -502,10 +491,9 @@ void getCascadeCropParams(const float3 crd[8], const glm::mat4& lightVP, float4&
     offset.w = 0;
 }
 
-void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
-{
-    struct
-    {
+void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange) {
+
+    struct {
         float3 crd[8];
         float3 center;
         float radius;
@@ -516,8 +504,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
     // Create the global shadow space
     createShadowMatrix(mpLight.get(), camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
 
-    if (mCsmData.cascadeCount == 1)
-    {
+    if (mCsmData.cascadeCount == 1) {
         mCsmData.cascadeScale[0] = float4(1);
         mCsmData.cascadeOffset[0] = float4(0);
         mCsmData.cascadeRange[0].x = 0;
@@ -531,23 +518,21 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
 
     float nextCascadeStart = distanceRange.x;
 
-    for (int32_t c = 0; c < mCsmData.cascadeCount; c++)
-    {
+    for (int32_t c = 0; c < mCsmData.cascadeCount; c++) {
         float cascadeStart = nextCascadeStart;
 
-        switch (mControls.partitionMode)
-        {
-        case PartitionMode::Linear:
-            nextCascadeStart = cascadeStart + (distanceRange.y - distanceRange.x) / float(mCsmData.cascadeCount);
-            break;
-        case PartitionMode::Logarithmic:
-            nextCascadeStart = calcPssmPartitionEnd(nearPlane, depthRange, distanceRange, 1.0f, c, mCsmData.cascadeCount);
-            break;
-        case PartitionMode::PSSM:
-            nextCascadeStart = calcPssmPartitionEnd(nearPlane, depthRange, distanceRange, mControls.pssmLambda, c, mCsmData.cascadeCount);
-            break;
-        default:
-            should_not_get_here();
+        switch (mControls.partitionMode) {
+            case PartitionMode::Linear:
+                nextCascadeStart = cascadeStart + (distanceRange.y - distanceRange.x) / float(mCsmData.cascadeCount);
+                break;
+            case PartitionMode::Logarithmic:
+                nextCascadeStart = calcPssmPartitionEnd(nearPlane, depthRange, distanceRange, 1.0f, c, mCsmData.cascadeCount);
+                break;
+            case PartitionMode::PSSM:
+                nextCascadeStart = calcPssmPartitionEnd(nearPlane, depthRange, distanceRange, mControls.pssmLambda, c, mCsmData.cascadeCount);
+                break;
+            default:
+                should_not_get_here();
         }
 
         // If we blend between cascades, we need to expand the range to make sure we will not try to read off the edge of the shadow-map
@@ -569,8 +554,7 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
 
         // Calculate the cascade frustum
         float3 cascadeFrust[8];
-        for (uint32_t i = 0; i < 4; i++)
-        {
+        for (uint32_t i = 0; i < 4; i++) {
             float3 edge = camFrustum.crd[i + 4] - camFrustum.crd[i];
             float3 start = edge * cascadeStart;
             float3 end = edge * cascadeEnd;
@@ -582,10 +566,8 @@ void CSM::partitionCascades(const Camera* pCamera, const float2& distanceRange)
     }
 }
 
-static bool checkOffset(size_t cbOffset, size_t cppOffset, const char* field)
-{
-    if (cbOffset != cppOffset)
-    {
+static bool checkOffset(size_t cbOffset, size_t cppOffset, const char* field) {
+    if (cbOffset != cppOffset) {
         logError("CsmData::" + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset) + ", C++ data offset is " + std::to_string(cppOffset));
         return false;
     }
@@ -598,8 +580,7 @@ static bool checkOffset(size_t cbOffset, size_t cppOffset, const char* field)
 #define check_offset(_a)
 #endif
 
-void CSM::renderScene(RenderContext* pCtx)
-{
+void CSM::renderScene(RenderContext* pCtx) {
     auto pCB = mShadowPass.pVars->getParameterBlock(mPerLightCbLoc);
     check_offset(globalMat);
     check_offset(cascadeScale);
@@ -621,14 +602,13 @@ void CSM::renderScene(RenderContext* pCtx)
     //        mpCsmSceneRenderer->renderScene(pCtx, mShadowPass.pState.get(), mShadowPass.pVars.get(), mpLightCamera.get());
 }
 
-void CSM::executeDepthPass(RenderContext* pCtx, const Camera* pCamera)
-{
+void CSM::executeDepthPass(RenderContext* pCtx, const Camera* pCamera) {
     uint32_t width = (uint32_t)mShadowPass.mapSize.x;
     uint32_t height = (uint32_t)mShadowPass.mapSize.y;
 
     Fbo::SharedConstPtr pFbo = mDepthPass.pState->getFbo();
-    if ((pFbo == nullptr) || (pFbo->getWidth() != width) || (pFbo->getHeight() != height))
-    {
+
+    if ((pFbo == nullptr) || (pFbo->getWidth() != width) || (pFbo->getHeight() != height)) {
         Fbo::Desc desc;
         desc.setDepthStencilTarget(mShadowPass.pFbo->getDepthStencilTexture()->getFormat());
         mDepthPass.pState->setFbo(Fbo::create2D(width, height, desc));
@@ -638,8 +618,7 @@ void CSM::executeDepthPass(RenderContext* pCtx, const Camera* pCamera)
     //        mpCsmSceneRenderer->renderScene(pCtx, mDepthPass.pState.get(), mDepthPass.pVars.get(), pCamera);
 }
 
-void CSM::createVsmSampleState(uint32_t maxAnisotropy)
-{
+void CSM::createVsmSampleState(uint32_t maxAnisotropy) {
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
@@ -647,10 +626,8 @@ void CSM::createVsmSampleState(uint32_t maxAnisotropy)
     mShadowPass.pVSMTrilinearSampler = Sampler::create(samplerDesc);
 }
 
-void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
-{
-    if (pDepthBuffer == nullptr)
-    {
+void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer) {
+    if (pDepthBuffer == nullptr) {
         // Run a shadow pass
         executeDepthPass(pRenderCtx, pCamera);
         pDepthBuffer = mDepthPass.pState->getFbo()->getDepthStencilTexture();
@@ -667,65 +644,54 @@ void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera
     distanceRange = glm::clamp(distanceRange, float2(0), float2(1));
     mSdsmData.sdsmResult = distanceRange;
 
-    if (mControls.stabilizeCascades)
-    {
+    if (mControls.stabilizeCascades) {
         // Ignore minor changes that can result in swimming
         distanceRange = round(distanceRange * 16.0f) / 16.0f;
         distanceRange.y = std::max(distanceRange.y, 0.005f);
     }
 }
 
-float2 CSM::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer)
-{
-    if (mControls.useMinMaxSdsm)
-    {
+float2 CSM::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer) {
+    if (mControls.useMinMaxSdsm) {
         reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
         return mSdsmData.sdsmResult;
-    }
-    else
-    {
+    } else {
         return mControls.distanceRange;
     }
 }
 
-void CSM::setDataIntoVars(ShaderVar const& globalVars, ShaderVar const& csmDataVar)
-{
-    switch ((CsmFilter)mCsmData.filterMode)
-    {
-    case CsmFilter::Point:
-        csmDataVar["shadowMap"] = mShadowPass.pFbo->getDepthStencilTexture();
-        globalVars["gCsmCompareSampler"] = mShadowPass.pPointCmpSampler;
-        break;
-    case CsmFilter::HwPcf:
-    case CsmFilter::FixedPcf:
-    case CsmFilter::StochasticPcf:
-        csmDataVar["shadowMap"] = mShadowPass.pFbo->getDepthStencilTexture();
-        globalVars["gCsmCompareSampler"] = mShadowPass.pLinearCmpSampler;
-        break;
-    case CsmFilter::Vsm:
-    case CsmFilter::Evsm2:
-    case CsmFilter::Evsm4:
-        csmDataVar["shadowMap"] = mShadowPass.pFbo->getColorTexture(0);
-        csmDataVar["csmSampler"] = mShadowPass.pVSMTrilinearSampler;
-        break;
+void CSM::setDataIntoVars(ShaderVar const& globalVars, ShaderVar const& csmDataVar) {
+    switch ((CsmFilter)mCsmData.filterMode) {
+        case CsmFilter::Point:
+            csmDataVar["shadowMap"] = mShadowPass.pFbo->getDepthStencilTexture();
+            globalVars["gCsmCompareSampler"] = mShadowPass.pPointCmpSampler;
+            break;
+        case CsmFilter::HwPcf:
+        case CsmFilter::FixedPcf:
+        case CsmFilter::StochasticPcf:
+            csmDataVar["shadowMap"] = mShadowPass.pFbo->getDepthStencilTexture();
+            globalVars["gCsmCompareSampler"] = mShadowPass.pLinearCmpSampler;
+            break;
+        case CsmFilter::Vsm:
+        case CsmFilter::Evsm2:
+        case CsmFilter::Evsm4:
+            csmDataVar["shadowMap"] = mShadowPass.pFbo->getColorTexture(0);
+            csmDataVar["csmSampler"] = mShadowPass.pVSMTrilinearSampler;
+            break;
     }
 
     mCsmData.lightDir = glm::normalize(((DirectionalLight*)mpLight.get())->getWorldDirection());
     csmDataVar.setBlob(mCsmData);
 }
 
-void CSM::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer)
-{
+void CSM::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer) {
     Texture::SharedPtr pTex = mVisibilityPass.pFbo->getColorTexture(0);
     bool rebind = false;
 
-    if (pVisBuffer && (pVisBuffer != pTex))
-    {
+    if (pVisBuffer && (pVisBuffer != pTex)) {
         rebind = true;
         pTex = pVisBuffer;
-    }
-    else if (pTex == nullptr)
-    {
+    } else if (pTex == nullptr) {
         rebind = true;
         ResourceFormat format = getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades);
         pTex = Texture::create2D(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
@@ -734,8 +700,7 @@ void CSM::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer)
     if (rebind) mVisibilityPass.pFbo->attachColorTarget(pTex, 0);
 }
 
-void CSM::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void CSM::execute(RenderContext* pContext, const RenderData& renderData) {
     if (!mpLight || !mpScene) return;
 
     setupVisibilityPassFbo(renderData[kVisibility]->asTexture());
@@ -763,8 +728,7 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData)
     partitionCascades(pCamera, distanceRange);
     renderScene(pContext);
 
-    if ((CsmFilter)mCsmData.filterMode == CsmFilter::Vsm || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4)
-    {
+    if ((CsmFilter)mCsmData.filterMode == CsmFilter::Vsm || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4) {
         mpBlurGraph->setInput(kBlurPass + ".src", mShadowPass.pFbo->getColorTexture(0));
         mpBlurGraph->execute(pContext);
         mShadowPass.pFbo->attachColorTarget(mpBlurGraph->getOutput(kBlurPass + ".dst")->asTexture(), 0);
@@ -788,17 +752,14 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData)
     mVisibilityPass.pPass->execute(pContext, mVisibilityPass.pFbo);
 }
 
-void CSM::setLight(const Light::SharedConstPtr& pLight)
-{
+void CSM::setLight(const Light::SharedConstPtr& pLight) {
     mpLight = pLight;
-    if (mpLight && mpLight->getType() != LightType::Directional)
-    {
+    if (mpLight && mpLight->getType() != LightType::Directional) {
         setCascadeCount(1);
     }
 }
 
-void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     // auto alphaSampler = pDefaultBlock->getResourceBinding("alphaSampler");
     // auto alphaMapCB = pDefaultBlock->getResourceBinding("AlphaMapCB");
     // auto alphaMap = pDefaultBlock->getResourceBinding("alphaMap");
@@ -807,8 +768,7 @@ void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene
 
     setLight(mpScene && mpScene->getLightCount() ? mpScene->getLight(0) : nullptr);
 
-    if (mpScene)
-    {
+    if (mpScene) {
         mDepthPass.pProgram->addDefines(mpScene->getSceneDefines());
         mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getReflector());
 
@@ -818,9 +778,7 @@ void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene
         const auto& pReflector = mShadowPass.pVars->getReflection();
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
         mPerLightCbLoc = pDefaultBlock->getResourceBinding("PerLightCB");
-    }
-    else
-    {
+    } else {
         mDepthPass.pVars = nullptr;
         mShadowPass.pVars = nullptr;
         mPerLightCbLoc = {};
@@ -831,12 +789,9 @@ void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene
     //         setLight(pScene && pScene->getLightCount() ? pScene->getLight(0) : nullptr);
 }
 
-void CSM::renderUI(Gui::Widgets& widget)
-{
-    if (mpLight && mpLight->getType() == LightType::Directional)
-    {
-        if (widget.var("Cascade Count", (int32_t&)mCsmData.cascadeCount, 1, 8))
-        {
+void CSM::renderUI(Gui::Widgets& widget) {
+    if (mpLight && mpLight->getType() == LightType::Directional) {
+        if (widget.var("Cascade Count", (int32_t&)mCsmData.cascadeCount, 1, 8)) {
             setCascadeCount(mCsmData.cascadeCount);
         }
     }
@@ -846,8 +801,7 @@ void CSM::renderUI(Gui::Widgets& widget)
     if (widget.var("Shadow-Map Size", smDims, 0, 8192)) resizeShadowMap(smDims);
 
     // Visibility buffer bits-per channel
-    static const Gui::DropdownList visBufferBits =
-    {
+    static const Gui::DropdownList visBufferBits = {
         {8, "8"},
         {16, "16"},
         {32, "32"}
@@ -859,26 +813,22 @@ void CSM::renderUI(Gui::Widgets& widget)
 
     //Filter mode
     uint32_t filterIndex = static_cast<uint32_t>(mCsmData.filterMode);
-    if (widget.dropdown("Filter Mode", kFilterList, filterIndex))
-    {
+    if (widget.dropdown("Filter Mode", kFilterList, filterIndex)) {
         setFilterMode(filterIndex);
     }
 
     //partition mode
     uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
 
-    if (widget.dropdown("Partition Mode", kPartitionList, newPartitionMode))
-    {
+    if (widget.dropdown("Partition Mode", kPartitionList, newPartitionMode)) {
         setPartitionMode(newPartitionMode);
     }
 
-    if (mControls.partitionMode == PartitionMode::PSSM)
-    {
+    if (mControls.partitionMode == PartitionMode::PSSM) {
         widget.var("PSSM Lambda", mControls.pssmLambda, 0.f, 1.0f);
     }
 
-    if (mControls.useMinMaxSdsm == false)
-    {
+    if (mControls.useMinMaxSdsm == false) {
         widget.var("Min Distance", mControls.distanceRange.x, 0.f, 1.f, 0.001f);
         widget.var("Max Distance", mControls.distanceRange.y, 0.f, 1.f, 0.001f);
     }
@@ -891,14 +841,11 @@ void CSM::renderUI(Gui::Widgets& widget)
 
     // SDSM data
     auto sdsmGroup = Gui::Group(widget, "SDSM MinMax");
-    if (sdsmGroup.open())
-    {
+    if (sdsmGroup.open()) {
         sdsmGroup.checkbox("Enable", mControls.useMinMaxSdsm);
-        if (mControls.useMinMaxSdsm)
-        {
+        if (mControls.useMinMaxSdsm) {
             int32_t latency = mSdsmData.readbackLatency;
-            if (sdsmGroup.var("Readback Latency", latency, 0))
-            {
+            if (sdsmGroup.var("Readback Latency", latency, 0)) {
                 setSdsmReadbackLatency(latency);
             }
             std::string range = "SDSM Range=[" + std::to_string(mSdsmData.sdsmResult.x) + ", " + std::to_string(mSdsmData.sdsmResult.y) + ']';
@@ -909,21 +856,17 @@ void CSM::renderUI(Gui::Widgets& widget)
     }
 
 
-    if ((CsmFilter)mCsmData.filterMode == CsmFilter::FixedPcf || (CsmFilter)mCsmData.filterMode == CsmFilter::StochasticPcf)
-    {
+    if ((CsmFilter)mCsmData.filterMode == CsmFilter::FixedPcf || (CsmFilter)mCsmData.filterMode == CsmFilter::StochasticPcf) {
         int32_t kernelWidth = mCsmData.pcfKernelWidth;
-        if (widget.var("Kernel Width", kernelWidth, 1, 15, 2))
-        {
+        if (widget.var("Kernel Width", kernelWidth, 1, 15, 2)) {
             setPcfKernelWidth(kernelWidth);
         }
     }
 
     //VSM/ESM
-    if ((CsmFilter)mCsmData.filterMode == CsmFilter::Vsm || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4)
-    {
+    if ((CsmFilter)mCsmData.filterMode == CsmFilter::Vsm || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4) {
         auto vsmGroup = Gui::Group(widget, "VSM/EVSM");
-        if (vsmGroup.open())
-        {
+        if (vsmGroup.open()) {
             uint32_t newMaxAniso = mShadowPass.pVSMTrilinearSampler->getMaxAnisotropy();
             vsmGroup.dropdown("Max Aniso", kMaxAniso, newMaxAniso);
             {
@@ -932,11 +875,9 @@ void CSM::renderUI(Gui::Widgets& widget)
 
             vsmGroup.var("Light Bleed Reduction", mCsmData.lightBleedingReduction, 0.f, 1.0f, 0.01f);
 
-            if ((CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4)
-            {
+            if ((CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4) {
                 auto evsmExpGroup = Gui::Group(widget, "EVSM Exp");
-                if (evsmExpGroup.open())
-                {
+                if (evsmExpGroup.open()) {
                     evsmExpGroup.var("Positive", mCsmData.evsmExponents.x, 0.0f, 5.54f, 0.01f);
                     evsmExpGroup.var("Negative", mCsmData.evsmExponents.y, 0.0f, 5.54f, 0.01f);
                     evsmExpGroup.release();
@@ -944,8 +885,7 @@ void CSM::renderUI(Gui::Widgets& widget)
             }
 
             auto blurGroup = Gui::Group(widget, "Blur Settings");
-            if (blurGroup.open())
-            {
+            if (blurGroup.open()) {
                 mpBlurGraph->getPass(kBlurPass)->renderUI(blurGroup);
                 blurGroup.release();
             }
@@ -955,29 +895,23 @@ void CSM::renderUI(Gui::Widgets& widget)
     }
 }
 
-void CSM::onResize(uint32_t width, uint32_t height)
-{
+void CSM::onResize(uint32_t width, uint32_t height) {
     mVisibilityPassData.screenDim = { width, height };
     mVisibilityPass.pFbo->attachColorTarget(nullptr, 0);
 }
 
-void CSM::setSdsmReadbackLatency(uint32_t latency)
-{
-    if (mSdsmData.readbackLatency != latency)
-    {
+void CSM::setSdsmReadbackLatency(uint32_t latency) {
+    if (mSdsmData.readbackLatency != latency) {
         mSdsmData.readbackLatency = latency;
         mSdsmData.minMaxReduction = nullptr;
     }
 }
 
-void CSM::createSdsmData(Texture::SharedPtr pTexture)
-{
+void CSM::createSdsmData(Texture::SharedPtr pTexture) {
     assert(pTexture);
     // Only create a new technique if it doesn't exist or the dimensions changed
-    if (mSdsmData.minMaxReduction)
-    {
-        if (mSdsmData.width == pTexture->getWidth() && mSdsmData.height == pTexture->getHeight() && mSdsmData.sampleCount == pTexture->getSampleCount())
-        {
+    if (mSdsmData.minMaxReduction) {
+        if (mSdsmData.width == pTexture->getWidth() && mSdsmData.height == pTexture->getHeight() && mSdsmData.sampleCount == pTexture->getSampleCount()) {
             return;
         }
     }
@@ -987,31 +921,25 @@ void CSM::createSdsmData(Texture::SharedPtr pTexture)
     mSdsmData.minMaxReduction = ParallelReduction::create(ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height, mSdsmData.sampleCount);
 }
 
-void CSM::setCascadeCount(uint32_t cascadeCount)
-{
-    if (mpLight && (mpLight->getType() != LightType::Directional) && (cascadeCount != 1))
-    {
+void CSM::setCascadeCount(uint32_t cascadeCount) {
+    if (mpLight && (mpLight->getType() != LightType::Directional) && (cascadeCount != 1)) {
         logWarning("CSM::setCascadeCount() - cascadeCount for a non-directional light must be 1");
         cascadeCount = 1;
     }
 
-    if (mCsmData.cascadeCount != cascadeCount)
-    {
+    if (mCsmData.cascadeCount != cascadeCount) {
         mCsmData.cascadeCount = cascadeCount;
         createShadowPassResources();
     }
 }
 
-void CSM::setFilterMode(uint32_t newFilterMode)
-{
+void CSM::setFilterMode(uint32_t newFilterMode) {
     mCsmData.filterMode = newFilterMode;
     createShadowPassResources();
 }
 
-void CSM::setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel)
-{
-    if (bitsPerChannel != 8 && bitsPerChannel != 16 && bitsPerChannel != 32)
-    {
+void CSM::setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel) {
+    if (bitsPerChannel != 8 && bitsPerChannel != 16 && bitsPerChannel != 32) {
         logWarning("CSM::setVisibilityBufferBitsPerChannel() - bitsPerChannel must by 8, 16 or 32");
         return;
     }
@@ -1020,13 +948,11 @@ void CSM::setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel)
     mPassChangedCB();
 }
 
-void CSM::resizeShadowMap(const uint2& smDims)
-{
+void CSM::resizeShadowMap(const uint2& smDims) {
     mMapSize = smDims;
     createShadowPassResources();
 }
 
-void CSM::toggleMeshCulling(bool enabled)
-{
+void CSM::toggleMeshCulling(bool enabled) {
     mCullMeshes = enabled;
 }

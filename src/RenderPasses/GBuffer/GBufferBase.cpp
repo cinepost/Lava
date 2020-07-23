@@ -35,13 +35,11 @@
 #endif
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
     lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
 
@@ -56,8 +54,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
     #endif  // FALCOR_D3D
 }
 
-void GBufferBase::registerBindings(ScriptBindings::Module& m)
-{
+void GBufferBase::registerBindings(ScriptBindings::Module& m) {
     auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
     e.regEnumVal(GBufferBase::SamplePattern::Center);
     e.regEnumVal(GBufferBase::SamplePattern::DirectX);
@@ -65,27 +62,23 @@ void GBufferBase::registerBindings(ScriptBindings::Module& m)
     e.regEnumVal(GBufferBase::SamplePattern::Stratified);
 }
 
-namespace
-{
+namespace {
     // Scripting options.
     const char kSamplePattern[] = "samplePattern";
     const char kSampleCount[] = "sampleCount";
     const char kDisableAlphaTest[] = "disableAlphaTest";
 
     // UI variables.
-    const Gui::DropdownList kSamplePatternList =
-    {
+    const Gui::DropdownList kSamplePatternList = {
         { (uint32_t)GBufferBase::SamplePattern::Center, "Center" },
         { (uint32_t)GBufferBase::SamplePattern::DirectX, "DirectX" },
         { (uint32_t)GBufferBase::SamplePattern::Halton, "Halton" },
         { (uint32_t)GBufferBase::SamplePattern::Stratified, "Stratified" },
     };
-}
+}  // namespace
 
-void GBufferBase::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& v : dict)
-    {
+void GBufferBase::parseDictionary(const Dictionary& dict) {
+    for (const auto& v : dict) {
         if (v.key() == kSamplePattern) mSamplePattern = (SamplePattern)v.val();
         else if (v.key() == kSampleCount) mSampleCount = v.val();
         else if (v.key() == kDisableAlphaTest) mDisableAlphaTest = v.val();
@@ -93,8 +86,7 @@ void GBufferBase::parseDictionary(const Dictionary& dict)
     }
 }
 
-Dictionary GBufferBase::getScriptingDictionary()
-{
+Dictionary GBufferBase::getScriptingDictionary() {
     Dictionary dict;
     dict[kSamplePattern] = mSamplePattern;
     dict[kSampleCount] = mSampleCount;
@@ -102,20 +94,18 @@ Dictionary GBufferBase::getScriptingDictionary()
     return dict;
 }
 
-void GBufferBase::renderUI(Gui::Widgets& widget)
-{
+void GBufferBase::renderUI(Gui::Widgets& widget) {
     // Sample pattern controls.
     bool updatePattern = widget.dropdown("Sample pattern", kSamplePatternList, (uint32_t&)mSamplePattern);
     widget.tooltip("Selects sample pattern for anti-aliasing over multiple frames.\n\n"
         "The camera jitter is set at the start of each frame based on the chosen pattern. All render passes should see the same jitter.\n"
         "'Center' disables anti-aliasing by always sampling at the center of the pixel.", true);
-    if (mSamplePattern != SamplePattern::Center)
-    {
+    if (mSamplePattern != SamplePattern::Center) {
         updatePattern |= widget.var("Sample count", mSampleCount, 1u);
         widget.tooltip("Number of samples in the anti-aliasing sample pattern.", true);
     }
-    if (updatePattern)
-    {
+
+    if (updatePattern) {
         updateSamplePattern();
         mOptionsChanged = true;
     }
@@ -123,46 +113,39 @@ void GBufferBase::renderUI(Gui::Widgets& widget)
     mOptionsChanged |=  widget.checkbox("Disable Alpha Test", mDisableAlphaTest);
 }
 
-void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {
     mFrameDim = compileData.defaultTexDims;
     mInvFrameDim = 1.f / float2(mFrameDim);
 
-    if (mpScene)
-    {
+    if (mpScene) {
         auto pCamera = mpScene->getCamera();
         pCamera->setPatternGenerator(pCamera->getPatternGenerator(), mInvFrameDim);
     }
 }
 
-void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     updateSamplePattern();
 }
 
-static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount)
-{
-    switch (type)
-    {
-    case GBufferBase::SamplePattern::Center:
-        return nullptr;
-    case GBufferBase::SamplePattern::DirectX:
-        return DxSamplePattern::create(sampleCount);
-    case GBufferBase::SamplePattern::Halton:
-        return HaltonSamplePattern::create(sampleCount);
-    case GBufferBase::SamplePattern::Stratified:
-        return StratifiedSamplePattern::create(sampleCount);
-    default:
-        should_not_get_here();
-        return nullptr;
+static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount) {
+    switch (type) {
+        case GBufferBase::SamplePattern::Center:
+            return nullptr;
+        case GBufferBase::SamplePattern::DirectX:
+            return DxSamplePattern::create(sampleCount);
+        case GBufferBase::SamplePattern::Halton:
+            return HaltonSamplePattern::create(sampleCount);
+        case GBufferBase::SamplePattern::Stratified:
+            return StratifiedSamplePattern::create(sampleCount);
+        default:
+            should_not_get_here();
+            return nullptr;
     }
 }
 
-void GBufferBase::updateSamplePattern()
-{
-    if (mpScene)
-    {
+void GBufferBase::updateSamplePattern() {
+    if (mpScene) {
         auto pGen = createSamplePattern(mSamplePattern, mSampleCount);
         if (pGen) mSampleCount = pGen->getSampleCount();
         mpScene->getCamera()->setPatternGenerator(pGen, mInvFrameDim);
