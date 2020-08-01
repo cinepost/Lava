@@ -34,8 +34,10 @@
 #include "Buffer.h"
 #include "LowLevelContextData.h"
 
+
 namespace Falcor {
 
+class Device;
 class Texture;
 
 class dlldecl CopyContext {
@@ -66,11 +68,13 @@ class dlldecl CopyContext {
 
     virtual ~CopyContext();
 
+    std::shared_ptr<Device> device() { return mpDevice; };
+
     /** Create a copy context.
         \param[in] queue Command queue handle.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueHandle queue);
 
     /** Flush the command list. This doesn't reset the command allocator, just submits the commands
         \param[in] wait If true, will block execution until the GPU finished processing the commands
@@ -147,7 +151,7 @@ class dlldecl CopyContext {
     void bindDescriptorHeaps();
 
  protected:
-    CopyContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    CopyContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
 
     bool textureBarrier(const Texture* pTexture, Resource::State newState);
     bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);
@@ -157,6 +161,9 @@ class dlldecl CopyContext {
 
     bool mCommandsPending = false;
     LowLevelContextData::SharedPtr mpLowLevelData;
+
+ //private:
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

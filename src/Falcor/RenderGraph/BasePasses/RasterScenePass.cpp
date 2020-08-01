@@ -30,24 +30,24 @@
 
 namespace Falcor {
 
-RasterScenePass::RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(progDesc, programDefines), mpScene(pScene) {
+RasterScenePass::RasterScenePass(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(device, progDesc, programDefines), mpScene(pScene) {
     assert(pScene);
 }
 
-RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) {
+RasterScenePass::SharedPtr RasterScenePass::create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines) {
     if (pScene == nullptr) {
         throw std::runtime_error("Can't create a RasterScenePass object without a scene");            
     }
     Program::DefineList dl = programDefines;
     dl.add(pScene->getSceneDefines());
 
-    return SharedPtr(new RasterScenePass(pScene, progDesc, dl));
+    return SharedPtr(new RasterScenePass(device, pScene, progDesc, dl));
 }
 
-RasterScenePass::SharedPtr RasterScenePass::create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines) {
+RasterScenePass::SharedPtr RasterScenePass::create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines) {
     Program::Desc d;
     d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
-    return create(pScene, d, programDefines);
+    return create(device, pScene, d, programDefines);
 }
 
 void RasterScenePass::renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo) {

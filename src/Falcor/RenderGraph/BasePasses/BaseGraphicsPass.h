@@ -25,54 +25,64 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ProgramVars.h"
-#include "Core/State/GraphicsState.h"
+#ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
+#define SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_
 
-namespace Falcor
-{
-    class dlldecl BaseGraphicsPass
-    {
-    public:
-        virtual ~BaseGraphicsPass() = default;
+#include "Falcor/Core/Program/GraphicsProgram.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/State/GraphicsState.h"
 
-        /** Add a define
-        */
-        void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
 
-        /** Remove a define
-        */
-        void removeDefine(const std::string& name, bool updateVars = false);
+namespace Falcor {
 
-        /** Get the program
-        */
-        GraphicsProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
+class Device;
 
-        /** Get the state
-        */
-        const GraphicsState::SharedPtr& getState() const { return mpState; }
+class dlldecl BaseGraphicsPass {
+ public:
+    virtual ~BaseGraphicsPass() = default;
 
-        /** Get the vars
-        */
-        const GraphicsVars::SharedPtr& getVars() const { return mpVars; }
+    /** Add a define
+    */
+    void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
 
-        ShaderVar getRootVar() const { return mpVars->getRootVar(); }
+    /** Remove a define
+    */
+    void removeDefine(const std::string& name, bool updateVars = false);
 
-        /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
-            \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new GraphicsVars object
-        */
-        void setVars(const GraphicsVars::SharedPtr& pVars);
+    /** Get the program
+    */
+    GraphicsProgram::SharedPtr getProgram() const { return mpState->getProgram(); }
 
-    protected:
-        /** Create a new object.
-            \param[in] progDesc The program description.
-            \param[in] programDefines List of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    /** Get the state
+    */
+    const GraphicsState::SharedPtr& getState() const { return mpState; }
 
-        GraphicsVars::SharedPtr mpVars;
-        GraphicsState::SharedPtr mpState;
-    };
-}
+    /** Get the vars
+    */
+    const GraphicsVars::SharedPtr& getVars() const { return mpVars; }
+
+    ShaderVar getRootVar() const { return mpVars->getRootVar(); }
+
+    /** Set a vars object. Allows the user to override the internal vars, for example when one wants to share a vars object between different passes.
+        \param[in] pVars The new GraphicsVars object. If this is nullptr, then the pass will automatically create a new GraphicsVars object
+    */
+    void setVars(const GraphicsVars::SharedPtr& pVars);
+
+ protected:
+    /** Create a new object.
+        \param[in] progDesc The program description.
+        \param[in] programDefines List of macro definitions to set into the program. The macro definitions will be set on all shader stages.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    BaseGraphicsPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+
+    GraphicsVars::SharedPtr mpVars;
+    GraphicsState::SharedPtr mpState;
+
+ //private:
+    std::shared_ptr<Device> mpDevice;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_BASEPASSES_BASEGRPAHICSPASS_H_

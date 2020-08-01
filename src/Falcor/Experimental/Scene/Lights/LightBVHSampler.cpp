@@ -171,7 +171,7 @@ namespace Falcor
         if (!mpBVHBuilder) {
             throw std::runtime_error("Failed to create BVH builder");
         }
-        mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
+        mpBVH = LightBVH::create(pRenderContext->device(), pScene->getLightCollection(pRenderContext));
         if (!mpBVH) {
             throw std::runtime_error("Failed to create BVH");
         }

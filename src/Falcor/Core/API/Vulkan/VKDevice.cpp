@@ -60,9 +60,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 }
 #endif
 
-uint32_t getMaxViewportCount() {
-    assert(gpDevice);
-    return gpDevice->getPhysicalDeviceLimits().maxViewports;
+uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
+    assert(device);
+    return device->getPhysicalDeviceLimits().maxViewports;
 }
 
 struct DeviceApiData {
@@ -126,7 +126,7 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
     VkImage image;
     
-    apiHandle = ResourceHandle::create(image, nullptr);
+    apiHandle = ResourceHandle::create(SharedPtr(this), image, nullptr);
     return true;
 }
 
@@ -139,7 +139,7 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     std::vector<VkImage> swapchainImages(imageCount);
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
     for (size_t i = 0; i < swapchainImages.size(); i++) {
-        apiHandles[i] = ResourceHandle::create(swapchainImages[i], nullptr);
+        apiHandles[i] = ResourceHandle::create(SharedPtr(this), swapchainImages[i], nullptr);
     }
 
     // Get the back-buffer
@@ -282,7 +282,7 @@ void Device::toggleFullScreen(bool fullscreen){}
 /** Select best physical device based on memory
 */
 VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devices) {
-    LOG_DBG("selecting physical Vulkan device...");
+    LOG_DBG("Selecting physical Vulkan device...");
     VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
     uint64_t bestMemory = 0;
 
@@ -309,7 +309,7 @@ VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devic
     VkPhysicalDeviceProperties pProperties;
     vkGetPhysicalDeviceProperties(bestDevice, &pProperties);
 
-    LOG_DBG("selected Vulkan physical device: %s", pProperties.deviceName);
+    LOG_DBG("Selected Vulkan physical device: %s", pProperties.deviceName);
     return bestDevice;
 }
 
@@ -599,16 +599,21 @@ bool Device::apiInit() {
     mpApiData = new DeviceApiData;
     VkInstance instance = createInstance(mpApiData, desc);
     if (!instance) return false;
+
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData, desc);
     if (!physicalDevice) return false;
+    
     VkSurfaceKHR surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
     if (!surface) return false;
+    
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues);
     if (!device) return false;
+    
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
-    mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
+    mApiHandle = DeviceHandle::create(SharedPtr(this), instance, physicalDevice, device, surface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
+    mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
 
     if(!headless) {
         if (createSwapChain(desc.colorFormat) == false) {

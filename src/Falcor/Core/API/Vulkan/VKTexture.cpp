@@ -38,7 +38,7 @@ namespace Falcor {
 
     Texture::~Texture() {
         // #VKTODO the `if` is here because of the black texture in VkResourceView.cpp
-        if (gpDevice ) gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+        if (mpDevice ) mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
     }
 
     // Like getD3D12ResourceFlags but for Images specifically
@@ -104,9 +104,9 @@ namespace Falcor {
         return bits;
     }
 
-    static VkImageTiling getFormatImageTiling(VkFormat format, VkImageUsageFlags usage) {
+    static VkImageTiling getFormatImageTiling(std::shared_ptr<Device> device, VkFormat format, VkImageUsageFlags usage) {
         VkFormatProperties p;
-        vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), format, &p);
+        vkGetPhysicalDeviceFormatProperties(device->getApiHandle(), format, &p);
         auto featureBits = getFormatFeatureBitsFromUsage(usage);
         if ((p.optimalTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_OPTIMAL;
         if ((p.linearTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_LINEAR;
@@ -133,7 +133,7 @@ namespace Falcor {
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.usage = getVkImageUsageFlags(mBindFlags);
-        imageInfo.tiling = getFormatImageTiling(imageInfo.format, imageInfo.usage);
+        imageInfo.tiling = getFormatImageTiling(mpDevice, imageInfo.format, imageInfo.usage);
 
         if (mType == Texture::Type::TextureCube) {
             imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -143,17 +143,17 @@ namespace Falcor {
         mState.global = pData ? Resource::State::PreInitialized : Resource::State::Undefined;
 
         VkImage image;
-        auto result = vkCreateImage(gpDevice->getApiHandle(), &imageInfo, nullptr, &image);
+        auto result = vkCreateImage(mpDevice->getApiHandle(), &imageInfo, nullptr, &image);
         if (VK_FAILED(result)) {
             throw std::runtime_error("Failed to create texture.");
         }
 
         // Allocate the GPU memory
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(gpDevice->getApiHandle(), image, &memRequirements);
+        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), image, &memRequirements);
         VkDeviceMemory deviceMem = allocateDeviceMemory(Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
-        vkBindImageMemory(gpDevice->getApiHandle(), image, deviceMem, 0);
-        mApiHandle = ApiHandle::create(image, deviceMem);
+        vkBindImageMemory(mpDevice->getApiHandle(), image, deviceMem, 0);
+        mApiHandle = ApiHandle::create(mpDevice, image, deviceMem);
   
         if (pData != nullptr) {
             uploadInitData(pData, autoGenMips);

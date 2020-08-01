@@ -54,9 +54,8 @@ namespace Falcor {
         return true;
     }
 
-    ProgramVars::ProgramVars(
-        const ProgramReflection::SharedConstPtr& pReflector)
-        : ParameterBlock(pReflector->getProgramVersion(), pReflector->getDefaultParameterBlock())
+    ProgramVars::ProgramVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
+        : ParameterBlock(device, pReflector->getProgramVersion(), pReflector->getDefaultParameterBlock())
         , mpReflector(pReflector)
     {
         assert(pReflector);
@@ -68,47 +67,47 @@ namespace Falcor {
 
         for( size_t gg = 0; gg < groupCount; ++gg ) {
             auto pGroup = entryPointGroups[gg];
-            auto pGroupVars = EntryPointGroupVars::create(pGroup, uint32_t(gg));
+            auto pGroupVars = EntryPointGroupVars::create(mpDevice, pGroup, uint32_t(gg));
             mpEntryPointGroupVars.push_back(pGroupVars);
         }
     }
 
-    GraphicsVars::GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(pReflector)
+    GraphicsVars::GraphicsVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
+        : ProgramVars(device, pReflector)
     {
         addSimpleEntryPointGroups();
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector) {
+    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
             throw std::runtime_error("Can't create a GraphicsVars object without a program reflector");
         }
-        return SharedPtr(new GraphicsVars(pReflector));
+        return SharedPtr(new GraphicsVars(device, pReflector));
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg) {
+    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> device, const GraphicsProgram* pProg) {
         if (pProg == nullptr) {
             throw std::runtime_error("Can't create a GraphicsVars object without a program");
         }
-        return create(pProg->getReflector());
+        return create(device, pProg->getReflector());
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector) {
+    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
             throw std::runtime_error("Can't create a ComputeVars object without a program reflector");
         }
-        return SharedPtr(new ComputeVars(pReflector));
+        return SharedPtr(new ComputeVars(device, pReflector));
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg) {
+    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> device, const ComputeProgram* pProg) {
         if (pProg == nullptr) {
             throw std::runtime_error("Can't create a ComputeVars object without a program");
         }
-        return create(pProg->getReflector());
+        return create(device, pProg->getReflector());
     }
 
-    ComputeVars::ComputeVars(const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(pReflector)
+    ComputeVars::ComputeVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
+        : ProgramVars(device, pReflector)
     {
         addSimpleEntryPointGroups();
     }
@@ -175,16 +174,14 @@ namespace Falcor {
         uint32_t&                       rootConstIndex)
     {
         auto defaultConstantBufferInfo = pParameterBlockReflector->getDefaultConstantBufferBindingInfo();
-        if( defaultConstantBufferInfo.useRootConstants )
-        {
+        if( defaultConstantBufferInfo.useRootConstants ) {
             uint32_t rootIndex = rootConstIndex++;
 
             bindRootConstants<forGraphics>(pContext, rootIndex, pParameterBlock, pParameterBlockReflector);
         }
 
         auto descriptorSetCount = pParameterBlockReflector->getDescriptorSetCount();
-        for(uint32_t s = 0; s < descriptorSetCount; ++s)
-        {
+        for(uint32_t s = 0; s < descriptorSetCount; ++s) {
             auto pSet = pParameterBlock->getDescriptorSet(s);
 
             uint32_t rootIndex = descSetIndex++;
@@ -194,8 +191,7 @@ namespace Falcor {
 
         // Iterate over parameter blocks to recursively bind their descriptor sets.
         auto parameterBlockRangeCount = pParameterBlockReflector->getParameterBlockSubObjectRangeCount();
-        for(uint32_t i = 0; i < parameterBlockRangeCount; ++i)
-        {
+        for(uint32_t i = 0; i < parameterBlockRangeCount; ++i) {
             auto resourceRangeIndex = pParameterBlockReflector->getParameterBlockSubObjectRangeIndex(i);
             auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
             auto& bindingInfo = pParameterBlockReflector->getResourceRangeBindingInfo(resourceRangeIndex);
@@ -203,11 +199,9 @@ namespace Falcor {
             auto pSubObjectReflector = bindingInfo.pSubObjectReflector;
             auto objectCount = resourceRange.count;
 
-            for(uint32_t i = 0; i < objectCount; ++i)
-            {
+            for(uint32_t i = 0; i < objectCount; ++i) {
                 auto pSubBlock = pParameterBlock->getParameterBlock(resourceRangeIndex, i);
-                if(!bindParameterBlockSets<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex))
-                {
+                if(!bindParameterBlockSets<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex)) {
                     return false;
                 }
             }
@@ -227,8 +221,7 @@ namespace Falcor {
     {
         auto rootDescriptorRangeCount = pParameterBlockReflector->getRootDescriptorRangeCount();
         
-        for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i)
-        {
+        for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i) {
             auto resourceRangeIndex = pParameterBlockReflector->getRootDescriptorRangeIndex(i);
             auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
 

@@ -36,9 +36,13 @@
 
 #include "Falcor/Core/Framework.h"
 
+
 struct ISlangBlob;
 
 namespace Falcor {
+
+class Device;
+
 /** Minimal smart pointer for working with COM objects.
 */
 template<typename T>
@@ -182,8 +186,8 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
         \param[out] log This string will contain the error log message in case shader compilation failed
         \return If success, a new shader object, otherwise nullptr
     */
-    static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log) {
-        SharedPtr pShader = SharedPtr(new Shader(type));
+    static SharedPtr create(std::shared_ptr<Device> device, const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log) {
+        SharedPtr pShader = SharedPtr(new Shader(device, type));
         pShader->mEntryPointName = entryPointName;
         return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
     }
@@ -209,11 +213,14 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
  protected:
     // API handle depends on the shader Type, so it stored be stored as part of the private data
     bool init(const Blob& shaderBlob, const std::string&  entryPointName, CompilerFlags flags, std::string& log);
-    Shader(ShaderType Type);
+    Shader(std::shared_ptr<Device> device, ShaderType Type);
     ShaderType mType;
     std::string mEntryPointName;
     ApiHandle mApiHandle;
     void* mpPrivateData = nullptr;
+
+ private:
+    std::shared_ptr<Device> mpDevice;
 };
 
 enum_class_operators(Shader::CompilerFlags);

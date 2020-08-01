@@ -30,96 +30,85 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     using ApiHandle = FenceHandle;
 
     // #VKTODO This entire class seems overly complicated. Need to make sure that there are no performance issues
-    VkFence createFence()
-    {
+    VkFence createFence(std::shared_ptr<Device> device) {
         VkFenceCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         VkFence fence;
-        vkCreateFence(gpDevice->getApiHandle(), &info, nullptr, &fence);
+        vkCreateFence(device->getApiHandle(), &info, nullptr, &fence);
         return fence;
     }
 
-    void destroyFence(VkFence fence)
-    {
-        vkDestroyFence(gpDevice->getApiHandle(), fence, nullptr);
+    void destroyFence(std::shared_ptr<Device> device, VkFence fence) {
+        vkDestroyFence(device->getApiHandle(), fence, nullptr);
     }
 
-    void resetFence(VkFence fence)
-    {
-        vkResetFences(gpDevice->getApiHandle(), 1, &fence);
+    void resetFence(std::shared_ptr<Device> device, VkFence fence) {
+        vkResetFences(device->getApiHandle(), 1, &fence);
     }
 
-    VkSemaphore createSemaphore()
-    {
+    VkSemaphore createSemaphore(std::shared_ptr<Device> device) {
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         VkSemaphore sem;
-        vkCreateSemaphore(gpDevice->getApiHandle(), &semaphoreInfo, nullptr, &sem);
+        vkCreateSemaphore(device->getApiHandle(), &semaphoreInfo, nullptr, &sem);
         return sem;
     };
 
-    void destroySemaphore(VkSemaphore semaphore)
-    {
-        vkDestroySemaphore(gpDevice->getApiHandle(), semaphore, nullptr);
+    void destroySemaphore(std::shared_ptr<Device> device, VkSemaphore semaphore) {
+        vkDestroySemaphore(device->getApiHandle(), semaphore, nullptr);
     }
 
-    struct FenceApiData
-    {
-        template<typename VkType, VkType(*createFunc)(void), void(*destroyFunc)(VkType), void(*resetFunc)(VkType)>
-        class SmartQueue
-        {
-        public:
-            ~SmartQueue()
-            {
+    struct FenceApiData {
+        FenceApiData(std::shared_ptr<Device> device) { 
+            fenceQueue =  std::make_unique<SmartQueue<VkFence, createFence, destroyFence, resetFence>>(device);
+            semaphoreQueue = std::make_unique<SmartQueue<VkSemaphore, createSemaphore, destroySemaphore, nullptr>>(device);
+        }
+
+        template<typename VkType, VkType(*createFunc)(std::shared_ptr<Device>), void(*destroyFunc)(std::shared_ptr<Device>, VkType), void(*resetFunc)(std::shared_ptr<Device>, VkType)>
+        class SmartQueue {
+         public:
+            SmartQueue(std::shared_ptr<Device> device) { mpDevice = device; }
+            ~SmartQueue() {
                 popAllObjects();
-                for (auto& o : freeObjects)
-                {
-                    destroyFunc(o);
+                for (auto& o : freeObjects) {
+                    destroyFunc(mpDevice, o);
                 }
             }
 
-            const VkType& getObject()
-            {
+            const VkType& getObject() {
                 VkType object;
-                if (freeObjects.size())
-                {
+                if (freeObjects.size()) {
                     object = freeObjects.back();
                     freeObjects.pop_back();
-                    if(resetFunc) resetFunc(object);
-                }
-                else
-                {
-                    object = createFunc();
+                    if(resetFunc) resetFunc(mpDevice, object);
+                } else {
+                    object = createFunc(mpDevice);
                 }
                 activeObjects.push_back(object);
                 return activeObjects.back();
             }
 
-            void popAllObjects()
-            {
+            void popAllObjects() {
                 freeObjects.insert(freeObjects.end(), activeObjects.begin(), activeObjects.end());
                 activeObjects.clear();
             }
 
-            void popFront()
-            {
+            void popFront() {
                 freeObjects.push_back(activeObjects.front());
                 activeObjects.pop_front();
             }
 
-            void popFront(size_t count)
-            {
+            void popFront(size_t count) {
                 freeObjects.insert(freeObjects.end(), activeObjects.begin(), activeObjects.begin() + count);
                 activeObjects.erase(activeObjects.begin(), activeObjects.begin() + count);
             }
 
-            VkType front()
-            {
+            VkType front() {
                 return activeObjects.front();
             }
 
@@ -127,36 +116,34 @@ namespace Falcor
 
             std::deque<VkType>& getActiveObjects() { return activeObjects; }
             std::vector<VkType>& getFreeObjects() { return freeObjects; }
-        private:
+         private:
             std::deque<VkType> activeObjects;
             std::vector<VkType> freeObjects;
+            std::shared_ptr<Device> mpDevice;
         };
 
-        SmartQueue<VkFence, createFence, destroyFence, resetFence> fenceQueue;
-        SmartQueue<VkSemaphore, createSemaphore, destroySemaphore, nullptr> semaphoreQueue;
+        std::unique_ptr<SmartQueue<VkFence, createFence, destroyFence, resetFence>> fenceQueue;
+        std::unique_ptr<SmartQueue<VkSemaphore, createSemaphore, destroySemaphore, nullptr>> semaphoreQueue;
         std::vector<VkSemaphore> semaphoreWaitList;
         uint64_t gpuValue = 0;
     };
 
-    GpuFence::~GpuFence()
-    {
+    GpuFence::~GpuFence() {
         safe_delete(mpApiData);
     }
 
-    GpuFence::SharedPtr GpuFence::create()
-    {
-        SharedPtr pFence = SharedPtr(new GpuFence());
-        pFence->mpApiData = new FenceApiData;
+    GpuFence::SharedPtr GpuFence::create(std::shared_ptr<Device> device) {
+        SharedPtr pFence = SharedPtr(new GpuFence(device));
+        pFence->mpApiData = new FenceApiData(device);
         pFence->mCpuValue = 1;
         return pFence;
     }
 
-    uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
-    {
+    uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue) {
         assert(pQueue);
         mCpuValue++;
-        VkFence fence = mpApiData->fenceQueue.getObject();
-        VkSemaphore sem = mpApiData->semaphoreQueue.getObject();
+        VkFence fence = mpApiData->fenceQueue->getObject();
+        VkSemaphore sem = mpApiData->semaphoreQueue->getObject();
         mpApiData->semaphoreWaitList.push_back(sem);
 
         VkSubmitInfo submit = {};
@@ -168,8 +155,7 @@ namespace Falcor
         static const uint32_t waitCount = 10;
         static const std::vector<VkPipelineStageFlags> waitStages(waitCount, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-        if (mpApiData->semaphoreWaitList.size() > waitThreshold)
-        {
+        if (mpApiData->semaphoreWaitList.size() > waitThreshold) {
             // #VKTODO syncGpu() is never actually called, we need to do some cleanup to make sure we don't allocate semaphors until we exhast the memory
             // We insert a wait here. We should make sure it doesn't actually stall the queue
             submit.pWaitDstStageMask = waitStages.data();
@@ -179,22 +165,19 @@ namespace Falcor
 
         vk_call(vkQueueSubmit(pQueue, 1, &submit , fence));
 
-        if (mpApiData->semaphoreWaitList.size() > waitThreshold)
-        {
+        if (mpApiData->semaphoreWaitList.size() > waitThreshold) {
             mpApiData->semaphoreWaitList.erase(mpApiData->semaphoreWaitList.begin(), mpApiData->semaphoreWaitList.begin() + waitCount);
         }
         return mCpuValue - 1;
     }
 
-    const ApiHandle& GpuFence::getApiHandle() const
-    {
-        const auto& fence = mpApiData->semaphoreQueue.getObject(); // #VKTODO Figure this out. It is implemented like this based on the internal usage in VkDevice.cpp, but might not be what the user expects
+    const ApiHandle& GpuFence::getApiHandle() const {
+        const auto& fence = mpApiData->semaphoreQueue->getObject(); // #VKTODO Figure this out. It is implemented like this based on the internal usage in VkDevice.cpp, but might not be what the user expects
         mpApiData->semaphoreWaitList.push_back(fence);
         return fence;
     }
 
-    void GpuFence::syncGpu(CommandQueueHandle pQueue)
-    {
+    void GpuFence::syncGpu(CommandQueueHandle pQueue) {
         VkSubmitInfo submit = {};
         submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit.waitSemaphoreCount = (uint32_t)mpApiData->semaphoreWaitList.size();
@@ -206,10 +189,9 @@ namespace Falcor
         mpApiData->semaphoreWaitList.clear();
     }
 
-    void releaseSemaphores(FenceApiData* pApiData)
-    {
-        size_t sems = pApiData->semaphoreQueue.getActiveObjects().size();
-        size_t fences = pApiData->fenceQueue.getActiveObjects().size();
+    void releaseSemaphores(FenceApiData* pApiData) {
+        size_t sems = pApiData->semaphoreQueue->getActiveObjects().size();
+        size_t fences = pApiData->fenceQueue->getActiveObjects().size();
         assert(fences <= sems);
         size_t fenceDelta = sems - fences;
         // Make sure we don't release anything that's on the wait list
@@ -217,35 +199,29 @@ namespace Falcor
         assert(wait <= sems);
         size_t waitDelta = sems - wait;
         size_t count = std::min(waitDelta, fenceDelta);
-        pApiData->semaphoreQueue.popFront(count);
+        pApiData->semaphoreQueue->popFront(count);
     }
 
     //void GpuFence::syncCpu()
-    void GpuFence::syncCpu(std::optional<uint64_t> val)
-    {
-        if (mpApiData->fenceQueue.hasActiveObjects() == false) return;
+    void GpuFence::syncCpu(std::optional<uint64_t> val) {
+        if (mpApiData->fenceQueue->hasActiveObjects() == false) return;
 
-        auto& activeFences = mpApiData->fenceQueue.getActiveObjects();
+        auto& activeFences = mpApiData->fenceQueue->getActiveObjects();
         std::vector<VkFence> fenceVec(activeFences.begin(), activeFences.end());
-        vk_call(vkWaitForFences(gpDevice->getApiHandle(), (uint32_t)fenceVec.size(), fenceVec.data(), true, UINT64_MAX));
+        vk_call(vkWaitForFences(mpDevice->getApiHandle(), (uint32_t)fenceVec.size(), fenceVec.data(), true, UINT64_MAX));
         mpApiData->gpuValue += fenceVec.size();
-        mpApiData->fenceQueue.popAllObjects();
+        mpApiData->fenceQueue->popAllObjects();
         releaseSemaphores(mpApiData);  // Call this after popping the fences
     }
 
-    uint64_t GpuFence::getGpuValue() const
-    {
-        auto& activeFences = mpApiData->fenceQueue.getActiveObjects();
-        while (activeFences.size())
-        {
+    uint64_t GpuFence::getGpuValue() const {
+        auto& activeFences = mpApiData->fenceQueue->getActiveObjects();
+        while (activeFences.size()) {
             VkFence fence = activeFences.front();
-            if (vkGetFenceStatus(gpDevice->getApiHandle(), fence) == VK_SUCCESS)
-            {
-                mpApiData->fenceQueue.popFront();
+            if (vkGetFenceStatus(mpDevice->getApiHandle(), fence) == VK_SUCCESS) {
+                mpApiData->fenceQueue->popFront();
                 mpApiData->gpuValue++;
-            }
-            else
-            {
+            } else {
                 break;
             }
         }

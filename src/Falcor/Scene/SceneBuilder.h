@@ -28,10 +28,14 @@
 #ifndef SRC_FALCOR_SCENE_SCENEBUILDER_H_
 #define SRC_FALCOR_SCENE_SCENEBUILDER_H_
 
+#include <map>
+
 #include "Scene.h"
 #include "VertexAttrib.slangh"
 
 namespace Falcor {
+
+class Device;
 
 class dlldecl SceneBuilder {
  public:
@@ -82,11 +86,11 @@ class dlldecl SceneBuilder {
 
     /** Construct a new object
     */
-    SceneBuilder(Flags buildFlags = Flags::Default);
+    SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags = Flags::Default);
 
     /** Create a new object
     */
-    static SharedPtr create(Flags mFlags = Flags::Default);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Flags mFlags = Flags::Default);
 
     /** Create a new builder and import a scene/model file
         \param filename The filename to load
@@ -94,7 +98,7 @@ class dlldecl SceneBuilder {
         \param instances A list of instance matrices to load. This is optional, by default a single instance will be load
         \return A new object with the imported file already initialized. If an import error occurred, a nullptr will be returned
     */
-    static SharedPtr create(const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags = Flags::Default, const InstanceMatrices& instances = InstanceMatrices());
 
     /** Import a scene/model file
         \param filename The filename to load
@@ -203,6 +207,8 @@ class dlldecl SceneBuilder {
 
     bool mDirty = true;
     Scene::SharedPtr mpScene;
+    //std::map<Device*, Scene::SharedPtr> mScenes;
+    std::shared_ptr<Device> mpDevice; 
 
     SceneGraph mSceneGraph;
     Flags mFlags;
@@ -218,7 +224,7 @@ class dlldecl SceneBuilder {
     float mCameraSpeed = 1.0f;
 
     uint32_t addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate);
-    Vao::SharedPtr createVao(uint16_t drawCount);
+    Vao::SharedPtr createVao(std::shared_ptr<Device> pDevice, uint16_t drawCount);
 
     uint32_t createMeshData(Scene* pScene);
     void createGlobalMatricesBuffer(Scene* pScene);

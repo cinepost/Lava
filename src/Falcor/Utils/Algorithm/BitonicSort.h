@@ -25,13 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
-#include "Core/Program/ProgramVars.h"
+#ifndef SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_
+#define SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_
 
-namespace Falcor
-{
+#include "Falcor/Core/State/ComputeState.h"
+#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+
+namespace Falcor {
+
+class Device;
+
 #ifdef _ENABLE_NVAPI
     /** In-place bitonic sort in chunks of N elements.
 
@@ -51,7 +55,7 @@ namespace Falcor
         /** Create a new bitonic sort object.
             \return New object, or throws an exception on error.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** In-place bitonic sort in chunks of N elements. Each chunk is sorted in ascending order.
             \param[in] pRenderContext The render context.
@@ -64,14 +68,18 @@ namespace Falcor
         bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize = 256);
 
     protected:
-        BitonicSort();
+        BitonicSort(std::shared_ptr<Device> pDevice);
 
-        struct
-        {
+        struct {
             ComputeState::SharedPtr pState;
             ComputeProgram::SharedPtr pProgram;
             ComputeVars::SharedPtr pVars;
         } mSort;
+
+        std::shared_ptr<Device> mpDevice;        
     };
 #endif
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_ALGORITHM_BITONICSORT_H_

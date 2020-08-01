@@ -49,6 +49,8 @@
 
 namespace Falcor {
 
+class Device;
+
     static constexpr int kMaxTestFailures = 25;
 
     class CPUUnitTestContext;
@@ -56,14 +58,13 @@ namespace Falcor {
 
     struct TooManyFailedTestsException : public std::exception { };
 
-    class ErrorRunningTestException : public std::exception
-    {
-    public:
+    class ErrorRunningTestException : public std::exception {
+     public:
         ErrorRunningTestException(const std::string& what) : mWhat(what) { }
 
         const char* what() const noexcept override { return mWhat.c_str(); }
 
-    private:
+     private:
         std::string mWhat;
     };
 
@@ -74,15 +75,13 @@ namespace Falcor {
     dlldecl void registerGPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
     dlldecl int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp);
 
-    class dlldecl UnitTestContext
-    {
-    public:
+    class dlldecl UnitTestContext {
+     public:
         /** reportFailure is called with an error message to report a failing
             test.  Normally it's only used by the EXPECT_EQ (etc.) macros,
             though it's fine for a user to call it with different failures.
         */
-        void reportFailure(const std::string& message)
-        {
+        void reportFailure(const std::string& message) {
             if (message.empty()) return;
             mFailureMessages.push_back(message);
         }
@@ -91,30 +90,27 @@ namespace Falcor {
 
         int mNumFailures = 0;
 
-    private:
+     private:
         std::vector<std::string> mFailureMessages;
     };
 
-    class dlldecl CPUUnitTestContext : public UnitTestContext
-    {
-    };
+    class dlldecl CPUUnitTestContext : public UnitTestContext { };
 
-    class dlldecl GPUUnitTestContext : public UnitTestContext
-    {
-    public:
-        GPUUnitTestContext(RenderContext* pContext) : mpContext(pContext) { }
+    class dlldecl GPUUnitTestContext : public UnitTestContext {
+     public:
+        GPUUnitTestContext(RenderContext* pContext) : mpContext(pContext) { mpDevice = pContext->device(); }
 
         /** createProgram creates a compute program from the source code at the
             given path.  The entrypoint is assumed to be |main()| unless
             otherwise specified with the |csEntry| parameter.  Preprocessor
             defines and compiler flags can also be optionally provided.
         */
-        void createProgram(const std::string& path,
-                           const std::string& csEntry = "main",
-                           const Program::DefineList& programDefines = Program::DefineList(),
-                           Shader::CompilerFlags flags = Shader::CompilerFlags::None,
-                           const std::string& shaderModel = "",
-                           bool createShaderVars = true);
+        void createProgram( const std::string& path,
+                            const std::string& csEntry = "main",
+                            const Program::DefineList& programDefines = Program::DefineList(),
+                            Shader::CompilerFlags flags = Shader::CompilerFlags::None,
+                            const std::string& shaderModel = "",
+                            bool createShaderVars = true);
 
         /** (Re-)create the shader variables. Call this if vars were not
             created in createProgram() (if createVars = false), or after
@@ -125,8 +121,7 @@ namespace Falcor {
         /** vars returns the ComputeVars for the program for use in binding
             textures, etc.
         */
-        ComputeVars& vars()
-        {
+        ComputeVars& vars() {
             assert(mpVars);
             return *mpVars;
         }
@@ -134,8 +129,7 @@ namespace Falcor {
         /** Get a shader variable that points at the field with the given `name`.
             This is an alias for `vars().getRootVar()[name]`.
         */
-        ShaderVar operator[](const std::string& name)
-        {
+        ShaderVar operator[](const std::string& name) {
             return vars().getRootVar()[name];
         }
 
@@ -200,12 +194,13 @@ namespace Falcor {
         ComputeVars::SharedPtr mpVars;
         uint3 mThreadGroupSize = { 0, 0, 0 };
 
-        struct ParameterBuffer
-        {
+        struct ParameterBuffer {
             Buffer::SharedPtr pBuffer;
             bool mapped = false;
         };
         std::map<std::string, ParameterBuffer> mStructuredBuffers;
+
+        std::shared_ptr<Device> mpDevice;
     };
 
     /** StreamSink is a utility class used by the testing framework that either
@@ -215,9 +210,8 @@ namespace Falcor {
         In the event of a test failure, passes along the failure message to the
         provided GPUUnitTestContext's |reportFailure| method.
     */
-    class StreamSink
-    {
-    public:
+    class StreamSink {
+     public:
         /** We need to declare this constructor in order to return
             StreamSinks as rvalues from functions because we've declared a
             StreamSink destructor below.

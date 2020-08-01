@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_SAMPLEGNERATORS_HALTONSAMPLEPATTERN_H_
+#define SRC_FALCOR_UTILS_SAMPLEGNERATORS_HALTONSAMPLEPATTERN_H_
+
 #include "CPUSampleGenerator.h"
 
 namespace Falcor
@@ -58,4 +60,7 @@ namespace Falcor
         uint32_t mSampleCount = 0;
         static const float2 kPattern[];
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_SAMPLEGNERATORS_HALTONSAMPLEPATTERN_H_

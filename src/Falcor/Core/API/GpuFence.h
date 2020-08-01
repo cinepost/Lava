@@ -25,12 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GPUFENCE_H_
+#define SRC_FALCOR_CORE_API_GPUFENCE_H_
+
 #include <optional>
+
+#include "Falcor/Core/Framework.h"
 
 namespace Falcor {
 
+
 struct FenceApiData;
+
+class Device;
 
 /** This class can be used to synchronize GPU and CPU execution
     It's value monotonically increasing - every time a signal is sent, it will change the value first
@@ -45,7 +52,7 @@ public:
     /** Create a new GPU fence.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create();
+    static SharedPtr create(std::shared_ptr<Device> device);
 
     /** Get the internal API handle
     */
@@ -71,11 +78,14 @@ public:
     */
     uint64_t gpuSignal(CommandQueueHandle pQueue);
 private:
-    GpuFence() : mCpuValue(0) {}
+    GpuFence(std::shared_ptr<Device> device) : mCpuValue(0), mpDevice(device) {}
     uint64_t mCpuValue;
 
     ApiHandle mApiHandle;
     FenceApiData* mpApiData = nullptr;
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GPUFENCE_H_

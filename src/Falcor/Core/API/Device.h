@@ -115,6 +115,11 @@ class dlldecl Device {
 
     bool isHeadless() { return headless; };
 
+    /** Get physical device name
+    */
+    std::string& getPhysicalDeviceName();
+
+
     /** Check if the window is occluded
     */
     bool isWindowOccluded() const;
@@ -256,10 +261,12 @@ class dlldecl Device {
     bool init();
 
     friend class Engine;
+
+    std::string mPhysicalDeviceName;
 };
 
-dlldecl extern Device::SharedPtr gpDevice;
-dlldecl extern Device::SharedPtr gpDeviceHeadless;
+dlldecl extern Device::SharedPtr _pDevice;
+dlldecl extern Device::SharedPtr _gpDeviceHeadless;
 
 enum_class_operators(Device::SupportedFeatures);
 

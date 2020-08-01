@@ -165,7 +165,7 @@ namespace Falcor
     {
     }
 
-    static void initTexAccessParams(const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize)
+    static void initTexAccessParams(std::shared_ptr<Device> device, const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize)
     {
         assert(isDepthStencilFormat(pTexture->getFormat()) == false); // #VKTODO Nothing complicated here, just that Vulkan doesn't support writing to both depth and stencil, which may be confusing to the user
         uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
@@ -185,7 +185,7 @@ namespace Falcor
         dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
 
         // Upload the data to a staging buffer
-        pStaging = Buffer::create(dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
+        pStaging = Buffer::create(device, dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
     }
 
@@ -194,7 +194,7 @@ namespace Falcor
         VkBufferImageCopy vkCopy;
         Buffer::SharedPtr pStaging;
         size_t dataSize;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pStaging, pData, offset, size, dataSize);
+        initTexAccessParams(pCtx->device(), pTexture, subresourceIndex, vkCopy, pStaging, pData, offset, size, dataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopyDest);
@@ -225,7 +225,7 @@ namespace Falcor
         pThis->mpContext = pCtx;
 
         VkBufferImageCopy vkCopy;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uint3(-1, -1, -1), pThis->mDataSize);
+        initTexAccessParams(pCtx->device(), pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uint3(-1, -1, -1), pThis->mDataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
@@ -233,7 +233,7 @@ namespace Falcor
         vkCmdCopyImageToBuffer(pCtx->getLowLevelData()->getCommandList(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pThis->mpBuffer->getApiHandle(), 1, &vkCopy);
 
         // Create a fence and signal
-        pThis->mpFence = GpuFence::create();
+        pThis->mpFence = GpuFence::create(pCtx->device());
         pCtx->flush(false);
         pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
 

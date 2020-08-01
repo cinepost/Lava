@@ -38,7 +38,7 @@
 
 namespace Falcor {
 
-    ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) : CopyContext(type, queue) {
+    ComputeContext::ComputeContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) : CopyContext(device, type, queue) {
         assert(queue);
     }
 

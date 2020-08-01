@@ -35,98 +35,99 @@
 
 namespace Falcor {
 
-    Fbo::Fbo() {
-        mColorAttachments.resize(getMaxColorTargetCount());
-    }
+Fbo::Fbo(std::shared_ptr<Device> device): mpDevice(device), mTempDesc(device) {
+    mColorAttachments.resize(getMaxColorTargetCount(device));
+}
 
-    Fbo::~Fbo() {
-        gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
-    }
+Fbo::~Fbo() {
+    mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+}
 
-    const Fbo::ApiHandle& Fbo::getApiHandle() const {
-        finalize();
-        return mApiHandle;
-    }
+const Fbo::ApiHandle& Fbo::getApiHandle() const {
+    finalize();
+    return mApiHandle;
+}
 
-    uint32_t Fbo::getMaxColorTargetCount() {
-        int count = gpDevice->getPhysicalDeviceLimits().maxFragmentOutputAttachments;
-        return count;
-    }
+uint32_t Fbo::getMaxColorTargetCount(std::shared_ptr<Device> device) {
+    int count =device->getPhysicalDeviceLimits().maxFragmentOutputAttachments;
+    return count;
+}
 
-    void Fbo::initApiHandle() const {
-        // Bind the color buffers
-        uint32_t arraySize = -1;
-        std::vector<VkImageView> attachments(Fbo::getMaxColorTargetCount() + 1);  // 1 is for the depth
+void Fbo::initApiHandle() const {
+    // Bind the color buffers
+    uint32_t arraySize = -1;
+    std::vector<VkImageView> attachments(Fbo::getMaxColorTargetCount(mpDevice) + 1);  // 1 is for the depth
 
-        uint32_t rtCount = 0;
-        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++) {
-            if (mColorAttachments[i].pTexture) {
-                assert(arraySize == -1 || arraySize == getRenderTargetView(i)->getViewInfo().arraySize);
-                arraySize = getRenderTargetView(i)->getViewInfo().arraySize;
-                attachments[rtCount] = getRenderTargetView(i)->getApiHandle();
-                rtCount++;
-            }
-        }
-        // Bind the depth buffer
-        if (mDepthStencil.pTexture) {
-            assert(arraySize == -1 || arraySize == getDepthStencilView()->getViewInfo().arraySize);
-            if (arraySize == -1) {
-                arraySize = getDepthStencilView()->getViewInfo().arraySize;
-            }
-            auto test = getDepthStencilView();
-            if (!test) {
-                printf("ERROR getDepthStencilView returned NULL\n");
-            }
-            auto test2 = test->getApiHandle();
-            if (!test2) {
-                printf("ERROR getDepthStencilView->getApiHandle() returned NULL\n");
-            }
-            attachments[rtCount] = getDepthStencilView()->getApiHandle();
+    uint32_t rtCount = 0;
+    for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(mpDevice); i++) {
+        if (mColorAttachments[i].pTexture) {
+            assert(arraySize == -1 || arraySize == getRenderTargetView(i)->getViewInfo().arraySize);
+            arraySize = getRenderTargetView(i)->getViewInfo().arraySize;
+            attachments[rtCount] = getRenderTargetView(i)->getApiHandle();
             rtCount++;
         }
-
-        // Render Pass
-        RenderPassCreateInfo renderPassInfo;
-        initVkRenderPassInfo(*mpDesc, renderPassInfo);
-        VkRenderPass pass;
-        vkCreateRenderPass(gpDevice->getApiHandle(), &renderPassInfo.info, nullptr, &pass);
-
-        // Framebuffer
-        VkFramebufferCreateInfo frameBufferInfo = {};
-        frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        frameBufferInfo.renderPass = pass;
-        frameBufferInfo.attachmentCount = rtCount;
-        frameBufferInfo.pAttachments = attachments.data();
-        frameBufferInfo.width = rtCount ? getWidth() : 1;
-        frameBufferInfo.height = rtCount ? getHeight() : 1;
-        frameBufferInfo.layers = rtCount ? arraySize : 1;
-
-        VkFramebuffer frameBuffer;
-
-        vkCreateFramebuffer(gpDevice->getApiHandle(), &frameBufferInfo, nullptr, &frameBuffer);
-
-        if (mApiHandle) gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
-        mApiHandle = ApiHandle::create(pass, frameBuffer);
     }
-
-    void Fbo::applyColorAttachment(uint32_t rtIndex) {}
-
-    void Fbo::applyDepthAttachment() {}
-
-    RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
-        const auto& rt = mColorAttachments[rtIndex];
-        if (rt.pTexture) {
-            return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
-        } else {
-            return RenderTargetView::getNullView();
+    // Bind the depth buffer
+    if (mDepthStencil.pTexture) {
+        assert(arraySize == -1 || arraySize == getDepthStencilView()->getViewInfo().arraySize);
+        if (arraySize == -1) {
+            arraySize = getDepthStencilView()->getViewInfo().arraySize;
         }
+        auto test = getDepthStencilView();
+        if (!test) {
+            printf("ERROR getDepthStencilView returned NULL\n");
+        }
+        auto test2 = test->getApiHandle();
+        if (!test2) {
+            printf("ERROR getDepthStencilView->getApiHandle() returned NULL\n");
+        }
+        attachments[rtCount] = getDepthStencilView()->getApiHandle();
+        rtCount++;
     }
 
-    DepthStencilView::SharedPtr Fbo::getDepthStencilView() const {
-        if (mDepthStencil.pTexture) {
-            return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
-        } else {
-            return DepthStencilView::getNullView();
-        }
+    // Render Pass
+    RenderPassCreateInfo renderPassInfo;
+    initVkRenderPassInfo(*mpDesc, renderPassInfo);
+    VkRenderPass pass;
+    vkCreateRenderPass(mpDevice->getApiHandle(), &renderPassInfo.info, nullptr, &pass);
+
+    // Framebuffer
+    VkFramebufferCreateInfo frameBufferInfo = {};
+    frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    frameBufferInfo.renderPass = pass;
+    frameBufferInfo.attachmentCount = rtCount;
+    frameBufferInfo.pAttachments = attachments.data();
+    frameBufferInfo.width = rtCount ? getWidth() : 1;
+    frameBufferInfo.height = rtCount ? getHeight() : 1;
+    frameBufferInfo.layers = rtCount ? arraySize : 1;
+
+    VkFramebuffer frameBuffer;
+
+    vkCreateFramebuffer(mpDevice->getApiHandle(), &frameBufferInfo, nullptr, &frameBuffer);
+
+    if (mApiHandle) mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+    mApiHandle = ApiHandle::create(mpDevice, pass, frameBuffer);
+}
+
+void Fbo::applyColorAttachment(uint32_t rtIndex) {}
+
+void Fbo::applyDepthAttachment() {}
+
+RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
+    const auto& rt = mColorAttachments[rtIndex];
+    if (rt.pTexture) {
+        return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
+    } else {
+        return RenderTargetView::getNullView();
     }
+}
+
+DepthStencilView::SharedPtr Fbo::getDepthStencilView() const {
+    if (mDepthStencil.pTexture) {
+        return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
+    } else {
+        return DepthStencilView::getNullView();
+    }
+}
+
 }  // namespace Falcor

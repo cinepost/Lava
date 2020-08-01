@@ -98,6 +98,9 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     virtual ~Resource() = 0;
 
+    std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
+
     /** Get the bind flags
     */
     BindFlags getBindFlags() const { return mBindFlags; }
@@ -170,13 +173,10 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         //return std::dynamic_pointer_cast<Buffer>(shared_from_this());
     }
 
- private:
-    std::shared_ptr<Device> mpDevice;
-
  protected:
     friend class CopyContext;
 
-    Resource(Device device, Type type, BindFlags bindFlags, uint64_t size) : mpDevice = device, mType(type), mBindFlags(bindFlags), mSize(size) {}
+    Resource(std::shared_ptr<Device> device, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(device), mType(type), mBindFlags(bindFlags), mSize(size) {}
 
     Type mType;
     BindFlags mBindFlags;
@@ -195,6 +195,8 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     size_t mSize = 0;
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
+
+    std::shared_ptr<Device> mpDevice;
 
     mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
     mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

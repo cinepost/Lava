@@ -39,15 +39,15 @@ bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other)
 }
 
 ComputeStateObject::~ComputeStateObject() {
-    gpDevice->releaseResource(mApiHandle);
+    mpDevice->releaseResource(mApiHandle);
 }
 
-ComputeStateObject::ComputeStateObject(const Desc& desc) : mDesc(desc) {
+ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> device, const Desc& desc) : mpDevice(device), mDesc(desc) {
     apiInit();
 }
 
-ComputeStateObject::SharedPtr ComputeStateObject::create(const Desc& desc) {
-    return SharedPtr(new ComputeStateObject(desc));
+ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> device, const Desc& desc) {
+    return SharedPtr(new ComputeStateObject(device, desc));
 }
 
 }  // namespace Falcor

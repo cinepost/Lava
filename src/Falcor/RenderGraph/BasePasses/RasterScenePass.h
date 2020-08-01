@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERSCENEPASS_H_
+#define SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERSCENEPASS_H_
+
 #include "BaseGraphicsPass.h"
 #include "../RenderPass.h"
 
-namespace Falcor
-{
+namespace Falcor {
 
-    class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass>
-    {
-    public:
+    class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass> {
+     public:
         //using SharedPtr = ParameterBlockSharedPtr::shared_ptr<RasterScenePass>;
         using SharedPtr = ParameterBlockSharedPtr<RasterScenePass>;
 
@@ -44,7 +44,7 @@ namespace Falcor
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
 
         /** Create a new object.
             \param[in] pScene The scene object
@@ -54,7 +54,7 @@ namespace Falcor
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
 
         /** Render the scene into the dst FBO
         */
@@ -71,9 +71,11 @@ namespace Falcor
         /** Get the scene
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }
-    private:
-        RasterScenePass(const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+     private:
+        RasterScenePass(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
         Scene::SharedPtr mpScene;
     };
-}
 
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERSCENEPASS_H_

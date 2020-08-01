@@ -38,7 +38,7 @@ namespace Falcor
         bool recordingCmds = false;
     };
 
-    VkCommandBuffer createCommandBuffer(void* pUserData)
+    VkCommandBuffer createCommandBuffer(std::shared_ptr<Device> device, void* pUserData)
     {
         LowLevelContextData* pThis = (LowLevelContextData*)pUserData;
         VkCommandBufferAllocateInfo cmdBufAllocateInfo = {};
@@ -47,7 +47,7 @@ namespace Falcor
         cmdBufAllocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         cmdBufAllocateInfo.commandBufferCount = 1;
         VkCommandBuffer cmdBuf;
-        vk_call(vkAllocateCommandBuffers(gpDevice->getApiHandle(), &cmdBufAllocateInfo, &cmdBuf));
+        vk_call(vkAllocateCommandBuffers(device->getApiHandle(), &cmdBufAllocateInfo, &cmdBuf));
         return cmdBuf;
     }
 
@@ -62,31 +62,30 @@ namespace Falcor
         pApiData->recordingCmds = true;
     }
 
-    LowLevelContextData::LowLevelContextData(CommandQueueType type, CommandQueueHandle queue): mType(type), mpQueue(queue)
+    LowLevelContextData::LowLevelContextData(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue): mType(type), mpQueue(queue), mpDevice(device)
     {
 
     }
 
-    LowLevelContextData::SharedPtr LowLevelContextData::create(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
-    {
-        SharedPtr pThis = SharedPtr(new LowLevelContextData(type, queue));
+    LowLevelContextData::SharedPtr LowLevelContextData::create(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) {
+        SharedPtr pThis = SharedPtr(new LowLevelContextData(device, type, queue));
         pThis->mType = type;
-        pThis->mpFence = GpuFence::create();
+        pThis->mpFence = GpuFence::create(device);
         pThis->mpQueue = queue;
 
         VkCommandPoolCreateInfo commandPoolCreateInfo{};
         commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        commandPoolCreateInfo.queueFamilyIndex = gpDevice->getApiCommandQueueType(type);
+        commandPoolCreateInfo.queueFamilyIndex = device->getApiCommandQueueType(type);
         VkCommandPool pool;
-        if (VK_FAILED(vkCreateCommandPool(gpDevice->getApiHandle(), &commandPoolCreateInfo, nullptr, &pool)))
+        if (VK_FAILED(vkCreateCommandPool(device->getApiHandle(), &commandPoolCreateInfo, nullptr, &pool)))
         {
             logError("Could not create command pool");
             return nullptr;
         }
-        pThis->mpAllocator = CommandAllocatorHandle::create(pool);
+        pThis->mpAllocator = CommandAllocatorHandle::create(device, pool);
         pThis->mpApiData = new LowLevelContextApiData;
-        pThis->mpApiData->pCmdBufferAllocator = FencedPool<VkCommandBuffer>::create(pThis->mpFence, createCommandBuffer, pThis.get());
+        pThis->mpApiData->pCmdBufferAllocator = FencedPool<VkCommandBuffer>::create(device, pThis->mpFence, createCommandBuffer, pThis.get());
         pThis->mpList = pThis->mpApiData->pCmdBufferAllocator->newObject();
         initCommandList(pThis->mpApiData, pThis->mpList);
 

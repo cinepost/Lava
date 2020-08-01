@@ -48,6 +48,11 @@ std::string kMonospaceFont = "monospace";
 
 }
 
+Sample::Sample(Device::SharedPtr pDevice, IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)), mpDevice(pDevice) {
+    mClock = nullptr;
+    mFrameRate = nullptr;
+}
+
 void Sample::handleWindowSizeChange() {
         if (!mpDevice) {
             return;
@@ -60,7 +65,7 @@ void Sample::handleWindowSizeChange() {
 
         // Recreate target fbo
         auto pCurrentFbo = mpTargetFBO;
-        mpTargetFBO = Fbo::create2D(width, height, pBackBufferFBO->getDesc());
+        mpTargetFBO = Fbo::create2D(mpDevice, width, height, pBackBufferFBO->getDesc());
         mpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
         // Tell the GUI the swap-chain size changed
@@ -118,8 +123,8 @@ void Sample::handleWindowSizeChange() {
                     case KeyboardEvent::Key::V:
                         mVsyncOn = !mVsyncOn;
                         mpDevice->toggleVSync(mVsyncOn);
-                        mFrameRate.reset();
-                        mClock.setTime(0);
+                        mFrameRate->reset();
+                        mClock->setTime(0);
                         break;
                     case KeyboardEvent::Key::F2:
                         toggleUI(!mShowUI);
@@ -140,7 +145,7 @@ void Sample::handleWindowSizeChange() {
                         break;
                     case KeyboardEvent::Key::Pause:
                     case KeyboardEvent::Key::Space:
-                        mClock.isPaused() ? mClock.play() : mClock.pause();
+                        mClock->isPaused() ? mClock->play() : mClock->pause();
                         break;
                 }
             }
@@ -163,10 +168,13 @@ void Sample::handleWindowSizeChange() {
         mpRenderer.reset();
         if (mVideoCapture.pVideoCapture) endVideoCapture();
 
-        Clock::shutdown();
+        //Clock::shutdown();
+        delete mClock;
+        delete mFrameRate;
+
         Threading::shutdown();
         Scripting::shutdown();
-        RenderPassLibrary::instance().shutdown();
+        RenderPassLibrary::instance(mpDevice).shutdown();
         TextRenderer::shutdown();
         mpGui.reset();
         mpTargetFBO.reset();
@@ -176,18 +184,18 @@ void Sample::handleWindowSizeChange() {
         OSServices::stop();
     }
 
-    void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
-        Sample s(pRenderer);
+    void Sample::run(Device::SharedPtr pDevice, const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
+        Sample s(pDevice, pRenderer);
         try {
-            s.runInternal(config, argc, argv);
+            s.runInternal(pDevice, config, argc, argv);
         } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
-        Sample s(pRenderer);
+    void Sample::run(Device::SharedPtr pDevice, const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
+        Sample s(pDevice, pRenderer);
         try {
             auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
 
@@ -209,15 +217,18 @@ void Sample::handleWindowSizeChange() {
                 err("doesn't exist. Using default configuration");
             }
 
-            s.runInternal(c, argc, argv);
+            s.runInternal(pDevice, c, argc, argv);
         } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv) {
+    void Sample::runInternal(Device::SharedPtr pDevice, const SampleConfig& config, uint32_t argc, char** argv) {
         gpFramework = this;
+
+        mClock = new Clock(pDevice);
+        mFrameRate = new FrameRate(pDevice);
 
         Logger::showBoxOnError(config.showMessageBoxOnError);
         OSServices::start();
@@ -225,8 +236,8 @@ void Sample::handleWindowSizeChange() {
         Threading::start();
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
-        mClock.setTimeScale(config.timeScale);
-        if (config.pauseTime) mClock.pause();
+        mClock->setTimeScale(config.timeScale);
+        if (config.pauseTime) mClock->pause();
         mVsyncOn = config.deviceDesc.enableVsync;
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
@@ -245,7 +256,9 @@ void Sample::handleWindowSizeChange() {
             logError("Failed to create device");
             return;
         }
-        Clock::start();
+
+        //Clock::start();
+        mClock->start();
 
         // Get the default objects before calling onLoad()
         auto pBackBufferFBO = mpDevice->getSwapChainFbo();
@@ -253,7 +266,7 @@ void Sample::handleWindowSizeChange() {
             logError("Unable to get swap chain FBO!!!");
         }
 
-        mpTargetFBO = Fbo::create2D(pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
+        mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
         // Init the UI
         initUI();
@@ -276,7 +289,7 @@ void Sample::handleWindowSizeChange() {
         mpRenderer->onLoad(getRenderContext());
         pBar = nullptr;
 
-        mFrameRate.reset();
+        mFrameRate->reset();
         mpWindow->msgLoop();
 
         mpRenderer->onShutdown();
@@ -352,15 +365,15 @@ void Sample::handleWindowSizeChange() {
 
         auto controlsGroup = Gui::Group(pGui, "Global Controls");
         if (controlsGroup.open()) {
-            float t = (float)mClock.getTime();
-            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.setTime(double(t));
-            if (controlsGroup.button("Reset")) mClock.setTime(0.0);
-            bool timePaused = mClock.isPaused();
-            if (controlsGroup.button(timePaused ? "Play" : "Pause", true)) timePaused ? mClock.pause() : mClock.play();
-            if (controlsGroup.button("Stop", true)) mClock.stop();
+            float t = (float)mClock->getTime();
+            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock->setTime(double(t));
+            if (controlsGroup.button("Reset")) mClock->setTime(0.0);
+            bool timePaused = mClock->isPaused();
+            if (controlsGroup.button(timePaused ? "Play" : "Pause", true)) timePaused ? mClock->pause() : mClock->play();
+            if (controlsGroup.button("Stop", true)) mClock->stop();
 
-            float scale = (float)mClock.getTimeScale();
-            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock.setTimeScale(scale);
+            float scale = (float)mClock->getTimeScale();
+            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock->setTimeScale(scale);
             controlsGroup.separator();
 
             if (controlsGroup.button(mRendererPaused ? "Resume Rendering" : "Pause Rendering")) mRendererPaused = !mRendererPaused;
@@ -406,7 +419,7 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont("");
             }
 
-            mpGui->render(getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
+            mpGui->render(getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate->getLastFrameTime());
         }
     }
 
@@ -414,11 +427,11 @@ void Sample::handleWindowSizeChange() {
         if (mpDevice && mpDevice->isWindowOccluded()) return;
 
         // Check clock exit condition
-        if (mClock.shouldExit()) postQuitMessage(0);
+        if (mClock->shouldExit()) postQuitMessage(0);
 
-        mClock.tick();
-        mFrameRate.newFrame();
-        if (mVideoCapture.fixedTimeDelta) { mClock.setTime(mVideoCapture.currentTime); }
+        mClock->tick();
+        mFrameRate->newFrame();
+        if (mVideoCapture.fixedTimeDelta) { mClock->setTime(mVideoCapture.currentTime); }
 
         {
             PROFILE("onFrameRender");
@@ -561,8 +574,8 @@ void Sample::handleWindowSizeChange() {
         c.deviceDesc = mpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
         c.showMessageBoxOnError = Logger::isBoxShownOnError();
-        c.timeScale = (float)mClock.getTimeScale();
-        c.pauseTime = mClock.isPaused();
+        c.timeScale = (float)mClock->getTimeScale();
+        c.pauseTime = mClock->isPaused();
         c.showUI = mShowUI;
         return c;
     }

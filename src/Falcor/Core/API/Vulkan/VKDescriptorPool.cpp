@@ -113,10 +113,10 @@ void DescriptorPool::apiInit() {
     info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
     VkDescriptorPool pool;
-    if (VK_FAILED(vkCreateDescriptorPool(gpDevice->getApiHandle(), &info, nullptr, &pool))) {
+    if (VK_FAILED(vkCreateDescriptorPool(mpDevice->getApiHandle(), &info, nullptr, &pool))) {
         throw std::runtime_error("Error creating descriptor pool!");
     }
-    mpApiData->descriptorPool = ApiHandle::create(pool);
+    mpApiData->descriptorPool = ApiHandle::create(mpDevice, pool);
 }
 
 const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const {

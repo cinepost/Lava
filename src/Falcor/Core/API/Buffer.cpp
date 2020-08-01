@@ -36,6 +36,7 @@ namespace Falcor {
 namespace {
 
 Buffer::SharedPtr createStructuredFromType(
+    std::shared_ptr<Device> device,
     const ReflectionType* pType,
     const std::string& varName,
     uint32_t elementCount,
@@ -50,7 +51,7 @@ Buffer::SharedPtr createStructuredFromType(
     }
 
     assert(pResourceType->getSize() <= UINT32_MAX);
-    return Buffer::createStructured((uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+    return Buffer::createStructured(device, (uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 }  // namespace
@@ -58,18 +59,18 @@ Buffer::SharedPtr createStructuredFromType(
 size_t getBufferDataAlignment(const Buffer* pBuffer);
 void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
 
-Buffer::Buffer(Device device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess)
+Buffer::Buffer(std::shared_ptr<Device> device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess)
     : Resource(device, Type::Buffer, bindFlags, size)
     , mCpuAccess(cpuAccess) {}
 
-Buffer::SharedPtr Buffer::create(Device device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
+Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> device, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
     Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(device, size, bindFlags, cpuAccess));
     pBuffer->apiInit(pInitData != nullptr);
     if (pInitData) pBuffer->setBlob(pInitData, 0, size);
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createTyped(Device device, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
+Buffer::SharedPtr Buffer::createTyped(std::shared_ptr<Device> device, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
     size_t size = elementCount * getFormatBytesPerBlock(format);
     SharedPtr pBuffer = create(device, size, bindFlags, cpuAccess, pInitData);
     assert(pBuffer);
@@ -80,7 +81,7 @@ Buffer::SharedPtr Buffer::createTyped(Device device, ResourceFormat format, uint
 }
 
 Buffer::SharedPtr Buffer::createStructured(
-    Device device,
+    std::shared_ptr<Device> device,
     uint32_t structSize,
     uint32_t elementCount,
     ResourceBindFlags bindFlags,
@@ -103,6 +104,7 @@ Buffer::SharedPtr Buffer::createStructured(
 }
 
 Buffer::SharedPtr Buffer::createStructured(
+    std::shared_ptr<Device> device,
     const ShaderVar& shaderVar,
     uint32_t elementCount,
     ResourceBindFlags bindFlags,
@@ -110,10 +112,11 @@ Buffer::SharedPtr Buffer::createStructured(
     const void* pInitData,
     bool createCounter)
 {
-    return createStructuredFromType(shaderVar.getType().get(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+    return createStructuredFromType(device, shaderVar.getType().get(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Buffer::createStructured(
+    std::shared_ptr<Device> device,
     const Program* pProgram,
     const std::string& name,
     uint32_t elementCount,
@@ -127,10 +130,10 @@ Buffer::SharedPtr Buffer::createStructured(
     if (pVar == nullptr) {
         throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
     }
-    return createStructuredFromType(pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+    return createStructuredFromType(device, pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
-Buffer::SharedPtr Buffer::aliasResource(Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags) {
+Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> device, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags) {
     assert(pBaseResource->asBuffer()); // Only aliasing buffers for now
     CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
     if (cpuAccess != CpuAccess::None) {
@@ -149,17 +152,17 @@ Buffer::SharedPtr Buffer::aliasResource(Resource::SharedPtr pBaseResource, GpuAd
         return nullptr;
     }
 
-    SharedPtr pBuffer = SharedPtr(new Buffer(size, bindFlags, CpuAccess::None));
+    SharedPtr pBuffer = SharedPtr(new Buffer(device, size, bindFlags, CpuAccess::None));
     pBuffer->mpAliasedResource = pBaseResource;
     pBuffer->mApiHandle = pBaseResource->getApiHandle();
     pBuffer->mGpuVaOffset = offset;
     return pBuffer;
 }
 
-Buffer::SharedPtr Buffer::createFromApiHandle(ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
+Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
     assert(handle);
-    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(size, bindFlags, cpuAccess));
+    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(device, size, bindFlags, cpuAccess));
     pBuffer->mApiHandle = handle;
     return pBuffer;
 }
@@ -168,9 +171,9 @@ Buffer::~Buffer() {
     if (mpAliasedResource) return;
 
     if (mDynamicData.pResourceHandle) {
-        gpDevice->getUploadHeap()->release(mDynamicData);
+        mpDevice->getUploadHeap()->release(mDynamicData);
     } else {
-        gpDevice->releaseResource(mApiHandle);
+        mpDevice->releaseResource(mApiHandle);
     }
 }
 
@@ -222,7 +225,7 @@ bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
         uint8_t* pDst = (uint8_t*)map(MapType::WriteDiscard) + offset;
         std::memcpy(pDst, pData, size);
     } else {
-        gpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
+        mpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
     }
     return true;
 }
@@ -242,11 +245,11 @@ void* Buffer::map(MapType type) {
 
         // Allocate a new buffer
         if (mDynamicData.pResourceHandle) {
-            gpDevice->getUploadHeap()->release(mDynamicData);
+            mpDevice->getUploadHeap()->release(mDynamicData);
         }
 
         mpCBV = nullptr;
-        mDynamicData = gpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
+        mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
         mApiHandle = mDynamicData.pResourceHandle;
         mGpuVaOffset = mDynamicData.offset;
         invalidateViews();
@@ -279,12 +282,12 @@ void* Buffer::map(MapType type) {
                 //    mpStagingResource = Buffer::createTyped(mFormat, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
                 //} else {
                 //    LOG_WARN("map buffer");
-                    mpStagingResource = Buffer::create(mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+                    mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
                 //}
             }
 
             // Copy the buffer and flush the pipeline
-            RenderContext* pContext = gpDevice->getRenderContext();
+            RenderContext* pContext = mpDevice->getRenderContext();
             assert(mGpuVaOffset == 0);
             pContext->copyResource(mpStagingResource.get(), this);
             pContext->flush(true);

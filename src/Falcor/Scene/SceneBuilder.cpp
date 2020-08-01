@@ -37,13 +37,11 @@ namespace fs = boost::filesystem;
 #include "SceneBuilder.h"
 #include "../Externals/mikktspace/mikktspace.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        class MikkTSpaceWrapper
-        {
-        public:
+namespace Falcor {
+    
+    namespace {
+        class MikkTSpaceWrapper {
+         public:
             static std::vector<float3> generateBitangents(const float3* pPositions, const float3* pNormals, const float2* pTexCrd, const uint32_t* pIndices, size_t vertexCount, size_t indexCount)
             {
                 if (!pNormals || !pPositions || !pTexCrd || !pIndices) {
@@ -92,8 +90,7 @@ namespace Falcor
             void getNormal(float normal[], int32_t face, int32_t vert) { *(float3*)normal = mpNormals[getIndex(face, vert)]; }
             void getTexCrd(float texCrd[], int32_t face, int32_t vert) { *(float2*)texCrd = mpTexCrd[getIndex(face, vert)]; }
 
-            void setTangent(const float tangent[], float sign, int32_t face, int32_t vert)
-            {
+            void setTangent(const float tangent[], float sign, int32_t face, int32_t vert) {
                 int32_t index = getIndex(face, vert);
                 float3 T(*(float3*)tangent), N;
                 getNormal(&N[0], face, vert);
@@ -102,57 +99,49 @@ namespace Falcor
             }
         };
 
-        void validateTangentSpace(const float3 bitangents[], uint32_t vertexCount)
-        {
-            auto isValid = [](const float3& bitangent)
-            {
+        void validateTangentSpace(const float3 bitangents[], uint32_t vertexCount) {
+            auto isValid = [](const float3& bitangent) {
                 if (glm::any(glm::isinf(bitangent) || glm::isnan(bitangent))) return false;
                 if (length(bitangent) < 1e-6f) return false;
                 return true;
             };
 
             uint32_t numInvalid = 0;
-            for (uint32_t i = 0; i < vertexCount; i++)
-            {
+            for (uint32_t i = 0; i < vertexCount; i++) {
                 if (!isValid(bitangents[i])) numInvalid++;
             }
 
-            if (numInvalid > 0)
-            {
+            if (numInvalid > 0) {
                 logWarning("Loaded tangent space is invalid at " + std::to_string(numInvalid) + " vertices. Please fix the asset.");
             }
         }
     }
 
-    SceneBuilder::SceneBuilder(Flags flags) : mFlags(flags) {};
+    SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mFlags(flags), mpDevice(pDevice) {};
 
-    SceneBuilder::SharedPtr SceneBuilder::create(Flags flags)
-    {
-        return SharedPtr(new SceneBuilder(flags));
+    SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags) {
+        return SharedPtr(new SceneBuilder(pDevice, flags));
     }
 
-    SceneBuilder::SharedPtr SceneBuilder::create(const std::string& filename, Flags buildFlags, const InstanceMatrices& instances)
-    {
-        auto pBuilder = create(buildFlags);
+    SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags, const InstanceMatrices& instances) {
+        auto pBuilder = create(pDevice, buildFlags);
         return pBuilder->import(filename, instances) ? pBuilder : nullptr;
     }
 
-    bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances)
-    {
+    bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances) {
         bool success = false;
         if (fs::path(filename).extension() == ".py") {
-            success = PythonImporter::import(filename, *this);
+            success = PythonImporter::import(mpDevice, filename, *this);
         } else if (fs::path(filename).extension() == ".fscene") {
-            success = SceneImporter::import(filename, *this);
+            success = SceneImporter::import(mpDevice, filename, *this);
         } else {
-            success = AssimpImporter::import(filename, *this, instances);
+            success = AssimpImporter::import(mpDevice, filename, *this, instances);
         }
         mFilename = filename;
         return success;
     }
 
-    uint32_t SceneBuilder::addNode(const Node& node)
-    {
+    uint32_t SceneBuilder::addNode(const Node& node) {
         assert(node.parent == kInvalidNode || node.parent < mSceneGraph.size());
 
         assert(mSceneGraph.size() <= UINT32_MAX);
@@ -163,16 +152,14 @@ namespace Falcor
         return newNodeID;
     }
 
-    void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID)
-    {
+    void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID) {
         assert(meshID < mMeshes.size());
         mSceneGraph.at(nodeID).meshes.push_back(meshID);
         mMeshes.at(meshID).instances.push_back(nodeID);
         mDirty = true;
     }
 
-    uint32_t SceneBuilder::addMesh(const Mesh& mesh)
-    {
+    uint32_t SceneBuilder::addMesh(const Mesh& mesh) {
         const auto& prevMesh = mMeshes.size() ? mMeshes.back() : MeshSpec();
 
         // Create the new mesh spec
@@ -188,13 +175,11 @@ namespace Falcor
         spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
 
         // Error checking
-        auto throw_on_missing_element = [&](const std::string& element)
-        {
+        auto throw_on_missing_element = [&](const std::string& element) {
             throw std::runtime_error("Error when adding the mesh " + mesh.name + " to the scene.\nThe mesh is missing " + element);
         };
 
-        auto missing_element_warning = [&](const std::string& element)
-        {
+        auto missing_element_warning = [&](const std::string& element) {
             logWarning("The mesh " + mesh.name + " is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering");
         };
 
@@ -208,8 +193,7 @@ namespace Falcor
         if (mesh.pTexCrd == nullptr) missing_element_warning("texture coordinates");
 
         // Initialize the dynamic data
-        if (mesh.pBoneWeights || mesh.pBoneIDs)
-        {
+        if (mesh.pBoneWeights || mesh.pBoneIDs) {
             if (mesh.pBoneIDs == nullptr) throw_on_missing_element("bone IDs");
             if (mesh.pBoneWeights == nullptr) throw_on_missing_element("bone weights");
             spec.hasDynamicData = true;
@@ -217,17 +201,13 @@ namespace Falcor
 
         // Generate tangent space if that's required
         std::vector<float3> bitangents;
-        if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.pBitangents)
-        {
+        if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.pBitangents) {
             bitangents = MikkTSpaceWrapper::generateBitangents(mesh.pPositions, mesh.pNormals, mesh.pTexCrd, mesh.pIndices, mesh.vertexCount, mesh.indexCount);
-        }
-        else
-        {
+        } else {
             validateTangentSpace(mesh.pBitangents, mesh.vertexCount);
         }
 
-        for (uint32_t v = 0; v < mesh.vertexCount; v++)
-        {
+        for (uint32_t v = 0; v < mesh.vertexCount; v++) {
             StaticVertexData s;
             s.position = mesh.pPositions[v];
             s.normal = mesh.pNormals ? mesh.pNormals[v] : float3(0, 0, 0);
@@ -235,8 +215,7 @@ namespace Falcor
             s.bitangent = bitangents.size() ? bitangents[v] : mesh.pBitangents[v];
             mBuffersData.staticData.push_back(PackedStaticVertexData(s));
 
-            if (mesh.pBoneWeights)
-            {
+            if (mesh.pBoneWeights) {
                 DynamicVertexData d;
                 d.boneWeight = mesh.pBoneWeights[v];
                 d.boneID = mesh.pBoneIDs[v];
@@ -251,28 +230,22 @@ namespace Falcor
         return (uint32_t)mMeshes.size() - 1;
     }
 
-    uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate)
-    {
+    uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate) {
         assert(pMaterial);
 
         // Reuse previously added materials
-        if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
-        {
+        if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end()) {
             return (uint32_t)std::distance(mMaterials.begin(), it);
         }
 
         // Try to find previously added material with equal properties (duplicate)
-        if (auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; }); it != mMaterials.end())
-        {
+        if (auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; }); it != mMaterials.end()) {
             const auto& equalMaterial = *it;
 
             // ASSIMP sometimes creates internal copies of a material: Always de-duplicate if name and properties are equal.
-            if (removeDuplicate || pMaterial->getName() == equalMaterial->getName())
-            {
+            if (removeDuplicate || pMaterial->getName() == equalMaterial->getName()) {
                 return (uint32_t)std::distance(mMaterials.begin(), it);
-            }
-            else
-            {
+            } else {
                 logWarning("Material '" + pMaterial->getName() + "' is a duplicate (has equal properties) of material '" + equalMaterial->getName() + "'.");
             }
         }
@@ -283,15 +256,13 @@ namespace Falcor
         return (uint32_t)mMaterials.size() - 1;
     }
 
-    void SceneBuilder::setCamera(const Camera::SharedPtr& pCamera, uint32_t nodeID)
-    {
+    void SceneBuilder::setCamera(const Camera::SharedPtr& pCamera, uint32_t nodeID) {
         mCamera.nodeID = nodeID;
         mCamera.pObject = pCamera;
         mDirty = true;
     }
 
-    uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight, uint32_t nodeID)
-    {
+    uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight, uint32_t nodeID) {
         Scene::AnimatedObject<Light> light;
         light.pObject = pLight;
         light.nodeID = nodeID;
@@ -301,8 +272,7 @@ namespace Falcor
         return (uint32_t)mLights.size() - 1;
     }
 
-    Vao::SharedPtr SceneBuilder::createVao(uint16_t drawCount)
-    {
+    Vao::SharedPtr SceneBuilder::createVao(std::shared_ptr<Device> pDevice, uint16_t drawCount) {
         for (auto& mesh : mMeshes) assert(mesh.topology == mMeshes[0].topology);
         const size_t vertexCount = (uint32_t)mBuffersData.staticData.size();
         size_t ibSize = sizeof(uint32_t) * mBuffersData.indices.size();
@@ -312,19 +282,19 @@ namespace Falcor
 
         // Create the index buffer
         ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
-        Buffer::SharedPtr pIB = Buffer::create((uint32_t)ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indices.data());
+        Buffer::SharedPtr pIB = Buffer::create(pDevice, (uint32_t)ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indices.data());
 
         // Create the vertex data as structured buffers
         ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
-        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
-        Buffer::SharedPtr pPrevBuffer = Buffer::createStructured(sizeof(PrevVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(pDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+        Buffer::SharedPtr pPrevBuffer = Buffer::createStructured(pDevice, sizeof(PrevVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
 
         Vao::BufferVec pVBs(Scene::kVertexBufferCount);
         pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
         pVBs[Scene::kPrevVertexBufferIndex] = pPrevBuffer;
         std::vector<uint16_t> drawIDs(drawCount);
         for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
-        pVBs[Scene::kDrawIdBufferIndex] = Buffer::create(drawCount * sizeof(uint16_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
+        pVBs[Scene::kDrawIdBufferIndex] = Buffer::create(pDevice, drawCount * sizeof(uint16_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
 
         // The layout only initializes the vertex data and draw ID layout. The skinning data doesn't get passed into the vertex shader.
         VertexLayout::SharedPtr pLayout = VertexLayout::create();
@@ -351,27 +321,23 @@ namespace Falcor
         return pVao;
     }
 
-    void SceneBuilder::createGlobalMatricesBuffer(Scene* pScene)
-    {
+    void SceneBuilder::createGlobalMatricesBuffer(Scene* pScene) {
         pScene->mSceneGraph.resize(mSceneGraph.size());
 
-        for (size_t i = 0; i < mSceneGraph.size(); i++)
-        {
+        for (size_t i = 0; i < mSceneGraph.size(); i++) {
             assert(mSceneGraph[i].parent <= UINT32_MAX);
             pScene->mSceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].localToBindPose);
         }
     }
 
-    uint32_t SceneBuilder::createMeshData(Scene* pScene)
-    {
+    uint32_t SceneBuilder::createMeshData(Scene* pScene) {
         auto& meshData = pScene->mMeshDesc;
         auto& instanceData = pScene->mMeshInstanceData;
         meshData.resize(mMeshes.size());
         pScene->mMeshHasDynamicData.resize(mMeshes.size());
 
         size_t drawCount = 0;
-        for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++)
-        {
+        for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++) {
             // Mesh data
             const auto& mesh = mMeshes[meshID];
             meshData[meshID].materialID = mesh.materialId;
@@ -383,8 +349,7 @@ namespace Falcor
             drawCount += mesh.instances.size();
 
             // Mesh instance data
-            for (const auto& instance : mesh.instances)
-            {
+            for (const auto& instance : mesh.instances) {
                 instanceData.push_back({});
                 auto& meshInstance = instanceData.back();
                 meshInstance.globalMatrixID = instance;
@@ -394,8 +359,7 @@ namespace Falcor
                 meshInstance.ibOffset = mesh.indexOffset;
             }
 
-            if (mesh.hasDynamicData)
-            {
+            if (mesh.hasDynamicData) {
                 assert(mesh.instances.size() == 1);
                 pScene->mMeshHasDynamicData[meshID] = true;
 
@@ -409,19 +373,20 @@ namespace Falcor
         return (uint32_t)drawCount;
     }
 
-    Scene::SharedPtr SceneBuilder::getScene()
-    {
+    Scene::SharedPtr SceneBuilder::getScene() {
         // We cache the scene because creating it is not cheap.
         // With the PythonImporter, the scene is fetched twice, once for running
         // the scene script and another time when the scene has finished loading.
+
         if (mpScene && !mDirty) return mpScene;
 
-        if (mMeshes.size() == 0)
-        {
-            logError("Can't build scene. No meshes were loaded");
+        if (mMeshes.size() == 0) {
+            logError("Can't build scene. No meshes were loaded !!!");
             return nullptr;
         }
-        mpScene = Scene::create();
+
+        mpScene = Scene::create(mpDevice);
+
         if (mCamera.pObject == nullptr) mCamera.pObject = Camera::create();
         mpScene->mCamera = mCamera;
         mpScene->mCameraSpeed = mCameraSpeed;
@@ -434,7 +399,7 @@ namespace Falcor
         createGlobalMatricesBuffer(mpScene.get());
         uint32_t drawCount = createMeshData(mpScene.get());
         assert(drawCount <= UINT16_MAX);
-        mpScene->mpVao = createVao(drawCount);
+        mpScene->mpVao = createVao(mpDevice, drawCount);
         calculateMeshBoundingBoxes(mpScene.get());
         createAnimationController(mpScene.get());
         mpScene->finalize();
@@ -443,19 +408,16 @@ namespace Falcor
         return mpScene;
     }
 
-    void SceneBuilder::calculateMeshBoundingBoxes(Scene* pScene)
-    {
+    void SceneBuilder::calculateMeshBoundingBoxes(Scene* pScene) {
         // Calculate mesh bounding boxes
         pScene->mMeshBBs.resize(mMeshes.size());
-        for (size_t i = 0; i < mMeshes.size(); i++)
-        {
+        for (size_t i = 0; i < mMeshes.size(); i++) {
             const auto& mesh = mMeshes[i];
             float3 boxMin(FLT_MAX);
             float3 boxMax(-FLT_MAX);
 
             const auto* staticData = &mBuffersData.staticData[mesh.staticVertexOffset];
-            for (uint32_t v = 0; v < mesh.vertexCount; v++)
-            {
+            for (uint32_t v = 0; v < mesh.vertexCount; v++) {
                 boxMin = glm::min(boxMin, staticData[v].position);
                 boxMax = glm::max(boxMax, staticData[v].position);
             }
@@ -464,8 +426,7 @@ namespace Falcor
         }
     }
 
-    uint32_t SceneBuilder::addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation)
-    {
+    uint32_t SceneBuilder::addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation) {
         assert(meshID < mMeshes.size());
         mMeshes[meshID].animations.push_back(pAnimation);
         mDirty = true;
@@ -473,20 +434,16 @@ namespace Falcor
         return (uint32_t)mMeshes[meshID].animations.size() - 1;
     }
 
-    void SceneBuilder::createAnimationController(Scene* pScene)
-    {
+    void SceneBuilder::createAnimationController(Scene* pScene) {
         pScene->mpAnimationController = AnimationController::create(pScene, mBuffersData.staticData, mBuffersData.dynamicData);
-        for (uint32_t i = 0; i < mMeshes.size(); i++)
-        {
-            for (const auto& pAnim : mMeshes[i].animations)
-            {
+        for (uint32_t i = 0; i < mMeshes.size(); i++) {
+            for (const auto& pAnim : mMeshes[i].animations) {
                 pScene->mpAnimationController->addAnimation(i, pAnim);
             }
         }
     }
 
-    SCRIPT_BINDING(SceneBuilder)
-    {
+    SCRIPT_BINDING(SceneBuilder) {
         auto buildFlags = m.enum_<SceneBuilder::Flags>("SceneBuilderFlags");
         buildFlags.regEnumVal(SceneBuilder::Flags::None);
         buildFlags.regEnumVal(SceneBuilder::Flags::RemoveDuplicateMaterials);
@@ -498,4 +455,5 @@ namespace Falcor
         buildFlags.regEnumVal(SceneBuilder::Flags::UseMetalRoughMaterials);
         buildFlags.addBinaryOperators();
     }
-}
+
+}  // namespace Falcor

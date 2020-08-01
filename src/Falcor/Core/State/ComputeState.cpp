@@ -32,7 +32,7 @@
 
 namespace Falcor {
 
-ComputeState::ComputeState() {
+ComputeState::ComputeState(std::shared_ptr<Device> device): mpDevice(device) {
     mpCsoGraph = _StateGraph::create();
 }
 
@@ -45,7 +45,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
         mpCsoGraph->walk((void*)mCachedData.pProgramKernels);
     }
 
-    RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty();
+    RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty(mpDevice);
 
     if (mCachedData.pRootSig != pRoot.get()) {
         mCachedData.pRootSig = pRoot.get();
@@ -65,7 +65,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
         if (mpCsoGraph->scanForMatchingNode(cmpFunc)) {
             pCso = mpCsoGraph->getCurrentNode();
         } else {
-            pCso = ComputeStateObject::create(mDesc);
+            pCso = ComputeStateObject::create(mpDevice, mDesc);
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }

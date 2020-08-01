@@ -28,26 +28,24 @@
 #include "stdafx.h"
 #include "GraphicsProgram.h"
 
-namespace Falcor
-{
-    GraphicsProgram::SharedPtr GraphicsProgram::create(const Desc& desc, const Program::DefineList& programDefines)
-    {
+namespace Falcor {
+
+    GraphicsProgram::SharedPtr GraphicsProgram::create(std::shared_ptr<Device> device, const Desc& desc, const Program::DefineList& programDefines) {
         SharedPtr pProg = SharedPtr(new GraphicsProgram);
         Desc d = desc;
         d.addDefaultVertexShaderIfNeeded();
-        pProg->init(d, programDefines);
+        pProg->init(device, d, programDefines);
         return pProg;
     }
 
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines)
-    {
+    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines) {
         Desc d(filename);
         d.vsEntry(vsEntry).psEntry(psEntry).addDefaultVertexShaderIfNeeded();
-        return create(d, programDefines);
+        return create(device, d, programDefines);
     }
 
-    SCRIPT_BINDING(GraphicsProgram)
-    {
+    SCRIPT_BINDING(GraphicsProgram) {
         m.regClass(GraphicsProgram);
     }
-}
+
+}  // namespace Falcor

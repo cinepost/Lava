@@ -36,6 +36,7 @@
 
 namespace Falcor {
 
+class Device;
 class ShaderResourceView;
 class UnorderedAccessView;
 class ConstantBufferView;

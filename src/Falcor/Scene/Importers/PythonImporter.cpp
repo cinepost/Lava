@@ -33,20 +33,21 @@ namespace fs = std::filesystem;
 namespace fs = boost::filesystem;
 #endif
 
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "PythonImporter.h"
 
 namespace Falcor {
 
 class PythonImporterImpl {
  public:
-    PythonImporterImpl(SceneBuilder& builder) : mBuilder(builder) {}
+    PythonImporterImpl(std::shared_ptr<Device> pDevice, SceneBuilder& builder) : mpDevice(pDevice), mBuilder(builder) {}
     bool load(const std::string& filename);
 
  private:
     bool error(const std::string& msg);
 
     SceneBuilder& mBuilder;
+    std::shared_ptr<Device> mpDevice;
     std::string mFilename;
     std::string mDirectory;
 };
@@ -90,8 +91,8 @@ bool PythonImporterImpl::load(const std::string& filename) {
     }
 }
 
-bool PythonImporter::import(const std::string& filename, SceneBuilder& builder) {
-    PythonImporterImpl importer(builder);
+bool PythonImporter::import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder) {
+    PythonImporterImpl importer(pDevice, builder);
     return importer.load(filename);
 }
 

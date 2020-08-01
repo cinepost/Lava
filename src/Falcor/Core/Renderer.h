@@ -61,7 +61,7 @@ class IFramework {
 
     /** Get the global Clock object
     */
-    virtual Clock& getGlobalClock() = 0;
+    virtual Clock& getClock() = 0;
 
     /** Get the global FrameRate object
     */

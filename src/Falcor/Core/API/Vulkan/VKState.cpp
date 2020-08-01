@@ -100,79 +100,73 @@ namespace Falcor {
     }
 
     VkBlendFactor getVkBlendFactor(BlendState::BlendFunc func) {
-        switch (func)
-        {
-        case BlendState::BlendFunc::Zero:
-            return VK_BLEND_FACTOR_ZERO;
-        case BlendState::BlendFunc::One:
-            return VK_BLEND_FACTOR_ONE;
-        case BlendState::BlendFunc::SrcColor:
-            return VK_BLEND_FACTOR_SRC_COLOR;
-        case BlendState::BlendFunc::OneMinusSrcColor:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-        case BlendState::BlendFunc::DstColor:
-            return VK_BLEND_FACTOR_DST_COLOR;
-        case BlendState::BlendFunc::OneMinusDstColor:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-        case BlendState::BlendFunc::SrcAlpha:
-            return VK_BLEND_FACTOR_SRC_ALPHA;
-        case BlendState::BlendFunc::OneMinusSrcAlpha:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        case BlendState::BlendFunc::DstAlpha:
-            return VK_BLEND_FACTOR_DST_ALPHA;
-        case BlendState::BlendFunc::OneMinusDstAlpha:
-            return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-        case BlendState::BlendFunc::BlendFactor:
-            return VK_BLEND_FACTOR_CONSTANT_COLOR;
-        case BlendState::BlendFunc::OneMinusBlendFactor:
-            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-        case BlendState::BlendFunc::SrcAlphaSaturate:
-            return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-        case BlendState::BlendFunc::Src1Color:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-        case BlendState::BlendFunc::OneMinusSrc1Color:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-        case BlendState::BlendFunc::Src1Alpha:
-            return VK_BLEND_FACTOR_SRC1_ALPHA;
-        case BlendState::BlendFunc::OneMinusSrc1Alpha:
-            return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
-        default:
-            should_not_get_here();
-            return VK_BLEND_FACTOR_ZERO;
+        switch (func) {
+            case BlendState::BlendFunc::Zero:
+                return VK_BLEND_FACTOR_ZERO;
+            case BlendState::BlendFunc::One:
+                return VK_BLEND_FACTOR_ONE;
+            case BlendState::BlendFunc::SrcColor:
+                return VK_BLEND_FACTOR_SRC_COLOR;
+            case BlendState::BlendFunc::OneMinusSrcColor:
+                return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+            case BlendState::BlendFunc::DstColor:
+                return VK_BLEND_FACTOR_DST_COLOR;
+            case BlendState::BlendFunc::OneMinusDstColor:
+                return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+            case BlendState::BlendFunc::SrcAlpha:
+                return VK_BLEND_FACTOR_SRC_ALPHA;
+            case BlendState::BlendFunc::OneMinusSrcAlpha:
+                return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            case BlendState::BlendFunc::DstAlpha:
+                return VK_BLEND_FACTOR_DST_ALPHA;
+            case BlendState::BlendFunc::OneMinusDstAlpha:
+                return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+            case BlendState::BlendFunc::BlendFactor:
+                return VK_BLEND_FACTOR_CONSTANT_COLOR;
+            case BlendState::BlendFunc::OneMinusBlendFactor:
+                return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+            case BlendState::BlendFunc::SrcAlphaSaturate:
+                return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+            case BlendState::BlendFunc::Src1Color:
+                return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+            case BlendState::BlendFunc::OneMinusSrc1Color:
+                return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+            case BlendState::BlendFunc::Src1Alpha:
+                return VK_BLEND_FACTOR_SRC1_ALPHA;
+            case BlendState::BlendFunc::OneMinusSrc1Alpha:
+                return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+            default:
+                should_not_get_here();
+                return VK_BLEND_FACTOR_ZERO;
         }
     }
 
-    VkBlendOp getVkBlendOp(BlendState::BlendOp op)
-    {
-        switch (op)
-        {
-        case BlendState::BlendOp::Add:
-            return VK_BLEND_OP_ADD;
-        case BlendState::BlendOp::Subtract:
-            return VK_BLEND_OP_SUBTRACT;
-        case BlendState::BlendOp::ReverseSubtract:
-            return VK_BLEND_OP_REVERSE_SUBTRACT;
-        case BlendState::BlendOp::Min:
-            return VK_BLEND_OP_MIN;
-        case BlendState::BlendOp::Max:
-            return VK_BLEND_OP_MAX;
-        default:
-            should_not_get_here();
-            return VK_BLEND_OP_ADD;
+    VkBlendOp getVkBlendOp(BlendState::BlendOp op) {
+        switch (op) {
+            case BlendState::BlendOp::Add:
+                return VK_BLEND_OP_ADD;
+            case BlendState::BlendOp::Subtract:
+                return VK_BLEND_OP_SUBTRACT;
+            case BlendState::BlendOp::ReverseSubtract:
+                return VK_BLEND_OP_REVERSE_SUBTRACT;
+            case BlendState::BlendOp::Min:
+                return VK_BLEND_OP_MIN;
+            case BlendState::BlendOp::Max:
+                return VK_BLEND_OP_MAX;
+            default:
+                should_not_get_here();
+                return VK_BLEND_OP_ADD;
         }
     }
 
-    static bool hasColorAttachments(const Fbo::Desc& fboDesc)
-    {
-        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
-        {
+    static bool hasColorAttachments(const Fbo::Desc& fboDesc) {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(fboDesc.device()); i++) {
             if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown) return true;
         }
         return false;
     }
 
-    void initVkBlendInfo(const Fbo::Desc& fboDesc, const BlendState* pState, ColorBlendStateCreateInfo& infoOut)
-    {
+    void initVkBlendInfo(const Fbo::Desc& fboDesc, const BlendState* pState, ColorBlendStateCreateInfo& infoOut) {
         infoOut.info = {};
         infoOut.info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         infoOut.info.logicOpEnable = VK_FALSE;
@@ -182,8 +176,7 @@ namespace Falcor {
         // Fill out attachment blend info
         infoOut.attachmentStates.resize((uint32_t)pState->getRtCount());
 
-        for (uint32_t i = 0; i < (uint32_t)infoOut.attachmentStates.size(); i++)
-        {
+        for (uint32_t i = 0; i < (uint32_t)infoOut.attachmentStates.size(); i++) {
             const BlendState::Desc::RenderTargetDesc& rtDesc = pState->getRtDesc(i);
             VkPipelineColorBlendAttachmentState& state = infoOut.attachmentStates[i];
             state.blendEnable = vkBool(rtDesc.blendEnabled);
@@ -211,38 +204,33 @@ namespace Falcor {
         infoOut.info.blendConstants[3] = blendColor.a;
     }
 
-    VkPolygonMode getVkPolygonMode(RasterizerState::FillMode fill)
-    {
-        switch (fill)
-        {
-        case RasterizerState::FillMode::Solid:
-            return VK_POLYGON_MODE_FILL;
-        case RasterizerState::FillMode::Wireframe:
-            return VK_POLYGON_MODE_LINE;
-        default:
-            should_not_get_here();
-            return VK_POLYGON_MODE_FILL;
+    VkPolygonMode getVkPolygonMode(RasterizerState::FillMode fill) {
+        switch (fill) {
+            case RasterizerState::FillMode::Solid:
+                return VK_POLYGON_MODE_FILL;
+            case RasterizerState::FillMode::Wireframe:
+                return VK_POLYGON_MODE_LINE;
+            default:
+                should_not_get_here();
+                return VK_POLYGON_MODE_FILL;
         }
     }
 
-    VkCullModeFlags getVkCullMode(RasterizerState::CullMode cull)
-    {
-        switch (cull)
-        {
-        case Falcor::RasterizerState::CullMode::None:
-            return VK_CULL_MODE_NONE;
-        case Falcor::RasterizerState::CullMode::Front:
-            return VK_CULL_MODE_FRONT_BIT;
-        case Falcor::RasterizerState::CullMode::Back:
-            return VK_CULL_MODE_BACK_BIT;
-        default:
-            should_not_get_here();
-            return VK_CULL_MODE_NONE;
+    VkCullModeFlags getVkCullMode(RasterizerState::CullMode cull) {
+        switch (cull) {
+            case Falcor::RasterizerState::CullMode::None:
+                return VK_CULL_MODE_NONE;
+            case Falcor::RasterizerState::CullMode::Front:
+                return VK_CULL_MODE_FRONT_BIT;
+            case Falcor::RasterizerState::CullMode::Back:
+                return VK_CULL_MODE_BACK_BIT;
+            default:
+                should_not_get_here();
+                return VK_CULL_MODE_NONE;
         }
     }
 
-    void initVkRasterizerInfo(const RasterizerState* pState, VkPipelineRasterizationStateCreateInfo& infoOut)
-    {
+    void initVkRasterizerInfo(const RasterizerState* pState, VkPipelineRasterizationStateCreateInfo& infoOut) {
         infoOut = {};
 
         infoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -259,62 +247,57 @@ namespace Falcor {
     }
 
     template<typename FalcorOp>
-    VkCompareOp getVkCompareOp(FalcorOp op)
-    {
-        switch (op)
-        {
-        case FalcorOp::Disabled:
-            return VK_COMPARE_OP_ALWAYS;
-        case FalcorOp::Never:
-            return VK_COMPARE_OP_NEVER;
-        case FalcorOp::Always:
-            return VK_COMPARE_OP_ALWAYS;
-        case FalcorOp::Less:
-            return VK_COMPARE_OP_LESS;
-        case FalcorOp::Equal:
-            return VK_COMPARE_OP_EQUAL;
-        case FalcorOp::NotEqual:
-            return VK_COMPARE_OP_NOT_EQUAL;
-        case FalcorOp::LessEqual:
-            return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case FalcorOp::Greater:
-            return VK_COMPARE_OP_GREATER;
-        case FalcorOp::GreaterEqual:
-            return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        default:
-            should_not_get_here();
-            return VK_COMPARE_OP_ALWAYS;
+    VkCompareOp getVkCompareOp(FalcorOp op) {
+        switch (op) {
+            case FalcorOp::Disabled:
+                return VK_COMPARE_OP_ALWAYS;
+            case FalcorOp::Never:
+                return VK_COMPARE_OP_NEVER;
+            case FalcorOp::Always:
+                return VK_COMPARE_OP_ALWAYS;
+            case FalcorOp::Less:
+                return VK_COMPARE_OP_LESS;
+            case FalcorOp::Equal:
+                return VK_COMPARE_OP_EQUAL;
+            case FalcorOp::NotEqual:
+                return VK_COMPARE_OP_NOT_EQUAL;
+            case FalcorOp::LessEqual:
+                return VK_COMPARE_OP_LESS_OR_EQUAL;
+            case FalcorOp::Greater:
+                return VK_COMPARE_OP_GREATER;
+            case FalcorOp::GreaterEqual:
+                return VK_COMPARE_OP_GREATER_OR_EQUAL;
+            default:
+                should_not_get_here();
+                return VK_COMPARE_OP_ALWAYS;
         }
     }
 
-    VkStencilOp getVkStencilOp(DepthStencilState::StencilOp op)
-    {
-        switch (op)
-        {
-        case DepthStencilState::StencilOp::Keep:
-            return VK_STENCIL_OP_KEEP;
-        case DepthStencilState::StencilOp::Zero:
-            return VK_STENCIL_OP_ZERO;
-        case DepthStencilState::StencilOp::Replace:
-            return VK_STENCIL_OP_REPLACE;
-        case DepthStencilState::StencilOp::Increase:
-            return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-        case DepthStencilState::StencilOp::IncreaseSaturate:
-            return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-        case DepthStencilState::StencilOp::Decrease:
-            return VK_STENCIL_OP_DECREMENT_AND_WRAP;
-        case DepthStencilState::StencilOp::DecreaseSaturate:
-            return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-        case DepthStencilState::StencilOp::Invert:
-            return VK_STENCIL_OP_INVERT;
-        default:
-            should_not_get_here();
-            return VK_STENCIL_OP_KEEP;
+    VkStencilOp getVkStencilOp(DepthStencilState::StencilOp op) {
+        switch (op) {
+            case DepthStencilState::StencilOp::Keep:
+                return VK_STENCIL_OP_KEEP;
+            case DepthStencilState::StencilOp::Zero:
+                return VK_STENCIL_OP_ZERO;
+            case DepthStencilState::StencilOp::Replace:
+                return VK_STENCIL_OP_REPLACE;
+            case DepthStencilState::StencilOp::Increase:
+                return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+            case DepthStencilState::StencilOp::IncreaseSaturate:
+                return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+            case DepthStencilState::StencilOp::Decrease:
+                return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+            case DepthStencilState::StencilOp::DecreaseSaturate:
+                return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+            case DepthStencilState::StencilOp::Invert:
+                return VK_STENCIL_OP_INVERT;
+            default:
+                should_not_get_here();
+                return VK_STENCIL_OP_KEEP;
         }
     }
 
-    VkStencilOpState getVkStencilOpState(const DepthStencilState::StencilDesc& desc, uint8_t readMask, uint8_t writeMask, uint8_t stencilRef)
-    {
+    VkStencilOpState getVkStencilOpState(const DepthStencilState::StencilDesc& desc, uint8_t readMask, uint8_t writeMask, uint8_t stencilRef) {
         VkStencilOpState opState = {};
         opState.failOp = getVkStencilOp(desc.stencilFailOp);
         opState.passOp = getVkStencilOp(desc.depthStencilPassOp);
@@ -327,8 +310,7 @@ namespace Falcor {
         return opState;
     }
 
-    void initVkDepthStencilInfo(const DepthStencilState* pState, VkPipelineDepthStencilStateCreateInfo& infoOut)
-    {
+    void initVkDepthStencilInfo(const DepthStencilState* pState, VkPipelineDepthStencilStateCreateInfo& infoOut) {
         infoOut = {};
 
         infoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -341,31 +323,26 @@ namespace Falcor {
         infoOut.depthBoundsTestEnable = VK_FALSE;
     }
 
-    VkVertexInputRate getVkInputRate(VertexBufferLayout::InputClass falcorClass)
-    {
-        switch (falcorClass)
-        {
-        case VertexBufferLayout::InputClass::PerVertexData:
-            return VK_VERTEX_INPUT_RATE_VERTEX;
-        case VertexBufferLayout::InputClass::PerInstanceData:
-            return VK_VERTEX_INPUT_RATE_INSTANCE;
-        default:
-            should_not_get_here();
-            return VK_VERTEX_INPUT_RATE_VERTEX;
+    VkVertexInputRate getVkInputRate(VertexBufferLayout::InputClass falcorClass) {
+        switch (falcorClass) {
+            case VertexBufferLayout::InputClass::PerVertexData:
+                return VK_VERTEX_INPUT_RATE_VERTEX;
+            case VertexBufferLayout::InputClass::PerInstanceData:
+                return VK_VERTEX_INPUT_RATE_INSTANCE;
+            default:
+                should_not_get_here();
+                return VK_VERTEX_INPUT_RATE_VERTEX;
         }
     }
 
-    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut, ProgramReflection const* pReflector)
-    {
+    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut, ProgramReflection const* pReflector) {
         // Build Vertex input and binding info
         infoOut.bindingDescs.clear();
         infoOut.attribDescs.clear();
 
-        for (size_t vb = 0; vb < pLayout->getBufferCount(); vb++)
-        {
+        for (size_t vb = 0; vb < pLayout->getBufferCount(); vb++) {
             const auto& pVB = pLayout->getBufferLayout(vb);
-            if (pVB)
-            {
+            if (pVB) {
                 // Per buffer binding
                 VkVertexInputBindingDescription bindingDesc = {};
                 bindingDesc.binding = (uint32_t)vb;
@@ -374,8 +351,7 @@ namespace Falcor {
 
                 infoOut.bindingDescs.push_back(bindingDesc);
 
-                for (uint32_t elemID = 0; elemID < pVB->getElementCount(); elemID++)
-                {
+                for (uint32_t elemID = 0; elemID < pVB->getElementCount(); elemID++) {
                     // The vertex layout element will include a specified
                     // shader location, but we may decide to override this
                     // if the reflection data includes HLSL semantic
@@ -384,8 +360,7 @@ namespace Falcor {
                     uint32_t shaderLocation = pVB->getElementShaderLocation(elemID);
 
                     auto pAttribReflector = pReflector->getVertexAttributeBySemantic(pVB->getElementName(elemID));
-                    if (pAttribReflector)
-                    {
+                    if (pAttribReflector) {
                         shaderLocation = (uint32_t)pAttribReflector->bindLocation;
                     }
 
@@ -396,8 +371,7 @@ namespace Falcor {
                     attribDesc.format = getVkFormat(pVB->getElementFormat(elemID));
                     attribDesc.offset = pVB->getElementOffset(elemID);
 
-                    for (uint32_t i = 0; i < pVB->getElementArraySize(elemID); i++)
-                    {
+                    for (uint32_t i = 0; i < pVB->getElementArraySize(elemID); i++) {
                         infoOut.attribDescs.push_back(attribDesc);
                         attribDesc.offset += getFormatBytesPerBlock(pVB->getElementFormat(elemID));
                         attribDesc.binding++;
@@ -415,56 +389,49 @@ namespace Falcor {
         infoOut.info.pVertexAttributeDescriptions = infoOut.attribDescs.data();
     }
 
-    VkFilter getVkFilter(Sampler::Filter filter)
-    {
-        switch (filter)
-        {
-        case Sampler::Filter::Point:
-            return VK_FILTER_NEAREST;
-        case Sampler::Filter::Linear:
-            return VK_FILTER_LINEAR;
-        default:
-            should_not_get_here();
-            return VK_FILTER_NEAREST;
+    VkFilter getVkFilter(Sampler::Filter filter) {
+        switch (filter) {
+            case Sampler::Filter::Point:
+                return VK_FILTER_NEAREST;
+            case Sampler::Filter::Linear:
+                return VK_FILTER_LINEAR;
+            default:
+                should_not_get_here();
+                return VK_FILTER_NEAREST;
         }
     }
 
-    VkSamplerMipmapMode getVkMipMapFilterMode(Sampler::Filter filter)
-    {
-        switch (filter)
-        {
-        case Sampler::Filter::Point:
-            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        case Sampler::Filter::Linear:
-            return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        default:
-            should_not_get_here();
-            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    VkSamplerMipmapMode getVkMipMapFilterMode(Sampler::Filter filter) {
+        switch (filter) {
+            case Sampler::Filter::Point:
+                return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            case Sampler::Filter::Linear:
+                return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            default:
+                should_not_get_here();
+                return VK_SAMPLER_MIPMAP_MODE_NEAREST;
         }
     }
 
-    VkSamplerAddressMode getVkAddressMode(Sampler::AddressMode mode)
-    {
-        switch (mode)
-        {
-        case Sampler::AddressMode::Wrap:
-            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        case Sampler::AddressMode::Mirror:
-            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-        case Sampler::AddressMode::Clamp:
-            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        case Sampler::AddressMode::Border:
-            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        case Sampler::AddressMode::MirrorOnce:
-            return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-        default:
-            should_not_get_here();
-            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    VkSamplerAddressMode getVkAddressMode(Sampler::AddressMode mode) {
+        switch (mode) {
+            case Sampler::AddressMode::Wrap:
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            case Sampler::AddressMode::Mirror:
+                return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+            case Sampler::AddressMode::Clamp:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            case Sampler::AddressMode::Border:
+                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            case Sampler::AddressMode::MirrorOnce:
+                return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+            default:
+                should_not_get_here();
+                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
         }
     }
 
-    VkBorderColor getVkBorderColor(const float4& color)
-    {
+    VkBorderColor getVkBorderColor(const float4& color) {
         if (color == float4(0)) return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
         if (color == float4(0, 0, 0, 1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         if (color == float4(1)) return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
@@ -472,8 +439,7 @@ namespace Falcor {
         return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
     }
 
-    void initVkSamplerInfo(const Sampler* pSampler, VkSamplerCreateInfo& infoOut)
-    {
+    void initVkSamplerInfo(const Sampler* pSampler, VkSamplerCreateInfo& infoOut) {
         infoOut = {};
 
         infoOut.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -494,8 +460,7 @@ namespace Falcor {
         infoOut.unnormalizedCoordinates = VK_FALSE;
     }
 
-    void initVkMultiSampleInfo(const BlendState* pState, const Fbo::Desc& fboDesc, const uint32_t& sampleMask, VkPipelineMultisampleStateCreateInfo& infoOut, bool enableSampleFrequency)
-    {
+    void initVkMultiSampleInfo(const BlendState* pState, const Fbo::Desc& fboDesc, const uint32_t& sampleMask, VkPipelineMultisampleStateCreateInfo& infoOut, bool enableSampleFrequency) {
         infoOut = {};
 
         infoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -507,45 +472,39 @@ namespace Falcor {
         infoOut.alphaToOneEnable = VK_FALSE;
     }
 
-    VkPrimitiveTopology getVkPrimitiveTopology(Vao::Topology topology)
-    {
-        switch (topology)
-        {
-        case Vao::Topology::PointList:
-            return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-        case Vao::Topology::LineList:
-            return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        case Vao::Topology::TriangleList:
-            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        case Vao::Topology::TriangleStrip:
-            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        default:
-            should_not_get_here();
-            return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    VkPrimitiveTopology getVkPrimitiveTopology(Vao::Topology topology) {
+        switch (topology) {
+            case Vao::Topology::PointList:
+                return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            case Vao::Topology::LineList:
+                return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case Vao::Topology::TriangleList:
+                return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            case Vao::Topology::TriangleStrip:
+                return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+            default:
+                should_not_get_here();
+                return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         }
     }
 
-    void initVkInputAssemblyInfo(const Vao* pVao, VkPipelineInputAssemblyStateCreateInfo& infoOut)
-    {
+    void initVkInputAssemblyInfo(const Vao* pVao, VkPipelineInputAssemblyStateCreateInfo& infoOut) {
         infoOut = {};
         infoOut.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         infoOut.topology = getVkPrimitiveTopology(pVao->getPrimitiveTopology());
         infoOut.primitiveRestartEnable = (pVao->getPrimitiveTopology() == Vao::Topology::TriangleStrip); // Following the DX convention
     }
 
-    void initVkRenderPassInfo(const Fbo::Desc& fboDesc, RenderPassCreateInfo& infoOut)
-    {
+    void initVkRenderPassInfo(const Fbo::Desc& fboDesc, RenderPassCreateInfo& infoOut) {
         // Init Color and Depth Attachment Info
-        infoOut.attachmentDescs.resize(Fbo::getMaxColorTargetCount() + 1); // Color + Depth
+        infoOut.attachmentDescs.resize(Fbo::getMaxColorTargetCount(fboDesc.device()) + 1); // Color + Depth
         std::vector<uint32_t> regToAttachmentIndex(infoOut.attachmentDescs.size(), VK_ATTACHMENT_UNUSED);
         uint32_t rtCount = 0;
 
         // Color attachments. We're only attaching textures which are actually bound (non-null)
-        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
-        {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(fboDesc.device()); i++) {
             ResourceFormat format = fboDesc.getColorTargetFormat(i);
-            if(format != ResourceFormat::Unknown)
-            {
+            if(format != ResourceFormat::Unknown) {
                 VkAttachmentDescription& desc = infoOut.attachmentDescs[rtCount];
                 regToAttachmentIndex[i] = rtCount;
                 rtCount++;
@@ -591,25 +550,22 @@ namespace Falcor {
         subpassDesc = {};
 
         // Depth
-        if(hasDepth)
-        {
+        if(hasDepth) {
             VkAttachmentReference& depthRef = infoOut.attachmentRefs.back();
             depthRef.attachment = regToAttachmentIndex.back();
             depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             subpassDesc.pDepthStencilAttachment = &infoOut.attachmentRefs.back();
         }
 
-        if(hasColor)
-        {
+        if(hasColor) {
             // Color attachments. This is where we create the indirection between the attachment in the RenderPass and the shader output-register index
-            for (size_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
-            {
+            for (size_t i = 0; i < Fbo::getMaxColorTargetCount(fboDesc.device()); i++) {
                 VkAttachmentReference& ref = infoOut.attachmentRefs[i];
                 ref.attachment = regToAttachmentIndex[i];
                 ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             }
 
-            subpassDesc.colorAttachmentCount = Fbo::getMaxColorTargetCount();
+            subpassDesc.colorAttachmentCount = Fbo::getMaxColorTargetCount(fboDesc.device());
             subpassDesc.pColorAttachments = infoOut.attachmentRefs.data();
         }
 
@@ -624,4 +580,4 @@ namespace Falcor {
         infoOut.info.pDependencies = nullptr;
     }
 
-}
+}  // namespace Falcor

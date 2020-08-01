@@ -25,20 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
 #include "AssimpImporter.h"
-#include "Utils/StringUtils.h"
-#include "Core/API/Device.h"
-#include "Scene/SceneBuilder.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Scene/SceneBuilder.h"
 
-namespace Falcor
-{
-    namespace
-    {
+namespace Falcor {
+
+    namespace {
         using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
         using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
 
@@ -46,8 +45,7 @@ namespace Falcor
             Reference: http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
             \param specPower specular power of an obsolete Phong BSDF
         */
-        float convertSpecPowerToRoughness(float specPower)
-        {
+        float convertSpecPowerToRoughness(float specPower) {
             return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
         }
 
@@ -57,8 +55,7 @@ namespace Falcor
             GLTF2,
         };
 
-        glm::mat4 aiCast(const aiMatrix4x4& aiMat)
-        {
+        glm::mat4 aiCast(const aiMatrix4x4& aiMat) {
             glm::mat4 glmMat;
             glmMat[0][0] = aiMat.a1; glmMat[0][1] = aiMat.a2; glmMat[0][2] = aiMat.a3; glmMat[0][3] = aiMat.a4;
             glmMat[1][0] = aiMat.b1; glmMat[1][1] = aiMat.b2; glmMat[1][2] = aiMat.b3; glmMat[1][3] = aiMat.b4;
@@ -68,25 +65,21 @@ namespace Falcor
             return transpose(glmMat);
         }
 
-        float3 aiCast(const aiColor3D& ai)
-        {
+        float3 aiCast(const aiColor3D& ai) {
             return float3(ai.r, ai.g, ai.b);
         }
 
-        float3 aiCast(const aiVector3D& val)
-        {
+        float3 aiCast(const aiVector3D& val) {
             return float3(val.x, val.y, val.z);
         }
 
-        glm::quat aiCast(const aiQuaternion& q)
-        {
+        glm::quat aiCast(const aiQuaternion& q) {
             return glm::quat(q.w, q.x, q.y, q.z);
         }
 
         /** Texture types used in Falcor materials.
         */
-        enum class TextureType
-        {
+        enum class TextureType {
             BaseColor,
             Specular,
             Emissive,
@@ -96,8 +89,7 @@ namespace Falcor
 
         /** Mapping from ASSIMP to Falcor texture type.
         */
-        struct TextureMapping
-        {
+        struct TextureMapping {
             aiTextureType aiType;
             unsigned int aiIndex;
             TextureType targetType;
@@ -105,8 +97,7 @@ namespace Falcor
 
         /** Mapping tables for different import modes.
         */
-        static const std::vector<TextureMapping> kTextureMappings[3] =
-        {
+        static const std::vector<TextureMapping> kTextureMappings[3] = {
             // Default mappings,
             {
                 { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
@@ -136,52 +127,47 @@ namespace Falcor
             }
         };
 
-        void setTexture(TextureType type, Material* pMaterial, Texture::SharedPtr pTexture)
-        {
-            switch (type)
-            {
-            case TextureType::BaseColor:
-                pMaterial->setBaseColorTexture(pTexture);
-                break;
-            case TextureType::Specular:
-                pMaterial->setSpecularTexture(pTexture);
-                break;
-            case TextureType::Emissive:
-                pMaterial->setEmissiveTexture(pTexture);
-                break;
-            case TextureType::Normal:
-                pMaterial->setNormalMap(pTexture);
-                break;
-            case TextureType::Occlusion:
-                pMaterial->setOcclusionMap(pTexture);
-                break;
-            default:
-                should_not_get_here();
+        void setTexture(TextureType type, Material* pMaterial, Texture::SharedPtr pTexture) {
+            switch (type) {
+                case TextureType::BaseColor:
+                    pMaterial->setBaseColorTexture(pTexture);
+                    break;
+                case TextureType::Specular:
+                    pMaterial->setSpecularTexture(pTexture);
+                    break;
+                case TextureType::Emissive:
+                    pMaterial->setEmissiveTexture(pTexture);
+                    break;
+                case TextureType::Normal:
+                    pMaterial->setNormalMap(pTexture);
+                    break;
+                case TextureType::Occlusion:
+                    pMaterial->setOcclusionMap(pTexture);
+                    break;
+                default:
+                    should_not_get_here();
             }
         }
 
-        bool isSrgbRequired(TextureType type, uint32_t shadingModel)
-        {
-            switch (type)
-            {
-            case TextureType::Specular:
-                assert(shadingModel == ShadingModelMetalRough || shadingModel == ShadingModelSpecGloss);
-                return (shadingModel == ShadingModelSpecGloss);
-            case TextureType::BaseColor:
-            case TextureType::Emissive:
-            case TextureType::Occlusion:
-                return true;
-            case TextureType::Normal:
-                return false;
-            default:
-                should_not_get_here();
-                return false;
+        bool isSrgbRequired(TextureType type, uint32_t shadingModel) {
+            switch (type) {
+                case TextureType::Specular:
+                    assert(shadingModel == ShadingModelMetalRough || shadingModel == ShadingModelSpecGloss);
+                    return (shadingModel == ShadingModelSpecGloss);
+                case TextureType::BaseColor:
+                case TextureType::Emissive:
+                case TextureType::Occlusion:
+                    return true;
+                case TextureType::Normal:
+                    return false;
+                default:
+                    should_not_get_here();
+                    return false;
             }
         }
 
-        class ImporterData
-        {
-        public:
+        class ImporterData {
+         public:
             ImporterData(const aiScene* pAiScene, SceneBuilder& sceneBuilder, const SceneBuilder::InstanceMatrices& modelInstances_) : pScene(pAiScene), modelInstances(modelInstances_), builder(sceneBuilder) {}
             const aiScene* pScene;
 
@@ -192,41 +178,33 @@ namespace Falcor
             const SceneBuilder::InstanceMatrices& modelInstances;
             std::map<std::string, glm::mat4> localToBindPoseMatrices;
 
-            uint32_t getFalcorNodeID(const aiNode* pNode) const
-            {
+            uint32_t getFalcorNodeID(const aiNode* pNode) const {
                 return mAiToFalcorNodeID.at(pNode);
             }
 
-            uint32_t getFalcorNodeID(const std::string& aiNodeName, uint32_t index) const
-            {
-                try
-                {
+            uint32_t getFalcorNodeID(const std::string& aiNodeName, uint32_t index) const {
+                try {
                     return getFalcorNodeID(mAiNodes.at(aiNodeName)[index]);
-                }
-                catch (const std::exception&)
-                {
+                } catch (const std::exception&) {
                     return SceneBuilder::kInvalidNode;
                 }
             }
 
-            uint32_t getNodeInstanceCount(const std::string& nodeName) const
-            {
+            uint32_t getNodeInstanceCount(const std::string& nodeName) const {
                 return (uint32_t)mAiNodes.at(nodeName).size();
             }
 
-            void addAiNode(const aiNode* pNode, uint32_t falcorNodeID)
-            {
+            void addAiNode(const aiNode* pNode, uint32_t falcorNodeID) {
                 assert(mAiToFalcorNodeID.find(pNode) == mAiToFalcorNodeID.end());
                 mAiToFalcorNodeID[pNode] = falcorNodeID;
 
-                if (mAiNodes.find(pNode->mName.C_Str()) == mAiNodes.end())
-                {
+                if (mAiNodes.find(pNode->mName.C_Str()) == mAiNodes.end()) {
                     mAiNodes[pNode->mName.C_Str()] = {};
                 }
                 mAiNodes[pNode->mName.C_Str()].push_back(pNode);
             }
 
-        private:
+         private:
             std::map<const aiNode*, uint32_t> mAiToFalcorNodeID;
             std::map<const std::string, std::vector<const aiNode*>> mAiNodes;
 
@@ -234,20 +212,17 @@ namespace Falcor
 
         using KeyframeList = std::list<Animation::Keyframe>;
 
-        struct AnimationChannelData
-        {
+        struct AnimationChannelData {
             uint32_t posIndex = 0;
             uint32_t rotIndex = 0;
             uint32_t scaleIndex = 0;
         };
 
         template<typename AiType, typename FalcorType>
-        bool parseAnimationChannel(const AiType* pKeys, uint32_t count, double time, uint32_t& currentIndex, FalcorType& falcor)
-        {
+        bool parseAnimationChannel(const AiType* pKeys, uint32_t count, double time, uint32_t& currentIndex, FalcorType& falcor) {
             if (currentIndex >= count) return true;
 
-            if (pKeys[currentIndex].mTime == time)
-            {
+            if (pKeys[currentIndex].mTime == time) {
                 falcor = aiCast(pKeys[currentIndex].mValue);
                 currentIndex++;
             }
@@ -255,10 +230,8 @@ namespace Falcor
             return currentIndex >= count;
         }
 
-        void resetNegativeKeyframeTimes(aiNodeAnim* pAiNode)
-        {
-            auto resetTime = [](auto keys, uint32_t count)
-            {
+        void resetNegativeKeyframeTimes(aiNodeAnim* pAiNode) {
+            auto resetTime = [](auto keys, uint32_t count) {
                 if (count > 1) assert(keys[1].mTime >= 0);
                 if (keys[0].mTime < 0) keys[0].mTime = 0;
             };
@@ -267,8 +240,7 @@ namespace Falcor
             resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);
         }
 
-        Animation::SharedPtr createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
-        {
+        Animation::SharedPtr createAnimation(ImporterData& data, const aiAnimation* pAiAnim) {
             assert(pAiAnim->mNumMeshChannels == 0);
             double duration = pAiAnim->mDuration;
             double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
@@ -276,14 +248,12 @@ namespace Falcor
 
             Animation::SharedPtr pAnimation = Animation::create(pAiAnim->mName.C_Str(), durationInSeconds);
 
-            for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
-            {
+            for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++) {
                 aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
                 resetNegativeKeyframeTimes(pAiNode);
 
                 std::vector<size_t> channels;
-                for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++)
-                {
+                for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++) {
                     channels.push_back(pAnimation->addChannel(data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i)));
                 }
 
@@ -291,8 +261,7 @@ namespace Falcor
                 Animation::Keyframe keyframe;
                 bool done = false;
 
-                auto nextKeyTime = [&]()
-                {
+                auto nextKeyTime = [&]() {
                     double time = -std::numeric_limits<double>::max();
                     if (pos < pAiNode->mNumPositionKeys) time = std::max(time, pAiNode->mPositionKeys[pos].mTime);
                     if (rot < pAiNode->mNumRotationKeys) time = std::max(time, pAiNode->mRotationKeys[rot].mTime);
@@ -301,8 +270,7 @@ namespace Falcor
                     return time;
                 };
 
-                while (!done)
-                {
+                while (!done) {
                     double time = nextKeyTime();
                     assert(time == 0 || (time / ticksPerSecond) > keyframe.time);
                     keyframe.time = time / ticksPerSecond;
@@ -318,16 +286,13 @@ namespace Falcor
             return pAnimation;
         }
 
-        bool createCamera(ImporterData& data, ImportMode importMode)
-        {
+        bool createCamera(ImporterData& data, ImportMode importMode) {
             if (data.pScene->mNumCameras == 0) return true;
-            if (data.pScene->mNumCameras > 1)
-            {
+            if (data.pScene->mNumCameras > 1) {
                 logWarning("Model file contains more then a single camera. Falcor only supports one camera per scene, we will use the first camera");
             }
 
-            if (data.builder.hasCamera())
-            {
+            if (data.builder.hasCamera()) {
                 logWarning("Found cameras in model file, but the scene already contains a camera. Ignoring the new camera");
                 return true;
             }
@@ -348,8 +313,7 @@ namespace Falcor
 
             uint32_t nodeID = data.getFalcorNodeID(pAiCamera->mName.C_Str(), 0);
 
-            if (nodeID != SceneBuilder::kInvalidNode)
-            {
+            if (nodeID != SceneBuilder::kInvalidNode) {
                 SceneBuilder::Node n;
                 n.name = "Camera.BaseMatrix";
                 n.parent = nodeID;
@@ -364,16 +328,14 @@ namespace Falcor
             return true;
         }
 
-        bool addLightCommon(Light::ConstSharedPtrRef pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight)
-        {
+        bool addLightCommon(Light::ConstSharedPtrRef pLight, const glm::mat4& baseMatrix, ImporterData& data, const aiLight* pAiLight) {
             pLight->setName(pAiLight->mName.C_Str());
             assert(pAiLight->mColorDiffuse == pAiLight->mColorSpecular);
             pLight->setIntensity(aiCast(pAiLight->mColorSpecular));
 
             // Find if the light is affected by a node
             uint32_t nodeID = data.getFalcorNodeID(pAiLight->mName.C_Str(), 0);
-            if (nodeID != SceneBuilder::kInvalidNode)
-            {
+            if (nodeID != SceneBuilder::kInvalidNode) {
                 SceneBuilder::Node n;
                 n.name = pLight->getName() + ".BaseMatrix";
                 n.parent = nodeID;
@@ -385,8 +347,7 @@ namespace Falcor
             return true;
         }
 
-        bool createDirLight(ImporterData& data, const aiLight* pAiLight)
-        {
+        bool createDirLight(ImporterData& data, const aiLight* pAiLight) {
             DirectionalLight::SharedPtr pLight = DirectionalLight::create();
             float3 direction = normalize(aiCast(pAiLight->mDirection));
             pLight->setWorldDirection(direction);
@@ -395,8 +356,7 @@ namespace Falcor
             return addLightCommon(pLight, base, data, pAiLight);
         }
 
-        bool createPointLight(ImporterData& data, const aiLight* pAiLight)
-        {
+        bool createPointLight(ImporterData& data, const aiLight* pAiLight) {
             PointLight::SharedPtr pLight = PointLight::create();
             float3 position = aiCast(pAiLight->mPosition);
             float3 lookAt = normalize(aiCast(pAiLight->mDirection));
@@ -416,84 +376,71 @@ namespace Falcor
             return addLightCommon(pLight, base, data, pAiLight);
         }
 
-        bool createLights(ImporterData& data)
-        {
-            for (uint32_t i = 0; i < data.pScene->mNumLights; i++)
-            {
+        bool createLights(ImporterData& data) {
+            for (uint32_t i = 0; i < data.pScene->mNumLights; i++) {
                 const aiLight* pAiLight = data.pScene->mLights[i];
-                switch (pAiLight->mType)
-                {
-                case aiLightSource_DIRECTIONAL:
-                    if (!createDirLight(data, pAiLight)) return false;
-                    break;
-                case aiLightSource_POINT:
-                case aiLightSource_SPOT:
-                    if (!createPointLight(data, pAiLight)) return false;
-                    break;
-                default:
-                    logWarning("Unsupported ASSIMP light type " + to_string(pAiLight->mType));
-                    continue;
+                switch (pAiLight->mType) {
+                    case aiLightSource_DIRECTIONAL:
+                        if (!createDirLight(data, pAiLight)) return false;
+                        break;
+                    case aiLightSource_POINT:
+                    case aiLightSource_SPOT:
+                        if (!createPointLight(data, pAiLight)) return false;
+                        break;
+                    default:
+                        logWarning("Unsupported ASSIMP light type " + to_string(pAiLight->mType));
+                        continue;
                 }
             }
 
             return true;
         }
 
-        bool createAnimations(ImporterData& data)
-        {
-            for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
-            {
+        bool createAnimations(ImporterData& data) {
+            for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++) {
                 Animation::SharedPtr pAnimation = createAnimation(data, data.pScene->mAnimations[i]);
                 data.builder.addAnimation(0, pAnimation);
             }
             return true;
         }
 
-        std::vector<float2> createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count)
-        {
+        std::vector<float2> createTexCrdList(const aiVector3D* pAiTexCrd, uint32_t count) {
             std::vector<float2> v2(count);
-            for (uint32_t i = 0; i < count; i++)
-            {
+            for (uint32_t i = 0; i < count; i++) {
                 assert(pAiTexCrd[i].z == 0);
                 v2[i] = float2(pAiTexCrd[i].x, pAiTexCrd[i].y);
             }
             return v2;
         }
 
-        std::vector<uint32_t> createIndexList(const aiMesh* pAiMesh)
-        {
+        std::vector<uint32_t> createIndexList(const aiMesh* pAiMesh) {
             const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
             const uint32_t indexCount = pAiMesh->mNumFaces * perFaceIndexCount;
 
             std::vector<uint32_t> indices(indexCount);
 
-            for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++)
-            {
+            for (uint32_t i = 0; i < pAiMesh->mNumFaces; i++) {
                 assert(pAiMesh->mFaces[i].mNumIndices == perFaceIndexCount); // Mesh contains mixed primitive types, can be solved using aiProcess_SortByPType
-                for (uint32_t j = 0; j < perFaceIndexCount; j++)
-                {
+                for (uint32_t j = 0; j < perFaceIndexCount; j++) {
                     indices[i * perFaceIndexCount + j] = (uint32_t)(pAiMesh->mFaces[i].mIndices[j]);
                 }
             }
             return indices;
         }
 
-        void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids)
-        {
+        void loadBones(const aiMesh* pAiMesh, const ImporterData& data, std::vector<float4>& weights, std::vector<uint4>& ids) {
             const uint32_t vertexCount = pAiMesh->mNumVertices;
             weights.resize(vertexCount);
             ids.resize(vertexCount);
 
-            for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++)
-            {
+            for (uint32_t bone = 0; bone < pAiMesh->mNumBones; bone++) {
                 const aiBone* pAiBone = pAiMesh->mBones[bone];
                 assert(data.getNodeInstanceCount(pAiBone->mName.C_Str()) == 1);
                 uint32_t aiBoneID = data.getFalcorNodeID(pAiBone->mName.C_Str(), 0);
 
                 // The way Assimp works, the weights holds the IDs of the vertices it affects.
                 // We loop over all the weights, initializing the vertices data along the way
-                for (uint32_t weightID = 0; weightID < pAiBone->mNumWeights; weightID++)
-                {
+                for (uint32_t weightID = 0; weightID < pAiBone->mNumWeights; weightID++) {
                     // Get the vertex the current weight affects
                     const aiVertexWeight& aiWeight = pAiBone->mWeights[weightID];
 
@@ -503,10 +450,8 @@ namespace Falcor
 
                     // Find the next unused slot in the bone array of the vertex, and initialize it with the current value
                     bool emptySlotFound = false;
-                    for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++)
-                    {
-                        if (vertexWeights[j] == 0)
-                        {
+                    for (uint32_t j = 0; j < Scene::kMaxBonesPerVertex; j++) {
+                        if (vertexWeights[j] == 0) {
                             vertexIds[j] = aiBoneID;
                             vertexWeights[j] = aiWeight.mWeight;
                             emptySlotFound = true;
@@ -519,8 +464,7 @@ namespace Falcor
             }
 
             // Now we need to normalize the weights for each vertex, since in some models the sum is larger than 1
-            for (uint32_t i = 0; i < vertexCount; i++)
-            {
+            for (uint32_t i = 0; i < vertexCount; i++) {
                 float4& w = weights[i];
                 float f = 0;
                 for (int j = 0; j < Scene::kMaxBonesPerVertex; j++) f += w[j];
@@ -528,11 +472,9 @@ namespace Falcor
             }
         }
 
-        bool createMeshes(ImporterData& data)
-        {
+        bool createMeshes(ImporterData& data) {
             const aiScene* pScene = data.pScene;
-            for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
-            {
+            for (uint32_t i = 0; i < pScene->mNumMeshes; i++) {
                 SceneBuilder::Mesh mesh;
                 const aiMesh* pAiMesh = pScene->mMeshes[i];
 
@@ -557,21 +499,19 @@ namespace Falcor
                 std::vector<uint4> boneIds;
                 std::vector<float4> boneWeights;
 
-                if (pAiMesh->HasBones())
-                {
+                if (pAiMesh->HasBones()) {
                     loadBones(pAiMesh, data, boneWeights, boneIds);
                     mesh.pBoneIDs = boneIds.data();
                     mesh.pBoneWeights = boneWeights.data();
                 }
 
-                switch (pAiMesh->mFaces[0].mNumIndices)
-                {
-                case 1: mesh.topology = Vao::Topology::PointList; break;
-                case 2: mesh.topology = Vao::Topology::LineList; break;
-                case 3: mesh.topology = Vao::Topology::TriangleList; break;
-                default:
-                    logError("Error when creating mesh. Unknown topology with " + std::to_string(pAiMesh->mFaces[0].mNumIndices) + " indices.");
-                    should_not_get_here();
+                switch (pAiMesh->mFaces[0].mNumIndices) {
+                    case 1: mesh.topology = Vao::Topology::PointList; break;
+                    case 2: mesh.topology = Vao::Topology::LineList; break;
+                    case 3: mesh.topology = Vao::Topology::TriangleList; break;
+                    default:
+                        logError("Error when creating mesh. Unknown topology with " + std::to_string(pAiMesh->mFaces[0].mNumIndices) + " indices.");
+                        should_not_get_here();
                 }
 
                 mesh.pMaterial = data.materialMap.at(pAiMesh->mMaterialIndex);
@@ -584,27 +524,22 @@ namespace Falcor
             return true;
         }
 
-        bool isBone(ImporterData& data, const std::string& name)
-        {
+        bool isBone(ImporterData& data, const std::string& name) {
             return data.localToBindPoseMatrices.find(name) != data.localToBindPoseMatrices.end();
         }
 
-        std::string getNodeType(ImporterData& data, const aiNode* pNode)
-        {
+        std::string getNodeType(ImporterData& data, const aiNode* pNode) {
             if (pNode->mNumMeshes > 0) return "mesh instance";
             if (isBone(data, pNode->mName.C_Str())) return "bone";
             else return "local transform";
         }
 
-        void dumpSceneGraphHierarchy(ImporterData& data, const std::string& filename, aiNode* pRoot)
-        {
+        void dumpSceneGraphHierarchy(ImporterData& data, const std::string& filename, aiNode* pRoot) {
             std::ofstream dotfile;
             dotfile.open(filename.c_str());
 
-            std::function<void(const aiNode* pNode)> dumpNode = [&dotfile, &dumpNode, &data](const aiNode* pNode)
-            {
-                for (uint32_t i = 0; i < pNode->mNumChildren; i++)
-                {
+            std::function<void(const aiNode* pNode)> dumpNode = [&dotfile, &dumpNode, &data](const aiNode* pNode) {
+                for (uint32_t i = 0; i < pNode->mNumChildren; i++) {
                     const aiNode* pChild = pNode->mChildren[i];
                     std::string parent = pNode->mName.C_Str();
                     std::string parentType = getNodeType(data, pNode);
@@ -631,13 +566,11 @@ namespace Falcor
             dotfile.close();
         }
 
-        glm::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name)
-        {
+        glm::mat4 getLocalToBindPoseMatrix(ImporterData& data, const std::string& name) {
             return isBone(data, name) ? data.localToBindPoseMatrices[name] : glm::identity<glm::mat4>();
         }
 
-        bool parseNode(ImporterData& data, const aiNode* pCurrent, bool hasBoneAncestor)
-        {
+        bool parseNode(ImporterData& data, const aiNode* pCurrent, bool hasBoneAncestor) {
             SceneBuilder::Node n;
             n.name = pCurrent->mName.C_Str();
             bool currentIsBone = isBone(data, n.name);
@@ -651,31 +584,26 @@ namespace Falcor
 
             bool b = true;
             // visit the children
-            for (uint32_t i = 0; i < pCurrent->mNumChildren; i++)
-            {
+            for (uint32_t i = 0; i < pCurrent->mNumChildren; i++) {
                 b |= parseNode(data, pCurrent->mChildren[i], currentIsBone || hasBoneAncestor);
             }
             return b;
         }
 
-        void createBoneList(ImporterData& data)
-        {
+        void createBoneList(ImporterData& data) {
             const aiScene* pScene = data.pScene;
             auto& boneMatrices = data.localToBindPoseMatrices;
 
-            for (uint32_t meshID = 0; meshID < pScene->mNumMeshes; meshID++)
-            {
+            for (uint32_t meshID = 0; meshID < pScene->mNumMeshes; meshID++) {
                 const aiMesh* pMesh = pScene->mMeshes[meshID];
                 if (pMesh->HasBones() == false) continue;;
-                for (uint32_t boneID = 0; boneID < pMesh->mNumBones; boneID++)
-                {
+                for (uint32_t boneID = 0; boneID < pMesh->mNumBones; boneID++) {
                     boneMatrices[pMesh->mBones[boneID]->mName.C_Str()] = aiCast(pMesh->mBones[boneID]->mOffsetMatrix);
                 }
             }
         }
 
-        bool createSceneGraph(ImporterData& data)
-        {
+        bool createSceneGraph(ImporterData& data) {
             createBoneList(data);
             aiNode* pRoot = data.pScene->mRootNode;
             assert(isBone(data, pRoot->mName.C_Str()) == false);
@@ -684,20 +612,15 @@ namespace Falcor
             return success;
         }
 
-        bool addMeshes(ImporterData& data, aiNode* pNode)
-        {
+        bool addMeshes(ImporterData& data, aiNode* pNode) {
             uint32_t nodeID = data.getFalcorNodeID(pNode);
-            for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
-            {
+            for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++) {
                 uint32_t meshID = data.meshMap.at(pNode->mMeshes[mesh]);
 
-                if (data.modelInstances.size())
-                {
-                    for(size_t instance = 0; instance < data.modelInstances.size(); instance++)
-                    {
+                if (data.modelInstances.size()) {
+                    for(size_t instance = 0; instance < data.modelInstances.size(); instance++) {
                         uint32_t instanceNodeID = nodeID;
-                        if(data.modelInstances[instance] != glm::mat4())
-                        {
+                        if(data.modelInstances[instance] != glm::mat4()) {
                             // Add nodes
                             SceneBuilder::Node n;
                             n.name = "Node" + to_string(nodeID) + ".instance" + to_string(instance);
@@ -713,19 +636,16 @@ namespace Falcor
 
             bool b = true;
             // visit the children
-            for (uint32_t i = 0; i < pNode->mNumChildren; i++)
-            {
+            for (uint32_t i = 0; i < pNode->mNumChildren; i++) {
                 b |= addMeshes(data, pNode->mChildren[i]);
             }
             return b;
         }
 
-        void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb)
-        {
+        void loadTextures(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb) {
             const auto& textureMappings = kTextureMappings[int(importMode)];
 
-            for (const auto& source : textureMappings)
-            {
+            for (const auto& source : textureMappings) {
                 // Skip if texture of requested type is not available
                 if (pAiMaterial->GetTextureCount(source.aiType) < source.aiIndex + 1) continue;
 
@@ -733,8 +653,7 @@ namespace Falcor
                 aiString aiPath;
                 pAiMaterial->GetTexture(source.aiType, source.aiIndex, &aiPath);
                 std::string path(aiPath.data);
-                if (path.empty())
-                {
+                if (path.empty()) {
                     logWarning("Texture has empty file name, ignoring.");
                     continue;
                 }
@@ -742,18 +661,14 @@ namespace Falcor
                 // Check if the texture was already loaded
                 Texture::SharedPtr pTex;
                 const auto& cacheItem = data.textureCache.find(path);
-                if (cacheItem != data.textureCache.end())
-                {
+                if (cacheItem != data.textureCache.end()) {
                     pTex = cacheItem->second;
-                }
-                else
-                {
+                } else {
                     // create a new texture
                     std::string fullpath = folder + '/' + path;
                     fullpath = replaceSubstring(fullpath, "\\", "/");
-                    pTex = Texture::createFromFile(fullpath, true, useSrgb && isSrgbRequired(source.targetType, pMaterial->getShadingModel()));
-                    if (pTex)
-                    {
+                    pTex = Texture::createFromFile(pDevice, fullpath, true, useSrgb && isSrgbRequired(source.targetType, pMaterial->getShadingModel()));
+                    if (pTex) {
                         data.textureCache[path] = pTex;
                     }
                 }
@@ -763,18 +678,16 @@ namespace Falcor
             }
 
             // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
-            gpDevice->flushAndSync();
+            pDevice->flushAndSync();
         }
 
-        Material::SharedPtr createMaterial(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode, bool useSrgb)
-        {
+        Material::SharedPtr createMaterial(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode, bool useSrgb) {
             aiString name;
             pAiMaterial->Get(AI_MATKEY_NAME, name);
 
             // Parse the name
             std::string nameStr = std::string(name.C_Str());
-            if (nameStr.empty())
-            {
+            if (nameStr.empty()) {
                 logWarning("Material with no name found -> renaming to `unnamed`");
                 nameStr = "unnamed";
             }
@@ -784,18 +697,16 @@ namespace Falcor
             // MetalRough is the default for everything except OBJ. Check that both flags aren't set simultaneously.
             SceneBuilder::Flags builderFlags = data.builder.getFlags();
             assert(!(is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) && is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)));
-            if (is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) || (importMode == ImportMode::OBJ && !is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)))
-            {
+            if (is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) || (importMode == ImportMode::OBJ && !is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials))) {
                 pMaterial->setShadingModel(ShadingModelSpecGloss);
             }
 
             // Load textures. Note that loading is affected by the current shading model.
-            loadTextures(data, pAiMaterial, folder, pMaterial.get(), importMode, useSrgb);
+            loadTextures(pDevice, data, pAiMaterial, folder, pMaterial.get(), importMode, useSrgb);
 
             // Opacity
             float opacity = 1.f;
-            if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS) {
                 float4 diffuse = pMaterial->getBaseColor();
                 diffuse.a = opacity;
                 pMaterial->setBaseColor(diffuse);
@@ -803,18 +714,15 @@ namespace Falcor
 
             // Bump scaling
             float bumpScaling;
-            if (pAiMaterial->Get(AI_MATKEY_BUMPSCALING, bumpScaling) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_BUMPSCALING, bumpScaling) == AI_SUCCESS) {
                 // TODO this should probably be a multiplier to the normal map
             }
 
             // Shininess
             float shininess;
-            if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS) {
                 // Convert OBJ/MTL Phong exponent to glossiness.
-                if (importMode == ImportMode::OBJ)
-                {
+                if (importMode == ImportMode::OBJ) {
                     float roughness = convertSpecPowerToRoughness(shininess);
                     shininess = 1.f - roughness;
                 }
@@ -829,38 +737,32 @@ namespace Falcor
 
             // Diffuse color
             aiColor3D color;
-            if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS) {
                 float4 diffuse = float4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
                 pMaterial->setBaseColor(diffuse);
             }
 
             // Specular color
-            if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS) {
                 float4 specular = float4(color.r, color.g, color.b, pMaterial->getSpecularParams().a);
                 pMaterial->setSpecularParams(specular);
             }
 
             // Emissive color
-            if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS) {
                 float3 emissive = float3(color.r, color.g, color.b);
                 pMaterial->setEmissiveColor(emissive);
             }
 
             // Double-Sided
             int isDoubleSided;
-            if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
-            {
+            if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS) {
                 pMaterial->setDoubleSided((isDoubleSided != 0));
             }
 
             // Handle GLTF2 PBR materials
-            if (importMode == ImportMode::GLTF2)
-            {
-                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS)
-                {
+            if (importMode == ImportMode::GLTF2) {
+                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS) {
                     float4 baseColor = float4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
                     pMaterial->setBaseColor(baseColor);
                 }
@@ -868,14 +770,12 @@ namespace Falcor
                 float4 specularParams = pMaterial->getSpecularParams();
 
                 float metallic;
-                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS)
-                {
+                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
                     specularParams.b = metallic;
                 }
 
                 float roughness;
-                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS)
-                {
+                if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS) {
                     specularParams.g = roughness;
                 }
 
@@ -885,10 +785,8 @@ namespace Falcor
             // Parse the information contained in the name
             // Tokens following a '.' are interpreted as special flags
             auto nameVec = splitString(nameStr, ".");
-            if (nameVec.size() > 1)
-            {
-                for (size_t i = 1; i < nameVec.size(); i++)
-                {
+            if (nameVec.size() > 1) {
+                for (size_t i = 1; i < nameVec.size(); i++) {
                     std::string str = nameVec[i];
                     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
                     if (str == "doublesided") pMaterial->setDoubleSided(true);
@@ -898,8 +796,7 @@ namespace Falcor
 
             // Use scalar opacity value for controlling specular transmission
             // TODO: Remove this workaround when we have a better way to define materials.
-            if (opacity < 1.f)
-            {
+            if (opacity < 1.f) {
                 pMaterial->setSpecularTransmission(1.f - opacity);
                 pMaterial->setDoubleSided(true);
             }
@@ -907,16 +804,13 @@ namespace Falcor
             return pMaterial;
         }
 
-        bool createAllMaterials(ImporterData& data, const std::string& modelFolder, ImportMode importMode)
-        {
+        bool createAllMaterials(std::shared_ptr<Device> pDevice, ImporterData& data, const std::string& modelFolder, ImportMode importMode) {
             bool useSrgb = !is_set(data.builder.getFlags(), SceneBuilder::Flags::AssumeLinearSpaceTextures);
 
-            for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++)
-            {
+            for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++) {
                 const aiMaterial* pAiMaterial = data.pScene->mMaterials[i];
-                auto pMaterial = createMaterial(data, pAiMaterial, modelFolder, importMode, useSrgb);
-                if (pMaterial == nullptr)
-                {
+                auto pMaterial = createMaterial(pDevice, data, pAiMaterial, modelFolder, importMode, useSrgb);
+                if (pMaterial == nullptr) {
                     logError("Can't allocate memory for material");
                     return false;
                 }
@@ -926,21 +820,15 @@ namespace Falcor
             return true;
         }
 
-        BoneMeshMap createBoneMap(const aiScene* pScene)
-        {
+        BoneMeshMap createBoneMap(const aiScene* pScene) {
             BoneMeshMap boneMap;
 
-            for (uint32_t meshID = 0; meshID < pScene->mNumMeshes; meshID++)
-            {
+            for (uint32_t meshID = 0; meshID < pScene->mNumMeshes; meshID++) {
                 const aiMesh* pMesh = pScene->mMeshes[meshID];
-                for (uint32_t boneID = 0; boneID < pMesh->mNumBones; boneID++)
-                {
-                    try
-                    {
+                for (uint32_t boneID = 0; boneID < pMesh->mNumBones; boneID++) {
+                    try {
                         boneMap.at(pMesh->mBones[boneID]->mName.C_Str()).push_back(meshID);
-                    }
-                    catch (const std::out_of_range&)
-                    {
+                    } catch (const std::out_of_range&) {
                         std::vector<uint32_t> meshIDs;
                         meshIDs.push_back(meshID);
                         boneMap[pMesh->mBones[boneID]->mName.C_Str()] = meshIDs;
@@ -951,19 +839,15 @@ namespace Falcor
             return boneMap;
         }
 
-        MeshInstanceList countMeshInstances(const aiScene* pScene)
-        {
+        MeshInstanceList countMeshInstances(const aiScene* pScene) {
             MeshInstanceList meshInstances(pScene->mNumMeshes);
 
-            std::function<void(const aiNode*)> countNodeMeshs = [&](const aiNode* pNode)
-            {
-                for (uint32_t i = 0; i < pNode->mNumMeshes; i++)
-                {
+            std::function<void(const aiNode*)> countNodeMeshs = [&](const aiNode* pNode) {
+                for (uint32_t i = 0; i < pNode->mNumMeshes; i++) {
                     meshInstances[pNode->mMeshes[i]].push_back(pNode);
                 }
 
-                for (uint32_t i = 0; i < pNode->mNumChildren; i++)
-                {
+                for (uint32_t i = 0; i < pNode->mNumChildren; i++) {
                     countNodeMeshs(pNode->mChildren[i]);
                 }
             };
@@ -972,26 +856,21 @@ namespace Falcor
             return meshInstances;
         }
 
-        bool validateBones(const aiScene* pScene)
-        {
+        bool validateBones(const aiScene* pScene) {
             // Make sure that each bone is only affecting a single mesh.
             // Our skinning system depends on that, because we apply the inverse world transformation to blended vertices. We do that because apparently ASSIMP's bone matrices are pre-multiplied with the final world transform
             // which results in the world-space blended-vertices, but we'd like them to be in local-space
             BoneMeshMap boneMap = createBoneMap(pScene);
             MeshInstanceList meshInstances = countMeshInstances(pScene);
 
-            for (auto& b : boneMap)
-            {
-                for (uint32_t i = 0; i < b.second.size(); i++)
-                {
-                    if (meshInstances[b.second[i]].size() != 1)
-                    {
+            for (auto& b : boneMap) {
+                for (uint32_t i = 0; i < b.second.size(); i++) {
+                    if (meshInstances[b.second[i]].size() != 1) {
                         logError(b.first + " references a mesh with multiple instances");
                         return false;
                     }
 
-                    if (i > 0 && meshInstances[b.second[i]][0]->mTransformation != meshInstances[b.second[i - 1]][0]->mTransformation)
-                    {
+                    if (i > 0 && meshInstances[b.second[i]][0]->mTransformation != meshInstances[b.second[i - 1]][0]->mTransformation) {
                         logError(b.first + " is contained within mesh instances with different world transform matrices");
                         return false;
                     }
@@ -1001,13 +880,11 @@ namespace Falcor
             return true;
         }
 
-        void verifyScene(const aiScene* pScene)
-        {
+        void verifyScene(const aiScene* pScene) {
             bool b = true;
 
             // No internal textures
-            if (pScene->mTextures != 0)
-            {
+            if (pScene->mTextures != 0) {
                 b = false;
                 logWarning("Model has internal textures which Falcor doesn't support");
             }
@@ -1017,11 +894,9 @@ namespace Falcor
         }
     }
 
-    bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances)
-    {
+    bool AssimpImporter::import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances) {
         std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
-        {
+        if (findFileInDataDirectories(filename, fullpath) == false) {
             logError("Can't find model file " + filename);
             return false;
         }
@@ -1040,8 +915,7 @@ namespace Falcor
         Assimp::Importer importer;
         const aiScene* pScene = importer.ReadFile(fullpath, assimpFlags);
 
-        if (pScene == nullptr)
-        {
+        if (pScene == nullptr) {
             std::string str("Can't open model file '");
             str = str + std::string(filename) + "'\n" + importer.GetErrorString();
             logError(str);
@@ -1061,53 +935,46 @@ namespace Falcor
         if (hasSuffix(filename, ".obj", false)) importMode = ImportMode::OBJ;
         if (hasSuffix(filename, ".gltf", false) || hasSuffix(filename, ".glb", false)) importMode = ImportMode::GLTF2;
 
-        if (createAllMaterials(data, modelFolder, importMode) == false)
-        {
+        if (createAllMaterials(pDevice, data, modelFolder, importMode) == false) {
             logError("Can't create materials for model " + filename);
             return false;
         }
 
-        if (createSceneGraph(data) == false)
-        {
+        if (createSceneGraph(data) == false) {
             logError("Can't create draw lists for model " + filename);
             return false;
         }
 
-        if (createMeshes(data) == false)
-        {
+        if (createMeshes(data) == false) {
             logError("Can't create meshes for model " + filename);
             return false;
         }
 
-        if (addMeshes(data, data.pScene->mRootNode) == false)
-        {
+        if (addMeshes(data, data.pScene->mRootNode) == false) {
             logError("Can't add meshes for model " + filename);
             return false;
         }
 
-        if (createAnimations(data) == false)
-        {
+        if (createAnimations(data) == false) {
             logError("Can't create animations for model " + filename);
             return false;
         }
 
-        if (createCamera(data, importMode) == false)
-        {
+        if (createCamera(data, importMode) == false) {
             logError("Can't create a camera for model " + filename);
             return false;
         }
 
-        if (createLights(data) == false)
-        {
+        if (createLights(data) == false) {
             logError("Can't create a lights for model " + filename);
             return false;
         }
         return true;
     }
 
-    bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder)
-    {
+    bool AssimpImporter::import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder) {
         InstanceMatrices meshInstances(1);
-        return import(filename, builder, meshInstances);
+        return import(pDevice, filename, builder, meshInstances);
     }
-}
+
+}  // namespace Falcor

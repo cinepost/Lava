@@ -32,26 +32,24 @@
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     uint32_t LightProbe::sLightProbeCount = 0;
     LightProbeSharedResources LightProbe::sSharedResources;
 
-    class PreIntegration
-    {
-    public:
+    class PreIntegration {
+     public:
         const char* kShader = "Scene/Lights/LightProbeIntegration.ps.slang";
 
         bool isInitialized() const { return mInitialized; }
 
-        void init()
-        {
-            mpDiffuseLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
-            mpSpecularLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
-            mpDFGPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
+        void init(std::shared_ptr<Device> pDevice) {
+            mpDiffuseLDPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
+            mpSpecularLDPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
+            mpDFGPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
 
             // Shared
-            mpSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+            mpSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
             mpDiffuseLDPass["gSampler"] = mpSampler;
             mpSpecularLDPass["gSampler"] = mpSampler;
             mpDFGPass["gSampler"] = mpSampler;
@@ -59,8 +57,7 @@ namespace Falcor
             mInitialized = true;
         }
 
-        void release()
-        {
+        void release() {
             mpDiffuseLDPass = nullptr;
             mpSpecularLDPass = nullptr;
             mpDFGPass = nullptr;
@@ -69,28 +66,26 @@ namespace Falcor
             mInitialized = false;
         }
 
-        Texture::SharedPtr integrateDFG(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
+        Texture::SharedPtr integrateDFG(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
             return executeSingleMip(pContext, mpDFGPass, pTexture, size, format, sampleCount);
         }
 
-        Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
+        Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
             return executeSingleMip(pContext, mpDiffuseLDPass, pTexture, size, format, sampleCount);
         }
 
-        Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
+        Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+            std::shared_ptr<Device> device = pContext->device();
+
             mpSpecularLDPass["gInputTex"] = pTexture;
             mpSpecularLDPass["DataCB"]["gSampleCount"] = sampleCount;
 
-            Texture::SharedPtr pOutput = Texture::create2D(size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+            Texture::SharedPtr pOutput = Texture::create2D(device, size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
 
             // Execute on each mip level
             uint32_t mipCount = pOutput->getMipCount();
-            for (uint32_t i = 0; i < mipCount; i++)
-            {
-                Fbo::SharedPtr pFbo = Fbo::create();
+            for (uint32_t i = 0; i < mipCount; i++) {
+                Fbo::SharedPtr pFbo = Fbo::create(device);
                 pFbo->attachColorTarget(pOutput, 0, i);
 
                 // Roughness to integrate for on current mip level
@@ -103,13 +98,14 @@ namespace Falcor
 
     private:
 
-        Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::SharedPtr& pPass, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
+        Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::SharedPtr& pPass, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+            std::shared_ptr<Device> device = pContext->device();
+
             pPass["gInputTex"] = pTexture;
             pPass["DataCB"]["gSampleCount"] = sampleCount;
 
             // Output texture
-            Fbo::SharedPtr pFbo = Fbo::create2D(size, size, Fbo::Desc().setColorTarget(0, format));
+            Fbo::SharedPtr pFbo = Fbo::create2D(device, size, size, Fbo::Desc(device).setColorTarget(0, format));
 
             // Execute
             pPass->execute(pContext, pFbo);
@@ -130,12 +126,11 @@ namespace Falcor
         : mDiffSampleCount(diffSamples)
         , mSpecSampleCount(specSamples)
     {
-        if (sIntegration.isInitialized() == false)
-        {
+        if (sIntegration.isInitialized() == false) {
             assert(sLightProbeCount == 0);
-            sIntegration.init();
+            sIntegration.init(pContext->device());
             sSharedResources.dfgTexture = sIntegration.integrateDFG(pContext, pTexture, 128, ResourceFormat::RGBA16Float, 128);
-            sSharedResources.dfgSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+            sSharedResources.dfgSampler = Sampler::create(pContext->device(), Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
         }
 
         mData.resources.origTexture = pTexture;
@@ -145,31 +140,31 @@ namespace Falcor
         sLightProbeCount++;
     }
 
-    LightProbe::~LightProbe()
-    {
+    LightProbe::~LightProbe() {
         sLightProbeCount--;
-        if (sLightProbeCount == 0)
-        {
+        if (sLightProbeCount == 0) {
             sSharedResources.dfgTexture = nullptr;
             sSharedResources.dfgSampler = nullptr;
             sIntegration.release();
         }
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
-    {
-        assert(gpDevice);
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat) {
+        std::shared_ptr<Device> device = pContext->device();
+        
+        assert(device);
+        
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown) {
-            Texture::SharedPtr pOrigTex = Texture::createFromFile(filename, false, loadAsSrgb);
+            Texture::SharedPtr pOrigTex = Texture::createFromFile(device, filename, false, loadAsSrgb);
             if (pOrigTex) {
-                pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2D(device, pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
                 pTexture->setSourceFilename(pOrigTex->getSourceFilename());
-                gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
-                pTexture->generateMips(gpDevice->getRenderContext());
+                device->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
+                pTexture->generateMips(device->getRenderContext());
             }
         } else {
-            pTexture = Texture::createFromFile(filename, true, loadAsSrgb);
+            pTexture = Texture::createFromFile(device, filename, true, loadAsSrgb);
         }
 
         if (!pTexture) {
@@ -179,8 +174,7 @@ namespace Falcor
         return create(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
-    {
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat) {
         if (pTexture->getMipCount() == 1) {
             logWarning("Source textures used for generating light probes should have a valid mip chain.");
         }
@@ -188,16 +182,13 @@ namespace Falcor
         return SharedPtr(new LightProbe(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat));
     }
 
-    void LightProbe::renderUI(Gui* pGui, const char* group)
-    {
+    void LightProbe::renderUI(Gui* pGui, const char* group) {
         Gui::Group g(pGui, group);
-        if (!group || g.open())
-        {
+        if (!group || g.open()) {
             g.var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
 
             float intensity = mData.intensity.r;
-            if (g.var("Intensity", intensity, 0.0f))
-            {
+            if (g.var("Intensity", intensity, 0.0f)) {
                 mData.intensity = float3(intensity);
             }
 
@@ -207,10 +198,8 @@ namespace Falcor
         }
     }
 
-    static bool checkOffset(UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field)
-    {
-        if (cbOffset.getByteOffset() != cppOffset)
-        {
+    static bool checkOffset(UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
+        if (cbOffset.getByteOffset() != cppOffset) {
             logError("LightProbe::setShaderData() = LightProbeData::" + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset.getByteOffset()) + ", C++ data offset is " + std::to_string(cppOffset));
             return false;
         }
@@ -223,8 +212,7 @@ namespace Falcor
 #define check_offset(_a)
 #endif
 
-    void LightProbe::setShaderData(const ShaderVar& var)
-    {
+    void LightProbe::setShaderData(const ShaderVar& var){
 
         // Set the data into the constant buffer
         check_offset(posW);
@@ -248,8 +236,8 @@ namespace Falcor
         sharedResources["dfgSampler"] = mData.sharedResources.dfgSampler;
     }
 
-    SCRIPT_BINDING(LightProbe)
-    {
+    SCRIPT_BINDING(LightProbe) {
         m.regClass(LightProbe);
     }
-}
+
+}  // namespace Falcor

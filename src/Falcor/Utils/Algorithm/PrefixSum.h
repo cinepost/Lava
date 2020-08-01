@@ -25,22 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/Buffer.h"
-#include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
-#include "Core/Program/ProgramVars.h"
+#ifndef SRC_FALCOR_UTILS_ALGORITHM_PREFIXSUM_H_
+#define SRC_FALCOR_UTILS_ALGORITHM_PREFIXSUM_H_
 
-namespace Falcor
-{
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/State/ComputeState.h"
+#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Falcor/Core/Program/ProgramVars.h"
+
+namespace Falcor {
+
+class Device;
+
     /** Computes the parallel prefix sum on the GPU.
 
         The prefix sum is computed in place using exclusive scan.
         Each new element is y[i] = x[0] + ... + x[i-1], for i=1..N and y[0] = 0.
     */
-    class dlldecl PrefixSum : public std::enable_shared_from_this<PrefixSum>
-    {
-    public:
+    class dlldecl PrefixSum : public std::enable_shared_from_this<PrefixSum> {
+     public:
         using SharedPtr = std::shared_ptr<PrefixSum>;
         using SharedConstPtr = std::shared_ptr<const PrefixSum>;
         virtual ~PrefixSum() = default;
@@ -48,7 +51,7 @@ namespace Falcor
         /** Create a new prefix sum object.
             \return New object, or throws an exception if creation failed.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Computes the parallel prefix sum over an array of uint32_t elements.
             \param[in] pRenderContext The render context.
@@ -61,7 +64,7 @@ namespace Falcor
         bool execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum = nullptr, Buffer::SharedPtr pTotalSumBuffer = nullptr, uint64_t pTotalSumOffset = 0);
 
     protected:
-        PrefixSum();
+        PrefixSum(std::shared_ptr<Device> pDevice);
 
         ComputeState::SharedPtr     mpComputeState;
 
@@ -72,5 +75,11 @@ namespace Falcor
         ComputeVars::SharedPtr      mpPrefixSumFinalizeVars;
 
         Buffer::SharedPtr           mpPrefixGroupSums;              ///< Temporary buffer for prefix sum computation.
+        
+        std::shared_ptr<Device>     mpDevice;
+
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_ALGORITHM_PREFIXSUM_H_

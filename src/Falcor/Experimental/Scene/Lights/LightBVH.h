@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
+
 #include "LightBVHStaticParams.slang"
 #include "LightCollection.h"
 
@@ -34,11 +36,14 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
 
+#include "RenderGraph/BasePasses/ComputePass.h"
+
 #include <limits>
 #include <vector>
 
-namespace Falcor
-{
+namespace Falcor {
+
+    class Device;
     class LightBVHBuilder;
 
     /** Utility class representing a light sampling BVH.
@@ -53,16 +58,14 @@ namespace Falcor
 
         TODO: Rename all things 'triangle' to 'light' as the BVH can be used for other light types.
     */
-    class dlldecl LightBVH
-    {
-    public:
+    class dlldecl LightBVH {
+     public:
         using SharedPtr = std::shared_ptr<LightBVH>;
         using SharedConstPtr = std::shared_ptr<const LightBVH>;
 
         static const uint32_t kInvalidOffset = std::numeric_limits<uint32_t>::max();
 
-        enum class NodeType : uint32_t
-        {
+        enum class NodeType : uint32_t {
             Internal = 0u,
             Leaf
         };
@@ -71,8 +74,7 @@ namespace Falcor
         // TODO: Think about making the extent be scalar (bounding sphere) instead, saves bandwidth and makes bounding cone computations easier. But hard to compute and not as tight, so maybe not.
         // IMPORTANT: these structure definitions must be kept in sync with
         // the helper functions in LightBVHSampler.slang.
-        struct InternalNode
-        {
+        struct InternalNode {
             NodeType nodeType = NodeType::Internal;
             float3 aabbMin;
 
@@ -86,8 +88,7 @@ namespace Falcor
             uint32_t rightNodeOffset = kInvalidOffset;
         };
 
-        struct LeafNode
-        {
+        struct LeafNode {
             NodeType nodeType = NodeType::Leaf;
             float3 aabbMin;
 
@@ -108,8 +109,7 @@ namespace Falcor
             LeafNode &operator=(const LeafNode &) = delete;
         };
 
-        struct NodeLocation
-        {
+        struct NodeLocation {
             uint32_t byteOffset;
             uint32_t depth;
 
@@ -128,7 +128,7 @@ namespace Falcor
         /** Creates an empty LightBVH object. Use a LightBVHBuilder to build the BVH.
             \param[in] pLightCollection The light collection around which the BVH will be built.
         */
-        static SharedPtr create(const LightCollection::SharedConstPtr& pLightCollection);
+        static SharedPtr create(std::shared_ptr<Device> device, const LightCollection::SharedConstPtr& pLightCollection);
 
         /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
             The BVH needs to have been built before trying to refit it.
@@ -157,8 +157,7 @@ namespace Falcor
         */
         void traverseBVH(const TraversalEvalFunction& evalNode, uint32_t rootNodeByteOffset = 0);
 
-        struct BVHStats
-        {
+        struct BVHStats {
             std::vector<uint32_t> nodeCountPerLevel;         ///< For each level in the tree, how many nodes are there.
             std::vector<uint32_t> leafCountPerTriangleCount; ///< For each amount of triangles, how many leaf nodes contain that many triangles.
 
@@ -191,8 +190,11 @@ namespace Falcor
         */
         virtual bool setShaderData(ShaderVar const& var) const;
 
-    protected:
-        LightBVH(const LightCollection::SharedConstPtr& pLightCollection);
+     private:
+        std::shared_ptr<Device> mpDevice;
+
+     protected:
+        LightBVH(std::shared_ptr<Device> device, const LightCollection::SharedConstPtr& pLightCollection);
 
         void computeStats();
         void updateNodeOffsets();
@@ -217,8 +219,7 @@ namespace Falcor
 
         static void verifyStaticParams();
 
-        struct RefitEntryInfo
-        {
+        struct RefitEntryInfo {
             uint32_t offset = 0u;
             uint32_t count = 0u;
         };
@@ -245,4 +246,8 @@ namespace Falcor
 
         friend LightBVHBuilder;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
+

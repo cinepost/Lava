@@ -25,15 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_SAMPLEGNERATORS_CPUSAMPLEGENERATOR_H_
+#define SRC_FALCOR_UTILS_SAMPLEGNERATORS_CPUSAMPLEGENERATOR_H_
 
-namespace Falcor
-{
+namespace Falcor {
     /** Two-dimensional sample pattern generator on the CPU.
     */
-    class dlldecl CPUSampleGenerator : public std::enable_shared_from_this<CPUSampleGenerator>
-    {
-    public:
+    class dlldecl CPUSampleGenerator : public std::enable_shared_from_this<CPUSampleGenerator> {
+     public:
         using SharedPtr = std::shared_ptr<CPUSampleGenerator>;
         virtual ~CPUSampleGenerator() = default;
 
@@ -54,4 +53,7 @@ namespace Falcor
     protected:
         CPUSampleGenerator() = default;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_SAMPLEGNERATORS_CPUSAMPLEGENERATOR_H_

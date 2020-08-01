@@ -35,20 +35,20 @@
 
 namespace Falcor {
     
-VkDeviceMemory allocateDeviceMemory(GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
+VkDeviceMemory allocateDeviceMemory(Device::SharedPtr device, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = size;
-    allocInfo.memoryTypeIndex = gpDevice->getVkMemoryType(memType, memoryTypeBits);
+    allocInfo.memoryTypeIndex = device->getVkMemoryType(memType, memoryTypeBits);
 
     VkDeviceMemory deviceMem;
-    vk_call(vkAllocateMemory(gpDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
+    vk_call(vkAllocateMemory(device->getApiHandle(), &allocInfo, nullptr, &deviceMem));
     return deviceMem;
 }
 
-void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
+void* mapBufferApi(Device::SharedPtr device, const Buffer::ApiHandle& apiHandle, size_t size) {
     void* pData;
-    vk_call(vkMapMemory(gpDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
+    vk_call(vkMapMemory(device->getApiHandle(), apiHandle, 0, size, 0, &pData));
     return pData;
 }
 
@@ -79,13 +79,13 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
     return flags;
 }
 
-size_t getBufferDataAlignment(const Buffer* pBuffer) {
+size_t getBufferDataAlignment(Device::SharedPtr device, const Buffer* pBuffer) {
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(gpDevice->getApiHandle(), pBuffer->getApiHandle(), &reqs);
+    vkGetBufferMemoryRequirements(device->getApiHandle(), pBuffer->getApiHandle(), &reqs);
     return reqs.alignment;
 }
 
-Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
+Buffer::ApiHandle createBuffer(Device::SharedPtr device, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
@@ -96,28 +96,28 @@ Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemo
     bufferInfo.pQueueFamilyIndices = nullptr;
     
     VkBuffer buffer;
-    vk_call(vkCreateBuffer(gpDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
+    vk_call(vkCreateBuffer(device->getApiHandle(), &bufferInfo, nullptr, &buffer));
 
     // Get the required buffer size
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(gpDevice->getApiHandle(), buffer, &reqs);
+    vkGetBufferMemoryRequirements(device->getApiHandle(), buffer, &reqs);
 
-    VkDeviceMemory mem = allocateDeviceMemory(memType, reqs.memoryTypeBits, reqs.size);
-    vk_call(vkBindBufferMemory(gpDevice->getApiHandle(), buffer, mem, 0));
-    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(buffer, mem);
+    VkDeviceMemory mem = allocateDeviceMemory(device, memType, reqs.memoryTypeBits, reqs.size);
+    vk_call(vkBindBufferMemory(device->getApiHandle(), buffer, mem, 0));
+    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(device, buffer, mem);
 
     return apiHandle;
 }
 
 void Buffer::apiInit(bool hasInitData) {
     if (mCpuAccess == CpuAccess::Write) {
-        mDynamicData = gpDevice->getUploadHeap()->allocate(mSize);
+        mDynamicData = mpDevice->getUploadHeap()->allocate(mSize);
         mApiHandle = mDynamicData.pResourceHandle;
     } else {
         if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None) {
-            mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Readback);
+            mApiHandle = createBuffer(mpDevice, mSize, mBindFlags, Device::MemoryType::Readback);
         } else {
-            mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Default);
+            mApiHandle = createBuffer(mpDevice, mSize, mBindFlags, Device::MemoryType::Default);
         }
     }
 }
@@ -134,7 +134,7 @@ void Buffer::unmap() {
     } else if (mDynamicData.pData == nullptr && mBindFlags == BindFlags::None) {
         // We only unmap staging buffers
         assert(mCpuAccess == CpuAccess::Read);
-        vkUnmapMemory(gpDevice->getApiHandle(), mApiHandle);
+        vkUnmapMemory(mpDevice->getApiHandle(), mApiHandle);
     }
 }
 

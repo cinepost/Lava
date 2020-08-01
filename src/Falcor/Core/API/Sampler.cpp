@@ -36,7 +36,7 @@ struct SamplerData {
 };
 SamplerData gSamplerData;
 
-Sampler::Sampler(const Desc& desc) : mDesc(desc) {
+Sampler::Sampler(std::shared_ptr<Device> device, const Desc& desc) : mDesc(desc), mpDevice(device) {
     gSamplerData.objectCount++;
 }
 
@@ -81,9 +81,9 @@ Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
     return *this;
 }
 
-Sampler::SharedPtr Sampler::getDefault() {
+Sampler::SharedPtr Sampler::getDefault(std::shared_ptr<Device> device) {
     if (gSamplerData.pDefaultSampler == nullptr) {
-        gSamplerData.pDefaultSampler = create(Desc());
+        gSamplerData.pDefaultSampler = create(device, Desc());
     }
     return gSamplerData.pDefaultSampler;
 }

@@ -25,12 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_
+#define SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_
 
 #include "Falcor/Core/Program/ProgramVersion.h"
 #include "Falcor/Core/API/RootSignature.h"
 
 namespace Falcor {
+
+class Device;
 
 class dlldecl ComputeStateObject {
  public:
@@ -57,17 +60,21 @@ class dlldecl ComputeStateObject {
         \param[in] desc State object description.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
 
     const ApiHandle& getApiHandle() { return mApiHandle; }
     const Desc& getDesc() const { return mDesc; }
 
  private:
-    ComputeStateObject(const Desc& desc);
+    ComputeStateObject(std::shared_ptr<Device> device, const Desc& desc);
     void apiInit();
 
     Desc mDesc;
     ApiHandle mApiHandle;
+
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_

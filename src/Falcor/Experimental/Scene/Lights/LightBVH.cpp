@@ -28,21 +28,18 @@
 #include "stdafx.h"
 #include "LightBVH.h"
 
-namespace
-{
+namespace {
     const char kShaderFile[] = "Experimental/Scene/Lights/LightBVHRefit.cs.slang";
 }
 
-namespace Falcor
-{
-    LightBVH::SharedPtr LightBVH::create(const LightCollection::SharedConstPtr& pLightCollection)
-    {
-        return SharedPtr(new LightBVH(pLightCollection));
+namespace Falcor {
+
+    LightBVH::SharedPtr LightBVH::create(std::shared_ptr<Device> device, const LightCollection::SharedConstPtr& pLightCollection) {
+        return SharedPtr(new LightBVH(device, pLightCollection));
     }
 
     // TODO: Only update the ones that moved.
-    void LightBVH::refit(RenderContext* pRenderContext)
-    {
+    void LightBVH::refit(RenderContext* pRenderContext) {
         PROFILE("LightBVH::refit()");
 
         assert(mIsValid);
@@ -75,8 +72,7 @@ namespace Falcor
 
         // Update all internal nodes.
         // Note that mBVHStats.treeHeight may be 0, in which case there is a single leaf and no internal nodes.
-        for (int depth = (int)mBVHStats.treeHeight - 1; depth >= 0; --depth)
-        {
+        for (int depth = (int)mBVHStats.treeHeight - 1; depth >= 0; --depth) {
             const uint32_t nodeCount = mPerDepthRefitEntryInfo[depth].count;
             assert(nodeCount > 0);
             pInternalUpdaterVars["CB"]["gFirstNodeIndex"] = mPerDepthRefitEntryInfo[depth].offset;
@@ -94,16 +90,14 @@ namespace Falcor
         mIsCpuDataValid = false;
     }
 
-    LightBVH::NodeType LightBVH::getNodeType(const uint32_t nodeOffset) const
-    {
+    LightBVH::NodeType LightBVH::getNodeType(const uint32_t nodeOffset) const {
         assert(isValid());
         syncDataToCPU();
         const uintptr_t rootNode = reinterpret_cast<uintptr_t>(mAlignedAllocator.getStartPointer());
         return *reinterpret_cast<const NodeType*>(rootNode + nodeOffset);
     }
 
-    const LightBVH::InternalNode* LightBVH::getInternalNode(const uint32_t nodeOffset) const
-    {
+    const LightBVH::InternalNode* LightBVH::getInternalNode(const uint32_t nodeOffset) const {
         assert(isValid());
         syncDataToCPU();
         const uintptr_t rootNode = reinterpret_cast<uintptr_t>(mAlignedAllocator.getStartPointer());
@@ -112,8 +106,7 @@ namespace Falcor
         return nodeType == NodeType::Internal ? reinterpret_cast<const InternalNode*>(rootNode + nodeOffset) : nullptr;
     }
 
-    const LightBVH::LeafNode* LightBVH::getLeafNode(const uint32_t nodeOffset) const
-    {
+    const LightBVH::LeafNode* LightBVH::getLeafNode(const uint32_t nodeOffset) const {
         assert(isValid());
         syncDataToCPU();
         const uintptr_t rootNode = reinterpret_cast<uintptr_t>(mAlignedAllocator.getStartPointer());
@@ -122,14 +115,12 @@ namespace Falcor
         return nodeType == NodeType::Leaf ? reinterpret_cast<const LeafNode*>(rootNode + nodeOffset) : nullptr;
     }
 
-    void LightBVH::renderUI(Gui::Widgets& widget)
-    {
+    void LightBVH::renderUI(Gui::Widgets& widget) {
         // Render the BVH stats.
         renderStats(widget, getStats());
     }
 
-    void LightBVH::renderStats(Gui::Widgets& widget, const BVHStats& stats) const
-    {
+    void LightBVH::renderStats(Gui::Widgets& widget, const BVHStats& stats) const {
         const std::string statsStr =
             "  Tree height:         " + std::to_string(stats.treeHeight) + "\n" +
             "  Min depth:           " + std::to_string(stats.minDepth) + "\n" +
@@ -140,11 +131,9 @@ namespace Falcor
         widget.text(statsStr.c_str());
 
         Gui::Group nodeGroup(widget.gui(), "Node count per level");
-        if (nodeGroup.open())
-        {
+        if (nodeGroup.open()) {
             std::string countStr;
-            for (uint32_t level = 0u; level < stats.nodeCountPerLevel.size(); ++level)
-            {
+            for (uint32_t level = 0u; level < stats.nodeCountPerLevel.size(); ++level) {
                 countStr += "  Node count at level " + std::to_string(level) + ": " + std::to_string(stats.nodeCountPerLevel[level]) + "\n";
             }
             if (!countStr.empty()) countStr.pop_back();
@@ -154,11 +143,9 @@ namespace Falcor
         }
 
         Gui::Group leafGroup(widget.gui(), "Leaf node count histogram for triangle counts");
-        if (leafGroup.open())
-        {
+        if (leafGroup.open()) {
             std::string countStr;
-            for (uint32_t triangleCount = 0u; triangleCount < stats.leafCountPerTriangleCount.size(); ++triangleCount)
-            {
+            for (uint32_t triangleCount = 0u; triangleCount < stats.leafCountPerTriangleCount.size(); ++triangleCount) {
                 countStr += "  Leaf nodes with " + std::to_string(triangleCount) + " triangles: " + std::to_string(stats.leafCountPerTriangleCount[triangleCount]) + "\n";
             }
             if (!countStr.empty()) countStr.pop_back();
@@ -168,8 +155,7 @@ namespace Falcor
         }
     }
 
-    void LightBVH::reserve(std::size_t triangleCount)
-    {
+    void LightBVH::reserve(std::size_t triangleCount) {
         const size_t cacheLineSize = 128;
         assert(sizeof(InternalNode) < cacheLineSize && sizeof(LeafNode) < cacheLineSize);
         // To be grossly conservative, assume each triangle requires two
@@ -180,8 +166,7 @@ namespace Falcor
         mAlignedAllocator.reserve(capacityBound);
     }
 
-    void LightBVH::clear()
-    {
+    void LightBVH::clear() {
         // Reset all CPU data.
         mAlignedAllocator.reset();
         mNodeOffsets.clear();
@@ -192,21 +177,18 @@ namespace Falcor
         mIsCpuDataValid = false;
     }
 
-    LightBVH::LightBVH(const LightCollection::SharedConstPtr& pLightCollection) : mpLightCollection(pLightCollection)
-    {
+    LightBVH::LightBVH(std::shared_ptr<Device> device, const LightCollection::SharedConstPtr& pLightCollection) : mpDevice(device), mpLightCollection(pLightCollection) {
         verifyStaticParams();
         mAlignedAllocator.setMinimumAlignment(16);
         mAlignedAllocator.setCacheLineSize(0);  // Don't worry about allocations that straddle two cache lines.
 
-        mLeafUpdater = ComputePass::create(kShaderFile, "updateLeafNodes");
-        mInternalUpdater = ComputePass::create(kShaderFile, "updateInternalNodes");
+        mLeafUpdater = ComputePass::create(device, kShaderFile, "updateLeafNodes");
+        mInternalUpdater = ComputePass::create(device, kShaderFile, "updateInternalNodes");
     }
 
-    void LightBVH::traverseBVH(const TraversalEvalFunction& evalNode, uint32_t rootNodeByteOffset)
-    {
+    void LightBVH::traverseBVH(const TraversalEvalFunction& evalNode, uint32_t rootNodeByteOffset) {
         std::stack<NodeLocation> stack({ NodeLocation{ rootNodeByteOffset, 0u } });
-        while (!stack.empty())
-        {
+        while (!stack.empty()) {
             const NodeLocation location = stack.top();
             stack.pop();
 
@@ -215,16 +197,14 @@ namespace Falcor
 
             if (evalNode(location, pInternalNode, pLeafNode) == false) break;
 
-            if (pInternalNode)
-            {
+            if (pInternalNode) {
                 stack.push(NodeLocation{ pInternalNode->rightNodeOffset, location.depth + 1u });
                 stack.push(NodeLocation{ pInternalNode->leftNodeOffset, location.depth + 1u });
             }
         }
     }
 
-    void LightBVH::computeStats()
-    {
+    void LightBVH::computeStats() {
         assert(isValid());
         mBVHStats.nodeCountPerLevel.clear();
         mBVHStats.nodeCountPerLevel.reserve(32);
@@ -267,8 +247,7 @@ namespace Falcor
         mBVHStats.byteSize = (uint32_t)mAlignedAllocator.getSize();
     }
 
-    void LightBVH::updateNodeOffsets()
-    {
+    void LightBVH::updateNodeOffsets() {
         // The nodes of the BVH are stored in depth-first order. To simplify the work of the refit kernels,
         // they are first run on all leaf nodes, and then on all internal nodes on a per level basis.
         // In order to do that, we need to compute how many internal nodes are stored at each level.
@@ -309,41 +288,36 @@ namespace Falcor
 
         traverseBVH([this, &perDepthOffset](const NodeLocation& location, const InternalNode* pInternalNode, const LeafNode* pLeafNode)
         {
-            if (pInternalNode)
-            {
+            if (pInternalNode) {
                 mNodeOffsets[perDepthOffset[location.depth]++] = location.byteOffset;
-            }
-            else // This is a leaf node
-            {
+            } else {
+                // This is a leaf node
                 mNodeOffsets[perDepthOffset.back()++] = location.byteOffset;
             }
 
             return true;
         });
 
-        if (!mpNodeOffsetsBuffer || mpNodeOffsetsBuffer->getElementCount() < mNodeOffsets.size())
-        {
-            mpNodeOffsetsBuffer = Buffer::createTyped<uint32_t>((uint32_t)mNodeOffsets.size(), ResourceBindFlags::ShaderResource);
+        if (!mpNodeOffsetsBuffer || mpNodeOffsetsBuffer->getElementCount() < mNodeOffsets.size()) {
+            mpNodeOffsetsBuffer = Buffer::createTyped<uint32_t>(mpDevice, (uint32_t)mNodeOffsets.size(), ResourceBindFlags::ShaderResource);
             mpNodeOffsetsBuffer->setName("LightBVH_NodeOffsetsBuffer");
         }
 
         mpNodeOffsetsBuffer->setBlob(mNodeOffsets.data(), 0u, mNodeOffsets.size() * sizeof(uint32_t));
     }
 
-    void LightBVH::uploadCPUBuffers(const std::vector<uint64_t>& triangleBitmasks)
-    {
+    void LightBVH::uploadCPUBuffers(const std::vector<uint64_t>& triangleBitmasks) {
         const uint32_t bvhByteSize = static_cast<uint32_t>(mAlignedAllocator.getSize());
 
         // Reallocate buffers if size requirements have changed.
-        if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getSize() < bvhByteSize)
-        {
+        if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getSize() < bvhByteSize) {
             // TODO: Test perf with Buffer::CpuAccess::Write flag. It'd speed up CPU->GPU copy below,
-            mpBVHNodesBuffer = Buffer::create(bvhByteSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+            mpBVHNodesBuffer = Buffer::create(mpDevice, bvhByteSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
             mpBVHNodesBuffer->setName("LightBVH_BVHNodes");
         }
-        if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size())
-        {
-            mpTriangleBitmasksBuffer = Buffer::createStructured(
+        
+        if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size()) {
+            mpTriangleBitmasksBuffer = Buffer::createStructured(mpDevice,
                 mLeafUpdater->getRootVar()["CB"]["gLightBVH"]["triangleBitmasks"],
                 uint32_t(triangleBitmasks.size()), Resource::BindFlags::ShaderResource);
             mpTriangleBitmasksBuffer->setName("LightBVH_TriangleBitmasks");
@@ -359,8 +333,7 @@ namespace Falcor
         mIsCpuDataValid = true;
     }
 
-    void LightBVH::syncDataToCPU() const
-    {
+    void LightBVH::syncDataToCPU() const {
         if (!mIsValid || mIsCpuDataValid) return;
 
         {
@@ -375,12 +348,10 @@ namespace Falcor
         mIsCpuDataValid = true;
     }
 
-    bool LightBVH::setShaderData(const ShaderVar& var) const
-    {
+    bool LightBVH::setShaderData(const ShaderVar& var) const {
         assert(var.isValid());
 
-        if (isValid())
-        {
+        if (isValid()) {
             var["nodes"] = mpBVHNodesBuffer;
             var["triangleBitmasks"] = mpTriangleBitmasksBuffer;
         }
@@ -388,8 +359,7 @@ namespace Falcor
         return true;
     }
 
-    void LightBVH::verifyStaticParams()
-    {
+    void LightBVH::verifyStaticParams() {
         // Check at compile time all the offsets defined in LightBVHStaticParams for InternalNode.
         static_assert(kNodeTypeOffset            == offsetof(InternalNode, nodeType));
         static_assert(kNodeAABBMinOffset         == offsetof(InternalNode, aabbMin));
@@ -411,4 +381,5 @@ namespace Falcor
         static_assert(kNodeTriangleIndicesOffset == offsetof(LeafNode, triangleIndices));
         static_assert(kNodeTriangleIndexByteSize == sizeof(LeafNode::triangleIndices[0]));
     }
-}
+
+}  // namespace Falcor

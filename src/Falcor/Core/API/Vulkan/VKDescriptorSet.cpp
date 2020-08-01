@@ -46,8 +46,8 @@ namespace Falcor {
         allocInfo.descriptorPool = mpPool->getApiHandle(0);
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &layout;
-        vk_call(vkAllocateDescriptorSets(gpDevice->getApiHandle(), &allocInfo, &mApiHandle));
-        mpApiData = std::make_shared<DescriptorSetApiData>(layout, mpPool->getApiHandle(0), mApiHandle);
+        vk_call(vkAllocateDescriptorSets(mpPool->device()->getApiHandle(), &allocInfo, &mApiHandle));
+        mpApiData = std::make_shared<DescriptorSetApiData>(mpPool->device(), layout, mpPool->getApiHandle(0), mApiHandle);
     }
 
     DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const {
@@ -61,7 +61,7 @@ namespace Falcor {
     }
 
     template<bool isUav, typename ViewType>
-    static void setSrvUavCommon(VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
+    static void setSrvUavCommon(Device::SharedPtr device, VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
@@ -94,15 +94,15 @@ namespace Falcor {
         write.dstArrayElement = arrayIndex;
         write.descriptorCount = 1;
 
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+        vkUpdateDescriptorSets(device->getApiHandle(), 1, &write, 0, nullptr);
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
-        setSrvUavCommon<false>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
+        setSrvUavCommon<false>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
-        setSrvUavCommon<true>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
+        setSrvUavCommon<true>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler) {
@@ -120,7 +120,7 @@ namespace Falcor {
         write.descriptorCount = 1;
         write.pImageInfo = &info;
 
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
     }
 
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
@@ -140,7 +140,7 @@ namespace Falcor {
         write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         write.descriptorCount = 1;
         write.pBufferInfo = &info;
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
     }
 
     template<bool forGraphics>

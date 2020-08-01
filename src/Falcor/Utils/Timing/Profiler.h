@@ -39,6 +39,7 @@ namespace Falcor {
 
 extern dlldecl bool gProfileEnabled;
 
+class Device;
 class GpuTimer;
 
 /** Container class for CPU/GPU profiling.
@@ -47,7 +48,7 @@ class GpuTimer;
     ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
 */
 class dlldecl Profiler {
-public:
+ public:
 
 #if _PROFILING_LOG == 1
     static void flushLog();
@@ -92,7 +93,7 @@ public:
     /** Start profiling a new event and update the events hierarchies.
         \param[in] name The event name.
     */
-    static void startEvent(const std::string& name, Flags flags = Flags::Default, bool showInMsg = true);
+    static void startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags = Flags::Default, bool showInMsg = true);
 
     /** Finish profiling a new event and update the events hierarchies.
         \param[in] name The event name.
@@ -146,7 +147,7 @@ public:
     */
     static void clearEvents();
 
-private:
+ private:
     static double getGpuTime(const EventData* pData);
     static double getCpuTime(const EventData* pData);
 
@@ -160,19 +161,19 @@ private:
     The class C'tor and D'tor call Profiler#StartEvent() and Profiler#EndEvent(). This class can be used with scoping to simplify event creation.\n
     The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled, and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
 */
-class ProfilerEvent
-{
-public:
+class ProfilerEvent {
+ public:
     /** C'tor
     */
-    ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags) { Profiler::startEvent(name, flags); }
+    ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags), mpDevice(pDevice) { Profiler::startEvent(pDevice, name, flags); }
     /** D'tor
     */
     ~ProfilerEvent() { Profiler::endEvent(mName, mFlags); }
 
-private:
-    const std::string mName;
-    Profiler::Flags mFlags;
+ private:
+    const std::string       mName;
+    Profiler::Flags         mFlags;
+    std::shared_ptr<Device> mpDevice;
 };
 
 #if _PROFILING_ENABLED

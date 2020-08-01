@@ -66,7 +66,7 @@ namespace Falcor {
         return flags;
     }
 
-    VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout) {
+    VkDescriptorSetLayout createDescriptorSetLayout(std::shared_ptr<Device> device, const DescriptorSet::Layout& layout) {
         std::vector<VkDescriptorSetLayoutBinding> bindings(layout.getRangeCount());
 
         uint32_t space;
@@ -89,7 +89,7 @@ namespace Falcor {
 
         VkDescriptorSetLayout vkHandle;
         //vk_call(vkCreateDescriptorSetLayout(gpDevice->getApiHandle(), &layoutInfo, nullptr, &vkHandle));
-        if (VK_FAILED(vkCreateDescriptorSetLayout(gpDevice->getApiHandle(), &layoutInfo, nullptr, &vkHandle))){
+        if (VK_FAILED(vkCreateDescriptorSetLayout(device->getApiHandle(), &layoutInfo, nullptr, &vkHandle))){
             LOG_FTL("vkCreateDescriptorSetLayout failed !!!");
         }
         return vkHandle;
@@ -119,11 +119,11 @@ namespace Falcor {
             maxIndex = std::max(set.getRange(0).regSpace, maxIndex);
         }
 
-        static VkDescriptorSetLayout emptyLayout = createDescriptorSetLayout({});   // #VKTODO This gets deleted multiple times on exit
+        static VkDescriptorSetLayout emptyLayout = createDescriptorSetLayout(mpDevice, {});   // #VKTODO This gets deleted multiple times on exit
         std::vector<VkDescriptorSetLayout> vkSetLayouts(maxIndex + 1, emptyLayout);
 
         for (const auto& set : mDesc.mSets) {
-            vkSetLayouts[set.getRange(0).regSpace] = createDescriptorSetLayout(set); //createDescriptorSetLayout() verifies that all ranges use the same register space
+            vkSetLayouts[set.getRange(0).regSpace] = createDescriptorSetLayout(mpDevice, set); //createDescriptorSetLayout() verifies that all ranges use the same register space
         }
 
         /*/----------------------------------------------------
@@ -166,11 +166,8 @@ namespace Falcor {
         pipelineLayoutInfo.setLayoutCount = (uint32_t)vkSetLayouts.size();
 
         VkPipelineLayout layout;
-        //vk_call(vkCreatePipelineLayout(gpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout));
-        if (VK_FAILED(vkCreatePipelineLayout(gpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout))){
-            LOG_FTL("vkCreatePipelineLayout failed !!!");
-        }
-        mApiHandle = ApiHandle::create(layout, vkSetLayouts);
+        vk_call(vkCreatePipelineLayout(mpDevice->getApiHandle(), &pipelineLayoutInfo, nullptr, &layout));
+        mApiHandle = ApiHandle::create(mpDevice, layout, vkSetLayouts);
 
     }
 

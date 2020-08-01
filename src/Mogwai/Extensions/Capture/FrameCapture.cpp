@@ -124,7 +124,7 @@ namespace Mogwai
         {
             Texture* pTex = pGraph->getOutput(i)->asTexture().get();
             assert(pTex);
-            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + to_string(gpFramework->getGlobalClock().getFrame()) + ".";;
+            std::string filename = getOutputNamePrefix(pGraph->getOutputName(i)) + to_string(gpFramework->getClock().getFrame()) + ".";;
             auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
             filename += ext;
             auto format = Bitmap::getFormatFromFileExtension(ext);
@@ -156,7 +156,7 @@ namespace Mogwai
     {
         auto pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameID = gpFramework->getGlobalClock().getFrame();
-        triggerFrame(gpDevice->getRenderContext(), pGraph, frameID);
+        uint64_t frameID = gpFramework->getClock().getFrame();
+        triggerFrame(mpDevice->getRenderContext(), pGraph, frameID);
     }
 }

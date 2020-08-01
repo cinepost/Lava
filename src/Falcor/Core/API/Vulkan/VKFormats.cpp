@@ -111,10 +111,9 @@ namespace Falcor
         { ResourceFormat::BC7UnormSrgb,                  VK_FORMAT_BC7_SRGB_BLOCK },
     };
 
-    ResourceBindFlags getFormatBindFlags(ResourceFormat format)
-    {
+    ResourceBindFlags getFormatBindFlags(Device::SharedPtr device, ResourceFormat format) {
         VkFormatProperties p;
-        vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), getVkFormat(format), &p);
+        vkGetPhysicalDeviceFormatProperties(device->getApiHandle(), getVkFormat(format), &p);
 
         auto convertFlags = [](VkFormatFeatureFlags vk) -> ResourceBindFlags
         {
@@ -140,11 +139,10 @@ namespace Falcor
         flags |= convertFlags(p.optimalTilingFeatures);
 
 
-        switch (format)
-        {
-        case ResourceFormat::R16Uint:
-        case ResourceFormat::R32Uint:
-            flags |= ResourceBindFlags::Index;
+        switch (format) {
+            case ResourceFormat::R16Uint:
+            case ResourceFormat::R32Uint:
+                flags |= ResourceBindFlags::Index;
         }
 
         return flags;

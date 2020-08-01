@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_
+#define SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_
 
 #include <cstddef>
 
@@ -161,8 +162,7 @@ struct dlldecl ShaderVar {
         Returns `true` if successful. Logs and error and returns `false` if the given `val` does not have a suitable type for the value
         pointed to by this shader variable.
     */
-    template<typename T> bool set(const T& val) const
-    {
+    template<typename T> bool set(const T& val) const {
         return setImpl<T>(val);
     }
 
@@ -177,8 +177,7 @@ struct dlldecl ShaderVar {
         This is a convenience form for `setBlob(&val, sizeof(val)`.
     */
     template<typename T>
-    bool setBlob(const T& val) const
-    {
+    bool setBlob(const T& val) const {
         return setBlob(&val, sizeof(val));
     }
 
@@ -250,8 +249,7 @@ struct dlldecl ShaderVar {
             myShaderVar["someField"] = float4(0);
     */
     template<typename T>
-    void operator=(const T& val)
-    {
+    void operator=(const T& val) {
         setImpl(val);
     }
 
@@ -265,8 +263,7 @@ struct dlldecl ShaderVar {
         Note: because this operation modified the data "pointed at" by the shader variable, rather than the shader variable itself, assignment is allowed on a `const ShaderVar`.
     */
     template<typename T>
-    void operator=(const T& val) const
-    {
+    void operator=(const T& val) const {
         setImpl(val);
     }
 
@@ -350,7 +347,7 @@ struct dlldecl ShaderVar {
     */
     void const* getRawData() const;
 
-private:
+ private:
     friend class VariablesBufferUI;
     /** The parameter block that is being pointed into.
 
@@ -395,3 +392,5 @@ private:
 }  // namespace Falcor
 
 #include "Falcor/Core/BufferTypes/ParameterBlock.h"
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_SHADERVAR_H_

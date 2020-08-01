@@ -29,33 +29,29 @@
 #include "BitonicSort.h"
 
 #ifdef _ENABLE_NVAPI
-namespace Falcor
-{
+namespace Falcor {
     static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
 
-    BitonicSort::BitonicSort()
-    {
+    BitonicSort::BitonicSort(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
 #if !(_ENABLE_NVAPI == true)
         throw std::runtime_error("BitonicSort requires NVAPI. Set _ENABLE_NVAPI to true in FalcorConfig.h.");
 #endif
-        mSort.pState = ComputeState::create();
+        mSort.pState = ComputeState::create(pDevice);
 
         // Create shaders
         Program::DefineList defines;
         defines.add("CHUNK_SIZE", "256");   // Dummy values just so we can get reflection data. We'll set the actual values in execute().
         defines.add("GROUP_SIZE", "256");
-        mSort.pProgram = ComputeProgram::createFromFile(kShaderFilename, "main", defines);
+        mSort.pProgram = ComputeProgram::createFromFile(pDevice, kShaderFilename, "main", defines);
         mSort.pState->setProgram(mSort.pProgram);
-        mSort.pVars = ComputeVars::create(mSort.pProgram.get());
+        mSort.pVars = ComputeVars::create(pDevice, mSort.pProgram.get());
     }
 
-    BitonicSort::SharedPtr BitonicSort::create()
-    {
-        return SharedPtr(new BitonicSort());
+    BitonicSort::SharedPtr BitonicSort::create(std::shared_ptr<Device> pDevice) {
+        return SharedPtr(new BitonicSort(pDevice));
     }
 
-    bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
-    {
+    bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize) {
         PROFILE("BitonicSort::execute");
 
         // Validate inputs.

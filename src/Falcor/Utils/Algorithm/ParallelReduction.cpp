@@ -25,87 +25,79 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "ParallelReduction.h"
-#include "Core/API/RenderContext.h"
+#include "Falcor/Core/API/RenderContext.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     static const char* psFilename = "Utils/Algorithm/ParallelReduction.ps.slang";
 
-    ParallelReduction::ParallelReduction(ParallelReduction::Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
-        : mReductionType(reductionType)
+    ParallelReduction::ParallelReduction(std::shared_ptr<Device> pDevice, ParallelReduction::Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
+        : mReductionType(reductionType), mpDevice(pDevice)
     {
         assert(width > 0 && height > 0 && sampleCount > 0);
         ResourceFormat texFormat;
         Program::DefineList defines;
         defines.add("_SAMPLE_COUNT", std::to_string(sampleCount));
         defines.add("_TILE_SIZE", std::to_string(kTileSize));
-        switch(reductionType)
-        {
-        case Type::MinMax:
-           texFormat = ResourceFormat::RG32Float;
-           defines.add("_MIN_MAX_REDUCTION");
-           break;
-        default:
-            #ifdef _WIN32
-            throw std::exception("Unknown parallel reduction operator");
-            #else
-            throw std::runtime_error("Unknown parallel reduction operator");
-            #endif
+        switch(reductionType) {
+            case Type::MinMax:
+               texFormat = ResourceFormat::RG32Float;
+               defines.add("_MIN_MAX_REDUCTION");
+               break;
+            default:
+                #ifdef _WIN32
+                throw std::exception("Unknown parallel reduction operator");
+                #else
+                throw std::runtime_error("Unknown parallel reduction operator");
+                #endif
         }
 
         Sampler::Desc samplerDesc;
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp).setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setLodParams(0, 0, 0);
-        mpPointSampler = Sampler::create(samplerDesc);
+        mpPointSampler = Sampler::create(pDevice, samplerDesc);
 
         mResultData.resize(readbackLatency + 1);
-        for(auto& res : mResultData)
-        {
-            Fbo::Desc fboDesc;
+        for(auto& res : mResultData) {
+            Fbo::Desc fboDesc(pDevice);
             fboDesc.setColorTarget(0, texFormat);
-            res.pFbo = Fbo::create2D(1, 1, fboDesc);
+            res.pFbo = Fbo::create2D(pDevice, 1, 1, fboDesc);
         }
-        mpFirstIterProg = FullScreenPass::create(psFilename, defines);
+        mpFirstIterProg = FullScreenPass::create(pDevice, psFilename, defines);
         mpFirstIterProg->addDefine("_FIRST_ITERATION");
-        mpRestIterProg = FullScreenPass::create(psFilename, defines);
+        mpRestIterProg = FullScreenPass::create(pDevice, psFilename, defines);
 
         // Calculate the number of reduction passes
-        if(width > kTileSize || height > kTileSize)
-        {
-            while(width > 1 || height > 1)
-            {
+        if(width > kTileSize || height > kTileSize) {
+            while(width > 1 || height > 1) {
                 width = (width + kTileSize - 1) / kTileSize;;
                 height = (height + kTileSize - 1) / kTileSize;;
 
                 width = std::max(width, 1u);
                 height = std::max(height, 1u);
 
-                Fbo::Desc fboDesc;
+                Fbo::Desc fboDesc(mpDevice);
                 fboDesc.setColorTarget(0, texFormat);
-                mpTmpResultFbo.push_back(Fbo::create2D(width, height, fboDesc));
+                mpTmpResultFbo.push_back(Fbo::create2D(pDevice, width, height, fboDesc));
             }
         }
     }
 
-    ParallelReduction::UniquePtr ParallelReduction::create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
-    {
-        return ParallelReduction::UniquePtr(new ParallelReduction(reductionType, readbackLatency, width, height, sampleCount));
+    ParallelReduction::UniquePtr ParallelReduction::create(std::shared_ptr<Device> pDevice, Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount) {
+        return ParallelReduction::UniquePtr(new ParallelReduction(pDevice, reductionType, readbackLatency, width, height, sampleCount));
     }
 
-    void runProgram(RenderContext* pRenderCtx, Texture::SharedPtr pInput, const FullScreenPass::SharedPtr& pPass, Fbo::SharedPtr pDst, Sampler::SharedPtr pPointSampler)
-    {
+    void runProgram(RenderContext* pRenderCtx, Texture::SharedPtr pInput, const FullScreenPass::SharedPtr& pPass, Fbo::SharedPtr pDst, Sampler::SharedPtr pPointSampler) {
         pPass["gInputTex"] = pInput;
         pPass["gSampler"] = pPointSampler;
         pPass->execute(pRenderCtx, pDst);
      }
 
-    float4 ParallelReduction::reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput)
-    {
+    float4 ParallelReduction::reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput) {
         FullScreenPass::SharedPtr pPass = mpFirstIterProg;
 
-        for(size_t i = 0; i < mpTmpResultFbo.size(); i++)
-        {
+        for(size_t i = 0; i < mpTmpResultFbo.size(); i++) {
             runProgram(pRenderCtx, pInput, pPass, mpTmpResultFbo[i], mpPointSampler);
             pPass = mpRestIterProg;
             pInput = mpTmpResultFbo[i]->getColorTexture(0);
@@ -116,18 +108,16 @@ namespace Falcor
         // Read back the results
         mCurFbo = (mCurFbo + 1) % mResultData.size();
         float4 result(0);
-        if(mResultData[mCurFbo].pReadTask)
-        {
+        if(mResultData[mCurFbo].pReadTask) {
             auto texData = mResultData[mCurFbo].pReadTask->getData();
             mResultData[mCurFbo].pReadTask = nullptr;
 
-            switch (mReductionType)
-            {
-            case Type::MinMax:
-                result = float4(*reinterpret_cast<float2*>(texData.data()), 0, 0);
-                break;
-            default:
-                should_not_get_here();
+            switch (mReductionType) {
+                case Type::MinMax:
+                    result = float4(*reinterpret_cast<float2*>(texData.data()), 0, 0);
+                    break;
+                default:
+                    should_not_get_here();
             }
         }
         return result;

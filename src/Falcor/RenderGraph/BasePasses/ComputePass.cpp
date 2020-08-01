@@ -30,22 +30,22 @@
 
 namespace Falcor {
 
-ComputePass::ComputePass(const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
-    auto pProg = ComputeProgram::create(desc, defines);
-    mpState = ComputeState::create();
+ComputePass::ComputePass(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(device) {
+    auto pProg = ComputeProgram::create(device, desc, defines);
+    mpState = ComputeState::create(device);
     mpState->setProgram(pProg);
-    if (createVars) mpVars = ComputeVars::create(pProg.get());
+    if (createVars) mpVars = ComputeVars::create(device, pProg.get());
     assert(pProg && mpState && (!createVars || mpVars));
 }
 
-ComputePass::SharedPtr ComputePass::create(const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
+ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
     Program::Desc d;
     d.addShaderLibrary(filename).csEntry(csEntry);
-    return create(d, defines, createVars);
+    return create(device, d, defines, createVars);
 }
 
-ComputePass::SharedPtr ComputePass::create(const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
-    return SharedPtr(new ComputePass(desc, defines, createVars));
+ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
+    return SharedPtr(new ComputePass(device, desc, defines, createVars));
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {
@@ -62,16 +62,16 @@ void ComputePass::executeIndirect(ComputeContext* pContext, const Buffer* pArgBu
 
 void ComputePass::addDefine(const std::string& name, const std::string& value, bool updateVars) {
     mpState->getProgram()->addDefine(name, value);
-    if (updateVars) mpVars = ComputeVars::create(mpState->getProgram().get());
+    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
 }
 
 void ComputePass::removeDefine(const std::string& name, bool updateVars) {
     mpState->getProgram()->removeDefine(name);
-    if (updateVars) mpVars = ComputeVars::create(mpState->getProgram().get());
+    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
 }
 
 void ComputePass::setVars(const ComputeVars::SharedPtr& pVars) {
-    mpVars = pVars ? pVars : ComputeVars::create(mpState->getProgram().get());
+    mpVars = pVars ? pVars : ComputeVars::create(mpDevice, mpState->getProgram().get());
     assert(mpVars);
 }
 

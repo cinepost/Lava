@@ -25,11 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_
+#define SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_
 
 #include "CopyContext.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 #include "Falcor/Core/State/ComputeState.h"
+
 
 namespace Falcor {
 
@@ -44,7 +46,7 @@ class dlldecl ComputeContext : public CopyContext {
         \param[in] queue Command queue handle.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueHandle queue);
 
     /** Dispatch a compute task
         \param[in] dispatchSize 3D dispatch group size
@@ -78,7 +80,7 @@ class dlldecl ComputeContext : public CopyContext {
     virtual void flush(bool wait = false) override;
 
  protected:
-    ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    ComputeContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
     bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
     bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
 
@@ -86,3 +88,5 @@ class dlldecl ComputeContext : public CopyContext {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_COMPUTECONTEXT_H_

@@ -110,7 +110,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags);
+    static SharedPtr createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags);
 
     /** Create a 1D texture.
         \param[in] width The width of the texture.
@@ -121,7 +121,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags The requested bind flags for the resource.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr create1D(uint32_t width, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+    static SharedPtr create1D(std::shared_ptr<Device> device, uint32_t width, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
 
     /** Create a 2D texture.
         \param[in] width The width of the texture.
@@ -133,7 +133,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags The requested bind flags for the resource.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr create2D(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+    static SharedPtr create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
 
     /** Create a 3D texture.
         \param[in] width The width of the texture.
@@ -146,7 +146,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] isSparse If true, the texture is created using sparse texture options supported by the API.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr create3D(uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool isSparse = false);
+    static SharedPtr create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool isSparse = false);
 
     /** Create a cube texture.
         \param[in] width The width of the texture.
@@ -158,7 +158,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags The requested bind flags for the resource.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr createCube(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
+    static SharedPtr createCube(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
 
     /** Create a multi-sampled 2D texture.
         \param[in] width The width of the texture.
@@ -169,7 +169,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags The requested bind flags for the resource.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr create2DMS(uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
+    static SharedPtr create2DMS(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
 
     /** Create a new texture object from a file.
         \param[in] filename Filename of the image. Can also include a full path or relative path from a data directory.
@@ -178,7 +178,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] bindFlags The bind flags to create the texture with.
         \return A new texture, or nullptr if the texture failed to load.
     */
-    static SharedPtr createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, BindFlags bindFlags = BindFlags::ShaderResource);
+    static SharedPtr createFromFile(std::shared_ptr<Device> device, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, BindFlags bindFlags = BindFlags::ShaderResource);
 
     /** Get a shader-resource view for the entire resource
     */
@@ -243,7 +243,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     uint32_t getTextureSizeInBytes();
 
  protected:
-    Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
+    Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
     void apiInit(const void* pData, bool autoGenMips);
     void uploadInitData(const void* pData, bool autoGenMips);
 

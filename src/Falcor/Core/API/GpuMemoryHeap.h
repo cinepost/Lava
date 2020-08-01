@@ -37,6 +37,8 @@
 
 namespace Falcor {
 
+class Device;
+
 class dlldecl GpuMemoryHeap {
  public:
     using SharedPtr = std::shared_ptr<GpuMemoryHeap>;
@@ -71,7 +73,7 @@ class dlldecl GpuMemoryHeap {
         \param[in] pFence Fence to use for synchronization.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    static SharedPtr create(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
 
     Allocation allocate(size_t size, size_t alignment = 1);
     void release(Allocation& data);
@@ -79,7 +81,7 @@ class dlldecl GpuMemoryHeap {
     void executeDeferredReleases();
 
 private:
-    GpuMemoryHeap(Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    GpuMemoryHeap(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
 
     struct PageData : public BaseData {
         uint32_t allocationsCount = 0;
@@ -97,6 +99,8 @@ private:
     std::priority_queue<Allocation> mDeferredReleases;
     std::unordered_map<size_t, PageData::UniquePtr> mUsedPages;
     std::queue<PageData::UniquePtr> mAvailablePages;
+
+    std::shared_ptr<Device> mpDevice; 
 
     void allocateNewPage();
     void initBasePageData(BaseData& data, size_t size);

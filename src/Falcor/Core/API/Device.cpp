@@ -32,41 +32,41 @@
 
 namespace Falcor {
     
-void createNullViews();
+void createNullViews(Device::SharedPtr device);
 void releaseNullViews();
-void createNullBufferViews();
+void createNullBufferViews(Device::SharedPtr device);
 void releaseNullBufferViews();
-void createNullTypedBufferViews();
+void createNullTypedBufferViews(Device::SharedPtr device);
 void releaseNullTypedBufferViews();
 
-Device::SharedPtr gpDevice;
-Device::SharedPtr gpDeviceHeadless;
+Device::SharedPtr _gpDevice;
+Device::SharedPtr _gpDeviceHeadless;
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc) {
+Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mPhysicalDeviceName("Unknown") {
     if (!pWindow) headless = true;
 }
 
 Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
         // Swapchain enabled device
-        if (gpDevice) {
+        if (_gpDevice) {
             logError("Falcor only supports a single device");
             return nullptr;
         }
 
-        gpDevice = SharedPtr(new Device(pWindow, desc));
-        if (gpDevice->init() == false) { gpDevice = nullptr;}
-        return gpDevice;
+        _gpDevice = SharedPtr(new Device(pWindow, desc));
+        if (_gpDevice->init() == false) { _gpDevice = nullptr;}
+        return _gpDevice;
     } else {
         // Headless device
-        if (gpDeviceHeadless) {
+        if (_gpDeviceHeadless) {
             logError("Falcor only supports a single headless device");
             return nullptr;
         }
 
-        gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
-        if (gpDeviceHeadless->init() == false) { gpDeviceHeadless = nullptr;}
-        return gpDeviceHeadless;
+        _gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
+        if (_gpDeviceHeadless->init() == false) { _gpDeviceHeadless = nullptr;}
+        return _gpDeviceHeadless;
     }
 }
 
@@ -93,16 +93,16 @@ bool Device::init() {
         .setDescCount(DescriptorPool::Type::RawBufferSrv, 2 * 1024)
         .setDescCount(DescriptorPool::Type::RawBufferUav, 2 * 1024);
 #endif
-    mpFrameFence = GpuFence::create();
-    mpGpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
+    mpFrameFence = GpuFence::create(SharedPtr(this));
+    mpGpuDescPool = DescriptorPool::create(SharedPtr(this), poolDesc, mpFrameFence);
     poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
-    mpCpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
-    mpUploadHeap = GpuMemoryHeap::create(GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
-    mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-    createNullViews();
-    createNullBufferViews();
-    createNullTypedBufferViews();
-    mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    mpCpuDescPool = DescriptorPool::create(SharedPtr(this), poolDesc, mpFrameFence);
+    mpUploadHeap = GpuMemoryHeap::create(SharedPtr(this), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpRenderContext = RenderContext::create(SharedPtr(this), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    createNullViews(SharedPtr(this));
+    createNullBufferViews(SharedPtr(this));
+    createNullTypedBufferViews(SharedPtr(this));
+    mpRenderContext = RenderContext::create(SharedPtr(this), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     assert(mpRenderContext);
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
@@ -112,6 +112,10 @@ bool Device::init() {
         return false;
     }
     return true;
+}
+
+std::string& Device::getPhysicalDeviceName() {
+    return mPhysicalDeviceName;
 }
 
 void Device::releaseFboData() {
@@ -138,16 +142,16 @@ void Device::release() {
 
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
     // Create a texture object
-    auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+    auto pColorTex = Texture::SharedPtr(new Texture(SharedPtr(this), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
     //pColorTex->mApiHandle = apiHandles[i];
     
     // Create the FBO if it's required
-    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create();
+    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(SharedPtr(this));
     mpOffscreenFbo->attachColorTarget(pColorTex, 0);
 
     // Create a depth texture
     if (depthFormat != ResourceFormat::Unknown) {
-        auto pDepth = Texture::create2D(width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+        auto pDepth = Texture::create2D(SharedPtr(this), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
         mpOffscreenFbo->attachDepthStencilTarget(pDepth);
     }
 
@@ -160,15 +164,15 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
 
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
-        auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+        auto pColorTex = Texture::SharedPtr(new Texture(SharedPtr(this), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
         pColorTex->mApiHandle = apiHandles[i];
         // Create the FBO if it's required
-        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create();
+        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(SharedPtr(this));
         mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
 
         // Create a depth texture
         if (depthFormat != ResourceFormat::Unknown) {
-            auto pDepth = Texture::create2D(width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(SharedPtr(this), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
             mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
         }
     }
@@ -186,7 +190,7 @@ Fbo::SharedPtr Device::getOffscreenFbo() const {
 }
 
 std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(type, count);
+    QueryHeap::SharedPtr pHeap = QueryHeap::create(SharedPtr(this), type, count);
     mTimestampQueryHeaps.push_back(pHeap);
     return pHeap;
 }
@@ -324,6 +328,53 @@ SCRIPT_BINDING(Device) {
     deviceDesc.desc_field(colorFormat).desc_field(depthFormat).desc_field(apiMajorVersion).desc_field(apiMinorVersion);
     deviceDesc.desc_field(enableVsync).desc_field(enableDebugLayer).desc_field(cmdQueues);
 #undef desc_field
+
+    auto deviceClass = m.regClass(Device);
+    deviceClass.ctor(&Device::create);
 }
 
 }  // namespace Falcor
+
+/*
+SCRIPT_BINDING(RenderGraph) {
+    auto graphClass = m.regClass(RenderGraph);
+    graphClass.ctor(&RenderGraph::create);
+    graphClass.property("name", &RenderGraph::getName, &RenderGraph::setName);
+    graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
+    graphClass.func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
+    graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
+    graphClass.func_(RenderGraphIR::kRemoveEdge, ScriptBindings::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
+    graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
+    graphClass.func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
+    graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
+    graphClass.func_("getPass", &RenderGraph::getPass, "name"_a);
+    graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
+    auto printGraph = [](RenderGraph::SharedPtr pGraph) { pybind11::print(RenderGraphExporter::getIR(pGraph)); };
+    graphClass.func_("print", printGraph);
+
+    // RenderPass
+    auto passClass = m.regClass(RenderPass);
+
+    // RenderPassLibrary
+    const auto& createRenderPass = [](std::shared_ptr<Device> device, const std::string& passName, pybind11::dict d = {}) {
+        auto pPass = RenderPassLibrary::instance().createPass(device->getRenderContext(), passName.c_str(), Dictionary(d));
+        if (!pPass) { 
+            throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
+        }
+        return pPass;
+    };
+    passClass.ctor(createRenderPass, "device"_a, "name"_a, "dict"_a = pybind11::dict());
+
+    const auto& loadPassLibrary = [](const std::string& library) {
+        return RenderPassLibrary::instance().loadLibrary(library);
+    };
+
+    m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
+
+    const auto& updateRenderPass = [](std::shared_ptr<Device> device, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
+        pGraph->updatePass(device->getRenderContext(), passName, Dictionary(d));
+    };
+
+    graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);
+}
+*/

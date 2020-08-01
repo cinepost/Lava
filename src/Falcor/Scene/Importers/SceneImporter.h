@@ -25,16 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "../SceneBuilder.h"
+#ifndef SRC_FACLOR_SCENE_IMPORTERS_SCENEIMPORTER_H_
+#define SRC_FACLOR_SCENE_IMPORTERS_SCENEIMPORTER_H_
 
-namespace Falcor
-{
-    class SceneImporter
-    {
-    public:
-        static bool import(const std::string& filename, SceneBuilder& builder);
-    private:
-        SceneImporter() = default;
-    };
-}
+#include "Falcor/Scene/SceneBuilder.h"
+
+
+namespace Falcor {
+
+class Device;
+
+class SceneImporter {
+ public:
+    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder);
+ private:
+    SceneImporter() = default;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FACLOR_SCENE_IMPORTERS_SCENEIMPORTER_H_

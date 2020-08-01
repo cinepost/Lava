@@ -116,17 +116,17 @@ const FileDialogFilterVec Scene::kFileExtensionFilters = {
     {"glb"}
 };
 
-Scene::Scene() {
+Scene::Scene(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
     mpFrontClockwiseRS = RasterizerState::create(RasterizerState::Desc().setFrontCounterCW(false));
 }
 
-Scene::SharedPtr Scene::create(const std::string& filename) {
-    auto pBuilder = SceneBuilder::create(filename);
+Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
+    auto pBuilder = SceneBuilder::create(pDevice, filename);
     return pBuilder ? pBuilder->getScene() : nullptr;
 }
 
-Scene::SharedPtr Scene::create() {
-    return Scene::SharedPtr(new Scene());
+Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice) {
+    return Scene::SharedPtr(new Scene(pDevice));
 }
 
 Shader::DefineList Scene::getSceneDefines() const {
@@ -187,19 +187,19 @@ void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::sh
 #endif
 
 void Scene::initResources() {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Scene/SceneBlock.slang", "", "main");
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main");
     pProgram->addDefines(getSceneDefines());
     ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
     assert(pReflection);
 
-    mpSceneBlock = ParameterBlock::create(pReflection);
-    mpMeshesBuffer = Buffer::createStructured(mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMeshInstancesBuffer = Buffer::createStructured(mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);
+    mpMeshesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpMeshInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 
-    mpMaterialsBuffer = Buffer::createStructured(mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpMaterialsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
 
     if (mLights.size()) {
-        mpLightsBuffer = Buffer::createStructured(mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpLightsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     }
 }
 
@@ -274,7 +274,7 @@ void Scene::updateMeshInstanceFlags() {
 void Scene::finalize() {
     sortMeshes();
     initResources();
-    mpAnimationController->animate(gpDevice->getRenderContext(), 0); // Requires Scene block to exist
+    mpAnimationController->animate(mpDevice->getRenderContext(), 0); // Requires Scene block to exist
     updateMeshInstanceFlags();
     updateBounds();
 
@@ -627,12 +627,12 @@ void Scene::createDrawList() {
 
     // Create the draw-indirect buffer
     if (drawCounterClockwiseMeshes.size()) {
-        mDrawCounterClockwiseMeshes.pBuffer = Buffer::create(sizeof(drawCounterClockwiseMeshes[0]) * drawCounterClockwiseMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounterClockwiseMeshes.data());
+        mDrawCounterClockwiseMeshes.pBuffer = Buffer::create(mpDevice, sizeof(drawCounterClockwiseMeshes[0]) * drawCounterClockwiseMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounterClockwiseMeshes.data());
         mDrawCounterClockwiseMeshes.count = (uint32_t)drawCounterClockwiseMeshes.size();
     }
 
     if (drawClockwiseMeshes.size()) {
-        mDrawClockwiseMeshes.pBuffer = Buffer::create(sizeof(drawClockwiseMeshes[0]) * drawClockwiseMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawClockwiseMeshes.data());
+        mDrawClockwiseMeshes.pBuffer = Buffer::create(mpDevice, sizeof(drawClockwiseMeshes[0]) * drawClockwiseMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawClockwiseMeshes.data());
         mDrawClockwiseMeshes.count = (uint32_t)drawClockwiseMeshes.size();
     }
 
@@ -1056,7 +1056,7 @@ void Scene::setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap) {
 }
 
 void Scene::loadEnvironmentMap(const std::string& filename) {
-    Texture::SharedPtr pEnvMap = Texture::createFromFile(filename, false, true);
+    Texture::SharedPtr pEnvMap = Texture::createFromFile(mpDevice, filename, false, true);
     setEnvironmentMap(pEnvMap);
 }
 

@@ -25,27 +25,26 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/Sampler.h"
-#include "API/Device.h"
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Device.h"
 #include "VKState.h"
 
-namespace Falcor
-{
-    uint32_t Sampler::getApiMaxAnisotropy()
-    {
-        return (uint32_t)gpDevice->getPhysicalDeviceLimits().maxSamplerAnisotropy;
-    }
+namespace Falcor {
 
-    Sampler::SharedPtr Sampler::create(const Desc& desc)
-    {
-        SharedPtr pSampler = SharedPtr(new Sampler(desc));
-
-        VkSamplerCreateInfo info;
-        initVkSamplerInfo(pSampler.get(), info);
-        VkSampler handle;
-        vk_call(vkCreateSampler(gpDevice->getApiHandle(), &info, nullptr, &handle));
-        pSampler->mApiHandle = ApiHandle::create(handle);
-        return pSampler;
-    }
+uint32_t Sampler::getApiMaxAnisotropy(std::shared_ptr<Device> device) {
+    return (uint32_t)device->getPhysicalDeviceLimits().maxSamplerAnisotropy;
 }
+
+Sampler::SharedPtr Sampler::create(std::shared_ptr<Device> device, const Desc& desc) {
+    SharedPtr pSampler = SharedPtr(new Sampler(device, desc));
+
+    VkSamplerCreateInfo info;
+    initVkSamplerInfo(pSampler.get(), info);
+    VkSampler handle;
+    vk_call(vkCreateSampler(device->getApiHandle(), &info, nullptr, &handle));
+    pSampler->mApiHandle = ApiHandle::create(device, handle);
+    return pSampler;
+}
+
+}  // namespace Falcor

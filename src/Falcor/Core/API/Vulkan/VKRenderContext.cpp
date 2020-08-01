@@ -38,8 +38,8 @@ namespace Falcor
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
     VkImageLayout getImageLayout(Resource::State state);
 
-    RenderContext::RenderContext(CommandQueueHandle queue)
-        : ComputeContext(LowLevelContextData::CommandQueueType::Direct, queue)
+    RenderContext::RenderContext(std::shared_ptr<Device> device, CommandQueueHandle queue)
+        : ComputeContext(device, LowLevelContextData::CommandQueueType::Direct, queue)
     {
     }
 
@@ -151,7 +151,7 @@ namespace Falcor
 
     static void transitionFboResources(RenderContext* pCtx, const Fbo* pFbo) {
         // We are setting the entire RTV array to make sure everything that was previously bound is detached
-        uint32_t colorTargets = Fbo::getMaxColorTargetCount();
+        uint32_t colorTargets = Fbo::getMaxColorTargetCount(pCtx->device());
 
         if (pFbo) {
             for (uint32_t i = 0; i < colorTargets; i++) {

@@ -25,18 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/Shader.h"
-#include "API/Device.h"
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Shader.h"
+#include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
-    Shader::Shader(ShaderType type) : mType(type) {}
+namespace Falcor {
+
+    Shader::Shader(std::shared_ptr<Device> device, ShaderType type) : mType(type), mpDevice(device) {}
 
     Shader::~Shader() = default;
 
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
-    {
+    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
         VkShaderModuleCreateInfo moduleCreateInfo = {};
         moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         moduleCreateInfo.codeSize = shaderBlob->getBufferSize();
@@ -45,12 +44,12 @@ namespace Falcor
         assert(moduleCreateInfo.codeSize % 4 == 0);
 
         VkShaderModule shaderModule;
-        if (VK_FAILED(vkCreateShaderModule(gpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule)))
-        {
+        if (VK_FAILED(vkCreateShaderModule(mpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule))) {
             logError("Could not create shader!");
             return false;
         }
-        mApiHandle = ApiHandle::create(shaderModule);
+        mApiHandle = ApiHandle::create(mpDevice, shaderModule);
         return true;
     }
-}
+
+}  // namespace Falcor

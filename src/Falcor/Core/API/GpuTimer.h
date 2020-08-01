@@ -25,66 +25,76 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GPUTIMER_H_
+#define SRC_FALCOR_CORE_API_GPUTIMER_H_
+
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/Buffer.h"
 
-namespace Falcor
-{ 
-    /** Abstracts GPU timer queries. \n
-        This class provides mechanism to get elapsed time in miliseconds between a pair of Begin()/End() calls.
+
+namespace Falcor { 
+
+class Device;
+
+/** Abstracts GPU timer queries. \n
+    This class provides mechanism to get elapsed time in miliseconds between a pair of Begin()/End() calls.
+*/
+class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
+ public:
+    using SharedPtr = std::shared_ptr<GpuTimer>;
+    using SharedConstPtr = std::shared_ptr<const GpuTimer>;
+
+    /** Create a new timer object.
+        \return A new object, or throws an exception if creation failed.
     */
-    class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<GpuTimer>;
-        using SharedConstPtr = std::shared_ptr<const GpuTimer>;
+    static SharedPtr create(std::shared_ptr<Device> device);
 
-        /** Create a new timer object.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create();
+    /** Destroy a new object
+    */
+    ~GpuTimer();
 
-        /** Destroy a new object
-        */
-        ~GpuTimer();
+    /** Begin the capture window. \n
+        If begin() is called in the middle of a begin()/end() pair, it will be ignored and a warning will be logged.
+    */
+    void begin();
 
-        /** Begin the capture window. \n
-            If begin() is called in the middle of a begin()/end() pair, it will be ignored and a warning will be logged.
-        */
-        void begin();
+    /** Begin the capture window. \n
+        If end() is called before a begin() was called, it will be ignored and a warning will be logged.
+    */
+    void end();
 
-        /** Begin the capture window. \n
-            If end() is called before a begin() was called, it will be ignored and a warning will be logged.
-        */
-        void end();
+    /** Get the elapsed time in miliseconds between a pair of Begin()/End() calls. \n
+        If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
+    */
+    double getElapsedTime();
 
-        /** Get the elapsed time in miliseconds between a pair of Begin()/End() calls. \n
-            If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
-        */
-        double getElapsedTime();
+ private:
+    GpuTimer(std::shared_ptr<Device> device);
 
-    private:
-        GpuTimer();
-        enum Status
-        {
-            Begin,
-            End,
-            Idle
-        } mStatus = Idle;
+    enum Status {
+        Begin,
+        End,
+        Idle
+    } mStatus = Idle;
 
-        static std::weak_ptr<QueryHeap> spHeap;
-        LowLevelContextData::SharedPtr mpLowLevelData;
-        uint32_t mStart;
-        uint32_t mEnd;
-        double mElapsedTime;
-        void apiBegin();
-        void apiEnd();
-        void apiResolve(uint64_t result[2]);
+    static std::weak_ptr<QueryHeap> spHeap;
+    LowLevelContextData::SharedPtr mpLowLevelData;
+    uint32_t mStart;
+    uint32_t mEnd;
+    double mElapsedTime;
+    std::shared_ptr<Device> mpDevice;
+
+    void apiBegin();
+    void apiEnd();
+    void apiResolve(uint64_t result[2]);
 
 #ifdef FALCOR_D3D12
-        Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications
+    Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications
 #endif
-    };
-}
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GPUTIMER_H_
+

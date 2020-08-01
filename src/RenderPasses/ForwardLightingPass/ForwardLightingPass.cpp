@@ -91,8 +91,7 @@ ForwardLightingPass::ForwardLightingPass()
     mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 }
 
-RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
@@ -101,21 +100,18 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
     auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
     depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSampleCount);
 
-    if (mNormalMapFormat != ResourceFormat::Unknown)
-    {
+    if (mNormalMapFormat != ResourceFormat::Unknown) {
         reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSampleCount);
     }
 
-    if (mMotionVecFormat != ResourceFormat::Unknown)
-    {
+    if (mMotionVecFormat != ResourceFormat::Unknown) {
         reflector.addOutput(kMotionVecs, "Screen-space motion vectors").format(mMotionVecFormat).texture2D(0, 0, mSampleCount);
     }
 
     return reflector;
 }
 
-void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
 
     if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
@@ -127,20 +123,15 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
     setSampler(Sampler::create(samplerDesc));
 }
 
-void ForwardLightingPass::initDepth(const RenderData& renderData)
-{
+void ForwardLightingPass::initDepth(const RenderData& renderData) {
     const auto& pTexture = renderData[kDepth]->asTexture();
 
-    if (pTexture)
-    {
+    if (pTexture) {
         mpState->setDepthStencilState(mpDsNoDepthWrite);
         mpFbo->attachDepthStencilTarget(pTexture);
-    }
-    else
-    {
+    } else {
         mpState->setDepthStencilState(nullptr);
-        if (mpFbo->getDepthStencilTexture() == nullptr)
-        {
+        if (mpFbo->getDepthStencilTexture() == nullptr) {
             auto pDepth = Texture::create2D(mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
             mpFbo->attachDepthStencilTarget(pDepth);
         }
@@ -152,8 +143,7 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
     mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
     mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
 
-    for (uint32_t i = 1; i < 3; i++)
-    {
+    for (uint32_t i = 1; i < 3; i++) {
         const auto& pRtv = mpFbo->getRenderTargetView(i).get();
         if (pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, float4(0));
     }
@@ -162,13 +152,11 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
     if (mUsePreGenDepth == false) pContext->clearDsv(renderData[kDepth]->asTexture()->getDSV().get(), 1, 0);
 }
 
-void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     initDepth(renderData);
     initFbo(pContext, renderData);
 
-    if (mpScene)
-    {
+    if (mpScene) {
         mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
         mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
 
@@ -177,8 +165,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     }
 }
 
-void ForwardLightingPass::renderUI(Gui::Widgets& widget)
-{
+void ForwardLightingPass::renderUI(Gui::Widgets& widget) {
     static const Gui::DropdownList kSampleCountList =
     {
         { 1, "1" },
@@ -191,59 +178,47 @@ void ForwardLightingPass::renderUI(Gui::Widgets& widget)
     if (mSampleCount > 1 && widget.checkbox("Super Sampling", mEnableSuperSampling))  setSuperSampling(mEnableSuperSampling);
 }
 
-ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format)
-{
+ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) {
     mColorFormat = format;
     mPassChangedCB();
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat format)
-{
+ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat format) {
     mNormalMapFormat = format;
     mPassChangedCB();
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat format)
-{
+ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat format) {
     mMotionVecFormat = format;
-    if (mMotionVecFormat != ResourceFormat::Unknown)
-    {
+    if (mMotionVecFormat != ResourceFormat::Unknown) {
         mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
-    }
-    else
-    {
+    } else {
         mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
     }
     mPassChangedCB();
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples)
-{
+ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples) {
     mSampleCount = samples;
     mPassChangedCB();
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable)
-{
+ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable) {
     mEnableSuperSampling = enable;
-    if (mEnableSuperSampling)
-    {
+    if (mEnableSuperSampling) {
         mpState->getProgram()->addDefine("INTERPOLATION_MODE", "sample");
-    }
-    else
-    {
+    } else {
         mpState->getProgram()->removeDefine("INTERPOLATION_MODE");
     }
 
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable)
-{
+ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable) {
     mUsePreGenDepth = enable;
     mPassChangedCB();
     mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
@@ -251,8 +226,7 @@ ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setSampler(const Sampler::SharedPtr& pSampler)
-{
+ForwardLightingPass& ForwardLightingPass::setSampler(const Sampler::SharedPtr& pSampler) {
     mpVars->setSampler("gSampler", pSampler);
     return *this;
 }

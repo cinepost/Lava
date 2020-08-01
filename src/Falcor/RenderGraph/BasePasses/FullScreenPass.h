@@ -25,44 +25,48 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_FULLSCREENPASS_H_
+#define SRC_FALCOR_RENDERGRAPH_BASEPASSES_FULLSCREENPASS_H_
+
 #include "BaseGraphicsPass.h"
 #include "../RenderPass.h"
 
-namespace Falcor
-{
-    class dlldecl FullScreenPass : public BaseGraphicsPass, public std::enable_shared_from_this<FullScreenPass>
-    {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<FullScreenPass>;
+namespace Falcor {
+    
+class dlldecl FullScreenPass : public BaseGraphicsPass, public std::enable_shared_from_this<FullScreenPass> {
+ public:
+    using SharedPtr = ParameterBlockSharedPtr<FullScreenPass>;
 
-        virtual ~FullScreenPass();
+    virtual ~FullScreenPass();
 
-        /** Create a new fullscreen pass from file.
-            \param[in] filename Pixel shader filename. This method expects a pixel shader named "main()" in the file.
-            \param[in] defines Optional list of macro definitions to set into the program.
-            \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const std::string& filename, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
+    /** Create a new fullscreen pass from file.
+        \param[in] filename Pixel shader filename. This method expects a pixel shader named "main()" in the file.
+        \param[in] defines Optional list of macro definitions to set into the program.
+        \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> device, const std::string& filename, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
 
-        /** Create a new fullscreen pass.
-            \param[in] desc The program description.
-            \param[in] defines Optional list of macro definitions to set into the program.
-            \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
+    /** Create a new fullscreen pass.
+        \param[in] desc The program description.
+        \param[in] defines Optional list of macro definitions to set into the program.
+        \param[in] viewportMask Optional value to initialize viewport mask with. Useful for multi-projection passes.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), uint32_t viewportMask = 0);
 
-        /** Execute the pass using an FBO
-            \param[in] pRenderContext The render context.
-            \param[in] pFbo The target FBO
-            \param[in] autoSetVpSc If true, the pass will set the viewports and scissors to match the FBO size. If you want to override the VP or SC, get the state by calling `getState()`, bind the SC and VP yourself and set this arg to false
-        */
-        virtual void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc = true) const;
+    /** Execute the pass using an FBO
+        \param[in] pRenderContext The render context.
+        \param[in] pFbo The target FBO
+        \param[in] autoSetVpSc If true, the pass will set the viewports and scissors to match the FBO size. If you want to override the VP or SC, get the state by calling `getState()`, bind the SC and VP yourself and set this arg to false
+    */
+    virtual void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc = true) const;
 
-    protected:
-        FullScreenPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);
-    };
-}
+ protected:
+    FullScreenPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_BASEPASSES_FULLSCREENPASS_H_
 

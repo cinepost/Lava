@@ -25,21 +25,23 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_MOGWAI_EXTENSIONS_CAPTURE_CAPTURETRIGGER_H_
+#define SRC_MOGWAI_EXTENSIONS_CAPTURE_CAPTURETRIGGER_H_
+
 #include "../../Mogwai.h"
 
-namespace Mogwai
-{
-    class CaptureTrigger : public Extension
-    {
-    public:
+namespace Mogwai {
+
+    class CaptureTrigger : public Extension {
+     public:
         virtual ~CaptureTrigger(){};
 
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
         virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
         virtual void scriptBindings(Bindings& bindings) override;
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) override;
-    protected:
+    
+     protected:
         CaptureTrigger(Renderer* pRenderer);
         const Renderer* mpRenderer;
         using Range = std::pair<uint64_t, uint64_t>; // Start frame and count
@@ -75,4 +77,7 @@ namespace Mogwai
             Range range;
         } mCurrent;
     };
-}
+
+}  // namespace Mogwai
+
+#endif  // SRC_MOGWAI_EXTENSIONS_CAPTURE_CAPTURETRIGGER_H_

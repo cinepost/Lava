@@ -35,6 +35,7 @@
 
 namespace Falcor {
 
+class Device;
 class ProgramReflection;
 class EntryPointGroupReflection;
 class CopyContext;
@@ -110,25 +111,25 @@ class dlldecl RootSignature {
     /** Get an empty root signature.
         \return Empty root signtuare, or throws an exception on error.
     */
-    static SharedPtr getEmpty();
+    static SharedPtr getEmpty(std::shared_ptr<Device> device);
 
     /** Create a root signature.
         \param[in] desc Root signature description.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
 
     /** Create a root signature from program reflection.
         \param[in] pReflection Reflection object.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const ProgramReflection* pReflection);
+    static SharedPtr create(std::shared_ptr<Device> device, const ProgramReflection* pReflection);
 
     /** Create a local root signature for use with DXR.
         \param[in] pReflection Reflection object.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr createLocal(const EntryPointGroupReflection* pReflector);
+    static SharedPtr createLocal(std::shared_ptr<Device> device, const EntryPointGroupReflection* pReflector);
 
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
@@ -148,7 +149,7 @@ class dlldecl RootSignature {
     const Desc& getDesc() const { return mDesc; }
 
  protected:
-    RootSignature(const Desc& desc);
+    RootSignature(std::shared_ptr<Device> device, const Desc& desc);
     void apiInit();
 
 #ifdef FALCOR_D3D12
@@ -162,6 +163,8 @@ class dlldecl RootSignature {
 
     uint32_t mSizeInBytes;
     std::vector<uint32_t> mElementByteOffset;
+
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

@@ -34,6 +34,8 @@
 #include "GpuFence.h"
 
 namespace Falcor {
+
+class Device;    
 struct LowLevelContextApiData;
 
 class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData> {
@@ -55,7 +57,7 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
         \param[in] queue Command queue handle. Can be nullptr.
         \return A new object, or throws an expception if creation failed.
     */
-    static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue);
 
     void flush();
 
@@ -71,7 +73,7 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
 #endif
 
  protected:
-    LowLevelContextData(CommandQueueType type, CommandQueueHandle queue);
+    LowLevelContextData(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue);
 
     LowLevelContextApiData* mpApiData = nullptr;
     CommandQueueType mType;
@@ -79,6 +81,7 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
     CommandQueueHandle mpQueue;  // Can be nullptr
     CommandAllocatorHandle mpAllocator;
     GpuFence::SharedPtr mpFence;
+    std::shared_ptr<Device> mpDevice; 
 };
 
 }  // namespace Falcor

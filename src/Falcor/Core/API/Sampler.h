@@ -33,7 +33,10 @@
 
 #include "Falcor/Core/Framework.h"
 
+
 namespace Falcor {
+
+class Device;
 
 /** Abstract the API sampler state object
 */
@@ -125,7 +128,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         \param[in] desc Describes sampler settings.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
 
     /** Get the API handle
     */
@@ -185,13 +188,15 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
 
     /** Get an object that represents a default sampler
     */
-    static Sampler::SharedPtr getDefault();
+    static Sampler::SharedPtr getDefault(std::shared_ptr<Device> device);
 
 private:
-    Sampler(const Desc& desc);
+    Sampler(std::shared_ptr<Device> device, const Desc& desc);
     Desc mDesc;
     ApiHandle mApiHandle = {};
-    static uint32_t getApiMaxAnisotropy();
+    static uint32_t getApiMaxAnisotropy(std::shared_ptr<Device> device);
+
+    std::shared_ptr<Device> mpDevice; 
 };
 
 #define filter_str(a) case Sampler::Filter::a: return #a

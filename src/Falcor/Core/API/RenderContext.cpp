@@ -34,8 +34,8 @@
 
 namespace Falcor {
 
-    RenderContext::SharedPtr RenderContext::create(CommandQueueHandle queue) {
-        return SharedPtr(new RenderContext(queue));
+    RenderContext::SharedPtr RenderContext::create(std::shared_ptr<Device> device, CommandQueueHandle queue) {
+        return SharedPtr(new RenderContext(device, queue));
     }
 
     void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags) {
@@ -47,7 +47,7 @@ namespace Falcor {
         bool clearStencil = hasDepthStencilTexture && ((flags & FboAttachmentType::Stencil) != FboAttachmentType::None) && isStencilFormat(depthStencilFormat);
 
         if (clearColor) {
-            for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++) {
+            for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(mpDevice); i++) {
                 if (pFbo->getColorTexture(i)) {
                     clearRtv(pFbo->getRenderTargetView(i).get(), color);
                 }

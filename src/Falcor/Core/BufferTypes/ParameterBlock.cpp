@@ -229,28 +229,29 @@ bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
 
 ParameterBlock::~ParameterBlock() = default;
 
-ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
     if (!pElementType) {
         throw std::runtime_error("Can't create a parameter block without type information");
     }
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
-    return create(pReflection);
+    return create(device, pReflection);
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const ParameterBlockReflection::SharedConstPtr& pReflection) {
     assert(pReflection);
-    return SharedPtr(new ParameterBlock(pReflection->getProgramVersion(), pReflection));
+    return SharedPtr(new ParameterBlock(device, pReflection->getProgramVersion(), pReflection));
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
     assert(pProgramVersion);
-    return ParameterBlock::create(pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
+    return ParameterBlock::create(device, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
 }
 
-ParameterBlock::ParameterBlock(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
+ParameterBlock::ParameterBlock(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
     : mpReflector(pReflection)
     , mpProgramVersion(pProgramVersion)
-    , mData(pReflection->getElementType()->getByteSize(), 0) {
+    , mData(pReflection->getElementType()->getByteSize(), 0) 
+    , mpDevice(device) {
 
     ReflectionStructType::BuildState state;
     auto pElementType = getElementType();
@@ -313,7 +314,7 @@ void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
                 auto pResourceType = pType->asResourceType();
                 switch (pResourceType->getType()) {
                     case ReflectionResourceType::Type::ConstantBuffer: {
-                            auto pCB = ParameterBlock::create(pResourceType->getParameterBlockReflector());
+                            auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
                             var.setParameterBlock(pCB);
                         }
                         break;
@@ -650,7 +651,7 @@ bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler:
 
     if (pBoundSampler == pSampler) return true;
 
-    pBoundSampler = pSampler ? pSampler : Sampler::getDefault();
+    pBoundSampler = pSampler ? pSampler : Sampler::getDefault(mpDevice);
     markDescriptorSetDirty(bindLocation);
     return true;
 }
@@ -781,7 +782,7 @@ Buffer::ConstSharedPtrRef ParameterBlock::getUnderlyingConstantBuffer() const {
     }
 
     if( !mUnderlyingConstantBuffer.pBuffer || mUnderlyingConstantBuffer.pBuffer->getSize() < requiredSize ) {
-        mUnderlyingConstantBuffer.pBuffer = Buffer::create(requiredSize, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write);
+        mUnderlyingConstantBuffer.pBuffer = Buffer::create(mpDevice, requiredSize, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write);
     }
 
     return mUnderlyingConstantBuffer.pBuffer;
@@ -1227,7 +1228,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::Sampler:
                         {
                             auto pSampler = mSamplers[flatIndex];
-                            if(!pSampler) pSampler = Sampler::getDefault();
+                            if(!pSampler) pSampler = Sampler::getDefault(mpDevice);
                             pDescSet->setSampler(destRangeIndex, descriptorIndex, pSampler.get());
                         }
                         break;
@@ -1554,7 +1555,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
             auto pSetLayout = pReflector->getDescriptorSetLayout(setIndex);
 
             //LOG_DBG("create descriptor set");
-            pSet = DescriptorSet::create(gpDevice->getGpuDescriptorPool(), pSetLayout);
+            pSet = DescriptorSet::create(mpDevice->getGpuDescriptorPool(), pSetLayout);
 
             uint32_t destRangeIndex = 0;
             //LOG_DBG("bind into descriptor set");

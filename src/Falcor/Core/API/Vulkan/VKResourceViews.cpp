@@ -43,37 +43,36 @@ VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreSt
 
 template<typename ApiHandleType>
 ResourceView<ApiHandleType>::~ResourceView() {
-    gpDevice->releaseResource(mApiHandle);
+    getResource()->device()->releaseResource(mApiHandle);
 }
 
-Texture::SharedPtr createBlackTexture() {
+Texture::SharedPtr createBlackTexture(Device::SharedPtr device) {
     uint8_t blackPixel[4] = { 0 };
-    return Texture::create2D(1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+    return Texture::create2D(device, 1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
 }
 
-Buffer::SharedPtr createZeroBuffer() {
+Buffer::SharedPtr createZeroBuffer(Device::SharedPtr device) {
     static const uint32_t zero = 0;
-    return Buffer::create(sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    return Buffer::create(device, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
-Buffer::SharedPtr createZeroTypedBuffer() {
+Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr device) {
     static const uint32_t zero = 0;
-    return Buffer::createTyped<uint32_t>(1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    return Buffer::createTyped<uint32_t>(device, 1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
-// ResourceWeakPtr getEmptyTexture() Why it was weak_ptr at all !?
-Texture::SharedPtr getEmptyTexture() {
-    static Texture::SharedPtr sBlackTexture = createBlackTexture();
+Texture::SharedPtr getEmptyTexture(Device::SharedPtr device) {
+    static Texture::SharedPtr sBlackTexture = createBlackTexture(device);
     return sBlackTexture;
 }
 
-Buffer::SharedPtr getEmptyBuffer() {
-    static Buffer::SharedPtr sZeroBuffer = createZeroBuffer();
+Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr device) {
+    static Buffer::SharedPtr sZeroBuffer = createZeroBuffer(device);
     return sZeroBuffer;
 }
 
-Buffer::SharedPtr getEmptyTypedBuffer() {
-    static Buffer::SharedPtr sZeroTypedBuffer = createZeroTypedBuffer();
+Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr device) {
+    static Buffer::SharedPtr sZeroTypedBuffer = createZeroTypedBuffer(device);
     return sZeroTypedBuffer;
 }
 
@@ -141,8 +140,8 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
         case VkResourceType::Image: {
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
-            vk_call(vkCreateImageView(gpDevice->getApiHandle(), &info, nullptr, &imageView));
-            return VkResource<VkImageView, VkBufferView>::SharedPtr::create(imageView, nullptr);
+            vk_call(vkCreateImageView(pResource->device()->getApiHandle(), &info, nullptr, &imageView));
+            return VkResource<VkImageView, VkBufferView>::SharedPtr::create(pResource->device(), imageView, nullptr);
         }
 
         case VkResourceType::Buffer: {
@@ -152,10 +151,10 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
             if (pBuffer->isTyped()) {
                 VkBufferViewCreateInfo info = initializeBufferViewInfo(pBuffer);
-                vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+                vk_call(vkCreateBufferView(pResource->device()->getApiHandle(), &info, nullptr, &bufferView));
             }
 
-            return VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+            return VkResource<VkImageView, VkBufferView>::SharedPtr::create(pResource->device(), bufferView, nullptr);
         }
 
         default:
@@ -181,7 +180,7 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef
 
     if (!pBuffer) {
         VkBufferView bufferView = {};
-        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
         return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
     }
 
@@ -199,10 +198,10 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef
 
     if (buffer->isTyped()) {
         VkBufferViewCreateInfo info = initializeBufferViewInfo(buffer);
-        vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+        vk_call(vkCreateBufferView(pBuffer->device()->getApiHandle(), &info, nullptr, &bufferView));
     }
 
-    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
 
     return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
 }
@@ -243,7 +242,7 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrR
 
     if (!pBuffer) {
         VkBufferView bufferView = {};
-        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
         return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
     }
 
@@ -261,10 +260,10 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrR
 
     if (buffer->isTyped()) {
         VkBufferViewCreateInfo info = initializeBufferViewInfo(buffer);
-        vk_call(vkCreateBufferView(gpDevice->getApiHandle(), &info, nullptr, &bufferView));
+        vk_call(vkCreateBufferView(pBuffer->device()->getApiHandle(), &info, nullptr, &bufferView));
     }
 
-    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
     return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
 }
 
@@ -291,7 +290,7 @@ ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef
     if (!pBuffer && getNullView()) return getNullView();
 
     VkBufferView bufferView = {};
-    auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(bufferView, nullptr);
+    auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
 
 
     return SharedPtr(new ConstantBufferView(pBuffer, handle));

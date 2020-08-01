@@ -25,74 +25,81 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_TIMING_FRAMERATE_H_
+#define SRC_FALCOR_UTILS_TIMING_FRAMERATE_H_
+
 #include <vector>
 #include "Clock.h"
 
-namespace Falcor
-{
-    /** Framerate calculator
+
+namespace Falcor {
+
+class Device;
+
+/** Framerate calculator
+*/
+class dlldecl FrameRate {
+public:
+    FrameRate(std::shared_ptr<Device> pDevice) {
+        mClock = new Clock(pDevice);
+        mFrameTimes.resize(sFrameWindow);
+        reset();
+    }
+
+    ~FrameRate() {
+        delete mClock;
+    }
+
+    /** Resets the FPS
+        After this call it will appear as if the application had just started. Useful in cases a new scene is loaded, since it will display a more accurate FPS.
     */
-    class dlldecl FrameRate
-    {
-    public:
-        FrameRate()
-        {
-            mFrameTimes.resize(sFrameWindow);
-            reset();
-        }
+    void reset() {
+        mFrameCount = 0;
+        mClock->setTime(0).tick();
+    }
 
-        /** Resets the FPS
-            After this call it will appear as if the application had just started. Useful in cases a new scene is loaded, since it will display a more accurate FPS.
-        */
-        void reset()
-        {
-            mFrameCount = 0;
-            mClock.setTime(0).tick();
-        }
+    /** Tick the timer.
+        It is assumed that this is called once per frame, since this frequency is assumed when calculating FPS.
+    */
+    void newFrame() {
+        mFrameCount++;
+        mFrameTimes[mFrameCount % sFrameWindow] = mClock->tick().getRealTimeDelta();
+        mClock->setTime(0).tick();
+    }
 
-        /** Tick the timer.
-            It is assumed that this is called once per frame, since this frequency is assumed when calculating FPS.
-        */
-        void newFrame()
-        {
-            mFrameCount++;
-            mFrameTimes[mFrameCount % sFrameWindow] = mClock.tick().getRealTimeDelta();
-            mClock.setTime(0).tick();
-        }
+    /** Get the time in ms it took to render a frame
+    */
+    double getAverageFrameTime() const {
+        uint64_t frames = std::min(mFrameCount, sFrameWindow);
+        double elapsedTime = 0;
+        for(uint64_t i = 0; i < frames; i++) elapsedTime += mFrameTimes[i];
+        double time = elapsedTime / double(frames) * 1000;
+        return time;
+    }
 
-        /** Get the time in ms it took to render a frame
-        */
-        double getAverageFrameTime() const
-        {
-            uint64_t frames = std::min(mFrameCount, sFrameWindow);
-            double elapsedTime = 0;
-            for(uint64_t i = 0; i < frames; i++) elapsedTime += mFrameTimes[i];
-            double time = elapsedTime / double(frames) * 1000;
-            return time;
-        }
+    /** Get the time that it took to render the last frame
+    */
+    double getLastFrameTime() const {
+        return mFrameTimes[mFrameCount % sFrameWindow];
+    }
 
-        /** Get the time that it took to render the last frame
-        */
-        double getLastFrameTime() const
-        {
-            return mFrameTimes[mFrameCount % sFrameWindow];
-        }
+    /** Get the frame count (= number of times newFrame() has been called).
+    */
+    uint64_t getFrameCount() const { return mFrameCount; }
 
-        /** Get the frame count (= number of times newFrame() has been called).
-        */
-        uint64_t getFrameCount() const { return mFrameCount; }
+    /** Get a message with the FPS
+    */
+    std::string getMsg(bool vsyncOn = false) const;
 
-        /** Get a message with the FPS
-        */
-        std::string getMsg(bool vsyncOn = false) const;
+private:
+    Clock *mClock;
+    std::vector<double> mFrameTimes;
+    uint64_t mFrameCount = 0;
+    static const uint64_t sFrameWindow;
+};
 
-    private:
-        Clock mClock;
-        std::vector<double> mFrameTimes;
-        uint64_t mFrameCount = 0;
-        static const uint64_t sFrameWindow;
-    };
+inline std::string to_string(const FrameRate& fr, bool vsyncOn = false) { return fr.getMsg(vsyncOn); }
 
-    inline std::string to_string(const FrameRate& fr, bool vsyncOn = false) { return fr.getMsg(vsyncOn); }
-}
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_TIMING_FRAMERATE_H_

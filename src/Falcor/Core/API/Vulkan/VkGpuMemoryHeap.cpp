@@ -25,20 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
-    Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType);
+namespace Falcor {
 
-    void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
-    {
-        // Create a buffer
-        data.pResourceHandle = createBuffer(size, Buffer::BindFlags::Constant | Buffer::BindFlags::Vertex | Buffer::BindFlags::Index, mType);
-        data.offset = 0;
-        vk_call(vkMapMemory(gpDevice->getApiHandle(), data.pResourceHandle, 0, VK_WHOLE_SIZE, 0, (void**)&data.pData));
-    }
+Buffer::ApiHandle createBuffer(std::shared_ptr<Device> device, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType);
+
+void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size) {
+    // Create a buffer
+    data.pResourceHandle = createBuffer(mpDevice, size, Buffer::BindFlags::Constant | Buffer::BindFlags::Vertex | Buffer::BindFlags::Index, mType);
+    data.offset = 0;
+    vk_call(vkMapMemory(mpDevice->getApiHandle(), data.pResourceHandle, 0, VK_WHOLE_SIZE, 0, (void**)&data.pData));
 }
+
+}  // namespace Falcor

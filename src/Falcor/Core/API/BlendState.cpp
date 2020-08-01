@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "BlendState.h"
 #include "FBO.h"
 
@@ -36,17 +36,14 @@ namespace Falcor
         return SharedPtr(new BlendState(desc));
     }
 
-    BlendState::Desc::Desc()
-    {
-        mRtDesc.resize(Fbo::getMaxColorTargetCount());
+    BlendState::Desc::Desc(std::shared_ptr<Device> device): mpDevice(device) {
+        mRtDesc.resize(Fbo::getMaxColorTargetCount(device));
     }
 
     BlendState::~BlendState() = default;
 
-    BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc)
-    {
-        if(rtIndex >= mRtDesc.size())
-        {
+    BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc) {
+        if(rtIndex >= mRtDesc.size()) {
             logError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
             return *this;
         }
@@ -59,10 +56,8 @@ namespace Falcor
         return *this;
     }
 
-    BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha)
-    {
-        if(rtIndex >= mRtDesc.size())
-        {
+    BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha) {
+        if(rtIndex >= mRtDesc.size()) {
             logError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
             return *this;
         }
@@ -73,8 +68,7 @@ namespace Falcor
         return *this;
     }
 
-    SCRIPT_BINDING(BlendState)
-    {
+    SCRIPT_BINDING(BlendState) {
         m.regClass(BlendState);
     }
 }

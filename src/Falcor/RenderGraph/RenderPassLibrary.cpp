@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <fstream>
 #include <vector>
+#include <map>
 
 #ifdef _MSC_VER
 #include <filesystem>
@@ -56,16 +57,45 @@ namespace Falcor {
     static const std::string kPassTempLibSuffix = ".falcor";
 
     RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
+    std::map<Device*, RenderPassLibrary*> RenderPassLibrary::spInstances = {};
 
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(RenderContext* pRenderContext, const Dictionary&);
 
 #define addClass(c, desc) registerClass(#c, desc, (PassFunc<c>)c::create)
 
-    RenderPassLibrary& RenderPassLibrary::instance() {
-        if (!spInstance) spInstance = new RenderPassLibrary;
+    static bool addBuiltinPasses(std::shared_ptr<Device> pDevice) {
+        auto& lib = RenderPassLibrary::instance(pDevice);
+
+        lib.addClass(ResolvePass, ResolvePass::kDesc);
+
+        return true;
+    };
+
+    // static const bool b = addBuiltinPasses();
+
+    RenderPassLibrary& RenderPassLibrary::instance(std::shared_ptr<Device> pDevice) {
+        //if (!spInstance) spInstance = new RenderPassLibrary;
+        
+        auto it = spInstances.find(pDevice.get());
+        if(it != spInstances.end()) {
+            // found device bound pass library
+            return *it->second;
+        } else {
+            // create pass library for a new device
+            auto ret = spInstances.insert(std::pair<Device*, RenderPassLibrary*>(pDevice.get(), new RenderPassLibrary(pDevice)));
+            if (ret.second == false) {
+                logError("RenderPassLibrary for device " + pDevice->getPhysicalDeviceName() + " already created !!!");
+            } else {
+                // add built-in passes for provided device
+                addBuiltinPasses(pDevice);
+            }
+            return *ret.first->second;
+        }
         return *spInstance;
     }
+
+    RenderPassLibrary::RenderPassLibrary(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {}
 
     RenderPassLibrary::~RenderPassLibrary() {
         mPasses.clear();
@@ -75,17 +105,6 @@ namespace Falcor {
     void RenderPassLibrary::shutdown() {
         safe_delete(spInstance);
     }
-
-    static bool addBuiltinPasses() {
-        auto& lib = RenderPassLibrary::instance();
-
-        lib.addClass(ResolvePass, ResolvePass::kDesc);
-
-        return true;
-    };
-
-    static const bool b = addBuiltinPasses();
-
 
     RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func) {
         registerInternal(className, desc, func, nullptr);
@@ -177,7 +196,7 @@ namespace Falcor {
             }
         }
 
-        RenderPassLibrary lib;
+        RenderPassLibrary lib(mpDevice);
         func(lib);
 
         for (auto& p : lib.mPasses) {
@@ -194,7 +213,7 @@ namespace Falcor {
             return;
         }
 
-        gpDevice->flushAndSync();
+        mpDevice->flushAndSync();
 
         // Delete all the classes that were owned by the module
         DllHandle module = libIt->second.module;

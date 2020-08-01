@@ -35,6 +35,7 @@
 
 namespace Falcor {
 
+class Device;
 class Resource;
 class Texture;
 class Buffer;
@@ -104,6 +105,7 @@ class dlldecl ResourceView {
     ApiHandle mApiHandle;
     ResourceViewInfo mViewInfo;
     ResourceWeakPtr mpResource;
+    std::shared_ptr<Device> mpDevice;
 };
 
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {

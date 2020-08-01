@@ -55,8 +55,8 @@ namespace Falcor {
         // Viewport and Scissors will be dynamic, but the count is still described here in the info struct
         VkPipelineViewportStateCreateInfo viewportStateInfo = {};
         viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportStateInfo.viewportCount = getMaxViewportCount();
-        viewportStateInfo.scissorCount = getMaxViewportCount();
+        viewportStateInfo.viewportCount = getMaxViewportCount(mpDevice);
+        viewportStateInfo.scissorCount = getMaxViewportCount(mpDevice);
 
         // Rasterizerization State
         VkPipelineRasterizationStateCreateInfo rasterizerInfo = {};
@@ -100,10 +100,10 @@ namespace Falcor {
         pipelineCreateInfo.subpass = 0;
 
         VkPipeline pipeline;
-        if (VK_FAILED(vkCreateGraphicsPipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline))) {
+        if (VK_FAILED(vkCreateGraphicsPipelines(mpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline))) {
             throw std::runtime_error("Could not create graphics pipeline.");
         }
-        mApiHandle = ApiHandle::create(pipeline);
+        mApiHandle = ApiHandle::create(mpDevice, pipeline);
     }
 
 }  // namespace Falcor

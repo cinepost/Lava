@@ -25,21 +25,28 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Scene/SceneBuilder.h"
+#ifndef SRC_FACLOR_SCENE_IMPORTERS_ASSIMPIMPORTER_H_
+#define SRC_FACLOR_SCENE_IMPORTERS_ASSIMPIMPORTER_H_
 
-namespace Falcor
-{
-    class dlldecl AssimpImporter
-    {
-    public:
-        using InstanceMatrices = SceneBuilder::InstanceMatrices;
+#include "Falcor/Scene/SceneBuilder.h"
 
-        static bool import(const std::string& filename, SceneBuilder& builder);
-        static bool import(const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances);
-    private:
-        AssimpImporter() = default;
-        AssimpImporter(const AssimpImporter&) = delete;
-        void operator=(const AssimpImporter&) = delete;
-    };
-}
+
+namespace Falcor {
+
+class Device;
+
+class dlldecl AssimpImporter {
+ public:
+    using InstanceMatrices = SceneBuilder::InstanceMatrices;
+
+    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder);
+    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances);
+ private:
+    AssimpImporter() = default;
+    AssimpImporter(const AssimpImporter&) = delete;
+    void operator=(const AssimpImporter&) = delete;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FACLOR_SCENE_IMPORTERS_ASSIMPIMPORTER_H_

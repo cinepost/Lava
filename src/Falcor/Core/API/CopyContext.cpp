@@ -31,152 +31,128 @@
 #include "Buffer.h"
 #include "GpuFence.h"
 
-namespace Falcor
-{
-    CopyContext::~CopyContext() = default;
+namespace Falcor {
 
-    CopyContext::CopyContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
-    {
-        mpLowLevelData = LowLevelContextData::create(type, queue);
-        assert(mpLowLevelData);
+CopyContext::~CopyContext() = default;
+
+CopyContext::CopyContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) {
+    mpLowLevelData = LowLevelContextData::create(device, type, queue);
+    assert(mpLowLevelData);
+    mpDevice = device;
+}
+
+CopyContext::SharedPtr CopyContext::create(std::shared_ptr<Device> device, CommandQueueHandle queue) {
+    assert(queue);
+    return SharedPtr(new CopyContext(device, LowLevelContextData::CommandQueueType::Copy, queue));
+}
+
+void CopyContext::flush(bool wait) {
+    if (mCommandsPending) {
+        mpLowLevelData->flush();
+        mCommandsPending = false;
+    } else {
+        // We need to signal even if there are no commands to execute. We need this because some resources may have been released since the last flush(), and unless we signal they will not be released
+        mpLowLevelData->getFence()->gpuSignal(mpLowLevelData->getCommandQueue());
     }
 
-    CopyContext::SharedPtr CopyContext::create(CommandQueueHandle queue)
-    {
-        assert(queue);
-        return SharedPtr(new CopyContext(LowLevelContextData::CommandQueueType::Copy, queue));
-    }
+    bindDescriptorHeaps();
 
-    void CopyContext::flush(bool wait)
-    {
-        if (mCommandsPending)
-        {
-            mpLowLevelData->flush();
-            mCommandsPending = false;
-        }
-        else
-        {
-            // We need to signal even if there are no commands to execute. We need this because some resources may have been released since the last flush(), and unless we signal they will not be released
-            mpLowLevelData->getFence()->gpuSignal(mpLowLevelData->getCommandQueue());
-        }
-
-        bindDescriptorHeaps();
-
-        if (wait)
-        {
-            mpLowLevelData->getFence()->syncCpu();
-        }
-    }
-
-    CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
-    {
-        return CopyContext::ReadTextureTask::create(this, pTexture, subresourceIndex);
-    }
-
-    std::vector<uint8_t> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
-    {
-        CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
-        return pTask->getData();
-    }
-
-    bool CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
-    {
-        const Texture* pTexture = dynamic_cast<const Texture*>(pResource);
-        if (pTexture)
-        {
-            bool globalBarrier = pTexture->isStateGlobal();
-            if (pViewInfo)
-            {
-                globalBarrier = globalBarrier && pViewInfo->firstArraySlice == 0;
-                globalBarrier = globalBarrier && pViewInfo->mostDetailedMip == 0;
-                globalBarrier = globalBarrier && pViewInfo->mipCount == pTexture->getMipCount();
-                globalBarrier = globalBarrier && pViewInfo->arraySize == pTexture->getArraySize();
-            }
-
-            if (globalBarrier)
-            {
-                return textureBarrier(pTexture, newState);
-            }
-            else
-            {
-                return subresourceBarriers(pTexture, newState, pViewInfo);
-            }
-        }
-        else
-        {
-            const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
-            return bufferBarrier(pBuffer, newState);
-        }
-    }
-
-    bool CopyContext::subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo)
-    {
-        ResourceViewInfo fullResource;
-        bool setGlobal = false;
-        if (pViewInfo == nullptr)
-        {
-            fullResource.arraySize = pTexture->getArraySize();
-            fullResource.firstArraySlice = 0;
-            fullResource.mipCount = pTexture->getMipCount();
-            fullResource.mostDetailedMip = 0;
-            setGlobal = true;
-            pViewInfo = &fullResource;
-        }
-
-        bool entireViewTransitioned = true;
-
-        for (uint32_t a = pViewInfo->firstArraySlice; a < pViewInfo->firstArraySlice + pViewInfo->arraySize; a++)
-        {
-            for (uint32_t m = pViewInfo->mostDetailedMip; m < pViewInfo->mipCount + pViewInfo->mostDetailedMip; m++)
-            {
-                Resource::State oldState = pTexture->getSubresourceState(a, m);
-                if (oldState != newState)
-                {
-                    apiSubresourceBarrier(pTexture, newState, oldState, a, m);
-                    if (setGlobal == false) pTexture->setSubresourceState(a, m, newState);
-                    mCommandsPending = true;
-                }
-                else entireViewTransitioned = false;
-            }
-        }
-        if (setGlobal) pTexture->setGlobalState(newState);
-        return entireViewTransitioned;
-    }
-
-    void CopyContext::updateTextureData(const Texture* pTexture, const void* pData)
-    {
-        mCommandsPending = true;
-        uint32_t subresourceCount = pTexture->getArraySize() * pTexture->getMipCount();
-        if (pTexture->getType() == Texture::Type::TextureCube)
-        {   
-            subresourceCount *= 6;
-        }
-        updateTextureSubresources(pTexture, 0, subresourceCount, pData);
-    }
-
-    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uint3& offset, const uint3& size)
-    {
-        mCommandsPending = true;
-        updateTextureSubresources(pDst, subresource, 1, pData, offset, size);
-    }
-
-    void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset, size_t numBytes)
-    {
-        if (numBytes == 0)
-        {
-            numBytes = pBuffer->getSize() - offset;
-        }
-
-        if (pBuffer->adjustSizeOffsetParams(numBytes, offset) == false)
-        {
-            logWarning("CopyContext::updateBuffer() - size and offset are invalid. Nothing to update.");
-            return;
-        }
-
-        mCommandsPending = true;
-        // Allocate a buffer on the upload heap
-        Buffer::SharedPtr pUploadBuffer = Buffer::create(numBytes, Buffer::BindFlags::None, Buffer::CpuAccess::Write, pData);
-
-        copyBufferRegion(pBuffer, offset, pUploadBuffer.get(), 0, numBytes);
+    if (wait) {
+        mpLowLevelData->getFence()->syncCpu();
     }
 }
+
+CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+{
+    return CopyContext::ReadTextureTask::create(this, pTexture, subresourceIndex);
+}
+
+std::vector<uint8_t> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex) {
+    CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
+    return pTask->getData();
+}
+
+bool CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo) {
+    const Texture* pTexture = dynamic_cast<const Texture*>(pResource);
+    if (pTexture) {
+        bool globalBarrier = pTexture->isStateGlobal();
+        if (pViewInfo) {
+            globalBarrier = globalBarrier && pViewInfo->firstArraySlice == 0;
+            globalBarrier = globalBarrier && pViewInfo->mostDetailedMip == 0;
+            globalBarrier = globalBarrier && pViewInfo->mipCount == pTexture->getMipCount();
+            globalBarrier = globalBarrier && pViewInfo->arraySize == pTexture->getArraySize();
+        }
+
+        if (globalBarrier) {
+            return textureBarrier(pTexture, newState);
+        } else {
+            return subresourceBarriers(pTexture, newState, pViewInfo);
+        }
+    } else {
+        const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
+        return bufferBarrier(pBuffer, newState);
+    }
+}
+
+bool CopyContext::subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo) {
+    ResourceViewInfo fullResource;
+    bool setGlobal = false;
+
+    if (pViewInfo == nullptr) {
+        fullResource.arraySize = pTexture->getArraySize();
+        fullResource.firstArraySlice = 0;
+        fullResource.mipCount = pTexture->getMipCount();
+        fullResource.mostDetailedMip = 0;
+        setGlobal = true;
+        pViewInfo = &fullResource;
+    }
+
+    bool entireViewTransitioned = true;
+
+    for (uint32_t a = pViewInfo->firstArraySlice; a < pViewInfo->firstArraySlice + pViewInfo->arraySize; a++) {
+        for (uint32_t m = pViewInfo->mostDetailedMip; m < pViewInfo->mipCount + pViewInfo->mostDetailedMip; m++) {
+            Resource::State oldState = pTexture->getSubresourceState(a, m);
+            if (oldState != newState) {
+                apiSubresourceBarrier(pTexture, newState, oldState, a, m);
+                if (setGlobal == false) pTexture->setSubresourceState(a, m, newState);
+                mCommandsPending = true;
+            }
+            else entireViewTransitioned = false;
+        }
+    }
+    if (setGlobal) pTexture->setGlobalState(newState);
+    return entireViewTransitioned;
+}
+
+void CopyContext::updateTextureData(const Texture* pTexture, const void* pData) {
+    mCommandsPending = true;
+    uint32_t subresourceCount = pTexture->getArraySize() * pTexture->getMipCount();
+    if (pTexture->getType() == Texture::Type::TextureCube) {   
+        subresourceCount *= 6;
+    }
+    updateTextureSubresources(pTexture, 0, subresourceCount, pData);
+}
+
+void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uint3& offset, const uint3& size) {
+    mCommandsPending = true;
+    updateTextureSubresources(pDst, subresource, 1, pData, offset, size);
+}
+
+void CopyContext::updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset, size_t numBytes) {
+    if (numBytes == 0) {
+        numBytes = pBuffer->getSize() - offset;
+    }
+
+    if (pBuffer->adjustSizeOffsetParams(numBytes, offset) == false) {
+        logWarning("CopyContext::updateBuffer() - size and offset are invalid. Nothing to update.");
+        return;
+    }
+
+    mCommandsPending = true;
+    // Allocate a buffer on the upload heap
+    Buffer::SharedPtr pUploadBuffer = Buffer::create(mpDevice, numBytes, Buffer::BindFlags::None, Buffer::CpuAccess::Write, pData);
+
+    copyBufferRegion(pBuffer, offset, pUploadBuffer.get(), 0, numBytes);
+}
+
+}  // namespace Falcor

@@ -37,30 +37,30 @@ static NullResourceViews gNullViews;
 static NullResourceViews gNullBufferViews;
 static NullResourceViews gNullTypedBufferViews;
 
-Buffer::SharedPtr getEmptyBuffer();
-Buffer::SharedPtr getEmptyTypedBuffer();
-Buffer::SharedPtr createZeroBuffer();
-Buffer::SharedPtr createZeroTypedBuffer();
+Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr device);
+Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr device);
+Buffer::SharedPtr createZeroBuffer(Device::SharedPtr device);
+Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr device);
 
-Texture::SharedPtr getEmptyTexture();
-Texture::SharedPtr createBlackTexture();
+Texture::SharedPtr getEmptyTexture(Device::SharedPtr device);
+Texture::SharedPtr createBlackTexture(Device::SharedPtr device);
 
-void createNullViews() {
-    gNullViews.srv = ShaderResourceView::create(getEmptyTexture(), 0, 1, 0, 1);
-    gNullViews.dsv = DepthStencilView::create(getEmptyTexture(), 0, 0, 1);
-    gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(), 0, 0, 1);
-    gNullViews.rtv = RenderTargetView::create(getEmptyTexture(), 0, 0, 1);
+void createNullViews(Device::SharedPtr device) {
+    gNullViews.srv = ShaderResourceView::create(getEmptyTexture(device), 0, 1, 0, 1);
+    gNullViews.dsv = DepthStencilView::create(getEmptyTexture(device), 0, 0, 1);
+    gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(device), 0, 0, 1);
+    gNullViews.rtv = RenderTargetView::create(getEmptyTexture(device), 0, 0, 1);
     gNullViews.cbv = ConstantBufferView::create(Buffer::SharedPtr());
 }
 
-void createNullBufferViews() {
-    gNullBufferViews.srv = ShaderResourceView::create(getEmptyBuffer(), 0, 0);
-    gNullBufferViews.uav = UnorderedAccessView::create(getEmptyBuffer(), 0, 0);
+void createNullBufferViews(Device::SharedPtr device) {
+    gNullBufferViews.srv = ShaderResourceView::create(getEmptyBuffer(device), 0, 0);
+    gNullBufferViews.uav = UnorderedAccessView::create(getEmptyBuffer(device), 0, 0);
 }
 
-void createNullTypedBufferViews() {
-    gNullTypedBufferViews.srv = ShaderResourceView::create(getEmptyTypedBuffer(), 0, 0);
-    gNullTypedBufferViews.uav = UnorderedAccessView::create(getEmptyTypedBuffer(), 0, 0);
+void createNullTypedBufferViews(Device::SharedPtr device) {
+    gNullTypedBufferViews.srv = ShaderResourceView::create(getEmptyTypedBuffer(device), 0, 0);
+    gNullTypedBufferViews.uav = UnorderedAccessView::create(getEmptyTypedBuffer(device), 0, 0);
 }
 
 void releaseNullViews() {

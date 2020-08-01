@@ -25,15 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERPASS_H_
+#define SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERPASS_H_
+
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "BaseGraphicsPass.h"
 
-namespace Falcor
-{
-    class dlldecl RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass>
-    {
-    public:
+namespace Falcor {
+    class dlldecl RasterPass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterPass> {
+     public:
         using SharedPtr = ParameterBlockSharedPtr<RasterPass>;
 
         /** Create a new object.
@@ -43,14 +43,14 @@ namespace Falcor
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> device, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines = Program::DefineList());
 
         /** Create a new object.
             \param[in] progDesc The program description.
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList());
 
         /** Ordered draw call.
             \param[in] vertexCount Number of vertices to draw
@@ -65,7 +65,10 @@ namespace Falcor
         */
         void drawIndexed(RenderContext* pContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
-    protected:
-        RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines);
+     protected:
+        RasterPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines);
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_BASEPASSES_RASTERPASS_H_

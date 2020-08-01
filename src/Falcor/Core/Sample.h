@@ -59,7 +59,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
         \param[in] argv Optional. The command line arguments.
         Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
     */
-    static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    static void run(Device::SharedPtr pDevice, const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
     /** Entry-point to Sample. User should call this to start processing.
         \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
@@ -68,7 +68,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
         \param[in] argv Optional. The command line arguments.
         Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
     */
-    static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    static void run(Device::SharedPtr pDevice, const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
     virtual ~Sample();
 
@@ -76,11 +76,15 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     /************************************************************************/
     /* Callback inherited from ICallbacks                                   */
     /************************************************************************/
-    RenderContext* getRenderContext() override { return gpDevice ? gpDevice->getRenderContext() : nullptr; }
+    RenderContext* getRenderContext() override { return mpDevice ? mpDevice->getRenderContext() : nullptr; }
     Fbo::SharedPtr getTargetFbo() override { return mpTargetFBO; }
     Window* getWindow() override { return mpWindow.get(); }
-    Clock& getGlobalClock() override { return mClock; }
-    FrameRate& getFrameRate() override { return mFrameRate; }
+    
+    //Clock& getGlobalClock() override { return mClock; }
+
+    Clock& getClock() override { return *mClock; }
+    FrameRate& getFrameRate() override { return *mFrameRate; }
+
     void resizeSwapChain(uint32_t width, uint32_t height) override;
     bool isKeyPressed(const KeyboardEvent::Key& key) override;
     void toggleUI(bool showUI) override { mShowUI = showUI; }
@@ -121,7 +125,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     void captureVideoFrame();
     void renderUI();
 
-    void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
+    void runInternal(Device::SharedPtr pDevice, const SampleConfig& config, uint32_t argc, char** argv);
 
     void startScripting();
     void registerScriptBindings(ScriptBindings::Module& m);
@@ -130,8 +134,9 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     bool mVsyncOn = false;
     bool mShowUI = false;
     bool mCaptureScreen = false;
-    FrameRate mFrameRate;
-    Clock mClock;
+
+    FrameRate *mFrameRate;
+    Clock *mClock;
 
     IRenderer::UniquePtr mpRenderer;
 
@@ -147,7 +152,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     std::set<KeyboardEvent::Key> mPressedKeys;
     PixelZoom::SharedPtr mpPixelZoom;
 
-    Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+    Sample(Device::SharedPtr pDevice, IRenderer::UniquePtr& pRenderer);
     Sample(const Sample&) = delete;
     Sample& operator=(const Sample&) = delete;
 

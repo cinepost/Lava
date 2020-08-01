@@ -42,6 +42,8 @@
 
 namespace Falcor {
 
+    class Device;
+
     class RtProgram;
     class RtProgramVars;
 
@@ -81,7 +83,7 @@ namespace Falcor {
         static const uint32_t kMaxBonesPerVertex = 4;
         static const FileDialogFilterVec kFileExtensionFilters;
 
-        static SharedPtr create(const std::string& filename);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
 
         // #SCENE: we should get rid of this. We can't right now because we can't create a structured-buffer of materials (MaterialData contains textures)
         Shader::DefineList getSceneDefines() const;
@@ -122,6 +124,8 @@ namespace Falcor {
             Orbiter,
             SixDOF
         };
+
+        std::shared_ptr<Device> device() { return mpDevice; }
 
         /** Access the scene's camera to change properties, or use elsewhere.
         */
@@ -359,7 +363,7 @@ namespace Falcor {
         static constexpr uint32_t kDrawIdBufferIndex = kPrevVertexBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
 
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Create scene parameter block and retrieve pointers to buffers
         */
@@ -437,7 +441,7 @@ namespace Falcor {
             bool enabled(bool force) const;
         };
 
-        Scene();
+        Scene(std::shared_ptr<Device> pDevice);
 
         // Scene Geometry
         Vao::SharedPtr mpVao;
@@ -542,6 +546,8 @@ namespace Falcor {
         bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
 
         std::string mFilename;
+
+        std::shared_ptr<Device> mpDevice;
     };
 
     enum_class_operators(Scene::RenderFlags);

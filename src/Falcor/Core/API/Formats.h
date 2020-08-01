@@ -34,7 +34,11 @@
 
 #include "Falcor/Core/Framework.h"
 
+
 namespace Falcor {
+
+class Device;
+
     /*!
     *  \addtogroup Falcor
     *  @{
@@ -350,7 +354,7 @@ namespace Falcor {
 
     /** Get the supported bind-flags for a specific format
     */
-    ResourceBindFlags getFormatBindFlags(ResourceFormat format);
+    ResourceBindFlags getFormatBindFlags(std::shared_ptr<Device> device, ResourceFormat format);
 
     inline const std::string& to_string(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);

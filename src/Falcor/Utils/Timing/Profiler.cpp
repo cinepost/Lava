@@ -68,7 +68,7 @@ namespace Falcor {
         return event ? event : createNewEvent(name);
     }
 
-    void Profiler::startEvent(const std::string& name, Flags flags, bool showInMsg) {
+    void Profiler::startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags, bool showInMsg) {
         if (gProfileEnabled && is_set(flags, Flags::Internal)) {
             curEventName = curEventName + "#" + name;
             EventData* pData = getEvent(curEventName);
@@ -84,7 +84,7 @@ namespace Falcor {
             EventData::FrameData& frame = pData->frameData[sGpuTimerIndex];
             
             if (frame.currentTimer >= frame.pTimers.size()) {
-                frame.pTimers.push_back(GpuTimer::create());
+                frame.pTimers.push_back(GpuTimer::create(pDevice));
             }
             
             frame.pTimers[frame.currentTimer]->begin();

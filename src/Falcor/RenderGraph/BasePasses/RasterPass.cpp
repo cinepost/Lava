@@ -31,17 +31,17 @@
 
 namespace Falcor {
 
-RasterPass::SharedPtr RasterPass::create(const Program::Desc& desc, const Program::DefineList& defines) {
-    return SharedPtr(new RasterPass(desc, defines));
+RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines) {
+    return SharedPtr(new RasterPass(device, desc, defines));
 }
 
-RasterPass::SharedPtr RasterPass::create(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
+RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> device, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
     Program::Desc d;
     d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
-    return create(d, defines);
+    return create(device, d, defines);
 }
 
-RasterPass::RasterPass(const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(progDesc, programDefines) {
+RasterPass::RasterPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines) : BaseGraphicsPass(device, progDesc, programDefines) {
 }
 
 void RasterPass::drawIndexed(RenderContext* pContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) {

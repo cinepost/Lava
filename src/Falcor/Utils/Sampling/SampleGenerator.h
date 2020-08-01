@@ -25,22 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_SAMPLING_SAMPLEGNERATOR_H_
+#define SRC_FALCOR_UTILS_SAMPLING_SAMPLEGNERATOR_H_
 
 #include "Falcor/Core/Program/Program.h"
 #include "SampleGeneratorType.slangh"
 
-namespace Falcor
-{
+namespace Falcor {
+
     /** Utility class for sample generators on the GPU.
 
         This class has functions for configuring the shader program and
         uploading the necessary lookup tables (if needed).
         On the GPU, import SampleGenerator.slang in your shader program.
     */
-    class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenerator>
-    {
-    public:
+    class dlldecl SampleGenerator : public std::enable_shared_from_this<SampleGenerator> {
+     public:
         using SharedPtr = std::shared_ptr<SampleGenerator>;
         using SharedConstPtr = std::shared_ptr<const SampleGenerator>;
 
@@ -75,16 +75,19 @@ namespace Falcor
         */
         static void registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc);
 
-    protected:
+     protected:
         SampleGenerator(uint32_t type) : mType(type) {}
 
         const uint32_t mType;       ///< Type of sample generator. See SampleGeneratorType.slangh.
 
-    private:
+     private:
         /** Register all basic sample generator types.
         */
         static void registerAll();
 
         friend struct RegisterSampleGenerators;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_SAMPLING_SAMPLEGNERATOR_H_

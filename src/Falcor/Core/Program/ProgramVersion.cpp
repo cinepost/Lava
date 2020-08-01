@@ -88,6 +88,7 @@ namespace Falcor
     //
 
     ProgramKernels::ProgramKernels(
+        std::shared_ptr<Device> device, 
         const ProgramVersion* pVersion,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
@@ -96,18 +97,20 @@ namespace Falcor
         , mpReflector(pReflector)
         , mpVersion(pVersion)
         , mUniqueEntryPointGroups(uniqueEntryPointGroups)
+        , mpDevice(device)
     {
-        mpRootSignature = RootSignature::create(pReflector.get());
+        mpRootSignature = RootSignature::create(device, pReflector.get());
     }
 
     ProgramKernels::SharedPtr ProgramKernels::create(
+        std::shared_ptr<Device> pDevice, 
         const ProgramVersion* pVersion,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
         const std::string& name)
     {
-        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pDevice, pVersion, pReflector, uniqueEntryPointGroups, name));
         return pProgram;
     }
 

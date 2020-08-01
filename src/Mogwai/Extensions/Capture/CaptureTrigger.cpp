@@ -100,7 +100,7 @@ namespace Mogwai
     {
         RenderGraph* pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = gpFramework->getClock().getFrame();
         if (mGraphRanges.find(pGraph) == mGraphRanges.end()) return;
         const auto& ranges = mGraphRanges.at(pGraph);
 
@@ -126,7 +126,7 @@ namespace Mogwai
     void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
     {
         if (!mCurrent.pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = gpFramework->getClock().getFrame();
         const auto& ranges = mGraphRanges.at(mCurrent.pGraph);
 
         triggerFrame(pRenderContext, mCurrent.pGraph, frameId);
