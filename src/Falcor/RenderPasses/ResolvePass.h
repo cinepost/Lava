@@ -44,7 +44,7 @@ class dlldecl ResolvePass : public RenderPass, public inherit_shared_from_this<R
     virtual std::string getDesc() override { return kDesc; }
 
  private:
-    ResolvePass() = default;
+    ResolvePass(Device::SharedPtr pDevice);
     ResourceFormat mFormat;
 };
 

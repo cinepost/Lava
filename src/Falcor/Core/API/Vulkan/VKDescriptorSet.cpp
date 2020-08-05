@@ -36,11 +36,11 @@
 
 namespace Falcor {
 
-    VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout);
+    VkDescriptorSetLayout createDescriptorSetLayout(std::shared_ptr<Device> pDevice, const DescriptorSet::Layout& layout);
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
 
     void DescriptorSet::apiInit() {
-        auto layout = createDescriptorSetLayout(mLayout);
+        auto layout = createDescriptorSetLayout(mpDevice, mLayout);
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = mpPool->getApiHandle(0);

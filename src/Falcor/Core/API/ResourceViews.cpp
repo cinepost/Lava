@@ -33,59 +33,73 @@
 
 namespace Falcor {
 
-static NullResourceViews gNullViews;
-static NullResourceViews gNullBufferViews;
-static NullResourceViews gNullTypedBufferViews;
+class Device;
 
-Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr device);
-Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr device);
-Buffer::SharedPtr createZeroBuffer(Device::SharedPtr device);
-Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr device);
 
-Texture::SharedPtr getEmptyTexture(Device::SharedPtr device);
-Texture::SharedPtr createBlackTexture(Device::SharedPtr device);
+using DeviceUID = uint8_t;
 
-void createNullViews(Device::SharedPtr device) {
-    gNullViews.srv = ShaderResourceView::create(getEmptyTexture(device), 0, 1, 0, 1);
-    gNullViews.dsv = DepthStencilView::create(getEmptyTexture(device), 0, 0, 1);
-    gNullViews.uav = UnorderedAccessView::create(getEmptyTexture(device), 0, 0, 1);
-    gNullViews.rtv = RenderTargetView::create(getEmptyTexture(device), 0, 0, 1);
-    gNullViews.cbv = ConstantBufferView::create(Buffer::SharedPtr());
+static std::unordered_map<DeviceUID, NullResourceViews> gNullViews;
+static std::unordered_map<DeviceUID, NullResourceViews> gNullBufferViews;
+static std::unordered_map<DeviceUID, NullResourceViews> gNullTypedBufferViews;
+
+Buffer::SharedPtr getEmptyBuffer(std::shared_ptr<Device> pDevice);
+Buffer::SharedPtr getEmptyTypedBuffer(std::shared_ptr<Device> pDevice);
+Buffer::SharedPtr createZeroBuffer(std::shared_ptr<Device> pDevice);
+Buffer::SharedPtr createZeroTypedBuffer(std::shared_ptr<Device> pDevice);
+
+Texture::SharedPtr getEmptyTexture(std::shared_ptr<Device> pDevice);
+Texture::SharedPtr createBlackTexture(std::shared_ptr<Device> pDevice);
+
+void createNullViews(std::shared_ptr<Device> pDevice) {
+    assert(pDevice);
+    gNullViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyTexture(pDevice), 0, 1, 0, 1);
+    gNullViews[pDevice->uid()].dsv = DepthStencilView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
+    gNullViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
+    gNullViews[pDevice->uid()].rtv = RenderTargetView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
+    gNullViews[pDevice->uid()].cbv = ConstantBufferView::create(pDevice, Buffer::SharedPtr());
 }
 
-void createNullBufferViews(Device::SharedPtr device) {
-    gNullBufferViews.srv = ShaderResourceView::create(getEmptyBuffer(device), 0, 0);
-    gNullBufferViews.uav = UnorderedAccessView::create(getEmptyBuffer(device), 0, 0);
+void createNullBufferViews(std::shared_ptr<Device> pDevice) {
+    assert(pDevice);
+    gNullBufferViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyBuffer(pDevice), 0, 0);
+    gNullBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyBuffer(pDevice), 0, 0);
 }
 
-void createNullTypedBufferViews(Device::SharedPtr device) {
-    gNullTypedBufferViews.srv = ShaderResourceView::create(getEmptyTypedBuffer(device), 0, 0);
-    gNullTypedBufferViews.uav = UnorderedAccessView::create(getEmptyTypedBuffer(device), 0, 0);
+void createNullTypedBufferViews(std::shared_ptr<Device> pDevice) {
+    assert(pDevice);
+    gNullTypedBufferViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
+    gNullTypedBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
 }
 
 void releaseNullViews() {
-    gNullViews = {};
+    for (auto& it: gNullViews) {
+        it.second = {};
+    }
 }
 
 void releaseNullBufferViews() {
-    gNullBufferViews = {};
+    for (auto& it: gNullBufferViews) {
+        it.second = {};
+    }
 }
 
 void releaseNullTypedBufferViews() {
-    gNullTypedBufferViews = {};
+    for (auto& it: gNullTypedBufferViews) {
+        it.second = {};
+    }
 }
 
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullView()  { return gNullViews.srv; }
-DepthStencilView::SharedPtr    DepthStencilView::getNullView()    { return gNullViews.dsv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView() { return gNullViews.uav; }
-RenderTargetView::SharedPtr    RenderTargetView::getNullView()    { return gNullViews.rtv; }
-ConstantBufferView::SharedPtr  ConstantBufferView::getNullView()  { return gNullViews.cbv; }
+ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }
+DepthStencilView::SharedPtr    DepthStencilView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].dsv; }
+UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(std::shared_ptr<Device> pDevice) { return gNullViews[pDevice->uid()].uav; }
+RenderTargetView::SharedPtr    RenderTargetView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].rtv; }
+ConstantBufferView::SharedPtr  ConstantBufferView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].cbv; }
 
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullBufferView()  { return gNullBufferViews.srv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView() { return gNullBufferViews.uav; }
+ShaderResourceView::SharedPtr  ShaderResourceView::getNullBufferView(std::shared_ptr<Device> pDevice)  { return gNullBufferViews[pDevice->uid()].srv; }
+UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView(std::shared_ptr<Device> pDevice) { return gNullBufferViews[pDevice->uid()].uav; }
 
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView()  { return gNullTypedBufferViews.srv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView() { return gNullTypedBufferViews.uav; }
+ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView(std::shared_ptr<Device> pDevice)  { return gNullTypedBufferViews[pDevice->uid()].srv; }
+UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView(std::shared_ptr<Device> pDevice) { return gNullTypedBufferViews[pDevice->uid()].uav; }
 
 SCRIPT_BINDING(ResourceView) {
     m.regClass(ShaderResourceView);

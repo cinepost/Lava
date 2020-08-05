@@ -145,7 +145,7 @@ LightCollection::ConstSharedPtrRef Scene::getLightCollection(RenderContext* pCon
 }
 
 void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags) {
-    PROFILE("renderScene");
+    PROFILE(pContext->device(), "renderScene");
 
     pState->setVao(mpVao);
     pVars->setParameterBlock("gScene", mpSceneBlock);

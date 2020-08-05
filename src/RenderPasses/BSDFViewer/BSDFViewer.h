@@ -57,7 +57,7 @@ public:
     static const char* sDesc;
 
 private:
-    BSDFViewer(const Dictionary& dict);
+    BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict);
     bool loadEnvMap(RenderContext* pRenderContext, const std::string& filename);
 
     // Internal state

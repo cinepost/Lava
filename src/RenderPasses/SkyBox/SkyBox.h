@@ -29,12 +29,12 @@
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
-class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, SkyBox>
-{
-public:
+class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, SkyBox> {
+ public:
     using SharedPtr = std::shared_ptr<SkyBox>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
@@ -53,8 +53,8 @@ public:
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
 
-private:
-    SkyBox();
+ private:
+    SkyBox(Device::SharedPtr pDevice);
     void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
@@ -71,4 +71,5 @@ private:
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
     Sampler::SharedPtr mpSampler;
+    Device::SharedPtr mpDevice;
 };

@@ -54,6 +54,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     #endif  // FALCOR_D3D
 }
 
+GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+
 void GBufferBase::registerBindings(ScriptBindings::Module& m) {
     auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
     e.regEnumVal(GBufferBase::SamplePattern::Center);

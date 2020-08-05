@@ -61,7 +61,7 @@ PrefixSum::SharedPtr PrefixSum::create(std::shared_ptr<Device> pDevice) {
 }
 
 bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t elementCount, uint32_t* pTotalSum, Buffer::SharedPtr pTotalSumBuffer, uint64_t pTotalSumOffset) {
-    PROFILE("PrefixSum::execute");
+    PROFILE(pRenderContext->device(), "PrefixSum::execute");
 
     assert(pRenderContext);
     assert(elementCount > 0);

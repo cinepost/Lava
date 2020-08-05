@@ -65,7 +65,7 @@ public:
     uint32_t getDistribution() { return (uint32_t)mHemisphereDistribution; }
 
 private:
-    SSAO();
+    SSAO(Device::SharedPtr pDevice);
     Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
     void setNoiseTexture(uint32_t width, uint32_t height);
     void setKernel();

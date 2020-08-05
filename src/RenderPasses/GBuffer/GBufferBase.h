@@ -49,7 +49,7 @@ class GBufferBase : public RenderPass, public inherit_shared_from_this<RenderPas
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
  protected:
-    GBufferBase() = default;
+    GBufferBase(Device::SharedPtr pDevice);
     virtual void parseDictionary(const Dictionary& dict);
     void updateSamplePattern();
 

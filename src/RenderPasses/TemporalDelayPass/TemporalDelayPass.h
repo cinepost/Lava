@@ -51,7 +51,7 @@ public:
     TemporalDelayPass& setDelay(uint32_t delay);
 
 private:
-    TemporalDelayPass();
+    TemporalDelayPass(Device::SharedPtr pDevice);
     uint32_t mDelay = 1;
     bool mReady = false;
 };

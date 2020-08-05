@@ -29,8 +29,8 @@
 
 const char* FXAA::kDesc = "Fast Approximate Anti-Aliasing";
 
-namespace
-{
+namespace {
+
     const std::string kSrc = "src";
     const std::string kDst = "dst";
 
@@ -40,22 +40,20 @@ namespace
     const std::string kEarlyOut = "earlyOut";
 
     const std::string kShaderFilename = "RenderPasses/Antialiasing/FXAA/FXAA.slang";
+
 }
 
-FXAA::FXAA()
-{
-    mpPass = FullScreenPass::create(kShaderFilename);
-    mpFbo = Fbo::create();
+FXAA::FXAA(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    mpPass = FullScreenPass::create(pDevice, kShaderFilename);
+    mpFbo = Fbo::create(pDevice);
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    mpPass["gSampler"] = Sampler::create(samplerDesc);
+    mpPass["gSampler"] = Sampler::create(pDevice, samplerDesc);
 }
 
-FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pFXAA = SharedPtr(new FXAA);
-    for (const auto& v : dict)
-    {
+FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pFXAA = SharedPtr(new FXAA(pRenderContext->device()));
+    for (const auto& v : dict) {
         if (v.key() == kQualitySubPix) pFXAA->mQualitySubPix = v.val();
         else if (v.key() == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = v.val();
         else if (v.key() == kQualityEdgeThresholdMin) pFXAA->mQualityEdgeThresholdMin = v.val();
@@ -65,8 +63,7 @@ FXAA::SharedPtr FXAA::create(RenderContext* pRenderContext, const Dictionary& di
     return pFXAA;
 }
 
-Dictionary FXAA::getScriptingDictionary()
-{
+Dictionary FXAA::getScriptingDictionary() {
     Dictionary dict;
     dict[kQualitySubPix] = mQualitySubPix;
     dict[kQualityEdgeThreshold] = mQualityEdgeThreshold;
@@ -75,16 +72,14 @@ Dictionary FXAA::getScriptingDictionary()
     return dict;
 }
 
-RenderPassReflection FXAA::reflect(const CompileData& compileData)
-{
+RenderPassReflection FXAA::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kSrc, "Source color-buffer");
     reflector.addOutput(kDst, "Destination color-buffer");
     return reflector;
 }
 
-void FXAA::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void FXAA::execute(RenderContext* pContext, const RenderData& renderData) {
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
     mpFbo->attachColorTarget(pDst, 0);
@@ -102,8 +97,7 @@ void FXAA::execute(RenderContext* pContext, const RenderData& renderData)
     mpPass->execute(pContext, mpFbo);
 }
 
-void FXAA::renderUI(Gui::Widgets& widget)
-{
+void FXAA::renderUI(Gui::Widgets& widget) {
     widget.var("Sub-Pixel Quality", mQualitySubPix, 0.f, 1.f, 0.001f);
     widget.var("Edge Threshold", mQualityEdgeThreshold, 0.f, 1.f, 0.001f);
     widget.var("Edge Threshold Min", mQualityEdgeThresholdMin, 0.f, 1.f, 0.001f);

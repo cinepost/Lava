@@ -43,7 +43,7 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SideBySidePass();
+    SideBySidePass(Device::SharedPtr pDevice);
     virtual void createProgram() override;
     uint32_t mImageLeftBound = 0; ///< Location of output left side in original input image in pixels
 };

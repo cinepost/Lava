@@ -50,7 +50,7 @@ public:
     virtual std::string getDesc() override { return kDesc; }
 
 private:
-    ImageLoader();
+    ImageLoader(Device::SharedPtr pDevice);
 
     Texture::SharedPtr mpTex;
     std::string mImageName;

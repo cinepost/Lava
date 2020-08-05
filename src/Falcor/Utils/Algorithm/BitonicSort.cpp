@@ -52,7 +52,7 @@ namespace Falcor {
     }
 
     bool BitonicSort::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize) {
-        PROFILE("BitonicSort::execute");
+        PROFILE(pRenderContext->device(), "BitonicSort::execute");
 
         // Validate inputs.
         assert(pRenderContext);

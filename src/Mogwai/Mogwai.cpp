@@ -45,6 +45,7 @@
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
 
+#include "Falcor/Core/Window.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 namespace Mogwai {
@@ -66,7 +67,8 @@ const std::string kAppDataPath = getAppDataDirectory() + "/NVIDIA/Falcor/Mogwai.
 
 size_t Renderer::DebugWindow::index = 0;
 
-Renderer::Renderer(): mAppData(kAppDataPath){}
+
+Renderer::Renderer(Falcor::Device::SharedPtr pDevice): mpDevice(pDevice), mAppData(kAppDataPath) {}
 
 void Renderer::extend(Extension::CreateFunc func, const std::string& name) {
     if (!gExtensions) gExtensions = new std::map<std::string, Extension::CreateFunc>();
@@ -79,7 +81,7 @@ void Renderer::extend(Extension::CreateFunc func, const std::string& name) {
 
 void Renderer::onShutdown() {
     resetEditor();
-    gpDevice->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
+    mpDevice->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
     mGraphs.clear();
 }
 
@@ -396,7 +398,7 @@ void Renderer::loadSceneDialog() {
 }
 
 void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags) {
-    setScene(SceneBuilder::create(filename, buildFlags)->getScene());
+    setScene(SceneBuilder::create(mpDevice, filename, buildFlags)->getScene());
 }
 
 void Renderer::setScene(Scene::ConstSharedPtrRef pScene) {
@@ -412,13 +414,13 @@ void Renderer::setScene(Scene::ConstSharedPtrRef pScene) {
             Sampler::Desc desc;
             desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
             desc.setMaxAnisotropy(8);
-            mpSampler = Sampler::create(desc);
+            mpSampler = Sampler::create(mpDevice, desc);
         }
         mpScene->bindSamplerToMaterials(mpSampler);
     }
 
     for (auto& g : mGraphs) g.pGraph->setScene(mpScene);
-    gpFramework->getGlobalClock().setTime(0);
+    gpFramework->getClock().setTime(0);
 }
 
 Scene::SharedPtr Renderer::getScene() const {
@@ -491,7 +493,7 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 
         // Update scene and camera.
         if (mpScene) {
-            mpScene->update(pRenderContext, gpFramework->getGlobalClock().getTime());
+            mpScene->update(pRenderContext, gpFramework->getClock().getTime());
         }
 
         executeActiveGraph(pRenderContext);
@@ -534,7 +536,7 @@ void Renderer::onResizeSwapChain(uint32_t width, uint32_t height) {
 }
 
 void Renderer::onHotReload(HotReloadFlags reloaded) {
-    RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+    RenderPassLibrary::instance(mpDevice).reloadLibraries(gpFramework->getRenderContext());
     RenderGraph* pActiveGraph = getActiveGraph();
     if (pActiveGraph) pActiveGraph->onHotReload(reloaded);
 }
@@ -581,9 +583,15 @@ int main(int argc, char** argv)
     try {
         msgBoxTitle("Mogwai");
 
-        IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>();
         SampleConfig config;
         config.windowDesc.title = "Mogwai";
+
+        // offscreen renderer
+        Device::Desc device_desc;
+        device_desc.width = 1280;
+        device_desc.height = 720;
+        auto pNullWindow = Falcor::Window::SharedPtr(nullptr);
+        IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(Device::create(pNullWindow, device_desc));
 
         ArgList args;
 #ifdef _WIN32

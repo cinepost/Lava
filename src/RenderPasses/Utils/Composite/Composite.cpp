@@ -27,10 +27,10 @@
  **************************************************************************/
 #include "Composite.h"
 
+
 const char* Composite::kDesc = "Composite pass";
 
-namespace
-{
+namespace {
     const std::string kShaderFile("RenderPasses/Utils/Composite/Composite.cs.slang");
 
     const std::string kInputA = "A";
@@ -41,22 +41,18 @@ namespace
     const std::string kScaleB = "scaleB";
 }
 
-Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new Composite(dict));
+Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    return SharedPtr(new Composite(pRenderContext->device(), dict));
 }
 
-Composite::Composite(const Dictionary& dict)
-{
-    mCompositePass = ComputePass::create(kShaderFile);
+Composite::Composite(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+    mCompositePass = ComputePass::create(pDevice, kShaderFile);
 
     if (!parseDictionary(dict)) throw std::runtime_error("Invalid dictionary");
 }
 
-bool Composite::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& v : dict)
-    {
+bool Composite::parseDictionary(const Dictionary& dict) {
+    for (const auto& v : dict) {
         if (v.key() == kScaleA) mScaleA = v.val();
         else if (v.key() == kScaleB) mScaleB = v.val();
         else
@@ -68,16 +64,14 @@ bool Composite::parseDictionary(const Dictionary& dict)
     return true;
 }
 
-Dictionary Composite::getScriptingDictionary()
-{
+Dictionary Composite::getScriptingDictionary() {
     Dictionary dict;
     dict[kScaleA] = mScaleA;
     dict[kScaleB] = mScaleB;
     return dict;
 }
 
-RenderPassReflection Composite::reflect(const CompileData& compileData)
-{
+RenderPassReflection Composite::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kInputA, "Input A").bindFlags(ResourceBindFlags::ShaderResource);
     reflector.addInput(kInputB, "Input B").bindFlags(ResourceBindFlags::ShaderResource);
@@ -85,14 +79,12 @@ RenderPassReflection Composite::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void Composite::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void Composite::compile(RenderContext* pContext, const CompileData& compileData) {
     mFrameDim = compileData.defaultTexDims;
     mCompositePass["CB"]["frameDim"] = mFrameDim;
 }
 
-void Composite::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void Composite::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     auto cb = mCompositePass["CB"];
     cb["scaleA"] = mScaleA;
     cb["scaleB"] = mScaleB;
@@ -102,8 +94,7 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
     mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 
-void Composite::renderUI(Gui::Widgets& widget)
-{
+void Composite::renderUI(Gui::Widgets& widget) {
     widget.text("This pass scales and adds inputs A and B together");
     widget.var("Scale A", mScaleA);
     widget.var("Scale B", mScaleB);

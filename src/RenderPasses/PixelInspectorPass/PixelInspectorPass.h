@@ -50,7 +50,7 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
 private:
-    PixelInspectorPass();
+    PixelInspectorPass(Device::SharedPtr pDevice);
 
     // Internal state
     Scene::SharedPtr                      mpScene;

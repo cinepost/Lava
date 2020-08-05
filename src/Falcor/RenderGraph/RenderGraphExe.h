@@ -30,16 +30,14 @@
 #include "Utils/Scripting/Dictionary.h"
 #include "RenderPass.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     class RenderGraphCompiler;
 
-    class dlldecl RenderGraphExe
-    {
-    public:
+    class dlldecl RenderGraphExe {
+     public:
         using SharedPtr = std::shared_ptr<RenderGraphExe>;
-        struct Context
-        {
+        struct Context {
             RenderContext* pRenderContext;
             Dictionary::SharedPtr pGraphDictionary;
             uint2 defaultTexDims;

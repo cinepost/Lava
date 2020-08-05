@@ -40,7 +40,7 @@ namespace Falcor {
 
     class GuiImpl {
      public:
-        GuiImpl() = default;
+        GuiImpl(std::shared_ptr<Device> pDevice) { mpDevice = pDevice; }
 
      private:
         friend class Gui;
@@ -79,6 +79,8 @@ namespace Falcor {
         float mScaleFactor = 1.0f;
         std::unordered_map<std::string, ImFont*> mFontMap;
         ImFont* mpActiveFont = nullptr;
+
+        std::shared_ptr<Device> mpDevice;
 
         bool beginMenu(const char* name);
         void endMenu();
@@ -180,11 +182,11 @@ namespace Falcor {
         style.ScaleAllSizes(scaleFactor);
 
         // Create the pipeline state cache
-        mpPipelineState = GraphicsState::create();
+        mpPipelineState = GraphicsState::create(mpDevice);
 
         // Create the program
-        mpProgram = GraphicsProgram::createFromFile("Utils/UI/Gui.slang", "vs", "ps");
-        mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
+        mpProgram = GraphicsProgram::createFromFile(mpDevice, "Utils/UI/Gui.slang", "vs", "ps");
+        mpProgramVars = GraphicsVars::create(mpDevice, mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
         // Add the default font
@@ -192,7 +194,7 @@ namespace Falcor {
         pGui->setActiveFont("");
 
         // Create the blend state
-        BlendState::Desc blendDesc;
+        BlendState::Desc blendDesc(mpDevice);
         blendDesc.setRtBlend(0, true).setRtParams(0, BlendState::BlendOp::Add, BlendState::BlendOp::Add, BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha, BlendState::BlendFunc::Zero);
         mpPipelineState->setBlendState(BlendState::create(blendDesc));
 
@@ -235,8 +237,8 @@ namespace Falcor {
 
         // Need to create a new VAO
         std::vector<Buffer::SharedPtr> pVB(1);
-        pVB[0] = createVB ? Buffer::create(requiredVbSize + sizeof(ImDrawVert) * 1000, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr) : mpVao->getVertexBuffer(0);
-        Buffer::SharedPtr pIB = createIB ? Buffer::create(requiredIbSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, nullptr) : mpVao->getIndexBuffer();
+        pVB[0] = createVB ? Buffer::create(mpDevice, requiredVbSize + sizeof(ImDrawVert) * 1000, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr) : mpVao->getVertexBuffer(0);
+        Buffer::SharedPtr pIB = createIB ? Buffer::create(mpDevice, requiredIbSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, nullptr) : mpVao->getIndexBuffer();
         mpVao = Vao::create(Vao::Topology::TriangleList, mpLayout, pVB, pIB, ResourceFormat::R16Uint);
     }
 
@@ -246,7 +248,7 @@ namespace Falcor {
 
         // Initialize font data
         ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
-        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
+        Texture::SharedPtr pTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
         mpProgramVars->setTexture("gFont", pTexture);
     }
 
@@ -533,8 +535,7 @@ namespace Falcor {
         if (fitWindow) ImGui::PopItemWidth();
     }
 
-    bool GuiImpl::addTextbox(const char label[], std::string& text, uint32_t lineCount, Gui::TextFlags flags)
-    {
+    bool GuiImpl::addTextbox(const char label[], std::string& text, uint32_t lineCount, Gui::TextFlags flags) {
         static const int maxSize = 2048;
         char buf[maxSize];
         copyStringToBuffer(buf, maxSize, text);
@@ -544,25 +545,21 @@ namespace Falcor {
         return result;
     }
 
-    bool GuiImpl::addMultiTextbox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries)
-    {
+    bool GuiImpl::addMultiTextbox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries) {
         static uint32_t sIdOffset = 0;
         bool result = false;
 
-        for (uint32_t i = 0; i < textEntries.size(); ++i)
-        {
+        for (uint32_t i = 0; i < textEntries.size(); ++i) {
             result |= addTextbox(std::string(textLabels[i] + "##" + std::to_string(sIdOffset)).c_str(), textEntries[i]);
         }
 
         return addButton(label) | result;
     }
 
-    void GuiImpl::addTooltip(const char tip[], bool sameLine)
-    {
+    void GuiImpl::addTooltip(const char tip[], bool sameLine) {
         if (sameLine) ImGui::SameLine();
         ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered())
-        {
+        if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::PushTextWrapPos(450.0f);
             ImGui::TextUnformatted(tip);
@@ -571,23 +568,19 @@ namespace Falcor {
         }
     }
 
-    bool GuiImpl::addRgbColor(const char label[], float3& var, bool sameLine)
-    {
+    bool GuiImpl::addRgbColor(const char label[], float3& var, bool sameLine) {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit3(label, glm::value_ptr(var));
     }
 
-    bool GuiImpl::addRgbaColor(const char label[], float4& var, bool sameLine)
-    {
+    bool GuiImpl::addRgbaColor(const char label[], float4& var, bool sameLine) {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit4(label, glm::value_ptr(var));
     }
 
-    void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
-    {
+    void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine) {
         assert(pTex);
-        if (size == float2(0))
-        {
+        if (size == float2(0)) {
             ImVec2 windowSize = ImGui::GetWindowSize();
             size = { windowSize.x, windowSize.y };
         }
@@ -600,8 +593,7 @@ namespace Falcor {
         ImGui::PopID();
     }
 
-    bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine)
-    {
+    bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, float2 size, bool maintainRatio, bool sameLine) {
         assert(pTex);
         mpImages.push_back(pTex);
         if (sameLine) ImGui::SameLine();
@@ -610,8 +602,7 @@ namespace Falcor {
     }
 
     template<typename T>
-    bool addScalarVarHelper(const char label[], T& var, ImGuiDataType_ imguiType, T minVal, T maxVal, float step, bool sameLine, const char* displayFormat)
-    {
+    bool addScalarVarHelper(const char label[], T& var, ImGuiDataType_ imguiType, T minVal, T maxVal, float step, bool sameLine, const char* displayFormat) {
         ImGui::PushItemWidth(200);
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::DragScalar(label, imguiType, &var, step, &minVal, &maxVal, displayFormat);
@@ -759,13 +750,15 @@ namespace Falcor {
         ImGui::PlotLines(label, func, pUserData, (int32_t)sampleCount, sampleOffset, nullptr, yMin, yMax, imSize);
     }
 
+    Gui::Gui(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {}
+
     Gui::~Gui() {
         ImGui::DestroyContext();
     }
 
-    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height, float scaleFactor) {
-        UniquePtr pGui = UniquePtr(new Gui);
-        pGui->mpWrapper = new GuiImpl;
+    Gui::UniquePtr Gui::create(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, float scaleFactor) {
+        UniquePtr pGui = UniquePtr(new Gui(pDevice));
+        pGui->mpWrapper = new GuiImpl(pDevice);
         pGui->mpWrapper->init(pGui.get(), scaleFactor);
         pGui->onWindowResize(width, height);
         return pGui;
@@ -782,11 +775,9 @@ namespace Falcor {
         return float4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
     }
 
-    void Gui::addFont(const std::string& name, const std::string& filename)
-    {
+    void Gui::addFont(const std::string& name, const std::string& filename) {
         std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
-        {
+        if (findFileInDataDirectories(filename, fullpath) == false) {
             logWarning("Can't find font file `" + filename + "`");
             return;
         }
@@ -847,6 +838,7 @@ namespace Falcor {
             pVerts += pCmdList->VtxBuffer.Size;
             pIndices += pCmdList->IdxBuffer.Size;
         }
+        
         mpWrapper->mpVao->getVertexBuffer(0)->unmap();
         mpWrapper->mpVao->getIndexBuffer()->unmap();
         mpWrapper->mpPipelineState->setFbo(pFbo);

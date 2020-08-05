@@ -46,7 +46,7 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    SVGFPass(const Dictionary& dict);
+    SVGFPass(Device::SharedPtr pDevice, const Dictionary& dict);
 
     bool init(const Dictionary& dict);
     void allocateFbos(uint2 dim, RenderContext* pRenderContext);

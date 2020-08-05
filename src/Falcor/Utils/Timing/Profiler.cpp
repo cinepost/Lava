@@ -30,6 +30,7 @@
 
 #include "stdafx.h"
 #include "Profiler.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/GpuTimer.h"
 
 #ifdef _WIN32
@@ -41,37 +42,39 @@ namespace Falcor {
 
     bool gProfileEnabled = false;  // TODO: make configurable
 
-    std::unordered_map<std::string, Profiler::EventData*> Profiler::sProfilerEvents;
+    using DeviceProfilerEvents = std::unordered_map<std::string, Profiler::EventData*>;
+
+    std::unordered_map<Profiler::DeviceEventKey, Profiler::EventData*, Profiler::device_event_key_hash> Profiler::sProfilerEvents;
     std::vector<Profiler::EventData*> Profiler::sRegisteredEvents;
     std::string curEventName = "";
     uint32_t Profiler::sCurrentLevel = 0;
     uint32_t Profiler::sGpuTimerIndex = 0;
 
-    void Profiler::initNewEvent(EventData *pEvent, const std::string& name) {
+    void Profiler::initNewEvent(std::shared_ptr<Device> pDevice, EventData *pEvent, const std::string& name) {
         pEvent->name = name;
-        sProfilerEvents[curEventName] = pEvent;
+        sProfilerEvents[std::pair<uint8_t, std::string>(pDevice->uid(), curEventName)] = pEvent;
     }
 
-    Profiler::EventData* Profiler::createNewEvent(const std::string& name) {
+    Profiler::EventData* Profiler::createNewEvent(std::shared_ptr<Device> pDevice, const std::string& name) {
         EventData *pData = new EventData;
-        initNewEvent(pData, name);
+        initNewEvent(pDevice, pData, name);
         return pData;
     }
 
-    Profiler::EventData* Profiler::isEventRegistered(const std::string& name) {
-        auto event = sProfilerEvents.find(name);
+    Profiler::EventData* Profiler::isEventRegistered(std::shared_ptr<Device> pDevice, const std::string& name) {
+        auto event = sProfilerEvents.find(std::make_pair(pDevice->uid(), name));
         return (event == sProfilerEvents.end()) ? nullptr : event->second;
     }
 
-    Profiler::EventData* Profiler::getEvent(const std::string& name) {
-        auto event = isEventRegistered(name);
-        return event ? event : createNewEvent(name);
+    Profiler::EventData* Profiler::getEvent(std::shared_ptr<Device> pDevice, const std::string& name) {
+        auto event = isEventRegistered(pDevice, name);
+        return event ? event : createNewEvent(pDevice, name);
     }
 
     void Profiler::startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags, bool showInMsg) {
         if (gProfileEnabled && is_set(flags, Flags::Internal)) {
             curEventName = curEventName + "#" + name;
-            EventData* pData = getEvent(curEventName);
+            EventData* pData = getEvent(pDevice, curEventName);
             pData->triggered++;
             if (pData->triggered > 1) {
                 logWarning("Profiler event `" + name + "` was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call");
@@ -104,10 +107,10 @@ namespace Falcor {
         #endif
     }
 
-    void Profiler::endEvent(const std::string& name, Flags flags) {
+    void Profiler::endEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags) {
         if (gProfileEnabled && is_set(flags, Flags::Internal)) {
-            assert(isEventRegistered(curEventName));
-            EventData* pData = getEvent(curEventName);
+            assert(isEventRegistered(pDevice, curEventName));
+            EventData* pData = getEvent(pDevice, curEventName);
             pData->triggered--;
             if (pData->triggered != 0) return;
 
@@ -127,13 +130,13 @@ namespace Falcor {
         #endif
     }
 
-    double Profiler::getEventGpuTime(const std::string& name) {
-        const auto& pEvent = getEvent(name);
+    double Profiler::getEventGpuTime(std::shared_ptr<Device> pDevice, const std::string& name) {
+        const auto& pEvent = getEvent(pDevice, name);
         return pEvent ? getGpuTime(pEvent) : 0;
     }
 
-    double Profiler::getEventCpuTime(const std::string& name) {
-        const auto& pEvent = getEvent(name);
+    double Profiler::getEventCpuTime(std::shared_ptr<Device> pDevice, const std::string& name) {
+        const auto& pEvent = getEvent(pDevice, name);
         return pEvent ? getCpuTime(pEvent) : 0;
     }
 

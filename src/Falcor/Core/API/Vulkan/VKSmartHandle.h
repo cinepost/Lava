@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
+//#include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
 
@@ -58,6 +59,7 @@ class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseA
         explicit SharedPtr(VkHandle<ApiHandle>* pHandle) : std::shared_ptr<VkHandle<ApiHandle>>(pHandle) {}
         static SharedPtr create(std::shared_ptr<Device> device, ApiHandle handle) { return SharedPtr(new VkHandle(device, handle)); }
         operator ApiHandle() const { return get()->mApiHandle; }
+
      private:
         VkHandle<ApiHandle>* get() const { return std::shared_ptr< VkHandle<ApiHandle>>::get(); }
     };

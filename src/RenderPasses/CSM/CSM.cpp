@@ -28,13 +28,11 @@
 #include "CSM.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-static void regCSM(ScriptBindings::Module& m)
-{
+static void regCSM(ScriptBindings::Module& m) {
     auto c = m.regClass(CSM);
     c.property("cascadeCount", &CSM::getCascadeCount, &CSM::setCascadeCount);
     c.property("mapSize", &CSM::getMapSize, &CSM::setMapSize);
@@ -59,8 +57,7 @@ static void regCSM(ScriptBindings::Module& m)
     partitionEnum.regEnumVal(CSM::PartitionMode::PSSM);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("CSM", "Generates a visibility map for a single light source using the CSM technique", CSM::create);
     ScriptBindings::registerBinding(regCSM);
 }
@@ -68,8 +65,7 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 const char* CSM::kDesc = "The pass generates a visibility-map using the CSM technique. The map is for a single light-source.\n"
 "It supports common filtering modes, including EVSM. It also supports PSSM and SDSM";
 
-namespace
-{
+namespace {
     const Gui::DropdownList kFilterList = {
     { (uint32_t)CsmFilter::Point, "Point" },
     { (uint32_t)CsmFilter::HwPcf, "2x2 HW PCF" },
@@ -111,125 +107,19 @@ namespace
     const std::string kSdsmReadbackLatency = "kSdsmReadbackLatency";
 }
 
-#if 0
-class CsmSceneRenderer : public SceneRenderer
-{
-public:
-    using UniquePtr = std::unique_ptr<CsmSceneRenderer>;
-    static UniquePtr create(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
-    {
-        return UniquePtr(new CsmSceneRenderer(pScene, alphaMapCbLoc, alphaMapLoc, alphaMapSamplerLoc));
-    }
-
-    void setDepthClamp(bool enable) { mDepthClamp = enable; }
-
-    void renderScene(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const Camera* pCamera) override
-    {
-        pState->setRasterizerState(nullptr);
-        mpLastSetRs = nullptr;
-        SceneRenderer::renderScene(pContext, pState, pVars, pCamera);
-    }
-
-protected:
-    CsmSceneRenderer(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
-        : SceneRenderer(std::const_pointer_cast<Scene>(pScene))
-    {
-        mBindLocations.alphaCB = alphaMapCbLoc;
-        mBindLocations.alphaMap = alphaMapLoc;
-        mBindLocations.alphaMapSampler = alphaMapSamplerLoc;
-
-        toggleMeshCulling(false);
-        Sampler::Desc desc;
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        mpAlphaSampler = Sampler::create(desc);
-
-        RasterizerState::Desc rsDesc;
-        rsDesc.setDepthClamp(true);
-        mpDepthClampRS = RasterizerState::create(rsDesc);
-        rsDesc.setCullMode(RasterizerState::CullMode::None);
-        mpDepthClampNoCullRS = RasterizerState::create(rsDesc);
-        rsDesc.setDepthClamp(false);
-        mpNoCullRS = RasterizerState::create(rsDesc);
-    }
-
-    bool mMaterialChanged = false;
-    Sampler::SharedPtr mpAlphaSampler;
-
-    struct
-    {
-        ProgramReflection::BindLocation alphaMap;
-        ProgramReflection::BindLocation alphaCB;
-        ProgramReflection::BindLocation alphaMapSampler;
-    } mBindLocations;
-
-    bool mDepthClamp;
-    RasterizerState::SharedPtr mpDepthClampNoCullRS;
-    RasterizerState::SharedPtr mpNoCullRS;
-    RasterizerState::SharedPtr mpDepthClampRS;
-
-    RasterizerState::SharedPtr mpLastSetRs;
-
-    RasterizerState::SharedPtr getRasterizerState(const Material* pMaterial)
-    {
-        if (pMaterial->getAlphaMode() == AlphaModeMask)
-        {
-            return mDepthClamp ? mpDepthClampNoCullRS : mpNoCullRS;
-        }
-        else
-        {
-            return mDepthClamp ? mpDepthClampRS : nullptr;
-        }
-    }
-
-    bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial) override
-    {
-        mMaterialChanged = true;
-        if (currentData.pMaterial->getAlphaMode() == AlphaModeMask)
-        {
-            float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
-            auto& pDefaultBlock = currentData.pVars;
-            pDefaultBlock->getParameterBlock(mBindLocations.alphaCB, 0)->setBlob(&alphaThreshold, 0u, sizeof(float));
-            if (currentData.pMaterial->getBaseColorTexture())
-            {
-                pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, currentData.pMaterial->getBaseColorTexture()->getSRV());
-            }
-            else
-            {
-                pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, nullptr);
-            }
-            pDefaultBlock->setSampler(mBindLocations.alphaMapSampler, 0, mpAlphaSampler);
-            currentData.pState->getProgram()->addDefine("TEST_ALPHA");
-        }
-        else
-        {
-            currentData.pState->getProgram()->removeDefine("TEST_ALPHA");
-        }
-        const auto& pRsState = getRasterizerState(currentData.pMaterial);
-        if (pRsState != mpLastSetRs)
-        {
-            currentData.pState->setRasterizerState(pRsState);
-            mpLastSetRs = pRsState;
-        }
-        return true;
-    };
-};
-#endif
-
-static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, glm::mat4& shadowVP)
-{
+static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, glm::mat4& shadowVP) {
     glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
     glm::mat4 proj = glm::ortho(-radius, radius, -radius, radius, -radius, radius);
 
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
-{
+static void createShadowMatrix(const PointLight* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP) {
     const float3 lightPos = pLight->getWorldPosition();
     const float3 lookat = pLight->getWorldDirection() + lightPos;
     float3 up(0, 1, 0);
-    if (abs(glm::dot(up, pLight->getWorldDirection())) >= 0.95f)
-    {
+
+    if (abs(glm::dot(up, pLight->getWorldDirection())) >= 0.95f) {
         up = float3(1, 0, 0);
     }
 
@@ -243,21 +133,18 @@ static void createShadowMatrix(const PointLight* pLight, const float3& center, f
     shadowVP = proj * view;
 }
 
-static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP)
-{
-    switch (pLight->getType())
-    {
-    case LightType::Directional:
-        return createShadowMatrix((DirectionalLight*)pLight, center, radius, shadowVP);
-    case LightType::Point:
-        return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowVP);
-    default:
-        should_not_get_here();
+static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP) {
+    switch (pLight->getType()) {
+        case LightType::Directional:
+            return createShadowMatrix((DirectionalLight*)pLight, center, radius, shadowVP);
+        case LightType::Point:
+            return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowVP);
+        default:
+            should_not_get_here();
     }
 }
 
-void CSM::createDepthPassResources()
-{
+void CSM::createDepthPassResources() {
     GraphicsProgram::Desc desc;
     desc.addShaderLibrary(kDepthPassFile);
     desc.vsEntry("vsMain").psEntry("psMain");
@@ -267,20 +154,18 @@ void CSM::createDepthPassResources()
     defines.add("TEST_ALPHA");
     defines.add("_ALPHA_CHANNEL", "a");
 
-    mDepthPass.pProgram = GraphicsProgram::create(desc, defines);
-    mDepthPass.pState = GraphicsState::create();
+    mDepthPass.pProgram = GraphicsProgram::create(mpDevice, desc, defines);
+    mDepthPass.pState = GraphicsState::create(mpDevice);
     mDepthPass.pState->setProgram(mDepthPass.pProgram);
 }
 
-void CSM::createVisibilityPassResources()
-{
-    mVisibilityPass.pFbo = Fbo::create();
-    mVisibilityPass.pPass = FullScreenPass::create(kVisibilityPassFile);
+void CSM::createVisibilityPassResources() {
+    mVisibilityPass.pFbo = Fbo::create(mpDevice);
+    mVisibilityPass.pPass = FullScreenPass::create(mpDevice, kVisibilityPassFile);
     mVisibilityPass.mPassDataOffset = mVisibilityPass.pPass->getVars()->getParameterBlock("PerFrameCB")->getVariableOffset("gPass");
 }
 
-void CSM::createShadowPassResources()
-{
+void CSM::createShadowPassResources() {
     mShadowPass.mapSize = mMapSize;
     const ResourceFormat depthFormat = ResourceFormat::D32Float;
     mCsmData.depthBias = 0.005f;
@@ -290,33 +175,32 @@ void CSM::createShadowPassResources()
     defines.add("_CASCADE_COUNT", std::to_string(mCsmData.cascadeCount));
     defines.add("_ALPHA_CHANNEL", "a");
     ResourceFormat colorFormat = ResourceFormat::Unknown;
-    switch ((CsmFilter)mCsmData.filterMode)
-    {
-    case CsmFilter::Vsm:
-        colorFormat = ResourceFormat::RG16Float;
-        defines.add("_VSM");
-        break;
-    case CsmFilter::Evsm2:
-        colorFormat = ResourceFormat::RG16Float;
-        defines.add("_EVSM2");
-        break;
-    case CsmFilter::Evsm4:
-        colorFormat = ResourceFormat::RGBA16Float;
-        defines.add("_EVSM4");
-        break;
+    
+    switch ((CsmFilter)mCsmData.filterMode) {
+        case CsmFilter::Vsm:
+            colorFormat = ResourceFormat::RG16Float;
+            defines.add("_VSM");
+            break;
+        case CsmFilter::Evsm2:
+            colorFormat = ResourceFormat::RG16Float;
+            defines.add("_EVSM2");
+            break;
+        case CsmFilter::Evsm4:
+            colorFormat = ResourceFormat::RGBA16Float;
+            defines.add("_EVSM4");
+            break;
     }
 
-    Fbo::Desc fboDesc;
+    Fbo::Desc fboDesc(mpDevice);
     fboDesc.setDepthStencilTarget(depthFormat);
     uint32_t mipLevels = 1;
 
-    if (colorFormat != ResourceFormat::Unknown)
-    {
+    if (colorFormat != ResourceFormat::Unknown) {
         fboDesc.setColorTarget(0, colorFormat);
         mipLevels = Texture::kMaxPossible;
     }
-    mShadowPass.pFbo = Fbo::create2D(mMapSize.x, mMapSize.y, fboDesc, mCsmData.cascadeCount, mipLevels);
-    mDepthPass.pState->setFbo(Fbo::create2D(mMapSize.x, mMapSize.y, fboDesc, mCsmData.cascadeCount));
+    mShadowPass.pFbo = Fbo::create2D(mpDevice, mMapSize.x, mMapSize.y, fboDesc, mCsmData.cascadeCount, mipLevels);
+    mDepthPass.pState->setFbo(Fbo::create2D(mpDevice, mMapSize.x, mMapSize.y, fboDesc, mCsmData.cascadeCount));
 
     mShadowPass.fboAspectRatio = (float)mMapSize.x / (float)mMapSize.y;
 
@@ -325,15 +209,14 @@ void CSM::createShadowPassResources()
     desc.addShaderLibrary(kShadowPassfile);
     desc.vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
 
-    mShadowPass.pProgram = GraphicsProgram::create(desc, defines);
-    mShadowPass.pState = GraphicsState::create();
+    mShadowPass.pProgram = GraphicsProgram::create(mpDevice, desc, defines);
+    mShadowPass.pState = GraphicsState::create(mpDevice);
     mShadowPass.pState->setProgram(mShadowPass.pProgram);
     mShadowPass.pState->setDepthStencilState(nullptr);
     mShadowPass.pState->setFbo(mShadowPass.pFbo);
 }
 
-CSM::CSM()
-{
+CSM::CSM(Device::SharedPtr pDevice): RenderPass(pDevice) {
     createDepthPassResources();
     createVisibilityPassResources();
 
@@ -343,9 +226,9 @@ CSM::CSM()
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border).setBorderColor(float4(1.0f));
     samplerDesc.setLodParams(0.f, 0.f, 0.f);
     samplerDesc.setComparisonMode(Sampler::ComparisonMode::LessEqual);
-    mShadowPass.pPointCmpSampler = Sampler::create(samplerDesc);
+    mShadowPass.pPointCmpSampler = Sampler::create(mpDevice, samplerDesc);
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mShadowPass.pLinearCmpSampler = Sampler::create(samplerDesc);
+    mShadowPass.pLinearCmpSampler = Sampler::create(mpDevice, samplerDesc);
     samplerDesc.setComparisonMode(Sampler::ComparisonMode::Disabled);
     samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     samplerDesc.setLodParams(-100.f, 100.f, 0.f);
@@ -353,11 +236,9 @@ CSM::CSM()
     createVsmSampleState(1);;
 }
 
-CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    auto pCSM = SharedPtr(new CSM());
-    for (const auto& v : dict)
-    {
+CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    auto pCSM = SharedPtr(new CSM(pRenderContext->device()));
+    for (const auto& v : dict) {
         if (v.key() == kMapSize) pCSM->mMapSize = (uint2)v.val();
         else if (v.key() == kVisBufferSize) pCSM->mVisibilityPassData.screenDim = (uint2)v.val();
         else if (v.key() == kCascadeCount) pCSM->setCascadeCount(v.val());
@@ -371,8 +252,7 @@ CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict
     return pCSM;
 }
 
-Dictionary CSM::getScriptingDictionary()
-{
+Dictionary CSM::getScriptingDictionary() {
     Dictionary dict;
     dict[kMapSize] = mMapSize;
     dict[kVisBufferSize] = mVisibilityPassData.screenDim;
@@ -410,7 +290,7 @@ RenderPassReflection CSM::reflect(const CompileData& compileData) {
 }
 
 void CSM::compile(RenderContext* pContext, const CompileData& compileData) {
-    mpBlurGraph = RenderGraph::create("Gaussian Blur");
+    mpBlurGraph = RenderGraph::create(mpDevice, "Gaussian Blur");
     GaussianBlur::SharedPtr pBlurPass = GaussianBlur::create(pContext, mBlurDict);
     mpBlurGraph->addPass(pBlurPass, kBlurPass);
     mpBlurGraph->markOutput(kBlurPass + ".dst");
@@ -609,9 +489,9 @@ void CSM::executeDepthPass(RenderContext* pCtx, const Camera* pCamera) {
     Fbo::SharedConstPtr pFbo = mDepthPass.pState->getFbo();
 
     if ((pFbo == nullptr) || (pFbo->getWidth() != width) || (pFbo->getHeight() != height)) {
-        Fbo::Desc desc;
+        Fbo::Desc desc(mpDevice);
         desc.setDepthStencilTarget(mShadowPass.pFbo->getDepthStencilTexture()->getFormat());
-        mDepthPass.pState->setFbo(Fbo::create2D(width, height, desc));
+        mDepthPass.pState->setFbo(Fbo::create2D(mpDevice, width, height, desc));
     }
 
     pCtx->clearFbo(pFbo.get(), float4(), 1, 0, FboAttachmentType::Depth);
@@ -623,7 +503,7 @@ void CSM::createVsmSampleState(uint32_t maxAnisotropy) {
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     samplerDesc.setMaxAnisotropy(maxAnisotropy);
-    mShadowPass.pVSMTrilinearSampler = Sampler::create(samplerDesc);
+    mShadowPass.pVSMTrilinearSampler = Sampler::create(mpDevice, samplerDesc);
 }
 
 void CSM::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer) {
@@ -694,7 +574,7 @@ void CSM::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer) {
     } else if (pTex == nullptr) {
         rebind = true;
         ResourceFormat format = getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades);
-        pTex = Texture::create2D(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+        pTex = Texture::create2D(mpDevice, mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
     }
 
     if (rebind) mVisibilityPass.pFbo->attachColorTarget(pTex, 0);
@@ -760,20 +640,16 @@ void CSM::setLight(const Light::SharedConstPtr& pLight) {
 }
 
 void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    // auto alphaSampler = pDefaultBlock->getResourceBinding("alphaSampler");
-    // auto alphaMapCB = pDefaultBlock->getResourceBinding("AlphaMapCB");
-    // auto alphaMap = pDefaultBlock->getResourceBinding("alphaMap");
-
     mpScene = pScene;
 
     setLight(mpScene && mpScene->getLightCount() ? mpScene->getLight(0) : nullptr);
 
     if (mpScene) {
         mDepthPass.pProgram->addDefines(mpScene->getSceneDefines());
-        mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getReflector());
+        mDepthPass.pVars = GraphicsVars::create(mpDevice, mDepthPass.pProgram->getReflector());
 
         mShadowPass.pProgram->addDefines(mpScene->getSceneDefines());
-        mShadowPass.pVars = GraphicsVars::create(mShadowPass.pProgram->getReflector());
+        mShadowPass.pVars = GraphicsVars::create(mpDevice, mShadowPass.pProgram->getReflector());
 
         const auto& pReflector = mShadowPass.pVars->getReflection();
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
@@ -783,10 +659,6 @@ void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene
         mShadowPass.pVars = nullptr;
         mPerLightCbLoc = {};
     }
-
-    //         mpCsmSceneRenderer = CsmSceneRenderer::create(pScene, alphaMapCB, alphaMap, alphaSampler);
-    //         mpCsmSceneRenderer->toggleMeshCulling(mCullMeshes);
-    //         setLight(pScene && pScene->getLightCount() ? pScene->getLight(0) : nullptr);
 }
 
 void CSM::renderUI(Gui::Widgets& widget) {
@@ -918,7 +790,7 @@ void CSM::createSdsmData(Texture::SharedPtr pTexture) {
     mSdsmData.width = pTexture->getWidth();
     mSdsmData.height = pTexture->getHeight();
     mSdsmData.sampleCount = pTexture->getSampleCount();
-    mSdsmData.minMaxReduction = ParallelReduction::create(ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height, mSdsmData.sampleCount);
+    mSdsmData.minMaxReduction = ParallelReduction::create(mpDevice, ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height, mSdsmData.sampleCount);
 }
 
 void CSM::setCascadeCount(uint32_t cascadeCount) {

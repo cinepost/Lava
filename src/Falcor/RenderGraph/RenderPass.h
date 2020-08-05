@@ -27,21 +27,20 @@
  **************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
-#include "Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "ResourceCache.h"
-#include "Core/API/Texture.h"
-#include "Scene/Scene.h"
-#include "Utils/UI/Gui.h"
-#include "Utils/UI/UserInput.h"
-#include "Core/API/RenderContext.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Scene/Scene.h"
+#include "Falcor/Utils/UI/Gui.h"
+#include "Falcor/Utils/UI/UserInput.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
+namespace Falcor {
     /** Helper class that's passed to the user during `RenderPass::execute()`
     */
-    class dlldecl RenderData
-    {
-    public:
+    class dlldecl RenderData {
+     public:
         /** Get a resource
             \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
             \return If the name exists, a pointer to the resource. Otherwise, nullptr
@@ -65,7 +64,7 @@ namespace Falcor
         /** Get the default format used for Texture2Ds (when `Unknown` is specified as the format in `RenderPassReflection`)
         */
         ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
-    protected:
+     protected:
         friend class RenderGraphExe;
         RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
         const std::string& mName;
@@ -86,14 +85,12 @@ namespace Falcor
         and as part of the render graph compilation their compile() function is called.
         At runtime, execute() is called each frame to generate the pass outputs.
     */
-    class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass>
-    {
-    public:
+    class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
+     public:
         using SharedPtr = std::shared_ptr<RenderPass>;
         virtual ~RenderPass() = default;
 
-        struct CompileData
-        {
+        struct CompileData {
             RenderPassReflection connectedResources;
             uint2 defaultTexDims;
             ResourceFormat defaultTexFormat;
@@ -147,10 +144,13 @@ namespace Falcor
         */
         const std::string& getName() const { return mName; }
 
-    protected:
+     protected:
         friend class RenderGraph;
-        RenderPass() = default;
+        RenderPass(Device::SharedPtr pDevice);
+        
         std::string mName;
         std::function<void(void)> mPassChangedCB = [] {};
+        Device::SharedPtr mpDevice;
+        
     };
 }

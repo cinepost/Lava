@@ -26,13 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "Falcor.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
-class Composite : public RenderPass, public inherit_shared_from_this<RenderPass, Composite>
-{
-public:
+class Composite : public RenderPass, public inherit_shared_from_this<RenderPass, Composite> {
+ public:
     using SharedPtr = std::shared_ptr<Composite>;
     using inherit_shared_from_this::shared_from_this;
 
@@ -47,8 +48,8 @@ public:
 
     static const char* kDesc;
 
-private:
-    Composite(const Dictionary& dict);
+ private:
+    Composite(Device::SharedPtr pDevice, const Dictionary& dict);
     bool parseDictionary(const Dictionary& dict);
 
     uint2                       mFrameDim = { 0, 0 };
@@ -56,4 +57,5 @@ private:
     float                       mScaleB = 1.f;
 
     ComputePass::SharedPtr      mCompositePass;
+
 };

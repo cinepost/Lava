@@ -30,9 +30,12 @@
 
 #include "Falcor/Utils/UI/UserInput.h"
 #include "Falcor/Utils/ArgList.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Core/API/RenderContext.h"
 
 namespace Falcor {
 
+class Device;
 class Clock;
 class FrameRate;
 
@@ -173,6 +176,7 @@ class IRenderer {
     // Deleted copy operators (copy a pointer type!)
     IRenderer(const IRenderer&) = delete;
     IRenderer& operator=(const IRenderer &) = delete;
+
 };
 
 }  // namespace Falcor

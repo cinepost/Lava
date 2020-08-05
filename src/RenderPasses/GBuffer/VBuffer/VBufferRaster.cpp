@@ -50,10 +50,10 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
 }
 
 VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new VBufferRaster(dict));
+    return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
 }
 
-VBufferRaster::VBufferRaster(const Dictionary& dict) : GBufferBase() {
+VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice) {
     parseDictionary(dict);
 
     // Create raster program
@@ -61,10 +61,10 @@ VBufferRaster::VBufferRaster(const Dictionary& dict) : GBufferBase() {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     desc.setShaderModel(kShaderModel);
-    mRaster.pProgram = GraphicsProgram::create(desc, defines);
+    mRaster.pProgram = GraphicsProgram::create(pDevice, desc, defines);
 
     // Initialize graphics state
-    mRaster.pState = GraphicsState::create();
+    mRaster.pState = GraphicsState::create(pDevice);
     mRaster.pState->setProgram(mRaster.pProgram);
 
     // Set depth function
@@ -72,7 +72,7 @@ VBufferRaster::VBufferRaster(const Dictionary& dict) : GBufferBase() {
     dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
     mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(pDevice);
 }
 
 void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -114,7 +114,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Create program vars.
     if (!mRaster.pVars) {
-        mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
+        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
     }
 
     mpFbo->attachColorTarget(pOutput, 0);

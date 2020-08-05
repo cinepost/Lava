@@ -118,7 +118,7 @@ RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
     if (rt.pTexture) {
         return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
     } else {
-        return RenderTargetView::getNullView();
+        return RenderTargetView::getNullView(mpDevice);
     }
 }
 
@@ -126,7 +126,7 @@ DepthStencilView::SharedPtr Fbo::getDepthStencilView() const {
     if (mDepthStencil.pTexture) {
         return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
     } else {
-        return DepthStencilView::getNullView();
+        return DepthStencilView::getNullView(mpDevice);
     }
 }
 

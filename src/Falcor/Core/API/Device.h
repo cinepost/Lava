@@ -33,6 +33,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include <atomic>
 
 #include "Falcor/Core/Window.h"
 //#include "Falcor/Core/API/Texture.h"
@@ -55,7 +56,7 @@ struct DeviceApiData;
 
 class Engine;
 
-class dlldecl Device {
+class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
@@ -103,6 +104,10 @@ class dlldecl Device {
         \return nullptr if the function failed, otherwise a new device object
     */
     static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
+
+    /** Device unique id.
+    */
+    uint8_t uid() { return _uid; }
 
     /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
         Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
@@ -263,7 +268,12 @@ class dlldecl Device {
     friend class Engine;
 
     std::string mPhysicalDeviceName;
+
+    uint8_t _uid;
+    static std::atomic<std::uint8_t> UID;
 };
+
+
 
 dlldecl extern Device::SharedPtr _pDevice;
 dlldecl extern Device::SharedPtr _gpDeviceHeadless;

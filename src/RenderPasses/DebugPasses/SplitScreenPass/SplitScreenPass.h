@@ -32,9 +32,8 @@
 
 using namespace Falcor;
 
-class SplitScreenPass : public ComparisonPass
-{
-public:
+class SplitScreenPass : public ComparisonPass {
+ public:
     using SharedPtr = std::shared_ptr<SplitScreenPass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -43,8 +42,8 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-private:
-    SplitScreenPass();
+ private:
+    SplitScreenPass(Device::SharedPtr pDevice);
     virtual void createProgram() override;
     Texture::SharedPtr mpArrowTex; // A texture storing a 16x16 grayscale arrow
 

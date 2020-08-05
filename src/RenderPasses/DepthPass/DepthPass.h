@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
@@ -39,9 +41,8 @@ using namespace Falcor;
 #define dllpassdecl falcorimport
 #endif
 
-class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass>
-{
-public:
+class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this<RenderPass, DepthPass> {
+ public:
     using SharedPtr = std::shared_ptr<DepthPass>;
     using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
     static const char* kDesc;
@@ -55,13 +56,13 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() { return kDesc; }
+    virtual std::string getDesc() override { return kDesc; };
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
 
-private:
-    DepthPass(const Dictionary& dict);
+ private:
+    DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     Fbo::SharedPtr mpFbo;

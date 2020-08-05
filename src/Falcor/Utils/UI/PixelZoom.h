@@ -32,7 +32,9 @@
 
 namespace Falcor {
 
+class Device;
 class RenderContext;
+
 struct MouseEvent;
 struct KeyboardEvent;
 
@@ -46,7 +48,7 @@ class PixelZoom {
         \param[in] pBackBuffer Pointer to the back buffer FBO
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Fbo* pBackbuffer);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer);
 
     /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
         \param pCtx Pointer to the render context
@@ -69,7 +71,7 @@ class PixelZoom {
     void onResizeSwapChain(const Fbo* pBackbuffer);
 
  private:
-    PixelZoom(const Fbo* pBackbuffer);
+    PixelZoom(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer);
 
     int32_t mSrcZoomSize = 5;
     const uint32_t mDstZoomSize = 200;
@@ -79,6 +81,8 @@ class PixelZoom {
     Fbo::SharedPtr mpDstBlitFbo;
     float2 mMousePos = {};
     bool mShouldZoom = false;
+
+    std::shared_ptr<Device> mpDevice; 
 };
 
 }  // namespace Falcor

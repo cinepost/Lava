@@ -75,7 +75,7 @@ public:
     float getWhiteScale() const { return mWhiteScale; }
 
 private:
-    ToneMapper(Operator op, ResourceFormat outputFormat);
+    ToneMapper(Device::SharedPtr pDevice, Operator op, ResourceFormat outputFormat);
 
     void createToneMapPass();
     void createLuminancePass();

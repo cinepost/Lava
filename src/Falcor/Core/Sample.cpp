@@ -48,7 +48,7 @@ std::string kMonospaceFont = "monospace";
 
 }
 
-Sample::Sample(Device::SharedPtr pDevice, IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)), mpDevice(pDevice) {
+Sample::Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)), mpDevice(nullptr) {
     mClock = nullptr;
     mFrameRate = nullptr;
 }
@@ -184,18 +184,20 @@ void Sample::handleWindowSizeChange() {
         OSServices::stop();
     }
 
-    void Sample::run(Device::SharedPtr pDevice, const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
-        Sample s(pDevice, pRenderer);
+    void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
+        Sample s(pRenderer);
+
         try {
-            s.runInternal(pDevice, config, argc, argv);
+            s.runInternal(config, argc, argv);
         } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::run(Device::SharedPtr pDevice, const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
-        Sample s(pDevice, pRenderer);
+    void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
+        Sample s(pRenderer);
+        
         try {
             auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
 
@@ -217,18 +219,15 @@ void Sample::handleWindowSizeChange() {
                 err("doesn't exist. Using default configuration");
             }
 
-            s.runInternal(pDevice, c, argc, argv);
+            s.runInternal(c, argc, argv);
         } catch (const std::exception & e) {
             logError("Error:\n" + std::string(e.what()));
         }
         Logger::shutdown();
     }
 
-    void Sample::runInternal(Device::SharedPtr pDevice, const SampleConfig& config, uint32_t argc, char** argv) {
+    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv) {
         gpFramework = this;
-
-        mClock = new Clock(pDevice);
-        mFrameRate = new FrameRate(pDevice);
 
         Logger::showBoxOnError(config.showMessageBoxOnError);
         OSServices::start();
@@ -236,21 +235,29 @@ void Sample::handleWindowSizeChange() {
         Threading::start();
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
-        mClock->setTimeScale(config.timeScale);
-        if (config.pauseTime) mClock->pause();
+        
         mVsyncOn = config.deviceDesc.enableVsync;
+
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
         if (mpWindow == nullptr) {
             logError("Failed to create device and window");
             return;
         }
+        
+        // Create device 
+        mpDevice = Device::create(mpWindow, config.deviceDesc);
+
+        mClock = new Clock(mpDevice);
+        mClock->setTimeScale(config.timeScale);
+        if (config.pauseTime) mClock->pause();
+
+        mFrameRate = new FrameRate(mpDevice);
+
         // Show the progress bar (unless window is minimized)
         ProgressBar::SharedPtr pBar;
         if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
         Device::Desc d = config.deviceDesc;
-
-        mpDevice = Device::create(mpWindow, config.deviceDesc);
         
         if (mpDevice == nullptr) {
             logError("Failed to create device");
@@ -270,7 +277,7 @@ void Sample::handleWindowSizeChange() {
 
         // Init the UI
         initUI();
-        mpPixelZoom = PixelZoom::create(mpTargetFBO.get());
+        mpPixelZoom = PixelZoom::create(mpDevice, mpTargetFBO.get());
 
 #ifdef _WIN32
         // Set the icon
@@ -392,7 +399,7 @@ void Sample::handleWindowSizeChange() {
     }
 
     void Sample::renderUI() {
-        PROFILE("renderUI");
+        PROFILE(mpDevice, "renderUI");
 
         if (mShowUI || gProfileEnabled) {
             mpGui->beginFrame();
@@ -409,11 +416,11 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont(kMonospaceFont);
 
                 Gui::Window profilerWindow(mpGui.get(), "Profiler", gProfileEnabled, { 800, 350 }, { 10, y });
-                Profiler::endEvent("renderUI");  // Stop the timer
+                Profiler::endEvent(mpDevice, "renderUI");  // Stop the timer
 
                 if (gProfileEnabled) {
                     profilerWindow.text(Profiler::getEventsString().c_str());
-                    Profiler::startEvent("renderUI");
+                    Profiler::startEvent(mpDevice, "renderUI");
                     profilerWindow.release();
                 }
                 mpGui->setActiveFont("");
@@ -434,7 +441,7 @@ void Sample::handleWindowSizeChange() {
         if (mVideoCapture.fixedTimeDelta) { mClock->setTime(mVideoCapture.currentTime); }
 
         {
-            PROFILE("onFrameRender");
+            PROFILE(mpDevice, "onFrameRender");
 
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused) {
@@ -465,7 +472,7 @@ void Sample::handleWindowSizeChange() {
             if (mCaptureScreen) captureScreen();
 
             {
-                PROFILE("present", Profiler::Flags::Internal);
+                PROFILE(mpDevice, "present", Profiler::Flags::Internal);
                 mpDevice->present();
             }
         }
@@ -495,9 +502,9 @@ void Sample::handleWindowSizeChange() {
     void Sample::initUI() {
         float scaling = getDisplayScaleFactor();
         const auto& pSwapChainFbo = mpDevice->getSwapChainFbo();
-        mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
+        mpGui = Gui::create(mpDevice, uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
         mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
-        TextRenderer::start();
+        TextRenderer::start(mpDevice);
     }
 
     void Sample::resizeSwapChain(uint32_t width, uint32_t height) {

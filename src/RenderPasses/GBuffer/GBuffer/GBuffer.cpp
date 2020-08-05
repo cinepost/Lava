@@ -30,8 +30,7 @@
 // List of primary GBuffer channels. These correspond to the render targets
 // used in the GBufferRaster pixel shader. Note that channel order should
 // correspond to SV_TARGET index order.
-const ChannelList GBuffer::kGBufferChannels =
-{
+const ChannelList GBuffer::kGBufferChannels = {
     { "posW",           "gPosW",            "world space position",         true /* optional */, ResourceFormat::RGBA32Float },
     { "normW",          "gNormW",           "world space normal",           true /* optional */, ResourceFormat::RGBA32Float },
     { "bitangentW",     "gBitangentW",      "world space bitangent",        true /* optional */, ResourceFormat::RGBA32Float },
@@ -42,8 +41,8 @@ const ChannelList GBuffer::kGBufferChannels =
     { "matlExtra",      "gMatlExtra",       "additional material data",     true /* optional */, ResourceFormat::RGBA32Float },
 };
 
-namespace
-{
+namespace {
+
     // Scripting options.
     const char kForceCullMode[] = "forceCullMode";
     const char kCullMode[] = "cull";
@@ -56,19 +55,17 @@ namespace
         { (uint32_t)RasterizerState::CullMode::Back, "Back" },
         { (uint32_t)RasterizerState::CullMode::Front, "Front" },
     };
+
 }
 
-GBuffer::GBuffer() : mGBufferParams{}
-{
+GBuffer::GBuffer(Device::SharedPtr pDevice) : GBufferBase(pDevice), mGBufferParams{} {
     assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }
 
-void GBuffer::parseDictionary(const Dictionary& dict)
-{
+void GBuffer::parseDictionary(const Dictionary& dict) {
     GBufferBase::parseDictionary(dict);
 
-    for (const auto& v : dict)
-    {
+    for (const auto& v : dict) {
         if (v.key() == kForceCullMode) mForceCullMode = v.val();
         else if (v.key() == kCullMode) mCullMode = (RasterizerState::CullMode)v.val();
         else if (v.key() == kUseBentShadingNormals) mUseBentShadingNormals = v.val();
@@ -76,8 +73,7 @@ void GBuffer::parseDictionary(const Dictionary& dict)
     }
 }
 
-Dictionary GBuffer::getScriptingDictionary()
-{
+Dictionary GBuffer::getScriptingDictionary() {
     Dictionary dict = GBufferBase::getScriptingDictionary();
     dict[kForceCullMode] = mForceCullMode;
     dict[kCullMode] = mCullMode;
@@ -85,8 +81,7 @@ Dictionary GBuffer::getScriptingDictionary()
     return dict;
 }
 
-void GBuffer::renderUI(Gui::Widgets& widget)
-{
+void GBuffer::renderUI(Gui::Widgets& widget) {
     // Render the base class UI first.
     GBufferBase::renderUI(widget);
 
@@ -95,11 +90,9 @@ void GBuffer::renderUI(Gui::Widgets& widget)
     widget.tooltip("Enable this option to force the same cull mode for all geometry.\n\n"
         "Otherwise the default for rasterization is to set the cull mode automatically based on triangle winding, and for ray tracing to disable culling.", true);
 
-    if (mForceCullMode)
-    {
+    if (mForceCullMode) {
         uint32_t cullMode = (uint32_t)mCullMode;
-        if (widget.dropdown("Cull mode", kCullModeList, cullMode))
-        {
+        if (widget.dropdown("Cull mode", kCullModeList, cullMode)) {
             setCullMode((RasterizerState::CullMode)cullMode);
             mOptionsChanged = true;
         }
@@ -110,16 +103,14 @@ void GBuffer::renderUI(Gui::Widgets& widget)
     widget.tooltip("Enables adjustment of the shading normals to reduce the risk of black pixels due to back-facing vectors.", true);
 }
 
-void GBuffer::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void GBuffer::compile(RenderContext* pContext, const CompileData& compileData) {
     GBufferBase::compile(pContext, compileData);
 
     mGBufferParams.frameSize = mFrameDim;
     mGBufferParams.invFrameSize = mInvFrameDim;
 }
 
-void GBuffer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void GBuffer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBufferBase::setScene(pRenderContext, pScene);
 
     mGBufferParams.frameCount = 0;

@@ -34,15 +34,13 @@
 
 using namespace Falcor;
 
-class CSM : public RenderPass, public inherit_shared_from_this<RenderPass, CSM>
-{
-public:
+class CSM : public RenderPass, public inherit_shared_from_this<RenderPass, CSM> {
+ public:
     using SharedPtr = std::shared_ptr<CSM>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
 
-    enum class PartitionMode
-    {
+    enum class PartitionMode {
         Linear,
         Logarithmic,
         PSSM,
@@ -95,7 +93,7 @@ public:
     float getEvsmNegativeExponent() { return mCsmData.evsmExponents.y; }
 
 private:
-    CSM();
+    CSM(Device::SharedPtr pDevice);
     uint2 mMapSize = uint2(2048, 2048);
     Light::SharedConstPtr mpLight;
     Camera::SharedPtr mpLightCamera;

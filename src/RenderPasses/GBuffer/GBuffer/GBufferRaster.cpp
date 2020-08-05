@@ -32,36 +32,35 @@
 
 const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
 
-namespace
-{
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+namespace {
 
-    #ifdef FALCOR_D3D12
-    const std::string shaderModel = "6_1";
-    #else
-    const std::string shaderModel = "450";
-    #endif
+const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
 
-    // Additional output channels.
-    // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
-    const ChannelList kGBufferExtraChannels =
-    {
-        { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
-        { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
-        { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
-        { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
-        { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R32Float    },
-        { "rayDifferentialX", "gRayDifferentialX",   "ray differental X",                true /* optional */, ResourceFormat::RGBA32Float },
-        { "rayDifferentialY", "gRayDifferentialY",   "ray differental Y",                true /* optional */, ResourceFormat::RGBA32Float },
-        { "rayDifferentialZ", "gRayDifferentialZ",   "ray differental Z",                true /* optional */, ResourceFormat::RGBA32Float },
-    };
+#ifdef FALCOR_D3D12
+const std::string shaderModel = "6_1";
+#else
+const std::string shaderModel = "450";
+#endif
 
-    const std::string kDepthName = "depth";
+// Additional output channels.
+// TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
+const ChannelList kGBufferExtraChannels = {
+    { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
+    { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+    { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
+    { "pnFwidth",         "gPosNormalFwidth",    "position and normal filter width", true /* optional */, ResourceFormat::RG32Float   },
+    { "linearZ",          "gLinearZAndDeriv",    "linear z (and derivative)",        true /* optional */, ResourceFormat::RG32Float   },
+    { "surfSpreadAngle",  "gSurfaceSpreadAngle", "surface spread angle (texlod)",    true /* optional */, ResourceFormat::R32Float    },
+    { "rayDifferentialX", "gRayDifferentialX",   "ray differental X",                true /* optional */, ResourceFormat::RGBA32Float },
+    { "rayDifferentialY", "gRayDifferentialY",   "ray differental Y",                true /* optional */, ResourceFormat::RGBA32Float },
+    { "rayDifferentialZ", "gRayDifferentialZ",   "ray differental Z",                true /* optional */, ResourceFormat::RGBA32Float },
+};
+
+const std::string kDepthName = "depth";
+
 }
 
-RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
-{
+RenderPassReflection GBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     // Add the required depth output. This always exists.
@@ -75,14 +74,11 @@ RenderPassReflection GBufferRaster::reflect(const CompileData& compileData)
     return reflector;
 }
 
-GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new GBufferRaster(dict));
+GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    return SharedPtr(new GBufferRaster(pRenderContext->device(), dict));
 }
 
-GBufferRaster::GBufferRaster(const Dictionary& dict)
-    : GBuffer()
-{
+GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice) {
     parseDictionary(dict);
 
     // Create raster program
@@ -90,10 +86,10 @@ GBufferRaster::GBufferRaster(const Dictionary& dict)
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     desc.setShaderModel(shaderModel);
-    mRaster.pProgram = GraphicsProgram::create(desc, defines);
+    mRaster.pProgram = GraphicsProgram::create(pDevice, desc, defines);
 
     // Initialize graphics state
-    mRaster.pState = GraphicsState::create();
+    mRaster.pState = GraphicsState::create(pDevice);
     mRaster.pState->setProgram(mRaster.pProgram);
 
     // Set default cull mode
@@ -105,14 +101,13 @@ GBufferRaster::GBufferRaster(const Dictionary& dict)
     DepthStencilState::SharedPtr pDsState = DepthStencilState::create(dsDesc);
     mRaster.pState->setDepthStencilState(pDsState);
 
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(pDevice);
 }
 
-void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
-    mpDepthPrePassGraph = RenderGraph::create("Depth Pre-Pass");
+    mpDepthPrePassGraph = RenderGraph::create(mpDevice, "Depth Pre-Pass");
     DepthPass::SharedPtr pDepthPass = DepthPass::create(pContext);
     pDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePassGraph->addPass(pDepthPass, "DepthPrePass");
@@ -120,8 +115,7 @@ void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileD
     mpDepthPrePassGraph->setScene(mpScene);
 }
 
-void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBuffer::setScene(pRenderContext, pScene);
 
     mRaster.pVars = nullptr;
@@ -141,8 +135,7 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     if (mpDepthPrePassGraph) mpDepthPrePassGraph->setScene(pScene);
 }
 
-void GBufferRaster::setCullMode(RasterizerState::CullMode mode)
-{
+void GBufferRaster::setCullMode(RasterizerState::CullMode mode) {
     GBuffer::setCullMode(mode);
     RasterizerState::Desc rsDesc;
     rsDesc.setCullMode(mCullMode);
@@ -150,11 +143,9 @@ void GBufferRaster::setCullMode(RasterizerState::CullMode mode)
     mRaster.pState->setRasterizerState(RasterizerState::create(rsDesc));
 }
 
-void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Update refresh flag if options that affect the output have changed.
-    if (mOptionsChanged)
-    {
+    if (mOptionsChanged) {
         Dictionary& dict = renderData.getDictionary();
         auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
         dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
@@ -162,18 +153,15 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Bind primary channels as render targets and clear them.
-    for (size_t i = 0; i < kGBufferChannels.size(); ++i)
-    {
+    for (size_t i = 0; i < kGBufferChannels.size(); ++i) {
         Texture::SharedPtr pTex = renderData[kGBufferChannels[i].name]->asTexture();
         mpFbo->attachColorTarget(pTex, uint32_t(i));
     }
     pRenderContext->clearFbo(mpFbo.get(), float4(0), 1.f, 0, FboAttachmentType::Color);
 
     // If there is no scene, clear the outputs and return.
-    if (mpScene == nullptr)
-    {
-        auto clear = [&](const ChannelDesc& channel)
-        {
+    if (mpScene == nullptr) {
+        auto clear = [&](const ChannelDesc& channel) {
             auto pTex = renderData[channel.name]->asTexture();
             if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
         };
@@ -192,9 +180,8 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pProgram->addDefines(getValidResourceDefines(kGBufferExtraChannels, renderData));
 
     // Create program vars.
-    if (!mRaster.pVars)
-    {
-        mRaster.pVars = GraphicsVars::create(mRaster.pProgram.get());
+    if (!mRaster.pVars) {
+        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
     }
 
     // Copy depth buffer.
@@ -203,8 +190,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     pRenderContext->copyResource(renderData[kDepthName].get(), mpDepthPrePassGraph->getOutput("DepthPrePass.depth").get());
 
     // Bind extra channels as UAV buffers.
-    for (const auto& channel : kGBufferExtraChannels)
-    {
+    for (const auto& channel : kGBufferExtraChannels) {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
         if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
         mRaster.pVars[channel.texname] = pTex;

@@ -32,40 +32,36 @@
 #include <algorithm>
 #include <numeric>
 
-namespace Falcor
-{
-    namespace
-    {
-        const Gui::DropdownList kSolidAngleBoundList =
-        {
-            { (uint32_t)SolidAngleBoundMethod::Sphere, "Sphere" },
-            { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir." },
-            { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around vec. to center" },
-        };
-    }
+namespace Falcor {
 
-    LightBVHSampler::SharedPtr LightBVHSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
-    {
+namespace {
+
+const Gui::DropdownList kSolidAngleBoundList = {
+    { (uint32_t)SolidAngleBoundMethod::Sphere, "Sphere" },
+    { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir." },
+    { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around vec. to center" },
+};
+
+}  // namespace
+
+    LightBVHSampler::SharedPtr LightBVHSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options) {
         return SharedPtr(new LightBVHSampler(pRenderContext, pScene, options));
     }
 
-    bool LightBVHSampler::update(RenderContext* pRenderContext)
-    {
-        PROFILE("LightBVHSampler::update");
+    bool LightBVHSampler::update(RenderContext* pRenderContext) {
+        PROFILE(pRenderContext->device(), "LightBVHSampler::update");
 
         bool samplerChanged = false;
         bool needsRefit = false;
 
         // Check if light collection has changed.
-        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged))
-        {
+        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged)) {
             if (mOptions.buildOptions.allowRefitting && !mNeedsRebuild) needsRefit = true;
             else mNeedsRebuild = true;
         }
 
         // Rebuild BVH if it's marked as dirty.
-        if (mNeedsRebuild)
-        {
+        if (mNeedsRebuild) {
             mpBVHBuilder->build(*mpBVH);
             mNeedsRebuild = false;
             samplerChanged = true;
@@ -79,8 +75,7 @@ namespace Falcor
         return samplerChanged;
     }
 
-    bool LightBVHSampler::prepareProgram(Program* pProgram) const
-    {
+    bool LightBVHSampler::prepareProgram(Program* pProgram) const {
         // Call the base class first.
         bool varsChanged = EmissiveLightSampler::prepareProgram(pProgram);
 
@@ -95,16 +90,14 @@ namespace Falcor
         return varsChanged;
     }
 
-    bool LightBVHSampler::setShaderData(const ShaderVar& var) const
-    {
+    bool LightBVHSampler::setShaderData(const ShaderVar& var) const {
         assert(var.isValid());
 
         // In the following we validate that the struct has the correct fields and set the data.
 
         // Bind the BVH resources.
         assert(mpBVH);
-        if (!mpBVH->setShaderData(var["_lightBVH"]))
-        {
+        if (!mpBVH->setShaderData(var["_lightBVH"])) {
             logError("LightBVHSampler::setShaderData() - Failed to bind the light BVH");
             return false;
         }
@@ -112,15 +105,12 @@ namespace Falcor
         return true;
     }
 
-    bool LightBVHSampler::renderUI(Gui::Widgets& widgets)
-    {
+    bool LightBVHSampler::renderUI(Gui::Widgets& widgets) {
         bool optionsChanged = false;
 
         auto buildGroup = Gui::Group(widgets, "BVH building options");
-        if (buildGroup.open())
-        {
-            if (mpBVHBuilder->renderUI(buildGroup))
-            {
+        if (buildGroup.open()) {
+            if (mpBVHBuilder->renderUI(buildGroup)) {
                 mOptions.buildOptions = mpBVHBuilder->getOptions();
                 mNeedsRebuild = optionsChanged = true;
             }
@@ -129,18 +119,15 @@ namespace Falcor
         }
 
         auto traversalGroup = Gui::Group(widgets, "BVH traversal options");
-        if (traversalGroup.open())
-        {
+        if (traversalGroup.open()) {
             optionsChanged |= traversalGroup.checkbox("Use bounding cone (NdotL)", mOptions.useBoundingCone);
-            if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone))
-            {
+            if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone)) {
                 mNeedsRebuild = optionsChanged = true;
             }
             optionsChanged |= traversalGroup.checkbox("Disable node flux", mOptions.disableNodeFlux);
             optionsChanged |= traversalGroup.checkbox("Use triangle uniform sampling", mOptions.useUniformTriangleSampling);
 
-            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod))
-            {
+            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod)) {
                 mNeedsRebuild = optionsChanged = true;
             }
 
@@ -148,8 +135,7 @@ namespace Falcor
         }
 
         auto statGroup = Gui::Group(widgets, "BVH statistics");
-        if (statGroup.open())
-        {
+        if (statGroup.open()) {
             mpBVH->renderUI(statGroup);
             statGroup.release();
         }
@@ -157,15 +143,13 @@ namespace Falcor
         return optionsChanged;
     }
 
-    LightBVH::SharedConstPtr LightBVHSampler::getBVH() const
-    {
+    LightBVH::SharedConstPtr LightBVHSampler::getBVH() const {
         return mpBVH->isValid() ? mpBVH : nullptr;
     }
 
     LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
         : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
-        , mOptions(options)
-    {
+        , mOptions(options) {
         // Create the BVH and builder.
         mpBVHBuilder = LightBVHBuilder::create(mOptions.buildOptions);
         if (!mpBVHBuilder) {
@@ -177,8 +161,7 @@ namespace Falcor
         }
     }
 
-    SCRIPT_BINDING(LightBVHSampler)
-    {
+    SCRIPT_BINDING(LightBVHSampler) {
         auto e = m.enum_<SolidAngleBoundMethod>("SolidAngleBoundMethod");
         e.regEnumVal(SolidAngleBoundMethod::BoxToAverage);
         e.regEnumVal(SolidAngleBoundMethod::BoxToCenter);
@@ -195,4 +178,5 @@ namespace Falcor
         options.field(solidAngleBoundMethod);
 #undef field
     }
-}
+
+}  // namespace Falcor

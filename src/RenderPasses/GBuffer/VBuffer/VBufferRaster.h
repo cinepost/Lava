@@ -49,7 +49,7 @@ public:
     std::string getDesc(void) override { return kDesc; }
 
 private:
-    VBufferRaster(const Dictionary& dict);
+    VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
 
     // Internal state
     Fbo::SharedPtr                  mpFbo;

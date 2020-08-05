@@ -30,21 +30,18 @@
 #include "Falcor/Utils/Debug/debug.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("ForwardLightingPass", "Computes direct and indirect illumination and applies shadows for the current scene", ForwardLightingPass::create);
 }
 
 const char* ForwardLightingPass::kDesc = "The pass computes the lighting results for the current scene. It will compute direct-illumination, indirect illumination from the light-probe and apply shadows (if a visibility map is provided).\n"
 "The pass can output the world-space normals and screen-space motion vectors, both are optional";
 
-namespace
-{
+namespace {
     const std::string kDepth = "depth";
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
@@ -55,9 +52,8 @@ namespace
     const std::string kSuperSampling = "enableSuperSampling";
 }
 
-ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    auto pThis = SharedPtr(new ForwardLightingPass());
+ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
     pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
 
     for (const auto& v : dict)
@@ -70,21 +66,19 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
     return pThis;
 }
 
-Dictionary ForwardLightingPass::getScriptingDictionary()
-{
+Dictionary ForwardLightingPass::getScriptingDictionary() {
     Dictionary d;
     d[kSampleCount] = mSampleCount;
     d[kSuperSampling] = mEnableSuperSampling;
     return d;
 }
 
-ForwardLightingPass::ForwardLightingPass()
-{
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
-    mpState = GraphicsState::create();
+ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
+    mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
 
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(pDevice);
 
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
@@ -116,11 +110,11 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
 
     if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
 
-    mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
+    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    setSampler(Sampler::create(samplerDesc));
+    setSampler(Sampler::create(pRenderContext->device(), samplerDesc));
 }
 
 void ForwardLightingPass::initDepth(const RenderData& renderData) {
@@ -132,7 +126,7 @@ void ForwardLightingPass::initDepth(const RenderData& renderData) {
     } else {
         mpState->setDepthStencilState(nullptr);
         if (mpFbo->getDepthStencilTexture() == nullptr) {
-            auto pDepth = Texture::create2D(mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(mpDevice, mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
             mpFbo->attachDepthStencilTarget(pDepth);
         }
     }

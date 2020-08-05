@@ -32,29 +32,24 @@
 #include "Utils/UI/Gui.h"
 #include "glm/gtc/type_ptr.hpp"
 
-namespace Falcor
-{
+namespace Falcor {
+
     static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
 
     // Default dimensions of full frame cameras and 35mm film
     const float Camera::kDefaultFrameHeight = 24.0f;
 
-    Camera::Camera()
-    {
-    }
+    Camera::Camera() {}
 
     Camera::~Camera() = default;
 
-    Camera::SharedPtr Camera::create()
-    {
+    Camera::SharedPtr Camera::create() {
         Camera* pCamera = new Camera;
         return SharedPtr(pCamera);
     }
 
-    Camera::Changes Camera::beginFrame(bool firstFrame)
-    {
-        if (mJitterPattern.pGenerator)
-        {
+    Camera::Changes Camera::beginFrame(bool firstFrame) {
+        if (mJitterPattern.pGenerator) {
             float2 jitter = mJitterPattern.pGenerator->next();
             jitter *= mJitterPattern.scale;
             setJitterInternal(jitter.x, jitter.y);
@@ -93,35 +88,24 @@ namespace Falcor
         return getChanges();
     }
 
-    void Camera::calculateCameraParameters() const
-    {
-        if (mDirty)
-        {
+    void Camera::calculateCameraParameters() const {
+        if (mDirty) {
             // Interpret focal length of 0 as 0 FOV. Technically 0 FOV should be focal length of infinity.
             const float fovY = mData.focalLength == 0.0f ? 0.0f : focalLengthToFovY(mData.focalLength, mData.frameHeight);
 
-            if (mEnablePersistentViewMat)
-            {
+            if (mEnablePersistentViewMat) {
                 mData.viewMat = mPersistentViewMat;
-            }
-            else
-            {
+            } else {
                 mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
             }
 
             // if camera projection is set to be persistent, don't override it.
-            if (mEnablePersistentProjMat)
-            {
+            if (mEnablePersistentProjMat) {
                 mData.projMat = mPersistentProjMat;
-            }
-            else
-            {
-                if (fovY != 0.f)
-                {
+            } else {
+                if (fovY != 0.f) {
                     mData.projMat = glm::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
-                }
-                else
-                {
+                } else {
                     // Take the length of look-at vector as half a viewport size
                     const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
                     mData.projMat = glm::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
@@ -145,8 +129,7 @@ namespace Falcor
             // Extract camera space frustum planes from the VP matrix
             // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
             glm::mat4 tempMat = glm::transpose(mData.viewProjMat);
-            for (int i = 0; i < 6; i++)
-            {
+            for (int i = 0; i < 6; i++) {
                 float4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
                 if(i != 5) // Z range is [0, w]. For the 0 <= z plane we don't need to add w
                 {
@@ -171,63 +154,53 @@ namespace Falcor
         }
     }
 
-    const glm::mat4& Camera::getViewMatrix() const
-    {
+    const glm::mat4& Camera::getViewMatrix() const {
         calculateCameraParameters();
         return mData.viewMat;
     }
 
-    const glm::mat4& Camera::getProjMatrix() const
-    {
+    const glm::mat4& Camera::getProjMatrix() const {
         calculateCameraParameters();
         return mData.projMat;
     }
 
-    const glm::mat4& Camera::getViewProjMatrix() const
-    {
+    const glm::mat4& Camera::getViewProjMatrix() const {
         calculateCameraParameters();
         return mData.viewProjMat;
     }
 
-    const glm::mat4& Camera::getInvViewProjMatrix() const
-    {
+    const glm::mat4& Camera::getInvViewProjMatrix() const {
         calculateCameraParameters();
         return mData.invViewProj;
     }
 
-    void Camera::setProjectionMatrix(const glm::mat4& proj)
-    {
+    void Camera::setProjectionMatrix(const glm::mat4& proj) {
         mDirty = true;
         mPersistentProjMat = proj;
         togglePersistentProjectionMatrix(true);
     }
 
-    void Camera::setViewMatrix(const glm::mat4& view)
-    {
+    void Camera::setViewMatrix(const glm::mat4& view) {
         mDirty = true;
         mPersistentViewMat = view;
         togglePersistentViewMatrix(true);
     }
 
-    void Camera::togglePersistentProjectionMatrix(bool persistent)
-    {
+    void Camera::togglePersistentProjectionMatrix(bool persistent) {
         mEnablePersistentProjMat = persistent;
     }
 
-    void Camera::togglePersistentViewMatrix(bool persistent)
-    {
+    void Camera::togglePersistentViewMatrix(bool persistent) {
         mEnablePersistentViewMat = persistent;
     }
 
-    bool Camera::isObjectCulled(const BoundingBox& box) const
-    {
+    bool Camera::isObjectCulled(const BoundingBox& box) const {
         calculateCameraParameters();
 
         bool isInside = true;
         // AABB vs. frustum test
         // See method 4b: https://fgiesen.wordpress.com/2010/10/17/view-frustum-culling/
-        for (int plane = 0; plane < 6; plane++)
-        {
+        for (int plane = 0; plane < 6; plane++) {
             float3 signedExtent = box.extent * mFrustumPlanes[plane].sign;
             float dr = glm::dot(box.center + signedExtent, mFrustumPlanes[plane].xyz);
             isInside = isInside && (dr > mFrustumPlanes[plane].negW);
@@ -236,53 +209,44 @@ namespace Falcor
         return !isInside;
     }
 
-    void Camera::setShaderData(const ShaderVar& var) const
-    {
+    void Camera::setShaderData(const ShaderVar& var) const {
         calculateCameraParameters();
         var["data"].setBlob(mData);
     }
 
-    void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale)
-    {
+    void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale) {
         mJitterPattern.pGenerator = pGenerator;
         mJitterPattern.scale = scale;
-        if (!pGenerator)
-        {
+        if (!pGenerator) {
             setJitterInternal(0, 0);
         }
     }
 
-    void Camera::setJitter(float jitterX, float jitterY)
-    {
-        if (mJitterPattern.pGenerator)
-        {
+    void Camera::setJitter(float jitterX, float jitterY) {
+        if (mJitterPattern.pGenerator) {
             logWarning("Camera::setJitter() called when a pattern-generator object was attached to the camera. Detaching the pattern-generator");
             mJitterPattern.pGenerator = nullptr;
         }
         setJitterInternal(jitterX, jitterY);
     }
 
-    void Camera::setJitterInternal(float jitterX, float jitterY)
-    {
+    void Camera::setJitterInternal(float jitterX, float jitterY) {
         mData.jitterX = jitterX;
         mData.jitterY = jitterY;
         mDirty = true;
     }
 
-    float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const
-    {
+    float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const {
         const float FOVrad = focalLengthToFovY(getFocalLength(), Camera::kDefaultFrameHeight);
         const float angle = atanf(2.0f * tanf(FOVrad * 0.5f) / winHeightPixels);
         return angle;
     }
 
-    void Camera::renderUI(Gui* pGui, const char* uiGroup)
-    {
+    void Camera::renderUI(Gui* pGui, const char* uiGroup) {
         if (!uiGroup) uiGroup = "Camera Settings";
 
         auto g = Gui::Group(pGui, uiGroup);
-        if (g.open())
-        {
+        if (g.open()) {
             float focalLength = getFocalLength();
             if (g.var("Focal Length", focalLength, 0.0f, FLT_MAX, 0.25f)) setFocalLength(focalLength);
 
@@ -317,8 +281,7 @@ namespace Falcor
         }
     }
 
-    SCRIPT_BINDING(Camera)
-    {
+    SCRIPT_BINDING(Camera) {
         auto camera = m.regClass(Camera);
         camera.roProperty("name", &Camera::getName);
         camera.property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
@@ -334,4 +297,5 @@ namespace Falcor
         camera.property("target", &Camera::getTarget, &Camera::setTarget);
         camera.property("up", &Camera::getUpVector, &Camera::setUpVector);
     }
-}
+
+}  // namespace Falcor

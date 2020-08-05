@@ -28,13 +28,11 @@
 #include "FXAA/FXAA.h"
 #include "TAA/TAA.h"
 
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-static void regFXAA(ScriptBindings::Module& m)
-{
+static void regFXAA(ScriptBindings::Module& m) {
     auto c = m.regClass(FXAA);
     c.property("qualitySubPix", &FXAA::getQualitySubPix, &FXAA::setQualitySubPix);
     c.property("edgeThreshold", &FXAA::getQualityEdgeThreshold, &FXAA::setQualityEdgeThreshold);
@@ -42,15 +40,13 @@ static void regFXAA(ScriptBindings::Module& m)
     c.property("earlyOut", &FXAA::getEarlyOut, &FXAA::setEarlyOut);
 }
 
-static void regTAA(ScriptBindings::Module& m)
-{
+static void regTAA(ScriptBindings::Module& m) {
     auto c = m.regClass(TAA);
     c.property("alpha", &TAA::getAlpha, &TAA::setAlpha);
     c.property("sigma", &TAA::getColorBoxSigma, &TAA::setColorBoxSigma);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
     lib.registerClass("TAA", "Temporal Anti-Aliasing", TAA::create);
     ScriptBindings::registerBinding(regFXAA);

@@ -31,9 +31,8 @@
 
 using namespace Falcor;
 
-class InvalidPixelDetectionPass : public RenderPass
-{
-public:
+class InvalidPixelDetectionPass : public RenderPass {
+ public:
     using SharedPtr = std::shared_ptr<InvalidPixelDetectionPass>;
 
     /** Create a new object
@@ -45,8 +44,8 @@ public:
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
-private:
-    InvalidPixelDetectionPass();
+ private:
+    InvalidPixelDetectionPass(Device::SharedPtr pDevice);
     FullScreenPass::SharedPtr mpInvalidPixelDetectPass;
     Fbo::SharedPtr mpFbo;
     bool mReady = false;

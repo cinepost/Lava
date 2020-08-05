@@ -35,6 +35,8 @@ const char* ResolvePass::kDesc = "Resolve a multi-sampled texture";
 static const std::string kDst = "dst";
 static const std::string kSrc = "src";
 
+ResolvePass::ResolvePass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+
 RenderPassReflection ResolvePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kSrc, "Multi-sampled texture").format(mFormat).texture2D(0, 0, 0);
@@ -43,7 +45,7 @@ RenderPassReflection ResolvePass::reflect(const CompileData& compileData) {
 }
 
 ResolvePass::SharedPtr ResolvePass::create(RenderContext* pRenderContext, const Dictionary& dictionary) {
-    return SharedPtr(new ResolvePass);
+    return SharedPtr(new ResolvePass(pRenderContext->device()));
 }
 
 void ResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {

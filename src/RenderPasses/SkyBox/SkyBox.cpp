@@ -29,29 +29,25 @@
 #include "glm/gtx/transform.hpp"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-static void regSkyBox(ScriptBindings::Module& m)
-{
+static void regSkyBox(ScriptBindings::Module& m) {
     auto c = m.regClass(SkyBox);
     c.property("scale", &SkyBox::getScale, &SkyBox::setScale);
     c.property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("SkyBox", "Render an environment map", SkyBox::create);
     ScriptBindings::registerBinding(regSkyBox);
 }
 const char* SkyBox::kDesc = "Render an environment-map. The map can be provided by the user or taken from a scene";
 
-namespace
-{
-    const Gui::DropdownList kFilterList =
-    {
+namespace {
+
+    const Gui::DropdownList kFilterList = {
         { (uint32_t)Sampler::Filter::Linear, "Linear" },
         { (uint32_t)Sampler::Filter::Point, "Point" },
     };
@@ -63,22 +59,22 @@ namespace
     const std::string kTexName = "texName";
     const std::string kLoadAsSrgb = "loadAsSrgb";
     const std::string kFilter = "filter";
+
 }
 
-SkyBox::SkyBox()
-{
-    mpCubeScene = Scene::create("cube.obj");
+SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    mpCubeScene = Scene::create(pDevice, "cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/SkyBox/SkyBox.slang", "vs", "ps");
+    mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.slang", "vs", "ps");
     mpProgram->addDefines(mpCubeScene->getSceneDefines());
-    mpVars = GraphicsVars::create(mpProgram->getReflector());
-    mpFbo = Fbo::create();
+    mpVars = GraphicsVars::create(pDevice, mpProgram->getReflector());
+    mpFbo = Fbo::create(pDevice);
 
     // Create state
-    mpState = GraphicsState::create();
-    BlendState::Desc blendDesc;
-    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(); i++) blendDesc.setRenderTargetWriteMask(i, false, false, false, false);
+    mpState = GraphicsState::create(pDevice);
+    BlendState::Desc blendDesc(pDevice);
+    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(pDevice); i++) blendDesc.setRenderTargetWriteMask(i, false, false, false, false);
     blendDesc.setIndependentBlend(true);
     mpState->setBlendState(BlendState::create(blendDesc));
 
@@ -95,13 +91,10 @@ SkyBox::SkyBox()
     setFilter((uint32_t)mFilter);
 }
 
-SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pSkyBox = SharedPtr(new SkyBox());
-    for (const auto& v : dict)
-    {
-        if (v.key() == kTexName)
-        {
+SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pSkyBox = SharedPtr(new SkyBox(pRenderContext->device()));
+    for (const auto& v : dict) {
+        if (v.key() == kTexName) {
             std::string name = v.val();
             pSkyBox->mTexName = name;
         }
@@ -111,17 +104,15 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
     }
 
     std::shared_ptr<Texture> pTexture;
-    if (pSkyBox->mTexName.size() != 0)
-    {
-        pTexture = Texture::createFromFile(pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
+    if (pSkyBox->mTexName.size() != 0) {
+        pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
         if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
         pSkyBox->setTexture(pTexture);
     }
     return pSkyBox;
 }
 
-Dictionary SkyBox::getScriptingDictionary()
-{
+Dictionary SkyBox::getScriptingDictionary() {
     Dictionary dict;
     dict[kTexName] = mTexName;
     dict[kLoadAsSrgb] = mLoadSrgb;
@@ -129,16 +120,14 @@ Dictionary SkyBox::getScriptingDictionary()
     return dict;
 }
 
-RenderPassReflection SkyBox::reflect(const CompileData& compileData)
-{
+RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kTarget, "Color buffer").format(ResourceFormat::RGBA32Float);
     auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }
 
-void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
     mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
 
@@ -155,19 +144,16 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
 }
 
-void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
 
-    if (mpScene)
-    {
+    if (mpScene) {
         mpCubeScene->setCamera(mpScene->getCamera());
         if (mpScene->getEnvironmentMap()) setTexture(mpScene->getEnvironmentMap());
     }
 }
 
-void SkyBox::renderUI(Gui::Widgets& widget)
-{
+void SkyBox::renderUI(Gui::Widgets& widget) {
     float scale = mScale;
     if (widget.var("Scale", scale, 0.f)) setScale(scale);
 
@@ -177,33 +163,28 @@ void SkyBox::renderUI(Gui::Widgets& widget)
     if (widget.dropdown("Filter", kFilterList, filter)) setFilter(filter);
 }
 
-void SkyBox::loadImage()
-{
+void SkyBox::loadImage() {
     std::string filename;
     FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"}, {"exr"} };
-    if (openFileDialog(filters, filename))
-    {
-        mpTexture = Texture::createFromFile(filename, false, mLoadSrgb);
+    if (openFileDialog(filters, filename)) {
+        mpTexture = Texture::createFromFile(mpDevice, filename, false, mLoadSrgb);
         setTexture(mpTexture);
     }
 }
 
-void SkyBox::setTexture(const Texture::SharedPtr& pTexture)
-{
+void SkyBox::setTexture(const Texture::SharedPtr& pTexture) {
     mpTexture = pTexture;
-    if (mpTexture)
-    {
+    if (mpTexture) {
         assert(mpTexture->getType() == Texture::Type::TextureCube || mpTexture->getType() == Texture::Type::Texture2D);
         (mpTexture->getType() == Texture::Type::Texture2D) ? mpProgram->addDefine("_SPHERICAL_MAP") : mpProgram->removeDefine("_SPHERICAL_MAP");
     }
     mpVars["gTexture"] = mpTexture;
 }
 
-void SkyBox::setFilter(uint32_t filter)
-{
+void SkyBox::setFilter(uint32_t filter) {
     mFilter = (Sampler::Filter)filter;
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(mFilter, mFilter, mFilter);
-    mpSampler = Sampler::create(samplerDesc);
+    mpSampler = Sampler::create(mpDevice, samplerDesc);
     mpVars["gSampler"] = mpSampler;
 }

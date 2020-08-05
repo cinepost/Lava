@@ -27,8 +27,7 @@
  **************************************************************************/
 #include "SplitScreenPass.h"
 
-namespace
-{
+namespace {
     // Divider colors
     const float4 kColorUnselected = float4(0, 0, 0, 1);
     const float4 kColorSelected = float4(1, 1, 1, 1);
@@ -57,34 +56,28 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
 }
 
-SplitScreenPass::SplitScreenPass()
-{
-    mpArrowTex = Texture::create2D(16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
-    mClock = gpFramework->getGlobalClock();
+SplitScreenPass::SplitScreenPass(Device::SharedPtr pDevice): ComparisonPass(pDevice), mClock(pDevice) {
+    mpArrowTex = Texture::create2D(pDevice, 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
+    mClock = gpFramework->getClock();
     createProgram();
 }
 
-SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new SplitScreenPass());
-    for (const auto& v : dict)
-    {
-        if (!pPass->parseKeyValuePair(v.key(), v.val()))
-        {
+SplitScreenPass::SharedPtr SplitScreenPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pPass = SharedPtr(new SplitScreenPass(pRenderContext->device()));
+    for (const auto& v : dict) {
+        if (!pPass->parseKeyValuePair(v.key(), v.val())) {
             logWarning("Unknown field `" + v.key() + "` in a SplitScreenPass dictionary");
         }
     }
     return pPass;
 }
 
-void SplitScreenPass::createProgram()
-{
+void SplitScreenPass::createProgram() {
     // Create our shader that splits the screen.
-    mpSplitShader = FullScreenPass::create(kSplitShader);
+    mpSplitShader = FullScreenPass::create(mpDevice, kSplitShader);
 }
 
-void SplitScreenPass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void SplitScreenPass::execute(RenderContext* pContext, const RenderData& renderData) {
     mpSplitShader["GlobalCB"]["gDividerColor"] = mMouseOverDivider ? kColorSelected : kColorUnselected;
     mpSplitShader["GlobalCB"]["gMousePosition"] = mMousePos;
     mpSplitShader["GlobalCB"]["gDrawArrows"] = mDrawArrows && mMouseOverDivider;
@@ -93,8 +86,7 @@ void SplitScreenPass::execute(RenderContext* pContext, const RenderData& renderD
     ComparisonPass::execute(pContext, renderData);
 }
 
-bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
-{
+bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent) {
     // If we have the divider grabbed, claim *all* mouse movements for ourself
     bool handled = mDividerGrabbed;
 
@@ -105,8 +97,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     mMousePos = glm::clamp(mMousePos, int2(0, 0), int2(pDstFbo->getWidth() - 1, pDstFbo->getHeight() - 1));
 
     // Actually process our events
-    if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::LeftButtonDown)
-    {
+    if (mMouseOverDivider && mouseEvent.type == MouseEvent::Type::LeftButtonDown) {
         mDividerGrabbed = true;
         handled = true;
 
@@ -115,8 +106,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     }
     else if (mDividerGrabbed)
     {
-        if (mouseEvent.type == MouseEvent::Type::LeftButtonUp)
-        {
+        if (mouseEvent.type == MouseEvent::Type::LeftButtonUp) {
             mDividerGrabbed = false;
             handled = true;
         }
@@ -134,8 +124,7 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
     return handled;
 }
 
-void SplitScreenPass::renderUI(Gui::Widgets& widget)
-{
+void SplitScreenPass::renderUI(Gui::Widgets& widget) {
     widget.var("Split location", mSplitLoc, 0.0f, 1.0f, 0.001f);
     widget.checkbox("Show Arrows", mDrawArrows, true);
     ComparisonPass::renderUI(widget);

@@ -66,7 +66,7 @@ namespace Falcor {
 
     template<typename T>
     bool ComputeParallelReduction::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult, Buffer::SharedPtr pResultBuffer, uint64_t resultOffset) {
-        PROFILE("ComputeParallelReduction::execute");
+        PROFILE(pRenderContext->device(), "ComputeParallelReduction::execute");
 
         // Check texture array/mip/sample count.
         if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1) {

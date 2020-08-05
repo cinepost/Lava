@@ -35,20 +35,20 @@
 
 namespace Falcor {
     
-VkDeviceMemory allocateDeviceMemory(Device::SharedPtr device, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
+VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = size;
-    allocInfo.memoryTypeIndex = device->getVkMemoryType(memType, memoryTypeBits);
+    allocInfo.memoryTypeIndex = pDevice->getVkMemoryType(memType, memoryTypeBits);
 
     VkDeviceMemory deviceMem;
-    vk_call(vkAllocateMemory(device->getApiHandle(), &allocInfo, nullptr, &deviceMem));
+    vk_call(vkAllocateMemory(pDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
     return deviceMem;
 }
 
-void* mapBufferApi(Device::SharedPtr device, const Buffer::ApiHandle& apiHandle, size_t size) {
+void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size) {
     void* pData;
-    vk_call(vkMapMemory(device->getApiHandle(), apiHandle, 0, size, 0, &pData));
+    vk_call(vkMapMemory(pDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
     return pData;
 }
 
@@ -79,13 +79,13 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
     return flags;
 }
 
-size_t getBufferDataAlignment(Device::SharedPtr device, const Buffer* pBuffer) {
+size_t getBufferDataAlignment(const Buffer* pBuffer) {
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(device->getApiHandle(), pBuffer->getApiHandle(), &reqs);
+    vkGetBufferMemoryRequirements(pBuffer->device()->getApiHandle(), pBuffer->getApiHandle(), &reqs);
     return reqs.alignment;
 }
 
-Buffer::ApiHandle createBuffer(Device::SharedPtr device, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
+Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
@@ -96,15 +96,15 @@ Buffer::ApiHandle createBuffer(Device::SharedPtr device, size_t size, Buffer::Bi
     bufferInfo.pQueueFamilyIndices = nullptr;
     
     VkBuffer buffer;
-    vk_call(vkCreateBuffer(device->getApiHandle(), &bufferInfo, nullptr, &buffer));
+    vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
 
     // Get the required buffer size
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(device->getApiHandle(), buffer, &reqs);
+    vkGetBufferMemoryRequirements(pDevice->getApiHandle(), buffer, &reqs);
 
-    VkDeviceMemory mem = allocateDeviceMemory(device, memType, reqs.memoryTypeBits, reqs.size);
-    vk_call(vkBindBufferMemory(device->getApiHandle(), buffer, mem, 0));
-    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(device, buffer, mem);
+    VkDeviceMemory mem = allocateDeviceMemory(pDevice, memType, reqs.memoryTypeBits, reqs.size);
+    vk_call(vkBindBufferMemory(pDevice->getApiHandle(), buffer, mem, 0));
+    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, mem);
 
     return apiHandle;
 }

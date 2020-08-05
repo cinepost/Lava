@@ -69,7 +69,7 @@ namespace {
     }
 
     bool AnimationController::animate(RenderContext* pContext, double currentTime) {
-        PROFILE("animate");
+        PROFILE(pContext->device(), "animate");
 
         mMatricesChanged.assign(mMatricesChanged.size(), false);
 
@@ -218,8 +218,7 @@ namespace {
             block["skinnedVertices"] = pVB;
             block["prevSkinnedVertices"] = pPrevVB;
 
-            auto createBuffer = [&](const std::string& name, const auto& initData)
-            {
+            auto createBuffer = [&](const std::string& name, const auto& initData) {
                 auto pBuffer = Buffer::createStructured(mpScene->device(), block[name], (uint32_t)initData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
                 pBuffer->setBlob(initData.data(), 0, pBuffer->getSize());
                 block[name] = pBuffer;

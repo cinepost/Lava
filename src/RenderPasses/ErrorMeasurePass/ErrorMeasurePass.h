@@ -32,9 +32,8 @@
 
 using namespace Falcor;
 
-class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<RenderPass, ErrorMeasurePass>
-{
-public:
+class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<RenderPass, ErrorMeasurePass> {
+ public:
     using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -46,8 +45,8 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
-private:
-    ErrorMeasurePass(const Dictionary& dict);
+ private:
+    ErrorMeasurePass(Device::SharedPtr pDevice,  const Dictionary& dict);
 
     bool init(RenderContext* pRenderContext, const Dictionary& dict);
 

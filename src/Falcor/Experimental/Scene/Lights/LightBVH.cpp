@@ -40,7 +40,7 @@ namespace Falcor {
 
     // TODO: Only update the ones that moved.
     void LightBVH::refit(RenderContext* pRenderContext) {
-        PROFILE("LightBVH::refit()");
+        PROFILE(mpDevice, "LightBVH::refit()");
 
         assert(mIsValid);
 

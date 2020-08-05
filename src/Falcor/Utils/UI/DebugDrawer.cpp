@@ -33,8 +33,8 @@
 
 namespace Falcor {
 
-DebugDrawer::SharedPtr DebugDrawer::create(uint32_t maxVertices) {
-    return SharedPtr(new DebugDrawer(maxVertices));
+DebugDrawer::SharedPtr DebugDrawer::create(std::shared_ptr<Device> pDevice, uint32_t maxVertices) {
+    return SharedPtr(new DebugDrawer(pDevice, maxVertices));
 }
 
 void DebugDrawer::addLine(const float3& a, const float3& b) {
@@ -193,8 +193,8 @@ void DebugDrawer::uploadBuffer() {
     }
 }
 
-DebugDrawer::DebugDrawer(uint32_t maxVertices) {
-    Buffer::SharedPtr pVertexBuffer = Buffer::create(sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+DebugDrawer::DebugDrawer(std::shared_ptr<Device> pDevice, uint32_t maxVertices): mpDevice(pDevice) {
+    Buffer::SharedPtr pVertexBuffer = Buffer::create(pDevice, sizeof(LineVertex) * maxVertices, Resource::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
     VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
     pBufferLayout->addElement("POSITION", 0, ResourceFormat::RGB32Float, 1, 0);

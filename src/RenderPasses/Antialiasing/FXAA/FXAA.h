@@ -57,7 +57,7 @@ public:
     bool getEarlyOut() { return mEarlyOut; }
 
 private:
-    FXAA();
+    FXAA(Device::SharedPtr pDevice);
 
     FullScreenPass::SharedPtr mpPass;
     Fbo::SharedPtr mpFbo;

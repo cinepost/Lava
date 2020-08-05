@@ -38,6 +38,8 @@ struct ImFont;
 
 namespace Falcor {
 
+    class Device;
+
     struct MouseEvent;
     struct KeyboardEvent;
 
@@ -475,9 +477,11 @@ namespace Falcor {
             void release();
         };
 
+        std::shared_ptr<Device> device() { return mpDevice; }
+
         /** Create a new GUI object. Each object is essentially a container for a GUI window
         */
-        static UniquePtr create(uint32_t width, uint32_t height, float scaleFactor = 1.0f);
+        static UniquePtr create(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, float scaleFactor = 1.0f);
 
         ~Gui();
 
@@ -516,9 +520,12 @@ namespace Falcor {
         /** Handle keyboard events
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
-    private:
-        Gui() = default;
+     
+     private:
+        Gui(std::shared_ptr<Device> pDevice);
         GuiImpl* mpWrapper = nullptr;
+
+        std::shared_ptr<Device> mpDevice;
     };
 
     enum_class_operators(Gui::WindowFlags);

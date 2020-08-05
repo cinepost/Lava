@@ -603,9 +603,14 @@ bool Device::apiInit() {
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData, desc);
     if (!physicalDevice) return false;
     
-    VkSurfaceKHR surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
-    if (!surface) return false;
-    
+    VkSurfaceKHR surface;
+    if(!headless) {
+        surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
+        if (!surface) return false;
+    } else {
+        surface = VK_NULL_HANDLE;
+    }
+
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues);
     if (!device) return false;
     

@@ -28,8 +28,8 @@
 #include <sstream>
 #include "ErrorMeasurePass.h"
 
-namespace
-{
+namespace {
+
     const char kErrorComputationShaderFile[] = "RenderPasses/ErrorMeasurePass/ErrorMeasurer.cs.slang";
     const char kConstantBufferName[] = "PerFrameCB";
 
@@ -50,39 +50,34 @@ namespace
     const char kReportRunningError[] = "ReportRunningError";
     const char kRunningErrorSigma[] = "RunningErrorSigma";
     const char kSelectedOutputId[] = "SelectedOutputId";
+
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("ErrorMeasurePass", "Error Measurement Pass", ErrorMeasurePass::create);
 }
 
-const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtons =
-{
+const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtons = {
     { OutputId::source, "source", true },
     { OutputId::reference, "reference", true },
     { OutputId::difference, "difference", true }
 };
-const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly =
-{
+
+const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly = {
     { OutputId::source, "source", true }
 };
 
-ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new ErrorMeasurePass(dict));
+ErrorMeasurePass::SharedPtr ErrorMeasurePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    return SharedPtr(new ErrorMeasurePass(pRenderContext->device(), dict));
 }
 
-ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
-{
-    for (const auto& v : dict)
-    {
+ErrorMeasurePass::ErrorMeasurePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+    for (const auto& v : dict) {
         if (v.key() == kReferenceImagePath) mReferenceImagePath = (const std::string &)v.val();
         else if (v.key() == kMeasurementsFilePath) mMeasurementsFilePath = (const std::string &)v.val();
         else if (v.key() == kIgnoreBackground) mIgnoreBackground = v.val();
@@ -101,12 +96,11 @@ ErrorMeasurePass::ErrorMeasurePass(const Dictionary& dict)
     loadReference();
     openMeasurementsFile();
 
-    mpParallelReduction = ComputeParallelReduction::create();
-    mpErrorMeasurerPass = ComputePass::create(kErrorComputationShaderFile);
+    mpParallelReduction = ComputeParallelReduction::create(pDevice);
+    mpErrorMeasurerPass = ComputePass::create(pDevice, kErrorComputationShaderFile);
 }
 
-Dictionary ErrorMeasurePass::getScriptingDictionary()
-{
+Dictionary ErrorMeasurePass::getScriptingDictionary() {
     Dictionary dict;
     dict[kReferenceImagePath] = mReferenceImagePath;
     dict[kMeasurementsFilePath] = mMeasurementsFilePath;
@@ -119,8 +113,7 @@ Dictionary ErrorMeasurePass::getScriptingDictionary()
     return dict;
 }
 
-RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData)
-{
+RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kInputChannelSourceImage, "Source image");
     reflector.addInput(kInputChannelReferenceImage, "Reference image (optional)").flags(RenderPassReflection::Field::Flags::Optional);
@@ -130,8 +123,7 @@ RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     Texture::SharedPtr pSourceImageTexture = renderData[kInputChannelSourceImage]->asTexture();
     Texture::SharedPtr pOutputImageTexture = renderData[kOutputChannelImage]->asTexture();
 
@@ -141,16 +133,14 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     if (!mpDifferenceTexture || mpDifferenceTexture->getWidth() != width ||
         mpDifferenceTexture->getHeight() != height)
     {
-        mpDifferenceTexture = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr,
-                                                Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpDifferenceTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         assert(mpDifferenceTexture);
     }
 
     mMeasurements.valid = false;
 
     Texture::SharedPtr pReference = getReference(renderData);
-    if (!pReference)
-    {
+    if (!pReference) {
         // We don't have a reference image, so just copy the source image to the output.
         pRenderContext->blit(pSourceImageTexture->getSRV(), pOutputImageTexture->getRTV());
         return;
@@ -159,30 +149,28 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     runDifferencePass(pRenderContext, renderData);
     runReductionPasses(pRenderContext, renderData);
 
-    switch (mSelectedOutputId)
-    {
-    case OutputId::source:
-        pRenderContext->blit(pSourceImageTexture->getSRV(), pOutputImageTexture->getRTV());
-        break;
-    case OutputId::reference:
-        pRenderContext->blit(pReference->getSRV(), pOutputImageTexture->getRTV());
-        break;
-    case OutputId::difference:
-        pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
-        break;
-    default:
-        #ifdef _WIN32
-        throw std::exception("Unhandled OutputId case in ErrorMeasurePass");
-        #else
-        throw std::runtime_error("Unhandled OutputId case in ErrorMeasurePass");
-        #endif
+    switch (mSelectedOutputId) {
+        case OutputId::source:
+            pRenderContext->blit(pSourceImageTexture->getSRV(), pOutputImageTexture->getRTV());
+            break;
+        case OutputId::reference:
+            pRenderContext->blit(pReference->getSRV(), pOutputImageTexture->getRTV());
+            break;
+        case OutputId::difference:
+            pRenderContext->blit(mpDifferenceTexture->getSRV(), pOutputImageTexture->getRTV());
+            break;
+        default:
+            #ifdef _WIN32
+            throw std::exception("Unhandled OutputId case in ErrorMeasurePass");
+            #else
+            throw std::runtime_error("Unhandled OutputId case in ErrorMeasurePass");
+            #endif
     }
 
     saveMeasurementsToFile();
 }
 
-void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const RenderData& renderData) {
     // Bind textures.
     Texture::SharedPtr pSourceTexture = renderData[kInputChannelSourceImage]->asTexture();
     Texture::SharedPtr pWorldPositionTexture = renderData[kInputChannelWorldPosition]->asTexture();
@@ -202,11 +190,9 @@ void ErrorMeasurePass::runDifferencePass(RenderContext* pRenderContext, const Re
     mpErrorMeasurerPass->execute(pRenderContext, resolution.x, resolution.y);
 }
 
-void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const RenderData& renderData) {
     float4 error;
-    if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error))
-    {
+    if (!mpParallelReduction->execute(pRenderContext, mpDifferenceTexture, ComputeParallelReduction::Type::Sum, &error)) {
         #ifdef _WIN32
         throw std::exception("Error running parallel reduction in ErrorMeasurePass");
         #else
@@ -219,48 +205,39 @@ void ErrorMeasurePass::runReductionPasses(RenderContext* pRenderContext, const R
     mMeasurements.avgError = (mMeasurements.error.x + mMeasurements.error.y + mMeasurements.error.z) / 3.f;
     mMeasurements.valid = true;
 
-    if (mRunningAvgError < 0)
-    {
+    if (mRunningAvgError < 0) {
         // The running error values are invalid. Start them off with the current frame's error.
         mRunningError = mMeasurements.error;
         mRunningAvgError = mMeasurements.avgError;
-    }
-    else
-    {
+    } else {
         mRunningError = mRunningErrorSigma * mRunningError + (1 - mRunningErrorSigma) * mMeasurements.error;
         mRunningAvgError = mRunningErrorSigma * mRunningAvgError + (1 - mRunningErrorSigma) * mMeasurements.avgError;
     }
 }
 
-void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
-{
-    const auto getFilename = [](const std::string& path)
-    {
+void ErrorMeasurePass::renderUI(Gui::Widgets& widget) {
+    const auto getFilename = [](const std::string& path) {
         return path.empty() ? "N/A" : getFilenameFromPath(path);
     };
 
     // Create a button for loading the reference image.
-    if (widget.button("Load reference"))
-    {
+    if (widget.button("Load reference")) {
         FileDialogFilterVec filters;
         filters.push_back({ "exr", "High Dynamic Range" });
         filters.push_back({ "pfm", "Portable Float Map" });
         std::string filename;
-        if (openFileDialog(filters, filename))
-        {
+        if (openFileDialog(filters, filename)) {
             mReferenceImagePath = filename;
             loadReference();
         }
     }
 
     // Create a button for defining the measurements output file.
-    if (widget.button("Set output data file", true))
-    {
+    if (widget.button("Set output data file", true)) {
         FileDialogFilterVec filters;
         filters.push_back({ "csv", "CSV Files" });
         std::string filename;
-        if (saveFileDialog(filters, filename))
-        {
+        if (saveFileDialog(filters, filename)) {
             mMeasurementsFilePath = filename;
             openMeasurementsFile();
         }
@@ -268,14 +245,11 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
 
     // Radio buttons to select the output.
     widget.text("Show:");
-    if (mMeasurements.valid)
-    {
+    if (mMeasurements.valid) {
         widget.radioButtons(sOutputSelectionButtons, mSelectedOutputId);
         widget.tooltip("Press 'O' to change output mode; hold 'Shift' to reverse the cycling.\n\n"
                          "Note: Difference is computed based on current - reference value.", true);
-    }
-    else
-    {
+    } else {
         uint32_t dummyId = 0;
         widget.radioButtons(sOutputSelectionButtonsSourceOnly, dummyId);
     }
@@ -291,28 +265,24 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
     // Display the filename of the reference file.
     const std::string referenceText = "Reference: " + getFilename(mReferenceImagePath);
     widget.text(referenceText.c_str());
-    if (!mReferenceImagePath.empty())
-    {
+    if (!mReferenceImagePath.empty()) {
         widget.tooltip(mReferenceImagePath.c_str());
     }
 
     // Display the filename of the measurement file.
     const std::string outputText = "Output: " + getFilename(mMeasurementsFilePath);
     widget.text(outputText.c_str());
-    if (!mMeasurementsFilePath.empty())
-    {
+    if (!mMeasurementsFilePath.empty()) {
         widget.tooltip(mMeasurementsFilePath.c_str());
     }
 
     // Print numerical error (scalar and RGB).
-    if (widget.checkbox("Report running error", mReportRunningError) && mReportRunningError)
-    {
+    if (widget.checkbox("Report running error", mReportRunningError) && mReportRunningError) {
         // The checkbox was enabled; mark the running error values invalid so that they start fresh.
         mRunningAvgError = -1.f;
     }
     widget.tooltip(("Exponential moving average, sigma = " + std::to_string(mRunningErrorSigma)).c_str());
-    if (mMeasurements.valid)
-    {
+    if (mMeasurements.valid) {
         // Use stream so we can control formatting.
         std::ostringstream oss;
         oss << std::scientific;
@@ -323,23 +293,16 @@ void ErrorMeasurePass::renderUI(Gui::Widgets& widget)
           (mReportRunningError ? mRunningError.g : mMeasurements.error.g) << ", " <<
           (mReportRunningError ? mRunningError.b : mMeasurements.error.b);
         widget.text(oss.str().c_str());
-    }
-    else
-    {
+    } else {
         widget.text("Error: N/A");
     }
 }
 
-bool ErrorMeasurePass::onKeyEvent(const KeyboardEvent& keyEvent)
-{
-    if (keyEvent.type == KeyboardEvent::Type::KeyPressed && keyEvent.key == KeyboardEvent::Key::O)
-    {
-        if (keyEvent.mods.isShiftDown)
-        {
+bool ErrorMeasurePass::onKeyEvent(const KeyboardEvent& keyEvent) {
+    if (keyEvent.type == KeyboardEvent::Type::KeyPressed && keyEvent.key == KeyboardEvent::Key::O) {
+        if (keyEvent.mods.isShiftDown) {
             mSelectedOutputId = (mSelectedOutputId - 1 + OutputId::NUM_OUTPUTS) % OutputId::NUM_OUTPUTS;
-        }
-        else
-        {
+        } else {
             mSelectedOutputId = (mSelectedOutputId + 1) % OutputId::NUM_OUTPUTS;
         }
         return true;
@@ -348,14 +311,12 @@ bool ErrorMeasurePass::onKeyEvent(const KeyboardEvent& keyEvent)
     return false;
 }
 
-void ErrorMeasurePass::loadReference()
-{
+void ErrorMeasurePass::loadReference() {
     if (mReferenceImagePath.empty()) return;
 
     // TODO: it would be nice to also be able to take the reference image as an input.
-    mpReferenceTexture = Texture::createFromFile(mReferenceImagePath, false /* no MIPs */, false /* linear color */);
-    if (!mpReferenceTexture)
-    {
+    mpReferenceTexture = Texture::createFromFile(mpDevice, mReferenceImagePath, false /* no MIPs */, false /* linear color */);
+    if (!mpReferenceTexture) {
         logError("Failed to load texture " + mReferenceImagePath);
         mReferenceImagePath = "";
     }
@@ -364,37 +325,28 @@ void ErrorMeasurePass::loadReference()
     mRunningAvgError = -1.f;   // Mark running error values as invalid.
 }
 
-Texture::SharedPtr ErrorMeasurePass::getReference(const RenderData& renderData) const
-{
+Texture::SharedPtr ErrorMeasurePass::getReference(const RenderData& renderData) const {
     return mUseLoadedReference ? mpReferenceTexture : renderData[kInputChannelReferenceImage]->asTexture();
 }
 
-void ErrorMeasurePass::openMeasurementsFile()
-{
+void ErrorMeasurePass::openMeasurementsFile() {
     if (mMeasurementsFilePath.empty()) return;
 
     mMeasurementsFile = std::ofstream(mMeasurementsFilePath, std::ios::trunc);
-    if (!mMeasurementsFile)
-    {
+    if (!mMeasurementsFile) {
         logError("Failed to open file " + mMeasurementsFilePath);
         mMeasurementsFilePath = "";
-    }
-    else
-    {
-        if (mComputeSquaredDifference)
-        {
+    } else {
+        if (mComputeSquaredDifference) {
             mMeasurementsFile << "avg_L2_error,red_L2_error,green_L2_error,blue_L2_error" << std::endl;
-        }
-        else
-        {
+        } else {
             mMeasurementsFile << "avg_L1_error,red_L1_error,green_L1_error,blue_L1_error" << std::endl;
         }
         mMeasurementsFile << std::scientific;
     }
 }
 
-void ErrorMeasurePass::saveMeasurementsToFile()
-{
+void ErrorMeasurePass::saveMeasurementsToFile() {
     if (!mMeasurementsFile) return;
 
     assert(mMeasurements.valid);

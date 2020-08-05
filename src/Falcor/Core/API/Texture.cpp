@@ -52,7 +52,7 @@ Texture::BindFlags updateBindFlags(Device::SharedPtr device, Texture::BindFlags 
 
     return flags;
 }
-// }
+// } 
 
 Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags) {
     assert(handle);
@@ -177,7 +177,7 @@ typename ViewClass::SharedPtr findViewCommon(Texture* pTexture, uint32_t mostDet
 
 DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return DepthStencilView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        return DepthStencilView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
@@ -185,7 +185,7 @@ DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArr
 
 UnorderedAccessView::SharedPtr Texture::getUAV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return UnorderedAccessView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        return UnorderedAccessView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
@@ -201,7 +201,7 @@ UnorderedAccessView::SharedPtr Texture::getUAV() {
 
 RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        return RenderTargetView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
@@ -214,7 +214,7 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 
 ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return ShaderResourceView::create(pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
+        return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
     };
 
     return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);

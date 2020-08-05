@@ -66,7 +66,7 @@ namespace Falcor {
         return flags;
     }
 
-    VkDescriptorSetLayout createDescriptorSetLayout(std::shared_ptr<Device> device, const DescriptorSet::Layout& layout) {
+    VkDescriptorSetLayout createDescriptorSetLayout(std::shared_ptr<Device> pDevice, const DescriptorSet::Layout& layout) {
         std::vector<VkDescriptorSetLayoutBinding> bindings(layout.getRangeCount());
 
         uint32_t space;
@@ -89,7 +89,7 @@ namespace Falcor {
 
         VkDescriptorSetLayout vkHandle;
         //vk_call(vkCreateDescriptorSetLayout(gpDevice->getApiHandle(), &layoutInfo, nullptr, &vkHandle));
-        if (VK_FAILED(vkCreateDescriptorSetLayout(device->getApiHandle(), &layoutInfo, nullptr, &vkHandle))){
+        if (VK_FAILED(vkCreateDescriptorSetLayout(pDevice->getApiHandle(), &layoutInfo, nullptr, &vkHandle))){
             LOG_FTL("vkCreateDescriptorSetLayout failed !!!");
         }
         return vkHandle;

@@ -28,13 +28,11 @@
 #include "BlitPass.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("BlitPass", "Blit a texture into a different texture", BlitPass::create);
 }
 
@@ -44,8 +42,7 @@ static const std::string kDst = "dst";
 static const std::string kSrc = "src";
 static const std::string kFilter = "filter";
 
-RenderPassReflection BlitPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection BlitPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     reflector.addOutput(kDst, "The destination texture");
@@ -54,58 +51,44 @@ RenderPassReflection BlitPass::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void BlitPass::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& v : dict)
-    {
-        if (v.key() == kFilter)
-        {
+void BlitPass::parseDictionary(const Dictionary& dict) {
+    for (const auto& v : dict) {
+        if (v.key() == kFilter) {
             Sampler::Filter f = (Sampler::Filter)v.val();
             setFilter(f);
-        }
-        else
-        {
+        } else {
             logWarning("Unknown field `" + v.key() + "` in a BlitPass dictionary");
         }
     }
 }
 
-BlitPass::SharedPtr BlitPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new BlitPass(dict));
+BlitPass::SharedPtr BlitPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    return SharedPtr(new BlitPass(pRenderContext->device(), dict));
 }
 
-BlitPass::BlitPass(const Dictionary& dict)
-{
+BlitPass::BlitPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     parseDictionary(dict);
 }
 
-Dictionary BlitPass::getScriptingDictionary()
-{
+Dictionary BlitPass::getScriptingDictionary() {
     Dictionary dict;
     dict[kFilter] = mFilter;
     return dict;
 }
 
-void BlitPass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void BlitPass::execute(RenderContext* pContext, const RenderData& renderData) {
     const auto& pSrcTex = renderData[kSrc]->asTexture();
     const auto& pDstTex = renderData[kDst]->asTexture();
 
-    if (pSrcTex && pDstTex)
-    {
+    if (pSrcTex && pDstTex) {
         pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uint4(-1), uint4(-1), mFilter);
-    }
-    else
-    {
+    } else {
         logWarning("BlitPass::execute() - missing an input or output resource");
     }
 }
 
-void BlitPass::renderUI(Gui::Widgets& widget)
-{
-    static const Gui::DropdownList kFilterList =
-    {
+void BlitPass::renderUI(Gui::Widgets& widget) {
+    static const Gui::DropdownList kFilterList = {
         { (uint32_t)Sampler::Filter::Linear, "Linear" },
         { (uint32_t)Sampler::Filter::Point, "Point" },
     };

@@ -30,18 +30,20 @@
 
 namespace Falcor {
 
-    RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
-        : mName(passName)
-        , mpResources(pResourceCache)
-        , mpDictionary(pDict)
-        , mDefaultTexDims(defaultTexDims)
-        , mDefaultTexFormat(defaultTexFormat)
-    {
-        if (!mpDictionary) mpDictionary = Dictionary::create();
-    }
+RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
+    : mName(passName)
+    , mpResources(pResourceCache)
+    , mpDictionary(pDict)
+    , mDefaultTexDims(defaultTexDims)
+    , mDefaultTexFormat(defaultTexFormat)
+{
+    if (!mpDictionary) mpDictionary = Dictionary::create();
+}
 
-    const Resource::SharedPtr& RenderData::getResource(const std::string& name) const {
-        return mpResources->getResource(mName + '.' + name);
-    }
+const Resource::SharedPtr& RenderData::getResource(const std::string& name) const {
+    return mpResources->getResource(mName + '.' + name);
+}
+
+RenderPass::RenderPass(Device::SharedPtr pDevice): mpDevice(pDevice) {}
 
 }  // namespace Falcor

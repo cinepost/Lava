@@ -53,7 +53,7 @@ public:
     void setFilter(Sampler::Filter filter) { mFilter = filter; }
 
 private:
-    BlitPass(const Dictionary& dict);
+    BlitPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     Sampler::Filter mFilter = Sampler::Filter::Linear;

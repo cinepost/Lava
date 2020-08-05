@@ -36,8 +36,7 @@
 #include <limits>
 #include <vector>
 
-namespace Falcor
-{
+namespace Falcor {
     /** Utility class for building 2-way light BVH on the CPU.
 
         The building process can be customized via the |Options|,
@@ -45,14 +44,12 @@ namespace Falcor
 
         TODO: Rename all things triangle* to light* as the BVH class can be used for other types.
     */
-    class dlldecl LightBVHBuilder
-    {
-    public:
+    class dlldecl LightBVHBuilder {
+     public:
         using SharedPtr = std::shared_ptr<LightBVHBuilder>;
         using SharedConstPtr = std::shared_ptr<const LightBVHBuilder>;
 
-        enum class SplitHeuristic : uint32_t
-        {
+        enum class SplitHeuristic : uint32_t {
             Equal = 0u,         ///< Split the input into two equal partitions.
             BinnedSAH = 1u,     ///< Split the input according to SAH; the input is binned for speeding up the SAH computation.
             BinnedSAOH = 2u,    ///< Split the input according to SAOH (Estévez Conty et al, 2018); the input is binned for speeding up the SAOH computation.
@@ -61,8 +58,7 @@ namespace Falcor
         /** Light BVH builder configuration options.
             Note if you change options, please update SCRIPT_BINDING in LightBVHBuilder.cpp
         */
-        struct Options : Falcor::ScriptBindings::enable_to_string
-        {
+        struct Options : Falcor::ScriptBindings::enable_to_string {
             SplitHeuristic splitHeuristicSelection = SplitHeuristic::BinnedSAOH; ///< Which splitting heuristic to use when building.
             uint32_t       maxTriangleCountPerLeaf = 10u;                        ///< How many triangles to store at most per leaf node.
             uint32_t       binCount = 16u;                                       ///< How many bins to use when building the BVH.
@@ -90,9 +86,8 @@ namespace Falcor
 
         const Options& getOptions() const { return mOptions; }
 
-    protected:
-        struct Range
-        {
+     protected:
+        struct Range {
             uint32_t begin;
             uint32_t end;
 
@@ -101,20 +96,17 @@ namespace Falcor
             constexpr uint32_t length() const noexcept { return end - begin; }
         };
 
-        struct SplitResult
-        {
+        struct SplitResult {
             uint32_t axis = std::numeric_limits<uint32_t>::max();
             uint32_t triangleIndex = std::numeric_limits<uint32_t>::max();
 
-            bool isValid() const
-            {
+            bool isValid() const {
                 return axis != std::numeric_limits<uint32_t>::max() &&
                     triangleIndex != std::numeric_limits<uint32_t>::max();
             }
         };
 
-        struct TriangleSortData
-        {
+        struct TriangleSortData {
             BBox bounds;                                ///< World-space bounding box for the light source(s).
             float3 center = {};                         ///< Center point.
             float3 coneDirection = {};                  ///< Light emission normal direction.
@@ -123,8 +115,7 @@ namespace Falcor
             uint32_t triangleIndex = kInvalidIndex;     ///< Index into global triangle list.
         };
 
-        struct BuildingData
-        {
+        struct BuildingData {
             AlignedAllocator& alignedAllocator;                                 ///< Allocator used for allocating the BVH nodes.
             std::vector<TriangleSortData> trianglesData;                        ///< Compact list of triangles to include in build.
             std::vector<uint64_t> triangleBitmasks;                             ///< Array containing the per triangle bit pattern retracing the tree traversal to reach the triangle: 0=left child, 1=right child; this array gets filled in during the build process. Indexed by global triangle index.
@@ -184,16 +175,14 @@ namespace Falcor
     };
 
 #define str(a) case LightBVHBuilder::SplitHeuristic::a: return #a
-    inline std::string to_string(LightBVHBuilder::SplitHeuristic a)
-    {
-        switch (a)
-        {
-            str(Equal);
-            str(BinnedSAH);
-            str(BinnedSAOH);
-        default:
-            should_not_get_here();
-            return "";
+    inline std::string to_string(LightBVHBuilder::SplitHeuristic a) {
+        switch (a) {
+                str(Equal);
+                str(BinnedSAH);
+                str(BinnedSAOH);
+            default:
+                should_not_get_here();
+                return "";
         }
     }
 #undef str

@@ -95,7 +95,7 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
         \param[in] pFence Fence object for synchronization.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc, const GpuFence::SharedPtr& pFence);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence);
 
     std::shared_ptr<Device> device() { return mpDevice; }
 
@@ -108,7 +108,7 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
 
  private:
     friend DescriptorSet;
-    DescriptorPool(std::shared_ptr<Device> device, const Desc& desc, const GpuFence::SharedPtr & pFence);
+    DescriptorPool(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr & pFence);
     void apiInit();
     void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
     Desc mDesc;

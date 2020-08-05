@@ -28,44 +28,40 @@
 #include "stdafx.h"
 #include "VideoCapture.h"
 
-namespace Mogwai
-{
-    namespace
-    {
-        const std::string kScriptVar = "vc";
-        const std::string kUI = "ui";
-        const std::string kCodec = "codec";
-        const std::string kFps = "fps";
-        const std::string kBitrate = "bitrate";
-        const std::string kGopSize = "gopSize";
-        const std::string kRanges = "ranges";
-        const std::string kAddRanges = "addRanges";
-        const std::string kPrint = "print";
-        const std::string kOutputs = "outputs";
+namespace Mogwai {
 
-        Texture::SharedPtr createTextureForBlit(const Texture* pSource)
-        {
-            assert(pSource->getType() == Texture::Type::Texture2D);
-            return Texture::create2D(pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
-        }
-    }
+namespace {
+
+const std::string kScriptVar = "vc";
+const std::string kUI = "ui";
+const std::string kCodec = "codec";
+const std::string kFps = "fps";
+const std::string kBitrate = "bitrate";
+const std::string kGopSize = "gopSize";
+const std::string kRanges = "ranges";
+const std::string kAddRanges = "addRanges";
+const std::string kPrint = "print";
+const std::string kOutputs = "outputs";
+
+Texture::SharedPtr createTextureForBlit(Falcor::Device::SharedPtr pDevice, const Texture* pSource) {
+    assert(pSource->getType() == Texture::Type::Texture2D);
+    return Texture::create2D(pDevice, pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
+}
+
+}
 
     MOGWAI_EXTENSION(VideoCapture);
 
-    VideoCapture::VideoCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer)
-    {
+    VideoCapture::VideoCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer) {
         mpEncoderUI = VideoEncoderUI::create();
     }
 
-    VideoCapture::UniquePtr VideoCapture::create(Renderer* pRenderer)
-    {
+    VideoCapture::UniquePtr VideoCapture::create(Renderer* pRenderer) {
         return UniquePtr(new VideoCapture(pRenderer));
     }
 
-    void VideoCapture::renderUI(Gui* pGui)
-    {
-        if (mShowUI)
-        {
+    void VideoCapture::renderUI(Gui* pGui) {
+        if (mShowUI) {
             auto w = Gui::Window(pGui, "Video Capture", mShowUI, { 800, 400 });
             CaptureTrigger::renderUI(w);
             w.separator();
@@ -73,31 +69,27 @@ namespace Mogwai
         }
     }
 
-    void VideoCapture::beginRange(RenderGraph* pGraph, const Range& r)
-    {
+    void VideoCapture::beginRange(RenderGraph* pGraph, const Range& r) {
         VideoEncoder::Desc d;
         d.bitrateMbps = mpEncoderUI->getBitrate();
         d.codec = mpEncoderUI->getCodec();
         d.fps = mpEncoderUI->getFPS();
         d.gopSize = mpEncoderUI->getGopSize();
 
-        for (uint32_t i = 0 ; i < pGraph->getOutputCount() ; i++)
-        {
+        for (uint32_t i = 0 ; i < pGraph->getOutputCount() ; i++) {
             const auto& outputName = pGraph->getOutputName(i);
             Texture::SharedPtr pTex = pGraph->getOutput(i)->asTexture();
-            if (!pTex || pTex->getType() != Texture::Type::Texture2D)
-            {
+            if (!pTex || pTex->getType() != Texture::Type::Texture2D) {
                 logError("Can't video capture " + outputName + ". The output is not a Texture2D");
                 continue;
             }
 
             EncodeData encoder;
             auto texFormat = pTex->getFormat();
-            if (VideoEncoder::isFormatSupported(texFormat) == false)
-            {
+            if (VideoEncoder::isFormatSupported(texFormat) == false) {
                 auto res = msgBox("Trying to record graph output " + outputName + " but the resource format is not supported by the video encoder.\nWould you like to capture the output as an RGBA8Srgb resource?\n\nFor HDR textures, this operation will clamp the results", MsgBoxType::YesNo);
                 if(res == MsgBoxButton::No) continue;
-                encoder.pBlitTex = createTextureForBlit(pTex.get());
+                encoder.pBlitTex = createTextureForBlit(mpRenderer->device(), pTex.get());
                 pTex = encoder.pBlitTex;
             }
 
@@ -111,18 +103,14 @@ namespace Mogwai
         }
     }
 
-    void VideoCapture::endRange(RenderGraph* pGraph, const Range& r)
-    {
+    void VideoCapture::endRange(RenderGraph* pGraph, const Range& r) {
         for (const auto& e : mEncoders) e.pEncoder->endCapture();
     }
 
-    void VideoCapture::triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID)
-    {
-        for (const auto& e : mEncoders)
-        {
+    void VideoCapture::triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID) {
+        for (const auto& e : mEncoders) {
             Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(e.output));
-            if (e.pBlitTex)
-            {
+            if (e.pBlitTex) {
                 pCtx->blit(pTex->getSRV(0, 1, 0, 1), e.pBlitTex->getRTV(0, 0, 1));
                 pTex = e.pBlitTex;
             }
@@ -131,8 +119,7 @@ namespace Mogwai
         }
     }
 
-    void VideoCapture::scriptBindings(Bindings& bindings)
-    {
+    void VideoCapture::scriptBindings(Bindings& bindings) {
         CaptureTrigger::scriptBindings(bindings);
         auto& m = bindings.getModule();
         auto vc = m.class_<VideoCapture, CaptureTrigger>("VideoCapture");
@@ -169,8 +156,7 @@ namespace Mogwai
         auto printGraph = [](VideoCapture* pVC, RenderGraph* pGraph) { pybind11::print(pVC->graphRangesStr(pGraph)); };
         vc.func_(kPrint.c_str(), printGraph, "graph"_a);
 
-        auto printAllGraphs = [](VideoCapture* pVC)
-        {
+        auto printAllGraphs = [](VideoCapture* pVC) {
             std::string s;
             for (const auto& g : pVC->mGraphRanges) { s += "`" + g.first->getName() + "`:\n" + pVC->graphRangesStr(g.first) + "\n"; }
             pybind11::print(s.empty() ? "Empty" : s);
@@ -178,8 +164,7 @@ namespace Mogwai
         vc.func_(kPrint.c_str(), printAllGraphs);
     }
 
-    std::string VideoCapture::getScript()
-    {
+    std::string VideoCapture::getScript() {
         if (mGraphRanges.empty()) return "";
 
         std::string s("# Video Capture\n");
@@ -189,27 +174,23 @@ namespace Mogwai
         s += Scripting::makeSetProperty(kScriptVar, kBitrate, mpEncoderUI->getBitrate());
         s += Scripting::makeSetProperty(kScriptVar, kGopSize, mpEncoderUI->getGopSize());
 
-        for (const auto& g : mGraphRanges)
-        {
+        for (const auto& g : mGraphRanges) {
             s += Scripting::makeMemberFunc(kScriptVar, kAddRanges, g.first->getName(), g.second);
         }
         return s;
     }
 
-    void VideoCapture::addRanges(const RenderGraph* pGraph, const range_vec& ranges)
-    {
+    void VideoCapture::addRanges(const RenderGraph* pGraph, const range_vec& ranges) {
         for (auto r : ranges) addRange(pGraph, r.first, r.second);
     }
 
-    void VideoCapture::addRanges(const std::string& graphName, const range_vec& ranges)
-    {
+    void VideoCapture::addRanges(const std::string& graphName, const range_vec& ranges) {
         auto pGraph = mpRenderer->getGraph(graphName).get();
         if (!pGraph) throw std::runtime_error("Can't find a graph named `" + graphName + "`");
         this->addRanges(pGraph, ranges);
     }
 
-    std::string VideoCapture::graphRangesStr(const RenderGraph* pGraph)
-    {
+    std::string VideoCapture::graphRangesStr(const RenderGraph* pGraph) {
         const auto& g = mGraphRanges[pGraph];
         std::string s("\t");
         s += kRanges + " = " + to_string(g);

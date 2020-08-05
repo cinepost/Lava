@@ -27,30 +27,27 @@
  **************************************************************************/
 #include "InvalidPixelDetectionPass.h"
 
-namespace
-{
-    const std::string kSrc = "src";
-    const std::string kDst = "dst";
+namespace {
+
+const std::string kSrc = "src";
+const std::string kDst = "dst";
+
 }
 
-InvalidPixelDetectionPass::InvalidPixelDetectionPass()
-{
-    mpInvalidPixelDetectPass = FullScreenPass::create("RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
-    mpFbo = Fbo::create();
+InvalidPixelDetectionPass::InvalidPixelDetectionPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    mpInvalidPixelDetectPass = FullScreenPass::create(pDevice, "RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");
+    mpFbo = Fbo::create(pDevice);
 }
 
-InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass());
+InvalidPixelDetectionPass::SharedPtr InvalidPixelDetectionPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pPass = SharedPtr(new InvalidPixelDetectionPass(pRenderContext->device()));
     return pPass;
 }
 
-RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compileData) {
     RenderPassReflection r;
     mReady = false;
-    if (compileData.connectedResources.getFieldCount() > 0)
-    {
+    if (compileData.connectedResources.getFieldCount() > 0) {
         const RenderPassReflection::Field* edge = compileData.connectedResources.getField(kSrc);
         RenderPassReflection::Field::Type srcType = edge->getType();
         ResourceFormat srcFormat = edge->getFormat();
@@ -68,22 +65,18 @@ RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compi
         formatField(r.addInput(kSrc, "Input image to be checked")).format(srcFormat);
         formatField(r.addOutput(kDst, "Output where pixels are red if NaN, green if Inf, and black otherwise"));
         mReady = true;
-    }
-    else
-    {
+    } else {
         r.addInput(kSrc, "Input image to be checked");
         r.addOutput(kDst, "Output where pixels are red if NaN, green if Inf, and black otherwise");
     }
     return r;
 }
 
-void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileData& compileData) {
     if (!mReady) throw std::runtime_error("InvalidPixelDetectionPass::compile - missing incoming reflection data");
 }
 
-void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void InvalidPixelDetectionPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     mpInvalidPixelDetectPass["gTexture"] = renderData[kSrc]->asTexture();
     mpFbo->attachColorTarget(renderData[kDst]->asTexture(), 0);
     mpInvalidPixelDetectPass->getState()->setFbo(mpFbo);

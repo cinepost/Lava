@@ -26,8 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
@@ -39,15 +41,14 @@ using namespace Falcor;
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
-class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_this<RenderPass, GaussianBlur>
-{
-public:
+class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_this<RenderPass, GaussianBlur> {
+ public:
     using SharedPtr = std::shared_ptr<GaussianBlur>;
     using inherit_shared_from_this::shared_from_this;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() { return kDesc; }
+    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
@@ -59,8 +60,8 @@ public:
     uint32_t getKernelWidth() { return mKernelWidth; }
     float getSigma() { return mSigma; }
 
-private:
-    GaussianBlur();
+ private:
+    GaussianBlur(Device::SharedPtr pDevice);
     uint32_t mKernelWidth = 5;
     float mSigma = 2.0f;
     bool mReady = false;
@@ -72,6 +73,7 @@ private:
     Fbo::SharedPtr mpFbo;
     Fbo::SharedPtr mpTmpFbo;
     Sampler::SharedPtr mpSampler;
+    Device::SharedPtr mpDevice;
 
     static const char* kDesc;
     static void registerBindings(ScriptBindings::Module& m);

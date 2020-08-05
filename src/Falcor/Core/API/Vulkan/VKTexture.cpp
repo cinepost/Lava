@@ -31,7 +31,7 @@
 #include "Falcor/Core/API/Resource.h"
 
 namespace Falcor {
-    VkDeviceMemory allocateDeviceMemory(Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
+    VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
     struct TextureApiData {
     };
@@ -151,7 +151,7 @@ namespace Falcor {
         // Allocate the GPU memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(mpDevice->getApiHandle(), image, &memRequirements);
-        VkDeviceMemory deviceMem = allocateDeviceMemory(Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
+        VkDeviceMemory deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
         vkBindImageMemory(mpDevice->getApiHandle(), image, deviceMem, 0);
         mApiHandle = ApiHandle::create(mpDevice, image, deviceMem);
   

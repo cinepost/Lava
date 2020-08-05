@@ -30,9 +30,8 @@
 
 using namespace Falcor;
 
-class ComparisonPass : public RenderPass
-{
-public:
+class ComparisonPass : public RenderPass {
+ public:
     using SharedPtr = std::shared_ptr<ComparisonPass>;
 
     virtual Dictionary getScriptingDictionary() override;
@@ -40,8 +39,8 @@ public:
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-protected:
-    ComparisonPass() = default;
+ protected:
+    ComparisonPass(Device::SharedPtr pDevice);
     virtual void createProgram() = 0;
     bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
 

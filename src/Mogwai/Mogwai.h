@@ -35,6 +35,7 @@
 
 #include "Falcor/Falcor.h"
 #include "Falcor/FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 #include "AppData.h"
 
 using namespace Falcor;
@@ -88,9 +89,15 @@ class Extension {
     virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {}
 };
 
+class Device;
+
 class Renderer : public IRenderer {
  public:
-    Renderer();
+    Renderer(Falcor::Device::SharedPtr pDevice);
+
+    Falcor::Device::SharedPtr device() { return mpDevice; }
+    Falcor::Device::SharedPtr device() const { return mpDevice; }
+
     void onLoad(RenderContext* pRenderContext) override;
     void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(uint32_t width, uint32_t height) override;
@@ -183,6 +190,9 @@ class Renderer : public IRenderer {
     // Scripting
     void registerScriptBindings(ScriptBindings::Module& m);
     std::string mGlobalHelpMessage;
+ 
+ private:
+    Falcor::Device::SharedPtr mpDevice;
 };
 
 #define MOGWAI_EXTENSION(Name)                     \

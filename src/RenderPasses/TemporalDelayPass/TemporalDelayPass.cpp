@@ -27,50 +27,45 @@
  **************************************************************************/
 #include "TemporalDelayPass.h"
 
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-void regTemporalDelayPass(ScriptBindings::Module& m)
-{
+void regTemporalDelayPass(ScriptBindings::Module& m) {
     auto c = m.class_<TemporalDelayPass, RenderPass>("TemporalDelayPass");
     c.property("delay", &TemporalDelayPass::getDelay, &TemporalDelayPass::setDelay);
 }
 
-extern "C" falcorexport void getPasses(RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(RenderPassLibrary& lib) {
     lib.registerClass("TemporalDelayPass", TemporalDelayPass::kDesc, TemporalDelayPass::create);
     ScriptBindings::registerBinding(regTemporalDelayPass);
 }
 
-namespace
-{
-    const std::string kSrc = "src";
-    const std::string kMaxDelay = "maxDelay";
-    const std::string kDelay = "delay";
+namespace {
+
+const std::string kSrc = "src";
+const std::string kMaxDelay = "maxDelay";
+const std::string kDelay = "delay";
+
 }
+
 const char* TemporalDelayPass::kDesc = "Delays frame rendering by a specified amount of frames";
 
-TemporalDelayPass::TemporalDelayPass() {}
+TemporalDelayPass::TemporalDelayPass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
 
-TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new TemporalDelayPass());
-    for (const auto& v : dict)
-    {
+TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pPass = SharedPtr(new TemporalDelayPass(pRenderContext->device()));
+    for (const auto& v : dict) {
         if (v.key() == kDelay) pPass->mDelay = (uint32_t) v.val();
         else logWarning("Unknown field `" + v.key() + "` in a TemporalDelayPass dictionary");
     }
     return pPass;
 }
 
-RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData) {
     RenderPassReflection r;
     mReady = false;
-    if (compileData.connectedResources.getFieldCount() > 0)
-    {
+    if (compileData.connectedResources.getFieldCount() > 0) {
         const RenderPassReflection::Field* edge = compileData.connectedResources.getField(kSrc);
         RenderPassReflection::Field::Type srcType = edge->getType();
         ResourceFormat srcFormat = edge->getFormat();
@@ -87,19 +82,17 @@ RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData)
 
         formatField(r.addInput(kSrc, "Current frame"));
         formatField(r.addOutput(kMaxDelay, to_string(mDelay) + " frame(s) delayed"));
-        if (mDelay > 0)
-        {
+        
+        if (mDelay > 0) {
             for (uint32_t i = mDelay - 1; i > 0; --i) formatField(r.addOutput(kMaxDelay + "-" + to_string(i), to_string(mDelay - i) + " frame(s) delayed"));
             formatField(r.addInternal(kMaxDelay + "-" + to_string(mDelay), "Internal copy of the current frame"));
         }
         mReady = true;
-    }
-    else
-    {
+    } else {
         r.addInput(kSrc, "Current frame");
         r.addOutput(kMaxDelay, to_string(mDelay) + " frame(s) delayed");
-        if (mDelay > 0)
-        {
+        
+        if (mDelay > 0) {
             for (uint32_t i = mDelay - 1; i > 0; --i) r.addOutput(kMaxDelay + "-" + to_string(i), to_string(mDelay - i) + " frame(s) delayed");
             r.addInternal(kMaxDelay + "-" + to_string(mDelay), "Internal copy of the current frame");
         }
@@ -107,20 +100,16 @@ RenderPassReflection TemporalDelayPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void TemporalDelayPass::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void TemporalDelayPass::compile(RenderContext* pContext, const CompileData& compileData) {
     if (!mReady) throw(std::runtime_error("TemporalDelayPass::compile - missing incoming reflection information"));
 }
 
-void TemporalDelayPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    if (mDelay == 0)
-    {
+void TemporalDelayPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    if (mDelay == 0) {
         pRenderContext->copyResource(renderData[kMaxDelay].get(), renderData[kSrc].get());
         return;
     }
-    for (uint32_t copyDst = 0; copyDst <= mDelay; ++copyDst)
-    {
+    for (uint32_t copyDst = 0; copyDst <= mDelay; ++copyDst) {
         uint32_t copySrc = copyDst + 1;
         if (copyDst == 0) pRenderContext->copyResource(renderData[kMaxDelay].get(), renderData[kMaxDelay + "-" + to_string(copySrc)].get());
         else if (copyDst == mDelay) pRenderContext->copyResource(renderData[kMaxDelay + "-" + to_string(copyDst)].get(), renderData[kSrc].get());
@@ -128,20 +117,17 @@ void TemporalDelayPass::execute(RenderContext* pRenderContext, const RenderData&
     }
 }
 
-Dictionary TemporalDelayPass::getScriptingDictionary()
-{
+Dictionary TemporalDelayPass::getScriptingDictionary() {
     Dictionary d;
     d[kDelay] = mDelay;
     return d;
 }
 
-void TemporalDelayPass::renderUI(Gui::Widgets& widget)
-{
+void TemporalDelayPass::renderUI(Gui::Widgets& widget) {
     if (widget.var("Delay", mDelay)) setDelay(mDelay);
 }
 
-TemporalDelayPass& TemporalDelayPass::setDelay(uint32_t delay)
-{
+TemporalDelayPass& TemporalDelayPass::setDelay(uint32_t delay) {
     mDelay = delay;
     mPassChangedCB();
     return *this;

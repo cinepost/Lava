@@ -51,7 +51,7 @@ namespace Falcor {
     }
 
     bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus) {
-        PROFILE("LightCollection::update()");
+        PROFILE(pRenderContext->device(), "LightCollection::update()");
 
         if (pUpdateStatus) {
             pUpdateStatus->lightsUpdateInfo.clear();

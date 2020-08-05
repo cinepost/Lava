@@ -38,6 +38,11 @@ namespace Falcor {
 
 using TypedBufferBase = Buffer;
 
+static const uint8_t kMaxDevices = 10;
+
+static Texture::SharedPtr sBlackTextures[kMaxDevices] = {nullptr};
+static Buffer::SharedPtr sZeroBuffers[kMaxDevices] = {nullptr};
+static Buffer::SharedPtr sZeroTypedBuffers[kMaxDevices] = {nullptr};
 
 VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
@@ -46,34 +51,40 @@ ResourceView<ApiHandleType>::~ResourceView() {
     getResource()->device()->releaseResource(mApiHandle);
 }
 
-Texture::SharedPtr createBlackTexture(Device::SharedPtr device) {
+Texture::SharedPtr createBlackTexture(Device::SharedPtr pDevice) {
     uint8_t blackPixel[4] = { 0 };
-    return Texture::create2D(device, 1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+    return Texture::create2D(pDevice, 1, 1, ResourceFormat::RGBA8Unorm, 1, 1, blackPixel, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
 }
 
-Buffer::SharedPtr createZeroBuffer(Device::SharedPtr device) {
+Buffer::SharedPtr createZeroBuffer(Device::SharedPtr pDevice) {
     static const uint32_t zero = 0;
-    return Buffer::create(device, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    return Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
-Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr device) {
+Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr pDevice) {
     static const uint32_t zero = 0;
-    return Buffer::createTyped<uint32_t>(device, 1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    return Buffer::createTyped<uint32_t>(pDevice, 1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
-Texture::SharedPtr getEmptyTexture(Device::SharedPtr device) {
-    static Texture::SharedPtr sBlackTexture = createBlackTexture(device);
-    return sBlackTexture;
+Texture::SharedPtr getEmptyTexture(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    auto uid = pDevice->uid();
+    if(!sBlackTextures[uid]) sBlackTextures[uid] = createBlackTexture(pDevice);
+    return sBlackTextures[uid];
 }
 
-Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr device) {
-    static Buffer::SharedPtr sZeroBuffer = createZeroBuffer(device);
-    return sZeroBuffer;
+Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    auto uid = pDevice->uid();
+    if(!sZeroBuffers[uid]) sZeroBuffers[uid] = createZeroBuffer(pDevice);
+    return sZeroBuffers[uid];
 }
 
-Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr device) {
-    static Buffer::SharedPtr sZeroTypedBuffer = createZeroTypedBuffer(device);
-    return sZeroTypedBuffer;
+Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    auto uid = pDevice->uid();
+    if(!sZeroTypedBuffers[uid]) sZeroTypedBuffers[uid] = createZeroTypedBuffer(pDevice);
+    return sZeroTypedBuffers[uid];
 }
 
 VkImageViewType getViewType(Resource::Type type, bool isArray) {
@@ -163,9 +174,9 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
     }
 }
 
-ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-    if (!pTexture && getNullView()) {
-        return getNullView();
+ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
+    if (!pTexture) {
+        return getNullView(pDevice);
     }
 
     // Resource::ApiHandle resHandle = pTexture->getApiHandle();
@@ -173,20 +184,20 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRe
     return SharedPtr(new ShaderResourceView(pTexture, view, mostDetailedMip, mipCount, firstArraySlice, arraySize));
 }
 
-ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
-    if (!pBuffer && getNullBufferView()) {
-        return getNullBufferView();
+ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
+    if (!pBuffer) {
+        return getNullBufferView(pDevice);
     }
 
     if (!pBuffer) {
         VkBufferView bufferView = {};
-        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
         return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create DepthStencilView from a texture!");
-        return getNullBufferView();
+        return getNullBufferView(pDevice);
     }
     
     const Resource* pResource = pBuffer.get();
@@ -201,54 +212,53 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef
         vk_call(vkCreateBufferView(pBuffer->device()->getApiHandle(), &info, nullptr, &bufferView));
     }
 
-    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
+    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
 
     return SharedPtr(new ShaderResourceView(pBuffer, view, firstElement, elementCount));
 }
 
-DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    // const Resource* pResource = pTexture.get();
-    if (!pTexture && getNullView()) {
-        return getNullView();
+DepthStencilView::SharedPtr DepthStencilView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
+    if (!pTexture) {
+        return getNullView(pDevice);
     }
 
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
         logWarning("Cannot create DepthStencilView from a buffer!");
-        return getNullView();
+        return getNullView(pDevice);
     }
 
     auto view = createViewCommon(pTexture, mipLevel, 1, firstArraySlice, arraySize);
     return SharedPtr(new DepthStencilView(pTexture, view, mipLevel, firstArraySlice, arraySize));
 }
 
-UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    if (!pTexture && getNullView()) {
-        return getNullView();
+UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
+    if (!pTexture) {
+        return getNullView(pDevice);
     }
 
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
         logWarning("Cannot create UnorderedAccessView from a buffer!");
-        return getNullView();;
+        return getNullView(pDevice);
     }
 
     auto view = createViewCommon(pTexture, mipLevel, 1, firstArraySlice, arraySize);
     return SharedPtr(new UnorderedAccessView(pTexture, view, mipLevel, firstArraySlice, arraySize));
 }
 
-UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
-    if (!pBuffer && getNullBufferView()) {
-        return getNullBufferView();
+UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
+    if (!pBuffer) {
+        return getNullBufferView(pDevice);
     } 
 
     if (!pBuffer) {
         VkBufferView bufferView = {};
-        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
+        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
         return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create UnorderedAccessView from a texture!");
-        return getNullBufferView();
+        return getNullBufferView(pBuffer->device());
     }
 
     const Resource* pResource = pBuffer.get();
@@ -260,10 +270,10 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrR
 
     if (buffer->isTyped()) {
         VkBufferViewCreateInfo info = initializeBufferViewInfo(buffer);
-        vk_call(vkCreateBufferView(pBuffer->device()->getApiHandle(), &info, nullptr, &bufferView));
+        vk_call(vkCreateBufferView(pDevice->getApiHandle(), &info, nullptr, &bufferView));
     }
 
-    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
+    auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
     return SharedPtr(new UnorderedAccessView(pBuffer, view, firstElement, elementCount));
 }
 
@@ -272,13 +282,13 @@ RenderTargetView::~RenderTargetView() {
     hdl.push_back(mApiHandle);
 }
 
-RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    if (!pTexture && getNullView()) return getNullView();
+RenderTargetView::SharedPtr RenderTargetView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
+    if (!pTexture) return getNullView(pDevice);
 
     // Check type
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
         logWarning("Cannot create RenderTargetView from a buffer!");
-        return getNullView();
+        return getNullView(pDevice);
     }
 
     // Create view
@@ -286,11 +296,14 @@ RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pT
     return SharedPtr(new RenderTargetView(pTexture, view, mipLevel, firstArraySlice, arraySize));
 }
 
-ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer) {
-    if (!pBuffer && getNullView()) return getNullView();
+ConstantBufferView::SharedPtr ConstantBufferView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer) {
+    if (!pBuffer) return getNullView(pDevice);
 
     VkBufferView bufferView = {};
-    auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pBuffer.get()->device(), bufferView, nullptr);
+
+    std::cout << "Device uid " << pDevice->uid() << std::endl;
+    
+    auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
 
 
     return SharedPtr(new ConstantBufferView(pBuffer, handle));

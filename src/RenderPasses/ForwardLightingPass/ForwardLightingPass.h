@@ -29,6 +29,7 @@
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
@@ -83,7 +84,7 @@ public:
     std::string getDesc() override { return kDesc; }
 
 private:
-    ForwardLightingPass();
+    ForwardLightingPass(Device::SharedPtr pDevice);
     void initDepth(const RenderData& renderData);
     void initFbo(RenderContext* pContext, const RenderData& renderData);
 

@@ -33,6 +33,7 @@
 namespace Falcor {
 
 struct BoundingBox;
+class Device;
 class RenderContext;
 class Camera;
 class GraphicsState;
@@ -55,7 +56,7 @@ class dlldecl DebugDrawer {
         \param[in] maxVertices Maximum number of vertices that will be drawn.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(uint32_t maxVertices = kMaxVertices);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, uint32_t maxVertices = kMaxVertices);
 
     /** Sets the color for following geometry
     */
@@ -93,7 +94,7 @@ private:
 
     void uploadBuffer();
 
-    DebugDrawer(uint32_t maxVertices);
+    DebugDrawer(std::shared_ptr<Device> pDevice, uint32_t maxVertices);
 
     float3 mCurrentColor;
 
@@ -105,6 +106,8 @@ private:
     Vao::SharedPtr mpVao;
     std::vector<LineVertex> mVertexData;
     bool mDirty = true;
+
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

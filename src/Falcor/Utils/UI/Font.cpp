@@ -41,7 +41,7 @@ namespace Falcor {
         return Filename;
     }
 
-    Font::Font() {
+    Font::Font(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
         if (!loadFromFile("DejaVu Sans Mono", 14)) {
             #ifdef _WIN32
             throw std::exception("Failed to create font resource");
@@ -51,8 +51,8 @@ namespace Falcor {
         }
     }
 
-    Font::UniquePtr Font::create() {
-        return UniquePtr(new Font());
+    Font::UniquePtr Font::create(std::shared_ptr<Device> pDevice) {
+        return UniquePtr(new Font(pDevice));
     }
 
     static const uint32_t FontMagicNumber = 0xDEAD0001;
@@ -127,7 +127,7 @@ namespace Falcor {
         }
 
         // Load the texture
-        mpTexture = Texture::createFromFile(TextureFilename, false, false);
+        mpTexture = Texture::createFromFile(mpDevice, TextureFilename, false, false);
         return mpTexture != nullptr;
     }
 }

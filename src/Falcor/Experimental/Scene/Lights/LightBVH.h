@@ -117,6 +117,8 @@ namespace Falcor {
             NodeLocation(uint32_t _byteOffset, uint32_t _depth) : byteOffset(_byteOffset), depth(_depth) {}
         };
 
+        std::shared_ptr<Device> device() { return mpDevice; }
+
         /** Function called on each node.
             \param[in] location The location of the current node, that is its byte offset from the beginning of the buffer, and its depth.
             \param[in] pInternalNode A pointer to the current node if the current node is an internal node, otherwise null

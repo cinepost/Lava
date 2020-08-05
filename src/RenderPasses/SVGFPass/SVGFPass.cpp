@@ -83,10 +83,10 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 }
 
 SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new SVGFPass(dict));
+    return SharedPtr(new SVGFPass(pRenderContext->device(), dict));
 }
 
-SVGFPass::SVGFPass(const Dictionary& dict) {
+SVGFPass::SVGFPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     for (const auto& v : dict) {
         if (v.key() == kEnabled) mFilterEnabled = v.val();
         else if (v.key() == kIterations) mFilterIterations = v.val();
@@ -101,11 +101,11 @@ SVGFPass::SVGFPass(const Dictionary& dict) {
         }
     }
 
-    mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader);
-    mpReprojection = FullScreenPass::create(kReprojectShader);
-    mpAtrous = FullScreenPass::create(kAtrousShader);
-    mpFilterMoments = FullScreenPass::create(kFilterMomentShader);
-    mpFinalModulate = FullScreenPass::create(kFinalModulateShader);
+    mpPackLinearZAndNormal = FullScreenPass::create(pDevice, kPackLinearZAndNormalShader);
+    mpReprojection = FullScreenPass::create(pDevice, kReprojectShader);
+    mpAtrous = FullScreenPass::create(pDevice, kAtrousShader);
+    mpFilterMoments = FullScreenPass::create(pDevice, kFilterMomentShader);
+    mpFinalModulate = FullScreenPass::create(pDevice, kFinalModulateShader);
     assert(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
 }
 
@@ -239,31 +239,31 @@ void SVGFPass::allocateFbos(uint2 dim, RenderContext* pRenderContext) {
     {
         // Screen-size FBOs with 3 MRTs: one that is RGBA32F, one that is
         // RG32F for the luminance moments, and one that is R16F.
-        Fbo::Desc desc;
+        Fbo::Desc desc(mpDevice);
         desc.setSampleCount(0);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float); // illumination
         desc.setColorTarget(1, Falcor::ResourceFormat::RG32Float);   // moments
         desc.setColorTarget(2, Falcor::ResourceFormat::R16Float);    // history length
-        mpCurReprojFbo  = Fbo::create2D(dim.x, dim.y, desc);
-        mpPrevReprojFbo = Fbo::create2D(dim.x, dim.y, desc);
+        mpCurReprojFbo  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpPrevReprojFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
     }
 
     {
         // Screen-size RGBA32F buffer for linear Z, derivative, and packed normal
-        Fbo::Desc desc;
+        Fbo::Desc desc(mpDevice);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpLinearZAndNormalFbo = Fbo::create2D(dim.x, dim.y, desc);
+        mpLinearZAndNormalFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
     }
 
     {
         // Screen-size FBOs with 1 RGBA32F buffer
-        Fbo::Desc desc;
+        Fbo::Desc desc(mpDevice);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpPingPongFbo[0]  = Fbo::create2D(dim.x, dim.y, desc);
-        mpPingPongFbo[1]  = Fbo::create2D(dim.x, dim.y, desc);
-        mpFilteredPastFbo = Fbo::create2D(dim.x, dim.y, desc);
-        mpFilteredIlluminationFbo       = Fbo::create2D(dim.x, dim.y, desc);
-        mpFinalFbo        = Fbo::create2D(dim.x, dim.y, desc);
+        mpPingPongFbo[0]  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpPingPongFbo[1]  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpFilteredPastFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpFilteredIlluminationFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpFinalFbo        = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
     }
 
     mBuffersNeedClear = true;

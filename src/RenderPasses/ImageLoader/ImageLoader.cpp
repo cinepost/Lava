@@ -28,20 +28,17 @@
 #include "ImageLoader.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("ImageLoader", "Load an image into a texture", ImageLoader::create);
 }
 
 const char* ImageLoader::kDesc = "Load an image into a texture";
 
-namespace
-{
+namespace {
     const std::string kDst = "dst";
     const std::string kImage = "filename";
     const std::string kMips = "mips";
@@ -50,19 +47,16 @@ namespace
     const std::string kMipLevel = "mipLevel";
 }
 
-RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
-{
+RenderPassReflection ImageLoader::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addOutput(kDst, "Destination texture");
     return reflector;
 }
 
-ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new ImageLoader);
+ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pPass = SharedPtr(new ImageLoader(pRenderContext->device()));
 
-    for (const auto& v : dict)
-    {
+    for (const auto& v : dict) {
         if (v.key() == kImage) pPass->mImageName = v.val().operator std::string();
         else if (v.key() == kSrgb) pPass->mLoadSRGB = v.val();
         else if (v.key() == kMips) pPass->mGenerateMips = v.val();
@@ -71,16 +65,14 @@ ImageLoader::SharedPtr ImageLoader::create(RenderContext* pRenderContext, const 
         else logWarning("Unknown field `" + v.key() + "` in a ImageLoader dictionary");
     }
 
-    if (pPass->mImageName.size())
-    {
-        pPass->mpTex = Texture::createFromFile(pPass->mImageName, pPass->mGenerateMips, pPass->mLoadSRGB);
+    if (pPass->mImageName.size()) {
+        pPass->mpTex = Texture::createFromFile(pRenderContext->device(), pPass->mImageName, pPass->mGenerateMips, pPass->mLoadSRGB);
     }
 
     return pPass;
 }
 
-Dictionary ImageLoader::getScriptingDictionary()
-{
+Dictionary ImageLoader::getScriptingDictionary() {
     Dictionary dict;
     dict[kImage] = mImageName;
     dict[kMips] = mGenerateMips;
@@ -90,47 +82,38 @@ Dictionary ImageLoader::getScriptingDictionary()
     return dict;
 }
 
-ImageLoader::ImageLoader()
-{
-}
+ImageLoader::ImageLoader(Device::SharedPtr pDevice): RenderPass(pDevice) {}
 
-void ImageLoader::compile(RenderContext* pContext, const CompileData& compileData)
-{
+void ImageLoader::compile(RenderContext* pContext, const CompileData& compileData) {
     if (!mpTex) throw std::runtime_error("ImageLoader::compile - No image loaded!");
 }
 
-void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData) {
     const auto& pDstTex = renderData[kDst]->asTexture();
-    if (!mpTex)
-    {
+    if (!mpTex) {
         pContext->clearRtv(pDstTex->getRTV().get(), float4(0, 0, 0, 0));
         return;
     }
     pContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());
 }
 
-void ImageLoader::renderUI(Gui::Widgets& widget)
-{
+void ImageLoader::renderUI(Gui::Widgets& widget) {
     bool reloadImage = widget.textbox("Image File", mImageName);
     reloadImage |= widget.checkbox("Load As SRGB", mLoadSRGB);
     reloadImage |= widget.checkbox("Generate Mipmaps", mGenerateMips);
-    if (mGenerateMips)
-    {
+    if (mGenerateMips) {
         reloadImage |= widget.slider("Mip Level", mMipLevel, 0u, mpTex ? mpTex->getMipCount() : 0u);
     }
     reloadImage |= widget.slider("Array Slice", mArraySlice, 0u, mpTex ? mpTex->getArraySize() : 0u);
 
     if (widget.button("Load File")) { reloadImage |= openFileDialog({}, mImageName); }
 
-    if (mpTex)
-    {
+    if (mpTex) {
         widget.image(mImageName.c_str(), mpTex, { 320, 320 });
     }
 
-    if (reloadImage && mImageName.size())
-    {
+    if (reloadImage && mImageName.size()) {
         mImageName = stripDataDirectories(mImageName);
-        mpTex = Texture::createFromFile(mImageName, mGenerateMips, mLoadSRGB);
+        mpTex = Texture::createFromFile(widget.gui()->device(), mImageName, mGenerateMips, mLoadSRGB);
     }
 }

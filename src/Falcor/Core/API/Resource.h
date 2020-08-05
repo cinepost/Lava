@@ -176,7 +176,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
  protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> device, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(device), mType(type), mBindFlags(bindFlags), mSize(size) {}
+    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size) {}
 
     Type mType;
     BindFlags mBindFlags;

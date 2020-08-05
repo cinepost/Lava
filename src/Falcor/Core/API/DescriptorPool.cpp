@@ -30,11 +30,11 @@
 
 namespace Falcor {
 
-DescriptorPool::SharedPtr DescriptorPool::create(std::shared_ptr<Device> device, const Desc& desc, const GpuFence::SharedPtr& pFence) {
-    return SharedPtr(new DescriptorPool(device, desc, pFence));
+DescriptorPool::SharedPtr DescriptorPool::create(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence) {
+    return SharedPtr(new DescriptorPool(pDevice, desc, pFence));
 }
 
-DescriptorPool::DescriptorPool(std::shared_ptr<Device> device, const Desc& desc, const GpuFence::SharedPtr& pFence): mDesc(desc), mpFence(pFence) {
+DescriptorPool::DescriptorPool(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence): mDesc(desc), mpFence(pFence), mpDevice(pDevice) {
     apiInit();
 }
 

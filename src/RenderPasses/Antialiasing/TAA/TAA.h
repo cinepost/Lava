@@ -33,9 +33,8 @@ using namespace Falcor;
 
 /** Temporal AA class
 */
-class TAA : public RenderPass, public inherit_shared_from_this<RenderPass, TAA>
-{
-public:
+class TAA : public RenderPass, public inherit_shared_from_this<RenderPass, TAA> {
+ public:
     using SharedPtr = std::shared_ptr<TAA>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
@@ -53,8 +52,8 @@ public:
     float getAlpha() { return mControls.alpha; }
     float getColorBoxSigma() { return mControls.colorBoxSigma; }
 
-private:
-    TAA();
+ private:
+    TAA(Device::SharedPtr pDevice);
     void allocatePrevColor(const Texture* pColorOut);
 
     FullScreenPass::SharedPtr mpPass;

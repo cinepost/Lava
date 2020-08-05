@@ -39,6 +39,7 @@
 #include "Renderer.h"
 #include "Falcor/Utils/ArgList.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/UI/Gui.h"
 #include "Falcor/Utils/UI/TextRenderer.h"
 #include "Falcor/Utils/UI/PixelZoom.h"
@@ -59,7 +60,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
         \param[in] argv Optional. The command line arguments.
         Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
     */
-    static void run(Device::SharedPtr pDevice, const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
     /** Entry-point to Sample. User should call this to start processing.
         \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
@@ -68,7 +69,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
         \param[in] argv Optional. The command line arguments.
         Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
     */
-    static void run(Device::SharedPtr pDevice, const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+    static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
     virtual ~Sample();
 
@@ -125,7 +126,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     void captureVideoFrame();
     void renderUI();
 
-    void runInternal(Device::SharedPtr pDevice, const SampleConfig& config, uint32_t argc, char** argv);
+    void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
     void startScripting();
     void registerScriptBindings(ScriptBindings::Module& m);
@@ -152,7 +153,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     std::set<KeyboardEvent::Key> mPressedKeys;
     PixelZoom::SharedPtr mpPixelZoom;
 
-    Sample(Device::SharedPtr pDevice, IRenderer::UniquePtr& pRenderer);
+    Sample(IRenderer::UniquePtr& pRenderer);
     Sample(const Sample&) = delete;
     Sample& operator=(const Sample&) = delete;
 

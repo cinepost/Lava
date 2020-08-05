@@ -36,39 +36,32 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SideBySidePass/SideBySide.ps.slang";
 }
 
-SideBySidePass::SideBySidePass()
-{
+SideBySidePass::SideBySidePass(Device::SharedPtr pDevice): ComparisonPass(pDevice) {
     createProgram();
 }
 
-SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    SharedPtr pPass = SharedPtr(new SideBySidePass());
-    for (const auto& v : dict)
-    {
+SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pPass = SharedPtr(new SideBySidePass(pRenderContext->device()));
+    for (const auto& v : dict) {
         if (v.key() == kImageLeftBound) pPass->mImageLeftBound = v.val();
-        else if (!pPass->parseKeyValuePair(v.key(), v.val()))
-        {
+        else if (!pPass->parseKeyValuePair(v.key(), v.val())) {
             logWarning("Unknown field `" + v.key() + "` in a SideBySidePass dictionary");
         }
     }
     return pPass;
 }
 
-void SideBySidePass::createProgram()
-{
+void SideBySidePass::createProgram() {
     // Create our shader that splits the screen.
-    mpSplitShader = FullScreenPass::create(kSplitShader);
+    mpSplitShader = FullScreenPass::create(mpDevice, kSplitShader);
 }
 
-void SideBySidePass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+void SideBySidePass::execute(RenderContext* pContext, const RenderData& renderData) {
     mpSplitShader["GlobalCB"]["gLeftBound"] = mImageLeftBound;
     ComparisonPass::execute(pContext, renderData);
 }
 
-void SideBySidePass::renderUI(Gui::Widgets& widget)
-{
+void SideBySidePass::renderUI(Gui::Widgets& widget) {
     uint32_t width = pDstFbo ? pDstFbo->getWidth() : 0;
     widget.slider("View Slider", mImageLeftBound, 0u, width / 2);
     ComparisonPass::renderUI(widget);

@@ -25,22 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "CameraData.slang"
-#include "Utils/SampleGenerators/CPUSampleGenerator.h"
-#include "Core/BufferTypes/ParameterBlock.h"
+#ifndef SRC_FALCOR_SCENE_CAMERA_CAMERA_H_
+#define SRC_FALCOR_SCENE_CAMERA_CAMERA_H_
 
-namespace Falcor
-{
+#include "CameraData.slang"
+#include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
+#include "Falcor/Core/BufferTypes/ParameterBlock.h"
+
+namespace Falcor {
     struct BoundingBox;
     class ParameterBlock;
     class Gui;
 
     /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
     */
-    class dlldecl Camera
-    {
-    public:
+    class dlldecl Camera {
+     public:
         using SharedPtr = std::shared_ptr<Camera>;
         using SharedConstPtr = std::shared_ptr<const Camera>;
         using ConstSharedPtrRef = const SharedPtr&;
@@ -236,8 +236,7 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
-        enum class Changes
-        {
+        enum class Changes {
             None            = 0x0,
             Movement        = 0x1,
             Exposure        = 0x2,
@@ -275,15 +274,13 @@ namespace Falcor
         mutable CameraData mData;
         CameraData mPrevData;
 
-        struct
-        {
+        struct {
             float3 xyz;     ///< Camera frustum plane position
             float negW;     ///< Camera frustum plane, sign of the coordinates
             float3 sign;    ///< Camera frustum plane position
         } mutable mFrustumPlanes[6];
 
-        struct
-        {
+        struct {
             CPUSampleGenerator::SharedPtr pGenerator;
             float2 scale;
         } mJitterPattern;
@@ -292,4 +289,7 @@ namespace Falcor
     };
 
     enum_class_operators(Camera::Changes);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_CAMERA_CAMERA_H_

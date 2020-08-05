@@ -33,9 +33,8 @@ using namespace Falcor;
 /** Raster G-buffer pass.
     This pass renders a fixed set of G-buffer channels using rasterization.
 */
-class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, GBufferRaster>
-{
-public:
+class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, GBufferRaster> {
+ public:
     using SharedPtr = std::shared_ptr<GBufferRaster>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -46,8 +45,8 @@ public:
     std::string getDesc(void) override { return kDesc; }
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 
-private:
-    GBufferRaster(const Dictionary& dict);
+ private:
+    GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
     void setCullMode(RasterizerState::CullMode mode) override;
 
     // Internal state
