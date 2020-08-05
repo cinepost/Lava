@@ -58,6 +58,8 @@ Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(p
     }
 }
 
+Device::~Device() {}
+
 Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
         // Swapchain enabled device
@@ -90,8 +92,6 @@ bool Device::init() {
     assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
     if (apiInit() == false) return false;
 
-    auto smartDevicePtr = shared_from_this();
-
     // Create the descriptor pools
     DescriptorPool::Desc poolDesc;
     // For DX12 there is no difference between the different SRV/UAV types. For Vulkan it matters, hence the #ifdef
@@ -107,17 +107,18 @@ bool Device::init() {
         .setDescCount(DescriptorPool::Type::RawBufferSrv, 2 * 1024)
         .setDescCount(DescriptorPool::Type::RawBufferUav, 2 * 1024);
 #endif
-    mpFrameFence = GpuFence::create(smartDevicePtr);
-    mpGpuDescPool = DescriptorPool::create(smartDevicePtr, poolDesc, mpFrameFence);
+    mpFrameFence = GpuFence::create(shared_from_this());
+    mpGpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
     poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
-    mpCpuDescPool = DescriptorPool::create(smartDevicePtr, poolDesc, mpFrameFence);
-    mpUploadHeap = GpuMemoryHeap::create(smartDevicePtr, GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
-    mpRenderContext = RenderContext::create(smartDevicePtr, mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-    createNullViews(smartDevicePtr);
-    createNullBufferViews(smartDevicePtr);
-    createNullTypedBufferViews(smartDevicePtr);
+    mpCpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
+    mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    
+    createNullViews(shared_from_this());
+    createNullBufferViews(shared_from_this());
+    createNullTypedBufferViews(shared_from_this());
 
-    mpRenderContext = RenderContext::create(smartDevicePtr, mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     
     assert(mpRenderContext);
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -165,19 +166,17 @@ void Device::release() {
 }
 
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    auto smartDevicePtr = shared_from_this();
-
     // Create a texture object
-    auto pColorTex = Texture::SharedPtr(new Texture(smartDevicePtr, width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+    auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
     //pColorTex->mApiHandle = apiHandles[i];
     
     // Create the FBO if it's required
-    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(smartDevicePtr);
+    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
     mpOffscreenFbo->attachColorTarget(pColorTex, 0);
 
     // Create a depth texture
     if (depthFormat != ResourceFormat::Unknown) {
-        auto pDepth = Texture::create2D(smartDevicePtr, width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+        auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
         mpOffscreenFbo->attachDepthStencilTarget(pDepth);
     }
 
@@ -185,22 +184,20 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    auto smartDevicePtr = shared_from_this();
-
     ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
     getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
-        auto pColorTex = Texture::SharedPtr(new Texture(smartDevicePtr, width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+        auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
         pColorTex->mApiHandle = apiHandles[i];
         // Create the FBO if it's required
-        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(smartDevicePtr);
+        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(shared_from_this());
         mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
 
         // Create a depth texture
         if (depthFormat != ResourceFormat::Unknown) {
-            auto pDepth = Texture::create2D(smartDevicePtr, width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
             mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
         }
     }
@@ -218,9 +215,7 @@ Fbo::SharedPtr Device::getOffscreenFbo() const {
 }
 
 std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
-    auto smartDevicePtr = shared_from_this();
-
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(smartDevicePtr, type, count);
+    QueryHeap::SharedPtr pHeap = QueryHeap::create(shared_from_this(), type, count);
     mTimestampQueryHeaps.push_back(pHeap);
     return pHeap;
 }

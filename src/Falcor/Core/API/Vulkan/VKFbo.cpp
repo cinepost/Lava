@@ -35,8 +35,8 @@
 
 namespace Falcor {
 
-Fbo::Fbo(std::shared_ptr<Device> device): mpDevice(device), mTempDesc(device) {
-    mColorAttachments.resize(getMaxColorTargetCount(device));
+Fbo::Fbo(std::shared_ptr<Device> pDevice): mpDevice(pDevice), mTempDesc(pDevice) {
+    mColorAttachments.resize(getMaxColorTargetCount(pDevice));
 }
 
 Fbo::~Fbo() {
@@ -48,8 +48,8 @@ const Fbo::ApiHandle& Fbo::getApiHandle() const {
     return mApiHandle;
 }
 
-uint32_t Fbo::getMaxColorTargetCount(std::shared_ptr<Device> device) {
-    int count =device->getPhysicalDeviceLimits().maxFragmentOutputAttachments;
+uint32_t Fbo::getMaxColorTargetCount(std::shared_ptr<Device> pDevice) {
+    int count = pDevice->getPhysicalDeviceLimits().maxFragmentOutputAttachments;
     return count;
 }
 

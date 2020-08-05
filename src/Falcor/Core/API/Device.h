@@ -63,6 +63,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     using ApiHandle = DeviceHandle;
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
 
+    ~Device();
+
     /** Device configuration
     */
     struct Desc : ScriptBindings::enable_to_string {
@@ -275,7 +277,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
 
 
-dlldecl extern Device::SharedPtr _pDevice;
+dlldecl extern Device::SharedPtr _gpDevice;
 dlldecl extern Device::SharedPtr _gpDeviceHeadless;
 
 enum_class_operators(Device::SupportedFeatures);

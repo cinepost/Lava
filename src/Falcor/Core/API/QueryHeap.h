@@ -56,7 +56,7 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
         \param[in] count Number of queries.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, Type type, uint32_t count) { return SharedPtr(new QueryHeap(device, type, count)); }
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, uint32_t count) { return SharedPtr(new QueryHeap(pDevice, type, count)); }
 
     const ApiHandle& getApiHandle() const { return mApiHandle; }
     uint32_t getQueryCount() const { return mCount; }
@@ -84,7 +84,7 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
     }
 
  private:
-    QueryHeap(std::shared_ptr<Device> device, Type type, uint32_t count);
+    QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count);
     ApiHandle mApiHandle;
     uint32_t mCount = 0;
     uint32_t mCurrentObject = 0;

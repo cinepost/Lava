@@ -561,10 +561,6 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         assignedUAV.pView = pUAV;
         assignedUAV.pResource = pResource;
     } else if (isSrvType(bindLoc.getType())) {
-        if (!pResource) {
-            LOG_DBG("no pResource");
-        }
-
         auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView(mpDevice);
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
@@ -574,12 +570,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         auto& assignedSRV = mSRVs[flatIndex];
         if (assignedSRV.pView == pSRV) return true;
         assignedSRV.pView = pSRV;
-        LOG_DBG("Assigning pResource from device uid %u to device uid %u", pResource->device()->uid(), mpDevice->uid());
-        LOG_DBG("Device shared_ptr count %u", mpDevice.use_count());
-        LOG_DBG("pResource shared_ptr count %u", pResource->device().use_count());
         assignedSRV.pResource = pResource;
-        assignedSRV.pResource = pResource;
-        LOG_DBG("pResource assigned!");
     } else {
         logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
         return false;

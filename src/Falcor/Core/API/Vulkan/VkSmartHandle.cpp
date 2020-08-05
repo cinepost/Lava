@@ -38,13 +38,13 @@ namespace Falcor {
     template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkCommandPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyCommandPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkSemaphore>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySemaphore(mpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkSampler>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE && mpDevice) vkDestroySampler(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkSampler>::~VkHandle() { if((mApiHandle != VK_NULL_HANDLE) && mpDevice) vkDestroySampler(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkDescriptorSetLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkPipeline>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipeline(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkShaderModule>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyShaderModule(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkPipelineLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipelineLayout(mpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkDescriptorPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkQueryPool>::~VkHandle() { if (mApiHandle != VK_NULL_HANDLE && mpDevice) vkDestroyQueryPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkQueryPool>::~VkHandle() { if ((mApiHandle != VK_NULL_HANDLE) && mpDevice) vkDestroyQueryPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
 
     VkDeviceData::~VkDeviceData() {
         if (mInstance != VK_NULL_HANDLE && mLogicalDevice != VK_NULL_HANDLE && mInstance != VK_NULL_HANDLE) {
@@ -103,8 +103,10 @@ namespace Falcor {
     }
 
     VkFbo::~VkFbo() {
-        vkDestroyRenderPass(mpDevice->getApiHandle(), mVkRenderPass, nullptr);
-        vkDestroyFramebuffer(mpDevice->getApiHandle(), mVkFbo, nullptr);
+        if (mpDevice) {
+            vkDestroyRenderPass(mpDevice->getApiHandle(), mVkRenderPass, nullptr);
+            vkDestroyFramebuffer(mpDevice->getApiHandle(), mVkFbo, nullptr);
+        }
     }
 
     VkRootSignature::~VkRootSignature() {

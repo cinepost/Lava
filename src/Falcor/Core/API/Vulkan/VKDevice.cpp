@@ -126,7 +126,7 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
     VkImage image;
     
-    apiHandle = ResourceHandle::create(SharedPtr(this), image, nullptr);
+    apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
     return true;
 }
 
@@ -139,7 +139,7 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     std::vector<VkImage> swapchainImages(imageCount);
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
     for (size_t i = 0; i < swapchainImages.size(); i++) {
-        apiHandles[i] = ResourceHandle::create(SharedPtr(this), swapchainImages[i], nullptr);
+        apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], nullptr);
     }
 
     // Get the back-buffer
@@ -616,7 +616,7 @@ bool Device::apiInit() {
     
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
-    mApiHandle = DeviceHandle::create(SharedPtr(this), instance, physicalDevice, device, surface);
+    mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
     mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
 

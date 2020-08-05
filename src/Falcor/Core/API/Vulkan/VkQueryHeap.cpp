@@ -45,15 +45,15 @@ static VkQueryType getVkPoolType(QueryHeap::Type t) {
     }
 }
 
-QueryHeap::QueryHeap(std::shared_ptr<Device> device, Type type, uint32_t count) : mType(type), mCount(count) {
+QueryHeap::QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count) : mType(type), mCount(count) {
     VkQueryPoolCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     info.queryCount = count;
     info.queryType = getVkPoolType(type);
     info.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
     VkQueryPool pool;
-    vk_call(vkCreateQueryPool(device->getApiHandle(), &info, nullptr, &pool));
-    mApiHandle = ApiHandle::create(device, pool);
+    vk_call(vkCreateQueryPool(pDevice->getApiHandle(), &info, nullptr, &pool));
+    mApiHandle = ApiHandle::create(pDevice, pool);
 }
 
 }  // namespace Falcor

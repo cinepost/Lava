@@ -38,9 +38,9 @@ class Device;
 
 using DeviceUID = uint8_t;
 
-static std::unordered_map<DeviceUID, NullResourceViews> gNullViews;
-static std::unordered_map<DeviceUID, NullResourceViews> gNullBufferViews;
-static std::unordered_map<DeviceUID, NullResourceViews> gNullTypedBufferViews;
+static NullResourceViews gNullViews[FALCOR_MAX_DEVICES];
+static NullResourceViews gNullBufferViews[FALCOR_MAX_DEVICES];
+static NullResourceViews gNullTypedBufferViews[FALCOR_MAX_DEVICES];
 
 Buffer::SharedPtr getEmptyBuffer(std::shared_ptr<Device> pDevice);
 Buffer::SharedPtr getEmptyTypedBuffer(std::shared_ptr<Device> pDevice);
@@ -72,20 +72,20 @@ void createNullTypedBufferViews(std::shared_ptr<Device> pDevice) {
 }
 
 void releaseNullViews() {
-    for (auto& it: gNullViews) {
-        it.second = {};
+    for (auto& views: gNullViews) {
+        views = {};
     }
 }
 
 void releaseNullBufferViews() {
-    for (auto& it: gNullBufferViews) {
-        it.second = {};
+    for (auto& views: gNullBufferViews) {
+        views = {};
     }
 }
 
 void releaseNullTypedBufferViews() {
-    for (auto& it: gNullTypedBufferViews) {
-        it.second = {};
+    for (auto& views: gNullTypedBufferViews) {
+        views = {};
     }
 }
 

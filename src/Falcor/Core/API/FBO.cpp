@@ -113,7 +113,7 @@ namespace Falcor {
             return false;
         }
 
-        Texture::SharedPtr createTexture2D(std::shared_ptr<Device> device, uint32_t w, uint32_t h, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags flags) {
+        Texture::SharedPtr createTexture2D(std::shared_ptr<Device> pDevice, uint32_t w, uint32_t h, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags flags) {
             if (format == ResourceFormat::Unknown) {
                 logError("Can't create Texture2D with an unknown resource format");
                 return nullptr;
@@ -121,9 +121,9 @@ namespace Falcor {
 
             Texture::SharedPtr pTex;
             if (sampleCount > 1) {
-                pTex = Texture::create2DMS(device, w, h, format, sampleCount, arraySize, flags);
+                pTex = Texture::create2DMS(pDevice, w, h, format, sampleCount, arraySize, flags);
             } else {
-                pTex = Texture::create2D(device, w, h, format, arraySize, mipLevels, nullptr, flags);
+                pTex = Texture::create2D(pDevice, w, h, format, arraySize, mipLevels, nullptr, flags);
             }
 
             return pTex;
@@ -173,16 +173,16 @@ namespace Falcor {
         return true;
     }
 
-    Fbo::Desc::Desc(std::shared_ptr<Device> device): mpDevice(device) {
-        mColorTargets.resize(Fbo::getMaxColorTargetCount(device));
+    Fbo::Desc::Desc(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+        mColorTargets.resize(Fbo::getMaxColorTargetCount(pDevice));
     }
 
-    Fbo::SharedPtr Fbo::create(std::shared_ptr<Device> device) {
-        return SharedPtr(new Fbo(device));
+    Fbo::SharedPtr Fbo::create(std::shared_ptr<Device> pDevice) {
+        return SharedPtr(new Fbo(pDevice));
     }
 
-    Fbo::SharedPtr Fbo::create(std::shared_ptr<Device> device, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth) {
-        auto pFbo = create(device);
+    Fbo::SharedPtr Fbo::create(std::shared_ptr<Device> pDevice, const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth) {
+        auto pFbo = create(pDevice);
         for (uint32_t i = 0 ; i < colors.size() ; i++) {
             pFbo->attachColorTarget(colors[i], i);
         }
@@ -193,10 +193,10 @@ namespace Falcor {
         return pFbo;
     }
 
-    Fbo::SharedPtr Fbo::getDefault(std::shared_ptr<Device> device) {
+    Fbo::SharedPtr Fbo::getDefault(std::shared_ptr<Device> pDevice) {
         static Fbo::SharedPtr pDefault;
         if (pDefault == nullptr) {
-            pDefault = Fbo::SharedPtr(new Fbo(device));
+            pDefault = Fbo::SharedPtr(new Fbo(pDevice));
         }
         return pDefault;
     }
@@ -343,33 +343,33 @@ namespace Falcor {
         }
     }
 
-    Fbo::SharedPtr Fbo::create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
+    Fbo::SharedPtr Fbo::create2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
         uint32_t sampleCount = fboDesc.getSampleCount();
         if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false) {
             throw std::runtime_error("Can't create 2D FBO. Invalid parameters.");
         }
         
-        Fbo::SharedPtr pFbo = create(device);
+        Fbo::SharedPtr pFbo = create(pDevice);
         
         // Create the color targets
-        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(device); i++) {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(pDevice); i++) {
             if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown) {
                 Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
-                Texture::SharedPtr pTex = createTexture2D(device, width, height, fboDesc.getColorTargetFormat(i), sampleCount, arraySize, mipLevels, flags);
+                Texture::SharedPtr pTex = createTexture2D(pDevice, width, height, fboDesc.getColorTargetFormat(i), sampleCount, arraySize, mipLevels, flags);
                 pFbo->attachColorTarget(pTex, i, 0, 0, kAttachEntireMipLevel);
             }
         }
         
         if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown) {
             Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
-            Texture::SharedPtr pDepth = createTexture2D(device, width, height, fboDesc.getDepthStencilFormat(), sampleCount, arraySize, mipLevels, flags);
+            Texture::SharedPtr pDepth = createTexture2D(pDevice, width, height, fboDesc.getDepthStencilFormat(), sampleCount, arraySize, mipLevels, flags);
             pFbo->attachDepthStencilTarget(pDepth, 0, 0, kAttachEntireMipLevel);
         }
 
         return pFbo;
     }
 
-    Fbo::SharedPtr Fbo::createCubemap(std::shared_ptr<Device> device, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
+    Fbo::SharedPtr Fbo::createCubemap(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels) {
         if (fboDesc.getSampleCount() > 1) {
             throw std::runtime_error("Can't create cubemap FBO. Multisampled cubemap is not supported.");
         }
@@ -377,28 +377,28 @@ namespace Falcor {
             throw std::runtime_error("Can't create cubemap FBO. Invalid parameters.");
         }
 
-        Fbo::SharedPtr pFbo = create(device);
+        Fbo::SharedPtr pFbo = create(pDevice);
 
         // Create the color targets
-        for (uint32_t i = 0; i < getMaxColorTargetCount(device); i++) {
+        for (uint32_t i = 0; i < getMaxColorTargetCount(pDevice); i++) {
             Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
-            auto pTex = Texture::createCube(device, width, height, fboDesc.getColorTargetFormat(i), arraySize, mipLevels, nullptr, flags);
+            auto pTex = Texture::createCube(pDevice, width, height, fboDesc.getColorTargetFormat(i), arraySize, mipLevels, nullptr, flags);
             pFbo->attachColorTarget(pTex, i, 0, kAttachEntireMipLevel);
         }
 
         if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown) {
             Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
-            auto pDepth = Texture::createCube(device, width, height, fboDesc.getDepthStencilFormat(), arraySize, mipLevels, nullptr, flags);
+            auto pDepth = Texture::createCube(pDevice, width, height, fboDesc.getDepthStencilFormat(), arraySize, mipLevels, nullptr, flags);
             pFbo->attachDepthStencilTarget(pDepth, 0, kAttachEntireMipLevel);
         }
 
         return pFbo;
     }
 
-    Fbo::SharedPtr Fbo::create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth) {
-        Desc d(device);
+    Fbo::SharedPtr Fbo::create2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth) {
+        Desc d(pDevice);
         d.setColorTarget(0, color).setDepthStencilTarget(depth);
-        return create2D(device, width, height, d);
+        return create2D(pDevice, width, height, d);
     }
 
     SCRIPT_BINDING(Fbo) {
