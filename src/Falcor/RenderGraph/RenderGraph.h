@@ -55,7 +55,9 @@ class Device;
             \param[in] name Name of the render graph.
             \return New object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> device, const std::string& name = "");
+        static SharedPtr create(const std::string& name = "");
+
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
 
         /** Set a scene
         */

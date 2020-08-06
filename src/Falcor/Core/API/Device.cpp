@@ -60,6 +60,17 @@ Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(p
 
 Device::~Device() {}
 
+Device::SharedPtr Device::create(const Device::Desc& desc) {
+    if (_gpDeviceHeadless) {
+        logError("Falcor only supports a single headless device");
+        return nullptr;
+    }
+
+    _gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
+    if (_gpDeviceHeadless->init() == false) { _gpDeviceHeadless = nullptr;}
+    return _gpDeviceHeadless;
+}
+
 Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
         // Swapchain enabled device
@@ -73,14 +84,7 @@ Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc&
         return _gpDevice;
     } else {
         // Headless device
-        if (_gpDeviceHeadless) {
-            logError("Falcor only supports a single headless device");
-            return nullptr;
-        }
-
-        _gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
-        if (_gpDeviceHeadless->init() == false) { _gpDeviceHeadless = nullptr;}
-        return _gpDeviceHeadless;
+        return create(desc);
     }
 }
 
@@ -354,8 +358,12 @@ SCRIPT_BINDING(Device) {
     deviceDesc.desc_field(enableVsync).desc_field(enableDebugLayer).desc_field(cmdQueues);
 #undef desc_field
 
+    // Device
+    Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
+
     auto deviceClass = m.regClass(Device);
-    deviceClass.ctor(&Device::create);
+    //deviceClass.ctor(&Device::create);
+    deviceClass.ctor(&create_headless);
 }
 
 }  // namespace Falcor

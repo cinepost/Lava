@@ -53,8 +53,7 @@ namespace Falcor {
 #endif
 
 struct DeviceApiData;
-
-class Engine;
+class DeviceManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
@@ -99,6 +98,12 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     };
 
     using MemoryType = GpuMemoryHeap::Type;
+
+    /** Create a new headless device.
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(const Desc& desc);
 
     /** Create a new device.
         \param[in] pWindow a previously-created window object
@@ -265,9 +270,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void toggleFullScreen(bool fullscreen);
 
  protected:
+    friend class DeviceManager;
+    
     bool init();
-
-    friend class Engine;
 
     std::string mPhysicalDeviceName;
 

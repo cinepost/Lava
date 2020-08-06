@@ -29,6 +29,7 @@
 
 #include "Falcor/stdafx.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuFence.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
