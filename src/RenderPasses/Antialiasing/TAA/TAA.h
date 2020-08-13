@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_ANTIALIASING_TAA_TAA_H_
+#define SRC_FALCOR_RENDERPASSES_ANTIALIASING_TAA_TAA_H_
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 
@@ -54,7 +56,7 @@ class TAA : public RenderPass, public inherit_shared_from_this<RenderPass, TAA> 
 
  private:
     TAA(Device::SharedPtr pDevice);
-    void allocatePrevColor(const Texture* pColorOut);
+    void allocatePrevColor(RenderContext* pContext, const Texture* pColorOut);
 
     FullScreenPass::SharedPtr mpPass;
     Fbo::SharedPtr mpFbo;
@@ -68,3 +70,5 @@ class TAA : public RenderPass, public inherit_shared_from_this<RenderPass, TAA> 
 
     Texture::SharedPtr mpPrevColor;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_ANTIALIASING_TAA_TAA_H_

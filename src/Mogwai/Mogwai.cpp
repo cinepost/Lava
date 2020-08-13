@@ -45,6 +45,7 @@
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
 
+#include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/Window.h"
 #include "Falcor/Utils/Debug/debug.h"
 
@@ -68,7 +69,7 @@ const std::string kAppDataPath = getAppDataDirectory() + "/NVIDIA/Falcor/Mogwai.
 size_t Renderer::DebugWindow::index = 0;
 
 
-Renderer::Renderer(Falcor::Device::SharedPtr pDevice): mpDevice(pDevice), mAppData(kAppDataPath) {}
+Renderer::Renderer(std::shared_ptr<Falcor::Device> pDevice): IRenderer(pDevice), mAppData(kAppDataPath) {}
 
 void Renderer::extend(Extension::CreateFunc func, const std::string& name) {
     if (!gExtensions) gExtensions = new std::map<std::string, Extension::CreateFunc>();
@@ -86,6 +87,8 @@ void Renderer::onShutdown() {
 }
 
 void Renderer::onLoad(RenderContext* pRenderContext) {
+//void Renderer::onLoad() {
+    //auto pRenderContext = mpDevice->getRenderContext();
     mpExtensions.push_back(MogwaiSettings::create(this));
     if (gExtensions) {
         for (auto& f : (*gExtensions)) mpExtensions.push_back(f.second(this));
@@ -398,6 +401,7 @@ void Renderer::loadSceneDialog() {
 }
 
 void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags) {
+    LOG_DBG("Loading scene on device uid: %u", mpDevice->uid());
     setScene(SceneBuilder::create(mpDevice, filename, buildFlags)->getScene());
 }
 
@@ -475,6 +479,11 @@ void Renderer::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTa
 }
 
 void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
+//void Renderer::onFrameRender(const Fbo::SharedPtr& pTargetFbo) {
+//    auto pRenderContext = mpDevice->getRenderContext();
+
+    LOG_DBG("Renderer::onFrameRender");
+
     if (mScriptFilename.size()) {
         std::string s = mScriptFilename;
         mScriptFilename.clear();
@@ -485,10 +494,11 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
     applyEditorChanges();
 
     // Clear frame buffer.
-    const float4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    const float4 clearColor(0.52f, 0.38f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if (mGraphs.size()) {
+        LOG_DBG("mGraphs");
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
         // Update scene and camera.
@@ -500,9 +510,19 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 
         // Blit main graph output to frame buffer.
         if (mGraphs[mActiveGraph].mainOutput.size()) {
+            LOG_DBG("blit");
             Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             assert(pOutTex);
             pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
+
+            // image save test
+            Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
+            assert(pTex);
+            std::string filename = "/home/max/test/render_test.";
+            auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
+            filename += ext;
+            auto format = Bitmap::getFormatFromFileExtension(ext);
+            pTex->captureToFile(0, 0, filename, format);
         }
     }
 
@@ -527,6 +547,12 @@ bool Renderer::onKeyEvent(const KeyboardEvent& keyEvent) {
 }
 
 void Renderer::onResizeSwapChain(uint32_t width, uint32_t height) {
+    // recreate fbo
+    //auto pBackBufferFBO = mpDevice->resizeSwapChain(width, height);
+    //auto pCurrentFbo = mpTargetFBO;
+    //mpTargetFBO = Fbo::create2D(mpDevice, width, height, pBackBufferFBO->getDesc());
+    //mpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
+
     for (auto& g : mGraphs) {
         g.pGraph->onResize(gpFramework->getTargetFbo().get());
         Scene::SharedPtr graphScene = g.pGraph->getScene();
@@ -590,8 +616,9 @@ int main(int argc, char** argv)
         Device::Desc device_desc;
         device_desc.width = 1280;
         device_desc.height = 720;
-        auto pNullWindow = Falcor::Window::SharedPtr(nullptr);
-        IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(Device::create(pNullWindow, device_desc));
+        //auto pNullWindow = Falcor::Window::SharedPtr(nullptr);
+        //IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(Device::create(pNullWindow, device_desc));
+        IRenderer::UniquePtr pRenderer = std::make_unique<Mogwai::Renderer>(DeviceManager::instance().createRenderingDevice(0, device_desc));
 
         ArgList args;
 #ifdef _WIN32

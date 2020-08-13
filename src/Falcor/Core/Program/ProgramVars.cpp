@@ -54,8 +54,8 @@ namespace Falcor {
         return true;
     }
 
-    ProgramVars::ProgramVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
-        : ParameterBlock(device, pReflector->getProgramVersion(), pReflector->getDefaultParameterBlock())
+    ProgramVars::ProgramVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector)
+        : ParameterBlock(pDevice, pReflector->getProgramVersion() , pReflector->getDefaultParameterBlock())
         , mpReflector(pReflector)
     {
         assert(pReflector);
@@ -72,43 +72,39 @@ namespace Falcor {
         }
     }
 
-    GraphicsVars::GraphicsVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(device, pReflector)
-    {
+    GraphicsVars::GraphicsVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector): ProgramVars(pDevice, pReflector) {
         addSimpleEntryPointGroups();
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector) {
+    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
             throw std::runtime_error("Can't create a GraphicsVars object without a program reflector");
         }
-        return SharedPtr(new GraphicsVars(device, pReflector));
+        return SharedPtr(new GraphicsVars(pDevice, pReflector));
     }
 
-    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> device, const GraphicsProgram* pProg) {
+    GraphicsVars::SharedPtr GraphicsVars::create(std::shared_ptr<Device> pDevice, const GraphicsProgram* pProg) {
         if (pProg == nullptr) {
             throw std::runtime_error("Can't create a GraphicsVars object without a program");
         }
-        return create(device, pProg->getReflector());
+        return create(pDevice, pProg->getReflector());
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector) {
+    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector) {
         if (pReflector == nullptr) {
             throw std::runtime_error("Can't create a ComputeVars object without a program reflector");
         }
-        return SharedPtr(new ComputeVars(device, pReflector));
+        return SharedPtr(new ComputeVars(pDevice, pReflector));
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> device, const ComputeProgram* pProg) {
+    ComputeVars::SharedPtr ComputeVars::create(std::shared_ptr<Device> pDevice, const ComputeProgram* pProg) {
         if (pProg == nullptr) {
             throw std::runtime_error("Can't create a ComputeVars object without a program");
         }
-        return create(device, pProg->getReflector());
+        return create(pDevice, pProg->getReflector());
     }
 
-    ComputeVars::ComputeVars(std::shared_ptr<Device> device, const ProgramReflection::SharedConstPtr& pReflector)
-        : ProgramVars(device, pReflector)
-    {
+    ComputeVars::ComputeVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector) : ProgramVars(pDevice, pReflector) {
         addSimpleEntryPointGroups();
     }
 
@@ -233,7 +229,7 @@ namespace Falcor {
 
         // Iterate over constant buffers and parameter blocks to recursively bind their root descriptors.
         uint32_t resourceRangeCount = pParameterBlockReflector->getResourceRangeCount();
-        //LOG_DBG("for loop resourceRangeCount");
+
         for (uint32_t resourceRangeIndex = 0; resourceRangeIndex < resourceRangeCount; ++resourceRangeIndex) {
             auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
             auto& bindingInfo = pParameterBlockReflector->getResourceRangeBindingInfo(resourceRangeIndex);
@@ -245,18 +241,13 @@ namespace Falcor {
             auto pSubObjectReflector = bindingInfo.pSubObjectReflector;
             auto objectCount = resourceRange.count;
 
-            //LOG_DBG("subloop resourceRangeCount");
             for (uint32_t i = 0; i < objectCount; ++i) {
                 auto pSubBlock = pParameterBlock->getParameterBlock(resourceRangeIndex, i);
                 if (!bindParameterBlockRootDescs<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, rootDescIndex)) {
                     return false;
                 }
             }
-            //LOG_DBG("subloop resourceRangeCount done");
         }
-        //LOG_DBG("for loop resourceRangeCount done");
-
-        //LOG_DBG("return true");
 
         return true;
     }

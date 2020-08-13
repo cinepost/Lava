@@ -117,7 +117,7 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
     setSampler(Sampler::create(pRenderContext->device(), samplerDesc));
 }
 
-void ForwardLightingPass::initDepth(const RenderData& renderData) {
+void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& renderData) {
     const auto& pTexture = renderData[kDepth]->asTexture();
 
     if (pTexture) {
@@ -126,7 +126,7 @@ void ForwardLightingPass::initDepth(const RenderData& renderData) {
     } else {
         mpState->setDepthStencilState(nullptr);
         if (mpFbo->getDepthStencilTexture() == nullptr) {
-            auto pDepth = Texture::create2D(mpDevice, mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(pContext->device(), mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
             mpFbo->attachDepthStencilTarget(pDepth);
         }
     }
@@ -147,7 +147,7 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
 }
 
 void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
-    initDepth(renderData);
+    initDepth(pContext, renderData);
     initFbo(pContext, renderData);
 
     if (mpScene) {

@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_RESOLVEPASS_H_
+#define SRC_FALCOR_RENDERPASSES_RESOLVEPASS_H_
+
 #include "Falcor/RenderGraph/RenderPass.h"
 
 namespace Falcor {
@@ -49,3 +51,5 @@ class dlldecl ResolvePass : public RenderPass, public inherit_shared_from_this<R
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERPASSES_RESOLVEPASS_H_

@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_
+
 #include "Falcor/Falcor.h"
 
 using namespace Falcor;
@@ -82,3 +84,5 @@ inline std::string to_string(GBufferBase::SamplePattern type) {
     }
 }
 #undef str
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_

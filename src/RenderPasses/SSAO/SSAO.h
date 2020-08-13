@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SSAO_SSAO_H_
+#define SRC_FALCOR_RENDERPASSES_SSAO_SSAO_H_
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "SSAOData.slang"
@@ -33,15 +35,13 @@
 
 using namespace Falcor;
 
-class SSAO : public RenderPass, public inherit_shared_from_this<RenderPass, SSAO>
-{
-public:
+class SSAO : public RenderPass, public inherit_shared_from_this<RenderPass, SSAO> {
+ public:
     using SharedPtr = std::shared_ptr<SSAO>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
 
-    enum class SampleDistribution : uint32_t
-    {
+    enum class SampleDistribution : uint32_t {
         Random,
         UniformHammersley,
         CosineHammersley
@@ -64,7 +64,7 @@ public:
     uint32_t getKernelSize() { return mData.kernelSize; }
     uint32_t getDistribution() { return (uint32_t)mHemisphereDistribution; }
 
-private:
+ private:
     SSAO(Device::SharedPtr pDevice);
     Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
     void setNoiseTexture(uint32_t width, uint32_t height);
@@ -90,24 +90,23 @@ private:
 
     Scene::SharedPtr mpScene;
 
-    struct
-    {
+    struct {
         FullScreenPass::SharedPtr pApplySSAOPass;
         Fbo::SharedPtr pFbo;
     } mComposeData;
 };
 
 #define str(a) case SSAO::SampleDistribution::a: return #a
-inline std::string to_string(SSAO::SampleDistribution type)
-{
-    switch (type)
-    {
+inline std::string to_string(SSAO::SampleDistribution type) {
+    switch (type) {
         str(Random);
         str(UniformHammersley);
         str(CosineHammersley);
-    default:
-        should_not_get_here();
-        return "";
+        default:
+            should_not_get_here();
+            return "";
     }
 }
 #undef str
+
+#endif  // SRC_FALCOR_RENDERPASSES_SSAO_SSAO_H_

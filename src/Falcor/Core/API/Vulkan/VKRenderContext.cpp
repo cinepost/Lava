@@ -33,15 +33,12 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
 
-namespace Falcor
-{
+namespace Falcor {
+    
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
     VkImageLayout getImageLayout(Resource::State state);
 
-    RenderContext::RenderContext(std::shared_ptr<Device> device, CommandQueueHandle queue)
-        : ComputeContext(device, LowLevelContextData::CommandQueueType::Direct, queue)
-    {
-    }
+    RenderContext::RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) : ComputeContext(pDevice, LowLevelContextData::CommandQueueType::Direct, queue) {}
 
     RenderContext::~RenderContext() = default;
 

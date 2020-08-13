@@ -197,7 +197,13 @@ namespace Falcor {
         }
 
         RenderPassLibrary lib(mpDevice);
-        func(lib);
+
+        try {
+            func(lib);
+        } catch (...) {
+            logError("Can't get passes from library " + fullpath);
+            throw;
+        }
 
         for (auto& p : lib.mPasses) {
             registerInternal(p.second.className, p.second.desc, p.second.func, l);

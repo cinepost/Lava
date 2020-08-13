@@ -30,13 +30,13 @@
 
 namespace Falcor {
 
-BaseGraphicsPass::BaseGraphicsPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines): mpDevice(device) {
-    auto pProg = GraphicsProgram::create(device, progDesc, programDefines);
+BaseGraphicsPass::BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): mpDevice(pDevice) {
+    auto pProg = GraphicsProgram::create(pDevice, progDesc, programDefines);
 
-    mpState = GraphicsState::create(device);
+    mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProg);
 
-    mpVars = GraphicsVars::create(device, pProg.get());
+    mpVars = GraphicsVars::create(pDevice, pProg.get());
 }
 
 void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars) {

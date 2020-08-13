@@ -47,7 +47,7 @@ class Device;
             \param[in] createVars Create program vars automatically, otherwise use setVars().
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry = "main", const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
 
         /** Create a new compute pass.
             \param[in] desc The program's description.
@@ -55,7 +55,7 @@ class Device;
             \param[in] createVars Create program vars automatically, otherwise use setVars().
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines = Program::DefineList(), bool createVars = true);
 
         /** Execute the pass using the given compute-context
             \param[in] pContext The compute context
@@ -107,11 +107,11 @@ class Device;
         uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
 
     protected:
-        ComputePass(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
+        ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
         ComputeVars::SharedPtr mpVars;
         ComputeState::SharedPtr mpState;
 
-    private:
+    //private:
         std::shared_ptr<Device> mpDevice;
     };
 

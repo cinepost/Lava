@@ -79,6 +79,11 @@ class Extension {
 
     virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {}
     virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {}
+
+    //virtual void beginFrame(const Fbo::SharedPtr& pTargetFbo);
+    //virtual void endFrame(const Fbo::SharedPtr& pTargetFbo);
+    
+
     virtual void renderUI(Gui* pGui) {}
     virtual bool mouseEvent(const MouseEvent& e) { return false; }
     virtual bool keyboardEvent(const KeyboardEvent& e) { return false; }
@@ -93,14 +98,14 @@ class Device;
 
 class Renderer : public IRenderer {
  public:
-    Renderer(Falcor::Device::SharedPtr pDevice);
+    Renderer(std::shared_ptr<Falcor::Device> pDevice);
 
-    Falcor::Device::SharedPtr device() { return mpDevice; }
-    Falcor::Device::SharedPtr device() const { return mpDevice; }
-
-    void onLoad(RenderContext* pRenderContext) override;
-    void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    virtual void onLoad(RenderContext* pRenderContext) override;
+    //virtual void onLoad() override;
+    virtual void onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    //virtual void onFrameRender(const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(uint32_t width, uint32_t height) override;
+
     bool onKeyEvent(const KeyboardEvent& e) override;
     bool onMouseEvent(const MouseEvent& e) override;
     void onGuiRender(Gui* pGui) override;
@@ -155,6 +160,7 @@ class Renderer : public IRenderer {
     void setScene(Scene::ConstSharedPtrRef pScene);
     Scene::SharedPtr getScene() const;
     void executeActiveGraph(RenderContext* pRenderContext);
+
     void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
     void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo);
 
@@ -190,9 +196,7 @@ class Renderer : public IRenderer {
     // Scripting
     void registerScriptBindings(ScriptBindings::Module& m);
     std::string mGlobalHelpMessage;
- 
- private:
-    Falcor::Device::SharedPtr mpDevice;
+
 };
 
 #define MOGWAI_EXTENSION(Name)                     \

@@ -25,11 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
 #include "SideBySidePass.h"
 
-namespace
-{
+namespace {
     const std::string kImageLeftBound = "imageLeftBound";
 
     // Where is our shader located?
@@ -52,6 +50,7 @@ SideBySidePass::SharedPtr SideBySidePass::create(RenderContext* pRenderContext, 
 }
 
 void SideBySidePass::createProgram() {
+    assert(mpDevice);
     // Create our shader that splits the screen.
     mpSplitShader = FullScreenPass::create(mpDevice, kSplitShader);
 }

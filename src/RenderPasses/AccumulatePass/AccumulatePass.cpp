@@ -100,6 +100,8 @@ RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
 }
 
 void AccumulatePass::compile(RenderContext* pContext, const CompileData& compileData) {
+    assert(mpDevice == pContext->device());
+
     // Reset accumulation when resolution changes.
     if (compileData.defaultTexDims != mFrameDim) {
         mFrameCount = 0;
@@ -186,6 +188,8 @@ void AccumulatePass::renderUI(Gui::Widgets& widget) {
 }
 
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    assert(mpDevice == pRenderContext->device());
+    assert(mpDevice == pScene->device());
     // Reset accumulation when the scene changes.
     mFrameCount = 0;
     mpScene = pScene;
@@ -206,7 +210,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
         }
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            pBuf = Texture::create2D(mpDevice, width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             assert(pBuf);
             mFrameCount = 0;
         }

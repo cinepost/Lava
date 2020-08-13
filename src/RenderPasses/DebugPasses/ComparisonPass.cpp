@@ -87,7 +87,7 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
     // Get references to our input, output, and temporary accumulation texture
     pLeftSrcTex = renderData[kLeftInput]->asTexture();
     pRightSrcTex = renderData[kRightInput]->asTexture();
-    pDstFbo = Fbo::create(mpDevice, { renderData[kOutput]->asTexture() });
+    pDstFbo = Fbo::create(pContext->device(), { renderData[kOutput]->asTexture() });
 
     // If we haven't initialized the split location, split the screen in half by default
     if (mSplitLoc < 0) mSplitLoc = 0.5f;

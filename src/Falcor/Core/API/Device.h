@@ -60,6 +60,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
     using ApiHandle = DeviceHandle;
+    using DeviceLocalUID = uint32_t;
+    
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
 
     ~Device();
@@ -99,7 +101,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     using MemoryType = GpuMemoryHeap::Type;
 
-    /** Create a new headless device.
+    /** Create a new rendering(headless) device.
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */

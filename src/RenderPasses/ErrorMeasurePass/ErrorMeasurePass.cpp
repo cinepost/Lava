@@ -133,7 +133,7 @@ void ErrorMeasurePass::execute(RenderContext* pRenderContext, const RenderData& 
     if (!mpDifferenceTexture || mpDifferenceTexture->getWidth() != width ||
         mpDifferenceTexture->getHeight() != height)
     {
-        mpDifferenceTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpDifferenceTexture = Texture::create2D(pRenderContext->device(), width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         assert(mpDifferenceTexture);
     }
 

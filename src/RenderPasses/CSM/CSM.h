@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_CSM_CSM_H_
+#define SRC_FALCOR_RENDERPASSES_CSM_CSM_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
@@ -111,8 +112,7 @@ private:
     void renderScene(RenderContext* pCtx);
 
     // Shadow-pass
-    struct
-    {
+    struct {
         Fbo::SharedPtr pFbo;
         float fboAspectRatio;
         Sampler::SharedPtr pPointCmpSampler;
@@ -125,8 +125,7 @@ private:
     } mShadowPass;
 
     // SDSM
-    struct SdsmData
-    {
+    struct SdsmData {
         ParallelReduction::UniquePtr minMaxReduction;
         float2 sdsmResult;   // Used for displaying the range in the UI
         uint32_t width = 0;
@@ -143,8 +142,7 @@ private:
     Dictionary mBlurDict;
 
     // Depth-pass
-    struct
-    {
+    struct {
         GraphicsProgram::SharedPtr pProgram;
         GraphicsState::SharedPtr pState;
         GraphicsVars::SharedPtr pVars;
@@ -152,15 +150,13 @@ private:
     void executeDepthPass(RenderContext* pCtx, const Camera* pCamera);
 
     //Visibility pass
-    struct
-    {
+    struct {
         FullScreenPass::SharedPtr pPass;
         Fbo::SharedPtr pFbo;
         UniformShaderVarOffset mPassDataOffset;
     } mVisibilityPass;
 
-    struct
-    {
+    struct {
         //This is effectively a bool, but bool only takes up 1 byte which messes up setBlob
         uint32_t shouldVisualizeCascades = 0u;
         int3 padding;
@@ -169,8 +165,7 @@ private:
         uint32_t mapBitsPerChannel = 32;
     } mVisibilityPassData;
 
-    struct
-    {
+    struct {
         bool depthClamp = true;
         bool useMinMaxSdsm = true;
         float2 distanceRange = float2(0, 1);
@@ -194,16 +189,16 @@ private:
 };
 
 #define str(a) case CSM::PartitionMode::a: return #a
-inline std::string to_string(CSM::PartitionMode type)
-{
-    switch (type)
-    {
+inline std::string to_string(CSM::PartitionMode type) {
+    switch (type) {
         str(Linear);
         str(Logarithmic);
         str(PSSM);
-    default:
-        should_not_get_here();
-        return "";
+        default:
+            should_not_get_here();
+            return "";
     }
 }
 #undef str
+
+#endif  // SRC_FALCOR_RENDERPASSES_CSM_CSM_H_

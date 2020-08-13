@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_INVALIDDETECTIONPASS_INVALIDDETECTIONPASS_H_
+#define SRC_FALCOR_RENDERPASSES_INVALIDDETECTIONPASS_INVALIDDETECTIONPASS_H_
 
 #include "Falcor/Falcor.h"
 
@@ -50,3 +51,5 @@ class InvalidPixelDetectionPass : public RenderPass {
     Fbo::SharedPtr mpFbo;
     bool mReady = false;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_INVALIDDETECTIONPASS_INVALIDDETECTIONPASS_H_

@@ -75,7 +75,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] queue The command queue.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Clear an FBO.
         \param[in] pFbo The FBO to clear
@@ -193,7 +193,7 @@ class dlldecl RenderContext : public ComputeContext {
 #endif
 
 private:
-    RenderContext(std::shared_ptr<Device> device, CommandQueueHandle queue);
+    RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
     bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
     bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
 

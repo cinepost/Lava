@@ -73,6 +73,7 @@ RenderPassReflection InvalidPixelDetectionPass::reflect(const CompileData& compi
 }
 
 void InvalidPixelDetectionPass::compile(RenderContext* pContext, const CompileData& compileData) {
+    assert(mpDevice == pContext->device());
     if (!mReady) throw std::runtime_error("InvalidPixelDetectionPass::compile - missing incoming reflection data");
 }
 

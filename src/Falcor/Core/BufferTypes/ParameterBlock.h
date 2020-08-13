@@ -105,17 +105,17 @@ class dlldecl ParameterBlock {
 
     /** Create a new object that holds a value of the given type.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pType);
 
     /** Create a new object that holds a value described by the given reflector.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const ParameterBlockReflection::SharedConstPtr& pReflection);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection);
 
     /** Create a new object that holds a value of the type with the given name in the given program.
         \param[in] pProgramVersion Program version object.
         \param[in] typeName Name of the type. If the type does not exist an exception is thrown.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName);
 
     /** Set a variable into the block.
         The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
@@ -342,7 +342,7 @@ class dlldecl ParameterBlock {
 
     std::shared_ptr<Device>  mpDevice;
 
-    ParameterBlock(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
+    ParameterBlock(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection);
 
     std::shared_ptr<const ProgramVersion> mpProgramVersion;
     ParameterBlockReflection::SharedConstPtr mpReflector;

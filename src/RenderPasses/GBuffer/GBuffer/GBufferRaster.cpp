@@ -107,7 +107,9 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
 void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
-    mpDepthPrePassGraph = RenderGraph::create(mpDevice, "Depth Pre-Pass");
+    assert(pContext->device());
+
+    mpDepthPrePassGraph = RenderGraph::create(pContext->device(), "Depth Pre-Pass");
     DepthPass::SharedPtr pDepthPass = DepthPass::create(pContext);
     pDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePassGraph->addPass(pDepthPass, "DepthPrePass");
@@ -181,7 +183,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Create program vars.
     if (!mRaster.pVars) {
-        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
+        mRaster.pVars = GraphicsVars::create(pRenderContext->device(), mRaster.pProgram.get());
     }
 
     // Copy depth buffer.

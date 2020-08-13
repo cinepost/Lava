@@ -103,9 +103,9 @@ class dlldecl ResourceView {
 
  protected:
     ApiHandle mApiHandle;
-    ResourceViewInfo mViewInfo;
-    ResourceWeakPtr mpResource;
     std::shared_ptr<Device> mpDevice;
+    ResourceWeakPtr mpResource;
+    ResourceViewInfo mViewInfo;
 };
 
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {

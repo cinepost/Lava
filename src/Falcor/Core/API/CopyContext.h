@@ -74,7 +74,7 @@ class dlldecl CopyContext {
         \param[in] queue Command queue handle.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Flush the command list. This doesn't reset the command allocator, just submits the commands
         \param[in] wait If true, will block execution until the GPU finished processing the commands
@@ -151,7 +151,7 @@ class dlldecl CopyContext {
     void bindDescriptorHeaps();
 
  protected:
-    CopyContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    CopyContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
 
     bool textureBarrier(const Texture* pTexture, Resource::State newState);
     bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);

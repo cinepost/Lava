@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_
+
 #include "GBuffer.h"
 
 using namespace Falcor;
@@ -54,8 +56,7 @@ class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, G
     Fbo::SharedPtr                  mpFbo;
 
     // Rasterization resources
-    struct
-    {
+    struct {
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
@@ -64,3 +65,5 @@ class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, G
     static const char* kDesc;
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_

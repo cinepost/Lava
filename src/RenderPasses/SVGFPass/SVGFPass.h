@@ -25,14 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SVGFPASS_SVGFPASS_H_
+#define SRC_FALCOR_RENDERPASSES_SVGFPASS_SVGFPASS_H_
+
 #include "Falcor.h"
 
 using namespace Falcor;
 
-class SVGFPass : public RenderPass, public inherit_shared_from_this<RenderPass, SVGFPass>
-{
-public:
+class SVGFPass : public RenderPass, public inherit_shared_from_this<RenderPass, SVGFPass> {
+ public:
     using SharedPtr = std::shared_ptr<SVGFPass>;
     using inherit_shared_from_this::shared_from_this;
 
@@ -45,7 +46,7 @@ public:
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-private:
+ private:
     SVGFPass(Device::SharedPtr pDevice, const Dictionary& dict);
 
     bool init(const Dictionary& dict);
@@ -90,3 +91,5 @@ private:
     Fbo::SharedPtr mpFilteredIlluminationFbo;
     Fbo::SharedPtr mpFinalFbo;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_SVGFPASS_SVGFPASS_H_

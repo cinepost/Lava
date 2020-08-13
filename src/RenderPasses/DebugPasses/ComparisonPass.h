@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_
+#define SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_
+
 #include "Falcor.h"
 
 using namespace Falcor;
@@ -61,3 +63,5 @@ class ComparisonPass : public RenderPass {
     std::string mLeftLabel = "Left side"; // Left label.  Set in Python script with "leftLabel"
     std::string mRightLabel = "Right side"; // Right label.  Set in Python script with "rightLabel"
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_

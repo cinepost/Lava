@@ -44,7 +44,7 @@ class __attribute__((visibility("default"))) Dictionary {
 
     class Value {
      public:
-        Value(const Container& container, const std::string& name) : mContainer(container), mName(name) {};
+        Value(const Container& container, const std::string& name) : mName(name), mContainer(container) {};
         Value(const Container& container = {}) : Value(container, std::string()) {}
 
         template<typename T>
@@ -61,7 +61,7 @@ class __attribute__((visibility("default"))) Dictionary {
     template<typename ContainerType>
     class IteratorT {
      public:
-        IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mpContainer(pContainer), mIt(it) {}
+        IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mIt(it), mpContainer(pContainer) {}
 
         bool operator==(const IteratorT& other) const { return other.mIt == mIt; }
         bool operator!=(const IteratorT& other) const { return other.mIt != mIt; }

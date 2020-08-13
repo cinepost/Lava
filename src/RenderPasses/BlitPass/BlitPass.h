@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_BLITPASS_BLITPASS_H_
+#define SRC_FALCOR_RENDERPASSES_BLITPASS_BLITPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 
 using namespace Falcor;
 
-class BlitPass : public RenderPass, public inherit_shared_from_this<RenderPass, BlitPass>
-{
-public:
+class BlitPass : public RenderPass, public inherit_shared_from_this<RenderPass, BlitPass> {
+ public:
     using SharedPtr = std::shared_ptr<BlitPass>;
     using inherit_shared_from_this<RenderPass, BlitPass>::shared_from_this;
 
@@ -52,9 +52,11 @@ public:
 
     void setFilter(Sampler::Filter filter) { mFilter = filter; }
 
-private:
+ private:
     BlitPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
     Sampler::Filter mFilter = Sampler::Filter::Linear;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_BLITPASS_BLITPASS_H_

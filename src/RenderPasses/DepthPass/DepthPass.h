@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_
+#define SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_
 
 #include "Falcor.h"
 #include "FalcorExperimental.h"
@@ -71,3 +72,5 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_

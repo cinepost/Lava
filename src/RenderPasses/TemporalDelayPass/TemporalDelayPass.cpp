@@ -51,7 +51,7 @@ const std::string kDelay = "delay";
 
 const char* TemporalDelayPass::kDesc = "Delays frame rendering by a specified amount of frames";
 
-TemporalDelayPass::TemporalDelayPass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+TemporalDelayPass::TemporalDelayPass(Device::SharedPtr pDevice): RenderBass(pDevice) {}
 
 TemporalDelayPass::SharedPtr TemporalDelayPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     SharedPtr pPass = SharedPtr(new TemporalDelayPass(pRenderContext->device()));

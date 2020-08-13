@@ -44,7 +44,7 @@ namespace Falcor {
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
 
         /** Create a new object.
             \param[in] pScene The scene object
@@ -54,7 +54,7 @@ namespace Falcor {
             \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
             \return A new object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
+        static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
 
         /** Render the scene into the dst FBO
         */
@@ -72,7 +72,7 @@ namespace Falcor {
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }
      private:
-        RasterScenePass(std::shared_ptr<Device> device, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+        RasterScenePass(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
         Scene::SharedPtr mpScene;
     };
 

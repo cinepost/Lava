@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_
+#define SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_
 
 #include "Falcor.h"
 #include "Falcor/Core/API/Device.h"
@@ -59,3 +60,5 @@ class Composite : public RenderPass, public inherit_shared_from_this<RenderPass,
     ComputePass::SharedPtr      mCompositePass;
 
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_

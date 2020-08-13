@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
+#define SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
@@ -73,3 +74,5 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     Sampler::SharedPtr mpSampler;
     Device::SharedPtr mpDevice;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_

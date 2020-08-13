@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_
+#define SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "BSDFViewerParams.slang"
@@ -35,9 +37,8 @@
 
 using namespace Falcor;
 
-class BSDFViewer : public RenderPass, public inherit_shared_from_this<RenderPass, BSDFViewer>
-{
-public:
+class BSDFViewer : public RenderPass, public inherit_shared_from_this<RenderPass, BSDFViewer> {
+ public:
     using SharedPtr = std::shared_ptr<BSDFViewer>;
 
     /** Create a new object
@@ -56,7 +57,7 @@ public:
 
     static const char* sDesc;
 
-private:
+ private:
     BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict);
     bool loadEnvMap(RenderContext* pRenderContext, const std::string& filename);
 
@@ -80,3 +81,5 @@ private:
     // UI variables
     Gui::DropdownList               mMaterialList;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_

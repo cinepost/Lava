@@ -69,10 +69,10 @@ DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dict
 DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).psEntry("main");
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(mpDevice, desc);
-    mpState = GraphicsState::create(mpDevice);
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(pDevice, desc);
+    mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
-    mpFbo = Fbo::create(mpDevice);
+    mpFbo = Fbo::create(pDevice);
 
     parseDictionary(dict);
 }
@@ -86,7 +86,7 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
-    mpVars = GraphicsVars::create(mpDevice, mpState->getProgram()->getReflector());
+    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
 void DepthPass::execute(RenderContext* pContext, const RenderData& renderData) {

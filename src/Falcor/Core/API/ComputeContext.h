@@ -46,7 +46,7 @@ class dlldecl ComputeContext : public CopyContext {
         \param[in] queue Command queue handle.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Dispatch a compute task
         \param[in] dispatchSize 3D dispatch group size
@@ -80,7 +80,7 @@ class dlldecl ComputeContext : public CopyContext {
     virtual void flush(bool wait = false) override;
 
  protected:
-    ComputeContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
     bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
     bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
 

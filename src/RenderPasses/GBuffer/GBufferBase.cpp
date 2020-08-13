@@ -34,6 +34,8 @@
 #include "VBuffer/VBufferRT.h"
 #endif
 
+#include "Falcor/Utils/Debug/debug.h"
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -54,7 +56,9 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     #endif  // FALCOR_D3D
 }
 
-GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    assert(pDevice);
+}
 
 void GBufferBase::registerBindings(ScriptBindings::Module& m) {
     auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
@@ -116,6 +120,12 @@ void GBufferBase::renderUI(Gui::Widgets& widget) {
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {
+    assert(mpDevice);
+    assert(pContext->device());
+    LOG_DBG("mpDevice uid %u", mpDevice->uid());
+    LOG_DBG("pContext device uid %u", pContext->device()->uid());
+    assert(mpDevice == pContext->device());
+
     mFrameDim = compileData.defaultTexDims;
     mInvFrameDim = 1.f / float2(mFrameDim);
 
@@ -126,6 +136,9 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
 }
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    assert(mpDevice == pRenderContext->device());
+    assert(mpDevice == pScene->device());
+
     mpScene = pScene;
     updateSamplePattern();
 }

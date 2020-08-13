@@ -25,15 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_
+#define SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_
+
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 
 using namespace Falcor;
 
-class ImageLoader : public RenderPass, public inherit_shared_from_this<RenderPass, ImageLoader>
-{
-public:
+class ImageLoader : public RenderPass, public inherit_shared_from_this<RenderPass, ImageLoader> {
+ public:
     using SharedPtr = std::shared_ptr<ImageLoader>;
     using inherit_shared_from_this<RenderPass, ImageLoader>::shared_from_this;
     static const char* kDesc;
@@ -49,7 +50,7 @@ public:
     virtual Dictionary getScriptingDictionary() override;
     virtual std::string getDesc() override { return kDesc; }
 
-private:
+ private:
     ImageLoader(Device::SharedPtr pDevice);
 
     Texture::SharedPtr mpTex;
@@ -59,3 +60,5 @@ private:
     bool mGenerateMips = false;
     bool mLoadSRGB = true;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_

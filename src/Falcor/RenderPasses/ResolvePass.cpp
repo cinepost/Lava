@@ -45,6 +45,7 @@ RenderPassReflection ResolvePass::reflect(const CompileData& compileData) {
 }
 
 ResolvePass::SharedPtr ResolvePass::create(RenderContext* pRenderContext, const Dictionary& dictionary) {
+    assert(pRenderContext->device());    
     return SharedPtr(new ResolvePass(pRenderContext->device()));
 }
 

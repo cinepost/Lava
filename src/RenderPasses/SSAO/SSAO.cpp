@@ -136,14 +136,15 @@ RenderPassReflection SSAO::reflect(const CompileData& compileData) {
 }
 
 void SSAO::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    Fbo::Desc fboDesc(mpDevice);
+    auto pDevice = pRenderContext->device();
+    Fbo::Desc fboDesc(pDevice);
     fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
-    mpAOFbo = Fbo::create2D(mpDevice, mAoMapSize.x, mAoMapSize.y, fboDesc);
+    mpAOFbo = Fbo::create2D(pDevice, mAoMapSize.x, mAoMapSize.y, fboDesc);
 
     setKernel();
     setNoiseTexture(mNoiseSize.x, mNoiseSize.y);
 
-    mpBlurGraph = RenderGraph::create(mpDevice, "Gaussian Blur");
+    mpBlurGraph = RenderGraph::create(pDevice, "Gaussian Blur");
     GaussianBlur::SharedPtr pBlurPass = GaussianBlur::create(pRenderContext, mBlurDict);
     mpBlurGraph->addPass(pBlurPass, "GaussianBlur");
     mpBlurGraph->markOutput("GaussianBlur.dst");

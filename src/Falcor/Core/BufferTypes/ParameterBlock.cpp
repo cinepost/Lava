@@ -229,31 +229,31 @@ bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
 
 ParameterBlock::~ParameterBlock() = default;
 
-ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
     if (!pElementType) {
         throw std::runtime_error("Can't create a parameter block without type information");
     }
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
-    return create(device, pReflection);
+    return create(pDevice, pReflection);
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const ParameterBlockReflection::SharedConstPtr& pReflection) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
     assert(pReflection);
-    return SharedPtr(new ParameterBlock(device, pReflection->getProgramVersion(), pReflection));
+    return SharedPtr(new ParameterBlock(pDevice, pReflection->getProgramVersion(), pReflection));
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
     assert(pProgramVersion);
-    return ParameterBlock::create(device, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
+    return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
 }
 
-ParameterBlock::ParameterBlock(std::shared_ptr<Device> device, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
-    : mpDevice(device)
+ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
+    : mpDevice(pDevice)
     , mpReflector(pReflection)
     , mpProgramVersion(pProgramVersion)
     , mData(pReflection->getElementType()->getByteSize(), 0)  {
 
-    assert(device);
+    assert(pDevice);
     ReflectionStructType::BuildState state;
     auto pElementType = getElementType();
     assert(pElementType);
@@ -315,6 +315,8 @@ void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
                 auto pResourceType = pType->asResourceType();
                 switch (pResourceType->getType()) {
                     case ReflectionResourceType::Type::ConstantBuffer: {
+                            assert(mpDevice);
+
                             auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
                             var.setParameterBlock(pCB);
                         }

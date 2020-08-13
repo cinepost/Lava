@@ -187,9 +187,12 @@ void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::sh
 #endif
 
 void Scene::initResources() {
+    assert(mpDevice);
+    
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main");
     pProgram->addDefines(getSceneDefines());
     ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
+
     assert(pReflection);
 
     mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);

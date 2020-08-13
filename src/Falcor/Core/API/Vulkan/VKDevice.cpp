@@ -36,7 +36,10 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
+#include "VKDevice.h"
+
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
+
 
 namespace Falcor {
 
@@ -66,23 +69,6 @@ uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
     return device->getPhysicalDeviceLimits().maxViewports;
 }
 
-struct DeviceApiData {
-    VkSwapchainKHR swapchain;
-    VkPhysicalDeviceProperties properties;
-    uint32_t falcorToVulkanQueueType[Device::kQueueTypeCount];
-    uint32_t vkMemoryTypeBits[(uint32_t)Device::MemoryType::Count];
-    VkPhysicalDeviceLimits deviceLimits;
-    std::vector<VkExtensionProperties> deviceExtensions;
-
-    struct {
-        std::vector<VkFence> f;
-        uint32_t cur = 0;
-    } presentFences;
-
-    #ifdef DEFAULT_ENABLE_DEBUG_LAYER
-    VkDebugReportCallbackEXT debugReportCallbackHandle;
-    #endif
-};
 
 static uint32_t getMemoryBits(VkPhysicalDevice physicalDevice, VkMemoryPropertyFlagBits memFlagBits) {
     VkPhysicalDeviceMemoryProperties memProperties;
@@ -233,12 +219,12 @@ static bool isExtensionSupported(const std::string& str, const std::vector<VkExt
     return false;
 }
 
-VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
+VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
     // Initialize the layers
     const auto layerProperties = enumarateInstanceLayersProperties();
     std::vector<const char*> requiredLayers;
 
-    if (desc.enableDebugLayer) {
+    if (enableDebugLayer) {
         enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
@@ -255,7 +241,7 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
 #endif
     };
 
-    if (desc.enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
+    if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
 
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -271,7 +257,7 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
     }
 
     // Hook up callbacks for VK_EXT_debug_report
-    if (desc.enableDebugLayer) {
+    if (enableDebugLayer) {
         initDebugCallback(instance, &pData->debugReportCallbackHandle);
     }
 
@@ -592,13 +578,13 @@ void Device::apiPresent() {
 }
 
 /**
- * Initialize swapchain enabled vulkan device
+ * Initialize vulkan device
  */
 bool Device::apiInit() {
     const Desc desc;
 
     mpApiData = new DeviceApiData;
-    VkInstance instance = createInstance(mpApiData, desc);
+    VkInstance instance = createInstance(mpApiData, desc.enableDebugLayer);
     if (!instance) return false;
 
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData, desc);

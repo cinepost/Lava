@@ -43,7 +43,7 @@ const std::string kAddRanges = "addRanges";
 const std::string kPrint = "print";
 const std::string kOutputs = "outputs";
 
-Texture::SharedPtr createTextureForBlit(Falcor::Device::SharedPtr pDevice, const Texture* pSource) {
+Texture::SharedPtr createTextureForBlit(std::shared_ptr<Falcor::Device> pDevice, const Texture* pSource) {
     assert(pSource->getType() == Texture::Type::Texture2D);
     return Texture::create2D(pDevice, pSource->getWidth(), pSource->getHeight(), ResourceFormat::RGBA8UnormSrgb, 1, 1, nullptr, Texture::BindFlags::RenderTarget);
 }

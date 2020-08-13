@@ -38,6 +38,7 @@ namespace Mogwai {
 
         virtual void beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
         virtual void endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override final;
+
         virtual void scriptBindings(Bindings& bindings) override;
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) override;
     
@@ -71,8 +72,7 @@ namespace Mogwai {
         bool mAbsolutePath = false;
         bool mShowUI = false;
 
-        struct
-        {
+        struct {
             RenderGraph* pGraph = nullptr;
             Range range;
         } mCurrent;

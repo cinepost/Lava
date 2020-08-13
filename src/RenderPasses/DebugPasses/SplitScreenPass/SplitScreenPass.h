@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_
+#define SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "../ComparisonPass.h"
@@ -58,3 +59,5 @@ class SplitScreenPass : public ComparisonPass {
     Clock mClock; ///< Global clock used to track click times
     double mTimeOfLastClick = 0; ///< Time since mouse was last clicked
 };
+
+#endif  // #ifndef SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_

@@ -89,7 +89,9 @@ void initFullScreenData(std::shared_ptr<Device> device, Buffer::SharedPtr& pVB, 
 
 }  // namespace
 
-FullScreenPass::FullScreenPass(std::shared_ptr<Device> device, const Program::Desc& progDesc, const Program::DefineList& programDefines): BaseGraphicsPass(device, progDesc, programDefines) {
+FullScreenPass::FullScreenPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): 
+    BaseGraphicsPass(pDevice, progDesc, programDefines) 
+{
     gFullScreenData.objectCount++;
 
     // Create depth stencil state
@@ -98,7 +100,7 @@ FullScreenPass::FullScreenPass(std::shared_ptr<Device> device, const Program::De
     mpState->setDepthStencilState(pDsState);
 
     if (gFullScreenData.pVertexBuffer == nullptr) {
-        initFullScreenData(device, gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
+        initFullScreenData(pDevice, gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
     }
     assert(gFullScreenData.pVao);
     mpState->setVao(gFullScreenData.pVao);
@@ -115,7 +117,8 @@ FullScreenPass::~FullScreenPass() {
     }
 }
 
-FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+    assert(pDevice);
     Program::Desc d = desc;
     Program::DefineList defs = defines;
     std::string gs;
@@ -131,7 +134,7 @@ FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> device,
     }
     if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
 
-    return SharedPtr(new FullScreenPass(device, d, defs));
+    return SharedPtr(new FullScreenPass(pDevice, d, defs));
 }
 
 FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> device, const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {

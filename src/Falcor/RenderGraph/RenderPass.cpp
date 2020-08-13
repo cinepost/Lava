@@ -44,6 +44,8 @@ const Resource::SharedPtr& RenderData::getResource(const std::string& name) cons
     return mpResources->getResource(mName + '.' + name);
 }
 
-RenderPass::RenderPass(Device::SharedPtr pDevice): mpDevice(pDevice) {}
+RenderPass::RenderPass(Device::SharedPtr pDevice): mpDevice(pDevice) {
+    assert(pDevice);
+}
 
 }  // namespace Falcor

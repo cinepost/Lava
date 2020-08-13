@@ -31,6 +31,7 @@
 #include "imgui/imgui.h"
 
 #include "Falcor/stdafx.h"
+#include "Falcor/Core/API/DeviceManager.h"
 #include "Sample.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Core/Platform/ProgressBar.h"
@@ -246,7 +247,8 @@ void Sample::handleWindowSizeChange() {
         }
         
         // Create device 
-        mpDevice = Device::create(mpWindow, config.deviceDesc);
+        //mpDevice = Device::create(mpWindow, config.deviceDesc);
+        mpDevice = DeviceManager::instance().createDisplayDevice(0, mpWindow, config.deviceDesc);
 
         mClock = new Clock(mpDevice);
         mClock->setTimeScale(config.timeScale);
@@ -260,7 +262,7 @@ void Sample::handleWindowSizeChange() {
         Device::Desc d = config.deviceDesc;
         
         if (mpDevice == nullptr) {
-            logError("Failed to create device");
+            logError("Failed to create display device");
             return;
         }
 
@@ -293,7 +295,8 @@ void Sample::handleWindowSizeChange() {
         }
 
         // Load and run
-        mpRenderer->onLoad(getRenderContext());
+        //mpRenderer->onLoad(getRenderContext());
+        mpRenderer->onLoad(mpRenderer->device()->getRenderContext());
         pBar = nullptr;
 
         mFrameRate->reset();
@@ -433,6 +436,10 @@ void Sample::handleWindowSizeChange() {
     void Sample::renderFrame() {
         if (mpDevice && mpDevice->isWindowOccluded()) return;
 
+        // Clear viewer frame buffer.
+        const float4 clearColor(0.1f, 0.38f, 0.52f, 1);
+        mpDevice->getRenderContext()->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+
         // Check clock exit condition
         if (mClock->shouldExit()) postQuitMessage(0);
 
@@ -445,7 +452,9 @@ void Sample::handleWindowSizeChange() {
 
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused) {
-                RenderContext* pRenderContext = mpDevice ? mpDevice->getRenderContext() : nullptr;
+                //RenderContext* pRenderContext = mpDevice ? mpDevice->getRenderContext() : nullptr;
+                //mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
+                auto pRenderContext = mpRenderer->device()->getRenderContext();
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }

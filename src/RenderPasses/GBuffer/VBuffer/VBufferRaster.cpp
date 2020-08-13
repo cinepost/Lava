@@ -53,7 +53,7 @@ VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, co
     return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
 }
 
-VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice) {
+VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBufferBase(pDevice) {
     parseDictionary(dict);
 
     // Create raster program
@@ -114,7 +114,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Create program vars.
     if (!mRaster.pVars) {
-        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
+        mRaster.pVars = GraphicsVars::create(pRenderContext->device(), mRaster.pProgram.get());
     }
 
     mpFbo->attachColorTarget(pOutput, 0);

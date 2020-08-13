@@ -236,34 +236,35 @@ void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 }
 
 void SVGFPass::allocateFbos(uint2 dim, RenderContext* pRenderContext) {
+    auto pDevice = pRenderContext->device();
     {
         // Screen-size FBOs with 3 MRTs: one that is RGBA32F, one that is
         // RG32F for the luminance moments, and one that is R16F.
-        Fbo::Desc desc(mpDevice);
+        Fbo::Desc desc(pDevice);
         desc.setSampleCount(0);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float); // illumination
         desc.setColorTarget(1, Falcor::ResourceFormat::RG32Float);   // moments
         desc.setColorTarget(2, Falcor::ResourceFormat::R16Float);    // history length
-        mpCurReprojFbo  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
-        mpPrevReprojFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpCurReprojFbo  = Fbo::create2D(pDevice, dim.x, dim.y, desc);
+        mpPrevReprojFbo = Fbo::create2D(pDevice, dim.x, dim.y, desc);
     }
 
     {
         // Screen-size RGBA32F buffer for linear Z, derivative, and packed normal
-        Fbo::Desc desc(mpDevice);
+        Fbo::Desc desc(pDevice);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpLinearZAndNormalFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpLinearZAndNormalFbo = Fbo::create2D(pDevice, dim.x, dim.y, desc);
     }
 
     {
         // Screen-size FBOs with 1 RGBA32F buffer
-        Fbo::Desc desc(mpDevice);
+        Fbo::Desc desc(pDevice);
         desc.setColorTarget(0, Falcor::ResourceFormat::RGBA32Float);
-        mpPingPongFbo[0]  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
-        mpPingPongFbo[1]  = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
-        mpFilteredPastFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
-        mpFilteredIlluminationFbo = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
-        mpFinalFbo        = Fbo::create2D(mpDevice, dim.x, dim.y, desc);
+        mpPingPongFbo[0]  = Fbo::create2D(pDevice, dim.x, dim.y, desc);
+        mpPingPongFbo[1]  = Fbo::create2D(pDevice, dim.x, dim.y, desc);
+        mpFilteredPastFbo = Fbo::create2D(pDevice, dim.x, dim.y, desc);
+        mpFilteredIlluminationFbo = Fbo::create2D(pDevice, dim.x, dim.y, desc);
+        mpFinalFbo        = Fbo::create2D(pDevice, dim.x, dim.y, desc);
     }
 
     mBuffersNeedClear = true;

@@ -25,15 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_ANTIALIASING_FXAA_FXAA_H_
+#define SRC_FALCOR_RENDERPASSES_ANTIALIASING_FXAA_FXAA_H_
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 
 using namespace Falcor;
 
-class FXAA : public RenderPass, public inherit_shared_from_this<RenderPass, FXAA>
-{
-public:
+class FXAA : public RenderPass, public inherit_shared_from_this<RenderPass, FXAA> {
+ public:
     using SharedPtr = std::shared_ptr<FXAA>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
@@ -56,7 +57,7 @@ public:
     float getQualityEdgeThresholdMin() { return mQualityEdgeThresholdMin; }
     bool getEarlyOut() { return mEarlyOut; }
 
-private:
+ private:
     FXAA(Device::SharedPtr pDevice);
 
     FullScreenPass::SharedPtr mpPass;
@@ -67,3 +68,5 @@ private:
     float mQualityEdgeThresholdMin = 0.0833f;
     bool mEarlyOut = true;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_ANTIALIASING_FXAA_FXAA_H_

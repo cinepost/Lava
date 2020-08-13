@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_
+#define SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Utils/Algorithm/ComputeParallelReduction.h"
@@ -61,8 +62,7 @@ class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<Rend
     ComputePass::SharedPtr mpErrorMeasurerPass;
     ComputeParallelReduction::SharedPtr mpParallelReduction;
 
-    struct
-    {
+    struct {
         float3 error;           ///< Error (either L1 or MSE) in RGB.
         float  avgError;        ///< Error averaged over color components.
         bool   valid = false;
@@ -87,8 +87,7 @@ class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<Rend
     bool                    mReportRunningError = true;
     float                   mRunningErrorSigma = 0.995f;
 
-    enum OutputId
-    {
+    enum OutputId {
         source = 0,
         reference,
         difference,
@@ -100,3 +99,5 @@ class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<Rend
     static const Gui::RadioButtonGroup sOutputSelectionButtons;
     static const Gui::RadioButtonGroup sOutputSelectionButtonsSourceOnly;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_

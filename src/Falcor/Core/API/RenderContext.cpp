@@ -34,75 +34,76 @@
 
 namespace Falcor {
 
-    RenderContext::SharedPtr RenderContext::create(std::shared_ptr<Device> device, CommandQueueHandle queue) {
-        return SharedPtr(new RenderContext(device, queue));
-    }
 
-    void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags) {
-        bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
-        ResourceFormat depthStencilFormat = hasDepthStencilTexture ? pFbo->getDepthStencilTexture()->getFormat() : ResourceFormat::Unknown;
+RenderContext::SharedPtr RenderContext::create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) {
+    return SharedPtr(new RenderContext(pDevice, queue));
+}
 
-        bool clearColor = (flags & FboAttachmentType::Color) != FboAttachmentType::None;
-        bool clearDepth = hasDepthStencilTexture && ((flags & FboAttachmentType::Depth) != FboAttachmentType::None);
-        bool clearStencil = hasDepthStencilTexture && ((flags & FboAttachmentType::Stencil) != FboAttachmentType::None) && isStencilFormat(depthStencilFormat);
+void RenderContext::clearFbo(const Fbo* pFbo, const float4& color, float depth, uint8_t stencil, FboAttachmentType flags) {
+    bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
+    ResourceFormat depthStencilFormat = hasDepthStencilTexture ? pFbo->getDepthStencilTexture()->getFormat() : ResourceFormat::Unknown;
 
-        if (clearColor) {
-            for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(mpDevice); i++) {
-                if (pFbo->getColorTexture(i)) {
-                    clearRtv(pFbo->getRenderTargetView(i).get(), color);
-                }
+    bool clearColor = (flags & FboAttachmentType::Color) != FboAttachmentType::None;
+    bool clearDepth = hasDepthStencilTexture && ((flags & FboAttachmentType::Depth) != FboAttachmentType::None);
+    bool clearStencil = hasDepthStencilTexture && ((flags & FboAttachmentType::Stencil) != FboAttachmentType::None) && isStencilFormat(depthStencilFormat);
+
+    if (clearColor) {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(mpDevice); i++) {
+            if (pFbo->getColorTexture(i)) {
+                clearRtv(pFbo->getRenderTargetView(i).get(), color);
             }
         }
-
-        if (clearDepth || clearStencil) {
-            clearDsv(pFbo->getDepthStencilView().get(), depth, stencil, clearDepth, clearStencil);
-        }
     }
 
+    if (clearDepth || clearStencil) {
+        clearDsv(pFbo->getDepthStencilView().get(), depth, stencil, clearDepth, clearStencil);
+    }
+}
 
-    void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor) {
-        assert(pTexture);
 
-        // Check that the format is either Unorm, Snorm or float
-        auto format = pTexture->getFormat();
-        auto fType = getFormatType(format);
-        if (fType == FormatType::Sint || fType == FormatType::Uint || fType == FormatType::Unknown) {
-            logWarning("RenderContext::clearTexture() - Unsupported texture format " + to_string(format) + ". The texture format must be a normalized or floating-point format");
-            return;
-        }
+void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor) {
+    assert(pTexture);
 
-        auto bindFlags = pTexture->getBindFlags();
-        // Select the right clear based on the texture's binding flags
-        if (is_set(bindFlags, Resource::BindFlags::RenderTarget)) {
-            clearRtv(pTexture->getRTV().get(), clearColor);
-        } else if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess)) {
-            clearUAV(pTexture->getUAV().get(), clearColor);
-        } else if (is_set(bindFlags, Resource::BindFlags::DepthStencil)) {
-            if (isStencilFormat(format) && (clearColor.y != 0)) {
-                logWarning("RenderContext::clearTexture() - when clearing a depth-stencil texture the stencil value(clearColor.y) must be 0. Received " + std::to_string(clearColor.y) + ". Forcing stencil to 0");
-            }
-            clearDsv(pTexture->getDSV().get(), clearColor.r, 0);
-        } else {
-            logWarning("Texture::clear() - The texture does not have a bind flag that allows us to clear!");
-        }
+    // Check that the format is either Unorm, Snorm or float
+    auto format = pTexture->getFormat();
+    auto fType = getFormatType(format);
+    if (fType == FormatType::Sint || fType == FormatType::Uint || fType == FormatType::Unknown) {
+        logWarning("RenderContext::clearTexture() - Unsupported texture format " + to_string(format) + ". The texture format must be a normalized or floating-point format");
+        return;
     }
 
-    bool RenderContext::applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature) {
-        bool bindRootSig = (pVars != mpLastBoundGraphicsVars);
-        if (pVars->apply(this, bindRootSig, pRootSignature) == false) {
-            logWarning("RenderContext::prepareForDraw() - applying GraphicsVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
-            flush(true);
-            if (!pVars->apply(this, bindRootSig, pRootSignature)) {
-                logError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors");
-                return false;
-            }
+    auto bindFlags = pTexture->getBindFlags();
+    // Select the right clear based on the texture's binding flags
+    if (is_set(bindFlags, Resource::BindFlags::RenderTarget)) {
+        clearRtv(pTexture->getRTV().get(), clearColor);
+    } else if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess)) {
+        clearUAV(pTexture->getUAV().get(), clearColor);
+    } else if (is_set(bindFlags, Resource::BindFlags::DepthStencil)) {
+        if (isStencilFormat(format) && (clearColor.y != 0)) {
+            logWarning("RenderContext::clearTexture() - when clearing a depth-stencil texture the stencil value(clearColor.y) must be 0. Received " + std::to_string(clearColor.y) + ". Forcing stencil to 0");
         }
-        return true;
+        clearDsv(pTexture->getDSV().get(), clearColor.r, 0);
+    } else {
+        logWarning("Texture::clear() - The texture does not have a bind flag that allows us to clear!");
     }
+}
 
-    void RenderContext::flush(bool wait) {
-        ComputeContext::flush(wait);
-        mpLastBoundGraphicsVars = nullptr;
+bool RenderContext::applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature) {
+    bool bindRootSig = (pVars != mpLastBoundGraphicsVars);
+    if (pVars->apply(this, bindRootSig, pRootSignature) == false) {
+        logWarning("RenderContext::prepareForDraw() - applying GraphicsVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
+        flush(true);
+        if (!pVars->apply(this, bindRootSig, pRootSignature)) {
+            logError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors");
+            return false;
+        }
     }
+    return true;
+}
+
+void RenderContext::flush(bool wait) {
+    ComputeContext::flush(wait);
+    mpLastBoundGraphicsVars = nullptr;
+}
 
 }  // namespace Falcor

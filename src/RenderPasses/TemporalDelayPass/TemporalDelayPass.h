@@ -25,14 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_TEMPORALDELAYPASS_TEMPORALDELAYPASS_H_
+#define SRC_FALCOR_RENDERPASSES_TEMPORALDELAYPASS_TEMPORALDELAYPASS_H_
+
 #include "Falcor.h"
 
 using namespace Falcor;
 
-class TemporalDelayPass : public RenderPass
-{
-public:
+class TemporalDelayPass : public RenderPass {
+ public:
     using SharedPtr = std::shared_ptr<TemporalDelayPass>;
     static const char* kDesc;
 
@@ -50,8 +51,10 @@ public:
     uint32_t getDelay() { return mDelay; }
     TemporalDelayPass& setDelay(uint32_t delay);
 
-private:
+ private:
     TemporalDelayPass(Device::SharedPtr pDevice);
     uint32_t mDelay = 1;
     bool mReady = false;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_TEMPORALDELAYPASS_TEMPORALDELAYPASS_H_

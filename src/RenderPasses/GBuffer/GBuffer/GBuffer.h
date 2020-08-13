@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_
 
 #include "../GBufferBase.h"
 #include "GBufferParams.slang"
@@ -58,6 +59,6 @@ class GBuffer : public GBufferBase, public inherit_shared_from_this<GBufferBase,
     bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
     RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
     bool                            mUseBentShadingNormals = true;                  ///< Use bent shading normals.
-
-    Device::SharedPtr mpDevice;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_

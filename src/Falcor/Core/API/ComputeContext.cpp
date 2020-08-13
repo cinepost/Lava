@@ -32,8 +32,8 @@
 
 namespace Falcor {
 
-ComputeContext::SharedPtr ComputeContext::create(std::shared_ptr<Device> device, CommandQueueHandle queue) {
-    auto pCtx = SharedPtr(new ComputeContext(device, LowLevelContextData::CommandQueueType::Compute, queue));
+ComputeContext::SharedPtr ComputeContext::create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) {
+    auto pCtx = SharedPtr(new ComputeContext(pDevice, LowLevelContextData::CommandQueueType::Compute, queue));
     pCtx->bindDescriptorHeaps(); // TODO: Should this be done here?
     return pCtx;
 }

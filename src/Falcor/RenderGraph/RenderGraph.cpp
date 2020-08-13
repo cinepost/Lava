@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+#include "Falcor/Core/API/DeviceManager.h"
 #include "RenderGraph.h"
 #include "RenderPassLibrary.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
@@ -70,6 +71,9 @@ void RenderGraph::setScene(const Scene::SharedPtr& pScene) {
 
     mpScene = pScene;
     for (auto& it : mNodeData) {
+        if (!mpDevice->getRenderContext()) {
+            LOG_ERR("No render context in mpDevice !!!");
+        }
         it.second.pPass->setScene(mpDevice->getRenderContext(), pScene);
     }
     mRecompile = true;
@@ -677,7 +681,7 @@ SCRIPT_BINDING(RenderGraph) {
     auto passClass = m.regClass(RenderPass);
 
     // RenderPassLibrary with specified device
-    /*
+    
     const auto& createRenderPass = [](std::shared_ptr<Device> pDevice, const std::string& passName, pybind11::dict d = {}) {
         auto pPass = RenderPassLibrary::instance(pDevice).createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
         if (!pPass) { 
@@ -686,9 +690,9 @@ SCRIPT_BINDING(RenderGraph) {
         return pPass;
     };
     passClass.ctor(createRenderPass, "device"_a, "name"_a, "dict"_a = pybind11::dict());
-    */
 
     // RenderPassLibrary with default device
+    /*
     const auto& createRenderPassDefault = [](const std::string& passName, pybind11::dict d = {}) {
         auto pDevice = _gpDevice;
         auto pPass = RenderPassLibrary::instance(pDevice).createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
@@ -698,12 +702,22 @@ SCRIPT_BINDING(RenderGraph) {
         return pPass;
     };
     passClass.ctor(createRenderPassDefault, "name"_a, "dict"_a = pybind11::dict());
+    */
 
     const auto& loadPassLibrary = [](std::shared_ptr<Device> pDevice, const std::string& library) {
         return RenderPassLibrary::instance(pDevice).loadLibrary(library);
     };
 
     m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "device"_a, "name"_a);
+
+    const auto& loadPassLibraryDefault = [](const std::string& library) {
+        for(auto& pDevice: DeviceManager::instance().renderingDevices()) {
+            RenderPassLibrary::instance(pDevice).loadLibrary(library);
+        }
+        return;
+    };
+
+    m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibraryDefault, "name"_a);
 
     const auto& updateRenderPass = [](std::shared_ptr<Device> pDevice, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
         pGraph->updatePass(pDevice->getRenderContext(), passName, Dictionary(d));

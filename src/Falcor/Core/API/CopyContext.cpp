@@ -35,15 +35,14 @@ namespace Falcor {
 
 CopyContext::~CopyContext() = default;
 
-CopyContext::CopyContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) {
-    mpLowLevelData = LowLevelContextData::create(device, type, queue);
+CopyContext::CopyContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue): mpDevice(pDevice) {
+    mpLowLevelData = LowLevelContextData::create(pDevice, type, queue);
     assert(mpLowLevelData);
-    mpDevice = device;
 }
 
-CopyContext::SharedPtr CopyContext::create(std::shared_ptr<Device> device, CommandQueueHandle queue) {
+CopyContext::SharedPtr CopyContext::create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) {
     assert(queue);
-    return SharedPtr(new CopyContext(device, LowLevelContextData::CommandQueueType::Copy, queue));
+    return SharedPtr(new CopyContext(pDevice, LowLevelContextData::CommandQueueType::Copy, queue));
 }
 
 void CopyContext::flush(bool wait) {

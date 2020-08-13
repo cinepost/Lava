@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_
+#define SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
@@ -33,9 +34,8 @@
 
 using namespace Falcor;
 
-class ForwardLightingPass : public RenderPass, public inherit_shared_from_this<RenderPass, ForwardLightingPass>
-{
-public:
+class ForwardLightingPass : public RenderPass, public inherit_shared_from_this<RenderPass, ForwardLightingPass> {
+ public:
     using SharedPtr = std::shared_ptr<ForwardLightingPass>;
     using inherit_shared_from_this<RenderPass, ForwardLightingPass>::shared_from_this;
     static const char* kDesc;
@@ -83,9 +83,10 @@ public:
     */
     std::string getDesc() override { return kDesc; }
 
-private:
+ private:
     ForwardLightingPass(Device::SharedPtr pDevice);
-    void initDepth(const RenderData& renderData);
+    
+    void initDepth(RenderContext* pContext, const RenderData& renderData);
     void initFbo(RenderContext* pContext, const RenderData& renderData);
 
     Fbo::SharedPtr mpFbo;
@@ -101,3 +102,5 @@ private:
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_

@@ -127,16 +127,28 @@ dlldecl extern IFramework* gpFramework;
 class IRenderer {
  public:
     using UniquePtr = std::unique_ptr<IRenderer>;
-    IRenderer() = default;
+    IRenderer(std::shared_ptr<Device> pDevice) { mpDevice = pDevice; }
     virtual ~IRenderer() {};
+
+
+    std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
 
     /** Called once right after context creation.
     */
     virtual void onLoad(RenderContext* pRenderContext) {}
 
+    /** Called once right after context creation.
+    */
+    //virtual void onLoad() {}
+
     /** Called on each frame render.
     */
     virtual void onFrameRender(RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
+
+    /** Called on each frame render.
+    */
+    virtual void onFrameRender(const std::shared_ptr<Fbo>& pTargetFbo) {}
 
     /** Called right before the context is destroyed.
     */
@@ -176,6 +188,10 @@ class IRenderer {
     // Deleted copy operators (copy a pointer type!)
     IRenderer(const IRenderer&) = delete;
     IRenderer& operator=(const IRenderer &) = delete;
+
+ protected:
+    std::shared_ptr<Device> mpDevice;
+    Fbo::SharedPtr mpTargetFBO;
 
 };
 

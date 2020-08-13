@@ -109,8 +109,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 const char* ToneMapper::kDesc = "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation";
 
 ToneMapper::ToneMapper(Device::SharedPtr pDevice, ToneMapper::Operator op, ResourceFormat outputFormat) : RenderPass(pDevice), mOperator(op), mOutputFormat(outputFormat) {
-    createLuminancePass();
-    createToneMapPass();
+    createLuminancePass(pDevice);
+    createToneMapPass(pDevice);
 
     updateWhiteBalanceTransform();
 
@@ -178,14 +178,15 @@ RenderPassReflection ToneMapper::reflect(const CompileData& compileData) {
 }
 
 void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    auto pDevice = pRenderContext->device();
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
-    Fbo::SharedPtr pFbo = Fbo::create(mpDevice);
+    Fbo::SharedPtr pFbo = Fbo::create(pDevice);
     pFbo->attachColorTarget(pDst, 0);
 
     // Run luminance pass if auto exposure is enabled
     if (mAutoExposure) {
-        createLuminanceFbo(pSrc);
+        createLuminanceFbo(pDevice, pSrc);
 
         mpLuminancePass["gColorTex"] = pSrc;
         mpLuminancePass["gColorSampler"] = mpLinearSampler;
@@ -196,7 +197,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
 
     // Run main pass
     if (mRecreateToneMapPass) {
-        createToneMapPass();
+        createToneMapPass(pDevice);
         mUpdateToneMapPass = true;
         mRecreateToneMapPass = false;
     }
@@ -224,7 +225,8 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
     mpToneMapPass->execute(pRenderContext, pFbo);
 }
 
-void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc) {
+void ToneMapper::createLuminanceFbo(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pSrc) {
+
     bool createFbo = mpLuminanceFbo == nullptr;
     ResourceFormat srcFormat = pSrc->getFormat();
     uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
@@ -241,9 +243,9 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc) {
     }
 
     if (createFbo) {
-        Fbo::Desc desc(mpDevice);
+        Fbo::Desc desc(pDevice);
         desc.setColorTarget(0, luminanceFormat);
-        mpLuminanceFbo = Fbo::create2D(mpDevice, requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
+        mpLuminanceFbo = Fbo::create2D(pDevice, requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
     }
 }
 
@@ -355,17 +357,17 @@ void ToneMapper::setWhiteScale(float whiteScale) {
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::createLuminancePass() {
-    mpLuminancePass = FullScreenPass::create(mpDevice, kLuminanceFile);
+void ToneMapper::createLuminancePass(std::shared_ptr<Device> pDevice) {
+    mpLuminancePass = FullScreenPass::create(pDevice, kLuminanceFile);
 }
 
-void ToneMapper::createToneMapPass() {
+void ToneMapper::createToneMapPass(std::shared_ptr<Device> pDevice) {
     Program::DefineList defines;
     defines.add("_TONE_MAPPER_OPERATOR", std::to_string(static_cast<uint32_t>(mOperator)));
     if (mAutoExposure) defines.add("_TONE_MAPPER_AUTO_EXPOSURE");
     if (mClamp) defines.add("_TONE_MAPPER_CLAMP");
 
-    mpToneMapPass = FullScreenPass::create(mpDevice, kToneMappingFile, defines);
+    mpToneMapPass = FullScreenPass::create(pDevice, kToneMappingFile, defines);
 }
 
 void ToneMapper::updateWhiteBalanceTransform() {

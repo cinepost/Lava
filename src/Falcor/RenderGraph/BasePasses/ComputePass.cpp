@@ -30,22 +30,23 @@
 
 namespace Falcor {
 
-ComputePass::ComputePass(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(device) {
-    auto pProg = ComputeProgram::create(device, desc, defines);
-    mpState = ComputeState::create(device);
+ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars): mpDevice(pDevice) {
+    auto pProg = ComputeProgram::create(pDevice, desc, defines);
+    mpState = ComputeState::create(pDevice);
     mpState->setProgram(pProg);
-    if (createVars) mpVars = ComputeVars::create(device, pProg.get());
+    if (createVars) mpVars = ComputeVars::create(pDevice, pProg.get());
     assert(pProg && mpState && (!createVars || mpVars));
 }
 
-ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
+ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
     Program::Desc d;
     d.addShaderLibrary(filename).csEntry(csEntry);
-    return create(device, d, defines, createVars);
+    return create(pDevice, d, defines, createVars);
 }
 
-ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> device, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
-    return SharedPtr(new ComputePass(device, desc, defines, createVars));
+ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars) {
+    assert(pDevice);
+    return SharedPtr(new ComputePass(pDevice, desc, defines, createVars));
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {

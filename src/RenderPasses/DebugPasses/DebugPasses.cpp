@@ -25,19 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-
 #include "SplitScreenPass/SplitScreenPass.h"
 #include "InvalidPixelDetectionPass/InvalidPixelDetectionPass.h"
 #include "SideBySidePass/SideBySidePass.h"
 
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("SplitScreenPass", "Allows the user to split the screen between two inputs.", SplitScreenPass::create);
     lib.registerClass("InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image", InvalidPixelDetectionPass::create);
     lib.registerClass("SideBySidePass", "Allows the user to compare two images side-by-side", SideBySidePass::create);

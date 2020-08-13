@@ -78,7 +78,7 @@ void TAA::execute(RenderContext* pContext, const RenderData& renderData) {
     const auto& pColorIn = renderData[kColorIn]->asTexture();
     const auto& pColorOut = renderData[kColorOut]->asTexture();
     const auto& pMotionVec = renderData[kMotionVec]->asTexture();
-    allocatePrevColor(pColorOut.get());
+    allocatePrevColor(pContext, pColorOut.get());
     mpFbo->attachColorTarget(pColorOut, 0);
 
     // Make sure the dimensions match
@@ -97,7 +97,7 @@ void TAA::execute(RenderContext* pContext, const RenderData& renderData) {
     pContext->blit(pColorOut->getSRV(), mpPrevColor->getRTV());
 }
 
-void TAA::allocatePrevColor(const Texture* pColorOut) {
+void TAA::allocatePrevColor(RenderContext* pContext, const Texture* pColorOut) {
     bool allocate = mpPrevColor == nullptr;
     allocate = allocate || (mpPrevColor->getWidth() != pColorOut->getWidth());
     allocate = allocate || (mpPrevColor->getHeight() != pColorOut->getHeight());
@@ -105,7 +105,7 @@ void TAA::allocatePrevColor(const Texture* pColorOut) {
     allocate = allocate || (mpPrevColor->getFormat() != pColorOut->getFormat());
     assert(pColorOut->getSampleCount() == 1);
 
-    if (allocate) mpPrevColor = Texture::create2D(mpDevice, pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+    if (allocate) mpPrevColor = Texture::create2D(pContext->device(), pColorOut->getWidth(), pColorOut->getHeight(), pColorOut->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
 }
 
 void TAA::renderUI(Gui::Widgets& widget) {
