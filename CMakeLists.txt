@@ -27,6 +27,9 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake/macros
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake/modules
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 

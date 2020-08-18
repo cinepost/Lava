@@ -226,6 +226,16 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     */
     void captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format = Bitmap::FileFormat::PngFile, Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None);
 
+    /** Read the texture to an array.
+        \param[in] mipLevel Requested mip-level
+        \param[in] arraySlice Requested array-slice
+        \param[out] textureData
+        \param[out] resourceFormat Texture data format
+        \param[out] channels Texture data channels number
+    */
+    void readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels);
+
+
     /** Generates mipmaps for a specified texture object.
     */
     void generateMips(RenderContext* pContext);

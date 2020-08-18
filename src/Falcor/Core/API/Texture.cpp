@@ -221,13 +221,27 @@ ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t
 }
 
 void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) {
+    uint32_t channels;
+    ResourceFormat resourceFormat;
+    std::vector<uint8_t> textureData;
+
+    readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
+
+    auto func = [=]() {
+        Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
+    };
+
+    Threading::dispatchTask(func);
+}
+
+void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
     assert(mType == Type::Texture2D);
     RenderContext* pContext = mpDevice->getRenderContext();
+
     // Handle the special case where we have an HDR texture with less then 3 channels
     FormatType type = getFormatType(mFormat);
-    uint32_t channels = getFormatChannelCount(mFormat);
-    std::vector<uint8_t> textureData;
-    ResourceFormat resourceFormat = mFormat;
+    channels = getFormatChannelCount(mFormat);
+    resourceFormat = mFormat;
 
     if (type == FormatType::Float && channels < 3) {
         Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
@@ -238,12 +252,6 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
         uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
         textureData = pContext->readTextureSubresource(this, subresource);
     }
-
-    auto func = [=]() {
-        Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
-    };
-
-    Threading::dispatchTask(func);
 }
 
 void Texture::uploadInitData(const void* pData, bool autoGenMips) {

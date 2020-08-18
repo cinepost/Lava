@@ -508,22 +508,33 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 
         executeActiveGraph(pRenderContext);
 
+        
         // Blit main graph output to frame buffer.
         if (mGraphs[mActiveGraph].mainOutput.size()) {
-            LOG_DBG("blit");
             Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             assert(pOutTex);
-            pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
 
+            if (mpDevice == pTargetFbo->device()) {
+                LOG_DBG("blit local");
+                pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
+
+            } else {
+                LOG_DBG("blit remote");
+                uint32_t channels;
+                ResourceFormat format;
+                std::vector<uint8_t> textureData;
+                pOutTex->readTextureData(0, 0, textureData, format, channels);
+            }
             // image save test
-            Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
-            assert(pTex);
-            std::string filename = "/home/max/test/render_test.";
-            auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
-            filename += ext;
-            auto format = Bitmap::getFormatFromFileExtension(ext);
-            pTex->captureToFile(0, 0, filename, format);
+            //Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
+            //assert(pTex);
+            //std::string filename = "/home/max/test/render_test.";
+            //auto ext = Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
+            //filename += ext;
+            //auto format = Bitmap::getFormatFromFileExtension(ext);
+            //pTex->captureToFile(0, 0, filename, format);
         }
+
     }
 
     endFrame(pRenderContext, pTargetFbo);

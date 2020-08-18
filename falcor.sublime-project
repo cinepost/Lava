@@ -12,6 +12,7 @@
     "SublimeLinter.linters.clang++.disable": false,
     "SublimeLinter.linters.clang++.args": ["-std=c++17"],
     "SublimeLinter.linters.clang++.I": [
+      "/opt/USD/include/",
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
       "${project_path}/third_party/", 
@@ -22,6 +23,7 @@
     "SublimeLinter.linters.gcc.disable": true,
     "SublimeLinter.linters.gcc.args": ["-std=c99"],
     "SublimeLinter.linters.gcc.I": [
+      "/opt/USD/include/",
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
       "${project_path}/third_party/", 
@@ -32,6 +34,7 @@
     "SublimeLinter.linters.g++.disable": false,
     "SublimeLinter.linters.g++.args": ["-std=c++17"],
     "SublimeLinter.linters.g++.I": [
+      "/opt/USD/include/",
       "${project_path}/src/",
       "${project_path}/src/Falcor/", 
       "${project_path}/third_party/", 
@@ -61,6 +64,7 @@
           "executable": ["gcc"],
           "args": ["-fsyntax-only", "-std=c90"],
           "I": [
+              "/opt/USD/include/",
               "${file_path}/src",
               "${file_path}/include",
               "${folder}/src",
@@ -74,6 +78,7 @@
           "executable": ["g++"],
           "args": ["-fsyntax-only", "-std=c++17"],
           "I": [
+              "/opt/USD/include/",
               "${file_path}/src",
               "${file_path}/include",
               "${folder}/src",

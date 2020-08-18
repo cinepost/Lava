@@ -112,6 +112,9 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
         std::shared_ptr<Device> mpDevice;
     };
 
+    std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
+
     /** Used to tell some functions to attach all array slices of a specific mip-level.
     */
     static const uint32_t kAttachEntireMipLevel = uint32_t(-1);
