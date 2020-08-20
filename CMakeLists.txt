@@ -25,11 +25,10 @@ project( Falcor VERSION ${PROJECT_VERSION} )
 set( CMAKE_MODULE_PATH 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/defaults
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake/macros
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/USD/cmake/modules
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -41,6 +40,8 @@ set( COMPANY "Parovoz" )
 set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
+# Set python virtualenv for USD
+set( PYTHON_EXECUTABLE "python")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -115,6 +116,7 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 message("Build dir: ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}")
 #add_subdirectory( third_party/assimp )
+add_subdirectory( third_party/tbb )
 add_subdirectory( src )
 
 #install(

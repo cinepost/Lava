@@ -10,3 +10,9 @@
 [submodule "third_party/USD"]
 	path = third_party/USD
 	url = https://github.com/PixarAnimationStudios/USD
+[submodule "third_party/oneTBB"]
+	path = third_party/oneTBB
+	url = https://github.com/oneapi-src/oneTBB.git
+[submodule "third_party/tbb"]
+	path = third_party/tbb
+	url = https://github.com/wjakob/tbb.git
