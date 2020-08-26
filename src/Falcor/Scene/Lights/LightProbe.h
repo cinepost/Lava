@@ -152,8 +152,6 @@ class dlldecl LightProbe {
     uint32_t mDiffSampleCount;
     uint32_t mSpecSampleCount;
 
-    std::shared_ptr<Device> mpDevice;
-
     LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat);
 };
 

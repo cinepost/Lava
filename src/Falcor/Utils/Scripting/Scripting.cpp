@@ -82,6 +82,7 @@ static bool insertNewFloatVec(const std::pair<pybind11::handle, pybind11::handle
 }
 
 bool Scripting::start() {
+    LOG_DBG("Scripting::start()");
     if (!sRunning) {
         sRunning = true;
 #ifdef _WIN32
@@ -97,16 +98,18 @@ bool Scripting::start() {
             return false;
         }
     }
-
+    LOG_DBG("Scripting::start() done");
     return true;
 }
 
 void Scripting::shutdown() {
+    LOG_DBG("Scripting::shutdown()");
     if (sRunning) {
         sRunning = false;
         pybind11::finalize_interpreter();
         ScriptBindings::sClasses.clear();
     }
+    LOG_DBG("Scripting::shutdown() done");
 }
 
 class RedirectStdout {
@@ -133,6 +136,7 @@ class RedirectStdout {
 };
 
 static std::string runScript(const std::string& script, pybind11::dict& locals) {
+    LOG_DBG("runScript");
     RedirectStdout rs;
     pybind11::exec(script.c_str(), pybind11::globals(), locals);
     return rs;

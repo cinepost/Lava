@@ -1,7 +1,11 @@
-add_subdirectory( Falcor ) # renderer library
+add_subdirectory( Falcor ) # renderer core library
 add_subdirectory( RenderPasses ) # render passes plugins
-add_subdirectory( pxr ) # usd hydra renderer plugin
+add_subdirectory( lava_utils_lib ) # lava utility library
+add_subdirectory( lava_lib ) # rendering library
+add_subdirectory( lava_cmd ) # command line renderer
+add_subdirectory( houdini ) # houdini tools
 
+#add_subdirectory( pxr ) # usd hydra renderer plugin
 #add_subdirectory( Tools ) # falcor tools
 #add_subdirectory( Samples ) # falcor samples
 #add_subdirectory( Mogwai ) # gui application

@@ -60,6 +60,7 @@
 #include <algorithm>
 #include <utility>
 #include <memory>
+#include <type_traits>
 
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Logger.h"

@@ -53,7 +53,7 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set( CMAKE_INSTALL_PREFIX "/Applications/Falcor/Falcor" )
 elseif(UNIX)
-  set( CMAKE_INSTALL_PREFIX "/opt/falcor" )
+  set( CMAKE_INSTALL_PREFIX "/opt/lava" )
 endif()
 
 # Handle build mode

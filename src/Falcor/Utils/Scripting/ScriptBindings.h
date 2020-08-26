@@ -33,6 +33,7 @@
 #include <pybind11/stl.h>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor::ScriptBindings {
 

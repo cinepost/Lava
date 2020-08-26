@@ -190,6 +190,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget) {
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     assert(mpDevice == pRenderContext->device());
     assert(mpDevice == pScene->device());
+    
     // Reset accumulation when the scene changes.
     mFrameCount = 0;
     mpScene = pScene;

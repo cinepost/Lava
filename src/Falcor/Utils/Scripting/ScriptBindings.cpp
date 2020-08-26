@@ -31,26 +31,24 @@
 #include "ScriptBindings.h"
 #include "pybind11/embed.h"
 
+#include "Falcor/Utils/Debug/debug.h"
 
-namespace Falcor::ScriptBindings
-{
+
+namespace Falcor::ScriptBindings {
     ClassesMap sClasses;
     std::unordered_map<std::type_index, std::string> sEnumNames;
 
-    namespace
-    {
+    namespace {
         /** `gBindFuncs` is declared as pointer so that we can ensure it can be explicitly
          allocated when registerBinding() is called.  (The C++ static objectinitialization fiasco.)
          */
         std::vector<BindComponentFunc>* gBindFuncs = nullptr;
-    }
+    }  // namespace
 
-    void registerBinding(BindComponentFunc f)
-    {
-        if(Scripting::isRunning())
-        {
-            try
-            {
+    void registerBinding(BindComponentFunc f) {
+        LOG_DBG("registerBinding called");
+        if(Scripting::isRunning()) {
+            try {
                 auto pymod = pybind11::module::import("falcor");
                 Module m(pymod);
                 f(m);
@@ -63,29 +61,25 @@ namespace Falcor::ScriptBindings
                 logError(e.what());
                 return;
             }
-        }
-        else
-        {
+        } else {
             if (!gBindFuncs) gBindFuncs = new std::vector<BindComponentFunc>();
             gBindFuncs->push_back(f);
         }
+        LOG_DBG("registerBinding done");
     }
 
     template<typename VecT, typename...Args>
-    VecT makeVec(Args...args)
-    {
+    VecT makeVec(Args...args) {
         return VecT(args...);
     }
 
     template<typename VecT, typename...Args>
-    void addVecType(pybind11::module& m, const std::string name)
-    {
+    void addVecType(pybind11::module& m, const std::string name) {
         auto ctor = [](Args...components) { return makeVec<VecT>(components...); };
         auto repr = [](const VecT& v) { return to_string(v); };
         auto vecStr = [](const VecT& v) {
             std::string vec = "[" + to_string(v[0]);
-            for (int i = 1; i < v.length(); i++)
-            {
+            for (int i = 1; i < v.length(); i++) {
                 vec += ", " + to_string(v[i]);
             }
             vec += "]";
@@ -97,8 +91,8 @@ namespace Falcor::ScriptBindings
             .def("__str__", vecStr);
     }
 
-    PYBIND11_EMBEDDED_MODULE(falcor, m)
-    {
+    /*
+    PYBIND11_EMBEDDED_MODULE(falcor, m) {
         // bool2, bool3, bool4
         addVecType<bool2, bool, bool>(m, "bool2");
         addVecType<bool3, bool, bool, bool>(m, "bool3");
@@ -119,10 +113,10 @@ namespace Falcor::ScriptBindings
         addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
         addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
 
-        if (gBindFuncs)
-        {
+        if (gBindFuncs) {
             ScriptBindings::Module fm(m);
             for (auto f : *gBindFuncs) f(fm);
         }
     }
+    */
 }

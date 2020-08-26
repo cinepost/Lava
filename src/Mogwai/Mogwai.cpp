@@ -524,6 +524,9 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
                 ResourceFormat format;
                 std::vector<uint8_t> textureData;
                 pOutTex->readTextureData(0, 0, textureData, format, channels);
+
+                Texture* pTex = Texture::create2D()
+                pRenderContext->blit(pTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
             // image save test
             //Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();

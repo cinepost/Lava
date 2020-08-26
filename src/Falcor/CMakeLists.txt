@@ -171,5 +171,5 @@ if(APPLE)
   endif()
 
 elseif(UNIX)
-    install( TARGETS falcor_lib DESTINATION "lib" )
+    install( TARGETS falcor_lib DESTINATION lib )
 endif()
