@@ -60,17 +60,17 @@ private:
 
 /// To implelemnt
 public:
-    //ROP_RenderMode  getRenderMode();
-    bool            hasImageOutput();
+    virtual bool    hasImageOutput();
+    virtual void    getRenderedImageInfo(TIL_Sequence &seq);
+
+    virtual void    overrideDevice(bool enable, bool interactive=false, const char *devicestr=0);
+    virtual void    overrideOutput(bool enable, const char *fname=0);   
+
     //void            getFrameRange(long &s, long &e);
     //OP_DataType     getCookedDataType ()const;
     //void            getFrameDevice(UT_String &dev, float now, const char *renderer);
-    //bool            getOutputResolution(int &x, int &y);
-    //void            getOutputFile(UT_String &name);
-
-    // Override the output filename for this node. Used by the hscript render -o command.
-    //void        overrideOutput(bool enable, const char *fname=0);
-    //void        getRenderedImageInfo(TIL_Sequence &seq);
+    virtual bool    getOutputResolution(int &x, int &y);
+    virtual void    getOutputFile(UT_String &name) final;
 
 public:
     void OUTPUT(UT_String &str, float t);
@@ -80,8 +80,8 @@ public:
 
 protected:
     // This method returns the image device required to render it to an interactive window (an mplay window, for example).
-    const char *getInteractiveImageDevice() const { return "imdisplay"; }
-    bool        isPreviewAllowed() { return true; }   
+    const char*     getInteractiveImageDevice() const;
+    virtual bool    isPreviewAllowed();
 
 };
 //}       // End HDK_Sample namespace

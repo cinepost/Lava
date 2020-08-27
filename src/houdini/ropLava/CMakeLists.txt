@@ -1,6 +1,3 @@
-# Locate Houdini's libraries and header files.
-# Registers an imported library target named 'Houdini'.
-list( APPEND CMAKE_PREFIX_PATH "$ENV{HFS}/toolkit/cmake" )
 find_package( Houdini REQUIRED )
 
 # Add a library with two source files.

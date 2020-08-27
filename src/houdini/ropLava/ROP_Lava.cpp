@@ -273,26 +273,43 @@ void newDriverOperator(OP_OperatorTable *table) {
             ROP_Lava::myConstructor,
             ROP_Lava::getTemplatePair(),
             0,
-            0,
+            9999,
             ROP_Lava::getVariablePair(),
             OP_FLAG_GENERATOR
         )
     );
 }
 
-//------------------------------------------------------------------------------
-
-
-//ROP_RenderMode
-//ROP_Lava::getRenderMode(){
-//    std::cout << "Call: getRenderMode" << std::endl;
-//    return RENDER_GETRASTER;
-//}   
+//------------------------------------------------------------------------------ 
 
 bool ROP_Lava::hasImageOutput(){
     return true;
 }
     
+bool ROP_Lava::isPreviewAllowed() {
+    return true;
+}
+
+void ROP_Lava::getRenderedImageInfo(TIL_Sequence &seq) {
+    std::cout << "ROP_Lava::getRenderedImageInfo" << std::endl;
+}
+
+void ROP_Lava::overrideDevice(bool enable, bool interactive, const char *devicestr) {
+    std::cout << "ROP_Lava::overrideDevice" << std::endl;
+}
+
+void ROP_Lava::overrideOutput(bool enable, const char *fname){
+    std::cout << "ROP_Node::overrideOutput ";
+    if (enable) std::cout << "yes ";
+    
+    if (fname) {
+        std::cout << std::string(fname) << " ";
+    } 
+    std::cout << std::endl;
+
+    if (fname) 
+        myRenderOutput = fname;
+}
 
 //void ROP_Lava::getFrameRange(long &s, long &e){
 //    std::cout << "Call: getFrameRange" << std::endl;
@@ -308,17 +325,22 @@ bool ROP_Lava::hasImageOutput(){
 //    dev = "bbb";
 //}
 
-//bool ROP_Lava::getOutputResolution(int &x, int &y){
-//    std::cout << "Call: getOutputResolution" << std::endl;
-//    x = 640;
-//    y = 360;
-//    return true;
-//}
+const char* ROP_Lava::getInteractiveImageDevice() const { 
+    std::cout << "ROP_Lava::getInteractiveImageDevice" << std::endl;
+    return "imdisplay"; 
+}
 
-//void ROP_Lava::getOutputFile(UT_String &name){
-//    std::cout << "Call: getOutputFile" << std::endl;
-//    name = "/home/max/Pictures/picture-show-flickr-promo.jpg";
-//}
+bool ROP_Lava::getOutputResolution(int &x, int &y){
+    std::cout << "ROP_Lava::getOutputResolution" << std::endl;
+    x = 640;
+    y = 360;
+    return true;
+}
+
+void ROP_Lava::getOutputFile(UT_String &name){
+    std::cout << "ROP_Lava::getOutputFile" << std::endl;
+    name = "/home/max/Pictures/640x360.png";
+}
 
 //void ROP_Node::getRenderedImageInfo(TIL_Sequence &seq){
 //    std::cout << "Call: getRenderedImageInfo" << std::endl;
@@ -329,10 +351,6 @@ bool ROP_Lava::hasImageOutput(){
 //}   
 
 /*
-void ROP_Node::overrideOutput(bool enable, const char *fname){
-    std::cout << "Call: overrideOutput" << std::endl;
-}
-
 void ROP_Node::overrideDevice(bool enable, bool interactive, const char *devicestr){
     std::cout << "Call: overrideDevice" << std::endl;
 }

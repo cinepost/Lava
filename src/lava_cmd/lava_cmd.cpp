@@ -30,6 +30,8 @@ void printUsage() {
     std::cout << "have an extension it will be used as the output image/device\n" << std::endl;
 
     std::cout << "    Control Options:" << std::endl;
+    std::cout << "        -e echo stdin" << std::endl;
+    std::cout << "        -r file  Read render graph definition from file" << std::endl;
     std::cout << "        -f file  Read scene file specified instead of reading from stdin" << std::endl;
     std::cout << "        -v val  Set verbose level (i.e. -v 2)" << std::endl;
     std::cout << "                    0-6  Output varying degrees of rendering statistics" << std::endl;
@@ -52,8 +54,10 @@ int main(int argc, char* argv[]){
     
     int option = 0;
     int verbose_level = 6;
+    bool echo_stdin = false;
     bool read_stdin = true;
     bool run_interactive = true;
+    std::string filename;
 
     //std::istream *in; // input stream pointer
     std::ifstream ifn; // input file
@@ -67,15 +71,25 @@ int main(int argc, char* argv[]){
     };
 
     while (true) {
-        const auto opt = getopt_long(argc, argv, "hciv:l:", long_opts, nullptr);
+        const auto opt = getopt_long(argc, argv, "hciev:f:l:e:", long_opts, nullptr);
 
         if (opt == -1)
             break;
 
+
         switch (opt) {
-            case 'c' : read_stdin = true;
+            case 'c' : 
+                read_stdin = true;
                 break;
-            case 'v' : verbose_level = atoi(optarg);
+            case 'v' : 
+                verbose_level = atoi(optarg);
+                break;
+            case 'e' :
+                echo_stdin = true;
+                break;
+            case 'f' : 
+                read_stdin = false;
+                filename = optarg;
                 break; 
             case 'l':  
                 //Renderer::listGPUs();
@@ -87,6 +101,8 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
         }
     }
+
+    std::cout << "filename: " << filename << std::endl;
 
     Renderer::UniquePtr renderer = Renderer::create();
     //renderer->init(800, 600, 16);

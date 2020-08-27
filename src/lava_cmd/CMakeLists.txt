@@ -1,3 +1,6 @@
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 set (SOURCES 
 	./lava_cmd.cpp
 )
@@ -20,7 +23,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE) # add the automatically determined p
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )
-set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava" )
+set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava-bin" )
  
 target_link_libraries( lava_cmd
 	lava_lib
@@ -30,4 +33,14 @@ target_link_libraries( lava_cmd
 	Boost::program_options 
 )
 
-install(TARGETS lava_cmd DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(
+	TARGETS lava_cmd 
+	RUNTIME DESTINATION bin
+	LIBRARY DESTINATION lib
+)
+
+install(
+	DIRECTORY bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}
+  	USE_SOURCE_PERMISSIONS
+)

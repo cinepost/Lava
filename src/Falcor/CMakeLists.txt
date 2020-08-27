@@ -103,6 +103,10 @@ include_directories( ${PYTHON_INCLUDE_DIRS} )
 find_package(FreeImage REQUIRED)
 include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
 
+# TIFF (required by FreeImage )
+find_package( TIFF REQUIRED )
+include_directories( ${TIFF_INCLUDE_DIRS} )
+
 # Find Boost libs
 find_package( Boost COMPONENTS system filesystem REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
@@ -141,6 +145,7 @@ target_link_libraries(
     ${Vulkan_LIBRARY}
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
+    ${TIFF_LIBRARIES}
 )
 
 # Copy/install all needed shaders
@@ -161,14 +166,14 @@ file(
 
 if(APPLE)
     if( COPPER_BUILD_LIBS_AS_FRAMEWORKS )
-	#falcor_config_framework( falcor_lib )
+	   #falcor_config_framework( falcor_lib )
 
-    # Framework is called 'Falcor'
-    set_target_properties( falcor_lib PROPERTIES OUTPUT_NAME "Falcor" )
-    install( TARGETS falcor_lib DESTINATION "Frameworks" )
-  else()
-    install( TARGETS falcor_lib DESTINATION "lib" )
-  endif()
+        # Framework is called 'Falcor'
+        set_target_properties( falcor_lib PROPERTIES OUTPUT_NAME "Falcor" )
+        install( TARGETS falcor_lib DESTINATION "Frameworks" )
+    else()
+        install( TARGETS falcor_lib DESTINATION "lib" )
+    endif()
 
 elseif(UNIX)
     install( TARGETS falcor_lib DESTINATION lib )

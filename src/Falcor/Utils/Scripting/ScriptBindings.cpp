@@ -46,7 +46,7 @@ namespace Falcor::ScriptBindings {
     }  // namespace
 
     void registerBinding(BindComponentFunc f) {
-        LOG_DBG("registerBinding called");
+        //LOG_DBG("registerBinding called");
         if(Scripting::isRunning()) {
             try {
                 auto pymod = pybind11::module::import("falcor");
@@ -65,7 +65,7 @@ namespace Falcor::ScriptBindings {
             if (!gBindFuncs) gBindFuncs = new std::vector<BindComponentFunc>();
             gBindFuncs->push_back(f);
         }
-        LOG_DBG("registerBinding done");
+        //LOG_DBG("registerBinding done");
     }
 
     template<typename VecT, typename...Args>
@@ -91,7 +91,6 @@ namespace Falcor::ScriptBindings {
             .def("__str__", vecStr);
     }
 
-    /*
     PYBIND11_EMBEDDED_MODULE(falcor, m) {
         // bool2, bool3, bool4
         addVecType<bool2, bool, bool>(m, "bool2");
@@ -118,5 +117,4 @@ namespace Falcor::ScriptBindings {
             for (auto f : *gBindFuncs) f(fm);
         }
     }
-    */
 }
