@@ -1,5 +1,5 @@
-#ifndef LAVA_RENDERER_H_
-#define LAVA_RENDERER_H_
+#ifndef SRC_LAVA_LIB_RENDERER_H_
+#define SRC_LAVA_LIB_RENDERER_H_
 
 #include <cstddef>
 #include <string>
@@ -28,6 +28,6 @@ class Renderer {
 
 };
 
-}  // namespace Lava
+}  // namespace lava
 
-#endif  // LAVA_RENDERER_H_
+#endif  // SRC_LAVA_LIB_RENDERER_H_

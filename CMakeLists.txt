@@ -131,8 +131,11 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 message("Build dir: ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}")
 #add_subdirectory( third_party/assimp )
+
 add_subdirectory( third_party/tbb )
+add_subdirectory( third_party/ri_display )
 add_subdirectory( src )
+add_subdirectory( contrib )
 
 #install(
 #    DIRECTORY

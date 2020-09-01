@@ -1,5 +1,5 @@
-#ifndef LAVA_TYPES_H_
-#define LAVA_TYPES_H_
+#ifndef SRC_LAVA_TYPES_H_
+#define SRC_LAVA_TYPES_H_
 
 namespace lava {
 
@@ -186,6 +186,6 @@ typedef enum {
 	//LAVA_RENDERER_CUSTOM_PTR = LAVA_OBJECT_CUSTOM_PTR,
 } RendererInfo ;
 
-}  // namespace Lava
+}  // namespace lava
 
-#endif  // LAVA_TYPES_H_
+#endif  // SRC_LAVA_TYPES_H_

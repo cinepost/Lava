@@ -15,6 +15,7 @@
 #include <boost/log/expressions.hpp>
 
 #include "lava_lib/renderer.h"
+#include "lava_lib/loaders/loader_lsd.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -54,13 +55,13 @@ int main(int argc, char* argv[]){
     
     int option = 0;
     int verbose_level = 6;
-    bool echo_stdin = false;
+    bool echo = false;
     bool read_stdin = true;
     bool run_interactive = true;
     std::string filename;
 
     //std::istream *in; // input stream pointer
-    std::ifstream ifn; // input file
+    //std::ifstream ifn; // input file
 
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
@@ -85,7 +86,7 @@ int main(int argc, char* argv[]){
                 verbose_level = atoi(optarg);
                 break;
             case 'e' :
-                echo_stdin = true;
+                echo = true;
                 break;
             case 'f' : 
                 read_stdin = false;
@@ -107,6 +108,15 @@ int main(int argc, char* argv[]){
     Renderer::UniquePtr renderer = Renderer::create();
     //renderer->init(800, 600, 16);
 
+    LoaderLSD loader;
+
+    if (read_stdin) {
+        // read from stdin
+        loader.read(echo);
+    } else {
+        // read from file
+        loader.read(filename, echo);
+    }
     //FstIfd ifd_reader(in, renderer);
     //if(!ifd_reader.process()){
     //    std::cerr << "Abort. Error processing IFD !!!" << std::endl;
