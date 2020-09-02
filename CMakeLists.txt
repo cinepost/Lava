@@ -124,6 +124,9 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
+# set variable pointing to the antlr tool that supports C++
+set(ANTLR4CPP_JAR_LOCATION ${PROJECT_SOURCE_DIR}/third_party/antlr-4.8-complete.jar)
+
 # Now setup targets
 
 # thirt party libs

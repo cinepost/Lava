@@ -2,6 +2,7 @@
 #define SRC_LAVA_LIB_LOADER_LSD_H_
 
 #include <boost/lambda/bind.hpp>
+#include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/classic.hpp>
 
 #include "loader_base.h"

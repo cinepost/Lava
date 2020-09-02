@@ -20,7 +20,9 @@ LoaderLSD::~LoaderLSD() {
 }
 
 void LoaderLSD::parseLine(const std::string& line) {
-	parse_info<iterator_t> pInfo = parse(line.begin(), line.end(), *mpSyntax, skipParser);
+	auto it = line.begin();
+	//parse_info<iterator_t> pInfo 
+	bool p = qi::parse(it, line.end(), *mpSyntax, skipParser);
 
 	if (!pInfo.full) {
 		if (pInfo.hit)

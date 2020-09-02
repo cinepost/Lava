@@ -13,8 +13,13 @@
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string/join.hpp>
+namespace po = boost::program_options;
 
 #include "lava_lib/renderer.h"
+#include "lava_lib/renderer_input_registry.h"
 #include "lava_lib/loaders/loader_lsd.h"
 
 #include "lava_utils_lib/logging.h"
@@ -48,7 +53,7 @@ void signalHandler( int signum ){
     exit(signum);
 }
 
-int main(int argc, char* argv[]){
+int main(int argc, char** argv){
     // Set up logging level quick 
     lava::ut::log::init_log();
     boost::log::core::get()->set_filter(  boost::log::trivial::severity >=  boost::log::trivial::debug );
@@ -60,69 +65,113 @@ int main(int argc, char* argv[]){
     bool run_interactive = true;
     std::string filename;
 
-    //std::istream *in; // input stream pointer
-    //std::ifstream ifn; // input file
-
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
 
-    /// Specifying the expected rendering options
-    const struct option long_opts[] = {
-        {"listgpus", no_argument, nullptr, 'l'},
-    };
 
-    while (true) {
-        const auto opt = getopt_long(argc, argv, "hciev:f:l:e:", long_opts, nullptr);
+    /// Program options
+    int opt;
+    string config_file;
 
-        if (opt == -1)
-            break;
+    // Declare a group of options that will be allowed only on command line
+    namespace po = boost::program_options; 
+    po::options_description generic("Options"); 
+    generic.add_options() 
+        ("help,h", "Print help messages") 
+        ("version,v", "Shout version information")
+        ;
 
+    // Declare a group of options that will be allowed both on command line and in config file
+    po::options_description config("Configuration");
+    config.add_options()
+        ("optimization", po::value<int>(&opt)->default_value(10), "optimization level")
+        ("include-path,I", po::value< vector<string> >()->composing(), "include path")
+        ;
 
-        switch (opt) {
-            case 'c' : 
-                read_stdin = true;
-                break;
-            case 'v' : 
-                verbose_level = atoi(optarg);
-                break;
-            case 'e' :
-                echo = true;
-                break;
-            case 'f' : 
-                read_stdin = false;
-                filename = optarg;
-                break; 
-            case 'l':  
-                //Renderer::listGPUs();
-                exit(EXIT_SUCCESS);
-                break; 
-            case 'h' :
-            default:
-                printUsage(); 
-                exit(EXIT_FAILURE);
-        }
+    // Hidden options, will be allowed both on command line and in config file, but will not be shown to the user.
+    po::options_description hidden("Hidden options");
+    hidden.add_options()
+        ("input-file", po::value< vector<string> >(), "input file")
+        ;
+
+    po::options_description cmdline_options;
+    cmdline_options.add(generic).add(config).add(hidden);
+
+    po::options_description config_file_options;
+    config_file_options.add(config).add(hidden);
+
+    po::options_description visible("Allowed options");
+    visible.add(generic).add(config);
+
+    po::positional_options_description p;
+    p.add("input-file", -1);
+ 
+    po::variables_map vm; 
+    po::store(po::command_line_parser(argc, argv).
+      options(cmdline_options).positional(p).run(), vm); // can throw 
+    po::notify(vm); // throws on error, so do after help in case there are any problems
+
+    /** --help option 
+     */ 
+    if ( vm.count("help")  ) { 
+        std::cout << "Basic Command Line Parameter App\n" << generic << endl; 
+        exit(EXIT_SUCCESS);
     }
 
-    std::cout << "filename: " << filename << std::endl;
+    if (vm.count("version")) {
+        std::cout << "Lava, version 0.0\n";
+        exit(EXIT_SUCCESS);
+    }
+
+    // Handle config file
+    ifstream ifs(config_file.c_str());
+    if (!ifs) {
+        LOG_DBG("No config file provided but that's totally fine.");
+    } else {
+        store(parse_config_file(ifs, config_file_options), vm);
+        notify(vm);
+    }
+
+    // Populate Renderer_IO_Registry with internal and external scene translators
+    Renderer_IORegistry::getInstance().addIOTranslator(
+      LoaderLSD::myExtensions, 
+      LoaderLSD::myConstructor
+    );
+
 
     Renderer::UniquePtr renderer = Renderer::create();
-    //renderer->init(800, 600, 16);
 
-    LoaderLSD loader;
+    if (vm.count("input-file")) {
+      // loading provided files
+      vector<string> files = vm["input-file"].as< vector<string> >();
+      BOOST_LOG_TRIVIAL(debug) << "Input scene files are: "<< boost::algorithm::join(files, " ") << "\n";
+      for (vector<string>::const_iterator fi = files.begin(); fi != files.end(); ++fi) {
+        std::ifstream in_file(*fi, std::ifstream::binary);
+        if ( in_file ) {
+          string file_extension = boost::filesystem::extension(*fi);
+          BOOST_LOG_TRIVIAL(debug) << "ext " << file_extension;
+          auto loader = SCN_IORegistry::getInstance().getTranslatorByExt(file_extension);
 
-    if (read_stdin) {
-        // read from stdin
-        loader.read(echo);
+          BOOST_LOG_TRIVIAL(debug) << "loader";
+          //BOOST_LOG_TRIVIAL(debug) << "Reading "<< *fi << " scene file with " << loader->formatName() << " loader";
+          if (!loader->fileLoad(scene, in_file, false)) {
+            // error loading scene from file
+            LOG_ERR("Error loading scene from file: %s", *fi);
+          }
+        } else {
+          // error opening scene file
+          std::cerr << "Unable to open file " << *fi << " ! aborting..." << std::endl;
+        }
+      }
     } else {
-        // read from file
-        loader.read(filename, echo);
+      // loading from stdin
+      BOOST_LOG_TRIVIAL(debug) << "Reading scene from stdin ...\n";
+      auto loader =  SCN_IORegistry::getInstance().getTranslatorByExt(".ifd"); // default format for reading stdin is ".ifd"
+      if (!loader->fileLoad(scene, std::cin, false)) {
+        // error loading scene from stdin
+        LOG_ERR("Error loading scene from stdin !");
+      }
     }
-    //FstIfd ifd_reader(in, renderer);
-    //if(!ifd_reader.process()){
-    //    std::cerr << "Abort. Error processing IFD !!!" << std::endl;
-    //    delete renderer;
-    //    exit(EXIT_FAILURE);
-    //}
 
     exit(EXIT_SUCCESS);
 }
