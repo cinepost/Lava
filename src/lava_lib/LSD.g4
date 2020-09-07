@@ -1,5 +1,5 @@
 /*
- * Mantra ASCII .IFD file format grammer.
+ * Lava ASCII .LSD file format grammer.
  */
 
 grammar LSD;
@@ -8,7 +8,7 @@ import BSON; /* binary json lexer grammar */
 
 file: line*;
 
-line: version | declare | setenv | start | end | property | detail | image | geomerty | time | bgeo | raytrace | quit | COMMENT;
+line: version | declare | setenv | start | end | property | detail | image | geomerty | time | bgeo | raytrace | quit | defaults | COMMENT ;
 
 bgeo
    : BGEO_START .*? ~'cmd_end' //{_input->LA(1)!='cmd_end'}?
@@ -22,8 +22,12 @@ version
    : 'cmd_version' VEX_VERSION
    ;
 
+defaults
+   : 'cmd_defaults' STRING
+   ;
+
 declare
-   : 'cmd_declare' OBJECT TYPE VAR_NAME VALUE
+   : 'cmd_declare' OBJECT TYPE VAR_NAME VALUE ( ';' VAR_NAME VALUE )*
    ;
 
 start

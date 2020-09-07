@@ -10,7 +10,7 @@
 namespace lava {
 
 typedef std::vector<std::string> *(*ReaderExtensions)();
-typedef SceneReaderBase::SharedPtr *(*ReaderConstructor)();
+typedef ReaderBase::SharedPtr (*ReaderConstructor)();
 
 class SceneReadersRegistry {
  public:
@@ -22,12 +22,12 @@ class SceneReadersRegistry {
     SceneReadersRegistry(SceneReadersRegistry const&) = delete;
     void operator=(SceneReadersRegistry const&) = delete;
 
-	void	          	addReader(ReaderExtensions extensions, ReaderConstructor constructor);
-	SCN_IOTranslator*	getReaderByExt(const std::string& ext);
+	void	          		addReader(ReaderExtensions extensions, ReaderConstructor constructor);
+	ReaderBase::SharedPtr	getReaderByExt(const std::string& ext);
 
  private:
 	SceneReadersRegistry() {};
-	std::map<std::string, ReaderConstructor> translatorsByExtension;
+	std::map<std::string, ReaderConstructor> readersByExtension;
 };
 
 

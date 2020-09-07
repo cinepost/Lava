@@ -19,8 +19,8 @@
 namespace po = boost::program_options;
 
 #include "lava_lib/renderer.h"
-#include "lava_lib/renderer_input_registry.h"
-#include "lava_lib/loaders/loader_lsd.h"
+#include "lava_lib/scene_readers_registry.h"
+#include "lava_lib/readers/reader_lsd.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -53,6 +53,8 @@ void signalHandler( int signum ){
     exit(signum);
 }
 
+typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
+
 int main(int argc, char** argv){
     // Set up logging level quick 
     lava::ut::log::init_log();
@@ -60,7 +62,7 @@ int main(int argc, char** argv){
     
     int option = 0;
     int verbose_level = 6;
-    bool echo = false;
+    bool echo_input = true;
     bool read_stdin = true;
     bool run_interactive = true;
     std::string filename;
@@ -71,7 +73,7 @@ int main(int argc, char** argv){
 
     /// Program options
     int opt;
-    string config_file;
+    std::string config_file;
 
     // Declare a group of options that will be allowed only on command line
     namespace po = boost::program_options; 
@@ -85,13 +87,13 @@ int main(int argc, char** argv){
     po::options_description config("Configuration");
     config.add_options()
         ("optimization", po::value<int>(&opt)->default_value(10), "optimization level")
-        ("include-path,I", po::value< vector<string> >()->composing(), "include path")
+        ("include-path,I", po::value< std::vector<std::string> >()->composing(), "include path")
         ;
 
     // Hidden options, will be allowed both on command line and in config file, but will not be shown to the user.
     po::options_description hidden("Hidden options");
     hidden.add_options()
-        ("input-file", po::value< vector<string> >(), "input file")
+        ("input-file", po::value< std::vector<std::string> >(), "input file")
         ;
 
     po::options_description cmdline_options;
@@ -114,7 +116,7 @@ int main(int argc, char** argv){
     /** --help option 
      */ 
     if ( vm.count("help")  ) { 
-        std::cout << "Basic Command Line Parameter App\n" << generic << endl; 
+        std::cout << "Basic Command Line Parameter App\n" << generic << std::endl; 
         exit(EXIT_SUCCESS);
     }
 
@@ -124,18 +126,18 @@ int main(int argc, char** argv){
     }
 
     // Handle config file
-    ifstream ifs(config_file.c_str());
+    std::ifstream ifs(config_file.c_str());
     if (!ifs) {
-        LOG_DBG("No config file provided but that's totally fine.");
+        LOG_DBG << "No config file provided but that's totally fine.";
     } else {
         store(parse_config_file(ifs, config_file_options), vm);
         notify(vm);
     }
 
     // Populate Renderer_IO_Registry with internal and external scene translators
-    Renderer_IORegistry::getInstance().addIOTranslator(
-      LoaderLSD::myExtensions, 
-      LoaderLSD::myConstructor
+    SceneReadersRegistry::getInstance().addReader(
+      ReaderLSD::myExtensions, 
+      ReaderLSD::myConstructor
     );
 
 
@@ -143,20 +145,22 @@ int main(int argc, char** argv){
 
     if (vm.count("input-file")) {
       // loading provided files
-      vector<string> files = vm["input-file"].as< vector<string> >();
+      std::vector<std::string> files = vm["input-file"].as< std::vector<std::string> >();
       BOOST_LOG_TRIVIAL(debug) << "Input scene files are: "<< boost::algorithm::join(files, " ") << "\n";
-      for (vector<string>::const_iterator fi = files.begin(); fi != files.end(); ++fi) {
+      for (std::vector<std::string>::const_iterator fi = files.begin(); fi != files.end(); ++fi) {
         std::ifstream in_file(*fi, std::ifstream::binary);
+        //std::ifstream in_file(*fi, std::ifstream::binary);
+        
         if ( in_file ) {
-          string file_extension = boost::filesystem::extension(*fi);
+          std::string file_extension = boost::filesystem::extension(*fi);
           BOOST_LOG_TRIVIAL(debug) << "ext " << file_extension;
-          auto loader = SCN_IORegistry::getInstance().getTranslatorByExt(file_extension);
+          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(file_extension);
 
-          BOOST_LOG_TRIVIAL(debug) << "loader";
-          //BOOST_LOG_TRIVIAL(debug) << "Reading "<< *fi << " scene file with " << loader->formatName() << " loader";
-          if (!loader->fileLoad(scene, in_file, false)) {
+          BOOST_LOG_TRIVIAL(debug) << "reader";
+          //BOOST_LOG_TRIVIAL(debug) << "Reading "<< *fi << " scene file with " << reader->formatName() << " reader";
+          if (!reader->read(nullptr, in_file, echo_input)) {
             // error loading scene from file
-            LOG_ERR("Error loading scene from file: %s", *fi);
+            LOG_ERR << "Error loading scene from file: " << *fi;
           }
         } else {
           // error opening scene file
@@ -166,10 +170,10 @@ int main(int argc, char** argv){
     } else {
       // loading from stdin
       BOOST_LOG_TRIVIAL(debug) << "Reading scene from stdin ...\n";
-      auto loader =  SCN_IORegistry::getInstance().getTranslatorByExt(".ifd"); // default format for reading stdin is ".ifd"
-      if (!loader->fileLoad(scene, std::cin, false)) {
+      auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
+      if (!reader->read(nullptr, std::cin, echo_input)) {
         // error loading scene from stdin
-        LOG_ERR("Error loading scene from stdin !");
+        LOG_ERR << "Error loading scene from stdin !";
       }
     }
 

@@ -13,21 +13,26 @@
 namespace lava {
 
 class ReaderBase {
-  public:
+ public:
   	using SharedPtr = std::shared_ptr<ReaderBase>;
 
     ReaderBase();
+    
+    bool                        read(SharedPtr iface, std::istream &input, bool echo);
+
+ public:
     virtual ~ReaderBase();
 
     virtual const char*			formatName() const = 0;
-    virtual int                 checkExtension(const char *name) = 0;
+    virtual bool                checkExtension(const char *name) = 0;
 
     virtual void                getFileExtensions(std::vector<std::string>& extensions) const = 0;
 
     // Method to check if the given magic number matches the magic number. Return true on a match.
     virtual bool                checkMagicNumber(unsigned magic) = 0;
 
-    virtual SCN_Scene::IOStatus fileLoad(SCN_Scene &scn, std::istream &in, bool ate_magic) = 0;
+ private:
+    virtual void                parseLine(const std::string& line, bool echo) = 0;
 };
 
 }  // namespace lava

@@ -1,86 +1,18 @@
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
+#include <vector>
+#include <fstream>
 
-#include <string>
-#include <iostream>
-#include <sstream>
-
-#include <locale>
-#include <codecvt>
-
-#include "antlr4-runtime.h"
-#include "readers/generated/LSDLexer.h"
-#include "readers/generated/LSDParser.h"
-#include "readers/generated/LSDBaseListener.h"
-#include "readers/generated/LSDBaseVisitor.h"
-
-#include "BinaryAntlrInputStream.h"
 #include "reader_lsd.h"
+#include "grammar_lsd.h"
 
-using namespace shout;
-using namespace antlr4;
-
+#include "lava_utils_lib/logging.h"
 
 namespace lava {
 
-class LSDFileVisitor : public LSDBaseVisitor {
-public:
-  virtual antlrcpp::Any visitSetenv(IFDParser::SetenvContext *ctx) override {
-    std::cout << "visitSetenv: " << ctx->VAR_NAME()->getText() << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitVersion(IFDParser::VersionContext *ctx) override {
-    std::cout << "visitVersion" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitDetail(IFDParser::DetailContext *ctx) override {
-    std::cout << "visitDetail" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitImage(IFDParser::ImageContext *ctx) override {
-    std::cout << "visitImage" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitDeclare(IFDParser::DeclareContext *ctx) override {
-    std::cout << "visitDeclare" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitStart(IFDParser::StartContext *ctx) override {
-    std::cout << "visitStart" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitEnd(IFDParser::EndContext *ctx) override {
-    std::cout << "visitEnd" << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitBgeo(IFDParser::BgeoContext *ctx) override {
-    std::cout << "visitBgeo:" << ctx->getText() << std::endl;
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitTime(IFDParser::TimeContext *ctx) override {
-    std::cout << "visitTime" << std::endl;
-    return visitChildren(ctx);
-  }
-};
-
-ReaderLSD::ReaderLSD() {
-  BOOST_LOG_TRIVIAL(debug) << "LSD file reader constructed!";
+ReaderLSD::ReaderLSD(): ReaderBase() {
+    //commands<std::string::const_iterator>();
 }
 
-
-ReaderLSD::~ReaderLSD() {
-  BOOST_LOG_TRIVIAL(debug) << "LSD file reader destructed!";
-}
-
+ReaderLSD::~ReaderLSD() { }
 
 const char *ReaderLSD::formatName() const{
     return "Lava LSD";
@@ -94,52 +26,76 @@ bool ReaderLSD::checkExtension(const char *name) {
 
 
 void ReaderLSD::getFileExtensions(std::vector<std::string> &extensions) const{
-    extensions.insert(extensions.end(), _ifd_extensions.begin(), _ifd_extensions.end());
+    extensions.insert(extensions.end(), _lsd_extensions.begin(), _lsd_extensions.end());
 }
 
 
-int ReaderLSD::checkMagicNumber(unsigned magic) {
-    return 0;
-}
-
-
-SCN_Scene::IOStatus ReaderLSD::fileLoad(SCN_Scene &scn, std::istream &in, bool ate_magic) {
-  //BinaryANTLRInputStream input(in);
-  antlr4::ANTLRInputStream input(in);
-  std::cout << "stream yes\n";
-
-  IFDLexer lexer(&input);
-  std::cout << "lexer yes\n";
-
-  antlr4::CommonTokenStream tokens(&lexer);
-
-  IFDParser parser(&tokens);
-
-  std::cout << "ReaderLSD::fileLoad.. parser.file()" << std::endl;
-  //antlr4::tree::ParseTree* tree  = parser.file();
-  IFDParser::FileContext* tree = parser.file();
-
-  //IFDFileListener listener;
-  //std::cout << "ReaderLSD::fileLoad.. DEFAULT.walk()" << std::endl;
-  //antlr4::tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
-
-  IFDFileVisitor visitor;
-  std::cout << "ReaderLSD::fileLoad.. visitor.visitFile(tree)" << std::endl;
-  visitor.visitFile(tree);
-
+bool ReaderLSD::checkMagicNumber(unsigned magic) {
   return true;
 }
 
+/*
+struct LSDEcho : public boost::static_visitor<> {
+    void operator()(Command a) const {
+        printf("Command: %d, Month: %d, Day: %d\n", a.year, a.month, a.day);
+    }
+    void operator()(Params a) const {
+        //printf("Hour: %d, Minute: %d, Second: %d\n", a.hour, a.minute, a.second);
+    }
+};
+*/
+
+
+void ReaderLSD::parseLine(const std::string& line, bool echo) {
+    typedef std::string::const_iterator It;
+
+	It beg = line.begin(), end = line.end();
+
+    //command_grammar<It> const commands;
+
+	//Ast::Commands parsed;
+    namespace x3 = boost::spirit::x3;
+    
+    //bool result = qi::parse(beg, end, commands, parsed);
+
+    std::vector<lsd::ast::commands> commands;
+    bool result = x3::parse(beg, end, lsd::parser::input, commands);
+
+    /*
+    if (result) {
+        for (auto& cmd : parsed) {
+            std::cout << "Parsed\n";
+            //std::cout << "Parsed " << cmd << "\n";
+        }
+    } else {
+            std::cout << "Parse failed\n";
+    }
+    */
+
+    if (beg != end) {
+        std::cout << "Remaining unparsed: " << std::string(beg, end) << "'\n";
+    }
+
+    std::cout << "Parsed: " << (100.0 * std::distance(line.begin(), beg) / line.size()) << "%\n";
+    std::cout << "ok = " << result << std::endl;
+
+    //for (auto& cmd : commands) {
+    //    boost::apply_visitor([](auto& v) { std::cout << boost::fusion::as_deque(v) << "\n"; }, cmd);
+    //}
+
+    //if (beg != end)
+    //    LOG_ERR << "Parse failed !!!";
+    //else
+    //    boost::apply_visitor(LSDEcho(), ret);
+}
 
 // factory methods
-
 std::vector<std::string> *ReaderLSD::myExtensions() {
-    return &_ifd_extensions;
+    return &_lsd_extensions;
 }
 
-
-
-ReaderBase::SharedPtr *ReaderLSD::myConstructor() {
+ReaderBase::SharedPtr ReaderLSD::myConstructor() {
     return ReaderBase::SharedPtr(new ReaderLSD());
 }
+
 }  // namespace lava

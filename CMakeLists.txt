@@ -29,6 +29,7 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/antlr4/runtime/Cpp/cmake
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -89,7 +90,7 @@ endif ()
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -g3) #-Wno-reorder -pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -g3) # -fPIC -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
@@ -124,17 +125,22 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
-# set variable pointing to the antlr tool that supports C++
-set(ANTLR4CPP_JAR_LOCATION ${PROJECT_SOURCE_DIR}/third_party/antlr-4.8-complete.jar)
+# ANTLR
+set( ANTLR4_ROOT ${PROJECT_SOURCE_DIR}/third_party/antlr4)
+set( ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/third_party/antlr-4.8-complete.jar)
 
 # Now setup targets
 
 # thirt party libs
 # TODO: build necessary third party libs
 
-message("Build dir: ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}")
+# Assimp library
 #add_subdirectory( third_party/assimp )
 
+# ANTLR library
+add_subdirectory( third_party/antlr4/runtime/Cpp )
+
+# Our stuff
 add_subdirectory( third_party/tbb )
 add_subdirectory( third_party/ri_display )
 add_subdirectory( src )
