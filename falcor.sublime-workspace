@@ -4,6 +4,54 @@
 		"selected_items":
 		[
 			[
+				"ass",
+				"assign_transform"
+			],
+			[
+				"min",
+				"minor"
+			],
+			[
+				"assi",
+				"assign_time"
+			],
+			[
+				"ge",
+				"geometry"
+			],
+			[
+				"as",
+				"assign"
+			],
+			[
+				"T",
+				"T"
+			],
+			[
+				"file",
+				"filename"
+			],
+			[
+				"ve",
+				"vector\tstd::vector"
+			],
+			[
+				"ma",
+				"matrix"
+			],
+			[
+				"cmd_",
+				"cmd_transform"
+			],
+			[
+				"cmd",
+				"cmd_transform"
+			],
+			[
+				"vectr",
+				"vector2"
+			],
+			[
 				"GE",
 				"GEOMERTY"
 			],
@@ -24,20 +72,8 @@
 				"comment"
 			],
 			[
-				"file",
-				"filesystem"
-			],
-			[
 				"s",
 				"struct\tstruct"
-			],
-			[
-				"cmd_",
-				"cmd_version"
-			],
-			[
-				"cmd",
-				"cmd_time"
 			],
 			[
 				"str",
@@ -364,10 +400,6 @@
 				"flatIndex"
 			],
 			[
-				"ass",
-				"assignedSRV"
-			],
-			[
 				"GBu",
 				"GBufferBase"
 			],
@@ -482,38 +514,6 @@
 			[
 				"mS",
 				"mStructSize"
-			],
-			[
-				"RE",
-				"ResourceFormat"
-			],
-			[
-				"ins",
-				"instanceCount"
-			],
-			[
-				"inde",
-				"indexCount"
-			],
-			[
-				"co",
-				"common"
-			],
-			[
-				"bin",
-				"bind"
-			],
-			[
-				"A",
-				"API"
-			],
-			[
-				"desc",
-				"descriptor"
-			],
-			[
-				"des",
-				"descSetIndex"
 			]
 		]
 	},
@@ -2692,27 +2692,10 @@
 			}
 		},
 		{
-			"file": "src/lava_lib/display.cpp",
-			"settings":
-			{
-				"buffer_size": 1053,
-				"line_ending": "Unix"
-			}
-		},
-		{
 			"file": "src/lava_lib/readers/reader_lsd.cpp",
 			"settings":
 			{
-				"buffer_size": 2419,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "src/lava_lib/readers/grammar_lsd_old.h",
-			"settings":
-			{
-				"buffer_size": 9288,
+				"buffer_size": 2091,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -2721,7 +2704,7 @@
 			"file": "src/lava_lib/readers/grammar_lsd.h",
 			"settings":
 			{
-				"buffer_size": 7986,
+				"buffer_size": 12877,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -2864,7 +2847,6 @@
 			"settings":
 			{
 				"buffer_size": 4694,
-				"encoding": "UTF-8",
 				"line_ending": "Unix",
 				"name": "/* Copyright (c) 2012-2017 The ANTLR Project. All"
 			}
@@ -2877,7 +2859,6 @@
 			"settings":
 			{
 				"buffer_size": 6683,
-				"encoding": "UTF-8",
 				"line_ending": "Unix",
 				"name": "/* Copyright (c) 2012-2017 The ANTLR Project. All"
 			}
@@ -2890,7 +2871,6 @@
 			"settings":
 			{
 				"buffer_size": 6041,
-				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
@@ -2902,7 +2882,6 @@
 			"settings":
 			{
 				"buffer_size": 4608,
-				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
@@ -2910,7 +2889,7 @@
 			"file": "src/lava_lib/readers/reader_lsd.cpp",
 			"settings":
 			{
-				"buffer_size": 2419,
+				"buffer_size": 2091,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -6042,6 +6021,7 @@
 	],
 	"file_history":
 	[
+		"/home/max/dev/Falcor/src/lava_lib/readers/grammar_lsd_old.h",
 		"/home/max/dev/Falcor/src/lava_lib/Antlr4Cpp.cmake",
 		"/home/max/dev/Falcor/src/lava_lib/loaders/syntax_lsd.h",
 		"/home/max/dev/Falcor/src/lava_lib/loaders/renderer_iface_lsd.h",
@@ -6183,6 +6163,7 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"build",
 			"addParseListener",
 			"getText",
 			"context",
@@ -6309,8 +6290,7 @@
 			"PYBIND11_MODULE",
 			"loadRenderPassLibrary",
 			"Device uid",
-			"smartDevicePtr",
-			"SharedPtr(this)"
+			"smartDevicePtr"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -6389,7 +6369,7 @@
 	"groups":
 	[
 		{
-			"selected": 247,
+			"selected": 245,
 			"sheets":
 			[
 				{
@@ -6419,7 +6399,7 @@
 						"translation.y": 4150.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 110,
+					"stack_index": 108,
 					"type": "text"
 				},
 				{
@@ -7797,7 +7777,7 @@
 						"translation.y": 30430.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 16,
+					"stack_index": 14,
 					"type": "text"
 				},
 				{
@@ -7827,7 +7807,7 @@
 						"translation.y": 3406.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 17,
+					"stack_index": 15,
 					"type": "text"
 				},
 				{
@@ -7857,7 +7837,7 @@
 						"translation.y": 816.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 18,
+					"stack_index": 16,
 					"type": "text"
 				},
 				{
@@ -7886,7 +7866,7 @@
 						"translation.y": 2669.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 119,
+					"stack_index": 117,
 					"type": "text"
 				},
 				{
@@ -7915,7 +7895,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 40,
+					"stack_index": 38,
 					"type": "text"
 				},
 				{
@@ -7944,7 +7924,7 @@
 						"translation.y": 551.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 39,
+					"stack_index": 37,
 					"type": "text"
 				},
 				{
@@ -7974,7 +7954,7 @@
 						"translation.y": 48230.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 124,
+					"stack_index": 122,
 					"type": "text"
 				},
 				{
@@ -8004,7 +7984,7 @@
 						"translation.y": 6889.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 128,
+					"stack_index": 126,
 					"type": "text"
 				},
 				{
@@ -8034,7 +8014,7 @@
 						"translation.y": 385.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 134,
+					"stack_index": 132,
 					"type": "text"
 				},
 				{
@@ -8064,7 +8044,7 @@
 						"translation.y": 1062.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 254,
+					"stack_index": 252,
 					"type": "text"
 				},
 				{
@@ -8092,7 +8072,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 292,
+					"stack_index": 290,
 					"type": "text"
 				},
 				{
@@ -8122,7 +8102,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 470,
+					"stack_index": 468,
 					"type": "text"
 				},
 				{
@@ -8152,7 +8132,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 471,
+					"stack_index": 469,
 					"type": "text"
 				},
 				{
@@ -8182,7 +8162,7 @@
 						"translation.y": 8214.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 483,
+					"stack_index": 481,
 					"type": "text"
 				},
 				{
@@ -8212,7 +8192,7 @@
 						"translation.y": 141562.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 484,
+					"stack_index": 482,
 					"type": "text"
 				},
 				{
@@ -8242,7 +8222,7 @@
 						"translation.y": 1173.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 474,
+					"stack_index": 472,
 					"type": "text"
 				},
 				{
@@ -8272,7 +8252,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 466,
+					"stack_index": 464,
 					"type": "text"
 				},
 				{
@@ -8302,7 +8282,7 @@
 						"translation.y": 510.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 475,
+					"stack_index": 473,
 					"type": "text"
 				},
 				{
@@ -8332,7 +8312,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 482,
+					"stack_index": 480,
 					"type": "text"
 				},
 				{
@@ -8362,7 +8342,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 334,
+					"stack_index": 332,
 					"type": "text"
 				},
 				{
@@ -8392,7 +8372,7 @@
 						"translation.y": 393.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 336,
+					"stack_index": 334,
 					"type": "text"
 				},
 				{
@@ -8422,7 +8402,7 @@
 						"translation.y": 2703.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 333,
+					"stack_index": 331,
 					"type": "text"
 				},
 				{
@@ -8452,7 +8432,7 @@
 						"translation.y": 1530.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 335,
+					"stack_index": 333,
 					"type": "text"
 				},
 				{
@@ -8482,7 +8462,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 501,
+					"stack_index": 499,
 					"type": "text"
 				},
 				{
@@ -8512,7 +8492,7 @@
 						"translation.y": 1400.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 479,
+					"stack_index": 477,
 					"type": "text"
 				},
 				{
@@ -8542,7 +8522,7 @@
 						"translation.y": 35727.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 506,
+					"stack_index": 504,
 					"type": "text"
 				},
 				{
@@ -8572,7 +8552,7 @@
 						"translation.y": 734.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 503,
+					"stack_index": 501,
 					"type": "text"
 				},
 				{
@@ -8602,7 +8582,7 @@
 						"translation.y": 14249.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 505,
+					"stack_index": 503,
 					"type": "text"
 				},
 				{
@@ -8632,7 +8612,7 @@
 						"translation.y": 547.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 504,
+					"stack_index": 502,
 					"type": "text"
 				},
 				{
@@ -8662,7 +8642,7 @@
 						"translation.y": 3760.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 508,
+					"stack_index": 506,
 					"type": "text"
 				},
 				{
@@ -8692,7 +8672,7 @@
 						"translation.y": 2145.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 509,
+					"stack_index": 507,
 					"type": "text"
 				},
 				{
@@ -8722,7 +8702,7 @@
 						"translation.y": 969.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 510,
+					"stack_index": 508,
 					"type": "text"
 				},
 				{
@@ -8752,7 +8732,7 @@
 						"translation.y": 3009.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 256,
+					"stack_index": 254,
 					"type": "text"
 				},
 				{
@@ -8782,7 +8762,7 @@
 						"translation.y": 1842.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 473,
+					"stack_index": 471,
 					"type": "text"
 				},
 				{
@@ -8812,7 +8792,7 @@
 						"translation.y": 3250.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 516,
+					"stack_index": 514,
 					"type": "text"
 				},
 				{
@@ -8842,7 +8822,7 @@
 						"translation.y": 7568.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 515,
+					"stack_index": 513,
 					"type": "text"
 				},
 				{
@@ -8872,7 +8852,7 @@
 						"translation.y": 1367.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 511,
+					"stack_index": 509,
 					"type": "text"
 				},
 				{
@@ -8901,7 +8881,7 @@
 						"translation.y": 612.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 517,
+					"stack_index": 515,
 					"type": "text"
 				},
 				{
@@ -8931,7 +8911,7 @@
 						"translation.y": 180.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 498,
+					"stack_index": 496,
 					"type": "text"
 				},
 				{
@@ -8960,7 +8940,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 528,
+					"stack_index": 526,
 					"type": "text"
 				},
 				{
@@ -8990,7 +8970,7 @@
 						"translation.y": 1346.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 417,
+					"stack_index": 415,
 					"type": "text"
 				},
 				{
@@ -9020,7 +9000,7 @@
 						"translation.y": 16441.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 532,
+					"stack_index": 530,
 					"type": "text"
 				},
 				{
@@ -9048,7 +9028,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 535,
+					"stack_index": 533,
 					"type": "text"
 				},
 				{
@@ -9078,7 +9058,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 536,
+					"stack_index": 534,
 					"type": "text"
 				},
 				{
@@ -9108,7 +9088,7 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 537,
+					"stack_index": 535,
 					"type": "text"
 				},
 				{
@@ -9138,7 +9118,7 @@
 						"translation.y": 1683.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 538,
+					"stack_index": 536,
 					"type": "text"
 				},
 				{
@@ -9166,7 +9146,7 @@
 						"translation.y": 29021.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 539,
+					"stack_index": 537,
 					"type": "text"
 				},
 				{
@@ -9196,7 +9176,7 @@
 						"translation.y": 4675.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 507,
+					"stack_index": 505,
 					"type": "text"
 				},
 				{
@@ -9226,7 +9206,7 @@
 						"translation.y": 243.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 173,
+					"stack_index": 171,
 					"type": "text"
 				},
 				{
@@ -9256,7 +9236,7 @@
 						"translation.y": 328.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 521,
+					"stack_index": 519,
 					"type": "text"
 				},
 				{
@@ -9286,7 +9266,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 524,
+					"stack_index": 522,
 					"type": "text"
 				},
 				{
@@ -9314,7 +9294,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 525,
+					"stack_index": 523,
 					"type": "text"
 				},
 				{
@@ -9344,7 +9324,7 @@
 						"translation.y": 1125.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 401,
+					"stack_index": 399,
 					"type": "text"
 				},
 				{
@@ -9374,7 +9354,7 @@
 						"translation.y": 47.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 274,
+					"stack_index": 272,
 					"type": "text"
 				},
 				{
@@ -9404,7 +9384,7 @@
 						"translation.y": 432.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 275,
+					"stack_index": 273,
 					"type": "text"
 				},
 				{
@@ -9434,7 +9414,7 @@
 						"translation.y": 14260.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 369,
+					"stack_index": 367,
 					"type": "text"
 				},
 				{
@@ -9464,7 +9444,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 347,
+					"stack_index": 345,
 					"type": "text"
 				},
 				{
@@ -9492,7 +9472,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 345,
+					"stack_index": 343,
 					"type": "text"
 				},
 				{
@@ -9522,7 +9502,7 @@
 						"translation.y": 170.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 340,
+					"stack_index": 338,
 					"type": "text"
 				},
 				{
@@ -9552,7 +9532,7 @@
 						"translation.y": 277.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 349,
+					"stack_index": 347,
 					"type": "text"
 				},
 				{
@@ -9582,7 +9562,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 360,
+					"stack_index": 358,
 					"type": "text"
 				},
 				{
@@ -9612,7 +9592,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 359,
+					"stack_index": 357,
 					"type": "text"
 				},
 				{
@@ -9642,7 +9622,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 358,
+					"stack_index": 356,
 					"type": "text"
 				},
 				{
@@ -9672,7 +9652,7 @@
 						"translation.y": 918.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 388,
+					"stack_index": 386,
 					"type": "text"
 				},
 				{
@@ -9702,7 +9682,7 @@
 						"translation.y": 734.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 387,
+					"stack_index": 385,
 					"type": "text"
 				},
 				{
@@ -9732,7 +9712,7 @@
 						"translation.y": 1446.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 272,
+					"stack_index": 270,
 					"type": "text"
 				},
 				{
@@ -9762,7 +9742,7 @@
 						"translation.y": 530.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 391,
+					"stack_index": 389,
 					"type": "text"
 				},
 				{
@@ -9792,7 +9772,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 344,
+					"stack_index": 342,
 					"type": "text"
 				},
 				{
@@ -9822,7 +9802,7 @@
 						"translation.y": 1071.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 265,
+					"stack_index": 263,
 					"type": "text"
 				},
 				{
@@ -9852,7 +9832,7 @@
 						"translation.y": 597.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 420,
+					"stack_index": 418,
 					"type": "text"
 				},
 				{
@@ -9882,7 +9862,7 @@
 						"translation.y": 428.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 407,
+					"stack_index": 405,
 					"type": "text"
 				},
 				{
@@ -9912,7 +9892,7 @@
 						"translation.y": 2244.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 319,
+					"stack_index": 317,
 					"type": "text"
 				},
 				{
@@ -9942,7 +9922,7 @@
 						"translation.y": 11154.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 571,
+					"stack_index": 569,
 					"type": "text"
 				},
 				{
@@ -9972,7 +9952,7 @@
 						"translation.y": 7779.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 585,
+					"stack_index": 583,
 					"type": "text"
 				},
 				{
@@ -10002,7 +9982,7 @@
 						"translation.y": 7701.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 584,
+					"stack_index": 582,
 					"type": "text"
 				},
 				{
@@ -10032,7 +10012,7 @@
 						"translation.y": 1486.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 493,
+					"stack_index": 491,
 					"type": "text"
 				},
 				{
@@ -10062,7 +10042,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 586,
+					"stack_index": 584,
 					"type": "text"
 				},
 				{
@@ -10092,7 +10072,7 @@
 						"translation.y": 801.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 548,
+					"stack_index": 546,
 					"type": "text"
 				},
 				{
@@ -10122,7 +10102,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 547,
+					"stack_index": 545,
 					"type": "text"
 				},
 				{
@@ -10152,7 +10132,7 @@
 						"translation.y": 204.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 467,
+					"stack_index": 465,
 					"type": "text"
 				},
 				{
@@ -10182,7 +10162,7 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 546,
+					"stack_index": 544,
 					"type": "text"
 				},
 				{
@@ -10210,7 +10190,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 244,
+					"stack_index": 242,
 					"type": "text"
 				},
 				{
@@ -10240,7 +10220,7 @@
 						"translation.y": 765.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 370,
+					"stack_index": 368,
 					"type": "text"
 				},
 				{
@@ -10270,7 +10250,7 @@
 						"translation.y": 1573.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 375,
+					"stack_index": 373,
 					"type": "text"
 				},
 				{
@@ -10298,7 +10278,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 346,
+					"stack_index": 344,
 					"type": "text"
 				},
 				{
@@ -10328,7 +10308,7 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 269,
+					"stack_index": 267,
 					"type": "text"
 				},
 				{
@@ -10358,7 +10338,7 @@
 						"translation.y": 275.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 402,
+					"stack_index": 400,
 					"type": "text"
 				},
 				{
@@ -10388,7 +10368,7 @@
 						"translation.y": 171.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 385,
+					"stack_index": 383,
 					"type": "text"
 				},
 				{
@@ -10418,7 +10398,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 403,
+					"stack_index": 401,
 					"type": "text"
 				},
 				{
@@ -10448,7 +10428,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 481,
+					"stack_index": 479,
 					"type": "text"
 				},
 				{
@@ -10478,7 +10458,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 486,
+					"stack_index": 484,
 					"type": "text"
 				},
 				{
@@ -10508,7 +10488,7 @@
 						"translation.y": 10380.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 105,
+					"stack_index": 103,
 					"type": "text"
 				},
 				{
@@ -10536,7 +10516,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 577,
+					"stack_index": 575,
 					"type": "text"
 				},
 				{
@@ -10566,7 +10546,7 @@
 						"translation.y": 1912.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 117,
+					"stack_index": 115,
 					"type": "text"
 				},
 				{
@@ -10596,7 +10576,7 @@
 						"translation.y": 2739.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 182,
+					"stack_index": 180,
 					"type": "text"
 				},
 				{
@@ -10626,7 +10606,7 @@
 						"translation.y": 944.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 273,
+					"stack_index": 271,
 					"type": "text"
 				},
 				{
@@ -10656,7 +10636,7 @@
 						"translation.y": 396.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 341,
+					"stack_index": 339,
 					"type": "text"
 				},
 				{
@@ -10685,7 +10665,7 @@
 						"translation.y": 1029.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 343,
+					"stack_index": 341,
 					"type": "text"
 				},
 				{
@@ -10715,7 +10695,7 @@
 						"translation.y": 1567.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 161,
+					"stack_index": 159,
 					"type": "text"
 				},
 				{
@@ -10745,7 +10725,7 @@
 						"translation.y": 1479.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 165,
+					"stack_index": 163,
 					"type": "text"
 				},
 				{
@@ -10775,7 +10755,7 @@
 						"translation.y": 4933.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 311,
+					"stack_index": 309,
 					"type": "text"
 				},
 				{
@@ -10805,7 +10785,7 @@
 						"translation.y": 1282.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 301,
+					"stack_index": 299,
 					"type": "text"
 				},
 				{
@@ -10835,7 +10815,7 @@
 						"translation.y": 1893.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 485,
+					"stack_index": 483,
 					"type": "text"
 				},
 				{
@@ -10865,7 +10845,7 @@
 						"translation.y": 1479.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 463,
+					"stack_index": 461,
 					"type": "text"
 				},
 				{
@@ -10895,7 +10875,7 @@
 						"translation.y": 1720.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 299,
+					"stack_index": 297,
 					"type": "text"
 				},
 				{
@@ -10925,7 +10905,7 @@
 						"translation.y": 1978.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 522,
+					"stack_index": 520,
 					"type": "text"
 				},
 				{
@@ -10955,7 +10935,7 @@
 						"translation.y": 88.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 472,
+					"stack_index": 470,
 					"type": "text"
 				},
 				{
@@ -10985,7 +10965,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 542,
+					"stack_index": 540,
 					"type": "text"
 				},
 				{
@@ -11015,7 +10995,7 @@
 						"translation.y": 1303.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 368,
+					"stack_index": 366,
 					"type": "text"
 				},
 				{
@@ -11045,7 +11025,7 @@
 						"translation.y": 4227.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 367,
+					"stack_index": 365,
 					"type": "text"
 				},
 				{
@@ -11075,7 +11055,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 284,
+					"stack_index": 282,
 					"type": "text"
 				},
 				{
@@ -11105,7 +11085,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 523,
+					"stack_index": 521,
 					"type": "text"
 				},
 				{
@@ -11133,7 +11113,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 527,
+					"stack_index": 525,
 					"type": "text"
 				},
 				{
@@ -11163,7 +11143,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 293,
+					"stack_index": 291,
 					"type": "text"
 				},
 				{
@@ -11193,7 +11173,7 @@
 						"translation.y": 2754.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 266,
+					"stack_index": 264,
 					"type": "text"
 				},
 				{
@@ -11223,7 +11203,7 @@
 						"translation.y": 520.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 160,
+					"stack_index": 158,
 					"type": "text"
 				},
 				{
@@ -11253,7 +11233,7 @@
 						"translation.y": 2300.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 491,
+					"stack_index": 489,
 					"type": "text"
 				},
 				{
@@ -11283,7 +11263,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 492,
+					"stack_index": 490,
 					"type": "text"
 				},
 				{
@@ -11311,7 +11291,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 499,
+					"stack_index": 497,
 					"type": "text"
 				},
 				{
@@ -11341,7 +11321,7 @@
 						"translation.y": 377.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 295,
+					"stack_index": 293,
 					"type": "text"
 				},
 				{
@@ -11371,7 +11351,7 @@
 						"translation.y": 5661.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 416,
+					"stack_index": 414,
 					"type": "text"
 				},
 				{
@@ -11401,7 +11381,7 @@
 						"translation.y": 2043.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 298,
+					"stack_index": 296,
 					"type": "text"
 				},
 				{
@@ -11431,7 +11411,7 @@
 						"translation.y": 204.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 380,
+					"stack_index": 378,
 					"type": "text"
 				},
 				{
@@ -11461,7 +11441,7 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 133,
+					"stack_index": 131,
 					"type": "text"
 				},
 				{
@@ -11491,7 +11471,7 @@
 						"translation.y": 1381.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 170,
+					"stack_index": 168,
 					"type": "text"
 				},
 				{
@@ -11521,7 +11501,7 @@
 						"translation.y": 340.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 162,
+					"stack_index": 160,
 					"type": "text"
 				},
 				{
@@ -11551,7 +11531,7 @@
 						"translation.y": 1653.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 158,
+					"stack_index": 156,
 					"type": "text"
 				},
 				{
@@ -11581,7 +11561,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 159,
+					"stack_index": 157,
 					"type": "text"
 				},
 				{
@@ -11611,7 +11591,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 285,
+					"stack_index": 283,
 					"type": "text"
 				},
 				{
@@ -11641,7 +11621,7 @@
 						"translation.y": 6018.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 572,
+					"stack_index": 570,
 					"type": "text"
 				},
 				{
@@ -11671,7 +11651,7 @@
 						"translation.y": 6069.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 568,
+					"stack_index": 566,
 					"type": "text"
 				},
 				{
@@ -11701,7 +11681,7 @@
 						"translation.y": 1540.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 163,
+					"stack_index": 161,
 					"type": "text"
 				},
 				{
@@ -11731,7 +11711,7 @@
 						"translation.y": 2182.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 570,
+					"stack_index": 568,
 					"type": "text"
 				},
 				{
@@ -11761,7 +11741,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 378,
+					"stack_index": 376,
 					"type": "text"
 				},
 				{
@@ -11791,7 +11771,7 @@
 						"translation.y": 3009.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 328,
+					"stack_index": 326,
 					"type": "text"
 				},
 				{
@@ -11821,7 +11801,7 @@
 						"translation.y": 2113.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 282,
+					"stack_index": 280,
 					"type": "text"
 				},
 				{
@@ -11851,7 +11831,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 184,
+					"stack_index": 182,
 					"type": "text"
 				},
 				{
@@ -11881,7 +11861,7 @@
 						"translation.y": 154.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 206,
+					"stack_index": 204,
 					"type": "text"
 				},
 				{
@@ -11911,7 +11891,7 @@
 						"translation.y": 341.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 205,
+					"stack_index": 203,
 					"type": "text"
 				},
 				{
@@ -11942,7 +11922,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 106,
+					"stack_index": 104,
 					"type": "text"
 				},
 				{
@@ -11972,7 +11952,7 @@
 						"translation.y": 3060.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 371,
+					"stack_index": 369,
 					"type": "text"
 				},
 				{
@@ -12002,7 +11982,7 @@
 						"translation.y": 2235.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 250,
+					"stack_index": 248,
 					"type": "text"
 				},
 				{
@@ -12032,7 +12012,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 348,
+					"stack_index": 346,
 					"type": "text"
 				},
 				{
@@ -12062,7 +12042,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 567,
+					"stack_index": 565,
 					"type": "text"
 				},
 				{
@@ -12092,7 +12072,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 286,
+					"stack_index": 284,
 					"type": "text"
 				},
 				{
@@ -12120,7 +12100,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 181,
+					"stack_index": 179,
 					"type": "text"
 				},
 				{
@@ -12150,7 +12130,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 180,
+					"stack_index": 178,
 					"type": "text"
 				},
 				{
@@ -12180,7 +12160,7 @@
 						"translation.y": 1721.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 179,
+					"stack_index": 177,
 					"type": "text"
 				},
 				{
@@ -12208,7 +12188,7 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 177,
+					"stack_index": 175,
 					"type": "text"
 				},
 				{
@@ -12238,7 +12218,7 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 178,
+					"stack_index": 176,
 					"type": "text"
 				},
 				{
@@ -12268,7 +12248,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 176,
+					"stack_index": 174,
 					"type": "text"
 				},
 				{
@@ -12298,7 +12278,7 @@
 						"translation.y": 2587.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 230,
+					"stack_index": 228,
 					"type": "text"
 				},
 				{
@@ -12328,7 +12308,7 @@
 						"translation.y": 3480.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 229,
+					"stack_index": 227,
 					"type": "text"
 				},
 				{
@@ -12358,7 +12338,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 574,
+					"stack_index": 572,
 					"type": "text"
 				},
 				{
@@ -12386,7 +12366,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 464,
+					"stack_index": 462,
 					"type": "text"
 				},
 				{
@@ -12416,7 +12396,7 @@
 						"translation.y": 1245.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 188,
+					"stack_index": 186,
 					"type": "text"
 				},
 				{
@@ -12446,7 +12426,7 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 225,
+					"stack_index": 223,
 					"type": "text"
 				},
 				{
@@ -12476,7 +12456,7 @@
 						"translation.y": 561.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 189,
+					"stack_index": 187,
 					"type": "text"
 				},
 				{
@@ -12506,7 +12486,7 @@
 						"translation.y": 561.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 198,
+					"stack_index": 196,
 					"type": "text"
 				},
 				{
@@ -12536,7 +12516,7 @@
 						"translation.y": 2056.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 227,
+					"stack_index": 225,
 					"type": "text"
 				},
 				{
@@ -12566,7 +12546,7 @@
 						"translation.y": 837.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 221,
+					"stack_index": 219,
 					"type": "text"
 				},
 				{
@@ -12596,7 +12576,7 @@
 						"translation.y": 612.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 213,
+					"stack_index": 211,
 					"type": "text"
 				},
 				{
@@ -12626,7 +12606,7 @@
 						"translation.y": 51.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 214,
+					"stack_index": 212,
 					"type": "text"
 				},
 				{
@@ -12656,7 +12636,7 @@
 						"translation.y": 1275.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 220,
+					"stack_index": 218,
 					"type": "text"
 				},
 				{
@@ -12686,7 +12666,7 @@
 						"translation.y": 816.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 195,
+					"stack_index": 193,
 					"type": "text"
 				},
 				{
@@ -12716,7 +12696,7 @@
 						"translation.y": 102.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 232,
+					"stack_index": 230,
 					"type": "text"
 				},
 				{
@@ -12746,7 +12726,7 @@
 						"translation.y": 327.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 190,
+					"stack_index": 188,
 					"type": "text"
 				},
 				{
@@ -12776,7 +12756,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 233,
+					"stack_index": 231,
 					"type": "text"
 				},
 				{
@@ -12804,7 +12784,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 549,
+					"stack_index": 547,
 					"type": "text"
 				},
 				{
@@ -12834,7 +12814,7 @@
 						"translation.y": 102.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 217,
+					"stack_index": 215,
 					"type": "text"
 				},
 				{
@@ -12864,7 +12844,7 @@
 						"translation.y": 716.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 226,
+					"stack_index": 224,
 					"type": "text"
 				},
 				{
@@ -12894,7 +12874,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 203,
+					"stack_index": 201,
 					"type": "text"
 				},
 				{
@@ -12924,7 +12904,7 @@
 						"translation.y": 616.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 204,
+					"stack_index": 202,
 					"type": "text"
 				},
 				{
@@ -12954,7 +12934,7 @@
 						"translation.y": 209.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 208,
+					"stack_index": 206,
 					"type": "text"
 				},
 				{
@@ -12984,7 +12964,7 @@
 						"translation.y": 1653.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 197,
+					"stack_index": 195,
 					"type": "text"
 				},
 				{
@@ -13014,7 +12994,7 @@
 						"translation.y": 1005.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 183,
+					"stack_index": 181,
 					"type": "text"
 				},
 				{
@@ -13044,7 +13024,7 @@
 						"translation.y": 51.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 196,
+					"stack_index": 194,
 					"type": "text"
 				},
 				{
@@ -13074,7 +13054,7 @@
 						"translation.y": 1674.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 172,
+					"stack_index": 170,
 					"type": "text"
 				},
 				{
@@ -13104,7 +13084,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 362,
+					"stack_index": 360,
 					"type": "text"
 				},
 				{
@@ -13134,7 +13114,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 215,
+					"stack_index": 213,
 					"type": "text"
 				},
 				{
@@ -13164,7 +13144,7 @@
 						"translation.y": 1428.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 193,
+					"stack_index": 191,
 					"type": "text"
 				},
 				{
@@ -13194,7 +13174,7 @@
 						"translation.y": 256.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 222,
+					"stack_index": 220,
 					"type": "text"
 				},
 				{
@@ -13224,7 +13204,7 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 192,
+					"stack_index": 190,
 					"type": "text"
 				},
 				{
@@ -13254,7 +13234,7 @@
 						"translation.y": 1313.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 191,
+					"stack_index": 189,
 					"type": "text"
 				},
 				{
@@ -13284,7 +13264,7 @@
 						"translation.y": 686.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 199,
+					"stack_index": 197,
 					"type": "text"
 				},
 				{
@@ -13314,7 +13294,7 @@
 						"translation.y": 412.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 218,
+					"stack_index": 216,
 					"type": "text"
 				},
 				{
@@ -13344,7 +13324,7 @@
 						"translation.y": 2452.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 212,
+					"stack_index": 210,
 					"type": "text"
 				},
 				{
@@ -13374,7 +13354,7 @@
 						"translation.y": 918.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 207,
+					"stack_index": 205,
 					"type": "text"
 				},
 				{
@@ -13404,7 +13384,7 @@
 						"translation.y": 157.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 201,
+					"stack_index": 199,
 					"type": "text"
 				},
 				{
@@ -13434,7 +13414,7 @@
 						"translation.y": 306.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 209,
+					"stack_index": 207,
 					"type": "text"
 				},
 				{
@@ -13464,7 +13444,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 200,
+					"stack_index": 198,
 					"type": "text"
 				},
 				{
@@ -13494,7 +13474,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 228,
+					"stack_index": 226,
 					"type": "text"
 				},
 				{
@@ -13524,7 +13504,7 @@
 						"translation.y": 51.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 216,
+					"stack_index": 214,
 					"type": "text"
 				},
 				{
@@ -13554,7 +13534,7 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 575,
+					"stack_index": 573,
 					"type": "text"
 				},
 				{
@@ -13584,7 +13564,7 @@
 						"translation.y": 510.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 224,
+					"stack_index": 222,
 					"type": "text"
 				},
 				{
@@ -13614,7 +13594,7 @@
 						"translation.y": 2721.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 223,
+					"stack_index": 221,
 					"type": "text"
 				},
 				{
@@ -13644,7 +13624,7 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 194,
+					"stack_index": 192,
 					"type": "text"
 				},
 				{
@@ -13674,7 +13654,7 @@
 						"translation.y": 867.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 202,
+					"stack_index": 200,
 					"type": "text"
 				},
 				{
@@ -13704,7 +13684,7 @@
 						"translation.y": 1020.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 186,
+					"stack_index": 184,
 					"type": "text"
 				},
 				{
@@ -13734,7 +13714,7 @@
 						"translation.y": 1518.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 219,
+					"stack_index": 217,
 					"type": "text"
 				},
 				{
@@ -13764,7 +13744,7 @@
 						"translation.y": 1245.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 210,
+					"stack_index": 208,
 					"type": "text"
 				},
 				{
@@ -13794,7 +13774,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 211,
+					"stack_index": 209,
 					"type": "text"
 				},
 				{
@@ -13824,7 +13804,7 @@
 						"translation.y": 1262.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 187,
+					"stack_index": 185,
 					"type": "text"
 				},
 				{
@@ -13854,7 +13834,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 175,
+					"stack_index": 173,
 					"type": "text"
 				},
 				{
@@ -13884,7 +13864,7 @@
 						"translation.y": 497.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 174,
+					"stack_index": 172,
 					"type": "text"
 				},
 				{
@@ -13914,7 +13894,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 231,
+					"stack_index": 229,
 					"type": "text"
 				},
 				{
@@ -13944,7 +13924,7 @@
 						"translation.y": 561.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 185,
+					"stack_index": 183,
 					"type": "text"
 				},
 				{
@@ -13974,7 +13954,7 @@
 						"translation.y": 1683.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 25,
+					"stack_index": 23,
 					"type": "text"
 				},
 				{
@@ -14004,7 +13984,7 @@
 						"translation.y": 765.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 12,
+					"stack_index": 10,
 					"type": "text"
 				},
 				{
@@ -14032,7 +14012,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 53,
+					"stack_index": 51,
 					"type": "text"
 				},
 				{
@@ -14062,7 +14042,7 @@
 						"translation.y": 1887.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 43,
+					"stack_index": 41,
 					"type": "text"
 				},
 				{
@@ -14092,7 +14072,7 @@
 						"translation.y": 14.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 42,
+					"stack_index": 40,
 					"type": "text"
 				},
 				{
@@ -14122,7 +14102,7 @@
 						"translation.y": 3752.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 45,
+					"stack_index": 43,
 					"type": "text"
 				},
 				{
@@ -14152,7 +14132,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 46,
+					"stack_index": 44,
 					"type": "text"
 				},
 				{
@@ -14182,7 +14162,7 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 44,
+					"stack_index": 42,
 					"type": "text"
 				},
 				{
@@ -14212,7 +14192,7 @@
 						"translation.y": 714.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 47,
+					"stack_index": 45,
 					"type": "text"
 				},
 				{
@@ -14242,7 +14222,7 @@
 						"translation.y": 6038.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 41,
+					"stack_index": 39,
 					"type": "text"
 				},
 				{
@@ -14272,7 +14252,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 52,
+					"stack_index": 50,
 					"type": "text"
 				},
 				{
@@ -14302,7 +14282,7 @@
 						"translation.y": 204.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 51,
+					"stack_index": 49,
 					"type": "text"
 				},
 				{
@@ -14332,7 +14312,7 @@
 						"translation.y": 4.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 48,
+					"stack_index": 46,
 					"type": "text"
 				},
 				{
@@ -14362,7 +14342,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 50,
+					"stack_index": 48,
 					"type": "text"
 				},
 				{
@@ -14391,7 +14371,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 72,
+					"stack_index": 70,
 					"type": "text"
 				},
 				{
@@ -14419,7 +14399,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 71,
+					"stack_index": 69,
 					"type": "text"
 				},
 				{
@@ -14447,7 +14427,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 70,
+					"stack_index": 68,
 					"type": "text"
 				},
 				{
@@ -14476,7 +14456,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 73,
+					"stack_index": 71,
 					"type": "text"
 				},
 				{
@@ -14506,7 +14486,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 55,
+					"stack_index": 53,
 					"type": "text"
 				},
 				{
@@ -14536,7 +14516,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 66,
+					"stack_index": 64,
 					"type": "text"
 				},
 				{
@@ -14566,7 +14546,7 @@
 						"translation.y": 535.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 65,
+					"stack_index": 63,
 					"type": "text"
 				},
 				{
@@ -14596,7 +14576,7 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 57,
+					"stack_index": 55,
 					"type": "text"
 				},
 				{
@@ -14626,7 +14606,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 64,
+					"stack_index": 62,
 					"type": "text"
 				},
 				{
@@ -14656,7 +14636,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 63,
+					"stack_index": 61,
 					"type": "text"
 				},
 				{
@@ -14686,7 +14666,7 @@
 						"translation.y": 637.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 61,
+					"stack_index": 59,
 					"type": "text"
 				},
 				{
@@ -14716,7 +14696,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 68,
+					"stack_index": 66,
 					"type": "text"
 				},
 				{
@@ -14746,7 +14726,7 @@
 						"translation.y": 514.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 58,
+					"stack_index": 56,
 					"type": "text"
 				},
 				{
@@ -14776,7 +14756,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 59,
+					"stack_index": 57,
 					"type": "text"
 				},
 				{
@@ -14806,7 +14786,7 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 67,
+					"stack_index": 65,
 					"type": "text"
 				},
 				{
@@ -14836,7 +14816,7 @@
 						"translation.y": 11237.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 62,
+					"stack_index": 60,
 					"type": "text"
 				},
 				{
@@ -14866,7 +14846,7 @@
 						"translation.y": 13056.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 60,
+					"stack_index": 58,
 					"type": "text"
 				},
 				{
@@ -14894,7 +14874,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 54,
+					"stack_index": 52,
 					"type": "text"
 				},
 				{
@@ -14922,7 +14902,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 26,
+					"stack_index": 24,
 					"type": "text"
 				},
 				{
@@ -14953,7 +14933,7 @@
 						"translation.y": 612.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 76,
+					"stack_index": 74,
 					"type": "text"
 				},
 				{
@@ -14984,7 +14964,7 @@
 						"translation.y": 4028.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 75,
+					"stack_index": 73,
 					"type": "text"
 				},
 				{
@@ -15019,49 +14999,19 @@
 				},
 				{
 					"buffer": 244,
-					"file": "src/lava_lib/display.cpp",
-					"semi_transient": true,
-					"settings":
-					{
-						"buffer_size": 1053,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 245,
 					"file": "src/lava_lib/readers/reader_lsd.cpp",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2419,
+						"buffer_size": 2091,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2047,
-								2047
+								1721,
+								1721
 							]
 						],
 						"settings":
@@ -15071,57 +15021,27 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 816.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 246,
-					"file": "src/lava_lib/readers/grammar_lsd_old.h",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 9288,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								6409,
-								6409
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C++.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 2573.0,
+						"translation.y": 561.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 2,
 					"type": "text"
 				},
 				{
-					"buffer": 247,
+					"buffer": 245,
 					"file": "src/lava_lib/readers/grammar_lsd.h",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 7986,
+						"buffer_size": 12877,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								1164,
-								1164
+								11082,
+								11082
 							]
 						],
 						"settings":
@@ -15131,14 +15051,14 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 1479.0,
+						"translation.y": 5627.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
 					"type": "text"
 				},
 				{
-					"buffer": 248,
+					"buffer": 246,
 					"file": "/opt/lava/test/lava.lsd",
 					"semi_transient": false,
 					"settings":
@@ -15150,8 +15070,8 @@
 						"selection":
 						[
 							[
-								233,
-								233
+								3398,
+								3398
 							]
 						],
 						"settings":
@@ -15159,14 +15079,14 @@
 							"syntax": "Packages/Text/Plain text.tmLanguage"
 						},
 						"translation.x": 0.0,
-						"translation.y": 204.0,
+						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 3,
 					"type": "text"
 				},
 				{
-					"buffer": 249,
+					"buffer": 247,
 					"file": "src/lava_lib/LSD.g4",
 					"semi_transient": false,
 					"settings":
@@ -15196,7 +15116,7 @@
 					"type": "text"
 				},
 				{
-					"buffer": 250,
+					"buffer": 248,
 					"file": "src/lava_lib/loaders/renderer_iface_lsd.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15220,11 +15140,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 34,
+					"stack_index": 32,
 					"type": "text"
 				},
 				{
-					"buffer": 251,
+					"buffer": 249,
 					"file": "src/lava_lib/loaders/loader_base.h",
 					"semi_transient": false,
 					"settings":
@@ -15248,11 +15168,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 31,
+					"stack_index": 29,
 					"type": "text"
 				},
 				{
-					"buffer": 252,
+					"buffer": 250,
 					"file": "src/lava_lib/loaders/loader_base.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15276,11 +15196,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 32,
+					"stack_index": 30,
 					"type": "text"
 				},
 				{
-					"buffer": 253,
+					"buffer": 251,
 					"file": "third_party/ri_display/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -15305,11 +15225,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 36,
+					"stack_index": 34,
 					"type": "text"
 				},
 				{
-					"buffer": 254,
+					"buffer": 252,
 					"file": "src/lava_cmd/lava_cmd.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15336,11 +15256,11 @@
 						"translation.y": 2054.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 11,
+					"stack_index": 9,
 					"type": "text"
 				},
 				{
-					"buffer": 255,
+					"buffer": 253,
 					"file": "src/lava_lib/loaders/reader_lsd.h",
 					"semi_transient": false,
 					"settings":
@@ -15366,11 +15286,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 30,
+					"stack_index": 28,
 					"type": "text"
 				},
 				{
-					"buffer": 256,
+					"buffer": 254,
 					"file": "src/lava_lib/loaders/reader_lsd.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15396,11 +15316,11 @@
 						"translation.y": 1530.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 29,
+					"stack_index": 27,
 					"type": "text"
 				},
 				{
-					"buffer": 257,
+					"buffer": 255,
 					"file": "third_party/ri_display/d_houdini.C",
 					"semi_transient": false,
 					"settings":
@@ -15425,11 +15345,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 28,
+					"stack_index": 26,
 					"type": "text"
 				},
 				{
-					"buffer": 258,
+					"buffer": 256,
 					"file": "src/lava_lib/scene_readers_registry.h",
 					"semi_transient": false,
 					"settings":
@@ -15454,11 +15374,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 24,
+					"stack_index": 22,
 					"type": "text"
 				},
 				{
-					"buffer": 259,
+					"buffer": 257,
 					"file": "src/lava_lib/scene_reader_base.h",
 					"semi_transient": false,
 					"settings":
@@ -15485,11 +15405,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 10,
+					"stack_index": 8,
 					"type": "text"
 				},
 				{
-					"buffer": 260,
+					"buffer": 258,
 					"file": "src/lava_lib/readers/reader_lsd.h",
 					"semi_transient": false,
 					"settings":
@@ -15515,11 +15435,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 9,
+					"stack_index": 1,
 					"type": "text"
 				},
 				{
-					"buffer": 261,
+					"buffer": 259,
 					"file": "src/lava_lib/readers/input_stream.h.bak",
 					"semi_transient": false,
 					"settings":
@@ -15546,11 +15466,11 @@
 						"translation.y": 164.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 21,
+					"stack_index": 19,
 					"type": "text"
 				},
 				{
-					"buffer": 262,
+					"buffer": 260,
 					"file": "src/lava_lib/readers/input_stream.cpp.bak",
 					"semi_transient": false,
 					"settings":
@@ -15577,11 +15497,11 @@
 						"translation.y": 1632.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 20,
+					"stack_index": 18,
 					"type": "text"
 				},
 				{
-					"buffer": 263,
+					"buffer": 261,
 					"file": "src/lava_lib/readers/input_stream.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15607,11 +15527,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 15,
+					"stack_index": 13,
 					"type": "text"
 				},
 				{
-					"buffer": 264,
+					"buffer": 262,
 					"file": "src/lava_lib/readers/input_stream.h",
 					"semi_transient": false,
 					"settings":
@@ -15637,16 +15557,16 @@
 						"translation.y": 816.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 19,
+					"stack_index": 17,
 					"type": "text"
 				},
 				{
-					"buffer": 265,
+					"buffer": 263,
 					"file": "src/lava_lib/readers/reader_lsd.cpp",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2419,
+						"buffer_size": 2091,
 						"regions":
 						{
 						},
@@ -15660,18 +15580,18 @@
 						"settings":
 						{
 							"syntax": "Packages/C++/C++.sublime-syntax",
-							"tab_size": 2,
+							"tab_size": 4,
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 3213.0,
+						"translation.y": 1412.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 14,
+					"stack_index": 12,
 					"type": "text"
 				},
 				{
-					"buffer": 266,
+					"buffer": 264,
 					"file": "src/lava_lib/_bak/syntax_lsd.h",
 					"semi_transient": false,
 					"settings":
@@ -15697,11 +15617,11 @@
 						"translation.y": 969.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 13,
+					"stack_index": 11,
 					"type": "text"
 				},
 				{
-					"buffer": 267,
+					"buffer": 265,
 					"file": "/home/max/lava.lsd",
 					"semi_transient": false,
 					"settings":
@@ -15727,11 +15647,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 22,
+					"stack_index": 20,
 					"type": "text"
 				},
 				{
-					"buffer": 268,
+					"buffer": 266,
 					"file": "src/lava_lib/renderer_iface_base.h",
 					"semi_transient": false,
 					"settings":
@@ -15755,11 +15675,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 8,
+					"stack_index": 7,
 					"type": "text"
 				},
 				{
-					"buffer": 269,
+					"buffer": 267,
 					"file": "src/lava_lib/scene_reader_base.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15784,11 +15704,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 7,
+					"stack_index": 6,
 					"type": "text"
 				},
 				{
-					"buffer": 270,
+					"buffer": 268,
 					"file": "src/lava_lib/scene_readers_registry.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15813,11 +15733,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 23,
+					"stack_index": 21,
 					"type": "text"
 				},
 				{
-					"buffer": 271,
+					"buffer": 269,
 					"file": "src/lava_lib/types.h",
 					"semi_transient": false,
 					"settings":
@@ -15842,11 +15762,11 @@
 						"translation.y": 2754.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 56,
+					"stack_index": 54,
 					"type": "text"
 				},
 				{
-					"buffer": 272,
+					"buffer": 270,
 					"file": "src/lava_lib/pymodule/pymodule.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15872,11 +15792,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 37,
+					"stack_index": 35,
 					"type": "text"
 				},
 				{
-					"buffer": 273,
+					"buffer": 271,
 					"file": "src/lava_lib/display.h",
 					"semi_transient": false,
 					"settings":
@@ -15903,11 +15823,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 49,
+					"stack_index": 47,
 					"type": "text"
 				},
 				{
-					"buffer": 274,
+					"buffer": 272,
 					"file": "src/lava_utils_lib/logging.h",
 					"semi_transient": false,
 					"settings":
@@ -15932,11 +15852,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 27,
+					"stack_index": 25,
 					"type": "text"
 				},
 				{
-					"buffer": 275,
+					"buffer": 273,
 					"file": "src/lava_utils_lib/logging.cpp",
 					"semi_transient": false,
 					"settings":
@@ -15963,11 +15883,11 @@
 						"translation.y": 4.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 33,
+					"stack_index": 31,
 					"type": "text"
 				},
 				{
-					"buffer": 276,
+					"buffer": 274,
 					"file": "src/pxr/imaging/plugin/hdLava/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -15993,11 +15913,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 107,
+					"stack_index": 105,
 					"type": "text"
 				},
 				{
-					"buffer": 277,
+					"buffer": 275,
 					"file": "src/pxr/imaging/plugin/hdLava/renderBuffer.h",
 					"semi_transient": false,
 					"settings":
@@ -16024,11 +15944,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 92,
+					"stack_index": 90,
 					"type": "text"
 				},
 				{
-					"buffer": 278,
+					"buffer": 276,
 					"file": "src/pxr/imaging/plugin/hdLava/renderBuffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16055,11 +15975,11 @@
 						"translation.y": 446.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 90,
+					"stack_index": 88,
 					"type": "text"
 				},
 				{
-					"buffer": 279,
+					"buffer": 277,
 					"file": "src/pxr/imaging/plugin/hdLava/renderThread.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16085,11 +16005,11 @@
 						"translation.y": 886.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 85,
+					"stack_index": 83,
 					"type": "text"
 				},
 				{
-					"buffer": 280,
+					"buffer": 278,
 					"file": "src/pxr/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -16113,11 +16033,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 115,
+					"stack_index": 113,
 					"type": "text"
 				},
 				{
-					"buffer": 281,
+					"buffer": 279,
 					"file": "cmake/modules/FindTBB.cmake",
 					"semi_transient": false,
 					"settings":
@@ -16143,11 +16063,11 @@
 						"translation.y": 4488.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 131,
+					"stack_index": 129,
 					"type": "text"
 				},
 				{
-					"buffer": 282,
+					"buffer": 280,
 					"file": "cmake/defaults/Packages.cmake",
 					"semi_transient": false,
 					"settings":
@@ -16173,11 +16093,11 @@
 						"translation.y": 1377.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 130,
+					"stack_index": 128,
 					"type": "text"
 				},
 				{
-					"buffer": 283,
+					"buffer": 281,
 					"file": "src/pxr/imaging/plugin/hdLava/renderDelegate.h",
 					"semi_transient": false,
 					"settings":
@@ -16203,11 +16123,11 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 80,
+					"stack_index": 78,
 					"type": "text"
 				},
 				{
-					"buffer": 284,
+					"buffer": 282,
 					"file": "src/pxr/imaging/plugin/hdLava/rendererPlugin.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16233,11 +16153,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 88,
+					"stack_index": 86,
 					"type": "text"
 				},
 				{
-					"buffer": 285,
+					"buffer": 283,
 					"file": "build/include/src/pxr/imaging/plugin/hdLava/renderDelegate.h",
 					"semi_transient": false,
 					"settings":
@@ -16263,11 +16183,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 113,
+					"stack_index": 111,
 					"type": "text"
 				},
 				{
-					"buffer": 286,
+					"buffer": 284,
 					"file": "src/pxr/imaging/plugin/hdLava/renderParam.h",
 					"semi_transient": false,
 					"settings":
@@ -16293,11 +16213,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 91,
+					"stack_index": 89,
 					"type": "text"
 				},
 				{
-					"buffer": 287,
+					"buffer": 285,
 					"file": "src/pxr/imaging/plugin/hdLava/renderPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16323,11 +16243,11 @@
 						"translation.y": 1683.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 87,
+					"stack_index": 85,
 					"type": "text"
 				},
 				{
-					"buffer": 288,
+					"buffer": 286,
 					"file": "src/pxr/imaging/plugin/hdLava/camera.h",
 					"semi_transient": false,
 					"settings":
@@ -16354,11 +16274,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 120,
+					"stack_index": 118,
 					"type": "text"
 				},
 				{
-					"buffer": 289,
+					"buffer": 287,
 					"file": "src/pxr/imaging/plugin/hdLava/camera.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16385,11 +16305,11 @@
 						"translation.y": 102.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 129,
+					"stack_index": 127,
 					"type": "text"
 				},
 				{
-					"buffer": 290,
+					"buffer": 288,
 					"file": "src/pxr/imaging/plugin/hdLava/renderParam.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16415,11 +16335,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 86,
+					"stack_index": 84,
 					"type": "text"
 				},
 				{
-					"buffer": 291,
+					"buffer": 289,
 					"file": "src/pxr/imaging/plugin/hdLava/renderDelegate.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16445,11 +16365,11 @@
 						"translation.y": 2399.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 84,
+					"stack_index": 82,
 					"type": "text"
 				},
 				{
-					"buffer": 292,
+					"buffer": 290,
 					"file": "build/include/src/pxr/imaging/plugin/hdLava/renderBuffer.h",
 					"semi_transient": false,
 					"settings":
@@ -16475,11 +16395,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 97,
+					"stack_index": 95,
 					"type": "text"
 				},
 				{
-					"buffer": 293,
+					"buffer": 291,
 					"file": "src/pxr/imaging/plugin/hdLava/rendererPlugin.h",
 					"semi_transient": false,
 					"settings":
@@ -16503,11 +16423,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 93,
+					"stack_index": 91,
 					"type": "text"
 				},
 				{
-					"buffer": 294,
+					"buffer": 292,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApiAov.h",
 					"semi_transient": false,
 					"settings":
@@ -16534,11 +16454,11 @@
 						"translation.y": 1479.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 121,
+					"stack_index": 119,
 					"type": "text"
 				},
 				{
-					"buffer": 295,
+					"buffer": 293,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApiAov.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16565,11 +16485,11 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 82,
+					"stack_index": 80,
 					"type": "text"
 				},
 				{
-					"buffer": 296,
+					"buffer": 294,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApiFramebuffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16596,11 +16516,11 @@
 						"translation.y": 1943.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 95,
+					"stack_index": 93,
 					"type": "text"
 				},
 				{
-					"buffer": 297,
+					"buffer": 295,
 					"file": "src/pxr/imaging/plugin/hdLava/aovDescriptor.h",
 					"semi_transient": false,
 					"settings":
@@ -16627,11 +16547,11 @@
 						"translation.y": 969.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 122,
+					"stack_index": 120,
 					"type": "text"
 				},
 				{
-					"buffer": 298,
+					"buffer": 296,
 					"file": "src/pxr/imaging/plugin/hdLava/aovDescriptor.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16658,11 +16578,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 123,
+					"stack_index": 121,
 					"type": "text"
 				},
 				{
-					"buffer": 299,
+					"buffer": 297,
 					"file": "src/pxr/imaging/plugin/hdLava/error.h",
 					"semi_transient": false,
 					"settings":
@@ -16689,11 +16609,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 118,
+					"stack_index": 116,
 					"type": "text"
 				},
 				{
-					"buffer": 300,
+					"buffer": 298,
 					"file": "src/lava/renderer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16718,11 +16638,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 83,
+					"stack_index": 81,
 					"type": "text"
 				},
 				{
-					"buffer": 301,
+					"buffer": 299,
 					"file": "src/lava/renderer.h",
 					"semi_transient": false,
 					"settings":
@@ -16746,11 +16666,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 94,
+					"stack_index": 92,
 					"type": "text"
 				},
 				{
-					"buffer": 302,
+					"buffer": 300,
 					"file": "src/pxr/imaging/plugin/hdLava/debugCodes.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16775,11 +16695,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 126,
+					"stack_index": 124,
 					"type": "text"
 				},
 				{
-					"buffer": 303,
+					"buffer": 301,
 					"file": "src/pxr/imaging/plugin/hdLava/debugCodes.h",
 					"semi_transient": false,
 					"settings":
@@ -16804,11 +16724,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 125,
+					"stack_index": 123,
 					"type": "text"
 				},
 				{
-					"buffer": 304,
+					"buffer": 302,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApiFramebuffer.h",
 					"semi_transient": false,
 					"settings":
@@ -16835,11 +16755,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 96,
+					"stack_index": 94,
 					"type": "text"
 				},
 				{
-					"buffer": 305,
+					"buffer": 303,
 					"file": "src/pxr/imaging/plugin/hdLava/config.cpp",
 					"semi_transient": false,
 					"settings":
@@ -16866,11 +16786,11 @@
 						"translation.y": 7243.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 111,
+					"stack_index": 109,
 					"type": "text"
 				},
 				{
-					"buffer": 306,
+					"buffer": 304,
 					"file": "src/pxr/imaging/plugin/hdLava/config.h",
 					"semi_transient": false,
 					"settings":
@@ -16897,11 +16817,11 @@
 						"translation.y": 2907.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 112,
+					"stack_index": 110,
 					"type": "text"
 				},
 				{
-					"buffer": 307,
+					"buffer": 305,
 					"file": "src/pxr/imaging/plugin/hdLava/renderPass.h",
 					"semi_transient": false,
 					"settings":
@@ -16925,11 +16845,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 89,
+					"stack_index": 87,
 					"type": "text"
 				},
 				{
-					"buffer": 308,
+					"buffer": 306,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApi.h.old",
 					"semi_transient": false,
 					"settings":
@@ -16956,11 +16876,11 @@
 						"translation.y": 1845.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 81,
+					"stack_index": 79,
 					"type": "text"
 				},
 				{
-					"buffer": 309,
+					"buffer": 307,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApi.cpp.old",
 					"semi_transient": false,
 					"settings":
@@ -16987,11 +16907,11 @@
 						"translation.y": 18871.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 77,
+					"stack_index": 75,
 					"type": "text"
 				},
 				{
-					"buffer": 310,
+					"buffer": 308,
 					"file": "third_party/USD/pxr/base/tf/diagnosticLite.h",
 					"semi_transient": false,
 					"settings":
@@ -17017,11 +16937,11 @@
 						"translation.y": 1295.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 114,
+					"stack_index": 112,
 					"type": "text"
 				},
 				{
-					"buffer": 311,
+					"buffer": 309,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApi.h",
 					"semi_transient": false,
 					"settings":
@@ -17047,11 +16967,11 @@
 						"translation.y": 663.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 79,
+					"stack_index": 77,
 					"type": "text"
 				},
 				{
-					"buffer": 312,
+					"buffer": 310,
 					"file": "src/pxr/imaging/plugin/hdLava/lavaApi.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17077,11 +16997,11 @@
 						"translation.y": 2450.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 78,
+					"stack_index": 76,
 					"type": "text"
 				},
 				{
-					"buffer": 313,
+					"buffer": 311,
 					"file": "src/Falcor/Utils/StringUtils.h",
 					"semi_transient": false,
 					"settings":
@@ -17107,11 +17027,11 @@
 						"translation.y": 4699.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 488,
+					"stack_index": 486,
 					"type": "text"
 				},
 				{
-					"buffer": 314,
+					"buffer": 312,
 					"file": "src/Samples/ModelViewer/ModelViewer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17137,11 +17057,11 @@
 						"translation.y": 2397.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 563,
+					"stack_index": 561,
 					"type": "text"
 				},
 				{
-					"buffer": 315,
+					"buffer": 313,
 					"file": "src/Samples/ModelViewer/ModelViewer.ps.slang.bak",
 					"semi_transient": false,
 					"settings":
@@ -17167,11 +17087,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 552,
+					"stack_index": 550,
 					"type": "text"
 				},
 				{
-					"buffer": 316,
+					"buffer": 314,
 					"file": "src/Samples/ModelViewer/ModelViewer.ps.slang",
 					"semi_transient": false,
 					"settings":
@@ -17197,11 +17117,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 550,
+					"stack_index": 548,
 					"type": "text"
 				},
 				{
-					"buffer": 317,
+					"buffer": 315,
 					"file": "src/Falcor/Scene/Lights/LightProbeIntegration.ps.slang",
 					"semi_transient": false,
 					"settings":
@@ -17227,11 +17147,11 @@
 						"translation.y": 116.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 560,
+					"stack_index": 558,
 					"type": "text"
 				},
 				{
-					"buffer": 318,
+					"buffer": 316,
 					"file": "src/Tools/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -17257,11 +17177,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 558,
+					"stack_index": 556,
 					"type": "text"
 				},
 				{
-					"buffer": 319,
+					"buffer": 317,
 					"file": "src/Samples/ShaderToy/ShaderToy.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17287,11 +17207,11 @@
 						"translation.y": 482.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 559,
+					"stack_index": 557,
 					"type": "text"
 				},
 				{
-					"buffer": 320,
+					"buffer": 318,
 					"file": "src/Falcor/RenderGraph/BasePasses/FullScreenPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17317,11 +17237,11 @@
 						"translation.y": 1555.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 243,
+					"stack_index": 241,
 					"type": "text"
 				},
 				{
-					"buffer": 321,
+					"buffer": 319,
 					"file": "src/Falcor/RenderGraph/BasePasses/ComputePass.h",
 					"semi_transient": false,
 					"settings":
@@ -17347,11 +17267,11 @@
 						"translation.y": 1326.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 240,
+					"stack_index": 238,
 					"type": "text"
 				},
 				{
-					"buffer": 322,
+					"buffer": 320,
 					"file": "src/Falcor/RenderGraph/BasePasses/FullScreenPass.h",
 					"semi_transient": false,
 					"settings":
@@ -17377,11 +17297,11 @@
 						"translation.y": 475.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 238,
+					"stack_index": 236,
 					"type": "text"
 				},
 				{
-					"buffer": 323,
+					"buffer": 321,
 					"file": "src/Falcor/RenderGraph/BasePasses/ComputePass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17407,11 +17327,11 @@
 						"translation.y": 226.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 239,
+					"stack_index": 237,
 					"type": "text"
 				},
 				{
-					"buffer": 324,
+					"buffer": 322,
 					"file": "src/Falcor/RenderGraph/BasePasses/BaseGraphicsPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17437,11 +17357,11 @@
 						"translation.y": 290.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 241,
+					"stack_index": 239,
 					"type": "text"
 				},
 				{
-					"buffer": 325,
+					"buffer": 323,
 					"file": "src/Falcor/Utils/Timing/FrameRate.h",
 					"semi_transient": false,
 					"settings":
@@ -17467,11 +17387,11 @@
 						"translation.y": 87.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 337,
+					"stack_index": 335,
 					"type": "text"
 				},
 				{
-					"buffer": 326,
+					"buffer": 324,
 					"file": "src/Falcor/Utils/Timing/FrameRate.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17495,11 +17415,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 353,
+					"stack_index": 351,
 					"type": "text"
 				},
 				{
-					"buffer": 327,
+					"buffer": 325,
 					"file": "src/Falcor/Experimental/Scene/Lights/LightBVHSampler.h",
 					"semi_transient": false,
 					"settings":
@@ -17525,11 +17445,11 @@
 						"translation.y": 816.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 582,
+					"stack_index": 580,
 					"type": "text"
 				},
 				{
-					"buffer": 328,
+					"buffer": 326,
 					"file": "src/Falcor/Experimental/Scene/Lights/LightBVHSampler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17555,11 +17475,11 @@
 						"translation.y": 1840.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 332,
+					"stack_index": 330,
 					"type": "text"
 				},
 				{
-					"buffer": 329,
+					"buffer": 327,
 					"file": "src/Falcor/Experimental/Scene/Lights/LightCollection.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17585,11 +17505,11 @@
 						"translation.y": 422.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 331,
+					"stack_index": 329,
 					"type": "text"
 				},
 				{
-					"buffer": 330,
+					"buffer": 328,
 					"file": "src/Falcor/RenderGraph/BasePasses/BaseGraphicsPass.h",
 					"semi_transient": false,
 					"settings":
@@ -17615,11 +17535,11 @@
 						"translation.y": 681.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 242,
+					"stack_index": 240,
 					"type": "text"
 				},
 				{
-					"buffer": 331,
+					"buffer": 329,
 					"file": "src/Falcor/Experimental/Scene/Lights/LightCollection.h",
 					"semi_transient": false,
 					"settings":
@@ -17645,11 +17565,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 384,
+					"stack_index": 382,
 					"type": "text"
 				},
 				{
-					"buffer": 332,
+					"buffer": 330,
 					"file": "src/Falcor/Core/BufferTypes/ParameterBlock.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17675,11 +17595,11 @@
 						"translation.y": 3869.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 247,
+					"stack_index": 245,
 					"type": "text"
 				},
 				{
-					"buffer": 333,
+					"buffer": 331,
 					"file": "src/RenderPasses/BSDFViewer/BSDFViewer.cs.slang",
 					"semi_transient": false,
 					"settings":
@@ -17705,11 +17625,11 @@
 						"translation.y": 105.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 480,
+					"stack_index": 478,
 					"type": "text"
 				},
 				{
-					"buffer": 334,
+					"buffer": 332,
 					"file": "src/Tools/FalcorTest/Tests/Core/BufferTests.cs.slang",
 					"semi_transient": false,
 					"settings":
@@ -17735,11 +17655,11 @@
 						"translation.y": 367.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 526,
+					"stack_index": 524,
 					"type": "text"
 				},
 				{
-					"buffer": 335,
+					"buffer": 333,
 					"file": "src/Falcor/Core/Program/ShaderVar.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17765,11 +17685,11 @@
 						"translation.y": 4745.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 562,
+					"stack_index": 560,
 					"type": "text"
 				},
 				{
-					"buffer": 336,
+					"buffer": 334,
 					"file": "src/Falcor/Scene/Lights/LightProbe.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17795,11 +17715,11 @@
 						"translation.y": 3264.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 373,
+					"stack_index": 371,
 					"type": "text"
 				},
 				{
-					"buffer": 337,
+					"buffer": 335,
 					"file": "src/Falcor/Scene/Lights/LightProbe.h",
 					"semi_transient": false,
 					"settings":
@@ -17825,11 +17745,11 @@
 						"translation.y": 765.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 372,
+					"stack_index": 370,
 					"type": "text"
 				},
 				{
-					"buffer": 338,
+					"buffer": 336,
 					"file": "src/Falcor/RenderGraph/BasePasses/RasterScenePass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17855,11 +17775,11 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 235,
+					"stack_index": 233,
 					"type": "text"
 				},
 				{
-					"buffer": 339,
+					"buffer": 337,
 					"file": "src/Falcor/RenderGraph/RenderGraphCompiler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17885,11 +17805,11 @@
 						"translation.y": 366.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 379,
+					"stack_index": 377,
 					"type": "text"
 				},
 				{
-					"buffer": 340,
+					"buffer": 338,
 					"file": "src/Falcor/RenderGraph/RenderGraph.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17915,11 +17835,11 @@
 						"translation.y": 341.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 259,
+					"stack_index": 257,
 					"type": "text"
 				},
 				{
-					"buffer": 341,
+					"buffer": 339,
 					"file": "src/Falcor/RenderGraph/RenderGraphExe.cpp",
 					"semi_transient": false,
 					"settings":
@@ -17945,11 +17865,11 @@
 						"translation.y": 412.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 329,
+					"stack_index": 327,
 					"type": "text"
 				},
 				{
-					"buffer": 342,
+					"buffer": 340,
 					"file": "src/Falcor/RenderGraph/RenderGraphExe.h",
 					"semi_transient": false,
 					"settings":
@@ -17975,11 +17895,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 330,
+					"stack_index": 328,
 					"type": "text"
 				},
 				{
-					"buffer": 343,
+					"buffer": 341,
 					"file": "src/Falcor/Utils/Scripting/Dictionary.h",
 					"semi_transient": false,
 					"settings":
@@ -18005,11 +17925,11 @@
 						"translation.y": 583.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 104,
+					"stack_index": 102,
 					"type": "text"
 				},
 				{
-					"buffer": 344,
+					"buffer": 342,
 					"file": "src/Falcor/RenderGraph/RenderGraphUI.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18035,11 +17955,11 @@
 						"translation.y": 9384.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 171,
+					"stack_index": 169,
 					"type": "text"
 				},
 				{
-					"buffer": 345,
+					"buffer": 343,
 					"file": "src/Falcor/Utils/Debug/PixelDebug.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18065,11 +17985,11 @@
 						"translation.y": 1683.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 357,
+					"stack_index": 355,
 					"type": "text"
 				},
 				{
-					"buffer": 346,
+					"buffer": 344,
 					"file": "src/Falcor/Utils/Algorithm/ParallelReduction.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18095,11 +18015,11 @@
 						"translation.y": 536.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 325,
+					"stack_index": 323,
 					"type": "text"
 				},
 				{
-					"buffer": 347,
+					"buffer": 345,
 					"file": "src/Tools/FalcorTest/Tests/Utils/ParallelReductionTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18125,11 +18045,11 @@
 						"translation.y": 3213.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 502,
+					"stack_index": 500,
 					"type": "text"
 				},
 				{
-					"buffer": 348,
+					"buffer": 346,
 					"file": "src/Tools/FalcorTest/Tests/Utils/PrefixSumTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18155,11 +18075,11 @@
 						"translation.y": 1173.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 497,
+					"stack_index": 495,
 					"type": "text"
 				},
 				{
-					"buffer": 349,
+					"buffer": 347,
 					"file": "src/Falcor/Utils/Algorithm/PrefixSum.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18185,11 +18105,11 @@
 						"translation.y": 379.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 324,
+					"stack_index": 322,
 					"type": "text"
 				},
 				{
-					"buffer": 350,
+					"buffer": 348,
 					"file": "src/Falcor/Utils/Algorithm/BitonicSort.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18215,11 +18135,11 @@
 						"translation.y": 906.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 327,
+					"stack_index": 325,
 					"type": "text"
 				},
 				{
-					"buffer": 351,
+					"buffer": 349,
 					"file": "src/Falcor/Utils/Algorithm/ComputeParallelReduction.h",
 					"semi_transient": false,
 					"settings":
@@ -18245,11 +18165,11 @@
 						"translation.y": 612.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 363,
+					"stack_index": 361,
 					"type": "text"
 				},
 				{
-					"buffer": 352,
+					"buffer": 350,
 					"file": "src/Falcor/Utils/Algorithm/ParallelReduction.h",
 					"semi_transient": false,
 					"settings":
@@ -18275,11 +18195,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 365,
+					"stack_index": 363,
 					"type": "text"
 				},
 				{
-					"buffer": 353,
+					"buffer": 351,
 					"file": "src/Falcor/Utils/Algorithm/BitonicSort.h",
 					"semi_transient": false,
 					"settings":
@@ -18305,11 +18225,11 @@
 						"translation.y": 816.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 366,
+					"stack_index": 364,
 					"type": "text"
 				},
 				{
-					"buffer": 354,
+					"buffer": 352,
 					"file": "src/Falcor/Utils/Algorithm/PrefixSum.h",
 					"semi_transient": false,
 					"settings":
@@ -18335,11 +18255,11 @@
 						"translation.y": 878.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 364,
+					"stack_index": 362,
 					"type": "text"
 				},
 				{
-					"buffer": 355,
+					"buffer": 353,
 					"file": "src/Falcor/Utils/Algorithm/ComputeParallelReduction.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18365,11 +18285,11 @@
 						"translation.y": 504.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 326,
+					"stack_index": 324,
 					"type": "text"
 				},
 				{
-					"buffer": 356,
+					"buffer": 354,
 					"file": "src/Falcor/Utils/Scripting/Console.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18395,11 +18315,11 @@
 						"translation.y": 969.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 99,
+					"stack_index": 97,
 					"type": "text"
 				},
 				{
-					"buffer": 357,
+					"buffer": 355,
 					"file": "src/Falcor/Utils/Scripting/ScriptBindings.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18425,11 +18345,11 @@
 						"translation.y": 387.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 69,
+					"stack_index": 67,
 					"type": "text"
 				},
 				{
-					"buffer": 358,
+					"buffer": 356,
 					"file": "src/Falcor/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -18455,11 +18375,11 @@
 						"translation.y": 2346.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 74,
+					"stack_index": 72,
 					"type": "text"
 				},
 				{
-					"buffer": 359,
+					"buffer": 357,
 					"file": "src/Falcor/Utils/Sampling/SampleGenerator.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18485,11 +18405,11 @@
 						"translation.y": 306.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 361,
+					"stack_index": 359,
 					"type": "text"
 				},
 				{
-					"buffer": 360,
+					"buffer": 358,
 					"file": "src/Falcor/Utils/Timing/Clock.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18515,11 +18435,11 @@
 						"translation.y": 3482.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 351,
+					"stack_index": 349,
 					"type": "text"
 				},
 				{
-					"buffer": 361,
+					"buffer": 359,
 					"file": "src/Falcor/Utils/Timing/Clock.h",
 					"semi_transient": false,
 					"settings":
@@ -18545,11 +18465,11 @@
 						"translation.y": 51.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 352,
+					"stack_index": 350,
 					"type": "text"
 				},
 				{
-					"buffer": 362,
+					"buffer": 360,
 					"file": "src/Falcor/Core/API/TextureLoader.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18575,11 +18495,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 154,
+					"stack_index": 152,
 					"type": "text"
 				},
 				{
-					"buffer": 363,
+					"buffer": 361,
 					"file": "third_party/assimp/include/assimp/Bitmap.h",
 					"semi_transient": false,
 					"settings":
@@ -18605,11 +18525,11 @@
 						"translation.y": 1162.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 565,
+					"stack_index": 563,
 					"type": "text"
 				},
 				{
-					"buffer": 364,
+					"buffer": 362,
 					"file": "src/Falcor/Core/API/VAO.h",
 					"semi_transient": false,
 					"settings":
@@ -18635,11 +18555,11 @@
 						"translation.y": 1395.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 383,
+					"stack_index": 381,
 					"type": "text"
 				},
 				{
-					"buffer": 365,
+					"buffer": 363,
 					"file": "src/Falcor/Utils/Logger.h",
 					"semi_transient": false,
 					"settings":
@@ -18665,11 +18585,11 @@
 						"translation.y": 1291.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 277,
+					"stack_index": 275,
 					"type": "text"
 				},
 				{
-					"buffer": 366,
+					"buffer": 364,
 					"file": "src/Falcor/Utils/Logger.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18695,11 +18615,11 @@
 						"translation.y": 2115.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 476,
+					"stack_index": 474,
 					"type": "text"
 				},
 				{
-					"buffer": 367,
+					"buffer": 365,
 					"file": "src/Falcor/Utils/BinaryFileStream.h",
 					"semi_transient": false,
 					"settings":
@@ -18725,11 +18645,11 @@
 						"translation.y": 170.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 487,
+					"stack_index": 485,
 					"type": "text"
 				},
 				{
-					"buffer": 368,
+					"buffer": 366,
 					"file": "src/Falcor/Utils/Scripting/Scripting.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18755,11 +18675,11 @@
 						"translation.y": 1698.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 38,
+					"stack_index": 36,
 					"type": "text"
 				},
 				{
-					"buffer": 369,
+					"buffer": 367,
 					"file": "src/Falcor/Utils/Timing/Profiler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18785,11 +18705,11 @@
 						"translation.y": 359.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 318,
+					"stack_index": 316,
 					"type": "text"
 				},
 				{
-					"buffer": 370,
+					"buffer": 368,
 					"file": "src/Falcor/Utils/UI/Gui.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18815,11 +18735,11 @@
 						"translation.y": 2116.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 166,
+					"stack_index": 164,
 					"type": "text"
 				},
 				{
-					"buffer": 371,
+					"buffer": 369,
 					"file": "src/Falcor/Utils/UI/PixelZoom.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18845,11 +18765,11 @@
 						"translation.y": 867.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 314,
+					"stack_index": 312,
 					"type": "text"
 				},
 				{
-					"buffer": 372,
+					"buffer": 370,
 					"file": "src/Falcor/Utils/UI/TextRenderer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18875,11 +18795,11 @@
 						"translation.y": 1212.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 316,
+					"stack_index": 314,
 					"type": "text"
 				},
 				{
-					"buffer": 373,
+					"buffer": 371,
 					"file": "src/Falcor/Utils/UI/TextRenderer.h",
 					"semi_transient": false,
 					"settings":
@@ -18905,11 +18825,11 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 317,
+					"stack_index": 315,
 					"type": "text"
 				},
 				{
-					"buffer": 374,
+					"buffer": 372,
 					"file": "src/Falcor/Utils/UI/PixelZoom.h",
 					"semi_transient": false,
 					"settings":
@@ -18935,11 +18855,11 @@
 						"translation.y": 158.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 315,
+					"stack_index": 313,
 					"type": "text"
 				},
 				{
-					"buffer": 375,
+					"buffer": 373,
 					"file": "src/Falcor/Utils/UI/DebugDrawer.h",
 					"semi_transient": false,
 					"settings":
@@ -18965,11 +18885,11 @@
 						"translation.y": 636.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 323,
+					"stack_index": 321,
 					"type": "text"
 				},
 				{
-					"buffer": 376,
+					"buffer": 374,
 					"file": "src/Falcor/Utils/UI/DebugDrawer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -18995,11 +18915,11 @@
 						"translation.y": 51.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 322,
+					"stack_index": 320,
 					"type": "text"
 				},
 				{
-					"buffer": 377,
+					"buffer": 375,
 					"file": "src/Falcor/Utils/UI/Font.h",
 					"semi_transient": false,
 					"settings":
@@ -19025,11 +18945,11 @@
 						"translation.y": 378.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 321,
+					"stack_index": 319,
 					"type": "text"
 				},
 				{
-					"buffer": 378,
+					"buffer": 376,
 					"file": "third_party/slang/tools/render-test/bind-location.h",
 					"semi_transient": false,
 					"settings":
@@ -19055,11 +18975,11 @@
 						"translation.y": 3980.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 561,
+					"stack_index": 559,
 					"type": "text"
 				},
 				{
-					"buffer": 379,
+					"buffer": 377,
 					"file": "src/Falcor/Utils/UI/Font.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19085,11 +19005,11 @@
 						"translation.y": 255.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 320,
+					"stack_index": 318,
 					"type": "text"
 				},
 				{
-					"buffer": 380,
+					"buffer": 378,
 					"file": "src/Falcor/Core/Program/ProgramReflection.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19115,11 +19035,11 @@
 						"translation.y": 35103.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 249,
+					"stack_index": 247,
 					"type": "text"
 				},
 				{
-					"buffer": 381,
+					"buffer": 379,
 					"file": "src/Falcor/Core/API/Vulkan/VKGraphicsStateObject.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19145,11 +19065,11 @@
 						"translation.y": 921.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 396,
+					"stack_index": 394,
 					"type": "text"
 				},
 				{
-					"buffer": 382,
+					"buffer": 380,
 					"file": "third_party/slang/source/slang/slang-reflection.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19175,11 +19095,11 @@
 						"translation.y": 1382.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 556,
+					"stack_index": 554,
 					"type": "text"
 				},
 				{
-					"buffer": 383,
+					"buffer": 381,
 					"file": "third_party/slang/source/slang/slang-compiler.h",
 					"semi_transient": false,
 					"settings":
@@ -19205,11 +19125,11 @@
 						"translation.y": 34736.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 555,
+					"stack_index": 553,
 					"type": "text"
 				},
 				{
-					"buffer": 384,
+					"buffer": 382,
 					"file": "third_party/slang/source/slang/slang-name.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19235,11 +19155,11 @@
 						"translation.y": 56.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 554,
+					"stack_index": 552,
 					"type": "text"
 				},
 				{
-					"buffer": 385,
+					"buffer": 383,
 					"file": "third_party/slang/source/core/slang-dictionary.h",
 					"semi_transient": false,
 					"settings":
@@ -19264,11 +19184,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 553,
+					"stack_index": 551,
 					"type": "text"
 				},
 				{
-					"buffer": 386,
+					"buffer": 384,
 					"file": "src/Falcor/Core/Program/ProgramVars.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19294,11 +19214,11 @@
 						"translation.y": 972.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 246,
+					"stack_index": 244,
 					"type": "text"
 				},
 				{
-					"buffer": 387,
+					"buffer": 385,
 					"file": "src/Falcor/Raytracing/RtProgramVarsHelper.h",
 					"semi_transient": false,
 					"settings":
@@ -19324,11 +19244,11 @@
 						"translation.y": 299.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 494,
+					"stack_index": 492,
 					"type": "text"
 				},
 				{
-					"buffer": 388,
+					"buffer": 386,
 					"file": "src/Falcor/Core/Program/ProgramVars.h",
 					"semi_transient": false,
 					"settings":
@@ -19354,11 +19274,11 @@
 						"translation.y": 1106.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 248,
+					"stack_index": 246,
 					"type": "text"
 				},
 				{
-					"buffer": 389,
+					"buffer": 387,
 					"file": "src/Falcor/Core/Program/ShaderVar.h",
 					"semi_transient": false,
 					"settings":
@@ -19384,11 +19304,11 @@
 						"translation.y": 6056.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 399,
+					"stack_index": 397,
 					"type": "text"
 				},
 				{
-					"buffer": 390,
+					"buffer": 388,
 					"file": "src/Falcor/Core/Program/ProgramReflection.h",
 					"semi_transient": false,
 					"settings":
@@ -19414,11 +19334,11 @@
 						"translation.y": 24131.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 251,
+					"stack_index": 249,
 					"type": "text"
 				},
 				{
-					"buffer": 391,
+					"buffer": 389,
 					"file": "src/Falcor/Core/Program/Program.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19444,11 +19364,11 @@
 						"translation.y": 11768.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 400,
+					"stack_index": 398,
 					"type": "text"
 				},
 				{
-					"buffer": 392,
+					"buffer": 390,
 					"file": "src/Falcor/Core/API/Buffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19474,11 +19394,11 @@
 						"translation.y": 3287.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 278,
+					"stack_index": 276,
 					"type": "text"
 				},
 				{
-					"buffer": 393,
+					"buffer": 391,
 					"file": "src/Falcor/Core/API/FBO.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19504,11 +19424,11 @@
 						"translation.y": 2397.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 152,
+					"stack_index": 150,
 					"type": "text"
 				},
 				{
-					"buffer": 394,
+					"buffer": 392,
 					"file": "src/Falcor/Core/API/BlendState.h",
 					"semi_transient": false,
 					"settings":
@@ -19534,11 +19454,11 @@
 						"translation.y": 2535.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 393,
+					"stack_index": 391,
 					"type": "text"
 				},
 				{
-					"buffer": 395,
+					"buffer": 393,
 					"file": "src/Falcor/Core/API/BlendState.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19564,11 +19484,11 @@
 						"translation.y": 306.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 418,
+					"stack_index": 416,
 					"type": "text"
 				},
 				{
-					"buffer": 396,
+					"buffer": 394,
 					"file": "src/Falcor/Core/API/FBO.h",
 					"semi_transient": false,
 					"settings":
@@ -19594,11 +19514,11 @@
 						"translation.y": 648.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 151,
+					"stack_index": 149,
 					"type": "text"
 				},
 				{
-					"buffer": 397,
+					"buffer": 395,
 					"file": "src/USD/hdLava/rendererPlugin.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19624,11 +19544,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 137,
+					"stack_index": 135,
 					"type": "text"
 				},
 				{
-					"buffer": 398,
+					"buffer": 396,
 					"file": "src/USD/hdLava/renderDelegate.h",
 					"semi_transient": false,
 					"settings":
@@ -19654,11 +19574,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 140,
+					"stack_index": 138,
 					"type": "text"
 				},
 				{
-					"buffer": 399,
+					"buffer": 397,
 					"file": "src/USD/hdLava/renderDelegate.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19684,11 +19604,11 @@
 						"translation.y": 5155.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 127,
+					"stack_index": 125,
 					"type": "text"
 				},
 				{
-					"buffer": 400,
+					"buffer": 398,
 					"file": "src/USD/hdLava/renderThread.h",
 					"semi_transient": false,
 					"settings":
@@ -19715,11 +19635,11 @@
 						"translation.y": 766.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 148,
+					"stack_index": 146,
 					"type": "text"
 				},
 				{
-					"buffer": 401,
+					"buffer": 399,
 					"file": "src/USD/hdLava/renderThread.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19746,11 +19666,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 147,
+					"stack_index": 145,
 					"type": "text"
 				},
 				{
-					"buffer": 402,
+					"buffer": 400,
 					"file": "src/USD/hdLava/rendererPlugin.h",
 					"semi_transient": false,
 					"settings":
@@ -19776,11 +19696,11 @@
 						"translation.y": 7.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 138,
+					"stack_index": 136,
 					"type": "text"
 				},
 				{
-					"buffer": 403,
+					"buffer": 401,
 					"file": "src/Falcor/Core/API/Texture.h",
 					"semi_transient": false,
 					"settings":
@@ -19806,11 +19726,11 @@
 						"translation.y": 2788.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 153,
+					"stack_index": 151,
 					"type": "text"
 				},
 				{
-					"buffer": 404,
+					"buffer": 402,
 					"file": "src/Tools/FalcorTest/Tests/ShadingUtils/RaytracingTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19836,11 +19756,11 @@
 						"translation.y": 1315.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 541,
+					"stack_index": 539,
 					"type": "text"
 				},
 				{
-					"buffer": 405,
+					"buffer": 403,
 					"file": "src/Tools/FalcorTest/Tests/Slang/SlangTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19866,11 +19786,11 @@
 						"translation.y": 2518.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 531,
+					"stack_index": 529,
 					"type": "text"
 				},
 				{
-					"buffer": 406,
+					"buffer": 404,
 					"file": "src/Tools/FalcorTest/Tests/Slang/SlangTests.cs.slang",
 					"semi_transient": false,
 					"settings":
@@ -19896,11 +19816,11 @@
 						"translation.y": 1297.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 533,
+					"stack_index": 531,
 					"type": "text"
 				},
 				{
-					"buffer": 407,
+					"buffer": 405,
 					"file": "src/Tools/FalcorTest/Tests/Slang/SlangShared.slang",
 					"semi_transient": false,
 					"settings":
@@ -19926,11 +19846,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 534,
+					"stack_index": 532,
 					"type": "text"
 				},
 				{
-					"buffer": 408,
+					"buffer": 406,
 					"file": "src/Tools/FalcorTest/Tests/Slang/ShaderModel.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19956,11 +19876,11 @@
 						"translation.y": 75.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 529,
+					"stack_index": 527,
 					"type": "text"
 				},
 				{
-					"buffer": 409,
+					"buffer": 407,
 					"file": "src/Tools/FalcorTest/Tests/Slang/Int64Tests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -19986,11 +19906,11 @@
 						"translation.y": 1060.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 543,
+					"stack_index": 541,
 					"type": "text"
 				},
 				{
-					"buffer": 410,
+					"buffer": 408,
 					"file": "src/Tools/FalcorTest/Tests/Slang/TraceRayFlags.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20016,11 +19936,11 @@
 						"translation.y": 227.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 540,
+					"stack_index": 538,
 					"type": "text"
 				},
 				{
-					"buffer": 411,
+					"buffer": 409,
 					"file": "src/Tools/FalcorTest/Tests/Slang/TraceRayInline.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20044,11 +19964,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 545,
+					"stack_index": 543,
 					"type": "text"
 				},
 				{
-					"buffer": 412,
+					"buffer": 410,
 					"file": "src/Tools/FalcorTest/Tests/Slang/WaveOps.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20074,11 +19994,11 @@
 						"translation.y": 1122.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 530,
+					"stack_index": 528,
 					"type": "text"
 				},
 				{
-					"buffer": 413,
+					"buffer": 411,
 					"file": "src/Tools/FalcorTest/Tests/Utils/AABBTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20104,11 +20024,11 @@
 						"translation.y": 262.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 514,
+					"stack_index": 512,
 					"type": "text"
 				},
 				{
-					"buffer": 414,
+					"buffer": 412,
 					"file": "third_party/slang/prelude/slang-cpp-types.h",
 					"semi_transient": false,
 					"settings":
@@ -20134,11 +20054,11 @@
 						"translation.y": 614.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 342,
+					"stack_index": 340,
 					"type": "text"
 				},
 				{
-					"buffer": 415,
+					"buffer": 413,
 					"file": "src/Tools/FalcorTest/FalcorTest.h",
 					"semi_transient": false,
 					"settings":
@@ -20162,11 +20082,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 557,
+					"stack_index": 555,
 					"type": "text"
 				},
 				{
-					"buffer": 416,
+					"buffer": 414,
 					"file": "src/Tools/FalcorTest/FalcorTest.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20192,11 +20112,11 @@
 						"translation.y": 346.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 544,
+					"stack_index": 542,
 					"type": "text"
 				},
 				{
-					"buffer": 417,
+					"buffer": 415,
 					"file": "src/Tools/FalcorTest/Tests/Sampling/SampleGeneratorTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20222,11 +20142,11 @@
 						"translation.y": 551.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 518,
+					"stack_index": 516,
 					"type": "text"
 				},
 				{
-					"buffer": 418,
+					"buffer": 416,
 					"file": "src/Tools/FalcorTest/Tests/Core/RootBufferTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20252,11 +20172,11 @@
 						"translation.y": 2098.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 519,
+					"stack_index": 517,
 					"type": "text"
 				},
 				{
-					"buffer": 419,
+					"buffer": 417,
 					"file": "src/Tools/FalcorTest/Tests/Core/RootBufferStructTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20282,11 +20202,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 520,
+					"stack_index": 518,
 					"type": "text"
 				},
 				{
-					"buffer": 420,
+					"buffer": 418,
 					"file": "src/Falcor/Core/API/Vulkan/VkGpuMemoryHeap.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20310,11 +20230,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 408,
+					"stack_index": 406,
 					"type": "text"
 				},
 				{
-					"buffer": 421,
+					"buffer": 419,
 					"file": "src/Falcor/Core/Platform/Linux/Linux.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20340,11 +20260,11 @@
 						"translation.y": 7551.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 496,
+					"stack_index": 494,
 					"type": "text"
 				},
 				{
-					"buffer": 422,
+					"buffer": 420,
 					"file": "src/Falcor/Core/Platform/Windows/ProgressBarWin.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20370,11 +20290,11 @@
 						"translation.y": 204.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 581,
+					"stack_index": 579,
 					"type": "text"
 				},
 				{
-					"buffer": 423,
+					"buffer": 421,
 					"file": "src/Falcor/Core/Platform/OS.h",
 					"semi_transient": false,
 					"settings":
@@ -20400,11 +20320,11 @@
 						"translation.y": 2550.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 564,
+					"stack_index": 562,
 					"type": "text"
 				},
 				{
-					"buffer": 424,
+					"buffer": 422,
 					"file": "src/Falcor/Core/API/Vulkan/VKState.h",
 					"semi_transient": false,
 					"settings":
@@ -20430,11 +20350,11 @@
 						"translation.y": 377.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 394,
+					"stack_index": 392,
 					"type": "text"
 				},
 				{
-					"buffer": 425,
+					"buffer": 423,
 					"file": "src/Falcor/Core/API/Texture.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20460,11 +20380,11 @@
 						"translation.y": 3706.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 157,
+					"stack_index": 155,
 					"type": "text"
 				},
 				{
-					"buffer": 426,
+					"buffer": 424,
 					"file": "src/USD/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -20488,11 +20408,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 136,
+					"stack_index": 134,
 					"type": "text"
 				},
 				{
-					"buffer": 427,
+					"buffer": 425,
 					"file": "src/USD/hdLava/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -20518,11 +20438,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 135,
+					"stack_index": 133,
 					"type": "text"
 				},
 				{
-					"buffer": 428,
+					"buffer": 426,
 					"file": "src/USD/hdLava/api.h",
 					"semi_transient": false,
 					"settings":
@@ -20546,11 +20466,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 146,
+					"stack_index": 144,
 					"type": "text"
 				},
 				{
-					"buffer": 429,
+					"buffer": 427,
 					"file": "src/USD/hdLava/pch.h",
 					"semi_transient": false,
 					"settings":
@@ -20574,11 +20494,11 @@
 						"translation.y": 1468.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 141,
+					"stack_index": 139,
 					"type": "text"
 				},
 				{
-					"buffer": 430,
+					"buffer": 428,
 					"file": "src/USD/hdLava/boostIncludePath.h",
 					"semi_transient": false,
 					"settings":
@@ -20603,11 +20523,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 142,
+					"stack_index": 140,
 					"type": "text"
 				},
 				{
-					"buffer": 431,
+					"buffer": 429,
 					"file": "src/USD/hdLava/plugInfo.json",
 					"semi_transient": false,
 					"settings":
@@ -20633,11 +20553,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 149,
+					"stack_index": 147,
 					"type": "text"
 				},
 				{
-					"buffer": 432,
+					"buffer": 430,
 					"file": "src/USD/hdLava/renderPass.h",
 					"semi_transient": false,
 					"settings":
@@ -20663,11 +20583,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 145,
+					"stack_index": 143,
 					"type": "text"
 				},
 				{
-					"buffer": 433,
+					"buffer": 431,
 					"file": "src/USD/hdLava/renderPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20693,11 +20613,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 144,
+					"stack_index": 142,
 					"type": "text"
 				},
 				{
-					"buffer": 434,
+					"buffer": 432,
 					"file": "src/USD/hdLava/renderParam.h",
 					"semi_transient": false,
 					"settings":
@@ -20723,11 +20643,11 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 143,
+					"stack_index": 141,
 					"type": "text"
 				},
 				{
-					"buffer": 435,
+					"buffer": 433,
 					"file": "src/USD/hdLava/renderParam.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20754,11 +20674,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 139,
+					"stack_index": 137,
 					"type": "text"
 				},
 				{
-					"buffer": 436,
+					"buffer": 434,
 					"file": "src/USD/hgiVk/commandBuffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20784,11 +20704,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 423,
+					"stack_index": 421,
 					"type": "text"
 				},
 				{
-					"buffer": 437,
+					"buffer": 435,
 					"file": "src/USD/hgiVk/commandBufferManager.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20814,11 +20734,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 461,
+					"stack_index": 459,
 					"type": "text"
 				},
 				{
-					"buffer": 438,
+					"buffer": 436,
 					"file": "src/USD/hgiVk/commandPool.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20844,11 +20764,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 460,
+					"stack_index": 458,
 					"type": "text"
 				},
 				{
-					"buffer": 439,
+					"buffer": 437,
 					"file": "src/USD/hgiVk/computeEncoder.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20874,11 +20794,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 459,
+					"stack_index": 457,
 					"type": "text"
 				},
 				{
-					"buffer": 440,
+					"buffer": 438,
 					"file": "src/USD/hgiVk/conversions.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20904,11 +20824,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 458,
+					"stack_index": 456,
 					"type": "text"
 				},
 				{
-					"buffer": 441,
+					"buffer": 439,
 					"file": "src/USD/hgiVk/device.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20934,11 +20854,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 457,
+					"stack_index": 455,
 					"type": "text"
 				},
 				{
-					"buffer": 442,
+					"buffer": 440,
 					"file": "src/USD/hgiVk/diagnostic.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20964,11 +20884,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 456,
+					"stack_index": 454,
 					"type": "text"
 				},
 				{
-					"buffer": 443,
+					"buffer": 441,
 					"file": "src/USD/hgiVk/frame.cpp",
 					"semi_transient": false,
 					"settings":
@@ -20994,11 +20914,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 433,
+					"stack_index": 431,
 					"type": "text"
 				},
 				{
-					"buffer": 444,
+					"buffer": 442,
 					"file": "src/USD/hgiVk/garbageCollector.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21024,11 +20944,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 455,
+					"stack_index": 453,
 					"type": "text"
 				},
 				{
-					"buffer": 445,
+					"buffer": 443,
 					"file": "src/USD/hgiVk/graphicsEncoder.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21054,11 +20974,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 454,
+					"stack_index": 452,
 					"type": "text"
 				},
 				{
-					"buffer": 446,
+					"buffer": 444,
 					"file": "src/USD/hgiVk/hgi.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21084,11 +21004,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 453,
+					"stack_index": 451,
 					"type": "text"
 				},
 				{
-					"buffer": 447,
+					"buffer": 445,
 					"file": "src/USD/hgiVk/instance.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21114,11 +21034,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 452,
+					"stack_index": 450,
 					"type": "text"
 				},
 				{
-					"buffer": 448,
+					"buffer": 446,
 					"file": "src/USD/hgiVk/parallelGraphicsEncoder.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21144,11 +21064,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 451,
+					"stack_index": 449,
 					"type": "text"
 				},
 				{
-					"buffer": 449,
+					"buffer": 447,
 					"file": "src/USD/hgiVk/pipeline.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21174,11 +21094,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 450,
+					"stack_index": 448,
 					"type": "text"
 				},
 				{
-					"buffer": 450,
+					"buffer": 448,
 					"file": "src/USD/hgiVk/renderPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21204,11 +21124,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 426,
+					"stack_index": 424,
 					"type": "text"
 				},
 				{
-					"buffer": 451,
+					"buffer": 449,
 					"file": "src/USD/hgiVk/pipeline.h",
 					"semi_transient": false,
 					"settings":
@@ -21234,11 +21154,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 425,
+					"stack_index": 423,
 					"type": "text"
 				},
 				{
-					"buffer": 452,
+					"buffer": 450,
 					"file": "src/USD/hgiVk/renderPassPipelineCache.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21264,11 +21184,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 449,
+					"stack_index": 447,
 					"type": "text"
 				},
 				{
-					"buffer": 453,
+					"buffer": 451,
 					"file": "src/USD/hgiVk/resourceBindings.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21294,11 +21214,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 448,
+					"stack_index": 446,
 					"type": "text"
 				},
 				{
-					"buffer": 454,
+					"buffer": 452,
 					"file": "src/USD/hgiVk/shaderCompiler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21324,11 +21244,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 447,
+					"stack_index": 445,
 					"type": "text"
 				},
 				{
-					"buffer": 455,
+					"buffer": 453,
 					"file": "src/USD/hgiVk/shaderFunction.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21354,11 +21274,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 446,
+					"stack_index": 444,
 					"type": "text"
 				},
 				{
-					"buffer": 456,
+					"buffer": 454,
 					"file": "src/USD/hgiVk/shaderProgram.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21382,11 +21302,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 445,
+					"stack_index": 443,
 					"type": "text"
 				},
 				{
-					"buffer": 457,
+					"buffer": 455,
 					"file": "src/USD/hgiVk/surface.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21412,11 +21332,11 @@
 						"translation.y": 306.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 156,
+					"stack_index": 154,
 					"type": "text"
 				},
 				{
-					"buffer": 458,
+					"buffer": 456,
 					"file": "src/USD/hgiVk/swapchain.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21442,11 +21362,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 444,
+					"stack_index": 442,
 					"type": "text"
 				},
 				{
-					"buffer": 459,
+					"buffer": 457,
 					"file": "src/USD/hgiVk/texture.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21472,11 +21392,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 443,
+					"stack_index": 441,
 					"type": "text"
 				},
 				{
-					"buffer": 460,
+					"buffer": 458,
 					"file": "src/USD/hgiVk/buffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21502,11 +21422,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 442,
+					"stack_index": 440,
 					"type": "text"
 				},
 				{
-					"buffer": 461,
+					"buffer": 459,
 					"file": "src/USD/hgiVk/blitEncoder.cpp",
 					"semi_transient": false,
 					"settings":
@@ -21532,11 +21452,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 441,
+					"stack_index": 439,
 					"type": "text"
 				},
 				{
-					"buffer": 462,
+					"buffer": 460,
 					"file": "src/USD/hgiVk/blitEncoder.h",
 					"semi_transient": false,
 					"settings":
@@ -21562,11 +21482,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 422,
+					"stack_index": 420,
 					"type": "text"
 				},
 				{
-					"buffer": 463,
+					"buffer": 461,
 					"file": "src/USD/hgiVk/buffer.h",
 					"semi_transient": false,
 					"settings":
@@ -21592,11 +21512,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 440,
+					"stack_index": 438,
 					"type": "text"
 				},
 				{
-					"buffer": 464,
+					"buffer": 462,
 					"file": "src/USD/hgiVk/commandBuffer.h",
 					"semi_transient": false,
 					"settings":
@@ -21622,11 +21542,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 424,
+					"stack_index": 422,
 					"type": "text"
 				},
 				{
-					"buffer": 465,
+					"buffer": 463,
 					"file": "src/USD/hgiVk/commandBufferManager.h",
 					"semi_transient": false,
 					"settings":
@@ -21652,11 +21572,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 439,
+					"stack_index": 437,
 					"type": "text"
 				},
 				{
-					"buffer": 466,
+					"buffer": 464,
 					"file": "src/USD/hgiVk/commandPool.h",
 					"semi_transient": false,
 					"settings":
@@ -21682,11 +21602,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 438,
+					"stack_index": 436,
 					"type": "text"
 				},
 				{
-					"buffer": 467,
+					"buffer": 465,
 					"file": "src/USD/hgiVk/computeEncoder.h",
 					"semi_transient": false,
 					"settings":
@@ -21712,11 +21632,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 437,
+					"stack_index": 435,
 					"type": "text"
 				},
 				{
-					"buffer": 468,
+					"buffer": 466,
 					"file": "src/USD/hgiVk/conversions.h",
 					"semi_transient": false,
 					"settings":
@@ -21742,11 +21662,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 436,
+					"stack_index": 434,
 					"type": "text"
 				},
 				{
-					"buffer": 469,
+					"buffer": 467,
 					"file": "src/USD/hgiVk/device.h",
 					"semi_transient": false,
 					"settings":
@@ -21772,11 +21692,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 435,
+					"stack_index": 433,
 					"type": "text"
 				},
 				{
-					"buffer": 470,
+					"buffer": 468,
 					"file": "src/USD/hgiVk/diagnostic.h",
 					"semi_transient": false,
 					"settings":
@@ -21800,11 +21720,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 434,
+					"stack_index": 432,
 					"type": "text"
 				},
 				{
-					"buffer": 471,
+					"buffer": 469,
 					"file": "src/USD/hgiVk/frame.h",
 					"semi_transient": false,
 					"settings":
@@ -21830,11 +21750,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 432,
+					"stack_index": 430,
 					"type": "text"
 				},
 				{
-					"buffer": 472,
+					"buffer": 470,
 					"file": "src/USD/hgiVk/garbageCollector.h",
 					"semi_transient": false,
 					"settings":
@@ -21860,11 +21780,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 431,
+					"stack_index": 429,
 					"type": "text"
 				},
 				{
-					"buffer": 473,
+					"buffer": 471,
 					"file": "src/USD/hgiVk/graphicsEncoder.h",
 					"semi_transient": false,
 					"settings":
@@ -21890,11 +21810,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 430,
+					"stack_index": 428,
 					"type": "text"
 				},
 				{
-					"buffer": 474,
+					"buffer": 472,
 					"file": "src/USD/hgiVk/hgi.h",
 					"semi_transient": false,
 					"settings":
@@ -21920,11 +21840,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 429,
+					"stack_index": 427,
 					"type": "text"
 				},
 				{
-					"buffer": 475,
+					"buffer": 473,
 					"file": "src/USD/hgiVk/instance.h",
 					"semi_transient": false,
 					"settings":
@@ -21950,11 +21870,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 428,
+					"stack_index": 426,
 					"type": "text"
 				},
 				{
-					"buffer": 476,
+					"buffer": 474,
 					"file": "src/USD/hgiVk/parallelGraphicsEncoder.h",
 					"semi_transient": false,
 					"settings":
@@ -21980,11 +21900,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 427,
+					"stack_index": 425,
 					"type": "text"
 				},
 				{
-					"buffer": 477,
+					"buffer": 475,
 					"file": "src/Mogwai/MogwaiSettings.h",
 					"semi_transient": false,
 					"settings":
@@ -22010,11 +21930,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 312,
+					"stack_index": 310,
 					"type": "text"
 				},
 				{
-					"buffer": 478,
+					"buffer": 476,
 					"file": "src/Mogwai/MogwaiSettings.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22040,11 +21960,11 @@
 						"translation.y": 1751.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 168,
+					"stack_index": 166,
 					"type": "text"
 				},
 				{
-					"buffer": 479,
+					"buffer": 477,
 					"file": "src/Mogwai/MogwaiScripting.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22070,11 +21990,11 @@
 						"translation.y": 1496.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 313,
+					"stack_index": 311,
 					"type": "text"
 				},
 				{
-					"buffer": 480,
+					"buffer": 478,
 					"file": "src/Falcor/Core/API/Shader.h",
 					"semi_transient": false,
 					"settings":
@@ -22100,11 +22020,11 @@
 						"translation.y": 2910.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 411,
+					"stack_index": 409,
 					"type": "text"
 				},
 				{
-					"buffer": 481,
+					"buffer": 479,
 					"file": "src/Falcor/Core/API/Sampler.h",
 					"semi_transient": false,
 					"settings":
@@ -22130,11 +22050,11 @@
 						"translation.y": 1680.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 374,
+					"stack_index": 372,
 					"type": "text"
 				},
 				{
-					"buffer": 482,
+					"buffer": 480,
 					"file": "src/Falcor/Core/API/Sampler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22160,11 +22080,11 @@
 						"translation.y": 139.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 412,
+					"stack_index": 410,
 					"type": "text"
 				},
 				{
-					"buffer": 483,
+					"buffer": 481,
 					"file": "src/Falcor/Core/API/Vulkan/VKShader.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22190,11 +22110,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 404,
+					"stack_index": 402,
 					"type": "text"
 				},
 				{
-					"buffer": 484,
+					"buffer": 482,
 					"file": "src/Falcor/stdafx.h",
 					"semi_transient": false,
 					"settings":
@@ -22218,11 +22138,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 569,
+					"stack_index": 567,
 					"type": "text"
 				},
 				{
-					"buffer": 485,
+					"buffer": 483,
 					"file": "src/Falcor/Core/API/CopyContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22248,11 +22168,11 @@
 						"translation.y": 595.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 262,
+					"stack_index": 260,
 					"type": "text"
 				},
 				{
-					"buffer": 486,
+					"buffer": 484,
 					"file": "src/Falcor/Core/API/VAO.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22278,11 +22198,11 @@
 						"translation.y": 530.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 382,
+					"stack_index": 380,
 					"type": "text"
 				},
 				{
-					"buffer": 487,
+					"buffer": 485,
 					"file": "src/Falcor/Core/API/Vulkan/VKBuffer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22308,11 +22228,11 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 297,
+					"stack_index": 295,
 					"type": "text"
 				},
 				{
-					"buffer": 488,
+					"buffer": 486,
 					"file": "src/Falcor/Core/API/ComputeContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22338,11 +22258,11 @@
 						"translation.y": 411.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 260,
+					"stack_index": 258,
 					"type": "text"
 				},
 				{
-					"buffer": 489,
+					"buffer": 487,
 					"file": "src/Falcor/Core/API/D3D12/D3D12ComputeContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22368,11 +22288,11 @@
 						"translation.y": 852.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 513,
+					"stack_index": 511,
 					"type": "text"
 				},
 				{
-					"buffer": 490,
+					"buffer": 488,
 					"file": "src/Falcor/Core/API/D3D12/D3D12LowLevelContextData.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22398,11 +22318,11 @@
 						"translation.y": 775.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 580,
+					"stack_index": 578,
 					"type": "text"
 				},
 				{
-					"buffer": 491,
+					"buffer": 489,
 					"file": "src/Falcor/Core/API/Vulkan/VKLowLevelContextData.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22428,11 +22348,11 @@
 						"translation.y": 663.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 406,
+					"stack_index": 404,
 					"type": "text"
 				},
 				{
-					"buffer": 492,
+					"buffer": 490,
 					"file": "src/Falcor/Core/API/FencedPool.h",
 					"semi_transient": false,
 					"settings":
@@ -22458,11 +22378,11 @@
 						"translation.y": 995.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 413,
+					"stack_index": 411,
 					"type": "text"
 				},
 				{
-					"buffer": 493,
+					"buffer": 491,
 					"file": "src/Falcor/Core/API/Vulkan/VKComputeContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22488,11 +22408,11 @@
 						"translation.y": 309.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 264,
+					"stack_index": 262,
 					"type": "text"
 				},
 				{
-					"buffer": 494,
+					"buffer": 492,
 					"file": "src/Tools/FalcorTest/Tests/Utils/MathHelpersTests.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22518,11 +22438,11 @@
 						"translation.y": 2856.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 512,
+					"stack_index": 510,
 					"type": "text"
 				},
 				{
-					"buffer": 495,
+					"buffer": 493,
 					"file": "src/Falcor/Core/API/Vulkan/VKRenderContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22548,11 +22468,11 @@
 						"translation.y": 4464.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 155,
+					"stack_index": 153,
 					"type": "text"
 				},
 				{
-					"buffer": 496,
+					"buffer": 494,
 					"file": "src/Falcor/RenderGraph/BasePasses/RasterPass.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22578,11 +22498,11 @@
 						"translation.y": 204.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 236,
+					"stack_index": 234,
 					"type": "text"
 				},
 				{
-					"buffer": 497,
+					"buffer": 495,
 					"file": "src/Falcor/RenderGraph/BasePasses/RasterPass.h",
 					"semi_transient": false,
 					"settings":
@@ -22608,11 +22528,11 @@
 						"translation.y": 458.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 237,
+					"stack_index": 235,
 					"type": "text"
 				},
 				{
-					"buffer": 498,
+					"buffer": 496,
 					"file": "src/Falcor/Core/API/Vulkan/VKResourceViews.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22638,11 +22558,11 @@
 						"translation.y": 4549.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 289,
+					"stack_index": 287,
 					"type": "text"
 				},
 				{
-					"buffer": 499,
+					"buffer": 497,
 					"file": "src/RenderPasses/CMakeLists.txt",
 					"semi_transient": false,
 					"settings":
@@ -22668,11 +22588,11 @@
 						"translation.y": 1173.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 132,
+					"stack_index": 130,
 					"type": "text"
 				},
 				{
-					"buffer": 500,
+					"buffer": 498,
 					"file": "/home/max/Desktop/gbuffer.py",
 					"semi_transient": false,
 					"settings":
@@ -22696,11 +22616,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 469,
+					"stack_index": 467,
 					"type": "text"
 				},
 				{
-					"buffer": 501,
+					"buffer": 499,
 					"file": "src/RenderPasses/GBuffer/GBuffer/GBufferParams.slang",
 					"semi_transient": false,
 					"settings":
@@ -22724,11 +22644,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 465,
+					"stack_index": 463,
 					"type": "text"
 				},
 				{
-					"buffer": 502,
+					"buffer": 500,
 					"file": "src/Falcor/Utils/Threading.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22754,11 +22674,11 @@
 						"translation.y": 388.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 376,
+					"stack_index": 374,
 					"type": "text"
 				},
 				{
-					"buffer": 503,
+					"buffer": 501,
 					"file": "src/Falcor/Utils/TermColor.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22784,11 +22704,11 @@
 						"translation.y": 663.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 489,
+					"stack_index": 487,
 					"type": "text"
 				},
 				{
-					"buffer": 504,
+					"buffer": 502,
 					"file": "src/Falcor/Utils/TermColor.h",
 					"semi_transient": false,
 					"settings":
@@ -22814,11 +22734,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 490,
+					"stack_index": 488,
 					"type": "text"
 				},
 				{
-					"buffer": 505,
+					"buffer": 503,
 					"file": "src/Falcor/Utils/Threading.h",
 					"semi_transient": false,
 					"settings":
@@ -22844,11 +22764,11 @@
 						"translation.y": 507.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 377,
+					"stack_index": 375,
 					"type": "text"
 				},
 				{
-					"buffer": 506,
+					"buffer": 504,
 					"file": "build/bin/Shaders/RenderPasses/BSDFViewer/BSDFViewer.cs.slang",
 					"semi_transient": false,
 					"settings":
@@ -22874,11 +22794,11 @@
 						"translation.y": 5865.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 500,
+					"stack_index": 498,
 					"type": "text"
 				},
 				{
-					"buffer": 507,
+					"buffer": 505,
 					"file": "src/RenderPasses/Utils/Utils.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22902,11 +22822,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 468,
+					"stack_index": 466,
 					"type": "text"
 				},
 				{
-					"buffer": 508,
+					"buffer": 506,
 					"file": "third_party/slang/tools/render-test/cuda/cuda-compute-util.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22932,11 +22852,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 576,
+					"stack_index": 574,
 					"type": "text"
 				},
 				{
-					"buffer": 509,
+					"buffer": 507,
 					"file": "src/Falcor/Core/API/Vulkan/VkSmartHandle.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22962,11 +22882,11 @@
 						"translation.y": 1278.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 290,
+					"stack_index": 288,
 					"type": "text"
 				},
 				{
-					"buffer": 510,
+					"buffer": 508,
 					"file": "src/Falcor/Core/API/Vulkan/VKRootSignature.cpp",
 					"semi_transient": false,
 					"settings":
@@ -22992,11 +22912,11 @@
 						"translation.y": 1006.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 309,
+					"stack_index": 307,
 					"type": "text"
 				},
 				{
-					"buffer": 511,
+					"buffer": 509,
 					"file": "src/Falcor/Core/Program/ProgramVersion.h",
 					"semi_transient": false,
 					"settings":
@@ -23022,11 +22942,11 @@
 						"translation.y": 3453.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 253,
+					"stack_index": 251,
 					"type": "text"
 				},
 				{
-					"buffer": 512,
+					"buffer": 510,
 					"file": "third_party/slang/examples/model-viewer/main.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23052,11 +22972,11 @@
 						"translation.y": 3835.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 587,
+					"stack_index": 585,
 					"type": "text"
 				},
 				{
-					"buffer": 513,
+					"buffer": 511,
 					"file": "src/Falcor/Core/API/ResourceViews.h",
 					"semi_transient": false,
 					"settings":
@@ -23082,11 +23002,11 @@
 						"translation.y": 1244.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 268,
+					"stack_index": 266,
 					"type": "text"
 				},
 				{
-					"buffer": 514,
+					"buffer": 512,
 					"file": "src/Falcor/Core/API/RootSignature.h",
 					"semi_transient": false,
 					"settings":
@@ -23112,11 +23032,11 @@
 						"translation.y": 1386.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 303,
+					"stack_index": 301,
 					"type": "text"
 				},
 				{
-					"buffer": 515,
+					"buffer": 513,
 					"file": "src/Falcor/Core/API/RootSignature.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23142,11 +23062,11 @@
 						"translation.y": 1261.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 304,
+					"stack_index": 302,
 					"type": "text"
 				},
 				{
-					"buffer": 516,
+					"buffer": 514,
 					"file": "src/Falcor/Core/API/Vulkan/VKSampler.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23172,11 +23092,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 405,
+					"stack_index": 403,
 					"type": "text"
 				},
 				{
-					"buffer": 517,
+					"buffer": 515,
 					"file": "third_party/slang/tools/gfx/render.h",
 					"semi_transient": false,
 					"settings":
@@ -23202,11 +23122,11 @@
 						"translation.y": 9715.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 579,
+					"stack_index": 577,
 					"type": "text"
 				},
 				{
-					"buffer": 518,
+					"buffer": 516,
 					"file": "src/Falcor/Core/API/Vulkan/FalcorVK.h",
 					"semi_transient": false,
 					"settings":
@@ -23232,11 +23152,11 @@
 						"translation.y": 898.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 281,
+					"stack_index": 279,
 					"type": "text"
 				},
 				{
-					"buffer": 519,
+					"buffer": 517,
 					"file": "src/Falcor/Core/API/Device.h",
 					"semi_transient": false,
 					"settings":
@@ -23262,11 +23182,11 @@
 						"translation.y": 577.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 35,
+					"stack_index": 33,
 					"type": "text"
 				},
 				{
-					"buffer": 520,
+					"buffer": 518,
 					"file": "src/Falcor/Core/API/GpuMemoryHeap.h",
 					"semi_transient": false,
 					"settings":
@@ -23292,11 +23212,11 @@
 						"translation.y": 938.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 410,
+					"stack_index": 408,
 					"type": "text"
 				},
 				{
-					"buffer": 521,
+					"buffer": 519,
 					"file": "src/Falcor/Core/API/GpuMemoryHeap.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23322,11 +23242,11 @@
 						"translation.y": 1428.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 409,
+					"stack_index": 407,
 					"type": "text"
 				},
 				{
-					"buffer": 522,
+					"buffer": 520,
 					"file": "src/Falcor/Core/API/Vulkan/VKComputeStateObject.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23352,11 +23272,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 287,
+					"stack_index": 285,
 					"type": "text"
 				},
 				{
-					"buffer": 523,
+					"buffer": 521,
 					"file": "src/Falcor/Core/API/Vulkan/VKCopyContext.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23382,11 +23302,11 @@
 						"translation.y": 4661.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 263,
+					"stack_index": 261,
 					"type": "text"
 				},
 				{
-					"buffer": 524,
+					"buffer": 522,
 					"file": "src/Falcor/Core/API/Vulkan/VKDescriptorPool.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23412,11 +23332,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 280,
+					"stack_index": 278,
 					"type": "text"
 				},
 				{
-					"buffer": 525,
+					"buffer": 523,
 					"file": "src/Falcor/Core/API/Vulkan/VKDescriptorSet.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23442,11 +23362,11 @@
 						"translation.y": 632.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 302,
+					"stack_index": 300,
 					"type": "text"
 				},
 				{
-					"buffer": 526,
+					"buffer": 524,
 					"file": "src/Falcor/Core/API/Vulkan/VKDevice.h",
 					"semi_transient": false,
 					"settings":
@@ -23472,11 +23392,11 @@
 						"translation.y": 357.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 271,
+					"stack_index": 269,
 					"type": "text"
 				},
 				{
-					"buffer": 527,
+					"buffer": 525,
 					"file": "src/Falcor/Core/API/Vulkan/VKDeviceManager.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23502,11 +23422,11 @@
 						"translation.y": 442.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 267,
+					"stack_index": 265,
 					"type": "text"
 				},
 				{
-					"buffer": 528,
+					"buffer": 526,
 					"file": "src/Falcor/Core/API/DeviceManager.h",
 					"semi_transient": false,
 					"settings":
@@ -23532,11 +23452,11 @@
 						"translation.y": 532.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 102,
+					"stack_index": 100,
 					"type": "text"
 				},
 				{
-					"buffer": 529,
+					"buffer": 527,
 					"file": "src/Falcor/Core/API/Vulkan/VKDevice.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23562,11 +23482,11 @@
 						"translation.y": 2803.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 109,
+					"stack_index": 107,
 					"type": "text"
 				},
 				{
-					"buffer": 530,
+					"buffer": 528,
 					"file": "src/Falcor/Core/API/Vulkan/VKGpuFence.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23592,11 +23512,11 @@
 						"translation.y": 124.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 279,
+					"stack_index": 277,
 					"type": "text"
 				},
 				{
-					"buffer": 531,
+					"buffer": 529,
 					"file": "src/Falcor/Core/API/Vulkan/VKGpuTimer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23622,11 +23542,11 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 414,
+					"stack_index": 412,
 					"type": "text"
 				},
 				{
-					"buffer": 532,
+					"buffer": 530,
 					"file": "src/Falcor/Core/API/D3D12/D3D12GpuFence.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23652,11 +23572,11 @@
 						"translation.y": 714.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 589,
+					"stack_index": 587,
 					"type": "text"
 				},
 				{
-					"buffer": 533,
+					"buffer": 531,
 					"file": "src/Falcor/Core/API/GpuFence.h",
 					"semi_transient": false,
 					"settings":
@@ -23682,11 +23602,11 @@
 						"translation.y": 598.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 415,
+					"stack_index": 413,
 					"type": "text"
 				},
 				{
-					"buffer": 534,
+					"buffer": 532,
 					"file": "src/Falcor/Core/API/Vulkan/VKSmartHandle.h",
 					"semi_transient": false,
 					"settings":
@@ -23712,11 +23632,11 @@
 						"translation.y": 3335.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 291,
+					"stack_index": 289,
 					"type": "text"
 				},
 				{
-					"buffer": 535,
+					"buffer": 533,
 					"file": "src/Falcor/Core/API/Vulkan/VKState.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23742,11 +23662,11 @@
 						"translation.y": 9370.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 395,
+					"stack_index": 393,
 					"type": "text"
 				},
 				{
-					"buffer": 536,
+					"buffer": 534,
 					"file": "src/Falcor/Core/API/Vulkan/VKTexture.cpp",
 					"semi_transient": false,
 					"settings":
@@ -23772,11 +23692,11 @@
 						"translation.y": 1799.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 307,
+					"stack_index": 305,
 					"type": "text"
 				},
 				{
-					"buffer": 537,
+					"buffer": 535,
 					"file": "falcor.sublime-project",
 					"semi_transient": false,
 					"settings":
@@ -23802,11 +23722,11 @@
 						"translation.y": 683.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 150,
+					"stack_index": 148,
 					"type": "text"
 				},
 				{
-					"buffer": 538,
+					"buffer": 536,
 					"file": "third_party/slang/external/vulkan/include/vulkan/vulkan.hpp",
 					"semi_transient": false,
 					"settings":
@@ -23832,11 +23752,11 @@
 						"translation.y": 193521.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 551,
+					"stack_index": 549,
 					"type": "text"
 				},
 				{
-					"buffer": 539,
+					"buffer": 537,
 					"file": "/usr/include/vulkan/vulkan.hpp",
 					"semi_transient": false,
 					"settings":
@@ -23862,11 +23782,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 578,
+					"stack_index": 576,
 					"type": "text"
 				},
 				{
-					"buffer": 540,
+					"buffer": 538,
 					"file": "third_party/slang/external/vulkan/include/vulkan/vulkan_core.h",
 					"semi_transient": false,
 					"settings":
@@ -23892,11 +23812,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 566,
+					"stack_index": 564,
 					"type": "text"
 				},
 				{
-					"buffer": 541,
+					"buffer": 539,
 					"file": "src/Falcor/Utils/Math/FalcorMath.h",
 					"semi_transient": false,
 					"settings":
@@ -23922,11 +23842,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 590,
+					"stack_index": 588,
 					"type": "text"
 				},
 				{
-					"buffer": 542,
+					"buffer": 540,
 					"file": "src/Falcor/Core/Framework.h",
 					"semi_transient": false,
 					"settings":
@@ -23952,11 +23872,11 @@
 						"translation.y": 778.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 116,
+					"stack_index": 114,
 					"type": "text"
 				},
 				{
-					"buffer": 543,
+					"buffer": 541,
 					"file": "src/Falcor/Core/type.h",
 					"semi_transient": false,
 					"settings":
@@ -23982,11 +23902,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 495,
+					"stack_index": 493,
 					"type": "text"
 				},
 				{
-					"buffer": 544,
+					"buffer": 542,
 					"file": "src/Falcor/Core/Framework.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24010,11 +23930,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 167,
+					"stack_index": 165,
 					"type": "text"
 				},
 				{
-					"buffer": 545,
+					"buffer": 543,
 					"file": "src/Falcor/Core/API/CopyContext.h",
 					"semi_transient": false,
 					"settings":
@@ -24040,11 +23960,11 @@
 						"translation.y": 820.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 261,
+					"stack_index": 259,
 					"type": "text"
 				},
 				{
-					"buffer": 546,
+					"buffer": 544,
 					"file": "src/Falcor/Core/API/VertexLayout.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24068,11 +23988,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 381,
+					"stack_index": 379,
 					"type": "text"
 				},
 				{
-					"buffer": 547,
+					"buffer": 545,
 					"file": "src/Falcor/Core/FalcorConfig.h",
 					"semi_transient": false,
 					"settings":
@@ -24096,11 +24016,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 300,
+					"stack_index": 298,
 					"type": "text"
 				},
 				{
-					"buffer": 548,
+					"buffer": 546,
 					"file": "src/Falcor/RenderGraph/RenderPassStandardFlags.h",
 					"semi_transient": false,
 					"settings":
@@ -24126,11 +24046,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 573,
+					"stack_index": 571,
 					"type": "text"
 				},
 				{
-					"buffer": 549,
+					"buffer": 547,
 					"file": "src/Falcor/Falcor.h",
 					"semi_transient": false,
 					"settings":
@@ -24154,11 +24074,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 462,
+					"stack_index": 460,
 					"type": "text"
 				},
 				{
-					"buffer": 550,
+					"buffer": 548,
 					"file": "src/Falcor/Utils/Debug/PixelDebug.h",
 					"semi_transient": false,
 					"settings":
@@ -24184,11 +24104,11 @@
 						"translation.y": 1326.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 356,
+					"stack_index": 354,
 					"type": "text"
 				},
 				{
-					"buffer": 551,
+					"buffer": 549,
 					"file": "src/Falcor/Utils/Image/Bitmap.h",
 					"semi_transient": false,
 					"settings":
@@ -24214,11 +24134,11 @@
 						"translation.y": 1326.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 355,
+					"stack_index": 353,
 					"type": "text"
 				},
 				{
-					"buffer": 552,
+					"buffer": 550,
 					"file": "src/Falcor/Utils/Image/Bitmap.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24244,11 +24164,11 @@
 						"translation.y": 2612.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 354,
+					"stack_index": 352,
 					"type": "text"
 				},
 				{
-					"buffer": 553,
+					"buffer": 551,
 					"file": "src/Falcor/Utils/Scripting/ScriptBindings.h",
 					"semi_transient": false,
 					"settings":
@@ -24274,11 +24194,11 @@
 						"translation.y": 155.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 101,
+					"stack_index": 99,
 					"type": "text"
 				},
 				{
-					"buffer": 554,
+					"buffer": 552,
 					"file": "/home/max/Desktop/compos.py",
 					"semi_transient": false,
 					"settings":
@@ -24304,11 +24224,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 288,
+					"stack_index": 286,
 					"type": "text"
 				},
 				{
-					"buffer": 555,
+					"buffer": 553,
 					"file": "src/Falcor/Utils/Scripting/Console.h",
 					"semi_transient": false,
 					"settings":
@@ -24332,11 +24252,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 100,
+					"stack_index": 98,
 					"type": "text"
 				},
 				{
-					"buffer": 556,
+					"buffer": 554,
 					"file": "src/Falcor/Utils/Scripting/Scripting.h",
 					"semi_transient": false,
 					"settings":
@@ -24362,11 +24282,11 @@
 						"translation.y": 1447.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 98,
+					"stack_index": 96,
 					"type": "text"
 				},
 				{
-					"buffer": 557,
+					"buffer": 555,
 					"file": "src/Falcor/Core/API/DescriptorPool.h",
 					"semi_transient": false,
 					"settings":
@@ -24392,11 +24312,11 @@
 						"translation.y": 1275.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 306,
+					"stack_index": 304,
 					"type": "text"
 				},
 				{
-					"buffer": 558,
+					"buffer": 556,
 					"file": "src/Falcor/Core/API/DescriptorPool.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24422,11 +24342,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 305,
+					"stack_index": 303,
 					"type": "text"
 				},
 				{
-					"buffer": 559,
+					"buffer": 557,
 					"file": "src/Falcor/Core/State/GraphicsState.h",
 					"semi_transient": false,
 					"settings":
@@ -24452,11 +24372,11 @@
 						"translation.y": 3188.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 389,
+					"stack_index": 387,
 					"type": "text"
 				},
 				{
-					"buffer": 560,
+					"buffer": 558,
 					"file": "src/Falcor/Core/State/GraphicsState.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24482,11 +24402,11 @@
 						"translation.y": 451.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 386,
+					"stack_index": 384,
 					"type": "text"
 				},
 				{
-					"buffer": 561,
+					"buffer": 559,
 					"file": "src/Falcor/Core/State/ComputeState.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24512,11 +24432,11 @@
 						"translation.y": 153.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 397,
+					"stack_index": 395,
 					"type": "text"
 				},
 				{
-					"buffer": 562,
+					"buffer": 560,
 					"file": "src/Falcor/Core/API/ComputeStateObject.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24542,11 +24462,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 390,
+					"stack_index": 388,
 					"type": "text"
 				},
 				{
-					"buffer": 563,
+					"buffer": 561,
 					"file": "src/Falcor/Core/API/GpuTimer.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24572,11 +24492,11 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 419,
+					"stack_index": 417,
 					"type": "text"
 				},
 				{
-					"buffer": 564,
+					"buffer": 562,
 					"file": "src/Falcor/Core/State/ComputeState.h",
 					"semi_transient": false,
 					"settings":
@@ -24602,11 +24522,11 @@
 						"translation.y": 349.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 398,
+					"stack_index": 396,
 					"type": "text"
 				},
 				{
-					"buffer": 565,
+					"buffer": 563,
 					"file": "src/Falcor/Core/State/StateGraph.h",
 					"semi_transient": false,
 					"settings":
@@ -24632,11 +24552,11 @@
 						"translation.y": 102.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 392,
+					"stack_index": 390,
 					"type": "text"
 				},
 				{
-					"buffer": 566,
+					"buffer": 564,
 					"file": "src/Falcor/Raytracing/RtProgram/RtProgram.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24662,11 +24582,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 593,
+					"stack_index": 591,
 					"type": "text"
 				},
 				{
-					"buffer": 567,
+					"buffer": 565,
 					"file": "src/Falcor/Raytracing/RtProgram/RtProgram.h",
 					"semi_transient": false,
 					"settings":
@@ -24692,11 +24612,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 592,
+					"stack_index": 590,
 					"type": "text"
 				},
 				{
-					"buffer": 568,
+					"buffer": 566,
 					"file": "src/Mogwai/AppData.h",
 					"semi_transient": false,
 					"settings":
@@ -24722,11 +24642,11 @@
 						"translation.y": 408.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 350,
+					"stack_index": 348,
 					"type": "text"
 				},
 				{
-					"buffer": 569,
+					"buffer": 567,
 					"file": "src/Falcor/Core/Platform/Linux/ProgressBarLinux.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24752,11 +24672,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 583,
+					"stack_index": 581,
 					"type": "text"
 				},
 				{
-					"buffer": 570,
+					"buffer": 568,
 					"file": "src/Mogwai/AppData.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24782,11 +24702,11 @@
 						"translation.y": 1071.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 164,
+					"stack_index": 162,
 					"type": "text"
 				},
 				{
-					"buffer": 571,
+					"buffer": 569,
 					"file": "src/Mogwai/Extensions/Capture/CaptureTrigger.h",
 					"semi_transient": false,
 					"settings":
@@ -24812,11 +24732,11 @@
 						"translation.y": 459.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 169,
+					"stack_index": 167,
 					"type": "text"
 				},
 				{
-					"buffer": 572,
+					"buffer": 570,
 					"file": "src/Falcor/Core/Sample.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24842,11 +24762,11 @@
 						"translation.y": 9735.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 108,
+					"stack_index": 106,
 					"type": "text"
 				},
 				{
-					"buffer": 573,
+					"buffer": 571,
 					"file": "src/Falcor/Core/API/VertexLayout.h",
 					"semi_transient": false,
 					"settings":
@@ -24872,11 +24792,11 @@
 						"translation.y": 1977.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 283,
+					"stack_index": 281,
 					"type": "text"
 				},
 				{
-					"buffer": 574,
+					"buffer": 572,
 					"file": "src/Falcor/Core/API/DeviceManager.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24902,11 +24822,11 @@
 						"translation.y": 1688.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 103,
+					"stack_index": 101,
 					"type": "text"
 				},
 				{
-					"buffer": 575,
+					"buffer": 573,
 					"file": "src/Falcor/Core/API/Vulkan/VkQueryHeap.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24932,11 +24852,11 @@
 						"translation.y": 190.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 296,
+					"stack_index": 294,
 					"type": "text"
 				},
 				{
-					"buffer": 576,
+					"buffer": 574,
 					"file": "src/Falcor/Core/API/D3D12/D3D12Device.cpp",
 					"semi_transient": false,
 					"settings":
@@ -24962,11 +24882,11 @@
 						"translation.y": 4233.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 421,
+					"stack_index": 419,
 					"type": "text"
 				},
 				{
-					"buffer": 577,
+					"buffer": 575,
 					"file": "src/Falcor/Core/API/DescriptorSet.h",
 					"semi_transient": false,
 					"settings":
@@ -24992,11 +24912,11 @@
 						"translation.y": 1173.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 310,
+					"stack_index": 308,
 					"type": "text"
 				},
 				{
-					"buffer": 578,
+					"buffer": 576,
 					"file": "src/Falcor/Core/API/DescriptorSet.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25022,11 +24942,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 308,
+					"stack_index": 306,
 					"type": "text"
 				},
 				{
-					"buffer": 579,
+					"buffer": 577,
 					"file": "src/Falcor/Core/API/ResourceViews.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25052,11 +24972,11 @@
 						"translation.y": 853.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 294,
+					"stack_index": 292,
 					"type": "text"
 				},
 				{
-					"buffer": 580,
+					"buffer": 578,
 					"file": "Falcor.sln",
 					"semi_transient": false,
 					"settings":
@@ -25081,11 +25001,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 591,
+					"stack_index": 589,
 					"type": "text"
 				},
 				{
-					"buffer": 581,
+					"buffer": 579,
 					"file": "src/Falcor/Scene/Scene.h",
 					"semi_transient": false,
 					"settings":
@@ -25111,11 +25031,11 @@
 						"translation.y": 8670.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 258,
+					"stack_index": 256,
 					"type": "text"
 				},
 				{
-					"buffer": 582,
+					"buffer": 580,
 					"file": "src/Falcor/RenderGraph/RenderGraphUI.h",
 					"semi_transient": false,
 					"settings":
@@ -25141,11 +25061,11 @@
 						"translation.y": 697.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 245,
+					"stack_index": 243,
 					"type": "text"
 				},
 				{
-					"buffer": 583,
+					"buffer": 581,
 					"file": "src/Falcor/RenderGraph/RenderGraph.h",
 					"semi_transient": false,
 					"settings":
@@ -25171,11 +25091,11 @@
 						"translation.y": 1938.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 276,
+					"stack_index": 274,
 					"type": "text"
 				},
 				{
-					"buffer": 584,
+					"buffer": 582,
 					"file": "src/Falcor/RenderGraph/ResourceCache.h",
 					"semi_transient": false,
 					"settings":
@@ -25201,11 +25121,11 @@
 						"translation.y": 1224.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 270,
+					"stack_index": 268,
 					"type": "text"
 				},
 				{
-					"buffer": 585,
+					"buffer": 583,
 					"file": "src/Falcor/RenderGraph/BasePasses/RasterScenePass.h",
 					"semi_transient": false,
 					"settings":
@@ -25231,11 +25151,11 @@
 						"translation.y": 561.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 234,
+					"stack_index": 232,
 					"type": "text"
 				},
 				{
-					"buffer": 586,
+					"buffer": 584,
 					"file": "src/Falcor/Utils/Debug/DebugConsole.h",
 					"semi_transient": false,
 					"settings":
@@ -25261,11 +25181,11 @@
 						"translation.y": 143.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 477,
+					"stack_index": 475,
 					"type": "text"
 				},
 				{
-					"buffer": 587,
+					"buffer": 585,
 					"file": "src/Falcor/Scene/SceneBuilder.h",
 					"semi_transient": false,
 					"settings":
@@ -25291,11 +25211,11 @@
 						"translation.y": 1221.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 257,
+					"stack_index": 255,
 					"type": "text"
 				},
 				{
-					"buffer": 588,
+					"buffer": 586,
 					"file": "src/Falcor/Utils/Debug/debug.h",
 					"semi_transient": false,
 					"settings":
@@ -25322,11 +25242,11 @@
 						"translation.y": 41.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 478,
+					"stack_index": 476,
 					"type": "text"
 				},
 				{
-					"buffer": 589,
+					"buffer": 587,
 					"file": "src/Falcor/Core/BufferTypes/ParameterBlock.h",
 					"semi_transient": false,
 					"settings":
@@ -25352,11 +25272,11 @@
 						"translation.y": 1197.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 252,
+					"stack_index": 250,
 					"type": "text"
 				},
 				{
-					"buffer": 590,
+					"buffer": 588,
 					"file": "src/Falcor/Scene/Scene.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25382,11 +25302,11 @@
 						"translation.y": 2906.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 255,
+					"stack_index": 253,
 					"type": "text"
 				},
 				{
-					"buffer": 591,
+					"buffer": 589,
 					"file": "src/Falcor/Scene/Camera/CameraController.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25412,11 +25332,11 @@
 						"translation.y": 3353.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 339,
+					"stack_index": 337,
 					"type": "text"
 				},
 				{
-					"buffer": 592,
+					"buffer": 590,
 					"file": "src/Falcor/Scene/Camera/Camera.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25442,11 +25362,11 @@
 						"translation.y": 3829.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 338,
+					"stack_index": 336,
 					"type": "text"
 				},
 				{
-					"buffer": 593,
+					"buffer": 591,
 					"file": "src/Falcor/Core/API/D3D12/D3D12Resource.cpp",
 					"semi_transient": false,
 					"settings":
@@ -25472,7 +25392,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 588,
+					"stack_index": 586,
 					"type": "text"
 				}
 			]
