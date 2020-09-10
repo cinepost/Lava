@@ -52,7 +52,7 @@ namespace lsd {
     typedef static_vector<double, 4> Vector4; 
     typedef static_vector<double, 9> Matrix3;
     typedef static_vector<double, 16> Matrix4;
-    typedef x3::variant<std::string, int, double, Int2, Int3, Int4, Vector2, Vector3, Vector4> PropValue;
+    typedef x3::variant<int, double, std::string> PropValue;
 
 namespace ast {
 
@@ -62,6 +62,7 @@ namespace ast {
     enum class Type { FLOAT, BOOL, INT, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING };
     enum class Object { GLOBAL, MATERIAL, GEO, GEOMERTY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER };
 
+    struct comment;
     struct setenv;
     struct cmd_time;
     struct cmd_version;
@@ -73,8 +74,12 @@ namespace ast {
     struct cmd_detail;
     struct cmd_geometry;
     struct cmd_property;
+    struct cmd_raytrace;
+    struct cmd_image;
+    struct cmd_declare;
 
     typedef x3::variant<
+        comment,
         setenv,
         cmd_start,
         cmd_time,
@@ -85,12 +90,17 @@ namespace ast {
         cmd_quit,
         cmd_detail,
         cmd_geometry,
-        cmd_property
+        cmd_property,
+        cmd_raytrace,
+        cmd_image,
+        cmd_declare
     > Command;
 
     // nullary commands
+    struct comment { };
     struct cmd_end { };
     struct cmd_quit { };
+    struct cmd_raytrace { };
 
     // non-nullary commands
     struct setenv {
@@ -127,13 +137,29 @@ namespace ast {
         std::string filename;
     };
 
+    struct cmd_image {
+        std::vector<std::string> values;
+    };
+
     struct cmd_property {
         Object style;
         std::string token;
-        PropValue value;
+        std::vector<PropValue> values;
+    };
+
+    struct cmd_declare {
+        Object style;
+        Type type;
+        std::string token;
+        std::vector<PropValue> values;
     };
 
 }  // namespace ast
+
+static inline std::ostream& operator<<(std::ostream& os, const std::vector<std::string>& v) {
+    std::copy(v.begin(), v.end(), std::ostream_iterator<std::string>(os, " "));
+    return os;
+};
 
 static inline std::ostream& operator<<(std::ostream& os, const Int2& m) {
     os << "Int2[ ";
@@ -155,31 +181,31 @@ static inline std::ostream& operator<<(std::ostream& os, const Int4& m) {
 
 static inline std::ostream& operator<<(std::ostream& os, const Vector2& m) {
     os << "Vector2[ ";
-    std::copy(m.begin(), m.end(), std::ostream_iterator<int>(os, " "));
+    std::copy(m.begin(), m.end(), std::ostream_iterator<double>(os, " "));
     return os << "]";
 };
 
 static inline std::ostream& operator<<(std::ostream& os, const Vector3& m) {
     os << "Vector3[ ";
-    std::copy(m.begin(), m.end(), std::ostream_iterator<int>(os, " "));
+    std::copy(m.begin(), m.end(), std::ostream_iterator<double>(os, " "));
     return os << "]";
 };
 
 static inline std::ostream& operator<<(std::ostream& os, const Vector4& m) {
     os << "Vector4[ ";
-    std::copy(m.begin(), m.end(), std::ostream_iterator<int>(os, " "));
+    std::copy(m.begin(), m.end(), std::ostream_iterator<double>(os, " "));
     return os << "]";
 };
 
 static inline std::ostream& operator<<(std::ostream& os, const Matrix3& m) {
     os << "Matrix3[ ";
-    std::copy(m.begin(), m.end(), std::ostream_iterator<int>(os, " "));
+    std::copy(m.begin(), m.end(), std::ostream_iterator<double>(os, " "));
     return os << "]";
 };
 
 static inline std::ostream& operator<<(std::ostream& os, const Matrix4& m) {
     os << "Matrix4[ ";
-    std::copy(m.begin(), m.end(), std::ostream_iterator<int>(os, " "));
+    std::copy(m.begin(), m.end(), std::ostream_iterator<double>(os, " "));
     return os << "]";
 };
 
@@ -187,26 +213,31 @@ static inline std::ostream& operator<<(std::ostream& os, Version v) {
     return os << "Version: " << v[0] << "." << v[1] << "." << v[2];
 };
 
+static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> v) {
+    std::copy(v.begin(), v.end(), std::ostream_iterator<PropValue>(os, " "));
+    return os;
+};
+
 using Type = ast::Type;
 static inline std::ostream& operator<<(std::ostream& os, Type t) {
-    os << "Type: ";
+    //os << "Type: ";
     switch(t) {
-        case Type::FLOAT: return os << "float";
-        case Type::BOOL: return os << "bool";
         case Type::INT: return os << "int";
+        case Type::BOOL: return os << "bool";
+        case Type::FLOAT: return os << "float";
+        case Type::STRING: return os << "string";
         case Type::VECTOR2: return os << "vector2";
         case Type::VECTOR3: return os << "vector3";
         case Type::VECTOR4: return os << "vector4";
         case Type::MATRIX3: return os << "matrix3";
         case Type::MATRIX4: return os << "matrix4";
-        case Type::STRING: return os << "string";
     }
     return os << "unknown type";
 };
 
 using Object = ast::Object;
 static inline std::ostream& operator<<(std::ostream& os, Object o) {
-    os << "Object: ";
+    //os << "Object: ";
     switch(o) {
         case Object::GLOBAL: return os << "global";
         case Object::GEO: return os << "geo";
@@ -232,22 +263,25 @@ static inline std::ostream& operator<<(std::ostream& os, Object o) {
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::setenv, key, value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_end)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_quit)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_raytrace)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_time, time)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_object)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, value)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, style, type, token, values)
 
 namespace lava { 
 
 namespace lsd { 
 
 /*
-struct LSDVisitor(RendererInface::SharedPtr iface): public boost::static_visitor<> {
-    LSDVisitor((RendererInface::SharedPtr iface) : iface(iface) {}
+struct LSDVisitor(RendererIfaceBase::SharedPtr iface): public boost::static_visitor<> {
+    LSDVisitor((RendererIfaceBase::SharedPtr iface) : iface(iface) {}
 
  private:
     RendererInface::SharedPtr iface;
@@ -262,17 +296,21 @@ struct EchoVisitor: public boost::static_visitor<> {
 
     EchoVisitor(): _os(std::cout){}
 
-    void operator()(ast::setenv const& c) const { _os << "> setenv: " << c.key << " = " << c.value << "\n"; }
-    void operator()(ast::cmd_end const& c) const { _os << "> cmd_end: " << "\n"; }
-    void operator()(ast::cmd_quit const& c) const { _os << "> cmd_quit: " << "\n"; }
-    void operator()(ast::cmd_start const& c) const { _os << "> cmd_start: " << c.type << "\n"; }
-    void operator()(ast::cmd_time const& c) const { _os << "> cmd_time: " << c.time << "\n"; }
-    void operator()(ast::cmd_detail const& c) const { _os << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\n"; }
-    void operator()(ast::cmd_version const& c) const { _os << "> cmd_version: " << c.version << "\n"; }
-    void operator()(ast::cmd_defaults const& c) const { _os << "> cmd_defaults: filename: " << c.filename << "\n"; }
-    void operator()(ast::cmd_transform const& c) const { _os << "> cmd_transform: " << c.m << "\n"; }
-    void operator()(ast::cmd_geometry const& c) const { _os << "> cmd_geometry: geometry_object: " << c.geometry_object << "\n"; }
-    void operator()(ast::cmd_property const& c) const { _os << "> cmd_property: style: " << c.style << " token: " << c.token << " value: "<< c.value << "\n"; }
+    void operator()(ast::comment const& c) const { }
+    void operator()(ast::setenv const& c) const { _os << "\x1b[32m" << "> setenv: " << c.key << " = " << c.value << "\x1b[0m\n"; }
+    void operator()(ast::cmd_image const& c) const { _os << "\x1b[32m" << "> cmd_image: " << c.values << "\x1b[0m\n"; }
+    void operator()(ast::cmd_end const& c) const { _os << "\x1b[32m" << "> cmd_end: " << "\x1b[0m\n"; }
+    void operator()(ast::cmd_quit const& c) const { _os << "\x1b[32m" << "> cmd_quit: " << "\x1b[0m\n"; }
+    void operator()(ast::cmd_start const& c) const { _os << "\x1b[32m" << "> cmd_start: " << c.type << "\x1b[0m\n"; }
+    void operator()(ast::cmd_time const& c) const { _os << "\x1b[32m" << "> cmd_time: " << c.time << "\x1b[0m\n"; }
+    void operator()(ast::cmd_detail const& c) const { _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\x1b[0m\n"; }
+    void operator()(ast::cmd_version const& c) const { _os << "\x1b[32m" << "> cmd_version: " << c.version << "\x1b[0m\n"; }
+    void operator()(ast::cmd_defaults const& c) const { _os << "\x1b[32m" << "> cmd_defaults: filename: " << c.filename << "\x1b[0m\n"; }
+    void operator()(ast::cmd_transform const& c) const { _os << "\x1b[32m" << "> cmd_transform: " << c.m << "\x1b[0m\n"; }
+    void operator()(ast::cmd_geometry const& c) const { _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_object << "\x1b[0m\n"; }
+    void operator()(ast::cmd_property const& c) const { _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " value: "<< c.values << "\x1b[0m\n"; }
+    void operator()(ast::cmd_declare const& c) const { _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " value: "<< c.values << "\x1b[0m\n"; }
+    void operator()(ast::cmd_raytrace const& c) const { _os << "\x1b[32m" << "> cmd_raytrace: " << "\x1b[0m\n"; }
 };
 
 
@@ -312,19 +350,8 @@ namespace parser {
         = x3::rule<struct string_, std::string> {"string"}
         = lexeme[+graph];
 
-    auto const comment
-        = x3::space | x3::lexeme[ '#' >> *(char_ - eol) >> eol];
-
-    //auto const comment = blank | lexeme[ 
-    //    "/*" >> *(char_ - "*/") >> "*/"
-    //    | "//" >> *~char_("\r\n") >> eol
-    //    | '#' >> *(char_ - eol) >> eol
-    //];
-
-    auto const skipper = blank | comment;
-
     x3::rule<class unquoted_string_, std::string> const unquoted_string = "unquoted_string";
-    auto const unquoted_string_def = lexeme[+(~char_("\"\'"))];
+    auto const unquoted_string_def = lexeme[+(~char_(" \"\'"))];
     BOOST_SPIRIT_DEFINE(unquoted_string)
 
     x3::rule<class quoted_string_, std::string> const quoted_string = "quoted_string";
@@ -341,9 +368,13 @@ namespace parser {
     auto const identifier_def = lexeme[(alnum | char_('_')) >> *(alnum | char_('_'))];
     BOOST_SPIRIT_DEFINE(identifier)
 
-    x3::rule<class objname_, std::string> const objname = "objname";
-    auto const objname_def = lexeme[(alnum | char_("/_")) >> *(alnum | char_("/_"))];
-    BOOST_SPIRIT_DEFINE(objname)
+    x3::rule<class prop_name_, std::string> const prop_name = "prop_name";
+    auto const prop_name_def = lexeme[identifier >> *(char_('.') >> identifier)];
+    BOOST_SPIRIT_DEFINE(prop_name)
+
+    x3::rule<class obj_name_, std::string> const obj_name = "obj_name";
+    auto const obj_name_def = lexeme[(alnum | char_("/_")) >> *(alnum | char_("/_"))];
+    BOOST_SPIRIT_DEFINE(obj_name)
 
     x3::rule<class unquoted_filename_, std::string> const unquoted_filename = "unquoted_filename";
     auto const unquoted_filename_def = lexeme[(alnum | char_("$/-_.")) >> *(alnum | char_("$/-_."))];
@@ -395,9 +426,13 @@ namespace parser {
     auto const version_def = lexeme[-lexeme["VEX"] >> int_ >> "." >> int_ >> "." >> int_];
     BOOST_SPIRIT_DEFINE(version)
 
-    x3::rule<class prop_value_, PropValue> const prop_value = "prop_value";
-    auto const prop_value_def = lexeme[int_ | double_ | int2 | int3 | int4 | vector2 | vector3 | vector4];
-    BOOST_SPIRIT_DEFINE(prop_value)
+    x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
+    auto const prop_values_def = *(int_ | double_ | any_string);
+    BOOST_SPIRIT_DEFINE(prop_values)
+
+    x3::rule<class image_values_, std::vector<std::string>> const image_values = "image_values";
+    auto const image_values_def = *(quoted_string);
+    BOOST_SPIRIT_DEFINE(image_values)
 
 
     struct ObjectsTable : x3::symbols<ast::Object> {
@@ -418,6 +453,20 @@ namespace parser {
         }
     } const object;
 
+    struct PropTypesTable : x3::symbols<ast::Type> {
+        PropTypesTable() {
+            add ("float"    , ast::Type::FLOAT)
+                ("bool"     , ast::Type::BOOL)
+                ("int"      , ast::Type::INT)
+                ("vector2"  , ast::Type::VECTOR2)
+                ("vector3"  , ast::Type::VECTOR3)
+                ("vector4"  , ast::Type::VECTOR4)
+                ("matrix3"  , ast::Type::MATRIX3)
+                ("matrix4"  , ast::Type::MATRIX4)
+                ("string"   , ast::Type::STRING);
+        }
+    } const prop_type;
+
     //x3::rule<class object_, ast::Object> const object = "object";
     //auto const object_def = lexeme["global" | "geo" | "geometry"];
     //BOOST_SPIRIT_DEFINE(object)
@@ -430,14 +479,32 @@ namespace parser {
     //    _val(ctx).version[1] = at_c<1>(_attr(ctx));
     //    _val(ctx).version[2] = at_c<2>(_attr(ctx));
     //};
+    auto assign_comment = [](auto& ctx) {};
+    auto assign_prop_value = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
+
+    auto const comment
+        = x3::rule<class comment, ast::comment>{"comment"}
+        = lexeme[ 
+        "/*" >> *(char_ - "*/") >> "*/"
+        | "//" >> *~char_("\r\n") >> eol
+        | '#' >> *(char_)
+    ][assign_comment];
 
     auto const setenv
         = x3::rule<class setenv, ast::setenv>{"setenv"}
         = "setenv" >> identifier >> "=" >> any_string;
 
+    auto const cmd_image
+        = x3::rule<class cmd_image, ast::cmd_image>{"cmd_image"}
+        = "cmd_image" >> image_values;
+
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
-        = "cmd_property" >> object >> any_string >> prop_value;
+        = "cmd_property" >> object >> identifier >> prop_values;
+
+    auto const cmd_declare
+        = x3::rule<class cmd_declare, ast::cmd_declare>{"cmd_declare"}
+        = "cmd_declare" >> object >> prop_type >> prop_name >> prop_values;
 
     auto const cmd_transform
         = x3::rule<class cmd_transform, ast::cmd_transform>{"cmd_transform"}
@@ -461,11 +528,15 @@ namespace parser {
 
     auto const cmd_detail
         = x3::rule<class cmd_detail, ast::cmd_detail>{"cmd_detail"}
-        = "cmd_detail" >> objname >> any_filename;
+        = "cmd_detail" >> obj_name >> any_filename;
 
     auto const cmd_geometry
         = x3::rule<class cmd_geometry, ast::cmd_geometry>{"cmd_geometry"}
-        = "cmd_geometry" >> objname;
+        = "cmd_geometry" >> obj_name;
+
+    auto const cmd_raytrace
+        = x3::rule<class cmd_raytrace, ast::cmd_raytrace>{"cmd_raytrace"}
+        = "cmd_raytrace" >> eps;
 
     auto const cmd_quit
         = x3::rule<class cmd_quit, ast::cmd_quit>{"cmd_quit"}
@@ -475,9 +546,10 @@ namespace parser {
         = x3::rule<class cmd_end, ast::cmd_end>{"cmd_end"}
         = "cmd_end" >> eps;
 
-    auto cmds = setenv | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_transform | cmd_detail | cmd_geometry | cmd_property;
-    //auto const input  = skip(blank) [ *(cmds >> eol) ];
-    auto const input  = skip(skipper) [ cmds % eol ];
+    auto cmd = comment | setenv | cmd_image | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
+        cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare;
+    
+    auto const input  = skip(blank) [*(cmd) % eol];
     
 }}  // namespace lsd::parser
 

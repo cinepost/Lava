@@ -47,8 +47,11 @@ void ReaderLSD::parseLine(const std::string& line, bool echo) {
         std::cout << "Remaining unparsed: " << std::string(beg, end) << "\n";
     }
 
-    std::cout << "Parsed: " << (100.0 * std::distance(line.begin(), beg) / line.size()) << "%\n";
-    std::cout << "ok = " << result << std::endl;
+    auto parsed_percent = 100.0 * std::distance(line.begin(), beg) / line.size();
+    if (!result || (parsed_percent < 100.0)) {
+        std::cout << "Parsed: " << parsed_percent << "%\n";
+        //std::cout << "ok = " << result << std::endl;
+    }
 
     for (auto& cmd : commands) {
         boost::apply_visitor(lsd::EchoVisitor(), cmd);
