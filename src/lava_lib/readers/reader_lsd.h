@@ -29,7 +29,7 @@ class ReaderLSD: public ReaderBase {
     bool        checkMagicNumber(unsigned magic);
 
  private:
- 	virtual void parseLine(const std::string& line, bool echo);
+ 	virtual bool parseLine(const std::string& line, bool echo, std::string& unparsed);
 
  private:
  	//command_grammar<std::string::const_iterator> const         commands;

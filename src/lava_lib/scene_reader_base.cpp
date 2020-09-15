@@ -12,17 +12,19 @@ ReaderBase::~ReaderBase() {
 }
 
 bool ReaderBase::read(SharedPtr iface, std::istream &input, bool echo) {
-	//if (!infile) {
-	//	std::cerr << "Unable to read scene file: " << filename << std::endl;
-//		return;
-//	}
+
+	bool parser_ok = true;
+	std::string line_buff;
 
 	std::string line;
-	while (std::getline(input, line))	{
-    	parseLine(line, echo);
+	while (std::getline(input, line) && parser_ok)	{
+    	line_buff += line;
+    	std::string unparsed;
+    	parser_ok = parseLine(line_buff, echo, unparsed);
+    	line_buff = std::move(unparsed);
     }
 
-    return true;
+    return parser_ok;
 }
 
 }  // namespace lava

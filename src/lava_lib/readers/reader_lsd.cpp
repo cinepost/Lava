@@ -1,10 +1,13 @@
 #include <vector>
 #include <fstream>
+#include <iterator>
 
 #include "reader_lsd.h"
 #include "grammar_lsd.h"
 
 #include "lava_utils_lib/logging.h"
+
+namespace x3 = boost::spirit::x3;
 
 namespace lava {
 
@@ -34,28 +37,30 @@ bool ReaderLSD::checkMagicNumber(unsigned magic) {
   return true;
 }
 
-void ReaderLSD::parseLine(const std::string& line, bool echo) {
-    typedef std::string::const_iterator It;
-
-	It beg = line.begin(), end = line.end();
-    namespace x3 = boost::spirit::x3;
+bool ReaderLSD::parseLine(const std::string& line, bool echo, std::string& unparsed) {
+    unparsed = "";
+    auto iter = line.begin(), end = line.end();
     
-    std::vector<lsd::ast::Command> commands;
-    bool result = x3::parse(beg, end, lsd::parser::input, commands);
+    std::vector<lsd::ast::Command> commands; // ast tree
+    bool result = x3::parse(iter, end, lsd::parser::input, commands);
 
-    if (beg != end) {
-        std::cout << "Remaining unparsed: " << std::string(beg, end) << "\n";
+    if (!result) {
+        LOG_ERR << "Parsing LSD scene failed !!!" << std::endl;
+        return false;
     }
 
-    auto parsed_percent = 100.0 * std::distance(line.begin(), beg) / line.size();
-    if (!result || (parsed_percent < 100.0)) {
-        std::cout << "Parsed: " << parsed_percent << "%\n";
-        //std::cout << "ok = " << result << std::endl;
+    if (iter != end) {
+        unparsed = std::string(iter, end);
+        LOG_DBG << "Parsed: " << (100.0 * std::distance(line.begin(), iter) / line.size()) << "%\n";
+        LOG_DBG << "Remaining unparsed: " << unparsed << "\n";
+        return true;
     }
 
     for (auto& cmd : commands) {
         boost::apply_visitor(lsd::EchoVisitor(), cmd);
     }
+
+    return true;
 }
 
 // factory methods

@@ -32,7 +32,7 @@ class ReaderBase {
     virtual bool                checkMagicNumber(unsigned magic) = 0;
 
  private:
-    virtual void                parseLine(const std::string& line, bool echo) = 0;
+    virtual bool                parseLine(const std::string& line, bool echo, std::string& unparsed) = 0;
 };
 
 }  // namespace lava

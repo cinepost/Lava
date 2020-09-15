@@ -41,6 +41,10 @@ namespace lava {
 namespace lsd {
     using boost::container::static_vector;
 
+    struct NoValue {
+        bool operator==(NoValue const &) const { return true; }
+    };
+
     typedef static_vector<uint, 3> Version;
     
     typedef static_vector<int, 2> Int2;
@@ -52,7 +56,7 @@ namespace lsd {
     typedef static_vector<double, 4> Vector4; 
     typedef static_vector<double, 9> Matrix3;
     typedef static_vector<double, 16> Matrix4;
-    typedef x3::variant<int, double, std::string> PropValue;
+    typedef x3::variant<int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
 
 namespace ast {
 
@@ -77,6 +81,7 @@ namespace ast {
     struct cmd_raytrace;
     struct cmd_image;
     struct cmd_declare;
+    struct cmd_deviceoption;
 
     typedef x3::variant<
         comment,
@@ -93,7 +98,8 @@ namespace ast {
         cmd_property,
         cmd_raytrace,
         cmd_image,
-        cmd_declare
+        cmd_declare,
+        cmd_deviceoption
     > Command;
 
     // nullary commands
@@ -144,6 +150,12 @@ namespace ast {
     struct cmd_property {
         Object style;
         std::string token;
+        std::vector<PropValue> values;
+    };
+
+    struct cmd_deviceoption {
+        Type type;
+        std::string name;
         std::vector<PropValue> values;
     };
 
@@ -273,6 +285,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_object)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, style, type, token, values)
 
 namespace lava { 
@@ -308,8 +321,9 @@ struct EchoVisitor: public boost::static_visitor<> {
     void operator()(ast::cmd_defaults const& c) const { _os << "\x1b[32m" << "> cmd_defaults: filename: " << c.filename << "\x1b[0m\n"; }
     void operator()(ast::cmd_transform const& c) const { _os << "\x1b[32m" << "> cmd_transform: " << c.m << "\x1b[0m\n"; }
     void operator()(ast::cmd_geometry const& c) const { _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_object << "\x1b[0m\n"; }
-    void operator()(ast::cmd_property const& c) const { _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " value: "<< c.values << "\x1b[0m\n"; }
-    void operator()(ast::cmd_declare const& c) const { _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " value: "<< c.values << "\x1b[0m\n"; }
+    void operator()(ast::cmd_property const& c) const { _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " values: "<< c.values.size() << "\x1b[0m\n"; }
+    void operator()(ast::cmd_deviceoption const& c) const { _os << "\x1b[32m" << "> cmd_deviceoption: type: " << c.type << " name: " << c.name << " values: "<< c.values << "\x1b[0m\n"; }
+    void operator()(ast::cmd_declare const& c) const { _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " values: "<< c.values << "\x1b[0m\n"; }
     void operator()(ast::cmd_raytrace const& c) const { _os << "\x1b[32m" << "> cmd_raytrace: " << "\x1b[0m\n"; }
 };
 
@@ -426,8 +440,17 @@ namespace parser {
     auto const version_def = lexeme[-lexeme["VEX"] >> int_ >> "." >> int_ >> "." >> int_];
     BOOST_SPIRIT_DEFINE(version)
 
+
+    using boost::fusion::at_c;
+    auto assign_prop = [](auto& ctx) { 
+        _val(ctx).push_back(PropValue(_attr(ctx)));
+    };
+
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
-    auto const prop_values_def = *(int_ | double_ | any_string);
+    auto const prop_values_def = *(
+          int4 [assign_prop] | int3 [assign_prop] | int2 [assign_prop] | int_ [assign_prop]
+        | vector4 [assign_prop] | vector3 [assign_prop] | vector2 [assign_prop] | double_ [assign_prop]
+        | any_string [assign_prop]);
     BOOST_SPIRIT_DEFINE(prop_values)
 
     x3::rule<class image_values_, std::vector<std::string>> const image_values = "image_values";
@@ -480,7 +503,7 @@ namespace parser {
     //    _val(ctx).version[2] = at_c<2>(_attr(ctx));
     //};
     auto assign_comment = [](auto& ctx) {};
-    auto assign_prop_value = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
+    auto assign_prop_values = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
 
     auto const comment
         = x3::rule<class comment, ast::comment>{"comment"}
@@ -501,6 +524,10 @@ namespace parser {
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
         = "cmd_property" >> object >> identifier >> prop_values;
+    
+    auto const cmd_deviceoption
+        = x3::rule<class cmd_deviceoption, ast::cmd_deviceoption>{"cmd_deviceoption"}
+        = "cmd_deviceoption" >> prop_type >> prop_name >> prop_values;
 
     auto const cmd_declare
         = x3::rule<class cmd_declare, ast::cmd_declare>{"cmd_declare"}
@@ -512,15 +539,15 @@ namespace parser {
 
     auto const cmd_start
         = x3::rule<class cmd_start, ast::cmd_start>{"cmd_start"}
-        = "cmd_start" >> object;// [assign_objtype];
+        = "cmd_start" >> object;
 
     auto const cmd_time
         = x3::rule<class cmd_time, ast::cmd_time>{"cmd_time"}
-        = "cmd_time" >> float_;// [assign_time];
+        = "cmd_time" >> float_;
 
     auto const cmd_version
         = x3::rule<class cmd_version, ast::cmd_version>{"cmd_version"}
-        = "cmd_version" >> version;// [assign_version];
+        = "cmd_version" >> version;
 
     auto const cmd_defaults
         = x3::rule<class cmd_defaults, ast::cmd_defaults>{"cmd_defaults"}
@@ -547,7 +574,7 @@ namespace parser {
         = "cmd_end" >> eps;
 
     auto cmd = comment | setenv | cmd_image | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
-        cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare;
+        cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption;
     
     auto const input  = skip(blank) [*(cmd) % eol];
     

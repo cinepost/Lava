@@ -94,7 +94,7 @@ target_link_libraries(
 #    antlr4_shared
 )
 
-add_dependencies( lava_lib GenerateParsers )
+#add_dependencies( lava_lib GenerateParsers )
 
 #add_custom_command(
 #    TARGET lava_lib
