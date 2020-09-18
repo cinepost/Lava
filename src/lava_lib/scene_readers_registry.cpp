@@ -18,13 +18,13 @@ void SceneReadersRegistry::addReader(ReaderExtensions extensions, ReaderConstruc
 		readersByExtension.insert ( std::pair<std::string, ReaderConstructor>(ext, constructor) );
 		registered_extensions += " " + ext;
 	}
-	LOG_DBG << "SceneReader registered for extensions: " << registered_extensions;
+	LLOG_DBG << "SceneReader registered for extensions: " << registered_extensions;
 }
 
 ReaderBase::SharedPtr SceneReadersRegistry::getReaderByExt(const std::string& ext) {
 	if ( readersByExtension.find(ext) == readersByExtension.end() ) {
 		// no reader registered for this extention
-		LOG_ERR << "No reader registered for extention: " << ext;
+		LLOG_ERR << "No reader registered for extention: " << ext;
 		return nullptr;
 	}
 	return readersByExtension[ext]();

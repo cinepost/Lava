@@ -11,6 +11,8 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DeviceManager.h"
 
+#include "renderer_iface_base.h"
+
 namespace lava {
 
 class Renderer {
@@ -18,13 +20,19 @@ class Renderer {
  	~Renderer();
  	using UniquePtr = std::unique_ptr<Renderer>;
 
+	std::unique_ptr<RendererIfaceBase> 	aquireInterface();
+ 	void						 		releaseInterface(std::unique_ptr<RendererIfaceBase> pInterface);
+
  public:
  	static UniquePtr create();
 
- private:
- 	Renderer();
+private:
+	Renderer();
  	std::vector<std::string> 	mErrorMessages;
  	Falcor::Device::SharedPtr 	mpDevice;
+
+ 	//std::unique_ptr<RendererIfaceBase> mpInterface;
+ 	bool mIfaceAquired = false;
 
 };
 

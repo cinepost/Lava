@@ -1,17 +1,38 @@
-#include "scene_reader_base.h"
+#include <chrono>
 
+#include "scene_reader_base.h"
+#include "lava_utils_lib/logging.h"
 
 namespace lava {
 
-ReaderBase::ReaderBase() {
+ReaderBase::ReaderBase(): mEcho(false), mIsInitialized(false) { }
 
+ReaderBase::~ReaderBase() { }
+
+void ReaderBase::init(std::unique_ptr<RendererIfaceBase> pIntreface, bool echo) {
+    mEcho = echo;
+    mpInterface = std::move(pIntreface); 
+    mIsInitialized = true;
 }
 
-ReaderBase::~ReaderBase() {
+bool ReaderBase::readStream(std::istream &input) {
+    bool result;
+    if(!isInitialized())
+        return false;
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+    result = parseStream(input);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>( t2 - t1 ).count();
+
+    LLOG_DBG << "Scene parsed in: " << duration << " sec.";
+
+    return result;
 }
 
-bool ReaderBase::read(SharedPtr iface, std::istream &input, bool echo) {
+bool ReaderBase::read(std::istream &input) {
+    if(!isInitialized())
+        return false;
 
 	bool parser_ok = true;
 	std::string line_buff;
@@ -20,7 +41,7 @@ bool ReaderBase::read(SharedPtr iface, std::istream &input, bool echo) {
 	while (std::getline(input, line) && parser_ok)	{
     	line_buff += line;
     	std::string unparsed;
-    	parser_ok = parseLine(line_buff, echo, unparsed);
+    	parser_ok = parseLine(line_buff, unparsed);
     	line_buff = std::move(unparsed);
     }
 

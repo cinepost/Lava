@@ -46,7 +46,7 @@ void printUsage() {
 }
 
 void signalHandler( int signum ){
-    LOG_DBG << "Interrupt signal (" << signum << ") received !";
+    LLOG_DBG << "Interrupt signal (" << signum << ") received !";
 
     // cleanup and close up stuff here
     // terminate program
@@ -60,12 +60,8 @@ int main(int argc, char** argv){
     lava::ut::log::init_log();
     boost::log::core::get()->set_filter(  boost::log::trivial::severity >=  boost::log::trivial::debug );
     
-    int option = 0;
     int verbose_level = 6;
     bool echo_input = true;
-    bool read_stdin = true;
-    bool run_interactive = true;
-    std::string filename;
 
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
@@ -128,7 +124,7 @@ int main(int argc, char** argv){
     // Handle config file
     std::ifstream ifs(config_file.c_str());
     if (!ifs) {
-        LOG_DBG << "No config file provided but that's totally fine.";
+        LLOG_DBG << "No config file provided but that's totally fine.";
     } else {
         store(parse_config_file(ifs, config_file_options), vm);
         notify(vm);
@@ -149,18 +145,18 @@ int main(int argc, char** argv){
       BOOST_LOG_TRIVIAL(debug) << "Input scene files are: "<< boost::algorithm::join(files, " ") << "\n";
       for (std::vector<std::string>::const_iterator fi = files.begin(); fi != files.end(); ++fi) {
         std::ifstream in_file(*fi, std::ifstream::binary);
-        //std::ifstream in_file(*fi, std::ifstream::binary);
         
         if ( in_file ) {
           std::string file_extension = boost::filesystem::extension(*fi);
           BOOST_LOG_TRIVIAL(debug) << "ext " << file_extension;
-          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(file_extension);
 
-          BOOST_LOG_TRIVIAL(debug) << "reader";
-          //BOOST_LOG_TRIVIAL(debug) << "Reading "<< *fi << " scene file with " << reader->formatName() << " reader";
-          if (!reader->read(nullptr, in_file, echo_input)) {
+          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(file_extension);
+          reader->init(renderer->aquireInterface(), echo_input);
+
+          LLOG_DBG << "Reading "<< *fi << " scene file with " << reader->formatName() << " reader";
+          if (!reader->readStream(in_file)) {
             // error loading scene from file
-            LOG_ERR << "Error loading scene from file: " << *fi;
+            LLOG_ERR << "Error loading scene from file: " << *fi;
           }
         } else {
           // error opening scene file
@@ -171,11 +167,14 @@ int main(int argc, char** argv){
       // loading from stdin
       BOOST_LOG_TRIVIAL(debug) << "Reading scene from stdin ...\n";
       auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
-      if (!reader->read(nullptr, std::cin, echo_input)) {
+      reader->init(renderer->aquireInterface(), echo_input);
+
+      if (!reader->readStream(std::cin)) {
         // error loading scene from stdin
-        LOG_ERR << "Error loading scene from stdin !";
+        LLOG_ERR << "Error loading scene from stdin !";
       }
     }
 
+    LLOG_DBG << "Exiting lava. Bye :)";
     exit(EXIT_SUCCESS);
 }

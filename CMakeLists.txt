@@ -125,10 +125,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
-# ANTLR
-set( ANTLR4_ROOT ${PROJECT_SOURCE_DIR}/third_party/antlr4)
-set( ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/third_party/antlr-4.8-complete.jar)
-
 # Now setup targets
 
 # thirt party libs
@@ -136,9 +132,6 @@ set( ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/third_party/antlr-4.8-complete.jar)
 
 # Assimp library
 #add_subdirectory( third_party/assimp )
-
-# ANTLR library
-add_subdirectory( third_party/antlr4/runtime/Cpp )
 
 # Our stuff
 add_subdirectory( third_party/tbb )

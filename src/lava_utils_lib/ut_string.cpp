@@ -1,4 +1,4 @@
-#include "string.h"
+#include "ut_string.h"
 
 namespace lava { namespace ut { namespace string {
 

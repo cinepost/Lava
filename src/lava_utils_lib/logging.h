@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <cstring>
+#include <string>
 
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
@@ -17,19 +19,20 @@
 #include <boost/log/support/date_time.hpp>
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/shared_ptr.hpp>
-
+//#include <boost/make_shared.hpp>
+//#include <boost/shared_ptr.hpp>
 
 // Logging macro or static inline to stay within namespace boundaries
-#define LOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
-#define LOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
-#define LOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)
-#define LOG_WRN BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::warning)
-#define LOG_ERR BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::error)
-#define LOG_FTL BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::fatal)
+#define LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
+#define LLOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
+#define LLOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)
+#define LLOG_WRN BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::warning)
+#define LLOG_ERR BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::error)
+#define LLOG_FTL BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::fatal)
 
-namespace lava { namespace ut { namespace log {
+namespace lava { 
+
+namespace ut { namespace log {
 
 // Initializing global boost::log logger
 typedef boost::log::sources::severity_channel_logger_mt<boost::log::trivial::severity_level, std::string> global_logger_type;

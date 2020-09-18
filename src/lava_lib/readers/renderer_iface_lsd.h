@@ -3,17 +3,15 @@
 
 #include <memory>
 
+#include "../renderer_iface_base.h"
 
 namespace lava {
 
-class RendererIfaceLSD {
- public:
-    using SharedPtr = std::shared_ptr<RendererIfaceLSD>;
-    
-    SharedPtr create();
+class RendererIfaceLSD: public RendererIfaceBase {
 
- private:
-    RendererIfaceLSD();
+ public:
+    RendererIfaceLSD(Renderer *renderer);
+    ~RendererIfaceLSD();
 };
 
 }  // namespace lava

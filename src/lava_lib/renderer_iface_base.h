@@ -10,8 +10,8 @@ class Renderer;
 
 class RendererIfaceBase {
  public:
-    using SharedPtr = std::shared_ptr<RendererIfaceBase>;
-    
+    //using UniquePtr = std::unique_ptr<RendererIfaceBase>;
+
     void setEnvVariable(const std::string& key, const std::string& value);
 
     /*
@@ -19,15 +19,15 @@ class RendererIfaceBase {
      */
     std::string getExpandedString(const std::string& s);
 
- public:
-    virtual SharedPtr create() = 0;
+    RendererIfaceBase(Renderer *renderer);
+    ~RendererIfaceBase();
 
  private:
-    RendererIfaceBase();
+ 	
+    std::map<std::string, std::string> mEnvmap;
+    Renderer *mpRenderer;
 
-    std::map<std::string, std::string> envmap;
-
-    
+    friend class Renderer;
 };
 
 }  // namespace lava

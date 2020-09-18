@@ -3,12 +3,12 @@
 
 namespace lava {
 
-RendererIfaceLSD::SharedPtr RendererIfaceLSD::create() {
-	return RendererIfaceLSD::SharedPtr( new RendererIfaceLSD());
-}
+//RendererIfaceLSD::SharedPtr RendererIfaceLSD::create(Renderer *renderer) {
+//	return RendererIfaceLSD::SharedPtr( new RendererIfaceLSD(renderer));
+//}
 
-RendererIfaceLSD::RendererIfaceLSD() {
+RendererIfaceLSD::RendererIfaceLSD(Renderer *renderer): RendererIfaceBase(renderer) { }
 
-}
+RendererIfaceLSD::~RendererIfaceLSD() { }
 
 }  // namespace lava

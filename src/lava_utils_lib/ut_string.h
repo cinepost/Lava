@@ -1,5 +1,5 @@
-#ifndef LAVA_UTILS_STRING_H_
-#define LAVA_UTILS_STRING_H_
+#ifndef LAVA_UTILS_UT_STRING_H_
+#define LAVA_UTILS_UT_STRING_H_
 
 //#include <regex>
 #include <string>
@@ -10,4 +10,4 @@ std::string replace(const std::string& str, const std::string& from, const std::
 
 }}} // namespace lava::ut::string
 
-#endif // LAVA_UTILS_STRING_H_
+#endif // LAVA_UTILS_UT_STRING_H_

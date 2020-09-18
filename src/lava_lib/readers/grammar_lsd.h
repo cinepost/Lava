@@ -32,6 +32,9 @@
 #include <boost/container/static_vector.hpp>
 
 #include "renderer_iface_lsd.h"
+#include "grammar_bgeo.h"
+
+#include "lava_utils_lib/logging.h"
 
 namespace x3 = boost::spirit::x3;
 namespace fs = boost::filesystem;
@@ -66,7 +69,6 @@ namespace ast {
     enum class Type { FLOAT, BOOL, INT, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING };
     enum class Object { GLOBAL, MATERIAL, GEO, GEOMERTY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER };
 
-    struct comment;
     struct setenv;
     struct cmd_time;
     struct cmd_version;
@@ -76,6 +78,7 @@ namespace ast {
     struct cmd_start;
     struct cmd_end;
     struct cmd_detail;
+    struct cmd_detail_inline;
     struct cmd_geometry;
     struct cmd_property;
     struct cmd_raytrace;
@@ -84,7 +87,6 @@ namespace ast {
     struct cmd_deviceoption;
 
     typedef x3::variant<
-        comment,
         setenv,
         cmd_start,
         cmd_time,
@@ -94,6 +96,7 @@ namespace ast {
         cmd_end,
         cmd_quit,
         cmd_detail,
+        cmd_detail_inline,
         cmd_geometry,
         cmd_property,
         cmd_raytrace,
@@ -103,7 +106,6 @@ namespace ast {
     > Command;
 
     // nullary commands
-    struct comment { };
     struct cmd_end { };
     struct cmd_quit { };
     struct cmd_raytrace { };
@@ -141,6 +143,11 @@ namespace ast {
     struct cmd_detail {
         std::string name;
         std::string filename;
+    };
+
+    struct cmd_detail_inline {
+        std::string name;
+        bgeo::ast::Bgeo bgeo;
     };
 
     struct cmd_image {
@@ -283,6 +290,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, name, filename)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail_inline, name, bgeo)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_object)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
@@ -292,39 +300,68 @@ namespace lava {
 
 namespace lsd { 
 
-/*
-struct LSDVisitor(RendererIfaceBase::SharedPtr iface): public boost::static_visitor<> {
-    LSDVisitor((RendererIfaceBase::SharedPtr iface) : iface(iface) {}
+struct LSDVisitor: public boost::static_visitor<> {
+ public:
+    LSDVisitor(std::unique_ptr<RendererIfaceLSD>& iface) : mIface(std::move(iface)) {}
+
+    virtual void operator()(ast::setenv const& c) const;
+    virtual void operator()(ast::cmd_image const& c) const;
+    virtual void operator()(ast::cmd_end const& c) const;
+    virtual void operator()(ast::cmd_quit const& c) const;
+    virtual void operator()(ast::cmd_start const& c) const;
+    virtual void operator()(ast::cmd_time const& c) const;
+    virtual void operator()(ast::cmd_detail const& c) const;
+    virtual void operator()(ast::cmd_detail_inline const& c) const;
+    virtual void operator()(ast::cmd_version const& c) const;
+    virtual void operator()(ast::cmd_defaults const& c) const;
+    virtual void operator()(ast::cmd_transform const& c) const;
+    virtual void operator()(ast::cmd_geometry const& c) const;
+    virtual void operator()(ast::cmd_property const& c) const;
+    virtual void operator()(ast::cmd_deviceoption const& c) const;
+    virtual void operator()(ast::cmd_declare const& c) const;
+    virtual void operator()(ast::cmd_raytrace const& c) const;
+
+ protected:
+    std::unique_ptr<RendererIfaceLSD> mIface;
+};
+
+
+struct LSDEchoVisitor: public LSDVisitor {
+ public:
+    LSDEchoVisitor(std::unique_ptr<RendererIfaceLSD>& iface): LSDVisitor(iface), _os(std::cout){ }
+
+    void operator()(ast::setenv const& c) const override;
+    void operator()(ast::cmd_image const& c) const override;
+    void operator()(ast::cmd_end const& c) const override;
+    void operator()(ast::cmd_quit const& c) const override;
+    void operator()(ast::cmd_start const& c) const override;
+    void operator()(ast::cmd_time const& c) const override;
+    void operator()(ast::cmd_detail const& c) const override;
+    void operator()(ast::cmd_detail_inline const& c) const override;
+    void operator()(ast::cmd_version const& c) const override;
+    void operator()(ast::cmd_defaults const& c) const override;
+    void operator()(ast::cmd_transform const& c) const override;
+    void operator()(ast::cmd_geometry const& c) const override;
+    void operator()(ast::cmd_property const& c) const override;
+    void operator()(ast::cmd_deviceoption const& c) const override;
+    void operator()(ast::cmd_declare const& c) const override;
+    void operator()(ast::cmd_raytrace const& c) const override;
 
  private:
-    RendererInface::SharedPtr iface;
-};
-*/
+    void operator()(std::vector<PropValue> const& v) const;
+    void operator()(int v) const;
+    void operator()(double v) const;
+    void operator()(std::string const& v) const;
+    void operator()(Int2 const& v) const;
+    void operator()(Int3 const& v) const;
+    void operator()(Int4 const& v) const;
+    void operator()(Vector2 const& v) const;
+    void operator()(Vector3 const& v) const;
+    void operator()(Vector4 const& v) const;
+    void operator()(PropValue const& v) const;
 
-struct EchoVisitor: public boost::static_visitor<> {
+ private:
     std::ostream& _os;
-
-    using Command   = ast::Command;
-    using Object    = ast::Object;
-
-    EchoVisitor(): _os(std::cout){}
-
-    void operator()(ast::comment const& c) const { }
-    void operator()(ast::setenv const& c) const { _os << "\x1b[32m" << "> setenv: " << c.key << " = " << c.value << "\x1b[0m\n"; }
-    void operator()(ast::cmd_image const& c) const { _os << "\x1b[32m" << "> cmd_image: " << c.values << "\x1b[0m\n"; }
-    void operator()(ast::cmd_end const& c) const { _os << "\x1b[32m" << "> cmd_end: " << "\x1b[0m\n"; }
-    void operator()(ast::cmd_quit const& c) const { _os << "\x1b[32m" << "> cmd_quit: " << "\x1b[0m\n"; }
-    void operator()(ast::cmd_start const& c) const { _os << "\x1b[32m" << "> cmd_start: " << c.type << "\x1b[0m\n"; }
-    void operator()(ast::cmd_time const& c) const { _os << "\x1b[32m" << "> cmd_time: " << c.time << "\x1b[0m\n"; }
-    void operator()(ast::cmd_detail const& c) const { _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\x1b[0m\n"; }
-    void operator()(ast::cmd_version const& c) const { _os << "\x1b[32m" << "> cmd_version: " << c.version << "\x1b[0m\n"; }
-    void operator()(ast::cmd_defaults const& c) const { _os << "\x1b[32m" << "> cmd_defaults: filename: " << c.filename << "\x1b[0m\n"; }
-    void operator()(ast::cmd_transform const& c) const { _os << "\x1b[32m" << "> cmd_transform: " << c.m << "\x1b[0m\n"; }
-    void operator()(ast::cmd_geometry const& c) const { _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_object << "\x1b[0m\n"; }
-    void operator()(ast::cmd_property const& c) const { _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " values: "<< c.values.size() << "\x1b[0m\n"; }
-    void operator()(ast::cmd_deviceoption const& c) const { _os << "\x1b[32m" << "> cmd_deviceoption: type: " << c.type << " name: " << c.name << " values: "<< c.values << "\x1b[0m\n"; }
-    void operator()(ast::cmd_declare const& c) const { _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " values: "<< c.values << "\x1b[0m\n"; }
-    void operator()(ast::cmd_raytrace const& c) const { _os << "\x1b[32m" << "> cmd_raytrace: " << "\x1b[0m\n"; }
 };
 
 
@@ -360,6 +397,10 @@ namespace parser {
     //auto const uintObj  = as<ast::uintObj>    ( uintPair | uint_            );
     //auto const varVec   = as<ast::varVec>     ( '[' >> uintObj % ',' >> ']' );
 
+    auto const esc_char 
+        = x3::rule<struct esc_char_, char> {"esc_char"}
+        = '\\' >> char_("\"");
+
     auto const string 
         = x3::rule<struct string_, std::string> {"string"}
         = lexeme[+graph];
@@ -370,8 +411,9 @@ namespace parser {
 
     x3::rule<class quoted_string_, std::string> const quoted_string = "quoted_string";
     auto const quoted_string_def = 
-            lexeme[char_("\"") > *(~char_('\"')) > char_("\"")]
-        |   lexeme[char_("\'") > *(~char_('\'')) > char_("\'")];
+        lexeme["\"" > *(esc_char | ~char_('\"')) > "\""] |
+        lexeme["\'" > *(esc_char | ~char_('\'')) > "\'"];
+
     BOOST_SPIRIT_DEFINE(quoted_string)
 
     x3::rule<class any_string_, std::string> const any_string = "any_string";
@@ -383,7 +425,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(identifier)
 
     x3::rule<class prop_name_, std::string> const prop_name = "prop_name";
-    auto const prop_name_def = lexeme[identifier >> *(char_('.') >> identifier)];
+    auto const prop_name_def = lexeme[identifier >> *(char_(".:/") >> identifier)];
     BOOST_SPIRIT_DEFINE(prop_name)
 
     x3::rule<class obj_name_, std::string> const obj_name = "obj_name";
@@ -439,6 +481,10 @@ namespace parser {
     x3::rule<class version_, Version> const version = "version";
     auto const version_def = lexeme[-lexeme["VEX"] >> int_ >> "." >> int_ >> "." >> int_];
     BOOST_SPIRIT_DEFINE(version)
+
+    x3::rule<class bgeo_inline_, bgeo::ast::Bgeo> const bgeo_inline = "bgeo_inline";
+    auto const bgeo_inline_def = bgeo::parser::input;
+    BOOST_SPIRIT_DEFINE(bgeo_inline)
 
 
     using boost::fusion::at_c;
@@ -502,16 +548,16 @@ namespace parser {
     //    _val(ctx).version[1] = at_c<1>(_attr(ctx));
     //    _val(ctx).version[2] = at_c<2>(_attr(ctx));
     //};
-    auto assign_comment = [](auto& ctx) {};
-    auto assign_prop_values = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
+    //auto assign_comment = [](auto& ctx) {};
+    //auto assign_prop_values = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
+    //auto assign_bgeo = [](auto& ctx) { _val(ctx).bgeo = _attr(ctx); };
 
-    auto const comment
-        = x3::rule<class comment, ast::comment>{"comment"}
-        = lexeme[ 
+    static auto const skipper = lexeme[ 
         "/*" >> *(char_ - "*/") >> "*/"
-        | "//" >> *~char_("\r\n") >> eol
-        | '#' >> *(char_)
-    ][assign_comment];
+        | "//" >> *~char_("\r\n")
+        | '#' >> *~char_("\r\n")
+    ] | blank;
+
 
     auto const setenv
         = x3::rule<class setenv, ast::setenv>{"setenv"}
@@ -557,6 +603,10 @@ namespace parser {
         = x3::rule<class cmd_detail, ast::cmd_detail>{"cmd_detail"}
         = "cmd_detail" >> obj_name >> any_filename;
 
+    auto const cmd_detail_inline
+        = x3::rule<class cmd_detail_inline, ast::cmd_detail_inline>{"cmd_detail_inline"}
+        = "cmd_detail" >> obj_name >> "stdin" >> bgeo_inline;
+
     auto const cmd_geometry
         = x3::rule<class cmd_geometry, ast::cmd_geometry>{"cmd_geometry"}
         = "cmd_geometry" >> obj_name;
@@ -573,10 +623,10 @@ namespace parser {
         = x3::rule<class cmd_end, ast::cmd_end>{"cmd_end"}
         = "cmd_end" >> eps;
 
-    auto cmd = comment | setenv | cmd_image | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
-        cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption;
+    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
+        cmd_transform | cmd_detail_inline | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption;
     
-    auto const input  = skip(blank) [*(cmd) % eol];
+    auto const input  = skip(skipper) [*(cmd) % eol];
     
 }}  // namespace lsd::parser
 

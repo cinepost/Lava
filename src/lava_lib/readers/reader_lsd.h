@@ -5,6 +5,8 @@
 //#include <boost/spirit/include/qi.hpp>
 //#include <boost/spirit/include/classic.hpp>
 
+#include <memory>
+
 #include "../scene_reader_base.h"
 #include "renderer_iface_lsd.h"
 #include "grammar_lsd.h"
@@ -21,19 +23,21 @@ class ReaderLSD: public ReaderBase {
  	ReaderLSD();
  	~ReaderLSD();
 
-    const char* formatName() const;
-    bool        checkExtension(const char *name);
-    void        getFileExtensions(std::vector<std::string> &extensions) const;
+    void        init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo) override;
+
+    const char* formatName() const override;
+    bool        checkExtension(const char *name) override;
+    void        getFileExtensions(std::vector<std::string> &extensions) const override;
 
     // Method to check if the given magic number matches the magic number. Return true on a match.
-    bool        checkMagicNumber(unsigned magic);
+    bool        checkMagicNumber(unsigned magic) override;
 
  private:
- 	virtual bool parseLine(const std::string& line, bool echo, std::string& unparsed);
+ 	virtual bool parseStream(std::istream& in) override;
+    virtual bool parseLine(const std::string& line, std::string& unparsed) override;
 
  private:
- 	//command_grammar<std::string::const_iterator> const         commands;
- 	RendererIfaceLSD::SharedPtr   mpIface;
+ 	std::unique_ptr<lsd::LSDVisitor>  mpLSDVisitor;
 
  public:
     // factory methods

@@ -17,8 +17,11 @@ class ReaderBase {
   	using SharedPtr = std::shared_ptr<ReaderBase>;
 
     ReaderBase();
-    
-    bool                        read(SharedPtr iface, std::istream &input, bool echo);
+
+    bool                        readStream(std::istream &input);
+    bool                        read(std::istream &input);
+    bool                        isInitialized() { return mIsInitialized; }                       
+    virtual void                init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo);
 
  public:
     virtual ~ReaderBase();
@@ -32,7 +35,13 @@ class ReaderBase {
     virtual bool                checkMagicNumber(unsigned magic) = 0;
 
  private:
-    virtual bool                parseLine(const std::string& line, bool echo, std::string& unparsed) = 0;
+    virtual bool                parseStream(std::istream &input) = 0;
+    virtual bool                parseLine(const std::string& line, std::string& unparsed) = 0;
+
+ protected:
+    bool    mIsInitialized;
+    bool    mEcho;
+    std::unique_ptr<RendererIfaceBase> mpInterface;
 };
 
 }  // namespace lava
