@@ -20,37 +20,52 @@ void LSDEchoVisitor::operator()(std::string const& v) const {
 }
 
 void LSDEchoVisitor::operator()(Int2 const& v) const {
-
+    _os << "Int2";
 }
 
 void LSDEchoVisitor::operator()(Int3 const& v) const {
-
+    _os << "Int3";
 }
 
 void LSDEchoVisitor::operator()(Int4 const& v) const {
-
+    _os << "Int4";
 }
 
 void LSDEchoVisitor::operator()(Vector2 const& v) const {
-
+    _os << "Vector2";
 }
 
 void LSDEchoVisitor::operator()(Vector3 const& v) const {
-
+    _os << "Vector3";
 }
 
 void LSDEchoVisitor::operator()(Vector4 const& v) const {
-
+    _os << "Vector4";
 }
 
 void LSDEchoVisitor::operator()(PropValue const& v) const { 
-    operator()(v);
+    boost::apply_visitor(*this, v);
 }
 
 void LSDEchoVisitor::operator()(std::vector<PropValue> const& v) const {
-    for(std::vector<PropValue>::const_iterator it = v.begin(); it != v.end(); it++) {
-        operator()(*it);
-        _os << " ";
+    if (!v.empty()) {
+        for(std::vector<PropValue>::const_iterator it = v.begin(); it != (v.end() - 1); it++) {
+            boost::apply_visitor(*this, *it);
+            _os << " ";
+        }
+        boost::apply_visitor(*this, v.back());
+    } else {
+        _os << "!!! EMPTY !!!";
+    }
+}
+
+void LSDEchoVisitor::operator()(ast::ifthen const& c) const {
+    _os << "\x1b[32m" << "> ifthen: " << c.expr << "\x1b[0m\n";
+
+    if( c.expr) {
+        for( auto const& cmd: c.commands) {
+            boost::apply_visitor(*this, cmd);
+        }
     }
 }
 
@@ -61,7 +76,16 @@ void LSDEchoVisitor::operator()(ast::setenv const& c) const {
 
 void LSDEchoVisitor::operator()(ast::cmd_image const& c) const { 
     LSDVisitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_image: " << c.values << "\x1b[0m\n"; 
+    _os << "\x1b[32m" << "> cmd_image: ";
+    if (!c.values.empty()) {
+        for(std::vector<std::string>::const_iterator it = c.values.begin(); it != (c.values.end() - 1); it++) {
+            _os << *it << " ";
+        }
+        _os << c.values.back();
+    } else {
+        _os << "!!! EMPTY !!!";
+    }
+    _os << "\x1b[0m\n"; 
 }
 
 void LSDEchoVisitor::operator()(ast::cmd_end const& c) const { 
@@ -86,12 +110,7 @@ void LSDEchoVisitor::operator()(ast::cmd_time const& c) const {
 
 void LSDEchoVisitor::operator()(ast::cmd_detail const& c) const {
     LSDVisitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\x1b[0m\n";
-}
-
-void LSDEchoVisitor::operator()(ast::cmd_detail_inline const& c) const { 
-    LSDVisitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_detail (inline): name: " << c.name << " stdin\n"; 
+    _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\n";
     boost::apply_visitor(bgeo::EchoVisitor(), c.bgeo);
     _os << "\x1b[0m\n";
 }
@@ -118,18 +137,22 @@ void LSDEchoVisitor::operator()(ast::cmd_geometry const& c) const {
 
 void LSDEchoVisitor::operator()(ast::cmd_property const& c) const {
     LSDVisitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " values: "<< c.values.size() << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " values: ";
+     LSDEchoVisitor::operator()(c.values);
+    _os << "\x1b[0m\n";
 }
 
 void LSDEchoVisitor::operator()(ast::cmd_deviceoption const& c) const {
     LSDVisitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_deviceoption: type: " << c.type << " name: " << c.name << " values: "<< c.values << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_deviceoption: type: " << c.type << " name: " << c.name << " values: ";
+    LSDEchoVisitor::operator()(c.values);
+    _os << "\x1b[0m\n";
 }
 
 void LSDEchoVisitor::operator()(ast::cmd_declare const& c) const {
     LSDVisitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_declare: style: " << c.style << " token: " << c.token << " type: " << c.type << " values: ";
-    //operator()(c.values);
+    LSDEchoVisitor::operator()(c.values);
     _os << "\x1b[0m\n";
 }
 

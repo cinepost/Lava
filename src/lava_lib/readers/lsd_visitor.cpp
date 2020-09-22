@@ -7,6 +7,10 @@ namespace lava {
 
 namespace lsd {  
 
+void LSDVisitor::operator()(ast::ifthen const& c) const {
+    
+}
+
 void LSDVisitor::operator()(ast::setenv const& c) const {
     std::cout << "LSDVisitor setenv\n";
     std::cout << "iface" << mIface.get();
@@ -34,10 +38,6 @@ void LSDVisitor::operator()(ast::cmd_time const& c) const {
 }
 
 void LSDVisitor::operator()(ast::cmd_detail const& c) const {
-
-}
-
-void LSDVisitor::operator()(ast::cmd_detail_inline const& c) const { 
 
 }
 

@@ -74,7 +74,7 @@ namespace ast {
         using base_type::operator=;
     };
 
-    struct Bgeo: x3::variant<Object, Array> { 
+    struct Bgeo: x3::variant<Array, Object> { 
         using base_type::base_type;
         using base_type::operator=;
     };
@@ -85,43 +85,6 @@ namespace ast {
     };
 
 }  // namespace ast
-
-/*
-template <>
-inline std::ostream& operator<<(std::ostream& os, const x3::variant<double>& val) {
-    //return os << "val ";
-    //boost::apply_visitor([&](auto && arg){ os << arg;}, val);
-    //return os;
-    return os << boost::get<double>(val);
-};
-
-
-static inline std::ostream& operator<<(std::ostream& os, const ast::Bgeo& bgeo) {
-    os << "BGEO! ";
-    return os << bgeo;
-};
-
-template <typename T0, typename ... Ts>
-static inline std::ostream& operator<<(std::ostream& os, const std::pair<std::string, x3::variant<T0, Ts...>>& pair) {
-    return os << pair.first << " : " << pair.second;
-};
-
-static inline std::ostream& operator<<(std::ostream& os, const ast::Array& a) {
-    os << "ARRAY! " << a.size();
-
-    for( const auto& elem: a) {
-        os << elem;
-    }
-
-    std::copy(a.begin(), a.end(), std::ostream_iterator<ast::Value>(os, " "));
-    return os;
-};
-
-static inline std::ostream& operator<<(std::ostream& os, const ast::Object& o) {
-    std::copy(o.begin(), o.end(), std::ostream_iterator<std::pair<std::string, ast::Value>>(os, " "));
-    return os;
-};
-*/
 
 } }
  
@@ -152,7 +115,6 @@ struct EchoVisitor: public boost::static_visitor<> {
     void operator()(ast::Object const& o) const { 
         _os << "{";
         if (!o.empty()) {
-            _os << " ";
             for(ast::Object::const_iterator it = o.begin(); it != (o.end()-1); it++) {
                 _os << it->key << ": ";
                 operator()(it->value);
@@ -161,20 +123,17 @@ struct EchoVisitor: public boost::static_visitor<> {
         
             _os << o.back().key << ": ";
             operator()(o.back().value);
-            _os << " ";
         }
         _os << "}"; 
     }
     void operator()(ast::Array const& a) const {
         _os << "[";
         if (!a.empty()) {
-            _os << " ";
             for(ast::Array::const_iterator it = a.begin(); it != (a.end()-1); it++) {
                 operator()(*it);
                 _os << ", ";
             }
             operator()(a.back());
-            _os << " ";
         }
         _os << "]";
     }
