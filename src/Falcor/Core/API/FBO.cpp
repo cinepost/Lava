@@ -289,12 +289,16 @@ namespace Falcor {
         // Check color
         for (const auto& attachment : mColorAttachments) {
             if (verifyAttachment(attachment) == false) {
+                LOG_ERR("check color appachment failed!");
                 return false;
             }
         }
 
         // Check depth
-        if (verifyAttachment(mDepthStencil) == false) return false;
+        if (verifyAttachment(mDepthStencil) == false) {
+            LOG_ERR("check depth appachment failed!");
+            return false;
+        }
 
         // In case there are sample positions, make sure they are valid
         if (mSamplePositions.size()) {
@@ -323,14 +327,15 @@ namespace Falcor {
     }
 
     void Fbo::finalize() const {
-        //LOG_DBG("finalizing...");
+        LOG_DBG("finalizing...");
         if (mpDesc == nullptr) {
             if (calcAndValidateProperties() == false) {
+                LOG_ERR("error finalizing!!!");
                 throw std::runtime_error("Can't finalize FBO. Invalid frame buffer object.");
             }
             initApiHandle();
         }
-        //LOG_DBG("done finalizing!");
+        LOG_DBG("done finalizing!");
     }
 
     void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]) {

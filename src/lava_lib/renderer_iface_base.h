@@ -14,18 +14,28 @@ class RendererIfaceBase {
 
     void setEnvVariable(const std::string& key, const std::string& value);
 
-    /*
-     * get string expanded with local env variables
+    /* get string expanded with local env variables
      */
     std::string getExpandedString(const std::string& s);
 
+    /*
+     */
+    bool loadDisplay(const std::string& display_name);
+
+    /*
+     */
+    bool loadScript(const std::string& file_name);
+
     RendererIfaceBase(Renderer *renderer);
-    ~RendererIfaceBase();
+    virtual ~RendererIfaceBase();
+
+ //protected:
+    bool initRenderer();
+    void renderFrame();
 
  private:
- 	
-    std::map<std::string, std::string> mEnvmap;
-    Renderer *mpRenderer;
+    std::map<std::string, std::string>  mEnvmap;
+    Renderer                            *mpRenderer;
 
     friend class Renderer;
 };

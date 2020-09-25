@@ -70,6 +70,9 @@ inline std::vector<std::string> getInitialShaderDirectories() {
         getExecutableDirectory() + "/Shaders"
     };
 
+    std::cout << "dev mode: " << (isDevelopmentMode() ? "true" : "false") << "\n";
+    std::cout << "exec dir: " << getExecutableDirectory() << "\n";
+
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 

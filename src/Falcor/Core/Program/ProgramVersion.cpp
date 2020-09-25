@@ -178,31 +178,25 @@ namespace Falcor
         }
 
         auto foundKernels = mpKernels.find(specializationKey);
-        if( foundKernels != mpKernels.end() )
-        {
+        if( foundKernels != mpKernels.end() ) {
             return foundKernels->second;
         }
 
         // Loop so that user can trigger recompilation on error
-        for(;;)
-        {
+        for(;;) {
             std::string log;
             auto pKernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
-            if( pKernels )
-            {
+            if( pKernels ) {
                 // Success
 
-                if (!log.empty())
-                {
+                if (!log.empty()) {
                     std::string warn = "Warnings in program:\n" + getName() + "\n" + log;
                     logWarning(warn);
                 }
 
                 mpKernels[specializationKey] = pKernels;
                 return pKernels;
-            }
-            else
-            {
+            } else {
                 // Failure
 
                 std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
@@ -214,18 +208,15 @@ namespace Falcor
         }
     }
 
-    slang::ISession* ProgramVersion::getSlangSession() const
-    {
+    slang::ISession* ProgramVersion::getSlangSession() const {
         return getSlangGlobalScope()->getSession();
     }
 
-    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const
-    {
+    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const {
         return mpSlangGlobalScope;
     }
 
-    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const
-    {
+    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const {
         return mpSlangEntryPoints[index];
     }
 }

@@ -40,7 +40,9 @@ namespace Falcor {
 
     class GuiImpl {
      public:
-        GuiImpl(std::shared_ptr<Device> pDevice) { mpDevice = pDevice; }
+        GuiImpl(std::shared_ptr<Device> pDevice): mpDevice(pDevice) { 
+            assert(mpDevice);
+        };
 
      private:
         friend class Gui;
@@ -146,6 +148,8 @@ namespace Falcor {
     };
 
     void GuiImpl::init(Gui* pGui, float scaleFactor) {
+        assert(mpDevice);
+
         mScaleFactor = scaleFactor;
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -185,6 +189,7 @@ namespace Falcor {
         mpPipelineState = GraphicsState::create(mpDevice);
 
         // Create the program
+        LOG_DBG("mpDevice uid: %u", mpDevice->uid());
         mpProgram = GraphicsProgram::createFromFile(mpDevice, "Utils/UI/Gui.slang", "vs", "ps");
         mpProgramVars = GraphicsVars::create(mpDevice, mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
@@ -750,7 +755,9 @@ namespace Falcor {
         ImGui::PlotLines(label, func, pUserData, (int32_t)sampleCount, sampleOffset, nullptr, yMin, yMax, imSize);
     }
 
-    Gui::Gui(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {}
+    Gui::Gui(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+        assert(mpDevice);
+    }
 
     Gui::~Gui() {
         ImGui::DestroyContext();
@@ -813,8 +820,10 @@ namespace Falcor {
     }
 
     void Gui::render(RenderContext* pContext, const Fbo::SharedPtr& pFbo, float elapsedTime) {
+        LOG_DBG("Gui::render 0");
         while (mpWrapper->mGroupStackSize) mpWrapper->endGroup();
 
+        LOG_DBG("Gui::render 1");
         // Set the mouse state
         mpWrapper->setIoMouseEvents();
 
@@ -823,15 +832,19 @@ namespace Falcor {
 
         mpWrapper->resetMouseEvents();
 
+        LOG_DBG("Gui::render 2");
         // Update the VAO
         mpWrapper->createVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
         mpWrapper->mpPipelineState->setVao(mpWrapper->mpVao);
 
+        LOG_DBG("Gui::render 3");
         // Upload the data
         ImDrawVert* pVerts = (ImDrawVert*)mpWrapper->mpVao->getVertexBuffer(0)->map(Buffer::MapType::WriteDiscard);
         uint16_t* pIndices = (uint16_t*)mpWrapper->mpVao->getIndexBuffer()->map(Buffer::MapType::WriteDiscard);
 
+        LOG_DBG("Gui::render 4");
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
+            LOG_DBG("Gui::render 5");
             const ImDrawList* pCmdList = pDrawData->CmdLists[n];
             memcpy(pVerts, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
             memcpy(pIndices, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
@@ -839,10 +852,12 @@ namespace Falcor {
             pIndices += pCmdList->IdxBuffer.Size;
         }
         
+        LOG_DBG("Gui::render 6");
         mpWrapper->mpVao->getVertexBuffer(0)->unmap();
         mpWrapper->mpVao->getIndexBuffer()->unmap();
         mpWrapper->mpPipelineState->setFbo(pFbo);
 
+        LOG_DBG("Gui::render 7");
         // Setup viewport
         GraphicsState::Viewport vp;
         vp.originX = 0;
@@ -852,25 +867,35 @@ namespace Falcor {
         vp.minDepth = 0;
         vp.maxDepth = 1;
         
+        LOG_DBG("Gui::render 8");
         mpWrapper->mpPipelineState->setViewport(0, vp);
 
         // Render command lists
         uint32_t vtxOffset = 0;
         uint32_t idxOffset = 0;
 
+        LOG_DBG("Gui::render 9");
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
+            LOG_DBG("Gui::render 10");
             const ImDrawList* pCmdList = pDrawData->CmdLists[n];
+            LOG_DBG("Gui::render 11");
             for (int32_t cmd = 0; cmd < pCmdList->CmdBuffer.Size; cmd++) {
+                LOG_DBG("Gui::render 12");
                 const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
+                LOG_DBG("Gui::render 13");
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
                 if (pCmd->TextureId) {
+                    LOG_DBG("Gui::render 14");
                     mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, (mpWrapper->mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                    LOG_DBG("Gui::render 15");
                     mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
                 } else {
+                    LOG_DBG("Gui::render 16");
                     mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
                 }
                 mpWrapper->mpPipelineState->setScissors(0, scissor);
                 
+                LOG_DBG("Gui::render 19");
                 pContext->drawIndexed(mpWrapper->mpPipelineState.get(), mpWrapper->mpProgramVars.get(), pCmd->ElemCount, idxOffset, vtxOffset);
                 idxOffset += pCmd->ElemCount;
             }
@@ -878,12 +903,15 @@ namespace Falcor {
         }
 
 
-
+        LOG_DBG("Gui::render 20");
         // Prepare for the next frame
         ImGuiIO& io = ImGui::GetIO();
+        
+        LOG_DBG("Gui::render 21");
         io.DeltaTime = elapsedTime;
         mpWrapper->mGroupStackSize = 0;
 
+        LOG_DBG("Gui::render 22");
         mpWrapper->mpImages.clear();
     }
 

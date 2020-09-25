@@ -145,10 +145,15 @@ def header(now, propdefs):
     if propdefs:
         # Output property defaults before we output any other settings
         cmd_defaults(propdefs)
-    
+
+    # Renderer frame graph configuation
+    cmd_config("$LAVA_HOME/conf/default.py")
+
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])
-    cmd_hscript('fps %g; tcur %g' % (FPS, now))
+    
+    # TODO: do we really need this !?
+    #cmd_hscript('fps %g; tcur %g' % (FPS, now))
 
     verbose = plist.get('vm_verbose', None)
     if verbose:

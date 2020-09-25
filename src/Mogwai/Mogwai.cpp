@@ -482,7 +482,7 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
 //void Renderer::onFrameRender(const Fbo::SharedPtr& pTargetFbo) {
 //    auto pRenderContext = mpDevice->getRenderContext();
 
-    LOG_DBG("Renderer::onFrameRender");
+    //LOG_DBG("Renderer::onFrameRender");
 
     if (mScriptFilename.size()) {
         std::string s = mScriptFilename;
@@ -525,8 +525,8 @@ void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr
                 std::vector<uint8_t> textureData;
                 pOutTex->readTextureData(0, 0, textureData, format, channels);
 
-                Texture* pTex = Texture::create2D()
-                pRenderContext->blit(pTex->getSRV(), pTargetFbo->getRenderTargetView(0));
+                //Texture* pTex = Texture::create2D();
+                //pRenderContext->blit(pTex->getSRV(), pTargetFbo->getRenderTargetView(0));
             }
             // image save test
             //Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
@@ -562,10 +562,13 @@ bool Renderer::onKeyEvent(const KeyboardEvent& keyEvent) {
 
 void Renderer::onResizeSwapChain(uint32_t width, uint32_t height) {
     // recreate fbo
-    //auto pBackBufferFBO = mpDevice->resizeSwapChain(width, height);
-    //auto pCurrentFbo = mpTargetFBO;
-    //mpTargetFBO = Fbo::create2D(mpDevice, width, height, pBackBufferFBO->getDesc());
+
+    LOG_DBG("Renderer::onResizeSwapChain fbo");
+    auto pBackBufferFBO = mpDevice->resizeSwapChain(width, height);
+    auto pCurrentFbo = mpTargetFBO;
+    mpTargetFBO = Fbo::create2D(mpDevice, width, height, pBackBufferFBO->getDesc());
     //mpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
+    LOG_DBG("Renderer::onResizeSwapChain fbo done");
 
     for (auto& g : mGraphs) {
         g.pGraph->onResize(gpFramework->getTargetFbo().get());

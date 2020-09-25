@@ -136,7 +136,7 @@ bool Device::init() {
         }
     } else {
         // Update offscreen buffer
-         if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
+        if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
             return false;
         }
     }
@@ -170,9 +170,12 @@ void Device::release() {
 }
 
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
+    ResourceHandle apiHandle;
+    getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
+
     // Create a texture object
     auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-    //pColorTex->mApiHandle = apiHandles[i];
+    pColorTex->mApiHandle = apiHandle;
     
     // Create the FBO if it's required
     if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
@@ -214,7 +217,11 @@ Fbo::SharedPtr Device::getSwapChainFbo() const {
 }
 
 Fbo::SharedPtr Device::getOffscreenFbo() const {
+    if(!mpOffscreenFbo) {
+        LOG_ERR("No mpOffscreenFbo!!!");
+    }
     assert(headless);
+    assert(mpOffscreenFbo);
     return mpOffscreenFbo;
 }
 
@@ -297,6 +304,28 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
     assert(width > 0 && height > 0);
 
     mpRenderContext->flush(true);
+
+    // resize offscreen fbo
+    if(headless) {
+        LOG_DBG("Device::resizeSwapChain headless");
+        // Store the FBO parameters
+        ResourceFormat colorFormat = mpOffscreenFbo->getColorTexture(0)->getFormat();
+        const auto& pDepth = mpOffscreenFbo->getDepthStencilTexture();
+        ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
+
+        assert(mpOffscreenFbo->getSampleCount() == 1);
+
+        // Delete all the FBOs
+        LOG_DBG("Device::resizeSwapChain releaseFboData");
+        releaseFboData();
+        LOG_DBG("Device::resizeSwapChain apiResizeOffscreenFBO");
+        apiResizeOffscreenFBO(width, height, colorFormat);
+        LOG_DBG("Device::resizeSwapChain updateOffscreenFBO");
+        updateOffscreenFBO(width, height, colorFormat, depthFormat);
+
+        LOG_DBG("Device::resizeSwapChain headless done");
+        return getOffscreenFbo();
+    }
 
     // Store the FBO parameters
     ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();

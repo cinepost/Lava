@@ -31,7 +31,7 @@
 
 #include <boost/container/static_vector.hpp>
 
-#include "renderer_iface_lsd.h"
+//#include "renderer_iface_lsd.h"
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
@@ -69,11 +69,13 @@ namespace ast {
 
     enum class Type { FLOAT, BOOL, INT, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING };
     enum class Object { GLOBAL, MATERIAL, GEO, GEOMERTY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER };
+    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG };
 
     struct ifthen;
     struct setenv;
     struct cmd_time;
     struct cmd_version;
+    struct cmd_config;
     struct cmd_defaults;
     struct cmd_transform;
     struct cmd_quit;
@@ -98,6 +100,7 @@ namespace ast {
         cmd_start,
         cmd_time,
         cmd_version,
+        cmd_config,
         cmd_defaults,
         cmd_transform,
         cmd_end,
@@ -147,18 +150,24 @@ namespace ast {
         std::string filename;
     };
 
+    struct cmd_config {
+        std::string filename;
+    };
+
     struct cmd_geometry {
         std::string geometry_object;
     };
 
     struct cmd_detail {
+        bool temporary;
         std::string name;
         std::string filename;
         bgeo::ast::Bgeo bgeo;
     };
 
     struct cmd_image {
-        std::vector<std::string> values;
+        DisplayType display_type;
+        std::string filename;
     };
 
     struct cmd_property {
@@ -292,10 +301,11 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_raytrace)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_time, time)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, name, filename, bgeo)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, temporary, name, filename, bgeo)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_object)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
@@ -303,11 +313,13 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, style, type, token, value
 
 namespace lava { 
 
+class RendererIfaceLSD;
+
 namespace lsd { 
 
-struct LSDVisitor: public boost::static_visitor<> {
+struct Visitor: public boost::static_visitor<> {
  public:
-    LSDVisitor(std::unique_ptr<RendererIfaceLSD>& iface) : mIface(std::move(iface)) {}
+    Visitor(std::unique_ptr<RendererIfaceLSD>& iface);
 
     virtual void operator()(ast::NoValue const& c) const {};
     virtual void operator()(ast::ifthen const& c) const;
@@ -319,6 +331,7 @@ struct LSDVisitor: public boost::static_visitor<> {
     virtual void operator()(ast::cmd_time const& c) const;
     virtual void operator()(ast::cmd_detail const& c) const;
     virtual void operator()(ast::cmd_version const& c) const;
+    virtual void operator()(ast::cmd_config const& c) const;
     virtual void operator()(ast::cmd_defaults const& c) const;
     virtual void operator()(ast::cmd_transform const& c) const;
     virtual void operator()(ast::cmd_geometry const& c) const;
@@ -332,10 +345,10 @@ struct LSDVisitor: public boost::static_visitor<> {
 };
 
 
-struct LSDEchoVisitor: public LSDVisitor {
+struct EchoVisitor: public Visitor {
  public:
-    LSDEchoVisitor(std::unique_ptr<RendererIfaceLSD>& iface): LSDVisitor(iface), _os(std::cout){ }
-    LSDEchoVisitor(std::unique_ptr<RendererIfaceLSD>& iface, std::ostream& os): LSDVisitor(iface), _os(os){ }
+    EchoVisitor(std::unique_ptr<RendererIfaceLSD>& iface);
+    EchoVisitor(std::unique_ptr<RendererIfaceLSD>& iface, std::ostream& os);
 
     void operator()(ast::NoValue const& c) const override {};
     void operator()(ast::ifthen const& c) const override;
@@ -347,6 +360,7 @@ struct LSDEchoVisitor: public LSDVisitor {
     void operator()(ast::cmd_time const& c) const override;
     void operator()(ast::cmd_detail const& c) const override;
     void operator()(ast::cmd_version const& c) const override;
+    void operator()(ast::cmd_config const& c) const override;
     void operator()(ast::cmd_defaults const& c) const override;
     void operator()(ast::cmd_transform const& c) const override;
     void operator()(ast::cmd_geometry const& c) const override;
@@ -419,7 +433,7 @@ namespace parser {
         = lexeme[+graph];
 
     auto const string_char
-        = esc_char | alnum | graph | char_("$/_.:-+@!~");
+        = esc_char | alnum | char_("$/_.:-+@!~");
 
     x3::rule<class unquoted_string_, std::string> const unquoted_string = "unquoted_string";
     auto const unquoted_string_def = //lexeme[+(~char_(" \"\'"))];
@@ -433,12 +447,12 @@ namespace parser {
     x3::rule<class quoted_string_, std::string> const quoted_string = "quoted_string";
     auto const quoted_string_def = 
         x3::lexeme['"' > *(esc_char | ~x3::char_('"')) > '"'] | 
-        x3::lexeme['\'' > *(esc_char | ~x3::char_('"')) > '\''] |lexeme[empty_string];
+        x3::lexeme['\'' > *(esc_char | ~x3::char_('\'')) > '\''] | lexeme[empty_string];
 
     BOOST_SPIRIT_DEFINE(quoted_string)
 
     x3::rule<class any_string_, std::string> const any_string = "any_string";
-    auto const any_string_def = unquoted_string | quoted_string;
+    auto const any_string_def = quoted_string | unquoted_string;
     BOOST_SPIRIT_DEFINE(any_string)
 
     x3::rule<class identifier_, std::string> const identifier = "identifier";
@@ -459,12 +473,12 @@ namespace parser {
 
     x3::rule<class quoted_filename_filename_, std::string> const quoted_filename = "quoted_filename";
     auto const quoted_filename_def = 
-        x3::lexeme['"' > *(esc_char | ~x3::char_('"')) > '"']
-      | x3::lexeme['\'' > *(esc_char | ~x3::char_('"')) > '\''];
+        x3::lexeme['"' > *(esc_char | ~x3::char_('"')) > '"'] | 
+        x3::lexeme['\'' > *(esc_char | ~x3::char_('\'')) > '\''] | lexeme[empty_string];
     BOOST_SPIRIT_DEFINE(quoted_filename)
 
     x3::rule<class any_filename_, std::string> const any_filename = "any_filename";
-    auto const any_filename_def = unquoted_filename | quoted_filename;
+    auto const any_filename_def = quoted_filename | unquoted_filename;
     BOOST_SPIRIT_DEFINE(any_filename)
 
     x3::rule<class int2_, Int2> const int2 = "int2";
@@ -500,7 +514,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(matrix4)
 
     x3::rule<class version_, Version> const version = "version";
-    auto const version_def = lexeme[-lexeme["VEX"] >> int_ >> "." >> int_ >> "." >> int_];
+    auto const version_def = lexeme[-lexeme["VER"] >> int_ >> "." >> int_ >> "." >> int_];
     BOOST_SPIRIT_DEFINE(version)
 
     x3::rule<class bgeo_inline_, bgeo::ast::Bgeo> const bgeo_inline = "bgeo_inline";
@@ -526,7 +540,7 @@ namespace parser {
     auto const keyword
         = x3::rule<class keyword>{"keyword"}
         = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
-        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare");
+        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -569,6 +583,18 @@ namespace parser {
         }
     } const prop_type;
 
+        struct DisplayTypesTable : x3::symbols<ast::DisplayType> {
+        DisplayTypesTable() {
+            add ("\"ip\""       , ast::DisplayType::IP)
+                ("\"md\""       , ast::DisplayType::MD)
+                ("\"JPEG\""     , ast::DisplayType::JPEG)
+                ("\"PNG\""      , ast::DisplayType::PNG)
+                ("\"OpenEXR\""  , ast::DisplayType::OPENEXR)
+                ("\"TIFF\""     , ast::DisplayType::TIFF)
+                ;
+        }
+    } const display_type;
+
     //x3::rule<class object_, ast::Object> const object = "object";
     //auto const object_def = lexeme["global" | "geo" | "geometry"];
     //BOOST_SPIRIT_DEFINE(object)
@@ -601,7 +627,9 @@ namespace parser {
 
     auto const cmd_image
         = x3::rule<class cmd_image, ast::cmd_image>{"cmd_image"}
-        = "cmd_image" >> image_values;
+        = "cmd_image" >> lit("\"-f\"") >> display_type >> any_filename >> eps
+        | "cmd_image" >> display_type >> attr("") >> eps
+        | "cmd_image" >> attr(ast::DisplayType::NONE) >> any_filename >> eps;
 
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
@@ -631,14 +659,19 @@ namespace parser {
         = x3::rule<class cmd_version, ast::cmd_version>{"cmd_version"}
         = "cmd_version" >> version >> eps;
 
+    auto const cmd_config
+        = x3::rule<class cmd_config, ast::cmd_config>{"cmd_config"}
+        = "cmd_config" >> any_filename >> eps;
+
     auto const cmd_defaults
         = x3::rule<class cmd_defaults, ast::cmd_defaults>{"cmd_defaults"}
         = "cmd_defaults" >> any_filename >> eps;
 
     auto const cmd_detail
         = x3::rule<class cmd_detail, ast::cmd_detail>{"cmd_detail"}
-        = "cmd_detail" >> obj_name >> "stdin" >> attr("stdin") >> bgeo_inline
-        | "cmd_detail" >> obj_name >> any_filename >> attr(bgeo::ast::Bgeo());
+        = "cmd_detail" >> lit("-T") >> attr(true) >> obj_name >> any_filename >> attr(bgeo::ast::Bgeo())
+        | "cmd_detail" >> attr(false) >> obj_name >> "stdin" >> attr("stdin") >> bgeo_inline
+        | "cmd_detail" >> attr(false) >> obj_name >> any_filename >> attr(bgeo::ast::Bgeo());
 
     auto const cmd_geometry
         = x3::rule<class cmd_geometry, ast::cmd_geometry>{"cmd_geometry"}
@@ -656,17 +689,11 @@ namespace parser {
         = x3::rule<class cmd_end, ast::cmd_end>{"cmd_end"}
         = "cmd_end" >> eps;
 
-    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
+    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
         cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption;
     
-
-    auto huy = [](auto& ctx) {
-        std::cout << "huy\n";
-    };
     auto const ifthen
         = x3::rule<class ifthen, ast::ifthen>{"ifthen"}
-        //= x3::rule<class ifthen>{"ifthen"}
-        //= lexeme["if" >> lsd_expr >> "then" >> *(cmd) >> "endif"];
         = "if" >> lsd_expr >> "then" >> (+cmd)  >> "endif";
 
     auto const input  = skip(skipper | char_("\n\t")) [*(cmd | ifthen) % eol];

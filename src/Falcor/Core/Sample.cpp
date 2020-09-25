@@ -39,7 +39,7 @@
 #include "Falcor/Utils/Threading.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-namespace Falcor {
+namespace Falcor { 
 
 IFramework* gpFramework = nullptr;
 
@@ -278,6 +278,7 @@ void Sample::handleWindowSizeChange() {
         mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
         // Init the UI
+        LOG_DBG("call Sample::initUI");
         initUI();
         mpPixelZoom = PixelZoom::create(mpDevice, mpTargetFBO.get());
 
@@ -405,6 +406,7 @@ void Sample::handleWindowSizeChange() {
         PROFILE(mpDevice, "renderUI");
 
         if (mShowUI || gProfileEnabled) {
+            std::cout << "renderUI beginFrame\n";
             mpGui->beginFrame();
 
             if (mShowUI) mpRenderer->onGuiRender(mpGui.get());
@@ -429,7 +431,10 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont("");
             }
 
-            mpGui->render(getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate->getLastFrameTime());
+            std::cout << "renderUI render\n";
+            mpGui->render(mpDevice->getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate->getLastFrameTime());
+
+            std::cout << "renderUI done\n";
         }
     }
 
@@ -509,11 +514,16 @@ void Sample::handleWindowSizeChange() {
     }
 
     void Sample::initUI() {
+        std::cout << "UI";
+        LOG_DBG("Sample::initUI");
         float scaling = getDisplayScaleFactor();
         const auto& pSwapChainFbo = mpDevice->getSwapChainFbo();
         mpGui = Gui::create(mpDevice, uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
         mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
         TextRenderer::start(mpDevice);
+
+        LOG_DBG("Sample::initUI done!");
+        std::cout << "UI done";
     }
 
     void Sample::resizeSwapChain(uint32_t width, uint32_t height) {

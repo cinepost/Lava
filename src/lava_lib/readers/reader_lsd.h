@@ -23,21 +23,21 @@ class ReaderLSD: public ReaderBase {
  	ReaderLSD();
  	~ReaderLSD();
 
-    void        init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo) override;
+    virtual void    init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo) override;
 
-    const char* formatName() const override;
-    bool        checkExtension(const char *name) override;
-    void        getFileExtensions(std::vector<std::string> &extensions) const override;
+    const char*     formatName() const override;
+    bool            checkExtension(const char *name) override;
+    void            getFileExtensions(std::vector<std::string> &extensions) const override;
 
     // Method to check if the given magic number matches the magic number. Return true on a match.
-    bool        checkMagicNumber(unsigned magic) override;
+    bool            checkMagicNumber(unsigned magic) override;
 
  private:
- 	virtual bool parseStream(std::istream& in) override;
-    virtual bool parseLine(const std::string& line, std::string& unparsed) override;
+ 	virtual bool    parseStream(std::istream& in) override;
+    virtual bool    parseLine(const std::string& line, std::string& unparsed) override;
 
  private:
- 	std::unique_ptr<lsd::LSDVisitor>  mpLSDVisitor;
+ 	std::unique_ptr<lsd::Visitor>  mpVisitor;
 
  public:
     // factory methods

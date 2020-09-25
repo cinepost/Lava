@@ -29,6 +29,7 @@
 #include "Program.h"
 #include "slang/slang.h"
 #include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
 
@@ -592,9 +593,13 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         specializationArgs,
         log);
 
+    LOG_DBG("0");
+
     if (!pSpecializedSlangGlobalScope) {
         return nullptr;
     }
+
+    LOG_DBG("0.1");
 
     uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
     std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
@@ -690,6 +695,8 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
     //
     uint32_t entryPointGroupCount = uint32_t(mDesc.mGroups.size());
     
+    LOG_DBG("1");
+
     for( uint32_t gg = 0; gg < entryPointGroupCount; ++gg ) {
         auto entryPointGroupDesc = mDesc.mGroups[gg];
 
@@ -700,7 +707,10 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         auto groupEntryPointCount = entryPointGroupDesc.entryPointCount;
         std::vector<Shader::SharedPtr> shaders;
         
+        LOG_DBG("1.1");
+
         for(uint32_t ee = 0; ee < groupEntryPointCount; ++ee) {
+            LOG_DBG("1.2");
             auto entryPointIndex = entryPointGroupDesc.firstEntryPoint + ee;
 
             auto pLinkedEntryPoint = pLinkedEntryPoints[entryPointIndex];
@@ -718,11 +728,23 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
                 log += (char const*) pSlangDiagnostics->getBufferPointer();
             }
 
-            if (failed) return nullptr;
+            if (failed) {
+                LOG_DBG("1.3");
+                
+                LOG_DBG("sources:\n");
+                for (auto const& src: mDesc.mSources) {
+                    LOG_DBG("source: %s", src.str.c_str());
+                }
 
+                return nullptr;
+            }
+            
             Shader::SharedPtr shader = createShaderFromBlob(mpDevice, blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
-            if (!shader) return nullptr;
-
+            
+            if (!shader) {
+                LOG_DBG("1.4");
+                return nullptr;
+            }
             shaders.emplace_back(std::move(shader));
         }
 
@@ -731,6 +753,8 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
         entryPointGroups.push_back(pEntryPointGroupKernels);
     }
+
+    LOG_DBG("2");
 
     return ProgramKernels::create(
             mpDevice,
@@ -851,6 +875,7 @@ bool Program::link() const {
             }
 
             mpActiveVersion = pVersion;
+            LOG_DBG("Program link done! %s", getProgramDescString().c_str());
             return true;
         }
     }

@@ -33,7 +33,6 @@
 
 #include <boost/container/static_vector.hpp>
 
-#include "renderer_iface_lsd.h"
 
 namespace x3 = boost::spirit::x3;
 namespace fs = boost::filesystem;
@@ -217,9 +216,13 @@ namespace parser {
     auto const array_def = ('[' >> value >> *(',' >> value) >> ']') | empty_array;
     BOOST_SPIRIT_DEFINE(array)
 
-    x3::rule<class bgeo_, ast::Bgeo> const bgeo = "bgeo";
-    auto const bgeo_def = array | object;
-    BOOST_SPIRIT_DEFINE(bgeo)
+    //x3::rule<class bgeo_, ast::Bgeo> const bgeo = "bgeo";
+    //auto const bgeo_def = array | object;
+    //BOOST_SPIRIT_DEFINE(bgeo)
+
+    auto const bgeo
+        = x3::rule<class bgeo_, ast::Bgeo>{"bgeo"}
+        = (array | object) >> eps;
 
     auto const input  = skip(blank | char_("\n\t")) [bgeo];
 }  // namespace parser

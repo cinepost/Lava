@@ -14,24 +14,36 @@ class Display {
  public:
     using UniquePtr = std::unique_ptr<Display>;
 
-    UniquePtr create(const std::string& driver_name);
+    ~Display();
+    static UniquePtr create(const std::string& driver_name);
 
+    bool open(const std::string& image_name, uint width, uint height);
+    bool close();
 
  private:
     Display(const std::string& driver_name);
 
- private:
-    std::string driver_name = "";
+    void makeStringsParameter(const char* name, const char** strings, int count, UserParameter& parameter);
 
-    PtDspyOpenFuncPtr               m_OpenFunc = nullptr;
-    PtDspyWriteFuncPtr              m_WriteFunc;
-    PtDspyDeepWriteFuncPtr          m_DeepWriteFunc;
-    PtDspyActiveRegionFuncPtr       m_ActiveRegionFunc;
-    PtDspyCloseFuncPtr              m_CloseFunc;
-    PtDspyFlushFuncPtr              m_FlushFunc;
-    PtDspyReopenFuncPtr             m_ReopenFunc;
-    PtDspyDelayCloseFuncPtr         m_DelayCloseFunc;
-    PtDspyQueryFuncPtr              m_QueryFunc;
+ private:
+    std::string mDriverName = "";
+    std::string mImageName = "";
+    uint mImageWidth, mImageHeight;
+    bool mClosed = false;
+
+    PtDspyImageHandle   mImage;
+    PtFlagStuff         mFlagstuff;
+
+    PtDspyOpenFuncPtr               mOpenFunc = nullptr;
+    PtDspyWriteFuncPtr              mWriteFunc;
+    PtDspyDeepWriteFuncPtr          mDeepWriteFunc;
+    PtDspyActiveRegionFuncPtr       mActiveRegionFunc;
+    PtDspyCloseFuncPtr              mCloseFunc;
+    PtDspyFlushFuncPtr              mFlushFunc;
+    PtDspyReopenFuncPtr             mReopenFunc;
+    PtDspyDelayCloseFuncPtr         mDelayCloseFunc;
+    PtDspyQueryFuncPtr              mQueryFunc;
+
 };
 
 }  // namespace lava

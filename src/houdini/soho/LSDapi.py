@@ -51,7 +51,7 @@ def cmd_setenv(name, value):
 
 def cmd_version(ver):
     soho.indent()
-    print 'cmd_version VEX%s' % ver
+    print 'cmd_version VER%s' % ver
 
 def cmd_hscript(cmd):
     # The LSD language is a subset of the hscript language.  This command lets
@@ -61,6 +61,10 @@ def cmd_hscript(cmd):
 def cmd_defaults(file):
     soho.indent()
     print 'cmd_defaults', repr(file)
+
+def cmd_config(file):
+    soho.indent()
+    print 'cmd_config', repr(file)
 
 def cmd_loadotl(otls, from_text_block=False):
     cmd = 'cmd_loadotl '

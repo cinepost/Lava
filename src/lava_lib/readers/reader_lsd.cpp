@@ -23,13 +23,16 @@ void ReaderLSD::init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo) {
     ReaderBase::init(std::move(pInterface), echo);
 
     std::unique_ptr<RendererIfaceLSD> pIface = std::unique_ptr<RendererIfaceLSD>{static_cast<RendererIfaceLSD*>(mpInterface.release())};
+
     if (!echo) {
         // standard LSD visitor
-        mpLSDVisitor = std::make_unique<lsd::LSDVisitor>(pIface);
+        mpVisitor = std::make_unique<lsd::Visitor>(pIface);
     } else {
         // LSD visitor with parsed console echo (for debug purposes)
-        mpLSDVisitor = std::make_unique<lsd::LSDEchoVisitor>(pIface);
+        mpVisitor = std::make_unique<lsd::EchoVisitor>(pIface);
     }
+
+    LLOG_DBG << "ReaderLSD::init done";
 }
 
 const char *ReaderLSD::formatName() const{
@@ -77,7 +80,7 @@ bool ReaderLSD::parseStream(std::istream& in) {
     }
 
     for (auto& cmd : commands) {
-        boost::apply_visitor(*mpLSDVisitor, cmd);
+        boost::apply_visitor(*mpVisitor, cmd);
     }
 
     return true;
@@ -103,7 +106,7 @@ bool ReaderLSD::parseLine(const std::string& line, std::string& unparsed) {
     }
 
     for (auto& cmd : commands) {
-        boost::apply_visitor(*mpLSDVisitor, cmd);
+        boost::apply_visitor(*mpVisitor, cmd);
     }
 
     return true;

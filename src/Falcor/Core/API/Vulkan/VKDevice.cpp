@@ -111,7 +111,47 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 }
 
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
+    // https://github.com/SaschaWillems/Vulkan/blob/master/examples/offscreen/offscreen.cpp
+
     VkImage image;
+
+    VkImageCreateInfo imageInfo = {};
+
+    imageInfo.arrayLayers = 1;
+    imageInfo.extent.depth = 1;
+    imageInfo.extent.height = height;
+    imageInfo.extent.width = width;
+    imageInfo.format = getVkFormat(colorFormat);
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.mipLevels = 1;
+    imageInfo.pQueueFamilyIndices = nullptr;
+    imageInfo.queueFamilyIndexCount = 0;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+    auto result = vkCreateImage(mApiHandle, &imageInfo, nullptr, &image);
+    if (VK_FAILED(result)) {
+        throw std::runtime_error("Failed to create FBO texture.");
+    }
+
+    // Allocate the GPU memory
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(mApiHandle, image, &memRequirements);
+
+    VkDeviceMemory deviceMem;
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = getVkMemoryType(Device::MemoryType::Default, memRequirements.memoryTypeBits);
+
+    vk_call(vkAllocateMemory(mApiHandle, &allocInfo, nullptr, &deviceMem));
+
+    vkBindImageMemory(mApiHandle, image, deviceMem, 0);
     
     apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
     return true;
