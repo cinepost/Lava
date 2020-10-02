@@ -1,0 +1,105 @@
+#ifndef SRC_LAVA_LIB_READER_LSD_LSD_VISITOR_H_
+#define SRC_LAVA_LIB_READER_LSD_LSD_VISITOR_H_
+
+#include <array>
+#include <memory>
+#include <string>
+#include <algorithm>
+#include <iostream>
+#include <variant>
+
+#include "grammar_lsd.h"
+
+namespace lava { 
+
+class SessionLSD;
+
+namespace lsd { 
+
+struct Visitor: public boost::static_visitor<> {
+ public:
+    enum class Flag { NOFLAG, IGNORE_CMDS, READ_INLINE_GEO };
+
+    Visitor(std::unique_ptr<SessionLSD>& pSession);
+
+    virtual void operator()(ast::NoValue const& c) const {};
+    virtual void operator()(ast::ifthen const& c);
+    virtual void operator()(ast::endif const& c);
+    virtual void operator()(ast::setenv const& c) const;
+    virtual void operator()(ast::cmd_image const& c) const;
+    virtual void operator()(ast::cmd_end const& c) const;
+    virtual void operator()(ast::cmd_quit const& c) const;
+    virtual void operator()(ast::cmd_start const& c) const;
+    virtual void operator()(ast::cmd_time const& c) const;
+    virtual void operator()(ast::cmd_detail const& c);
+    virtual void operator()(ast::cmd_version const& c) const;
+    virtual void operator()(ast::cmd_config const& c) const;
+    virtual void operator()(ast::cmd_defaults const& c) const;
+    virtual void operator()(ast::cmd_transform const& c) const;
+    virtual void operator()(ast::cmd_geometry const& c) const;
+    virtual void operator()(ast::cmd_property const& c) const;
+    virtual void operator()(ast::cmd_deviceoption const& c) const;
+    virtual void operator()(ast::cmd_declare const& c) const;
+    virtual void operator()(ast::cmd_raytrace const& c) const;
+
+    void inlineGeoReadDone();
+    const std::vector<Flag>& flags() const;
+    Flag current_flag() const;
+
+ private:
+    void push_flag(Flag flag) { flag_stack.push_back(flag); };
+    void pop_flag() { flag_stack.pop_back(); };
+
+ protected:
+    std::unique_ptr<SessionLSD> mpSession;
+    std::vector<Flag> flag_stack;
+};
+
+
+struct EchoVisitor: public Visitor {
+ public:
+    EchoVisitor(std::unique_ptr<SessionLSD>& pSession);
+    EchoVisitor(std::unique_ptr<SessionLSD>& pSession, std::ostream& os);
+
+    void operator()(ast::NoValue const& c) const override {};
+    void operator()(ast::ifthen const& c) override;
+    void operator()(ast::endif const& c) override;
+    void operator()(ast::setenv const& c) const override;
+    void operator()(ast::cmd_image const& c) const override;
+    void operator()(ast::cmd_end const& c) const override;
+    void operator()(ast::cmd_quit const& c) const override;
+    void operator()(ast::cmd_start const& c) const override;
+    void operator()(ast::cmd_time const& c) const override;
+    void operator()(ast::cmd_detail const& c) override;
+    void operator()(ast::cmd_version const& c) const override;
+    void operator()(ast::cmd_config const& c) const override;
+    void operator()(ast::cmd_defaults const& c) const override;
+    void operator()(ast::cmd_transform const& c) const override;
+    void operator()(ast::cmd_geometry const& c) const override;
+    void operator()(ast::cmd_property const& c) const override;
+    void operator()(ast::cmd_deviceoption const& c) const override;
+    void operator()(ast::cmd_declare const& c) const override;
+    void operator()(ast::cmd_raytrace const& c) const override;
+
+ //private:
+    void operator()(std::vector<PropValue> const& v) const;
+    void operator()(int v) const;
+    void operator()(double v) const;
+    void operator()(std::string const& v) const;
+    void operator()(Int2 const& v) const;
+    void operator()(Int3 const& v) const;
+    void operator()(Int4 const& v) const;
+    void operator()(Vector2 const& v) const;
+    void operator()(Vector3 const& v) const;
+    void operator()(Vector4 const& v) const;
+    void operator()(PropValue const& v) const;
+
+ private:
+    std::ostream& _os;
+};
+
+}  // namespace lsd
+
+}  // namespace lava
+
+#endif  // SRC_LAVA_LIB_READER_LSD_LSD_VISITOR_H_

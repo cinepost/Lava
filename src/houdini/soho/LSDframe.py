@@ -45,7 +45,7 @@ class CubeMapControl:
     def __init__(self, obj, now):
         self.Object = obj
         self.Face = -1
-        self.BasePath = obj.getDefaultedString('vm_picture', now, [''])[0]
+        self.BasePath = obj.getDefaultedString('lv_picture', now, [''])[0]
 
     def setFace(self, dir):
         self.Face = dir
@@ -143,91 +143,91 @@ def iprplane(channel):
         cmd_end()
 
 displayParms = {
-    'vm_device'  :SohoParm('vm_device',   'string',     [''], False),
-    'vm_foptions':SohoParm('vm_foptions', 'string',     [''], False),
-    'vm_numaux'  :SohoParm('vm_numaux',   'int',        [0], False),
-    'vm_exportcomponents'  :SohoParm('vm_exportcomponents',   'string',        [''], False),
+    'lv_device'  :SohoParm('lv_device',   'string',     [''], False),
+    'lv_foptions':SohoParm('lv_foptions', 'string',     [''], False),
+    'lv_numaux'  :SohoParm('lv_numaux',   'int',        [0], False),
+    'lv_exportcomponents'  :SohoParm('lv_exportcomponents',   'string',        [''], False),
 }
 
 planeDisplayParms = {
-    'disable'   :SohoParm('vm_disable_plane%d', 'int',  [0], False,
+    'disable'   :SohoParm('lv_disable_plane%d', 'int',  [0], False,
                                 key='disable'),
-    'excludedcm': SohoParm('vm_excludedcm_plane%d', 'int',  [0], False,
+    'excludedcm': SohoParm('lv_excludedcm_plane%d', 'int',  [0], False,
                                 key='excludedcm'),
-    'variable'  :SohoParm('vm_variable_plane%d','string', [''], False,
+    'variable'  :SohoParm('lv_variable_plane%d','string', [''], False,
                                 key='variable'),
-    'vextype'   :SohoParm('vm_vextype_plane%d', 'string', ['float'], False,
+    'vextype'   :SohoParm('lv_vextype_plane%d', 'string', ['float'], False,
                                 key='vextype'),
-    'usefile'   :SohoParm('vm_usefile_plane%d', 'int', [0], False,
+    'usefile'   :SohoParm('lv_usefile_plane%d', 'int', [0], False,
                                 key='usefile'),
-    'filename'  :SohoParm('vm_filename_plane%d', 'string', [''], False,
+    'filename'  :SohoParm('lv_filename_plane%d', 'string', [''], False,
                                 key='filename'),
-    'channel'   :SohoParm('vm_channel_plane%d', 'string', [''], False,
+    'channel'   :SohoParm('lv_channel_plane%d', 'string', [''], False,
                                 key='channel'),
-    'showrelightingbuffer' :SohoParm('vm_show_relighting_buffer%d', 'bool', [0], False,
+    'showrelightingbuffer' :SohoParm('lv_show_relighting_buffer%d', 'bool', [0], False,
                                 key='showrelightingbuffer'),
 
     # Batch light exports
-    'lexport'   :SohoParm('vm_lightexport%d', 'int', [0], False,
+    'lexport'   :SohoParm('lv_lightexport%d', 'int', [0], False,
                                 key='lightexport'),
-    'cexport'   :SohoParm('vm_componentexport%d', 'int', [0], False,
+    'cexport'   :SohoParm('lv_componentexport%d', 'int', [0], False,
                                 key='componentexport'),
-    'lightscope':SohoParm('vm_lightexport_scope%d', 'string', ['*'], False,
+    'lightscope':SohoParm('lv_lightexport_scope%d', 'string', ['*'], False,
                                 key='lightscope'),
-    'lightselect':SohoParm('vm_lightexport_select%d', 'string', ['*'], False,
+    'lightselect':SohoParm('lv_lightexport_select%d', 'string', ['*'], False,
                                 key='lightselect'),
 
     # Some parameters for backward compatibility with H9.0
-    'h9channel' : SohoParm('vm_picture_plane%d', 'string', [''], False,
+    'h9channel' : SohoParm('lv_picture_plane%d', 'string', [''], False,
                                 key='h9channel'),
 }
 
 stereoParms = {
-    'vm_s3dleftcamera'  :SohoParm('vm_s3dleftcamera',  'bool',   [0],  False),
-    'vm_s3drightcamera' :SohoParm('vm_s3drightcamera', 'bool',   [0],  False),
-    'vm_filenamesuffix' :SohoParm('vm_filenamesuffix', 'string', [''], False),
+    'lv_s3dleftcamera'  :SohoParm('lv_s3dleftcamera',  'bool',   [0],  False),
+    'lv_s3drightcamera' :SohoParm('lv_s3drightcamera', 'bool',   [0],  False),
+    'lv_filenamesuffix' :SohoParm('lv_filenamesuffix', 'string', [''], False),
 }
 
 uvRenderParms = {
-    'vm_uvmkpath'       :SohoParm('vm_uvmkpath', 'int', [1], False),
-    'vm_uvobjects'      :SohoParm('vm_uvobjects', 'int', [0], False),
-    'vm_uvtype'         :SohoParm('vm_uvtype', 'string', ['udim'], False),
-    'vm_uvhidecage'     : SohoParm('vm_uvhidecage', 'bool', [True], False),
-    'vm_uvunwrapres'    :SohoParm('vm_uvunwrapres', 'int', [1024, 1024], False),
-    'vm_isuvrendering'  :SohoParm('vm_isuvrendering', 'bool', [False], False),
-    'vm_uv_unwrap_method' :SohoParm('vm_uv_unwrap_method', 'int', [0], False),
-    'vm_uv_cmd_bias'  :SohoParm('vm_uv_cmd_bias', 'float', [0.01], False),
-    'vm_uv_cmd_maxdist' :SohoParm('vm_uv_cmd_maxdist', 'float', [-1], False),
-    'vm_uv_flip_normal': SohoParm('vm_uv_flip_normal', 'bool', [False], False),
+    'lv_uvmkpath'       :SohoParm('lv_uvmkpath', 'int', [1], False),
+    'lv_uvobjects'      :SohoParm('lv_uvobjects', 'int', [0], False),
+    'lv_uvtype'         :SohoParm('lv_uvtype', 'string', ['udim'], False),
+    'lv_uvhidecage'     : SohoParm('lv_uvhidecage', 'bool', [True], False),
+    'lv_uvunwrapres'    :SohoParm('lv_uvunwrapres', 'int', [1024, 1024], False),
+    'lv_isuvrendering'  :SohoParm('lv_isuvrendering', 'bool', [False], False),
+    'lv_uv_unwrap_method' :SohoParm('lv_uv_unwrap_method', 'int', [0], False),
+    'lv_uv_cmd_bias'  :SohoParm('lv_uv_cmd_bias', 'float', [0.01], False),
+    'lv_uv_cmd_maxdist' :SohoParm('lv_uv_cmd_maxdist', 'float', [-1], False),
+    'lv_uv_flip_normal': SohoParm('lv_uv_flip_normal', 'bool', [False], False),
 }
 
 uvObjectParms = {
-    'vm_uvobjectenable'   :SohoParm('vm_uvobjectenable%d', 'int', [1], False, key='enable'),
-    'vm_uvobject'         :SohoParm('vm_uvobject%d', 'string', [''], False, key='name'),
-    'vm_uvcageobject'     :SohoParm('vm_uvcageobject%d', 'string', [''], False, key='cagelist'),
-    'vm_uvhires'        :SohoParm('vm_uvhires%d', 'string', [''], False, key='hireslist'),
-    'vm_uvoutputpicture'  :SohoParm('vm_uvoutputpicture%d', 'string', [''], False, key='picture'),
-    'vm_uvoutputobject' :SohoParm('vm_uvoutputobject%d', 'string', [''], False, key='outobj')
+    'lv_uvobjectenable'   :SohoParm('lv_uvobjectenable%d', 'int', [1], False, key='enable'),
+    'lv_uvobject'         :SohoParm('lv_uvobject%d', 'string', [''], False, key='name'),
+    'lv_uvcageobject'     :SohoParm('lv_uvcageobject%d', 'string', [''], False, key='cagelist'),
+    'lv_uvhires'        :SohoParm('lv_uvhires%d', 'string', [''], False, key='hireslist'),
+    'lv_uvoutputpicture'  :SohoParm('lv_uvoutputpicture%d', 'string', [''], False, key='picture'),
+    'lv_uvoutputobject' :SohoParm('lv_uvoutputobject%d', 'string', [''], False, key='outobj')
 }
 
 tilingParms = {
-    'vm_tile_render'    :SohoParm('vm_tile_render',  'bool', [0], False),
-    'vm_tile_count_x'   :SohoParm('vm_tile_count_x', 'int',  [4], False),
-    'vm_tile_count_y'   :SohoParm('vm_tile_count_y', 'int',  [4], False),
-    'vm_tile_index'     :SohoParm('vm_tile_index',   'int',  [0], False),
-    'vm_tile_filename_suffix'
-            :SohoParm('vm_tile_filename_suffix','string', ['_tile%02d_'], False),
+    'lv_tile_render'    :SohoParm('lv_tile_render',  'bool', [0], False),
+    'lv_tile_count_x'   :SohoParm('lv_tile_count_x', 'int',  [4], False),
+    'lv_tile_count_y'   :SohoParm('lv_tile_count_y', 'int',  [4], False),
+    'lv_tile_index'     :SohoParm('lv_tile_index',   'int',  [0], False),
+    'lv_tile_filename_suffix'
+            :SohoParm('lv_tile_filename_suffix','string', ['_tile%02d_'], False),
 }
 
 cryptoParms = {
-    'vm_cryptolayerenable' :SohoParm('vm_cryptolayerenable%d', 'int',    [1],  False, key='enable'),
-    'vm_cryptolayerprop'   :SohoParm('vm_cryptolayerprop%d',   'string', [''], False, key='layerprop'),
-    'vm_cryptolayername'   :SohoParm('vm_cryptolayername%d',   'string', [''], False, key='layername'),
-    'vm_cryptolayerrank'   :SohoParm('vm_cryptolayerrank%d',   'int',    [6],  False, key='layerrank'),
-    'vm_cryptolayeroutputenable'   :SohoParm('vm_cryptolayeroutputenable%d', 'int',  [0],  False, key='layeroutputenable'),
-    'vm_cryptolayeroutput' :SohoParm('vm_cryptolayeroutput%d', 'string', [''], False, key='layeroutput'),
-    'vm_cryptolayersidecarenable'   :SohoParm('vm_cryptolayersidecarenable%d', 'int',    [0],  False, key='layersidecareneable'),
-    'vm_cryptolayersidecar'     :SohoParm('vm_cryptolayersidecar%d',       'string', [''], False, key='layersidecar')
+    'lv_cryptolayerenable' :SohoParm('lv_cryptolayerenable%d', 'int',    [1],  False, key='enable'),
+    'lv_cryptolayerprop'   :SohoParm('lv_cryptolayerprop%d',   'string', [''], False, key='layerprop'),
+    'lv_cryptolayername'   :SohoParm('lv_cryptolayername%d',   'string', [''], False, key='layername'),
+    'lv_cryptolayerrank'   :SohoParm('lv_cryptolayerrank%d',   'int',    [6],  False, key='layerrank'),
+    'lv_cryptolayeroutputenable'   :SohoParm('lv_cryptolayeroutputenable%d', 'int',  [0],  False, key='layeroutputenable'),
+    'lv_cryptolayeroutput' :SohoParm('lv_cryptolayeroutput%d', 'string', [''], False, key='layeroutput'),
+    'lv_cryptolayersidecarenable'   :SohoParm('lv_cryptolayersidecarenable%d', 'int',    [0],  False, key='layersidecareneable'),
+    'lv_cryptolayersidecar'     :SohoParm('lv_cryptolayersidecar%d',       'string', [''], False, key='layersidecar')
 }
 
 def envmapDisplay(cam, now, cubemap):
@@ -244,13 +244,13 @@ def lightDisplay(wrangler, light, now):
     if LSDhooks.call('pre_lightDisplay', wrangler, light, now):
         # The hook has output the light display for us
         return True
-    filename = light.wrangleString(wrangler, 'vm_picture', now, [''])[0]
+    filename = light.wrangleString(wrangler, 'lv_picture', now, [''])[0]
     if not filename:
         return False
 
     deep = None
     if not light.wrangleInt(wrangler, 'render_pointcloud', now, [0])[0]:
-        deep = light.wrangleString(wrangler, 'vm_deepresolver', now, [''])[0]
+        deep = light.wrangleString(wrangler, 'lv_deepresolver', now, [''])[0]
         if deep == 'null':
             deep = None
     if deep:
@@ -276,7 +276,7 @@ def lightDisplay(wrangler, light, now):
     if deep:
         # Make intermdiate directories
         for parm in plist:
-            if parm.Houdini == 'vm_dsmfilename':
+            if parm.Houdini == 'lv_dsmfilename':
                 soho.makeFilePathDirsIfEnabled(parm.Value[0])
         cmd_propertyAndParms('image', 'deepresolver', deep, plist)
     soho.indent(-1, "", None)
@@ -320,8 +320,8 @@ def lightExportPlanes(wrangler, cam, now, lexport,
     elif lexport == 1:
         for l in cam.objectList('objlist:light', now, lscope, lselect):
             lchannel = []
-            suffix = l.getDefaultedString('vm_export_suffix', now, [''])[0]
-            if not l.evalString('vm_export_prefix', now, lchannel):
+            suffix = l.getDefaultedString('lv_export_suffix', now, [''])[0]
+            if not l.evalString('lv_export_prefix', now, lchannel):
                 lchannel = [l.getName()[1:].rsplit('/', 1)[-1]]
             if lchannel[0]:
                 lchannel = '%s_%s%s' % (lchannel[0], channel, suffix)
@@ -389,12 +389,12 @@ def quickImagePlanes(wrangler, cam, now, components):
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):
         return True
-    filename = cam.wrangleString(wrangler, 'vm_picture', now, ['ip'])[0]
+    filename = cam.wrangleString(wrangler, 'lv_picture', now, ['ip'])[0]
     plist       = cam.wrangle(wrangler, displayParms, now)
-    device      = plist['vm_device'].Value[0]
-    foptions    = plist['vm_foptions'].Value[0]
-    numaux      = plist['vm_numaux'].Value[0]
-    components  = plist['vm_exportcomponents'].Value[0]
+    device      = plist['lv_device'].Value[0]
+    foptions    = plist['lv_foptions'].Value[0]
+    numaux      = plist['lv_numaux'].Value[0]
+    components  = plist['lv_exportcomponents'].Value[0]
 
     flipbook = cam.wrangleInt(wrangler, 'flipbook_output', now, [0])[0]
     if flipbook:
@@ -407,9 +407,9 @@ def cameraDisplay(wrangler, cam, now):
     is_preview = LSDmisc.isPreviewMode()
 
     plist           = cam.wrangle(wrangler, stereoParms, now)
-    is_left_cam     = plist['vm_s3dleftcamera'].Value[0]
-    is_right_cam    = plist['vm_s3drightcamera'].Value[0]
-    file_suffix     = plist['vm_filenamesuffix'].Value[0]
+    is_left_cam     = plist['lv_s3dleftcamera'].Value[0]
+    is_right_cam    = plist['lv_s3drightcamera'].Value[0]
+    file_suffix     = plist['lv_filenamesuffix'].Value[0]
     no_suffix       = cam.getData('NoFileSuffix')
 
     if no_suffix is not None and no_suffix:
@@ -429,24 +429,24 @@ def cameraDisplay(wrangler, cam, now):
     LSDsettings.outputImageFormatOptions(wrangler, cam, now)
 
     # uv render may have Cf+Af disabled for performance reasons
-    skipCf = cam.wrangleInt(wrangler, 'vm_bake_skipcf', now, [0])[0]
+    skipCf = cam.wrangleInt(wrangler, 'lv_bake_skipcf', now, [0])[0]
     if not skipCf:
         defplane("C", 'Cf+Af', 'vector4', -1, wrangler, cam, now)
     else:
         defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
 
-    vm_relightingbuffer = [0]
-    soho.evalInt("vm_relightingbuffer", vm_relightingbuffer)
+    lv_relightingbuffer = [0]
+    soho.evalInt("lv_relightingbuffer", lv_relightingbuffer)
 
-    vm_stylesheets = [0]
-    soho.evalInt("vm_stylesheets", vm_stylesheets)
+    lv_stylesheets = [0]
+    soho.evalInt("lv_stylesheets", lv_stylesheets)
 
-    if is_preview and vm_relightingbuffer[0]:
+    if is_preview and lv_relightingbuffer[0]:
         defplane("C_Relighting", 'Cf+Af', 'vector4', -1,
                  wrangler, cam, now, showrelightingbuffer=True)
 
     # Initialize property for Op_Id generation
-    LSDsettings._Settings.GenerateOpId = cam.getDefaultedInt('vm_generate_opid', now, [0])[0]
+    LSDsettings._Settings.GenerateOpId = cam.getDefaultedInt('lv_generate_opid', now, [0])[0]
 
     quickImagePlanes(wrangler, cam, now, components)
 
@@ -475,7 +475,7 @@ def cameraDisplay(wrangler, cam, now):
         if is_preview and (variable == 'Op_Id' or variable == 'Prim_Id'):
             continue
 
-        if vm_stylesheets[0] and variable == 'Sty_Id':
+        if lv_stylesheets[0] and variable == 'Sty_Id':
             continue
 
         if h9channel and not channel:
@@ -512,7 +512,7 @@ def cameraDisplay(wrangler, cam, now):
                                 variable, vextype, plane, filename, excludedcm,
                                 unique_names)
 
-            if is_preview and vm_relightingbuffer[0] and variable == 'Pixel_Samples':
+            if is_preview and lv_relightingbuffer[0] and variable == 'Pixel_Samples':
                 defplane('Pixel_Samples_Relighting', variable, vextype,
                          -1, wrangler, cam, now,
                          showrelightingbuffer=True,
@@ -524,24 +524,24 @@ def cameraDisplay(wrangler, cam, now):
         iprplane('Op_Id')
         iprplane('Prim_Id')
 
-    if vm_stylesheets[0]:
+    if lv_stylesheets[0]:
         iprplane('Sty_Id')
 
     soho.indent(-1, "", None)
 
-    deep = cam.getDefaultedString('vm_deepresolver', now, [''])[0]
+    deep = cam.getDefaultedString('lv_deepresolver', now, [''])[0]
     if deep and not is_preview:
         parms = LSDsettings.evaluateDeepResolver(deep, wrangler, cam, now)
         if deep and parms:
             # adjust DCM file name for stereo cameras
             for parm in parms:
-                if parm.Houdini in ('vm_dcmfilename', 'vm_dsmfilename'):
+                if parm.Houdini in ('lv_dcmfilename', 'lv_dsmfilename'):
                     dcmfilename = insertFileSuffix(parm.Value[0], file_suffix)
                     soho.makeFilePathDirsIfEnabled(dcmfilename)
                     parm.Value = [dcmfilename]
             cmd_propertyAndParms('image', 'deepresolver', deep, parms)
 
-    numcrypto = cam.getDefaultedInt('vm_cryptolayers', now, [0])[0]
+    numcrypto = cam.getDefaultedInt('lv_cryptolayers', now, [0])[0]
 
     ropnode = hou.node(soho.getOutputDriver().getName())
     cryptoargs = []
@@ -557,10 +557,10 @@ def cameraDisplay(wrangler, cam, now):
         cryptodict['rank'] = plist['layerrank'].Value[0]
         cryptodict['name'] = plist['layername'].Value[0]
 
-        # check if vm_cryptolayeroutputenable# parameter exists (older
+        # check if lv_cryptolayeroutputenable# parameter exists (older
         # instance of mantra ROP may not have this parameter, in which case we
         # must always evaluate output path):
-        parmname = cryptoParms['vm_cryptolayeroutputenable'].Houdini
+        parmname = cryptoParms['lv_cryptolayeroutputenable'].Houdini
         cryptooutputpath = ''
         if ropnode.parm(parmname) == None or plist['layeroutputenable'].Value[0] != 0:
             cryptooutputpath = plist['layeroutput'].Value[0]
@@ -722,7 +722,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
     if forphoton:
         cmd_property('renderer', 'progressaction', ['Generating photon map'])
         # Set the default for the photon target
-        target = cam.wrangleString(wrangler, 'vm_photontarget', now, ['*'])
+        target = cam.wrangleString(wrangler, 'lv_photontarget', now, ['*'])
         cmd_property('light', 'photontarget', target)
     elif fromlight and viewcam != None:
         cmd_property('renderer', 'progressaction', ['Generating point cloud'])
@@ -763,13 +763,13 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
     uvrender = False
     if not fromlight and not forphoton:
         uvlist = cam.wrangle(wrangler, uvRenderParms, now)
-        uvrender = uvlist['vm_isuvrendering'].Value[0]
+        uvrender = uvlist['lv_isuvrendering'].Value[0]
 
     if uvrender:
-        uvnum = uvlist['vm_uvobjects'].Value[0]
-        mkpath = uvlist['vm_uvmkpath'].Value[0]
-        res = uvlist['vm_uvunwrapres'].Value
-        hidecage = uvlist['vm_uvhidecage'].Value[0]
+        uvnum = uvlist['lv_uvobjects'].Value[0]
+        mkpath = uvlist['lv_uvmkpath'].Value[0]
+        res = uvlist['lv_uvunwrapres'].Value
+        hidecage = uvlist['lv_uvhidecage'].Value[0]
 
         # Write object paths and image output paths to the LSD as JSON.
         obj_list = []
@@ -800,7 +800,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
 
             # warn if output picture is using a limited format.
             # we want to bake to multi-channel formats, if possible.
-            if uvlist['vm_uvtype'].Value == 'udim':
+            if uvlist['lv_uvtype'].Value == 'udim':
                 picture_sp = picture_regex.split(".")
                 if not picture_sp[-1] in ['rat', 'pic', 'exr']:
                     picture_regex = '.'.join(picture_sp[:-1])+'.rat'
@@ -887,10 +887,10 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
 
     cmd_property('camera', 'projection', [proj])
     if uvrender:
-        unwrap_method = uvlist['vm_uv_unwrap_method'].Value[0]
-        cmd_bias = uvlist['vm_uv_cmd_bias'].Value[0]
-        cmd_maxdist = uvlist['vm_uv_cmd_maxdist'].Value[0]
-        flipnormal = uvlist['vm_uv_flip_normal'].Value[0]
+        unwrap_method = uvlist['lv_uv_unwrap_method'].Value[0]
+        cmd_bias = uvlist['lv_uv_cmd_bias'].Value[0]
+        cmd_maxdist = uvlist['lv_uv_cmd_maxdist'].Value[0]
+        flipnormal = uvlist['lv_uv_flip_normal'].Value[0]
         cmd_property('renderer', 'lensshader',
                      ['opdef:/Shop/v_uvlens unwrap_method %d cmd_bias %g cmd_maxdist %g flipnormal "%d"' \
                    % (unwrap_method, cmd_bias, cmd_maxdist, flipnormal)], False)
@@ -924,7 +924,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
                    vrperspectivefov, vrperspectiveclipnear, vrperspectiveclipfar, vrperspectivedistort, vrperspectivedistortcubic,
                    vrusestereoeye, vreyeseparation, vreyetoneckdistance)], False)
 
-    dof = cam.wrangleInt(wrangler, 'vm_dof', now, [0])[0]
+    dof = cam.wrangleInt(wrangler, 'lv_dof', now, [0])[0]
 
     crop = cam.getCameraCropWindow(wrangler, now)
 
@@ -941,7 +941,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
             crop[2] = max(crop[2], crop_bounds[2])
             crop[3] = min(crop[3], crop_bounds[3])
 
-    overscan = cam.wrangleInt(wrangler, 'vm_overscan', now, [0, 0])
+    overscan = cam.wrangleInt(wrangler, 'lv_overscan', now, [0, 0])
     if len(overscan) == 2 and (overscan[0] > 0 or overscan[1] > 0):
         crop[0] -= float(max(0, overscan[0])) / res[0]
         crop[1] += float(max(0, overscan[0])) / res[0]
@@ -954,12 +954,12 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
     # Tiled renders
     is_preview      = LSDmisc.isPreviewMode()
     plist           = cam.wrangle(wrangler, tilingParms, now)
-    is_tiled        = plist['vm_tile_render'].Value[0]
+    is_tiled        = plist['lv_tile_render'].Value[0]
     if is_tiled and not (is_preview or fromlight or forphoton):
-        tile_count_x = plist['vm_tile_count_x'].Value[0]
-        tile_count_y = plist['vm_tile_count_y'].Value[0]
-        tile_index   = plist['vm_tile_index'].Value[0]
-        tile_filename_suffix = plist['vm_tile_filename_suffix'].Value[0]
+        tile_count_x = plist['lv_tile_count_x'].Value[0]
+        tile_count_y = plist['lv_tile_count_y'].Value[0]
+        tile_index   = plist['lv_tile_index'].Value[0]
+        tile_filename_suffix = plist['lv_tile_filename_suffix'].Value[0]
         cmd_property('image', 'tiledrenderindex', [tile_index])
         cmd_property('image', 'tiledrendercount', [tile_count_x, tile_count_y])
         cmd_property('image', 'tiledrendersuffix', [tile_filename_suffix])
@@ -976,8 +976,8 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
 
     # Stereoscopy info
     plist           = cam.wrangle(wrangler, stereoParms, now)
-    is_left_cam     = plist['vm_s3dleftcamera'].Value[0]
-    is_right_cam    = plist['vm_s3drightcamera'].Value[0]
+    is_left_cam     = plist['lv_s3dleftcamera'].Value[0]
+    is_right_cam    = plist['lv_s3drightcamera'].Value[0]
     if is_left_cam or is_right_cam:
         eye_list = ['', 'left', 'right', 'both']
         cmd_declare('global', 'string', 'camera:stereoeye',
@@ -996,7 +996,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
     return True
 
 def isGeoLight(light, wrangler, now):
-    ltype = light.wrangleString(wrangler, 'vm_areashape', now, [''])[0]
+    ltype = light.wrangleString(wrangler, 'lv_areashape', now, [''])[0]
     return ltype == 'geo'
 
 def outputLight(light, now):
@@ -1271,12 +1271,12 @@ def outputInstance(obj, now, check_renderable=False):
     # Get the displacement bound from any materials applied to the
     # geometry.
     LSDgeo.instanceGeometry(obj, now, times)
-    proc = obj.wrangleString(wrangler, 'vm_auto_engine_procedural', now, [''])[0]
+    proc = obj.wrangleString(wrangler, 'lv_auto_engine_procedural', now, [''])[0]
     if proc:
-        boundsop = obj.wrangleString(wrangler, 'vm_auto_engine_boundsop', now,[''])[0]
-        unload = obj.wrangleInt(wrangler, 'vm_auto_engine_unload', now, [1])[0]
-        lod = obj.wrangleInt(wrangler, 'vm_auto_engine_requirelod', now, [0])[0]
-        orient = obj.wrangleInt(wrangler, 'vm_auto_engine_doorient', now,[1])[0]
+        boundsop = obj.wrangleString(wrangler, 'lv_auto_engine_boundsop', now,[''])[0]
+        unload = obj.wrangleInt(wrangler, 'lv_auto_engine_unload', now, [1])[0]
+        lod = obj.wrangleInt(wrangler, 'lv_auto_engine_requirelod', now, [0])[0]
+        orient = obj.wrangleInt(wrangler, 'lv_auto_engine_doorient', now,[1])[0]
         engineinstance(obj, now, times, proc,
                 unload=unload,
                 requirelod=lod,
@@ -1333,7 +1333,7 @@ def outputPointInstance(obj, now):
         LSDgeo.getPointInstanceSHOPs(
             pt_material_shaders, now, geo,
             'shop_materialpath', npts,
-            shader_types=['shop_surfacepath', 'shop_displacepath', 'vm_matteshader'],
+            shader_types=['shop_surfacepath', 'shop_displacepath', 'lv_matteshader'],
             override='material_override' )
 
     cmd_comment('Point instance object %s' % obj.getName() )
@@ -1369,7 +1369,7 @@ def outputPointInstance(obj, now):
         sys.stdout.write( 'renderboxes 1 ' )
     sys.stdout.write( 'process_material 1\n')
 
-    details = obj.getData("vm_details")
+    details = obj.getData("lv_details")
     LSDsettings.outputObject(obj, now)
     for d in details:
         cmd_geometry(d)
@@ -1531,17 +1531,17 @@ def renderCamera(cam, now,
     uvrender = False
     uvlist = cam.wrangle(wrangler, uvRenderParms, now)
     if not fromlight and not forphoton:
-        uvrender = uvlist['vm_isuvrendering'].Value[0]
+        uvrender = uvlist['lv_isuvrendering'].Value[0]
 
     # Declare baking parms
     LSDsettings.declareBakingParms(now, False)
 
     # Declare uv baking parms required by shaders
-    for pname in ('vm_uv_flip_normal', 'vm_uv_unwrap_method'):
+    for pname in ('lv_uv_flip_normal', 'lv_uv_unwrap_method'):
         parm = uvlist[pname]
         if parm.Value == parm.Default:
             continue
-        cmd_declare('global', parm.Type, 'global:%s' % re.sub('^vm_', '', pname), parm.Value)
+        cmd_declare('global', parm.Type, 'global:%s' % re.sub('^lv_', '', pname), parm.Value)
 
     type = 'unknown'
     label = [cam.getName()]

@@ -28,6 +28,8 @@
 #include "BSDFViewer.h"
 #include "Falcor/Experimental/Scene/Material/BxDFConfig.slangh"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -51,6 +53,8 @@ BSDFViewer::SharedPtr BSDFViewer::create(RenderContext* pRenderContext, const Di
 }
 
 BSDFViewer::BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+    LOG_DBG("BSDFViewer::BSDFViewer");
+
     // Defines to disable discard and gradient operations in Falcor's material system.
     Program::DefineList defines = {
         {"_MS_DISABLE_ALPHA_TEST", ""},
@@ -59,9 +63,11 @@ BSDFViewer::BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict): Rende
     };
 
     // Create programs.
+    LOG_DBG("create programs");
     mpViewerPass = ComputePass::create(pDevice, kFileViewerPass, "main", defines, false);
 
     // Create a high-quality pseudorandom number generator.
+    LOG_DBG("create high-quality pseudorandom number generator");
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     mpSampleGenerator->prepareProgram(mpViewerPass->getProgram().get());
     mpViewerPass->setVars(nullptr); // Trigger vars creation

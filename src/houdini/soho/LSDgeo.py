@@ -88,10 +88,10 @@ def getProcedural(obj, now):
     return (bounds, shader, type, soho.getObject(proc[2].Value[0]))
 
 def _forceGeometry(obj, now):
-    return obj.getDefaultedInt('vm_forcegeometry', now, [1])[0]
+    return obj.getDefaultedInt('lv_forcegeometry', now, [1])[0]
 
 def _getDiskFiles(obj, eval_time, times, velblur):
-    auto_archive = obj.getDefaultedString('vm_auto_archive', eval_time, [''])[0]
+    auto_archive = obj.getDefaultedString('lv_auto_archive', eval_time, [''])[0]
     if auto_archive == 'off' or auto_archive == 'none':
         auto_archive = None
     files = []
@@ -100,7 +100,7 @@ def _getDiskFiles(obj, eval_time, times, velblur):
     
     for now in times:
         filename = []
-        if not obj.evalString("vm_archive", now, filename):
+        if not obj.evalString("lv_archive", now, filename):
             return None
         files.append(filename[0])
         if auto_archive:
@@ -129,7 +129,7 @@ def isObjectFastPointInstancer(obj, now):
 def _getMaterialOverride(obj, now):
     if obj is None:
         return 'compact'
-    return obj.getDefaultedString('vm_materialoverride', now, ['compact'])[0]
+    return obj.getDefaultedString('lv_materialoverride', now, ['compact'])[0]
 
 _invalidChars = re.compile('[^-a-zA-Z0-9.,_:]')
 
@@ -471,9 +471,9 @@ def saveProperties(obj, soppath, gdp, now):
         # (shader SOPs).  We need to save out the SHOP parameters
         # since mantra doesn't know how to resolve the indirect
         # references.
-        attributes = [('shop_vm_surface',  'surface'),
-                      ('shop_vm_photon',   'photon'),
-                      ('shop_vm_displace', 'displacement'),
+        attributes = [('shop_lv_surface',  'surface'),
+                      ('shop_lv_photon',   'photon'),
+                      ('shop_lv_displace', 'displacement'),
                       ('spriteshop',       'surface')]
         for (name, typename) in attributes:
             attr = gdp.attribute(style, name)
@@ -495,9 +495,9 @@ def getSaveOptions(obj, now, saveinfo=False):
 	"geo:skipsaveindex":True,
     }
     groups = [True]
-    if not obj.evalInt('vm_savegroups', now, groups):
+    if not obj.evalInt('lv_savegroups', now, groups):
         # Force inheritance to output driver
-        soho.getOutputDriver().evalInt('vm_savegroups', now, groups)
+        soho.getOutputDriver().evalInt('lv_savegroups', now, groups)
     if groups[0]:
         options['savegroups'] = True
         options['geo:savegroups'] = True
@@ -508,10 +508,10 @@ def getSaveOptions(obj, now, saveinfo=False):
     # -1 -> Don't add normals
     #  0 -> Add vertex normals if no normals
     #  1 -> Add point normals if no normals
-    add_normals_to = obj.getDefaultedInt('vm_addnormalsto', now, [1])[0] - 1
+    add_normals_to = obj.getDefaultedInt('lv_addnormalsto', now, [1])[0] - 1
 
     if add_normals_to != -1:
-        render_as_points = obj.getDefaultedInt('vm_renderpoints', now, [2])[0]
+        render_as_points = obj.getDefaultedInt('lv_renderpoints', now, [2])[0]
         if render_as_points == 1:
             add_normals_to = -1
 
@@ -520,7 +520,7 @@ def getSaveOptions(obj, now, saveinfo=False):
 
         # Get cusp angle if vertex normals
         if add_normals_to == 0:
-            cusp_angle = obj.getDefaultedFloat('vm_cuspangle', now, [60.0])[0]
+            cusp_angle = obj.getDefaultedFloat('lv_cuspangle', now, [60.0])[0]
             options['geo:cusp_angle'] = cusp_angle
     
     return options
@@ -643,7 +643,7 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
         else:
             refs.add(obj.getName())
         theDetailRefsInv[obj.getName()] = baseName
-        obj.storeData("vm_details", details)
+        obj.storeData("lv_details", details)
         return
 
     # Geometry defined by SOPs
@@ -658,9 +658,9 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
 
     if details == None or theSopTBound[soppath] != tbound:
         binary = [True]
-        if not obj.evalInt('vm_binarygeometry', now, binary):
+        if not obj.evalInt('lv_binarygeometry', now, binary):
             # Force inheritance to output driver
-            soho.getOutputDriver().evalInt('vm_binarygeometry', now, binary)
+            soho.getOutputDriver().evalInt('lv_binarygeometry', now, binary)
         if binary[0]:
             stdoutname = 'stdout.bgeo'
         else:
@@ -671,8 +671,8 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
 
         # Check to see whether to save geometry to external files or inline
         plist = obj.evaluate([
-            SohoParm('vm_inlinestorage', 'int', LSDmisc.InlineGeoDefault,False),
-            SohoParm('vm_reuseoutlinecache', 'int', [0], False),
+            SohoParm('lv_inlinestorage', 'int', LSDmisc.InlineGeoDefault,False),
+            SohoParm('lv_reuseoutlinecache', 'int', [0], False),
         ], now)
         inline = plist[0].Value[0]
         reuse = plist[1].Value[0]
@@ -788,7 +788,7 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
         refs = theDetailRefs.get(soppath, None)
         refs.add(obj.getName())
     theDetailRefsInv[obj.getName()] = soppath
-    obj.storeData("vm_details", details)
+    obj.storeData("lv_details", details)
 
 def dereferenceGeometry(obj):
     #
@@ -833,7 +833,7 @@ def instanceGeometry(obj, now, times):
             return 0
 
     # No procedural, so there must should be detail handles
-    data = obj.getData("vm_details")
+    data = obj.getData("lv_details")
     if not data:
         return 0
 

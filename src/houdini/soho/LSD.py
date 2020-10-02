@@ -59,16 +59,16 @@ controlParameters = {
     'pointcloud'  : SohoParm('render_any_pointcloud', 'int', [1], False, key='pointcloud'),
     'main'    : SohoParm('render_viewcamera','int', [1], False, key='main'),
     'decl'    : SohoParm('declare_all_shops', 'int', [0], False, key='decl'),
-    'engine'  : SohoParm('vm_renderengine',  'string', ['micropoly'],
+    'engine'  : SohoParm('lv_renderengine',  'string', ['micropoly'],
                                             False, key='engine'),
 
-    'vm_inheritproperties' : SohoParm('vm_inheritproperties', 'int', [0], False),
+    'lv_inheritproperties' : SohoParm('lv_inheritproperties', 'int', [0], False),
 
-    'vm_embedvex' :SohoParm('vm_embedvex',  'int', [0], False, key='embedvex'),
-    'vm_quickexit':SohoParm('vm_quickexit', 'int', [1], False),
-    'vm_numpathmap':SohoParm('vm_numpathmap', 'int', [0], False),
-    'vm_isuvrendering':SohoParm('vm_isuvrendering', 'bool', [False], False),
-    'vm_defaults' : SohoParm('vm_defaults', 'string',
+    'lv_embedvex' :SohoParm('lv_embedvex',  'int', [0], False, key='embedvex'),
+    'lv_quickexit':SohoParm('lv_quickexit', 'int', [1], False),
+    'lv_numpathmap':SohoParm('lv_numpathmap', 'int', [0], False),
+    'lv_isuvrendering':SohoParm('lv_isuvrendering', 'bool', [False], False),
+    'lv_defaults' : SohoParm('lv_defaults', 'string',
                             ['RenderProperties.json'], False),
 }
 
@@ -79,18 +79,18 @@ mode = parmlist['mode'].Value[0]
 dirtystylesheets = parmlist['dirtystylesheets'].Value[0]
 dirtybundles = parmlist['dirtybundles'].Value[0]
 camera  = parmlist['camera'].Value[0]
-quickexit = parmlist['vm_quickexit'].Value[0]
+quickexit = parmlist['lv_quickexit'].Value[0]
 LSDapi.ForceEmbedVex = parmlist['embedvex'].Value[0]
 decl_shops = parmlist['decl'].Value[0]
-numpathmap = parmlist['vm_numpathmap'].Value[0]
-uvrender = parmlist['vm_isuvrendering'].Value[0]
-propdefs = parmlist['vm_defaults'].Value[0]
+numpathmap = parmlist['lv_numpathmap'].Value[0]
+uvrender = parmlist['lv_isuvrendering'].Value[0]
+propdefs = parmlist['lv_defaults'].Value[0]
 
 if mode != 'default':
     # Don't allow for nested evaluation in IPR mode
     inheritedproperties = False
 else:
-    inheritedproperties = parmlist['vm_inheritproperties'].Value[0]
+    inheritedproperties = parmlist['lv_inheritproperties'].Value[0]
 
 options = {}
 if inheritedproperties:
@@ -132,7 +132,7 @@ objectSelection = {
 
     'sololight'     : SohoParm('sololight',     'string',       [''], False),
 
-    'vm_cameralist' : SohoParm('vm_cameralist', 'string',       [''], False),
+    'lv_cameralist' : SohoParm('lv_cameralist', 'string',       [''], False),
 }
 
 for cam in soho.objectList('objlist:camera'):
@@ -161,7 +161,7 @@ if sololight:
 
 # Obtain the list of cameras through which we need to render. The main camera
 # may specify a few sub-cameras, for example, in the stereo camera case.
-camera_paths = objparms['vm_cameralist'].Value[0].split()
+camera_paths = objparms['lv_cameralist'].Value[0].split()
 camera_list  = []
 for cam_path in camera_paths:
     camera_list.append( soho.getObject( cam_path ))
@@ -198,7 +198,7 @@ LSDsettings.setMattePhantomOverrides(now, matte_objects, phantom_objects)
 LSDmisc.initializeMotionBlur(cam, now)
 
 # enabling cryptomatte, period, will add materialname property to objects
-if cam.getDefaultedInt('vm_cryptolayers', now, [0])[0] > 0:
+if cam.getDefaultedInt('lv_cryptolayers', now, [0])[0] > 0:
     LSDsettings._Settings.GenerateMaterialname = True
 
 if mode == 'update':
@@ -292,7 +292,7 @@ else:
         print 'cmd_iprmode generate'
 
     for i in range(0, numpathmap):
-        map = soho.getDefaultedString('vm_pathmap%d' % (i+1), [])
+        map = soho.getDefaultedString('lv_pathmap%d' % (i+1), [])
         if map and len(map) == 2:
             cmd_pathmap(map[0], map[1])
 
@@ -300,7 +300,7 @@ else:
         #
         # Output OTLs loaded by Houdini
         otls = soho.getDefaultedString('state:otllist', [])
-        if soho.getDefaultedInt('vm_otlfullpath', [0])[0]:
+        if soho.getDefaultedInt('lv_otlfullpath', [0])[0]:
             for i in range(len(otls)):
                 otls[i] = hou.expandString(otls[i])
         if len(otls):
@@ -310,7 +310,7 @@ else:
         #
         # Output OTL preferences set in Houdini
         otprefs = soho.getDefaultedString('state:otprefer', [])
-        if soho.getDefaultedInt('vm_otlfullpath', [0])[0]:
+        if soho.getDefaultedInt('lv_otlfullpath', [0])[0]:
             for i in range(1, len(otprefs), 2):
                 otprefs[i] = hou.expandString(otprefs[i])
         if len(otprefs):

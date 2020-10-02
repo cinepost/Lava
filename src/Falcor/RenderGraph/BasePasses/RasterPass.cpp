@@ -37,6 +37,7 @@ RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> pDevice, const 
 }
 
 RasterPass::SharedPtr RasterPass::create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& defines) {
+    assert(pDevice);
     Program::Desc d;
     d.addShaderLibrary(filename).vsEntry(vsEntry).psEntry(psEntry);
     return create(pDevice, d, defines);

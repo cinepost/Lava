@@ -276,7 +276,9 @@ bool Program::checkIfFilesChanged() {
 }
 
 const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
+    LOG_DBG("Program::getActiveVersion");
     if (mLinkRequired) {
+        LOG_DBG("Program link required");
         const auto& it = mProgramVersions.find(mDefineList);
         if (it == mProgramVersions.end()) {
             // Note that link() updates mActiveProgram only if the operation was successful.
@@ -291,6 +293,7 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
         }
         mLinkRequired = false;
     }
+    LOG_DBG("Program NO link required");
     assert(mpActiveVersion);
     return mpActiveVersion;
 }
@@ -734,6 +737,7 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
                 LOG_DBG("sources:\n");
                 for (auto const& src: mDesc.mSources) {
                     LOG_DBG("source: %s", src.str.c_str());
+                    LOG_DBG("desc: %s", getProgramDescString().c_str());
                 }
 
                 return nullptr;
@@ -766,16 +770,20 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 }
 
 ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const {
+    LOG_DBG("createCompileRequest");
     auto pSlangRequest = createSlangCompileRequest(mDefineList);
+    LOG_DBG("created");
     if (pSlangRequest == nullptr) return nullptr;
 
     SlangResult slangResult = spCompile(pSlangRequest);
     log += spGetDiagnosticOutput(pSlangRequest);
     
+    LOG_DBG("SLANG_FAILED?");
     if(SLANG_FAILED(slangResult)) {
         spDestroyCompileRequest(pSlangRequest);
         return nullptr;
     }
+    LOG_DBG("SLANG_FAILED!");
 
     ComPtr<slang::IComponentType> pSlangGlobalScope;
     spCompileRequest_getProgram(
@@ -857,20 +865,30 @@ EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
 }
 
 bool Program::link() const {
+    LOG_DBG("Program::link %s", getProgramDescString().c_str());
+
     while(1) {
+        LOG_DBG("run");
         // Create the program
         std::string log;
+
+        LOG_DBG("Program::link 1");
         auto pVersion = preprocessAndCreateProgramVersion(log);
+
+        //LOG_DBG("Program::link 2");
+        //auto pVersion2 = preprocessAndCreateProgramVersion(log);
 
         if (pVersion == nullptr) {
             std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
+            LOG_ERR("%s", error.c_str());
             logError(error, Logger::MsgBox::RetryAbort);
-            throw std::runtime_error("Failed to link program");
+            //throw std::runtime_error("Failed to link program");
 
             // Continue loop to keep trying...
         } else {
             if (!log.empty()) {
                 std::string warn = "Warnings in program:\n" + getProgramDescString() + "\n" + log;
+                LOG_WARN("%s", warn.c_str());
                 logWarning(warn);
             }
 

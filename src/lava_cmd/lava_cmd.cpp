@@ -20,7 +20,7 @@ namespace po = boost::program_options;
 
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
-#include "lava_lib/readers/reader_lsd.h"
+#include "lava_lib/reader_lsd/reader_lsd.h"
 
 #include "lava_utils_lib/logging.h"
 

@@ -103,6 +103,7 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Externals
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
 )
 
@@ -118,6 +119,12 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# Set up houdini hdk and installation paths
+set(HOUDINI_HOME "/opt/houdini17.5")
+set(HOUDINI_USER "$ENV{HOME}/houdini17.5")
+
+list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
 
 #------------------------------------------
 # Documentation

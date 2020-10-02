@@ -238,6 +238,15 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
     Threading::dispatchTask(func);
 }
 
+void Texture::captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) {
+    uint32_t channels;
+    ResourceFormat resourceFormat;
+    std::vector<uint8_t> textureData;
+
+    readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
+    Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
+}
+
 void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
     assert(mType == Type::Texture2D);
     RenderContext* pContext = mpDevice->getRenderContext();

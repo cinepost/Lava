@@ -5,15 +5,9 @@
 
 namespace lava {
 
-ReaderBase::ReaderBase(): mEcho(false), mIsInitialized(false) { }
+ReaderBase::ReaderBase() { }
 
 ReaderBase::~ReaderBase() { }
-
-void ReaderBase::init(std::unique_ptr<RendererIfaceBase> pIntreface, bool echo) {
-    mEcho = echo;
-    mpInterface = std::move(pIntreface); 
-    mIsInitialized = true;
-}
 
 bool ReaderBase::readStream(std::istream &input) {
     bool result;
@@ -28,24 +22,6 @@ bool ReaderBase::readStream(std::istream &input) {
     LLOG_DBG << "Scene parsed in: " << duration << " sec.";
 
     return result;
-}
-
-bool ReaderBase::read(std::istream &input) {
-    if(!isInitialized())
-        return false;
-
-	bool parser_ok = true;
-	std::string line_buff;
-
-	std::string line;
-	while (std::getline(input, line) && parser_ok)	{
-    	line_buff += line;
-    	std::string unparsed;
-    	parser_ok = parseLine(line_buff, unparsed);
-    	line_buff = std::move(unparsed);
-    }
-
-    return parser_ok;
 }
 
 }  // namespace lava

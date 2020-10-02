@@ -21,7 +21,6 @@ Renderer::UniquePtr Renderer::create() {
 
 Renderer::Renderer(): mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
-    LLOG_DBG << "Renderer::Renderer done!";
 }
 
 bool Renderer::init() {
@@ -32,11 +31,10 @@ bool Renderer::init() {
 	Falcor::OSServices::start();
 
 	Falcor::Scripting::start();
-    LLOG_DBG << "Register scripting";
     auto regBinding = [this](Falcor::ScriptBindings::Module& m) {this->registerScriptBindings(m); };
     Falcor::ScriptBindings::registerBinding(regBinding);
 
-	Falcor::Threading::start();
+    Falcor::Threading::start();
 
 	Falcor::Device::Desc device_desc;
     device_desc.width = 1280;
@@ -77,25 +75,27 @@ Renderer::~Renderer() {
 	
 	Falcor::Threading::shutdown();
 	Falcor::Scripting::shutdown();
+    Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
 	if(mpDisplay) mpDisplay->close();
 
+    mpTargetFBO.reset();
 	if(mpDevice) mpDevice->cleanup();
 	mpDevice.reset();
     Falcor::OSServices::stop();
 
-    Falcor::gpFramework = nullptr;
+    //Falcor::gpFramework = nullptr;
 }
 
-std::unique_ptr<RendererIfaceBase> Renderer::aquireInterface() {
+std::unique_ptr<RendererIface> Renderer::aquireInterface() {
 	if (!mIfaceAquired) {
-		return std::move(std::make_unique<RendererIfaceBase>(this));
+		return std::move(std::make_unique<RendererIface>(this));
 	}
 	LLOG_ERR << "cannot aquire renderer interface. relase old first!";
 	return nullptr;
 }
 
-void Renderer::releaseInterface(std::unique_ptr<RendererIfaceBase> pInterface) {
+void Renderer::releaseInterface(std::unique_ptr<RendererIface> pInterface) {
 	if(mIfaceAquired) {
 		std::move(pInterface).reset();
 		mIfaceAquired = false;
@@ -151,7 +151,7 @@ bool Renderer::loadScript(const std::string& file_name) {
 	try {
         LLOG_DBG << "Loading frame graph configuration: " << file_name;
         auto ctx = Falcor::Scripting::getGlobalContext();
-        //ctx.setObject("g", pGraph);
+        ctx.setObject("renderer", this);
         Falcor::Scripting::runScriptFromFile(file_name, ctx);
     } catch (const std::exception& e) {
         LLOG_ERR << "Error when loading configuration file: " << file_name << "\n" + std::string(e.what());
@@ -241,11 +241,7 @@ void Renderer::renderFrame() {
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    beginFrame(pRenderContext, mpTargetFBO);
-
-    // Clear frame buffer.
-    const Falcor::float4 clearColor(0.52f, 0.38f, 0.10f, 1);
-    pRenderContext->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, Falcor::FboAttachmentType::All);
+    //beginFrame(pRenderContext, mpTargetFBO);
 
     if (mGraphs.size()) {
         LLOG_DBG << "process render graphs";
@@ -257,25 +253,23 @@ void Renderer::renderFrame() {
         }
 
         executeActiveGraph(pRenderContext);
-
         
-        // Blit main graph output to frame buffer.
+        // capture graph(s) ouput(s).
         if (mGraphs[mActiveGraph].mainOutput.size()) {
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             assert(pOutTex);
 
-            LLOG_DBG << "blit local";
-            pRenderContext->blit(pOutTex->getSRV(), mpTargetFBO->getRenderTargetView(0));
-
-            
             // image save test
             Falcor::Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
             assert(pTex);
+
             std::string filename = "/home/max/test/lava_render_test.";
             auto ext = Falcor::Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
             filename += ext;
             auto format = Falcor::Bitmap::getFormatFromFileExtension(ext);
-            pTex->captureToFile(0, 0, filename, format);
+            
+            //pTex->captureToFile(0, 0, filename, format);
+            pTex->captureToFileBlocking(0, 0, filename, format);
         } else {
         	LLOG_WRN << "Invalid active graph output!";
         }
@@ -284,7 +278,7 @@ void Renderer::renderFrame() {
     	LLOG_WRN << "No graphs to render!";
     }
 
-    endFrame(pRenderContext, mpTargetFBO);
+    //endFrame(pRenderContext, mpTargetFBO);
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {

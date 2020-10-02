@@ -1,7 +1,9 @@
 file( GLOB SOURCES
     ./*.cpp
-    ./readers/*.cpp
 )
+
+add_subdirectory(reader_bgeo)
+add_subdirectory(reader_lsd)
 
 # Python
 find_package( PythonLibs 3.7 REQUIRED )
@@ -26,23 +28,13 @@ add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     lava_lib
+    reader_lsd_lib
     falcor_lib
     lava_utils_lib
     ${Boost_LIBRARIES}
 )
 
-if(APPLE)
-    if( LAVA_BUILD_LIBS_AS_FRAMEWORKS )
-	   #falcor_config_framework( lava_lib )
-
-        # Framework is called 'Lava'
-        set_target_properties( lava_lib PROPERTIES OUTPUT_NAME "Lava" )
-        install( TARGETS lava_lib DESTINATION "Frameworks" )
-    else()
-        install( TARGETS lava_lib DESTINATION "lib" )
-    endif()
-
-elseif(UNIX)
+if(UNIX)
     install(TARGETS lava_lib
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib

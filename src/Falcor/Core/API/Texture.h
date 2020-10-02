@@ -217,7 +217,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     */
     UnorderedAccessView::SharedPtr getUAV(uint32_t mipLevel, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
-    /** Capture the texture to an image file.
+    /** Capture the texture to an image file in asynchronous manner (using Falcor::Threading).
         \param[in] mipLevel Requested mip-level
         \param[in] arraySlice Requested array-slice
         \param[in] filename Name of the file to save.
@@ -225,6 +225,16 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] exportFlags Save flags, see Bitmap::ExportFlags
     */
     void captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format = Bitmap::FileFormat::PngFile, Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None);
+
+    /** Capture the texture to an image file in a blocking manner.
+        \param[in] mipLevel Requested mip-level
+        \param[in] arraySlice Requested array-slice
+        \param[in] filename Name of the file to save.
+        \param[in] fileFormat Destination image file format (e.g., PNG, PFM, etc.)
+        \param[in] exportFlags Save flags, see Bitmap::ExportFlags
+    */
+    void captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format = Bitmap::FileFormat::PngFile, Bitmap::ExportFlags exportFlags = Bitmap::ExportFlags::None);
+
 
     /** Read the texture to an array.
         \param[in] mipLevel Requested mip-level

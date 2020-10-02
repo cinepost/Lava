@@ -21,17 +21,6 @@ target_link_libraries(
     ${Boost_SYSTEM_LIBRARY}
 )
 
-if(APPLE)
-    if( COPPER_BUILD_LIBS_AS_FRAMEWORKS )
-	copper_config_framework( lava_utils_lib )
-
-    # Framework is called 'Toolbox'
-    set_target_properties( lava_utils_lib PROPERTIES OUTPUT_NAME "FastaUtils" )
-    install( TARGETS lava_utils_lib DESTINATION "Frameworks" )
-  else()
-    install( TARGETS lava_utils_lib DESTINATION "lib" )
-  endif()
-
-elseif(UNIX)
+if(UNIX)
     install( TARGETS lava_utils_lib DESTINATION "lib" )
 endif()

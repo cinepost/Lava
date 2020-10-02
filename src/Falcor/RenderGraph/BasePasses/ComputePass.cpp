@@ -39,6 +39,7 @@ ComputePass::ComputePass(std::shared_ptr<Device> pDevice, const Program::Desc& d
 }
 
 ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, const std::string& filename, const std::string& csEntry, const Program::DefineList& defines, bool createVars) {
+    assert(pDevice);
     Program::Desc d;
     d.addShaderLibrary(filename).csEntry(csEntry);
     return create(pDevice, d, defines, createVars);
@@ -50,14 +51,16 @@ ComputePass::SharedPtr ComputePass::create(std::shared_ptr<Device> pDevice, cons
 }
 
 void ComputePass::execute(ComputeContext* pContext, uint32_t nThreadX, uint32_t nThreadY, uint32_t nThreadZ) {
-    assert(mpVars);
+    LOG_DBG("ComputePass::execute");
+    assert(pContext);
     uint3 threadGroupSize = mpState->getProgram()->getReflector()->getThreadGroupSize();
     uint3 groups = div_round_up(uint3(nThreadX, nThreadY, nThreadZ), threadGroupSize);
     pContext->dispatch(mpState.get(), mpVars.get(), groups);
 }
 
 void ComputePass::executeIndirect(ComputeContext* pContext, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
-    assert(mpVars);
+    LOG_DBG("ComputePass::executeIndirect");
+    assert(pContext);
     pContext->dispatchIndirect(mpState.get(), mpVars.get(), pArgBuffer, argBufferOffset);
 }
 

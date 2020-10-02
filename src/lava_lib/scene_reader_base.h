@@ -7,7 +7,7 @@
 #include <fstream>
 #include <memory>
 
-#include "renderer_iface_base.h"
+#include "renderer_iface.h"
 
 
 namespace lava {
@@ -17,15 +17,12 @@ class ReaderBase {
   	using SharedPtr = std::shared_ptr<ReaderBase>;
 
     ReaderBase();
-
-    bool                        readStream(std::istream &input);
-    bool                        read(std::istream &input);
-    bool                        isInitialized() { return mIsInitialized; }                       
-    virtual void                init(std::unique_ptr<RendererIfaceBase> pInterface, bool echo);
-
- public:
     virtual ~ReaderBase();
 
+    bool                        readStream(std::istream &input);
+    virtual void                init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) = 0;
+
+ public:
     virtual const char*			formatName() const = 0;
     virtual bool                checkExtension(const char *name) = 0;
 
@@ -35,13 +32,9 @@ class ReaderBase {
     virtual bool                checkMagicNumber(unsigned magic) = 0;
 
  private:
+    virtual bool                isInitialized() = 0;
     virtual bool                parseStream(std::istream &input) = 0;
-    virtual bool                parseLine(const std::string& line, std::string& unparsed) = 0;
 
- protected:
-    bool    mIsInitialized;
-    bool    mEcho;
-    std::unique_ptr<RendererIfaceBase> mpInterface;
 };
 
 }  // namespace lava

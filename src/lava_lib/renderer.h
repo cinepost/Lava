@@ -16,7 +16,7 @@
 #include "Falcor/Core/Renderer.h"
 
 #include "display.h"
-#include "renderer_iface_base.h"
+#include "renderer_iface.h"
 
 namespace lava {
 
@@ -33,8 +33,8 @@ class Renderer: public Falcor::IFramework {
  	virtual ~Renderer();
  	using UniquePtr = std::unique_ptr<Renderer>;
 
-	std::unique_ptr<RendererIfaceBase> 	aquireInterface();
- 	void						 		releaseInterface(std::unique_ptr<RendererIfaceBase> pInterface);
+	std::unique_ptr<RendererIface> 	aquireInterface();
+ 	void						 		releaseInterface(std::unique_ptr<RendererIface> pInterface);
 
  public:
  	static UniquePtr create();

@@ -65,36 +65,36 @@ SettingDefs = []
 theVersion = 'mantra%d.%d' % (hou.applicationVersion()[0], hou.applicationVersion()[1])
 
 _UserAttributes = {
-    'vm_username'       :SohoParm('vm_username%d', 'string', [''], False,
-                                    key='vm_username'),
-    'vm_usertype'       :SohoParm('vm_usertype%d', 'string', [''], False,
-                                    key='vm_usertype'),
-    'vm_userint'        :SohoParm('vm_userint%d', 'real', [0], False,
-                                    key='vm_userint'),
-    'vm_userscalar'     :SohoParm('vm_userscalar%d', 'real', [0], False,
-                                    key='vm_userscalar'),
-    'vm_user3tuple'     :SohoParm('vm_user3tuple%d', 'real', [0,0,0], False,
-                                    key='vm_user3tuple'),
-    'vm_user4tuple'     :SohoParm('vm_user4tuple%d', 'real', [0,0,0,0], False,
-                                    key='vm_user4tuple'),
-    'vm_user9tuple'     :SohoParm('vm_user9tuple%d', 'real',
+    'lv_username'       :SohoParm('lv_username%d', 'string', [''], False,
+                                    key='lv_username'),
+    'lv_usertype'       :SohoParm('lv_usertype%d', 'string', [''], False,
+                                    key='lv_usertype'),
+    'lv_userint'        :SohoParm('lv_userint%d', 'real', [0], False,
+                                    key='lv_userint'),
+    'lv_userscalar'     :SohoParm('lv_userscalar%d', 'real', [0], False,
+                                    key='lv_userscalar'),
+    'lv_user3tuple'     :SohoParm('lv_user3tuple%d', 'real', [0,0,0], False,
+                                    key='lv_user3tuple'),
+    'lv_user4tuple'     :SohoParm('lv_user4tuple%d', 'real', [0,0,0,0], False,
+                                    key='lv_user4tuple'),
+    'lv_user9tuple'     :SohoParm('lv_user9tuple%d', 'real',
                                     [1,0,0, 0,1,0, 0,0,1], False,
-                                    key='vm_user9tuple'),
-    'vm_user16tuple'    :SohoParm('vm_user16tuple%d', 'real',
+                                    key='lv_user9tuple'),
+    'lv_user16tuple'    :SohoParm('lv_user16tuple%d', 'real',
                                     [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], False,
-                                    key='vm_user16tuple'),
-    'vm_userstring'     :SohoParm('vm_userstring%d', 'string', [''], False,
-                                    key='vm_userstring'),
+                                    key='lv_user16tuple'),
+    'lv_userstring'     :SohoParm('lv_userstring%d', 'string', [''], False,
+                                    key='lv_userstring'),
 }
 
 def _outputUserAttribute(i, obj, now):
     for s in _UserAttributes:
         _UserAttributes[s].setIndex(i)
     plist = obj.evaluate(_UserAttributes, now)
-    token = plist['vm_username'].Value[0]
+    token = plist['lv_username'].Value[0]
     if not token:
         return
-    type = plist['vm_usertype'].Value[0]
+    type = plist['lv_usertype'].Value[0]
     # Types (aliases) expected:
     #   real            (float)
     #   bool
@@ -108,19 +108,19 @@ def _outputUserAttribute(i, obj, now):
     if not type:
         return
     if type == 'string':
-        value = plist['vm_userstring'].Value
+        value = plist['lv_userstring'].Value
     elif type == 'int':
-        value = plist['vm_userint'].Value
+        value = plist['lv_userint'].Value
     elif type == 'float':
-        value = plist['vm_userscalar'].Value
+        value = plist['lv_userscalar'].Value
     elif type == 'vector':
-        value = plist['vm_user3tuple'].Value
+        value = plist['lv_user3tuple'].Value
     elif type == 'vector4':
-        value = plist['vm_user4tuple'].Value
+        value = plist['lv_user4tuple'].Value
     elif type == 'matrix3':
-        value = plist['vm_user9tuple'].Value
+        value = plist['lv_user9tuple'].Value
     elif type == 'matrix':
-        value = plist['vm_user16tuple'].Value
+        value = plist['lv_user16tuple'].Value
     else:
         return
     cmd_declare('object', type, token, value)
@@ -195,11 +195,11 @@ def hideUVObject(name):
     _Settings.UVHiddenObjects[name] = True
 
 pbrParms = {
-    'pathtype'          : SohoParm('vm_pbrpathtype', 'string', ['diffuse'], True),
-    'raylimiteval'      : SohoParm('vm_raylimiteval', 'string', ['none'], True),
-    'colorlimit'        : SohoParm('vm_colorlimit', 'real', [10], True),
-    'multilight'        : SohoParm('vm_pbrmultilight', 'int', [1], True),
-    'colorspace'        : SohoParm('vm_colorspace', 'string', ['linear'], True),
+    'pathtype'          : SohoParm('lv_pbrpathtype', 'string', ['diffuse'], True),
+    'raylimiteval'      : SohoParm('lv_raylimiteval', 'string', ['none'], True),
+    'colorlimit'        : SohoParm('lv_colorlimit', 'real', [10], True),
+    'multilight'        : SohoParm('lv_pbrmultilight', 'int', [1], True),
+    'colorspace'        : SohoParm('lv_colorspace', 'string', ['linear'], True),
 }
 
 # Set up keys so that evaluation will index things according to the shader
@@ -209,8 +209,8 @@ def _setKeys(plist):
         plist[key].Key = key
 
 camXtraParms = {
-    'vm_bokeh'        : SohoParm('vm_bokeh',    'string', ['radial'], False),
-    'vm_numuserattrib': SohoParm('vm_numuserattrib', 'int', [0], True),
+    'lv_bokeh'        : SohoParm('lv_bokeh',    'string', ['radial'], False),
+    'lv_numuserattrib': SohoParm('lv_numuserattrib', 'int', [0], True),
 }
 
 def _isDefaultBokeh(bokeh, plist):
@@ -219,15 +219,15 @@ def _isDefaultBokeh(bokeh, plist):
     return True
 
 gshaderParms = [
-    SohoParm('vm_lensshader', 'shader', [''], True, shoptype="cvex", key='lensshader'),
-    SohoParm('vm_generatorshader', 'shader', [''], True, shoptype="atmosphere", key='generatorshader'),
+    SohoParm('lv_lensshader', 'shader', [''], True, shoptype="cvex", key='lensshader'),
+    SohoParm('lv_generatorshader', 'shader', [''], True, shoptype="atmosphere", key='generatorshader'),
 ]
 
 oshaderParms = [
     SohoParm('shop_materialpath', 'string', [''], True, key='materialname'),
     SohoParm('shop_surfacepath',  'shader', [''], True, shoptype="surface", key='surface'),
     SohoParm('shop_displacepath', 'shader', [''], True, shoptype="displace", key='displace'),
-    SohoParm('vm_matteshader',    'shader', [''], True, shoptype="surface", key='matteshader'),
+    SohoParm('lv_matteshader',    'shader', [''], True, shoptype="surface", key='matteshader'),
     SohoParm('shop_cvexpath',     'shader', [''], True, shoptype="cvex", key='cvex'),
 ]
 
@@ -240,7 +240,7 @@ oshaderSkipParms = {
                                    'bool', [False], False, key='surface'),
     'shop_displacepath' : SohoParm('shop_disable_displace_shader', 
                                    'bool', [False], False, key='displace'),
-    'vm_matteshader' : SohoParm('shop_disable_surface_shader',  
+    'lv_matteshader' : SohoParm('shop_disable_surface_shader',  
                                    'bool', [False], False, key='matteshader'),
 }
 
@@ -248,7 +248,7 @@ oshaderMap = {
     'shop_materialpath' : 'surface',
     'shop_surfacepath'  : 'surface',
     'shop_photonpath'   : 'surface',
-    'vm_matteshader'    : 'matteshader',
+    'lv_matteshader'    : 'matteshader',
     'shop_displacepath' : 'displace',
     'shop_cvexpath'     : 'cvex',
 }
@@ -256,9 +256,9 @@ oshaderMap = {
 lshaderParms = [
     SohoParm('shop_lightpath',  'shader', [''], True, shoptype="light", key='shader'),
     SohoParm('shop_shadowpath', 'shader', [''], True, shoptype="lightshadow", key='shadow'),
-    SohoParm('vm_samplershader','shader', [''], True, shoptype="light", key='samplershader'),
-    SohoParm('vm_tracershader','shader', [''], True, shoptype="light", key='tracershader'),
-    SohoParm('vm_illumshader','shader', [''], True, shoptype="surface", key='illumshader'),
+    SohoParm('lv_samplershader','shader', [''], True, shoptype="light", key='samplershader'),
+    SohoParm('lv_tracershader','shader', [''], True, shoptype="light", key='tracershader'),
+    SohoParm('lv_illumshader','shader', [''], True, shoptype="surface", key='illumshader'),
 ]
 
 lshaderSkipParms = {
@@ -267,9 +267,9 @@ lshaderSkipParms = {
 }
 
 objXtraParms = {
-    'vm_measure'      : SohoParm('vm_measure',    'string', ['nonraster'],False),
-    'vm_numuserattrib': SohoParm('vm_numuserattrib', 'int', [0], True),
-    'vm_phantom'      : SohoParm('vm_phantom', 'bool',      [0], True),
+    'lv_measure'      : SohoParm('lv_measure',    'string', ['nonraster'],False),
+    'lv_numuserattrib': SohoParm('lv_numuserattrib', 'int', [0], True),
+    'lv_phantom'      : SohoParm('lv_phantom', 'bool',      [0], True),
 }
 
 stylesheetParms = {
@@ -279,18 +279,18 @@ stylesheetParms = {
 }
 
 bakingParms = {
-    'bake_layerexport'             :SohoParm('vm_bake_layerexport',             'int',    [0],          key='bake_layerexport'),
-    'bake_samples'                 :SohoParm('vm_bake_samples',                 'int',    [16],        key='bake_samples'),
-    'bake_tangentnormalflipx'      :SohoParm('vm_bake_tangentnormalflipx',      'int',    [0],          key='bake_tangentnormalflipx'),
-    'bake_tangentnormalflipy'      :SohoParm('vm_bake_tangentnormalflipy',      'int',    [0],          key='bake_tangentnormalflipy'),
-    'bake_tangentnormalincludedisp':SohoParm('vm_bake_tangentnormalincludedisp','int',    [1],          key='bake_tangentnormalincludedisp'),
-    'bake_occlusionbias'           :SohoParm('vm_bake_occlusionbias',           'float',  [0.5],        key='bake_occlusionbias'),
-    'bake_cavitydistance'          :SohoParm('vm_bake_cavitydistance',          'float',  [1.0],        key='bake_cavitydistance'),
-    'bake_cavitybias'              :SohoParm('vm_bake_cavitybias',              'float',  [0.5],        key='bake_cavitybias'),
-    'bake_curvatureocc'            :SohoParm('vm_bake_curvatureocc',            'bool',	  [0],          key='bake_curvatureocc'),
-    'bake_curvaturesdist'          :SohoParm('vm_bake_curvaturesdist',          'float',  [0.1],        key='bake_curvaturesdist'),
-    'bake_curvaturescale'          :SohoParm('vm_bake_curvaturescale',          'float',  [1.0],        key='bake_curvaturescale'),
-    'bake_curvaturebias'           :SohoParm('vm_bake_curvaturebias',           'float',  [0.5],        key='bake_curvaturebias'),
+    'bake_layerexport'             :SohoParm('lv_bake_layerexport',             'int',    [0],          key='bake_layerexport'),
+    'bake_samples'                 :SohoParm('lv_bake_samples',                 'int',    [16],        key='bake_samples'),
+    'bake_tangentnormalflipx'      :SohoParm('lv_bake_tangentnormalflipx',      'int',    [0],          key='bake_tangentnormalflipx'),
+    'bake_tangentnormalflipy'      :SohoParm('lv_bake_tangentnormalflipy',      'int',    [0],          key='bake_tangentnormalflipy'),
+    'bake_tangentnormalincludedisp':SohoParm('lv_bake_tangentnormalincludedisp','int',    [1],          key='bake_tangentnormalincludedisp'),
+    'bake_occlusionbias'           :SohoParm('lv_bake_occlusionbias',           'float',  [0.5],        key='bake_occlusionbias'),
+    'bake_cavitydistance'          :SohoParm('lv_bake_cavitydistance',          'float',  [1.0],        key='bake_cavitydistance'),
+    'bake_cavitybias'              :SohoParm('lv_bake_cavitybias',              'float',  [0.5],        key='bake_cavitybias'),
+    'bake_curvatureocc'            :SohoParm('lv_bake_curvatureocc',            'bool',	  [0],          key='bake_curvatureocc'),
+    'bake_curvaturesdist'          :SohoParm('lv_bake_curvaturesdist',          'float',  [0.1],        key='bake_curvaturesdist'),
+    'bake_curvaturescale'          :SohoParm('lv_bake_curvaturescale',          'float',  [1.0],        key='bake_curvaturescale'),
+    'bake_curvaturebias'           :SohoParm('lv_bake_curvaturebias',           'float',  [0.5],        key='bake_curvaturebias'),
 }
 
 def setShadowMap(state):
@@ -495,20 +495,20 @@ def outputGlobal(wrangler, obj, now):
         cmd_propertyV(None, plist)
 
     xparms = obj.wrangle(wrangler, camXtraParms, now)
-    vm_bokeh = xparms.get('vm_bokeh', None)
-    if vm_bokeh:
-        bokeh = vm_bokeh.Value[0]
+    lv_bokeh = xparms.get('lv_bokeh', None)
+    if lv_bokeh:
+        bokeh = lv_bokeh.Value[0]
         plist = evaluateBokeh(bokeh, obj, now)
         if not _isDefaultBokeh(bokeh, plist):
             cmd_propertyAndParms('camera', 'bokeh', bokeh, plist)
 
-    vm_numuserattrib = xparms.get('vm_numuserattrib', None)
-    if vm_numuserattrib:
-        n = vm_numuserattrib.Value[0]
+    lv_numuserattrib = xparms.get('lv_numuserattrib', None)
+    if lv_numuserattrib:
+        n = lv_numuserattrib.Value[0]
         for i in xrange(1, n+1):
             _outputUserAttribute(i, obj, now)
 
-    (val, type) = obj.wrangleShaderAndType(wrangler, 'vm_pbrshader', now, [''])
+    (val, type) = obj.wrangleShaderAndType(wrangler, 'lv_pbrshader', now, [''])
     shader = val[0]
     if shader:
         cmd_shader('renderer', 'pbrshader', shader, type)
@@ -542,7 +542,7 @@ def outputObject(obj, now, name=None, wrangler=None, output_shader=True, check_r
         render    = obj.getDefaultedInt('object:render', now, [1])[0]
         if not render:
             for p in plist:
-                if p.Houdini == 'vm_renderable':
+                if p.Houdini == 'lv_renderable':
                     p.Value = [render]
                     render = None
                     break
@@ -582,23 +582,23 @@ def outputObject(obj, now, name=None, wrangler=None, output_shader=True, check_r
         if _Settings.PhantomOverrides.has_key(name):
             cmd_property('object', 'phantom', [1])
         else:
-            vm_phantom = xparms.get('vm_phantom', None)
-            if vm_phantom:
-                cmd_property('object', 'phantom', vm_phantom.Value)
+            lv_phantom = xparms.get('lv_phantom', None)
+            if lv_phantom:
+                cmd_property('object', 'phantom', lv_phantom.Value)
 
-    vm_measure = xparms.get('vm_measure', None)
-    vm_numuserattrib = xparms.get('vm_numuserattrib', None)
+    lv_measure = xparms.get('lv_measure', None)
+    lv_numuserattrib = xparms.get('lv_numuserattrib', None)
 
     if _Settings.MatteOverrides.has_key(name):
         cmd_property('object', 'matte', [1])
 
-    if vm_measure:
-        measure = vm_measure.Value[0]
+    if lv_measure:
+        measure = lv_measure.Value[0]
         plist = evaluateMeasure(measure, obj, now)
         if not _isDefaultMeasure(measure, plist):
             cmd_propertyAndParms('object', 'measure', measure, plist)
-    if vm_numuserattrib:
-        n = vm_numuserattrib.Value[0]
+    if lv_numuserattrib:
+        n = lv_numuserattrib.Value[0]
         for i in xrange(1, n+1):
             _outputUserAttribute(i, obj, now)
     # For velocity motion blur, we need to have access to the velocity
@@ -737,9 +737,9 @@ def evaluateImagePlane(idx, wrangler, obj, now):
     return obj.evaluate(_Settings.IPlane, now)
 
 _iplay_specific = {
-    'rendermode' : SohoParm('vm_image_mplay_rendermode', 'string',
+    'rendermode' : SohoParm('lv_image_mplay_rendermode', 'string',
                         ['current'], False, key='rendermode'),
-    'framemode'  : SohoParm('vm_image_mplay_framemode', 'string',
+    'framemode'  : SohoParm('lv_image_mplay_framemode', 'string',
                         ['append'], False, key='framemode'),
     'trange'     : SohoParm('trange', 'int', [0], False, key='trange')
 }
@@ -780,7 +780,7 @@ def outputMPlayFormatOptions(wrangler, cam, now):
     frange = '%d %d' % (int(frange[0]), int(frange[1]))
     cmd_declare('plane', 'string', 'IPlay.framerange', [frange])
     cmd_declare('plane', 'float', 'IPlay.currentframe', [curframe])
-    rendersource = soho.getDefaultedString('vm_rendersource',
+    rendersource = soho.getDefaultedString('lv_rendersource',
                             [soho.getOutputDriver().getName()])
     cmd_declare('plane', 'string', 'IPlay.rendersource', rendersource)
 

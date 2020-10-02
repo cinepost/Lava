@@ -164,17 +164,10 @@ file(
     DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
-if(APPLE)
-    if( COPPER_BUILD_LIBS_AS_FRAMEWORKS )
-	   #falcor_config_framework( falcor_lib )
-
-        # Framework is called 'Falcor'
-        set_target_properties( falcor_lib PROPERTIES OUTPUT_NAME "Falcor" )
-        install( TARGETS falcor_lib DESTINATION "Frameworks" )
-    else()
-        install( TARGETS falcor_lib DESTINATION "lib" )
-    endif()
-
-elseif(UNIX)
-    install( TARGETS falcor_lib DESTINATION lib )
+if(UNIX)
+    install( 
+        TARGETS 
+        falcor_lib
+        DESTINATION lib 
+    )
 endif()

@@ -55,14 +55,14 @@ headerParms = {
     "soho_program"      : SohoParm("soho_program", "string"),
     "hver"              : SohoParm("state:houdiniversion", "string",
                                         ["9.0"], False, key="hver"),
-    "vm_hippath"        : SohoParm("vm_hippath", "string", key="vm_hippath"),
-    "vm_verbose"        : SohoParm("vm_verbose", "int"),
+    "lv_hippath"        : SohoParm("lv_hippath", "string", key="lv_hippath"),
+    "lv_verbose"        : SohoParm("lv_verbose", "int"),
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
     "pipestream"        : SohoParm("soho:pipestream", "int", key="pipestream"),
-    "tmpsharedstorage"  : SohoParm("vm_tmpsharedstorage", "string",
+    "tmpsharedstorage"  : SohoParm("lv_tmpsharedstorage", "string",
                                     key="tmpsharedstorage"),
-    "tmplocalstorage"   : SohoParm("vm_tmplocalstorage", "string",
+    "tmplocalstorage"   : SohoParm("lv_tmplocalstorage", "string",
                                     key="tmplocalstorage"),
 }
 
@@ -155,7 +155,7 @@ def header(now, propdefs):
     # TODO: do we really need this !?
     #cmd_hscript('fps %g; tcur %g' % (FPS, now))
 
-    verbose = plist.get('vm_verbose', None)
+    verbose = plist.get('lv_verbose', None)
     if verbose:
         cmd_property('renderer', 'verbose', verbose.Value);
 
@@ -171,7 +171,7 @@ def header(now, propdefs):
         hipvar = hip.Value[0]
     else:
         hipvar = ""
-    hipvar = rop.getDefaultedString('vm_hippath', now, [hipvar])[0]
+    hipvar = rop.getDefaultedString('lv_hippath', now, [hipvar])[0]
     # Setting the HIP variable in a conditional so users can override
     # the HIP variable in the .ifd file.
     cmd_setenv('HIP', '$HIP_OVERRIDE')
@@ -194,7 +194,7 @@ def header(now, propdefs):
     else:
         tmpsharedstorage = tmpsharedstorage.Value[0]
     if not isValidTempDir(tmpsharedstorage):
-        soho.warning("Path specified by vm_tmpsharedstorage is read-only.  %s" % (
+        soho.warning("Path specified by lv_tmpsharedstorage is read-only.  %s" % (
                     "this may cause issues with non-inline geometry"))
         tmpsharedstorage = hou.expandString("$HOUDINI_TEMP_DIR/ifds/storage")
 
@@ -231,7 +231,7 @@ def header(now, propdefs):
         ExternalSharedSessionId = '%s_shared' % (hipname.Value[0])
 
     if os.getenv('MANTRA_DEBUG_INLINE_STORAGE'):
-        # Normally, we want to rely on the vm_inlinestorage parameter (which
+        # Normally, we want to rely on the lv_inlinestorage parameter (which
         # defaults to False).  For convenience we can set this variable to
         # override the setting.  Note that this may impact performance since
         # Houdini and mantra are able to multi-thread saving/loading
@@ -402,7 +402,7 @@ def geo_mbsamples(obj, now):
     return (times, vblur, accel_attrib, nseg)
 
 def objecthandle(obj, seg=0):
-    name = "vm_handle%d" % seg
+    name = "lv_handle%d" % seg
     handle = obj.getData(name)
     if handle == None:
         if seg != 0:

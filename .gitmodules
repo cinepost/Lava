@@ -22,3 +22,9 @@
 [submodule "third_party/antlr4"]
 	path = third_party/antlr4
 	url = https://github.com/antlr/antlr4.git
+[submodule "third_party/rapidjson"]
+	path = third_party/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
+[submodule "third_party/bgeo_reader"]
+	path = third_party/bgeo_reader
+	url = https://github.com/LaikaStudios/bgeo_reader.git

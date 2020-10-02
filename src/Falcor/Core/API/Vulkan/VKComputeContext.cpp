@@ -66,8 +66,11 @@ namespace Falcor {
     */
 
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
+        LOG_DBG("ComputeContext::prepareForDispatch");
         assert(pState);
+        assert(pVars);
 
+        LOG_DBG("pState->getCSO");
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
 
         // Apply the vars. Must be first because applyComputeVars() might cause a flush
@@ -93,10 +96,8 @@ namespace Falcor {
     }
 
     template<typename ViewType, typename ClearType>
-    void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal)
-    {
-        if(pView->getApiHandle().getType() != VkResourceType::Image)
-        {
+    void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal) {
+        if(pView->getApiHandle().getType() != VkResourceType::Image) {
             logWarning("Looks like you are trying to clear a buffer. Vulkan only supports clearing Buffers with a single uint value. Please use the uint version of clearUav(). Call is ignored");
             should_not_get_here();
             return;
@@ -118,34 +119,26 @@ namespace Falcor {
 
     template void clearColorImageCommon(CopyContext* pCtx, const RenderTargetView* pView, const float4& clearVal);
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
-    {
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value) {
         clearColorImageCommon(this, pUav, value);
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
-    {
-        if(pUav->getApiHandle().getType() == VkResourceType::Buffer)
-        {
-            if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w)))
-            {
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
+        if(pUav->getApiHandle().getType() == VkResourceType::Buffer) {
+            if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w))) {
                 logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'");
             }
             const Buffer* pBuffer = dynamic_cast<const Buffer*>(pUav->getResource());
             vkCmdFillBuffer(getLowLevelData()->getCommandList(), pBuffer->getApiHandle(), pBuffer->getGpuAddressOffset(), pBuffer->getSize(), value.x);
-        }
-        else
-        {
+        } else {
             clearColorImageCommon(this, pUav, value);
         }
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value)
-    {
-        if (pBuffer->getUAVCounter())
-        {
+    void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value) {
+        if (pBuffer->getUAVCounter()) {
             clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uint4(value));
         }
     }
@@ -157,8 +150,10 @@ namespace Falcor {
     }
     */
 
-    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
-    {
+    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
+        LOG_DBG("ComputeContext::dispatch");
+        assert(pState);
+        assert(pVars);
         // Check dispatch dimensions. TODO: Should be moved into Falcor.
         if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
@@ -173,8 +168,11 @@ namespace Falcor {
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
 
-    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
-    {
+    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+        assert(pState);
+        assert(pVars);
+        assert(pArgBuffer);
+
         if (prepareForDispatch(pState, pVars) == false) {
             return;
         }

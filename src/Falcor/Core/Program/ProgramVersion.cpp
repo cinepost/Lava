@@ -150,13 +150,12 @@ namespace Falcor
         mpSlangEntryPoints = pSlangEntryPoints;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
-    {
+    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
         return SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
     }
 
-    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
-    {
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const {
+        assert(pVars);
         // We need are going to look up or create specialized kernels
         // based on how parameters are bound in `pVars`.
         //

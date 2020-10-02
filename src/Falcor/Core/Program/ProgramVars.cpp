@@ -298,6 +298,7 @@ namespace Falcor {
 
         // TODO: Want a caching step here, if possible...
 
+        LOG_DBG("ProgramVars::updateSpecializationImpl");
         auto pProgramKernels = mpProgramVersion->getKernels(this);
         mpSpecializedReflector = pProgramKernels->getReflector()->getDefaultParameterBlock();
         return false;
