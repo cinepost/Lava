@@ -1,5 +1,5 @@
 set (SOURCES 
-	./d_houdini.C
+	./d_houdini.cpp
 )
 
 set(Boost_USE_STATIC_LIBS OFF)

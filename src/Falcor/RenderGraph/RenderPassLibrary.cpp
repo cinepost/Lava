@@ -42,6 +42,7 @@ namespace fs = boost::filesystem;
 #include "RenderPasses/ResolvePass.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/Platform/OS.h"
 #include "RenderGraph.h"
 
 namespace Falcor {
@@ -168,10 +169,11 @@ namespace Falcor {
         // render-pass name was privided without an extension and that's fine
         if (filePath.extension() != kPassLibExt) filePath += kPassLibExt;
 
-        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filePath.string());
-
-        if (doesFileExist(fullpath) == false) {
-            logWarning("Can't load render-pass library `" + fullpath + "`. File not found");
+        //std::string fullpath = getExecutableDirectory() + "/render_passes/" + getFilenameFromPath(filePath.string());
+        std::string fullpath;
+        
+        if (!findFileInRenderPassDirectories(filename, fullpath)) {
+            logWarning("Can't load render-pass library `" + filename + "`. File not found");
             return;
         }
 
@@ -211,7 +213,10 @@ namespace Falcor {
     }
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename) {
-        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filename);
+        std::string fullpath;// = getExecutableDirectory() + "/render_passes/" + getFilenameFromPath(filename);
+        if(!findFileInRenderPassDirectories(filename, fullpath)) {
+            should_not_get_here();
+        }
 
         auto libIt = mLibs.find(fullpath);
         if (libIt == mLibs.end()) {

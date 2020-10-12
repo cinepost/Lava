@@ -26,7 +26,11 @@ ReaderLSD::ReaderLSD(): ReaderBase(), mInitialized(false) { }
 ReaderLSD::~ReaderLSD() { }
 
 void ReaderLSD::init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) {
-    auto pSession = std::make_unique<SessionLSD>(std::move(pRendererInterface));
+    auto pSession = lsd::Session::create(std::move(pRendererInterface));
+    if (!pSession) {
+        LLOG_ERR << "Error initializing session !!!";
+        return;
+    }
 
     if (!echo) {
         // standard LSD visitor
@@ -61,160 +65,30 @@ void ReaderLSD::getFileExtensions(std::vector<std::string> &extensions) const{
 bool ReaderLSD::checkMagicNumber(unsigned magic) {
   return true;
 }
-/*
+
 bool ReaderLSD::parseStream(std::istream& in) {
-    in.unsetf(std::ios_base::skipws);
-    boost::spirit::istream_iterator iter(in), end;
-
-    std::vector<lsd::ast::Command> commands; // ast tree
-    bool result = x3::parse(iter, end, lsd::parser::input, commands); 
-
-    if (!result) {
-        LLOG_ERR << "Parsing LSD scene failed !!!" << std::endl;
+    if (!isInitialized()) {
+        LLOG_ERR << "Readed not initialized !!!";
         return false;
     }
 
-    if (iter != end) {
-        //unparsed = std::string(iter, end);
-        LLOG_DBG << "Remaining unparsed: " << std::string(iter, end);
-        return true;
-    }
+    mpVisitor->setParserStream(in);
 
-    for (auto& cmd : commands) {
-        boost::apply_visitor(*mpVisitor, cmd);
-    }
-
-    return true;
-}
-*/
-
-// performance notes on eagle model
-// no storage no preallocation- 1235 milsec
-// no storage 1mb string prealloc- 1165 milsec
-// no storage 10mb string prealloc- 1192 milsec
-// no storage 100mb string prealloc- 1158 milsec
-
-bool readInlineBGEO(std::istream& in) {
-    using namespace rapidjson;
-
-    //IStreamWrapper is(in);
-
-    //Document document;
-    //document.ParseStream(is);
-
-    auto t1 = std::chrono::high_resolution_clock::now();
-    
-    uint lines = 0;
-    std::string bgeo_str;
-    bgeo_str.reserve(104857600); // 100MB
-
-    std::string str;
-    str.reserve(10485760); // 10MB
-
-    uint oc = 0; // open brackets count
-    uint cc = 0; // closing brackets count
-    
-    bool bgeo_json_found = false;
-    char* char_ptr = nullptr;
-    while( std::getline(in, str) ){
-        bgeo_str += str;
-        lines += 1;
-        char_ptr = str.data();
-        
-        for (uint i = 0; i < str.size(); i++)  {
-            if (*(char_ptr) == '[') { oc++; }    
-            else if (*(char_ptr) == ']') { cc++; }
-            if((oc > 0) && (oc == cc)){
-                bgeo_json_found = true;
-                break;
-            }
-        }
-
-        if(bgeo_json_found)
-            break;
-    }
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-    
-    if (bgeo_json_found) {
-        LLOG_DBG << "Inline BGEO " << lines << "lines read in: " << duration << " milsec.";
-        LLOG_DBG << "Inline BGEO size: " << bgeo_str.size() << " bytes.";
-
-        //t1 = std::chrono::high_resolution_clock::now();
-        //Document document;
-        //document.Parse(bgeo_str.c_str());
-        //t2 = std::chrono::high_resolution_clock::now();
-        //duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-        //LLOG_DBG << "Inline BGEO rapidjson document parsed in " << duration << " milsec.";
-    }
-
-    return bgeo_json_found;
-}
-
-bool readInlineBGEO2(std::istream& in) {
-    auto t1 = std::chrono::high_resolution_clock::now();
-    
-    uint lines = 0;
-    std::string bgeo_str;
-    bgeo_str.reserve(104857600); // 100MB
-
-    std::string str;
-    str.reserve(10485760); // 10MB
-
-    uint oc = 0; // open brackets count
-    uint cc = 0; // closing brackets count
-    
-    bool bgeo_json_found = false;
-    char* char_ptr = nullptr;
-    while( std::getline(in, str) ){
-        bgeo_str += str;
-        lines += 1;
-        char_ptr = str.data();
-        
-        for (uint i = 0; i < str.size(); i++)  {
-            if (*(char_ptr) == '[') { oc++; }    
-            else if (*(char_ptr) == ']') { cc++; }
-            if((oc > 0) && (oc == cc)){
-                bgeo_json_found = true;
-                break;
-            }
-        }
-
-        if(bgeo_json_found)
-            break;
-    }
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-    
-    if (bgeo_json_found) {
-        LLOG_DBG << "Inline BGEO " << lines << "lines read in: " << duration << " milsec.";
-        LLOG_DBG << "Inline BGEO string size: " << bgeo_str.size() << " bytes.";
-
-        t1 = std::chrono::high_resolution_clock::now();
-        ika::bgeo::Bgeo geom(bgeo_str, false);
-        t2 = std::chrono::high_resolution_clock::now();
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-        LLOG_DBG << "BGEO object parsed in: " << duration << " milsecs.";
-        geom.printSummary(std::cout);
-    }
-
-    return bgeo_json_found;
-}
-
-
-bool ReaderLSD::parseStream(std::istream& in) {
     in.unsetf(std::ios_base::skipws);
     
     std::string str;
     std::string::iterator begin, end;
 
-    while( std::getline(in, str) ){
+    bool eof = false;
+    while(!eof) {
+        if(!std::getline(in, str)) {
+            eof = true;
+            break;
+        }
+
         begin = str.begin(); end = str.end();
         
         std::vector<lsd::ast::Command> commands; // ast tree
-        //bool result = x3::parse(begin, end, lsd::parser::input, commands);
         bool result = x3::phrase_parse(begin, end, lsd::parser::input, lsd::parser::skipper, commands); 
 
         if (!result) {
@@ -227,19 +101,14 @@ bool ReaderLSD::parseStream(std::istream& in) {
         }
 
         for (auto& cmd : commands) {
-            if (mpVisitor->current_flag() != lsd::Visitor::Flag::IGNORE_CMDS) {
-                boost::apply_visitor(*mpVisitor, cmd);
-                if (mpVisitor->current_flag() == lsd::Visitor::Flag::READ_INLINE_GEO) {
-                    bool geo_read_result = readInlineBGEO2(in);
-                    if (!geo_read_result) {
-                        return false;
-                    }
-                    mpVisitor->inlineGeoReadDone();
+            if (!mpVisitor->ignoreCommands()) {
+                try {
+                    boost::apply_visitor(*mpVisitor, cmd);
+                } catch (...) {
+                    return false;
                 }
             }
         }
-        
-        
     }
 
     return true;

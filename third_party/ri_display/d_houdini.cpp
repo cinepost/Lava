@@ -35,7 +35,7 @@
 #include <stdarg.h>
 #include <sstream>
 
-#if 0
+#if 1
 	#define D_HOUDINI_DEBUG_LEVEL 3	// Debug logging
 #else
 	#define D_HOUDINI_DEBUG_LEVEL -1	// No logging
@@ -334,17 +334,15 @@ int pclose(FILE* f) {
 //
 class IMDisplay {
 public:
-    static IMDisplayPtr Singleton(const char* argv)
-    {
+    static IMDisplayPtr Singleton(const char* argv) {
         if (!s_IMD) {
             s_IMD = IMDisplayPtr(new IMDisplay(argv));
         }
         return s_IMD;
     }
     
-    ~IMDisplay()
-    {
-        log(0, "closing IMDisplay. Closing pipe:%s\n",myPipe ? "True" :"False");
+    ~IMDisplay() {
+        log(0, "closing IMDisplay. Closing pipe:%s\n", myPipe ? "True" :"False");
         if (myPipe) {
             int header[4];
             ::memset(header, 0, sizeof(header));
@@ -678,12 +676,12 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
 	if (!findLod) {
 		// only do this init once when the first defining initialization is made
 		// (it's always made before the lods are init'ed)
-		img = ImagePtr(new H_Image(filename? filename : "",
-                                             width, height));
+		img = ImagePtr(new H_Image(filename? filename : "", width, height));
         if (!img) {
             log(0, "Failed creaiting main image. Name=%s", filename);
             return PkDspyErrorNoResource;
         }
+
 		log(0, "Create: %p\n", img.get());
         g_masterImages.push_back(img);
         
@@ -728,7 +726,7 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
     // main H_Image we are interested in each multires level refers to the same
     // H_Image
 	*pvImage = (void*)multiRes;
-	log(1, "Done Open %d\n", ret);
+	log(0, "Done Open %d\n", ret);
 
 	return ret;
 }
@@ -752,19 +750,13 @@ DspyImageData(PtDspyImageHandle pvImage,
         return PkDspyErrorNoResource;
     }
     
-	log(3, "ImageData: %d %d %d %d Size=%d 0x%08x\n", xmin, xmax, ymin, ymax,
-                                                        entrysize, data);
-	if (img->writeData(xmin, xmax, ymin, ymax,
-                                        (const char*)data, entrysize,
-                                        multiRes->getXscale(),
-                                        multiRes->getYscale()) ) {
+	log(0, "ImageData: %d %d %d %d Size=%d 0x%08x\n", xmin, xmax, ymin, ymax, entrysize, data);
+	if (img->writeData(xmin, xmax, ymin, ymax, (const char*)data, entrysize, multiRes->getXscale(), multiRes->getYscale()) ) {
+		log(0, "Done Image Write\n");
 		return PkDspyErrorNone;
 	}
-	else {
-		return PkDspyErrorNoResource;
-	}
-
-	log(2, "Done Image Write\n");
+	
+	return PkDspyErrorNoResource;
 }
 
 struct isImage {
@@ -972,7 +964,7 @@ H_Channel::closeTile(FILE* fp, const int id,
 void
 H_Image::init(const std::string& filename, int xres, int yres)
 {
-	myName = (!filename.empty())? filename : "prman";
+	myName = (!filename.empty())? filename : "lava";
 	myXoff = 0;
 	myYoff = 0;
 	myOrigXres = 0;
@@ -985,7 +977,7 @@ H_Image::init(const std::string& filename, int xres, int yres)
 	if (!strncmp(myName.c_str(), "socket:", 7)) {
 		myPort = atoi(myName.c_str() + 7);
 		if (myPort > 0) {
-			myName = "prman";
+			myName = "lava";
 		}
 		else
 			myPort = 0;
@@ -993,7 +985,7 @@ H_Image::init(const std::string& filename, int xres, int yres)
 	if (!strncmp(myName.c_str(), "iprsocket:", 10)) {
 		myPort = atoi(myName.c_str() + 10);
 		if (myPort > 0) {
-			myName = "prman";
+			myName = "lava";
 			myPort = -myPort;	// Negate port to indicate it's for IPR
 		}
 		else
@@ -1082,6 +1074,7 @@ H_Image::openPipe(void)
 	
     IMDisplayPtr imp = IMDisplay::Singleton(cmd.c_str());
     if (!imp->IsValid()) {
+    	log(0, "IMDisplayPtr is invalid !!!\n");
         return 0;
     }
 
@@ -1108,16 +1101,18 @@ H_Image::openPipe(void)
     FILE* fp = imp->GetFile();
     
     if (fwrite(header, sizeof(int), 8, fp) != 8) {
+    	log(0, "Failed to write channel header !!!\n");
         return 0;
     }
 
     for (ip = g_masterImages.begin() ; ip != g_masterImages.end() ; ip++) {
         if ((*ip)->writeChannelHeader() != 1) {
-            log(0, "Failed to write channel headers\n");
+            log(0, "Failed to write channel headers !!!\n");
             return 0;
         }
     }
 
+    log(0, "openPipe done\n");
     return 1;
 }
 

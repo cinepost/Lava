@@ -41,6 +41,7 @@ bool Renderer::init() {
     device_desc.height = 720;
 
 	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(0, device_desc);
+    mpScene = lava::Scene::create(mpDevice);
 
 	mpClock = new Falcor::Clock(mpDevice);
     //mpClock->setTimeScale(config.timeScale);
@@ -56,9 +57,9 @@ bool Renderer::init() {
         LLOG_ERR << "Unable to get rendering device swapchain FBO!!!";
     }
 
-    LLOG_DBG << "Created pBackBufferFBO size: " << pBackBufferFBO->getWidth() << " " << pBackBufferFBO->getHeight();
-    mpTargetFBO = Falcor::Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
-    LLOG_DBG << "Renderer::init done!";
+    //LLOG_DBG << "Created pBackBufferFBO size: " << pBackBufferFBO->getWidth() << " " << pBackBufferFBO->getHeight();
+    //mpTargetFBO = Falcor::Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
+    //LLOG_DBG << "Renderer::init done!";
 
     mInited = true;
     return true;
@@ -79,7 +80,7 @@ Renderer::~Renderer() {
 
 	if(mpDisplay) mpDisplay->close();
 
-    mpTargetFBO.reset();
+    //mpTargetFBO.reset();
 	if(mpDevice) mpDevice->cleanup();
 	mpDevice.reset();
     Falcor::OSServices::stop();
@@ -109,37 +110,17 @@ bool Renderer::loadDisplayDriver(const std::string& display_name) {
 
 	return true;
 }
-/*
-void Renderer::applyEditorChanges() {
-    if (!mEditorProcess) return;
-    // If the editor was closed, reset the handles
-    if ((mEditorProcess != kInvalidProcessId) && isProcessRunning(mEditorProcess) == false) resetEditor();
 
-    if (mEditorScript.empty()) return;
-
-    // Unmark the current output if it wasn't originally marked
-    auto pActiveGraph = mGraphs[mActiveGraph].pGraph;
-    bool hasUnmarkedOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
-    if (hasUnmarkedOut) pActiveGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
-
-    // Run the scripting
-    Scripting::getGlobalContext().setObject("g", pActiveGraph);
-    Scripting::runScript(mEditorScript);
-
-    // Update the list of marked outputs
-    mGraphs[mActiveGraph].originalOutputs = getGraphOutputs(pActiveGraph);
-
-    // If the output before the update was not initially marked but still exists, re-mark it.
-    // If it no longer exists, mark a new output from the list of currently marked outputs.
-    if (hasUnmarkedOut && isInVector(pActiveGraph->getAvailableOutputs(), mGraphs[mActiveGraph].mainOutput)) {
-        pActiveGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
-    } else if (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false) {
-        mGraphs[mActiveGraph].mainOutput = mGraphs[mActiveGraph].originalOutputs[0];
-    }
-
-    mEditorScript.clear();
+bool Renderer::openDisplay(const std::string& image_name, uint width, uint height) {
+    if (!mpDisplay) return false;
+    return mpDisplay->open(image_name, width, height);
 }
-*/
+
+bool Renderer::closeDisplay() {
+    if (!mpDisplay) return false;
+    return mpDisplay->close();
+}
+
 
 bool isInVector(const std::vector<std::string>& strVec, const std::string& str) {
     return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
@@ -211,7 +192,7 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
     GraphData& data = *pData;
     // Set input image if it exists
     data.pGraph = pGraph;
-    data.pGraph->setScene(mpScene);
+    data.pGraph->setScene(mpScene->getScene());
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
     // Store the original outputs
@@ -231,11 +212,32 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
     pGraph->execute(pRenderContext);
 }
 
-void Renderer::renderFrame() {
+void Renderer::renderFrame(uint samples) {
 	if (!mInited) {
-		LLOG_ERR << "Renderer not initialized!";
+		LLOG_ERR << "Renderer not initialized !!!";
 		return;
 	}
+
+    if(!mpDisplay) {
+        LLOG_ERR << "Renderer display not initialized !!!";
+        return;
+    }
+
+    if(!mpDisplay->opened()) {
+        LLOG_ERR << "Renderer display not opened !!!";
+        return;
+    }
+
+    uint image_width, image_height;
+    image_width = mpDisplay->width();
+    image_height = mpDisplay->height();
+
+    for (auto const& gData: mGraphs) {
+        auto dims = gData.pGraph->dims();
+        if (dims.x != image_width || dims.y != image_height) {
+            gData.pGraph->resize(image_width, image_height, Falcor::ResourceFormat::RGBA32Float);
+        }
+    }
 
     auto pRenderContext = mpDevice->getRenderContext();
 
@@ -247,9 +249,10 @@ void Renderer::renderFrame() {
         LLOG_DBG << "process render graphs";
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
+        auto pScene = mpScene->getScene();
         // Update scene and camera.
-        if (mpScene) {
-            mpScene->update(pRenderContext, Falcor::gpFramework->getClock().getTime());
+        if (pScene) {
+            pScene->update(pRenderContext, Falcor::gpFramework->getClock().getTime());
         }
 
         executeActiveGraph(pRenderContext);
@@ -263,13 +266,35 @@ void Renderer::renderFrame() {
             Falcor::Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
             assert(pTex);
 
-            std::string filename = "/home/max/test/lava_render_test.";
-            auto ext = Falcor::Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
-            filename += ext;
-            auto format = Falcor::Bitmap::getFormatFromFileExtension(ext);
+            //std::string filename = "/home/max/test/lava_render_test_2.";
+            //auto ext = Falcor::Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
+            //filename += ext;
+            //auto format = Falcor::Bitmap::getFormatFromFileExtension(ext);
             
-            //pTex->captureToFile(0, 0, filename, format);
-            pTex->captureToFileBlocking(0, 0, filename, format);
+            //pTex->captureToFileBlocking(0, 0, filename, format);
+            
+            {
+            
+            Falcor::ResourceFormat resourceFormat;
+            uint32_t channels;
+            std::vector<uint8_t> textureData;
+            pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+            
+            LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+            assert(textureData.size() == image_width * image_height * channels * 4); // testing only on 32bit RGBA for now
+            //mpDisplay->sendBucket(0, 0, image_width, image_height, textureData.data());
+            
+
+            for(uint32_t x = 0; x < image_width; x+=4) {
+                for(uint32_t y = 0; y < image_height; y++) {
+                    textureData[(x + y*image_width)*4] = 255;
+                }
+            }
+
+            mpDisplay->sendImage(image_width, image_height, textureData.data());
+
+            }
+
         } else {
         	LLOG_WRN << "Invalid active graph output!";
         }
@@ -287,6 +312,33 @@ void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::F
 
 void Renderer::endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
     //for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
+}
+
+bool Renderer::pushDisplayStringParameter(const std::string& name, const std::vector<std::string>& strings) {
+    if(!mpDisplay) {
+        LLOG_ERR << "No display driver loaded !!!";
+        return false;
+    }
+
+    return mpDisplay->pushStringParameter(name, strings);
+}
+
+bool Renderer::pushDisplayIntParameter(const std::string& name, const std::vector<int>& ints) {
+    if(!mpDisplay) {
+        LLOG_ERR << "No display driver loaded !!!";
+        return false;
+    }
+    
+    return mpDisplay->pushIntParameter(name, ints);
+}
+
+bool Renderer::pushDisplayFloatParameter(const std::string& name, const std::vector<float>& floats) {
+    if(!mpDisplay) {
+        LLOG_ERR << "No display driver loaded !!!";
+        return false;
+    }
+    
+    return mpDisplay->pushFloatParameter(name, floats);
 }
 
 // IFramework 

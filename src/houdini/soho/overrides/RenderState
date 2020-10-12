@@ -1,0 +1,18 @@
+#include "$HH/soho/overrides/RenderState"
+
+// Viewport overrides for Lava
+{
+    override.inherit	CommonView
+    override.name	Lava
+
+    // Force the render to go to the "ip" device
+    lv_picture			[ "ip" ]
+    lv_device			[ "" ]
+    lv_image_mplay_socketport	[ "$socket" ]
+    lv_stylesheets		[ "$stylesheets" ]
+    lv_preview			[ "$preview" ]
+    lv_relightingbuffer		[ "$relightingbuffer" ]
+    lv_renderinterrupt		[ "$renderinterrupt" ]
+    lv_previewtime		[ "$previewtime" ]
+    lv_previewmode		[ "$previewmode" ]
+}

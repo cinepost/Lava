@@ -27,11 +27,11 @@ namespace po = boost::program_options;
 using namespace lava;
 
 void printUsage() {
-    std::cout << "Usage: lava [options] [ifd] [outputimage]\n" << std::endl;
+    std::cout << "Usage: lava [options] [lsd] [outputimage]\n" << std::endl;
 
     std::cout << "Reads an scene from standard input and renders the image described.\n" << std::endl;
 
-    std::cout << "If the first argument after options ends in .ifd, .rib or .lvs" << std::endl;
+    std::cout << "If the first argument after options ends in .lsd, .rib or ..." << std::endl;
     std::cout << "will read the scene description from that file.  If the argument does not" << std::endl;
     std::cout << "have an extension it will be used as the output image/device\n" << std::endl;
 
@@ -42,7 +42,7 @@ void printUsage() {
     std::cout << "        -v val  Set verbose level (i.e. -v 2)" << std::endl;
     std::cout << "                    0-6  Output varying degrees of rendering statistics" << std::endl;
     std::cout << "        -l logfile  Write log to file" << std::endl;
-    std::cout << "        -c      Enable stdin compatibility mode." << std::endl;
+    std::cout << "        -C      Enable stdin compatibility mode." << std::endl;
 }
 
 void signalHandler( int signum ){
@@ -86,20 +86,25 @@ int main(int argc, char** argv){
         ("include-path,I", po::value< std::vector<std::string> >()->composing(), "include path")
         ;
 
+    po::options_description input("Input");
+    input.add_options()
+        ("stdin,C", "stdin compatibility mode")
+        ;
+
     // Hidden options, will be allowed both on command line and in config file, but will not be shown to the user.
     po::options_description hidden("Hidden options");
     hidden.add_options()
-        ("input-file", po::value< std::vector<std::string> >(), "input file")
+        ("input-file,f", po::value< std::vector<std::string> >(), "input file")
         ;
 
     po::options_description cmdline_options;
-    cmdline_options.add(generic).add(config).add(hidden);
+    cmdline_options.add(generic).add(config).add(hidden).add(input);
 
     po::options_description config_file_options;
     config_file_options.add(config).add(hidden);
 
     po::options_description visible("Allowed options");
-    visible.add(generic).add(config);
+    visible.add(generic).add(config).add(input);
 
     po::positional_options_description p;
     p.add("input-file", -1);
@@ -112,7 +117,7 @@ int main(int argc, char** argv){
     /** --help option 
      */ 
     if ( vm.count("help")  ) { 
-        std::cout << "Basic Command Line Parameter App\n" << generic << std::endl; 
+        printUsage();
         exit(EXIT_SUCCESS);
     }
 

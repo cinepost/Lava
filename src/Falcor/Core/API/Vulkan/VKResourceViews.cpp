@@ -147,16 +147,12 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
     const Resource* pResource = pSharedPtr.get();
     assert(pResource);
 
-    LOG_DBG("1");
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
-            LOG_DBG("2");
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
-            LOG_DBG("2.2");
             assert(pResource->device());
             vk_call(vkCreateImageView(pResource->device()->getApiHandle(), &info, nullptr, &imageView));
-            LOG_DBG("2.3");
             return VkResource<VkImageView, VkBufferView>::SharedPtr::create(pResource->device(), imageView, nullptr);
         }
 

@@ -22,6 +22,7 @@
 #include "Run.h"
 #include "Sphere.h"
 #include "Volume.h"
+#include "AlembicRef.h"
 
 namespace ika
 {
@@ -103,6 +104,10 @@ Primitive* Primitive::create(const UT_String& type, const Detail& detail)
     {
         return new Volume(detail);
     }
+    //else if (type == "AlembicRef")
+    //{
+    //    return new AlembicRef(detail);
+    //}
 
     std::cerr << "Warning: unsupported primitive type: " << type << std::endl;
     return new Primitive(detail);

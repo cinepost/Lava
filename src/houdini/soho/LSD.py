@@ -27,7 +27,7 @@ import LSDhooks
 from soho import SohoParm
 from LSDapi import *
 
-LSDhooks.call("pre_ifdGen")
+LSDhooks.call("pre_lsdGen")
 
 clockstart = time.time()
 
@@ -558,7 +558,7 @@ else:
                         cmd_reset()
                 LSDhooks.call('post_mainimage', parmlist, objparms, now, sub_camera)
 
-LSDhooks.call("post_ifdGen")
+LSDhooks.call("post_lsdGen")
 LSDsettings.clearLists()
 
 # IMPORTANT: Don't print ANYTHING here - IPR relies on the fact that the

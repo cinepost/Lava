@@ -596,13 +596,9 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         specializationArgs,
         log);
 
-    LOG_DBG("0");
-
     if (!pSpecializedSlangGlobalScope) {
         return nullptr;
     }
-
-    LOG_DBG("0.1");
 
     uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
     std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
@@ -698,8 +694,6 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
     //
     uint32_t entryPointGroupCount = uint32_t(mDesc.mGroups.size());
     
-    LOG_DBG("1");
-
     for( uint32_t gg = 0; gg < entryPointGroupCount; ++gg ) {
         auto entryPointGroupDesc = mDesc.mGroups[gg];
 
@@ -710,10 +704,7 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         auto groupEntryPointCount = entryPointGroupDesc.entryPointCount;
         std::vector<Shader::SharedPtr> shaders;
         
-        LOG_DBG("1.1");
-
         for(uint32_t ee = 0; ee < groupEntryPointCount; ++ee) {
-            LOG_DBG("1.2");
             auto entryPointIndex = entryPointGroupDesc.firstEntryPoint + ee;
 
             auto pLinkedEntryPoint = pLinkedEntryPoints[entryPointIndex];
@@ -731,22 +722,18 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
                 log += (char const*) pSlangDiagnostics->getBufferPointer();
             }
 
-            if (failed) {
-                LOG_DBG("1.3");
-                
-                LOG_DBG("sources:\n");
-                for (auto const& src: mDesc.mSources) {
-                    LOG_DBG("source: %s", src.str.c_str());
-                    LOG_DBG("desc: %s", getProgramDescString().c_str());
-                }
-
+            if (failed) {                
+                //LOG_DBG("sources:\n");
+                //for (auto const& src: mDesc.mSources) {
+                    //LOG_DBG("source: %s", src.str.c_str());
+                    //LOG_DBG("desc: %s", getProgramDescString().c_str());
+                //}
                 return nullptr;
             }
             
             Shader::SharedPtr shader = createShaderFromBlob(mpDevice, blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
             
             if (!shader) {
-                LOG_DBG("1.4");
                 return nullptr;
             }
             shaders.emplace_back(std::move(shader));
@@ -758,8 +745,6 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         entryPointGroups.push_back(pEntryPointGroupKernels);
     }
 
-    LOG_DBG("2");
-
     return ProgramKernels::create(
             mpDevice,
             pVersion,
@@ -770,20 +755,19 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 }
 
 ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const {
-    LOG_DBG("createCompileRequest");
     auto pSlangRequest = createSlangCompileRequest(mDefineList);
-    LOG_DBG("created");
-    if (pSlangRequest == nullptr) return nullptr;
+    if (pSlangRequest == nullptr) {
+        LOG_ERR("Error creating slang compile request !!!");
+        return nullptr;
+    }
 
     SlangResult slangResult = spCompile(pSlangRequest);
     log += spGetDiagnosticOutput(pSlangRequest);
     
-    LOG_DBG("SLANG_FAILED?");
     if(SLANG_FAILED(slangResult)) {
         spDestroyCompileRequest(pSlangRequest);
         return nullptr;
     }
-    LOG_DBG("SLANG_FAILED!");
 
     ComPtr<slang::IComponentType> pSlangGlobalScope;
     spCompileRequest_getProgram(
@@ -865,18 +849,11 @@ EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
 }
 
 bool Program::link() const {
-    LOG_DBG("Program::link %s", getProgramDescString().c_str());
-
     while(1) {
-        LOG_DBG("run");
         // Create the program
         std::string log;
 
-        LOG_DBG("Program::link 1");
         auto pVersion = preprocessAndCreateProgramVersion(log);
-
-        //LOG_DBG("Program::link 2");
-        //auto pVersion2 = preprocessAndCreateProgramVersion(log);
 
         if (pVersion == nullptr) {
             std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
@@ -893,10 +870,17 @@ bool Program::link() const {
             }
 
             mpActiveVersion = pVersion;
-            LOG_DBG("Program link done! %s", getProgramDescString().c_str());
             return true;
         }
+
+        char choice;
+        std::cout << "Would you like to try again ? (Y/N)" << std::endl;
+        std::cin >> choice;
+        if ( choice =='N' || choice =='n' ){
+            break;
+        }
     }
+    return false;
 }
 
 void Program::reset() {

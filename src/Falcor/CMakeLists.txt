@@ -154,8 +154,7 @@ file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
 file(
     COPY Utils Scene Experimental RenderGraph Testing
     DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
-    FILES_MATCHING
-        PATTERN "*.slang*"
+    FILES_MATCHING PATTERN "*.slan*"
 )
 
 # Copy/install falcor data
@@ -169,5 +168,18 @@ if(UNIX)
         TARGETS 
         falcor_lib
         DESTINATION lib 
+    )
+
+    # Install all needed shaders
+    install(
+        DIRECTORY Core Experimental Raytracing RenderGraph RenderPasses Scene Testing Utils
+        DESTINATION shaders
+        FILES_MATCHING PATTERN "*.slan*"
+    )
+
+    # Install falcor data
+    install(
+        DIRECTORY Data/Framework Data/LightProbes Data/NVIDIA
+        DESTINATION data
     )
 endif()

@@ -1,5 +1,5 @@
 #include "visitor.h"
-#include "session_lsd.h"
+#include "session.h"
 
 namespace x3 = boost::spirit::x3;
 namespace fs = boost::filesystem;
@@ -9,11 +9,11 @@ namespace lava {
 
 namespace lsd {
 
-EchoVisitor::EchoVisitor(std::unique_ptr<SessionLSD>& pSession): Visitor(pSession), _os(std::cout){ 
+EchoVisitor::EchoVisitor(std::unique_ptr<Session>& pSession): Visitor(pSession), _os(std::cout){ 
 
 }
 
-EchoVisitor::EchoVisitor(std::unique_ptr<SessionLSD>& pSession, std::ostream& os): Visitor(pSession), _os(os){ 
+EchoVisitor::EchoVisitor(std::unique_ptr<Session>& pSession, std::ostream& os): Visitor(pSession), _os(os){ 
 
 }
 
@@ -135,7 +135,7 @@ void EchoVisitor::operator()(ast::cmd_quit const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_start const& c) const {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_start: " << c.type << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_start: " << c.object_type << "\x1b[0m\n";
 }
 
 void EchoVisitor::operator()(ast::cmd_time const& c) const {
@@ -145,8 +145,10 @@ void EchoVisitor::operator()(ast::cmd_time const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_detail const& c) {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename << "\n";
-    //boost::apply_visitor(bgeo::EchoVisitor(), c.bgeo);
+    _os << "\x1b[32m" << "> cmd_detail: name: " << c.name << " filename: " << c.filename;
+    if(c.filename != "stdin"){
+        _os << " expanded filename: " << mpSession->getExpandedString(c.filename);
+    }
     _os << "\x1b[0m\n";
 }
 
@@ -199,7 +201,7 @@ void EchoVisitor::operator()(ast::cmd_declare const& c) const {
 void EchoVisitor::operator()(ast::cmd_raytrace const& c) const {
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_raytrace: " << "\x1b[0m\n";
-}
+} 
 
 }  // namespace lsd
 

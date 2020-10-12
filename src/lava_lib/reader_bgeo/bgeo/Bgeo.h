@@ -30,10 +30,14 @@ class Detail;
 class Bgeo
 {
 public:
+    Bgeo();
+    explicit Bgeo(std::istream& in, bool checkVersion = false);
     explicit Bgeo(const std::string& bgeoString, bool checkVersion = false);
     explicit Bgeo(const char* bgeoPath, bool checkVersion = true);
     explicit Bgeo(std::shared_ptr<parser::Detail> detail);
     ~Bgeo(); // dtor required for unique_ptr
+
+    bool readInlineGeo(const std::string& bgeoString, bool checkVersion = false);
 
     int64_t getPointCount() const;
     int64_t getTotalVertexCount() const;
@@ -84,7 +88,7 @@ public:
     std::string getPrimitiveGroupName(int64_t index) const;
     void getPrimitiveGroup(int64_t index, std::vector<int32_t>& indices) const;
 
-private:
+ private:
     // use pimpl here to avoid include UT classes
     class Impl;
     std::unique_ptr<Impl> m_pimpl;

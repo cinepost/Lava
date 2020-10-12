@@ -13,12 +13,9 @@
 #include "PrimitiveGroup.h"
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 Detail::Detail(bool checkVersion)
     : pointCount(0),
@@ -29,15 +26,12 @@ Detail::Detail(bool checkVersion)
 {
 }
 
-Detail::~Detail()
-{
-    for (auto it = vertexAttributes.begin(); it != vertexAttributes.end(); ++it)
-    {
+Detail::~Detail() {
+    for (auto it = vertexAttributes.begin(); it != vertexAttributes.end(); ++it) {
         delete *it;
     }
 
-    for (auto it = pointAttributes.begin(); it != pointAttributes.end(); ++it)
-    {
+    for (auto it = pointAttributes.begin(); it != pointAttributes.end(); ++it) {
         delete *it;
     }
 
@@ -47,20 +41,17 @@ Detail::~Detail()
         delete *it;
     }
 
-    for (auto it = detailAttributes.begin(); it != detailAttributes.end(); ++it)
-    {
+    for (auto it = detailAttributes.begin(); it != detailAttributes.end(); ++it) {
         delete *it;
     }
 }
 
-void Detail::loadHeaderAndInfo(UT_JSONParser& parser)
-{
-    parseBeginArray(parser);
+void Detail::loadHeaderAndInfo(UT_JSONParser& parser) {
+    parseBeginArray(parser); 
     {
         fileVersion.load(parser);
 
-        if (fileVersion.major > 13)
-        {
+        if (fileVersion.major > 13) {
             parseSkipKeyAndValue(parser); // skip hasindex
         }
 
@@ -73,122 +64,96 @@ void Detail::loadHeaderAndInfo(UT_JSONParser& parser)
     }
 }
 
-static void loadAttributes(UT_JSONParser& parser,
-                           std::vector<Attribute*>& attributes, int64 count)
-{
-    for (auto it = parser.beginArray(); !it.atEnd(); ++it)
-    {
+static void loadAttributes(UT_JSONParser& parser, std::vector<Attribute*>& attributes, int64 count) {
+    for (auto it = parser.beginArray(); !it.atEnd(); ++it) {
         Attribute* attribute = new Attribute(count);
         attribute->load(parser);
         attributes.push_back(attribute);
     }
 }
 
-void Detail::loadGeometry(UT_JSONParser &parser)
-{
+void Detail::loadGeometry(UT_JSONParser &parser) {
     UT_WorkBuffer buffer;
     UT_String key;
-    for (auto geoit = parser.beginArray(); !geoit.atEnd(); ++geoit)
-    {
-        geoit.getLowerKey(buffer);
+    for (auto geoit = parser.beginArray(); !geoit.atEnd(); ++geoit) {
+        
+        geoit.getLowerKey(buffer);        
         key = buffer.buffer();
-        if (key == "fileversion")
-        {
+        
+        if (key == "fileversion") {
             UT_WorkBuffer version;
             BGEO_CHECK(parser.parseString(version));
             fileVersion.parse(version.buffer());
-            if (checkVersion)
-            {
+            if (checkVersion) {
                 FileVersion::checkVersion(fileVersion);
             }
         }
-        else if (key == "hasindex")
-        {
+        else if (key == "hasindex") {
             BGEO_CHECK(parser.skipNextObject());
         }
-        else if (key == "pointcount")
-        {
+        else if (key == "pointcount") {
             BGEO_CHECK(parser.parseInt(pointCount));
         }
-        else if (key == "vertexcount")
-        {
+        else if (key == "vertexcount") {
             BGEO_CHECK(parser.parseInt(vertexCount));
         }
-        else if (key == "primitivecount")
-        {
+        else if (key == "primitivecount") {
             BGEO_CHECK(parser.parseInt(primitiveCount));
         }
-        else if (key == "info")
-        {
+        else if (key == "info") {
             info.load(parser);
         }
-        else if (key == "topology")
-        {
+        else if (key == "topology") {
             vertexMap.load(parser, vertexCount);
         }
-        else if (key == "attributes")
-        {
-            for (auto attrit = parser.beginArray(); !attrit.atEnd(); ++attrit)
-            {
+        else if (key == "attributes") {
+            for (auto attrit = parser.beginArray(); !attrit.atEnd(); ++attrit) {
                 attrit.getLowerKey(buffer);
                 key = buffer.buffer();
-                if (key == "vertexattributes")
-                {
+                if (key == "vertexattributes") {
                     loadAttributes(parser, vertexAttributes, vertexCount);
                 }
-                else if (key == "pointattributes")
-                {
+                else if (key == "pointattributes") {
                     loadAttributes(parser, pointAttributes, pointCount);
                 }
-                else if (key == "primitiveattributes")
-                {
+                else if (key == "primitiveattributes") {
                     loadAttributes(parser, primitiveAttributes, primitiveCount);
                 }
-                else if (key == "globalattributes")
-                {
+                else if (key == "globalattributes") {
                     loadAttributes(parser, detailAttributes, 1);
                 }
-                else
-                {
+                else {
                     std::cerr << "Warning: unsupported attribute type: " << key << std::endl;
                     BGEO_CHECK(parser.skipNextObject());
                 }
             }
         }
-        else if (key == "primitives")
-        {
+        else if (key == "primitives") {
             primitives.load(parser);
         }
-        else if (key == "pointgroups" || key == "edgegroups")
-        {
+        else if (key == "pointgroups" || key == "edgegroups") {
             // point and edge groups not supported atm
             BGEO_CHECK(parser.skipNextObject());
         }
-        else if (key == "primitivegroups")
-        {
-            for (auto groupit = parser.beginArray(); !groupit.atEnd(); ++groupit)
-            {
+        else if (key == "primitivegroups") {
+            for (auto groupit = parser.beginArray(); !groupit.atEnd(); ++groupit) {
                 primitiveGroups.push_back(std::unique_ptr<PrimitiveGroup>(
                                               new PrimitiveGroup(*this)));
                 primitiveGroups.back()->load(parser);
             }
         }
-        else if (key == "sharedprimitivedata")
-        {
+        else if (key == "sharedprimitivedata") {
             primitives.loadSharedData(parser);
         }
-        else if (key == "index")
-        {
+        else if (key == "index") {
             // index not supported
             BGEO_CHECK(parser.skipNextObject());
         }
-        else if (key == "indexposition")
-        {
+        else if (key == "indexposition") {
             // indexposition not supported
             BGEO_CHECK(parser.skipNextObject());
         }
-        else
-        {
+        else {
             std::cerr << "Warning: unsupported detail member: " << key
                       << " at " << parser.getStreamPosition() << std::endl;
             BGEO_CHECK(parser.skipNextObject());
@@ -196,75 +161,60 @@ void Detail::loadGeometry(UT_JSONParser &parser)
     }
 }
 
-int64 Detail::getPointIndexForVertex(int64 vertex) const
-{
+int64 Detail::getPointIndexForVertex(int64 vertex) const {
     assert(vertex < vertexMap.vertexCount);
     return vertexMap.vertices[vertex];
 }
 
-const Attribute* Detail::getPointAttributeByName(const char* name) const
-{
-    for (auto it = pointAttributes.begin(); it != pointAttributes.end(); ++it)
-    {
-        if ((*it)->name == name)
-        {
+const Attribute* Detail::getPointAttributeByName(const char* name) const {
+    for (auto it = pointAttributes.begin(); it != pointAttributes.end(); ++it) {
+        if ((*it)->name == name) {
             return *it;
         }
     }
     return 0;
 }
 
-const Attribute* Detail::getVertexAttributeByName(const char* name) const
-{
-    for (auto it = vertexAttributes.begin(); it != vertexAttributes.end(); ++it)
-    {
-        if ((*it)->name == name)
-        {
+const Attribute* Detail::getVertexAttributeByName(const char* name) const {
+    for (auto it = vertexAttributes.begin(); it != vertexAttributes.end(); ++it) {
+        if ((*it)->name == name) {
             return *it;
         }
     }
     return 0;
 }
 
-const Attribute* Detail::getPrimitiveAttributeByName(const char* name) const
-{
+const Attribute* Detail::getPrimitiveAttributeByName(const char* name) const {
     for (auto it = primitiveAttributes.begin();
          it != primitiveAttributes.end(); ++it)
     {
-        if ((*it)->name == name)
-        {
+        if ((*it)->name == name) {
             return *it;
         }
     }
     return 0;
 }
 
-const Attribute* Detail::getDetailAttributeByName(const char *name) const
-{
+const Attribute* Detail::getDetailAttributeByName(const char *name) const {
     for (auto it = detailAttributes.begin();
          it != detailAttributes.end(); ++it)
     {
-        if ((*it)->name == name)
-        {
+        if ((*it)->name == name) {
             return *it;
         }
     }
     return 0;
 }
 
-void Detail::mapVerticesToPoints(const VertexArrayBuilder::VertexArray& vertices,
-                                 VertexArrayBuilder::VertexArray& points) const
-{
+void Detail::mapVerticesToPoints(const VertexArrayBuilder::VertexArray& vertices, VertexArrayBuilder::VertexArray& points) const {
     points.resize(vertices.size());
-    for (int i = 0; i < vertices.size(); i++)
-    {
+    for (int i = 0; i < vertices.size(); i++) {
         assert(vertices[i] < vertexMap.vertexCount);
         points[i] = vertexMap.vertices[vertices[i]];
     }
 }
 
-std::ostream& operator << (std::ostream& co, const Detail& detail)
-{
+std::ostream& operator << (std::ostream& co, const Detail& detail) {
     co << "fileversion = " << detail.fileVersion << "\n"
        << "pointcount = " << detail.pointCount << "\n"
        << "vertexcount = " << detail.vertexCount << "\n"

@@ -64,7 +64,6 @@ GraphicsState::GraphicsState(std::shared_ptr<Device> device): mpDevice(device), 
 GraphicsState::~GraphicsState() = default;
 
 GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars) {
-    LOG_DBG("GraphicsState::getGSO");
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
     bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
     

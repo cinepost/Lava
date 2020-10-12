@@ -34,6 +34,7 @@
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
+#include <boost/log/core.hpp>
 #include "lava_utils_lib/logging.h"
 
 namespace x3 = boost::spirit::x3;
@@ -54,6 +55,10 @@ namespace lsd {
     typedef static_vector<int, 3> Int3;
     typedef static_vector<int, 4> Int4; 
 
+    typedef static_vector<uint, 2> Uint2;
+    typedef static_vector<uint, 3> Uint3;
+    typedef static_vector<uint, 4> Uint4; 
+
     typedef static_vector<double, 2> Vector2; 
     typedef static_vector<double, 3> Vector3;
     typedef static_vector<double, 4> Vector4; 
@@ -63,9 +68,9 @@ namespace lsd {
 
 namespace ast {
 
-    enum class Type { FLOAT, BOOL, INT, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
-    enum class Style {OBJECT, GLOBAL, LIGHT, GEOMETRY, PLANE, UNKNOWN };
-    enum class Object { GLOBAL, MATERIAL, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
+    enum class Type { FLOAT, BOOL, INT, INT2, INT3, INT4, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
+    enum class Style { GLOBAL, MATERIAL, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
+    //enum class ObjectType { MATERIAL, SEGMENT, LIGHT, FOG, OBJECT, INSTANCE, PLANE, UNKNOWN };
     enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG };
 
     struct ifthen;
@@ -134,7 +139,7 @@ namespace ast {
     };
 
     struct cmd_start {
-        Object type;
+        Style object_type;
     };
 
     struct cmd_transform {
@@ -163,7 +168,6 @@ namespace ast {
         bool temporary;
         std::string name;
         std::string filename;
-        //bgeo::ast::Bgeo bgeo;
     };
 
     struct cmd_image {
@@ -172,7 +176,7 @@ namespace ast {
     };
 
     struct cmd_property {
-        Object style;
+        Style style;
         std::string token;
         std::vector<PropValue> values;
     };
@@ -246,8 +250,13 @@ static inline std::ostream& operator<<(std::ostream& os, const Matrix4& m) {
     return os << "]";
 };
 
-static inline std::ostream& operator<<(std::ostream& os, Version v) {
+static inline std::ostream& operator<<(std::ostream& os, const Version& v) {
     return os << "Version: " << v[0] << "." << v[1] << "." << v[2];
+};
+
+static inline std::ostream& operator<<(std::ostream& os, const PropValue& v) {
+    os << v;
+    return os;
 };
 
 static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> v) {
@@ -255,71 +264,65 @@ static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> 
     return os;
 };
 
-using Type = ast::Type;
-static inline std::ostream& operator<<(std::ostream& os, Type t) {
+using Type = lava::lsd::ast::Type;
+static inline std::string to_string(const lava::lsd::ast::Type& t) {
     switch(t) {
-        case Type::INT: return os << "int";
-        case Type::BOOL: return os << "bool";
-        case Type::FLOAT: return os << "float";
-        case Type::STRING: return os << "string";
-        case Type::VECTOR2: return os << "vector2";
-        case Type::VECTOR3: return os << "vector3";
-        case Type::VECTOR4: return os << "vector4";
-        case Type::MATRIX3: return os << "matrix3";
-        case Type::MATRIX4: return os << "matrix4";
-        default: os << "unknown";
+        case Type::INT: return "int";
+        case Type::INT2: return "int2";
+        case Type::INT3: return "int3";
+        case Type::INT4: return "int4";
+        case Type::BOOL: return "bool";
+        case Type::FLOAT: return "float";
+        case Type::STRING: return "string";
+        case Type::VECTOR2: return "vector2";
+        case Type::VECTOR3: return "vector3";
+        case Type::VECTOR4: return "vector4";
+        case Type::MATRIX3: return "matrix3";
+        case Type::MATRIX4: return "matrix4";
+        default: return "unknown";
     }
-    return os;
-};
+}
 
-using Object = ast::Object;
-static inline std::ostream& operator<<(std::ostream& os, Object o) {
-    switch(o) {
-        case Object::GLOBAL: return os << "global";
-        case Object::GEO: return os << "geo";
-        case Object::GEOMETRY: return os << "geometry";
-        case Object::MATERIAL: return os << "material";
-        case Object::SEGMENT: return os << "segment";
-        case Object::CAMERA: return os << "camera";
-        case Object::LIGHT: return os << "light";
-        case Object::FOG: return os << "fog";
-        case Object::OBJECT: return os << "object";
-        case Object::INSTANCE: return os << "instance";
-        case Object::PLANE: return os << "plane";
-        case Object::IMAGE: return os << "image";
-        case Object::RENDERER: return os << "renderer";
-        default: os << "unknown";
-    }
-    return os;
-};
-
-// object, global, light, geometry, or plane
-
-using Style = ast::Style;
-static inline std::ostream& operator<<(std::ostream& os, Style s) {
+using Style = lava::lsd::ast::Style;
+static inline std::string to_string(const lava::lsd::ast::Style& s) {
     switch(s) {
-        case Style::GLOBAL: return os << "global";
-        case Style::GEOMETRY: return os << "geometry";
-        case Style::LIGHT: return os << "light";
-        case Style::OBJECT: return os << "object";
-        case Style::PLANE: return os << "plane";
-        default: os << "unknown";
+        case Style::GLOBAL: return "global";
+        case Style::GEO: return "geo";
+        case Style::GEOMETRY: return "geometry";
+        case Style::MATERIAL: return "material";
+        case Style::SEGMENT: return "segment";
+        case Style::CAMERA: return "camera";
+        case Style::LIGHT: return "light";
+        case Style::FOG: return "fog";
+        case Style::OBJECT: return "object";
+        case Style::INSTANCE: return "instance";
+        case Style::PLANE: return "plane";
+        case Style::IMAGE: return "image";
+        case Style::RENDERER: return "renderer";
+        default: return "unknown";
     }
-    return os;
+}
+
+static inline std::ostream& operator<<(std::ostream& os, Type t) {
+    return os << to_string(t);
+};
+
+static inline std::ostream& operator<<(std::ostream& os, Style s) {
+    return os << to_string(s);
 };
 
 }  // namespace lsd
 
 }  // namespace lava
 
-//BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::endif)
-//BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_end)
-//BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_quit)
-//BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_raytrace)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::endif)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_end)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_quit)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_raytrace)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::ifthen, expr)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::setenv, key, value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_time, time)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, type)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, object_type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
@@ -499,39 +502,55 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(image_values)
 
 
-    struct ObjectsTable : x3::symbols<ast::Object> {
-        ObjectsTable() {
-            add ("global"   , ast::Object::GLOBAL)
-                ("geo"      , ast::Object::GEO)
-                ("geometry" , ast::Object::GEOMETRY)
-                ("material" , ast::Object::MATERIAL)
-                ("segment"  , ast::Object::SEGMENT)
-                ("camera"   , ast::Object::CAMERA)
-                ("light"    , ast::Object::LIGHT)
-                ("fog"      , ast::Object::FOG)
-                ("object"   , ast::Object::OBJECT)
-                ("instance" , ast::Object::INSTANCE)
-                ("plane"    , ast::Object::PLANE)
-                ("image"    , ast::Object::IMAGE)
-                ("renderer" , ast::Object::RENDERER);
+    struct ObjectTypesTable : x3::symbols<ast::Style> {
+        ObjectTypesTable() {
+            add ("geo"      , ast::Style::GEO)
+                ("material" , ast::Style::MATERIAL)
+                ("light"    , ast::Style::LIGHT)
+                ("fog"      , ast::Style::FOG)
+                ("object"   , ast::Style::OBJECT)
+                ("instance" , ast::Style::INSTANCE)
+                ("segment"  , ast::Style::SEGMENT)
+                ("plane"    , ast::Style::PLANE);
         }
-    } const object;
+    } const object_type;
 
-    struct StylesTable : x3::symbols<ast::Style> {
-        StylesTable() {
+    struct PrpertyStylesTable : x3::symbols<ast::Style> {
+        PrpertyStylesTable() {
+            add ("global"   , ast::Style::GLOBAL)
+                ("geo"      , ast::Style::GEO)
+                ("geometry" , ast::Style::GEOMETRY)
+                ("material" , ast::Style::MATERIAL)
+                ("segment"  , ast::Style::SEGMENT)
+                ("camera"   , ast::Style::CAMERA)
+                ("light"    , ast::Style::LIGHT)
+                ("fog"      , ast::Style::FOG)
+                ("object"   , ast::Style::OBJECT)
+                ("instance" , ast::Style::INSTANCE)
+                ("plane"    , ast::Style::PLANE)
+                ("image"    , ast::Style::IMAGE)
+                ("renderer" , ast::Style::RENDERER);
+        }
+    } const property_style;
+
+    struct DeclareStylesTable : x3::symbols<ast::Style> {
+        DeclareStylesTable() {
             add ("global"   , ast::Style::GLOBAL)
                 ("geometry" , ast::Style::GEOMETRY)
                 ("light"    , ast::Style::LIGHT)
                 ("object"   , ast::Style::OBJECT)
                 ("plane"    , ast::Style::PLANE);
         }
-    } const style;
+    } const declare_style;
 
     struct PropTypesTable : x3::symbols<ast::Type> {
         PropTypesTable() {
             add ("float"    , ast::Type::FLOAT)
                 ("bool"     , ast::Type::BOOL)
                 ("int"      , ast::Type::INT)
+                ("int2"     , ast::Type::INT2)
+                ("int3"     , ast::Type::INT3)
+                ("int4"     , ast::Type::INT4)
                 ("vector2"  , ast::Type::VECTOR2)
                 ("vector3"  , ast::Type::VECTOR3)
                 ("vector4"  , ast::Type::VECTOR4)
@@ -591,7 +610,7 @@ namespace parser {
 
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
-        = "cmd_property" >> object >> identifier >> prop_values;
+        = "cmd_property" >> property_style >> identifier >> prop_values;
     
     auto const cmd_deviceoption
         = x3::rule<class cmd_deviceoption, ast::cmd_deviceoption>{"cmd_deviceoption"}
@@ -599,8 +618,8 @@ namespace parser {
 
     auto const cmd_declare
         = x3::rule<class cmd_declare, ast::cmd_declare>{"cmd_declare"}
-        = "cmd_declare" >> lit("-v") >> int_ >> style >> prop_type >> prop_name >> prop_values |
-          "cmd_declare" >> attr(0) >> style >> prop_type >> prop_name >> prop_values;
+        = "cmd_declare" >> lit("-v") >> int_ >> declare_style >> prop_type >> prop_name >> prop_values |
+          "cmd_declare" >> attr(0) >> declare_style >> prop_type >> prop_name >> prop_values;
 
     auto const cmd_transform
         = x3::rule<class cmd_transform, ast::cmd_transform>{"cmd_transform"}
@@ -608,7 +627,7 @@ namespace parser {
 
     auto const cmd_start
         = x3::rule<class cmd_start, ast::cmd_start>{"cmd_start"}
-        = "cmd_start" >> object >> eps;
+        = "cmd_start" >> object_type >> eps;
 
     auto const cmd_time
         = x3::rule<class cmd_time, ast::cmd_time>{"cmd_time"}

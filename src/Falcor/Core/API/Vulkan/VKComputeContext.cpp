@@ -66,11 +66,9 @@ namespace Falcor {
     */
 
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
-        LOG_DBG("ComputeContext::prepareForDispatch");
         assert(pState);
         assert(pVars);
 
-        LOG_DBG("pState->getCSO");
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
 
         // Apply the vars. Must be first because applyComputeVars() might cause a flush
@@ -151,7 +149,6 @@ namespace Falcor {
     */
 
     void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
-        LOG_DBG("ComputeContext::dispatch");
         assert(pState);
         assert(pVars);
         // Check dispatch dimensions. TODO: Should be moved into Falcor.

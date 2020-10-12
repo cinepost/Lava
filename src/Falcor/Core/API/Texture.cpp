@@ -200,14 +200,11 @@ UnorderedAccessView::SharedPtr Texture::getUAV() {
 }
 
 RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    LOG_DBG("Texture::getRTV");
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
         assert(pTexture->device());
-        LOG_DBG("Texture::getRTV call RenderTargetView::create");
         return RenderTargetView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
-    LOG_DBG("Texture::getRTV call findViewCommon");
     auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
     if (!result) {
         LOG_ERR("ERROR findViewCommon<RenderTargetView> returned NULL");

@@ -17,6 +17,7 @@
 
 #include "display.h"
 #include "renderer_iface.h"
+#include "scene.h"
 
 namespace lava {
 
@@ -34,18 +35,24 @@ class Renderer: public Falcor::IFramework {
  	using UniquePtr = std::unique_ptr<Renderer>;
 
 	std::unique_ptr<RendererIface> 	aquireInterface();
- 	void						 		releaseInterface(std::unique_ptr<RendererIface> pInterface);
+ 	void						 	releaseInterface(std::unique_ptr<RendererIface> pInterface);
 
  public:
  	static UniquePtr create();
 
  public:
  	bool init();
- 	bool isInited() { return mInited; }
+ 	bool isInited() const { return mInited; }
  	bool loadDisplayDriver(const std::string& display_name);
+    bool openDisplay(const std::string& image_name, uint width, uint height);
+    bool closeDisplay();
  	bool loadScript(const std::string& file_name);
 
- 	void renderFrame();
+    bool pushDisplayStringParameter(const std::string& name, const std::vector<std::string>& strings);
+    bool pushDisplayIntParameter(const std::string& name, const std::vector<int>& ints);
+    bool pushDisplayFloatParameter(const std::string& name, const std::vector<float>& floats);
+
+ 	void renderFrame(uint samples = 16);
 
  	void registerScriptBindings(Falcor::ScriptBindings::Module& m);
 
@@ -142,11 +149,13 @@ class Renderer: public Falcor::IFramework {
     Falcor::Clock* 	   			mpClock;
     Falcor::ArgList 			mArgList;
 
-    Falcor::Scene::SharedPtr 	mpScene;
-    std::vector<GraphData> 		mGraphs;
+    lava::Scene::SharedPtr      mpScene;
+    std::vector<GraphData>      mGraphs;
     uint32_t mActiveGraph = 0;
 
     bool mInited = false;
+
+    friend class RendererIface;
 }; 
 
 }  // namespace lava

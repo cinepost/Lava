@@ -7,9 +7,33 @@
 #include "display.h"
 #include "lava_utils_lib/logging.h"
 
+// Make sure that we've got the correct sizes for the PtDspy* integral constants
+BOOST_STATIC_ASSERT(sizeof(PtDspyUnsigned32) == 4);
+BOOST_STATIC_ASSERT(sizeof(PtDspySigned32) == 4);
+BOOST_STATIC_ASSERT(sizeof(PtDspyUnsigned16) == 2);
+BOOST_STATIC_ASSERT(sizeof(PtDspySigned16) == 2);
+BOOST_STATIC_ASSERT(sizeof(PtDspyUnsigned8) == 1);
+BOOST_STATIC_ASSERT(sizeof(PtDspySigned8) == 1);
+
 namespace lava {
 
-Display::Display(const std::string& driver_name): mDriverName(driver_name) {
+std::string getDspyErrorMessage(const PtDspyError& err) {
+    switch (err) {
+        case PkDspyErrorNoMemory:
+            return "Out of memory";
+        case PkDspyErrorUnsupported:
+            return "Unsupported";
+        case PkDspyErrorBadParams:
+            return "Bad params";
+        case PkDspyErrorNoResource:
+            return "No resource";
+        case PkDspyErrorUndefined:
+        default:
+            return "Undefined"; 
+    }
+}
+
+Display::Display(const std::string& driver_name): mDriverName(driver_name), mOpened(false), mClosed(false) {
     mImageWidth = mImageHeight = 0;
     LLOG_DBG << "Display \"" << mDriverName << "\" constructed!";
 }
@@ -33,6 +57,8 @@ Display::UniquePtr Display::create(const std::string& driver_name) {
 
     Display* pDisplay = new Display(driver_name);
     
+    /* Necessary function pointers */
+
     pDisplay->mOpenFunc = (PtDspyOpenFuncPtr)dlsym(lib_handle, "DspyImageOpen");
     if ((error = dlerror()) != NULL)  {
         fputs(error, stderr);
@@ -59,13 +85,20 @@ Display::UniquePtr Display::create(const std::string& driver_name) {
         fputs(error, stderr);
         delete pDisplay;
         return nullptr;
-    }   
+    }
+
+    /* Optional function pointers */
+
+    pDisplay->mActiveRegionFunc = (PtDspyActiveRegionFuncPtr)dlsym(lib_handle, "DspyImageActiveRegion");
+    if ((error = dlerror()) != NULL)  {
+        pDisplay->mActiveRegionFunc = nullptr;
+    }  
 
     return UniquePtr(pDisplay);
 }
 
 bool Display::open(const std::string& image_name, uint width, uint height) {
-    if( width == 0 && height == 0) {
+    if( width == 0 || height == 0) {
         printf("[%s] Wrong image dimensions !!!\n", __FILE__);
         return false;
     }
@@ -74,67 +107,43 @@ bool Display::open(const std::string& image_name, uint width, uint height) {
     mImageWidth = width;
     mImageHeight = height;
 
-    //format can be rgb, rgba, rgbaz or rgbz
-    int formatCount = 3;
-    //char* channels[5] = {"r","g","b","a","z"};
-    char channels[6] = "rgbaz";
+    //format can be rgb, rgba or rgbaz for now...
+    int formatCount = 4;
+    std::vector<std::string> channels {"r", "g", "b", "a", "z"};
 
     PtDspyDevFormat *outformat = new PtDspyDevFormat[formatCount]();
     PtDspyDevFormat *f_ptr = &outformat[0];
     for(int i=0; i<formatCount; i++){
         f_ptr->type = PkDspyFloat32;
-        f_ptr->name = &channels[i];
+
+        const std::string& channel_name = channels[i];
+        char* pname = reinterpret_cast<char*>(malloc(channel_name.size()+1));
+        strcpy(pname, channel_name.c_str());
+        
+        f_ptr->name = pname;
         f_ptr++;
     }
 
-    UserParameter *prms = new UserParameter[2];
-
-    const char *compression[1] = {"none"};
-    makeStringsParameter("exrcompression", compression, 1, prms[0]);
-
-    const char *pixeltype[1] = {"float"};
-    makeStringsParameter("exrpixeltype", pixeltype, 1, prms[1]);
-
-    PtDspyError err = mOpenFunc(&mImage, mDriverName.c_str(), mImageName.c_str(), mImageWidth, mImageHeight, 0, prms, formatCount, outformat, &mFlagstuff);
-
-    delete [] prms;
-    delete [] outformat;
+    PtDspyError err = mOpenFunc(&mImage, mDriverName.c_str(), mImageName.c_str(), mImageWidth, mImageHeight, mUserParameters.size(), mUserParameters.data(), formatCount, outformat, &mFlagstuff);
 
     // check for an error
     if(err != PkDspyErrorNone ) {
-        BOOST_LOG_TRIVIAL(error) << "Unable to open display \"" << mDriverName << "\" : ";
-        switch (err) {
-            case PkDspyErrorNoMemory:
-                LLOG_FTL << "Out of memory";
-                break;
-            case PkDspyErrorUnsupported:
-                LLOG_FTL << "Unsupported";
-                break;
-            case PkDspyErrorBadParams:
-                LLOG_FTL << "Bad params";
-                break;
-            case PkDspyErrorNoResource:
-                LLOG_FTL << "No resource";
-                break;
-            case PkDspyErrorUndefined:
-            default:
-                LLOG_FTL << "Undefined";
-                break; 
-        }
+        LLOG_ERR << "Unable to open display \"" << mDriverName << "\" : ";
+        LLOG_ERR << getDspyErrorMessage(err);
         return false;
     } else {
         // check image info
         if (mQueryFunc != nullptr) {
             PtDspySizeInfo img_info;
 
-            LLOG_DBG << "Querying display image size " << mDriverName;
             err = mQueryFunc(mImage, PkSizeQuery, sizeof(PtDspySizeInfo), &img_info);
             if(err) {
-                LLOG_ERR << "Unable to query image size info " << mDriverName;
+                LLOG_ERR << "Unable to query image size info";
+                LLOG_ERR << getDspyErrorMessage(err);
                 return false;
             } else {
                 mImageWidth = img_info.width; mImageHeight = img_info.height;
-                LLOG_DBG << "Open image size: " << mImageWidth << " " << mImageHeight << " aspect ratio: " << img_info.aspectRatio;
+                LLOG_DBG << "Opened image name: " << mImageName << " size: " << mImageWidth << " " << mImageHeight << " aspect ratio: " << img_info.aspectRatio;
             }
         }
 
@@ -149,6 +158,7 @@ bool Display::open(const std::string& image_name, uint width, uint height) {
             LLOG_DBG << "PkDspyFlagsWantsNullEmptyBuckets";
     }
 
+    mOpened = true;
     return true;
 }
 
@@ -164,38 +174,168 @@ bool Display::close() {
     
     if(err) {
         LLOG_ERR << "Unable to close display " << mDriverName;
+        LLOG_ERR << getDspyErrorMessage(err);
         return false; 
     }
 
+    mOpened = false;
     mClosed = true;
     return true;
 }
 
-void Display::makeStringsParameter(const char* name, const char** strings, int count, UserParameter& parameter) {
+bool Display::sendBucket(int x, int y, int width, int height, const uint8_t *data) {
+    if(!mOpened) {
+        LLOG_ERR << "Can't send image data. Display not opened !!!";
+        return false;
+    }
+
+    int entrysize = 4 * 4; // for testing... 4 channels 4 bytes(32bits) each
+
+    PtDspyError err = mWriteFunc(mImage, x, x+width, y, y+height, entrysize, data);
+    if(err != PkDspyErrorNone ) {
+        LLOG_ERR << getDspyErrorMessage(err);
+        return false;
+    }
+
+    return true;
+}
+
+bool Display::sendImage(int width, int height, const uint8_t *data) {
+    if(!mOpened) {
+        LLOG_ERR << "Can't send image data. Display not opened !!!";
+        return false;
+    }
+
+    if( width != mImageWidth || height != mImageHeight) {
+        LLOG_ERR << "Display and sended image sizes are different !!!";
+        return false;
+    }
+
+    if(mActiveRegionFunc) {
+        LLOG_DBG << "Asking display to set active region";
+        PtDspyError err = mActiveRegionFunc(mImage, 0, width, 0, height);
+            if(err != PkDspyErrorNone ) {
+            LLOG_ERR << getDspyErrorMessage(err);
+            return false;
+        }
+    }
+
+    int entrysize = 4 * 4; // for testing... 4 channels 4 bytes(32bits) each
+
+    uint32_t scanline_offset = width * entrysize;
+    if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder) {
+        LLOG_DBG << "Sending " <<  std::to_string(height) << " scan lines";
+        for(uint32_t y = 0; y < height; y++) {
+            if(!sendBucket(0, y, width,y, data)) 
+                return false;
+
+            data += scanline_offset;
+        }
+
+    } else {
+        return sendBucket(0, 0, width, height, data);
+    }
+
+    return true;
+}
+
+bool Display::pushStringParameter(const std::string& name, const std::vector<std::string>& strings) {
+    LLOG_DBG << "String parameter " << name;
+    if(mOpened) {
+        LLOG_ERR << "Can't push parameter. Display opened already !!!";
+        return false;
+    }
+    mUserParameters.push_back({});
+    makeStringsParameter(name, strings, mUserParameters.back());
+    return true;
+}
+
+bool Display::pushIntParameter(const std::string& name, const std::vector<int>& ints) {
+    LLOG_DBG << "Int parameter " << name;
+    if(mOpened) {
+        LLOG_ERR << "Can't push parameter. Display opened already !!!";
+        return false;
+    }
+    mUserParameters.push_back({});
+    makeIntsParameter(name, ints, mUserParameters.back());
+    return true;
+}
+
+bool Display::pushFloatParameter(const std::string& name, const std::vector<float>& floats) {
+    LLOG_DBG << "Float parameter " << name;
+    if(mOpened) {
+        LLOG_ERR << "Can't push parameter. Display opened already !!!";
+        return false;
+    }
+    mUserParameters.push_back({});
+    makeFloatsParameter(name, floats, mUserParameters.back());
+    return true;
+}
+
+/* static */
+void Display::makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter) {
     // Allocate and fill in the name.
-    char* pname = reinterpret_cast<char*>(malloc(strlen(name)+1));
-    strcpy(pname, name);
+    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
+    strcpy(pname, name.c_str());
     parameter.name = pname;
     
     // Allocate enough space for the string pointers, and the strings, in one big block,
     // makes it easy to deallocate later.
+    int count = strings.size();
     int totallen = count * sizeof(char*);
-    int i;
-    for ( i = 0; i < count; i++ )
-    totallen += (strlen(strings[i])+1) * sizeof(char);
+    for ( uint i = 0; i < count; i++ )
+        totallen += (strings[i].size()+1) * sizeof(char);
 
     char** pstringptrs = reinterpret_cast<char**>(malloc(totallen));
     char* pstrings = reinterpret_cast<char*>(&pstringptrs[count]);
 
-    for ( i = 0; i < count; i++ ) {
+    for ( uint i = 0; i < count; i++ ) {
         // Copy each string to the end of the block.
-        strcpy(pstrings, strings[i]);
+        strcpy(pstrings, strings[i].c_str());
         pstringptrs[i] = pstrings;
-        pstrings += strlen(strings[i])+1;
+        pstrings += strings[i].size()+1;
     }
 
     parameter.value = reinterpret_cast<RtPointer>(pstringptrs);
     parameter.vtype = 's';
+    parameter.vcount = count;
+    parameter.nbytes = totallen;
+}
+
+void Display::makeIntsParameter(const std::string& name, const std::vector<int>& ints, UserParameter& parameter) {
+    // Allocate and fill in the name.
+    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
+    strcpy(pname, name.c_str());
+    parameter.name = pname;
+    
+
+    // Allocate an ints array.
+    uint32_t count = ints.size();
+    uint32_t totallen = count * sizeof(int);
+    int* pints = reinterpret_cast<int*>(malloc(totallen));
+    // Then just copy the whole lot in one go.
+    memcpy(pints, ints.data(), totallen);
+    parameter.value = reinterpret_cast<RtPointer>(pints);
+    parameter.vtype = 'i';
+    parameter.vcount = count;
+    parameter.nbytes = totallen;
+}
+
+void Display::makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter) {
+    // Allocate and fill in the name.
+    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
+    strcpy(pname, name.c_str());
+    parameter.name = pname;
+    
+
+    // Allocate an ints array.
+    uint32_t count = floats.size();
+    uint32_t totallen = count * sizeof(float);
+    float* pfloats = reinterpret_cast<float*>(malloc(totallen));
+    // Then just copy the whole lot in one go.
+    memcpy(pfloats, floats.data(), totallen);
+    parameter.value = reinterpret_cast<RtPointer>(pfloats);
+    parameter.vtype = 'f';
     parameter.vcount = count;
     parameter.nbytes = totallen;
 }

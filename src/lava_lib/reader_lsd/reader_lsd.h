@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "../scene_reader_base.h"
-#include "session_lsd.h"
+#include "session.h"
 #include "visitor.h"
 
 
@@ -35,6 +35,11 @@ class ReaderLSD: public ReaderBase {
  private:
     std::unique_ptr<lsd::Visitor>   mpVisitor;
     bool mInitialized;
+
+    std::shared_ptr<std::istream>   mpStream; // used in inline bgeo read callback. a bit ugly.
+
+ public:
+    bool readInlineBGEO(ika::bgeo::Bgeo& bgeo);
 
  public:
     // factory methods

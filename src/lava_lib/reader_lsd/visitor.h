@@ -9,18 +9,17 @@
 #include <variant>
 
 #include "grammar_lsd.h"
+#include "../reader_bgeo/bgeo/Bgeo.h"
 
 namespace lava { 
 
-class SessionLSD;
-
 namespace lsd { 
+
+class Session;
 
 struct Visitor: public boost::static_visitor<> {
  public:
-    enum class Flag { NOFLAG, IGNORE_CMDS, READ_INLINE_GEO };
-
-    Visitor(std::unique_ptr<SessionLSD>& pSession);
+    Visitor(std::unique_ptr<Session>& pSession);
 
     virtual void operator()(ast::NoValue const& c) const {};
     virtual void operator()(ast::ifthen const& c);
@@ -42,24 +41,23 @@ struct Visitor: public boost::static_visitor<> {
     virtual void operator()(ast::cmd_declare const& c) const;
     virtual void operator()(ast::cmd_raytrace const& c) const;
 
-    void inlineGeoReadDone();
-    const std::vector<Flag>& flags() const;
-    Flag current_flag() const;
+    void setParserStream(std::istream& in);
 
- private:
-    void push_flag(Flag flag) { flag_stack.push_back(flag); };
-    void pop_flag() { flag_stack.pop_back(); };
+    bool ignoreCommands() { return mIgnoreCommands; };
 
  protected:
-    std::unique_ptr<SessionLSD> mpSession;
-    std::vector<Flag> flag_stack;
+    std::unique_ptr<Session> mpSession;
+
+ private:
+    std::istream*   mpParserStream; // used for inline bgeo reading
+    bool mIgnoreCommands;
 };
 
 
 struct EchoVisitor: public Visitor {
  public:
-    EchoVisitor(std::unique_ptr<SessionLSD>& pSession);
-    EchoVisitor(std::unique_ptr<SessionLSD>& pSession, std::ostream& os);
+    EchoVisitor(std::unique_ptr<Session>& pSession);
+    EchoVisitor(std::unique_ptr<Session>& pSession, std::ostream& os);
 
     void operator()(ast::NoValue const& c) const override {};
     void operator()(ast::ifthen const& c) override;

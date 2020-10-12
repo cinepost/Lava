@@ -1,0 +1,11 @@
+#include "$HH/soho/overrides/RenderCOP"
+
+// Viewport overrides for Lava
+{
+    override.inherit	CommonCommand
+    override.name	Lava
+
+    // Force the render to go to the "ip" device
+    lv_picture		[ $imagefile ]
+    lv_device		[ Houdini ]
+}

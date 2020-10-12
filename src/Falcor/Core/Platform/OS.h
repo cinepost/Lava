@@ -153,6 +153,13 @@ dlldecl bool findFileInDataDirectories(const std::string& filename, std::string&
 */
 dlldecl bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath);
 
+/** Finds a render pass file.
+    \param[in] filename The file to look for
+    \param[in] fullPath If the file was found, the full path to the file. If the file wasn't found, this is invalid.
+    \return true if the file was found, otherwise false
+*/
+dlldecl bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath);
+
 /** Get a list of all shader directories.
 */
 dlldecl const std::vector<std::string>& getShaderDirectoriesList();

@@ -37,7 +37,6 @@ ComputeState::ComputeState(std::shared_ptr<Device> device): mpDevice(device) {
 }
 
 ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
-    LOG_DBG("ComputeState::getCSO");
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
     bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
     

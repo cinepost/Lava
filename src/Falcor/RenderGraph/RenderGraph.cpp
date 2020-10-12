@@ -46,13 +46,13 @@ RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, const
 }
 
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name): mName(name), mpDevice(pDevice) {
-    if (gpFramework == nullptr) {
-        throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
-    }
+    //if (gpFramework == nullptr) {
+    //    throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
+    //}
     mpGraph = DirectedGraph::create();
     mpPassDictionary = Dictionary::create();
     gRenderGraphs.push_back(this);
-    onResize(gpFramework->getTargetFbo().get());
+    //onResize(gpFramework->getTargetFbo().get());
 }
 
 RenderGraph::~RenderGraph() {
@@ -522,6 +522,19 @@ void RenderGraph::onResize(const Fbo* pTargetFbo) {
 
     // Invalidate the graph. Render-passes might change their reflection based on the resize information
     mRecompile = true;
+}
+
+void RenderGraph::resize(uint width, uint height, const ResourceFormat& format) {
+    // Store the values
+    mCompilerDeps.defaultResourceProps.format = format;
+    mCompilerDeps.defaultResourceProps.dims = { width, height };
+
+    // Invalidate the graph. Render-passes might change their reflection based on the resize information
+    mRecompile = true;
+}
+
+uint2 RenderGraph::dims() {
+    return mCompilerDeps.defaultResourceProps.dims;
 }
 
 bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst) {

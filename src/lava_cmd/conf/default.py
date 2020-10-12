@@ -3,17 +3,18 @@ from falcor import *
 def BSDFViewerGraph(device):
     g = RenderGraph(device, "BSDFViewerGraph")
 
-    loadRenderPassLibrary("AccumulatePass")
+    #loadRenderPassLibrary("AccumulatePass")
     loadRenderPassLibrary("BSDFViewer")
 
     BSDFViewer = RenderPass(device, "BSDFViewer")
     g.addPass(BSDFViewer, "BSDFViewer")
     
-    AccumulatePass = RenderPass(device, "AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Double})
-    g.addPass(AccumulatePass, "AccumulatePass")
+    #AccumulatePass = RenderPass(device, "AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Double})
+    #g.addPass(AccumulatePass, "AccumulatePass")
     
-    g.addEdge("BSDFViewer.output", "AccumulatePass.input")
-    g.markOutput("AccumulatePass.output")
+    #g.addEdge("BSDFViewer.output", "AccumulatePass.input")
+    #g.markOutput("AccumulatePass.output")
+    g.markOutput("BSDFViewer.output")
     return g
 
 def defaultRenderGraph(device):

@@ -151,6 +151,14 @@ class Device;
         */
         void onResize(const Fbo* pTargetFbo);
 
+        /** Force size for offscreen rendering
+        */
+        void resize(uint width, uint height, const ResourceFormat& format);
+
+        /** Get current render graph output dimensions
+        */
+        uint2 dims();
+
         /** Get the attached scene
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }

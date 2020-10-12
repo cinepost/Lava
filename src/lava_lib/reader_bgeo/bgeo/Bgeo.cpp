@@ -30,9 +30,12 @@ namespace bgeo {
 
 class Bgeo::Impl {
  public:
-    explicit Impl(const std::string& bgeoString, bool checkVersion);
     explicit Impl(const char* bgeoPath, bool checkVersion);
     explicit Impl(std::shared_ptr<parser::Detail> detail);
+    
+    // for inline bgeo parsing
+    explicit Impl(const std::string& bgeoString, bool checkVersion);
+
     ~Impl() = default;
 
     std::shared_ptr<parser::Detail> detail;
@@ -74,6 +77,12 @@ void Bgeo::Impl::parseStream(UT_IStream& stream) {
     UT_AutoJSONParser parserLoader(stream);
     assert(detail);
     detail->loadGeometry(parserLoader.parser());
+}
+
+Bgeo::Bgeo() {}
+
+bool Bgeo::readInlineGeo(const std::string& bgeoString, bool checkVersion) {
+    m_pimpl = std::make_unique<Impl>(bgeoString, checkVersion);
 }
 
 Bgeo::Bgeo(const std::string& bgeoString, bool checkVersion): m_pimpl(new Impl(bgeoString, checkVersion)) {}

@@ -204,7 +204,16 @@ namespace Falcor
 
                 // Continue loop to keep trying...
             }
+        
+            char choice;
+            std::cout << "Would you like to try again ? (Y/N)" << std::endl;
+            std::cin >> choice;
+            if ( choice =='N' || choice =='n' ){
+                break;
+            }
+
         }
+        return nullptr;
     }
 
     slang::ISession* ProgramVersion::getSlangSession() const {

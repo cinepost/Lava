@@ -1,0 +1,13 @@
+#include "$HH/soho/overrides/ViewportCameraRender"
+
+// Viewport overrides for VMantra
+{
+    override.inherit	CommonView
+    override.name	Lava
+
+    // Force the render to go to the "ip" device
+    lv_picture		[ "ip" ]
+    lv_image_mplay_framemode [ "append" ]
+    lv_image_mplay_rendermode [ "current" ]
+    lv_device		[ "" ]
+}

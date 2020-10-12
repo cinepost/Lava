@@ -36,7 +36,8 @@ public:
         PolySoupType,
         RunType,
         SphereType,
-        VolumeType
+        VolumeType,
+        AlembicRefType
     };
     static const char* toString(PrimType type);
     static PrimType toPrimType(const UT_String& type);

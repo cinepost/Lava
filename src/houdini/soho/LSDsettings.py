@@ -62,7 +62,7 @@ _Settings = Settings()
 SettingDefs = []
 
 # Order versions in descending order
-theVersion = 'mantra%d.%d' % (hou.applicationVersion()[0], hou.applicationVersion()[1])
+theVersion = 'lava%d.%d' % (hou.applicationVersion()[0], hou.applicationVersion()[1])
 
 _UserAttributes = {
     'lv_username'       :SohoParm('lv_username%d', 'string', [''], False,
@@ -134,7 +134,7 @@ def getWrangler(obj, now, style):
     if not wrangler:
         return None
     wname = wrangler
-    wrangler = '%s-vmantra' % wrangler
+    wrangler = '%s-lava' % wrangler
     if style == 'light_wrangler':
         wrangler = soho.LightWranglers.get(wrangler, None)
     elif style == 'camera_wrangler':

@@ -10,36 +10,28 @@
 #include "compression.h"
 #include "ReadError.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 std::unique_ptr<UT_IStream>
-getDecompressionStream(const std::string& filename, UT_IStream& stream)
-{
+getDecompressionStream(const std::string& filename, UT_IStream& stream) {
     auto extpos = filename.find_last_of('.');
-    if (extpos == std::string::npos)
-    {
+    if (extpos == std::string::npos) {
         return nullptr;
     }
 
     std::string extension = filename.substr(extpos + 1);
-    if (extension == "sc")
-    {
+    if (extension == "sc") {
 #if HVERSION_MAJOR >= 15
         return std::unique_ptr<UT_IStream>(stream.getSCStream());
 #else // HVERSION_MAJOR < 15
         UT_String message;
-        message.sprintf("blosc compressed files are not supported: %s",
-                        filename.c_str());
+        message.sprintf("blosc compressed files are not supported: %s", filename.c_str());
         throw parser::ReadError(message);
 #endif // HVERSION_MAJOR > 15
     }
-    else if (extension == "gz")
-    {
+    else if (extension == "gz") {
         return std::unique_ptr<UT_IStream>(stream.getGzipStream());
     }
 
