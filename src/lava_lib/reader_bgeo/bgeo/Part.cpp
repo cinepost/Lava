@@ -11,15 +11,12 @@
 
 #include "parser/Part.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(Part, Primitive)
+RTTI_DEFINE(Part, Primitive, ParticlePrimType)
 
-Part::Part(const parser::Part& part)
-    : m_part(part)
+Part::Part(const parser::Part& part): m_part(part)
 {
 }
 

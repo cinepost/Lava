@@ -10,6 +10,8 @@
 #ifndef BGEO_RTTI_H
 #define BGEO_RTTI_H
 
+#include "PrimType.h"
+
 // low-tech rtti scheme
 
 #define TYPE_TYPE const char*
@@ -18,7 +20,9 @@
     public: \
         static TYPE_TYPE Type; \
 \
-    virtual TYPE_TYPE getType() const; \
+    virtual TYPE_TYPE getStrType() const override; \
+\
+    virtual PrimType  getType() const override; \
 \
     template <typename T> \
     bool isType() const \
@@ -38,7 +42,7 @@
     } \
 \
     protected: \
-    /*virtual*/ bool isType(TYPE_TYPE type) const \
+    /*virtual*/ bool isType(TYPE_TYPE type) const override\
     { \
         return (type == Type) || base::isType(type); \
     } \
@@ -49,8 +53,10 @@
     public: \
         static TYPE_TYPE Type; \
     \
-        virtual TYPE_TYPE getType() const; \
-\
+        virtual TYPE_TYPE getStrType() const; \
+    \
+        virtual PrimType  getType() const; \
+    \
         template <typename T> \
         bool isType() const \
         { \
@@ -77,18 +83,26 @@
     private:
 
 
-#define RTTI_DEFINE(class_, base) \
+#define RTTI_DEFINE(class_, base, type_) \
     /*static*/ TYPE_TYPE class_::Type = #class_; \
-    /*virtual*/ TYPE_TYPE class_::getType() const \
+    /*virtual*/ TYPE_TYPE class_::getStrType() const \
     { \
         return Type; \
+    } \
+    /*virtual*/ PrimType class_::getType() const \
+    { \
+        return type_; \
     }
 
 #define RTTI_DEFINE_BASE(class_) \
     /*static*/ TYPE_TYPE class_::Type = #class_; \
-    /*virtual*/ TYPE_TYPE class_::getType() const \
+    /*virtual*/ TYPE_TYPE class_::getStrType() const \
     { \
         return Type; \
+    } \
+    /*virtual*/ PrimType class_::getType() const \
+    { \
+        return PrimType::UnknownPrimType; \
     }
 
 #endif // BGEO_RTTI_H

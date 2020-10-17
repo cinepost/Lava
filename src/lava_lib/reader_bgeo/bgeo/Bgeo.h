@@ -17,19 +17,15 @@
 #include "Primitive.h"
 #include "Attribute.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
 class Detail;
 }
 
-class Bgeo
-{
-public:
+class Bgeo {
+ public:
     Bgeo();
     explicit Bgeo(std::istream& in, bool checkVersion = false);
     explicit Bgeo(const std::string& bgeoString, bool checkVersion = false);
@@ -48,6 +44,9 @@ public:
     // print //////
 
     void printSummary(std::ostream& co) const;
+
+    // detail //////
+    std::shared_ptr<parser::Detail> getDetail() const;
 
     // attributes ///////
 

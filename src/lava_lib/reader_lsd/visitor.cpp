@@ -114,22 +114,28 @@ void Visitor::operator()(ast::cmd_time const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_detail const& c) {
-    if(c.filename == "stdin") {
-        ika::bgeo::Bgeo* bgeo = mpSession->getCurrentBgeo();
-        if(!bgeo) {
-            LLOG_ERR << "No session bgeo object to read into !!!";
-            return;
-        }
+    auto pGeo = mpSession->getCurrentGeo();
+    pGeo->setDetailFilename(c.filename);
+    pGeo->setDetailName(c.name);
+    
+    if(!pGeo) {
+        LLOG_ERR << "Unable to process cmd_detail out of Geo scope !!!";
+        throw std::runtime_error("Unable to process cmd_detail out of Geo scope !!!");
+    }
 
-        bool result = readInlineBGEO(mpParserStream, *bgeo);
+    if(c.filename == "stdin") {
+        auto& bgeo = pGeo->bgeo();
+
+        bool result = readInlineBGEO(mpParserStream, bgeo);
         if (!result) {
             LLOG_ERR << "Error reading inline bgeo !!!";
             return;
         }
+        bgeo.preCachePrimitives();
         //mpSession->pushBgeo(c.name, bgeo);
     } else {
-        ika::bgeo::Bgeo bgeo(mpSession->getExpandedString(c.filename), false); // FIXME: don't check version for now
-        //mpSession->pushBgeo(c.name, bgeo);
+        // ika::bgeo::Bgeo bgeo(mpSession->getExpandedString(c.filename), false); // FIXME: don't check version for now
+        //mpSession->pushBgeo(c.name, c.filename);
     }
 }
 
@@ -146,7 +152,7 @@ void Visitor::operator()(ast::cmd_defaults const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_transform const& c) const {
-
+    mpSession->cmdTransform(c.m);
 }
 
 void Visitor::operator()(ast::cmd_geometry const& c) const {

@@ -17,18 +17,14 @@
 #include "Bgeo.h"
 #include "PolySplitter.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
 class Poly;
 }
 
-class Poly : public Primitive
-{
+class Poly : public Primitive {
     RTTI_DECLARE(Poly, Primitive)
 
 public:
@@ -36,11 +32,16 @@ public:
     Poly(const Bgeo& bgeo, const parser::Poly& poly);
 
     void getRawVertexList(std::vector<int32_t>& vertices) const;
+    const std::vector<int32_t>& getRawVertexList() const;
+
     void getVertexList(std::vector<int32_t>& vertices) const;
     void getStartIndices(std::vector<int32_t>& startIndices) const;
     int32_t getFaceCount() const;
 
-    /*virtual*/ int32_t getVertexCount() const;
+    void getSidesList(std::vector<int32_t>& sides) const;
+    const std::vector<int32_t>& getSidesList() const;
+
+    /*virtual*/ int32_t getVertexCount() const override;
 
     void splitByPrimitiveString(const char* attributeName);
     void splitThisPoly(size_t primitiveIndex);

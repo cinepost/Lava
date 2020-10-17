@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "Externals/GLM/glm/mat4x4.hpp"
+
 #include "../scene_reader_base.h"
 #include "properties_container.h"
 #include "../reader_bgeo/bgeo/Bgeo.h"
@@ -45,7 +47,21 @@ class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this
     std::vector<SharedPtr> mChildren;
 };
 
-class Global: public ScopeBase {
+class Transformable: public ScopeBase {
+ public:
+    using SharedPtr = std::shared_ptr<Transformable>;
+
+    Transformable(ScopeBase::SharedPtr pParent);
+    virtual ~Transformable() {};
+
+    void setTransform(const lsd::Matrix4& mat);
+    const glm::mat4x4& getTransform(){ return mTransform; };
+
+ private:
+    glm::mat4x4 mTransform;
+};
+
+class Global: public Transformable {
  public:
     using SharedPtr = std::shared_ptr<Global>;
     static SharedPtr create();
@@ -58,10 +74,11 @@ class Global: public ScopeBase {
     std::shared_ptr<Light>      addLight();
     std::shared_ptr<Segment>    addSegment();
 
-    const std::vector<std::shared_ptr<Plane>>& planes() { return mPlanes; };
+    const std::vector<std::shared_ptr<Plane>>&  planes() { return mPlanes; };
+    const std::vector<std::shared_ptr<Geo>>&    geos() { return mGeos; };
 
  private:
-    Global():ScopeBase(nullptr) {};
+    Global():Transformable(nullptr) {};
     std::vector<std::shared_ptr<Geo>>       mGeos;
     std::vector<std::shared_ptr<Plane>>     mPlanes;
     std::vector<std::shared_ptr<Object>>    mObjects;
@@ -76,18 +93,28 @@ class Geo: public ScopeBase {
 
     ast::Style type() override { return ast::Style::GEO; };
 
+    void setDetailFilename(const std::string& filename);
+    void setDetailName(const std::string& name) { mName = name; };
+
+    const std::string& detailFilename() { return mFileName; };
+    const std::string& detailName() { return mName; };
+    bool isInline() { return mIsInline; };
+
     ika::bgeo::Bgeo& bgeo() { return mBgeo; }
     const ika::bgeo::Bgeo& bgeo() const { return mBgeo; }
 
  private:
-    Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+    Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent), mFileName(""), mIsInline(false) {};
 
  private:
-    ika::bgeo::Bgeo     mBgeo;
+    std::string     mName = "";
+    std::string     mFileName = "";
+    ika::bgeo::Bgeo mBgeo;
+    bool            mIsInline = false;
 };
 
 
-class Object: public ScopeBase {
+class Object: public Transformable {
  public:
     using SharedPtr = std::shared_ptr<Object>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
@@ -95,7 +122,7 @@ class Object: public ScopeBase {
     ast::Style type() override { return ast::Style::OBJECT; };
 
  private:
-    Object(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+    Object(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
 };
 
 class Plane: public ScopeBase {
@@ -109,7 +136,7 @@ class Plane: public ScopeBase {
     Plane(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 };
 
-class Light: public ScopeBase {
+class Light: public Transformable {
  public:
     using SharedPtr = std::shared_ptr<Light>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
@@ -117,7 +144,7 @@ class Light: public ScopeBase {
     ast::Style type() override { return ast::Style::LIGHT; };
 
  private:
-    Light(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+    Light(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
 };
 
 class Segment: public ScopeBase {

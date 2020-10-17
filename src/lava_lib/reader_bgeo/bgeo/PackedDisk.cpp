@@ -10,15 +10,13 @@
 #include "PackedDisk.h"
 
 #include "parser/PackedDisk.h"
-
+#include "PrimType.h"
 #include "Bgeo.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(PackedDisk, PackedGeometry)
+RTTI_DEFINE(PackedDisk, PackedGeometry, PrimType::PackedDiskPrimType)
 
 PackedDisk::PackedDisk(const parser::PackedDisk& disk)
     : PackedGeometry(disk, std::shared_ptr<Bgeo>()),
@@ -26,8 +24,7 @@ PackedDisk::PackedDisk(const parser::PackedDisk& disk)
 {
 }
 
-std::string PackedDisk::getFilename() const
-{
+std::string PackedDisk::getFilename() const {
     return m_disk.getFilename();
 }
 

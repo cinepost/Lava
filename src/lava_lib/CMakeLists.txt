@@ -4,6 +4,10 @@ file( GLOB SOURCES
 
 add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
+add_subdirectory(houdini_display)
+add_subdirectory(sdl_display)
+
+include_directories( /home/max/dev/Falcor/src/Externals/GLM )
 
 # Python
 find_package( PythonLibs 3.7 REQUIRED )

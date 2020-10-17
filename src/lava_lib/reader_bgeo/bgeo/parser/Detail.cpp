@@ -7,8 +7,12 @@
  *  copied, modified, or distributed except according to those terms.
  */
 
+#include <UT/UT_JSONParser.h>
+#include <UT/UT_String.h>
+
 #include "Detail.h"
 
+#include "Info.h"
 #include "Attribute.h"
 #include "PrimitiveGroup.h"
 #include "util.h"
@@ -24,6 +28,7 @@ Detail::Detail(bool checkVersion)
       primitives(*this),
       checkVersion(checkVersion)
 {
+    mpInfo = std::shared_ptr<Info>(new Info());
 }
 
 Detail::~Detail() {
@@ -60,7 +65,7 @@ void Detail::loadHeaderAndInfo(UT_JSONParser& parser) {
         parseArrayValueForKey(parser, "primitivecount", primitiveCount);
 
         parseArrayKey(parser, "info");
-        info.load(parser);
+        mpInfo->load(parser);
     }
 }
 
@@ -101,7 +106,7 @@ void Detail::loadGeometry(UT_JSONParser &parser) {
             BGEO_CHECK(parser.parseInt(primitiveCount));
         }
         else if (key == "info") {
-            info.load(parser);
+            mpInfo->load(parser);
         }
         else if (key == "topology") {
             vertexMap.load(parser, vertexCount);
@@ -206,7 +211,7 @@ const Attribute* Detail::getDetailAttributeByName(const char *name) const {
     return 0;
 }
 
-void Detail::mapVerticesToPoints(const VertexArrayBuilder::VertexArray& vertices, VertexArrayBuilder::VertexArray& points) const {
+void Detail::mapVerticesToPoints(const VertexArray& vertices, VertexArray& points) const {
     points.resize(vertices.size());
     for (int i = 0; i < vertices.size(); i++) {
         assert(vertices[i] < vertexMap.vertexCount);
@@ -220,7 +225,7 @@ std::ostream& operator << (std::ostream& co, const Detail& detail) {
        << "vertexcount = " << detail.vertexCount << "\n"
        << "primitivecount = " << detail.primitiveCount << "\n"
 
-       << "\ninfo\n==============\n" << detail.info << "\n"
+       << "\ninfo\n==============\n" << *detail.mpInfo.get() << "\n"
        << "\ntopology\n==============\n" << detail.vertexMap << "\n";
 
     co << "\nvertexattributes\n==============\n";

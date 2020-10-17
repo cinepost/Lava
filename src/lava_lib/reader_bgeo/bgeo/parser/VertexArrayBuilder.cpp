@@ -9,12 +9,9 @@
 
 #include "VertexArrayBuilder.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 VertexArrayBuilder::VertexArrayBuilder(VertexArray&vertices, VertexArray& sides)
     : stack(0),
@@ -24,25 +21,21 @@ VertexArrayBuilder::VertexArrayBuilder(VertexArray&vertices, VertexArray& sides)
 {
 }
 
-/*virtual*/ bool VertexArrayBuilder::jsonInt(UT_JSONParser &parser, int64 value)
-{
+/*virtual*/ bool VertexArrayBuilder::jsonInt(UT_JSONParser &parser, int64 value) {
     sideCount++;
     vertices.push_back(value);
     return true;
 }
 
-/*virtual*/ bool VertexArrayBuilder::jsonBeginArray(UT_JSONParser &parser)
-{
+/*virtual*/ bool VertexArrayBuilder::jsonBeginArray(UT_JSONParser &parser) {
     sideCount = 0;
     stack++;
     return true;
 }
 
-/*virtual*/ bool VertexArrayBuilder::jsonEndArray(UT_JSONParser &parser)
-{
+/*virtual*/ bool VertexArrayBuilder::jsonEndArray(UT_JSONParser &parser) {
     stack--;
-    if (stack == 0)
-    {
+    if (stack == 0) {
         sides.push_back(sideCount);
     }
     return true;

@@ -11,25 +11,23 @@
 
 #include <cassert>
 
+#include <UT/UT_JSONHandle.h>
+
 #include "Attribute.h"
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
 #include "PackedGeometry.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
 
-namespace
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+namespace {
 
 // FIXME: move this into PackedGeometry
-class UniformDataHandle : public UT_JSONHandleError
-{
+class UniformDataHandle : public UT_JSONHandleError {
 public:
     UniformDataHandle(PackedDisk& packed)
         : packed(packed)

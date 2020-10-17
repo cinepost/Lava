@@ -13,19 +13,14 @@
 #include <UT/UT_JSONParser.h>
 #include <UT/UT_String.h>
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 class Detail;
-class Primitive
-{
-public:
-    enum PrimType
-    {
+class Primitive {
+ public:
+    enum PrimType {
         UnknownType = 0,
         PackedDiskType,
         PackedFragmentType,
@@ -37,16 +32,17 @@ public:
         RunType,
         SphereType,
         VolumeType,
-        AlembicRefType
+        AlembicRefType,
+        MeshType
     };
     static const char* toString(PrimType type);
     static PrimType toPrimType(const UT_String& type);
 
-    enum RunMode
-    {
+    enum RunMode {
         NoRunMode = 0,
         MergeRunMode,
-        SplitRunMode
+        SplitRunMode,
+        MeshRunMode
     };
 
     static Primitive* create(const UT_String& type, const Detail& detail);

@@ -13,17 +13,12 @@
 
 #include "Bgeo.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(PackedGeometry, Primitive)
+RTTI_DEFINE(PackedGeometry, Primitive, PackedGeometryPrimType)
 
-PackedGeometry::PackedGeometry(const parser::PackedGeometry& packed,
-                               std::shared_ptr<Bgeo> embedded)
-    : m_packed(packed),
-      m_embedded(embedded)
+PackedGeometry::PackedGeometry(const parser::PackedGeometry& packed, std::shared_ptr<Bgeo> embedded): m_packed(packed), m_embedded(embedded)
 {
 }
 

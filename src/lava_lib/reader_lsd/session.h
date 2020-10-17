@@ -8,6 +8,8 @@
 #include "../renderer_iface.h"
 #include "scope.h"
 
+#include "../scene_builder.h"
+
 namespace lava {
 
 namespace lsd {
@@ -20,7 +22,7 @@ class Session {
     ~Session();
 
  public:
- 	ika::bgeo::Bgeo* getCurrentBgeo();
+ 	scope::Geo::SharedPtr getCurrentGeo();
 
  	bool cmdStart(lsd::ast::Style object_type);
  	bool cmdEnd();
@@ -30,6 +32,7 @@ class Session {
     void cmdProperty(lsd::ast::Style style, const std::string& token, const lsd::PropValue& value);
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);
     bool cmdImage(lsd::ast::DisplayType display_type, const std::string& filename);
+    void cmdTransform(const Matrix4& transform);
 
     void pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo);
     std::string getExpandedString(const std::string& str);
@@ -41,15 +44,17 @@ class Session {
  	bool setDisplayByType(const lsd::ast::DisplayType& display_type);
  	bool setDisplayByFileName(const std::string& file_name);
 
- 	bool pushScripts();
+ 	bool pushScriptFiles();
 
  private:
  	std::unique_ptr<RendererIface> 	mpRendererIface;
- 	std::vector<std::string> 		mGraphConfigs;
+ 	std::vector<std::string> 		mGraphConfigsFileNames;
  	RendererIface::FrameData		mFrameData;
 
  	scope::ScopeBase::SharedPtr		mpCurrentScope;
  	scope::Global::SharedPtr		mpGlobal;
+
+ 	std::map<std::string, uint32_t>	mMeshMap; // maps detail(mesh) name to SceneBuilder mesh id	
 };
 
 }  // namespace lsd

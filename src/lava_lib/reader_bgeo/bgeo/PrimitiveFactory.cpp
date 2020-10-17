@@ -18,17 +18,21 @@
 #include "parser/Primitive.h"
 #include "parser/PolygonRun.h"
 #include "parser/Poly.h"
+#include "parser/Run.h"
 #include "parser/PolySoup.h"
 #include "parser/Sphere.h"
 #include "parser/Volume.h"
+#include "parser/Mesh.h"
 
 #include "PackedDisk.h"
 #include "PackedFragment.h"
 #include "PackedGeometry.h"
 #include "Part.h"
 #include "Poly.h"
+#include "Run.h"
 #include "Sphere.h"
 #include "Volume.h"
+#include "Mesh.h"
 
 namespace ika
 {
@@ -58,11 +62,7 @@ std::shared_ptr<Bgeo> findOrCreateEmbedded(const parser::PackedGeometry& packed,
 
 // FIXME: clean up the factory method by abstracting out construction of the
 // parser and bgeo primitives.
-Bgeo::PrimitivePtr create(const Bgeo& bgeo,
-                          const parser::Primitive& parserPrimitive,
-                          EmbeddedGeoMap& embeddedGeoMap,
-                          size_t index)
-{
+Bgeo::PrimitivePtr create(const Bgeo& bgeo, const parser::Primitive& parserPrimitive, EmbeddedGeoMap& embeddedGeoMap, size_t index) {
     switch(parserPrimitive.getType())
     {
     case parser::Primitive::UnknownType:
@@ -123,8 +123,22 @@ Bgeo::PrimitivePtr create(const Bgeo& bgeo,
     }
     case parser::Primitive::RunType:
     {
-        return nullptr;
+        const parser::Run* parserRun =
+                reinterpret_cast<const parser::Run*>(&parserPrimitive);
+        assert(parserRun);
+        auto run = new Run(bgeo, *parserRun);
+        return Bgeo::PrimitivePtr(run);
     }
+    /*
+    case parser::Primitive::MeshType:
+    {
+        const parser::Mesh* parserMesh =
+                reinterpret_cast<const parser::Mesh*>(&parserPrimitive);
+        assert(parserMesh);
+        auto mesh = new Mesh(bgeo, *parserMesh);
+        return Bgeo::PrimitivePtr(mesh);
+    }
+    */
     case parser::Primitive::SphereType:
     {
         const parser::Sphere* sphereParser =

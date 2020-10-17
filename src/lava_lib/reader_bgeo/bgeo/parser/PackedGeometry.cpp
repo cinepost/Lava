@@ -12,20 +12,18 @@
 #include <cassert>
 #include <limits>
 
+#include <UT/UT_JSONHandle.h>
+
 #include "Attribute.h"
 #include "Detail.h"
 #include "ReadError.h"
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-namespace
-{
+namespace {
 
 class UniformDataHandle : public UT_JSONHandleError
 {

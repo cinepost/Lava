@@ -11,13 +11,11 @@
 #define BGEO_PARSER_POLYGON_RUN_H
 
 #include "Poly.h"
+#include "types.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 // Derive from Poly to simplify use of PolygonRun by rest of the system (i.e.
 // it acts just like a poly). Override the data loading process to translate
@@ -25,21 +23,18 @@ namespace parser
 // will take more resources since the Poly structures are larger, but is worth
 // it to avoid implementing any other PolygonRun specific code.
 //
-class PolygonRun : public Poly
-{
+class PolygonRun : public Poly {
 public:
     PolygonRun(const Detail& detail);
     PolygonRun(const PolygonRun& soup) = default;
 
     /*virtual*/ PolygonRun* clone() const;
 
-    /*virtual*/ PrimType getType() const
-    {
+    /*virtual*/ PrimType getType() const {
         return PolygonRunType;
     }
 
-    /*virtual*/ RunMode getRunMode() const
-    {
+    /*virtual*/ RunMode getRunMode() const {
         return MergeRunMode;
     }
 
@@ -53,10 +48,8 @@ public:
 private:
     int64 startVertex;
     int64 numPrimitives;
-    void setupFromPolygonRunInfo(
-        const VertexArrayBuilder::VertexArray& numVertices);
-    void setupFromPolygonRleInfo(
-        const VertexArrayBuilder::VertexArray& numVerticesRle);
+    void setupFromPolygonRunInfo( const VertexArray& numVertices);
+    void setupFromPolygonRleInfo( const VertexArray& numVerticesRle);
 };
 
 } // namespace parser

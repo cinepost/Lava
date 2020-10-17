@@ -10,20 +10,21 @@
 #ifndef BGEO_PARSER_PRIMITIVES_H
 #define BGEO_PARSER_PRIMITIVES_H
 
-#include <UT/UT_JSONParser.h>
+#include <iostream>
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include "types.h"
+
+class UT_JSONParser;
+
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 class Detail;
 class Primitive;
-class Primitives
-{
-public:
+
+class Primitives {
+ public:
     Primitives(const Detail& detail);
     ~Primitives();
 
@@ -33,12 +34,11 @@ public:
     friend std::ostream& operator << (std::ostream& co, const Primitives& primitives);
 
     const Primitive* getPrimitive(int64 index) const;
-    int64 getCount() const
-    {
+    int64 getCount() const {
         return primitives.size();
     }
 
-private:
+ private:
     typedef std::vector<Primitive*> PrimitiveVector;
     PrimitiveVector primitives;
 

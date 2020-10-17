@@ -10,26 +10,24 @@
 #ifndef BGEO_PARSER_FILE_VERSION_H
 #define BGEO_PARSER_FILE_VERSION_H
 
-#include <UT/UT_JSONParser.h>
-#include <UT/UT_String.h>
 #undef major
 #undef minor
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include <iostream>
 
-class FileVersion
-{
-public:
+class UT_JSONParser;
+class UT_String;
+
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class FileVersion {
+ public:
     FileVersion();
 
     std::string toString() const;
-    friend std::ostream& operator << (std::ostream& co,
-                                      const FileVersion& version);
+    friend std::ostream& operator << (std::ostream& co, const FileVersion& version);
 
     void load(UT_JSONParser& parser);
     void parse(UT_String version);

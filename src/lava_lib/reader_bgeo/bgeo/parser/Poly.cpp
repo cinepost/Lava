@@ -15,25 +15,18 @@
 
 #include "Detail.h"
 #include "ReadError.h"
+#include "VertexArrayBuilder.h"
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-namespace
-{
+namespace {
 
-class UniformDataHandle : public UT_JSONHandleError
-{
-public:
-    UniformDataHandle(Poly& poly)
-        : poly(poly)
-    {
-    }
+class UniformDataHandle : public UT_JSONHandleError {
+ public:
+    UniformDataHandle(Poly& poly): poly(poly) { }
 
     /*virtual*/ bool jsonKey(UT_JSONParser& parser, const char *v, int64 len)
     {

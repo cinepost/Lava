@@ -17,7 +17,7 @@
 
 #include "display.h"
 #include "renderer_iface.h"
-#include "scene.h"
+#include "scene_builder.h"
 
 namespace lava {
 
@@ -39,6 +39,7 @@ class Renderer: public Falcor::IFramework {
 
  public:
  	static UniquePtr create();
+    static UniquePtr create(Falcor::DeviceManager::DeviceLocalUID uid);
 
  public:
  	bool init();
@@ -135,11 +136,12 @@ class Renderer: public Falcor::IFramework {
     virtual bool isVsyncEnabled() override{ return false; };
 
  private:
-	Renderer();
+	Renderer(Falcor::DeviceManager::DeviceLocalUID uid);
  	std::vector<std::string> 	mErrorMessages;
  	Falcor::Device::SharedPtr 	mpDevice;
 
- 	//std::unique_ptr<RendererIfaceBase> mpInterface;
+ 	Falcor::DeviceManager::DeviceLocalUID mDeviceUID;
+    
  	bool mIfaceAquired = false;
 
  	Display::UniquePtr 			mpDisplay;
@@ -149,8 +151,8 @@ class Renderer: public Falcor::IFramework {
     Falcor::Clock* 	   			mpClock;
     Falcor::ArgList 			mArgList;
 
-    lava::Scene::SharedPtr      mpScene;
-    std::vector<GraphData>      mGraphs;
+    lava::SceneBuilder::SharedPtr   mpSceneBuilder;
+    std::vector<GraphData>          mGraphs;
     uint32_t mActiveGraph = 0;
 
     bool mInited = false;

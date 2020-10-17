@@ -25,9 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
+#define SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
+
 #include <bitset>
 #include "Camera.h"
+
+#include "Falcor/Utils/Timing/CpuTimer.h"
 
 namespace Falcor
 {
@@ -174,3 +178,5 @@ namespace Falcor
     using FirstPersonCameraController = FirstPersonCameraControllerCommon<false>;
     using SixDoFCameraController = FirstPersonCameraControllerCommon<true>;
 }
+
+#endif  // SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_

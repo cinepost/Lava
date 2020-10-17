@@ -146,13 +146,13 @@ bool PolySoup::parseDataWithKey(UT_JSONParser& parser,
     {
         parseBeginArray(parser);
         {
-            VertexArrayBuilder::VertexArray soupSides;
+            VertexArray soupSides;
 
             // small block size here since there are likely to only be a few
             // different polygon vertex counts.
             parseArray(parser, soupSides, 5);
 
-            VertexArrayBuilder::VertexArray soupCounts;
+            VertexArray soupCounts;
             parseArray(parser, soupCounts, soupSides.size());
 
             // count number of vertices to allow vertex array to be read in
@@ -164,7 +164,7 @@ bool PolySoup::parseDataWithKey(UT_JSONParser& parser,
                 vertexCount += soupSides[i] * soupCounts[i];
             }
 
-            VertexArrayBuilder::VertexArray soupVertices;
+            VertexArray soupVertices;
             parseArray(parser, soupVertices, vertexCount);
             vertices.reserve(vertices.size() + soupVertices.size());
             vertices.insert(vertices.end(), soupVertices.begin(), soupVertices.end());
@@ -181,8 +181,8 @@ bool PolySoup::parseDataWithKey(UT_JSONParser& parser,
     return true;
 }
 
-void PolySoup::setupFromSoupInfo(const VertexArrayBuilder::VertexArray& soupSides,
-                                 const VertexArrayBuilder::VertexArray& soupCounts)
+void PolySoup::setupFromSoupInfo(const VertexArray& soupSides,
+                                 const VertexArray& soupCounts)
 {
     size_t faceCount = 0;
     for (auto count : soupCounts)

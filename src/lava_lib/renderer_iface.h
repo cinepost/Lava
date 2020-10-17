@@ -9,6 +9,7 @@
 namespace lava {
 
 class Renderer;
+class SceneBuilder;
 
 class RendererIface {
  public:
@@ -49,7 +50,11 @@ class RendererIface {
 
     /**
      */
-    bool loadScript(const std::string& file_name);
+    bool loadScriptFile(const std::string& file_name);
+
+    /**
+    */
+    std::shared_ptr<SceneBuilder> getSceneBuilder();
 
     bool initRenderer();
     bool isRendererInitialized() const;

@@ -10,20 +10,20 @@
 #ifndef BGEO_PARSER_VERTEX_ARRAY_BUILDER_H
 #define BGEO_PARSER_VERTEX_ARRAY_BUILDER_H
 
-#include <UT/UT_JSONHandle.h>
-
 #include <vector>
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include "types.h"
+#include <UT/UT_JSONHandle.h>
 
-class VertexArrayBuilder : public UT_JSONHandleError
-{
-public:
+class UT_JSONHandleError;
+class UT_JSONParser;
+
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class VertexArrayBuilder : public UT_JSONHandleError {
+ public:
     typedef std::vector<int32> VertexArray;
     VertexArrayBuilder(VertexArray& vertices, VertexArray& sides);
 
@@ -31,7 +31,7 @@ public:
     /*virtual*/ bool jsonBeginArray(UT_JSONParser& parser);
     /*virtual*/ bool jsonEndArray(UT_JSONParser& parser);
 
-private:
+ private:
     int stack;
     int64 sideCount;
     VertexArray& vertices;

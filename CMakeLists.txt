@@ -137,13 +137,13 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # thirt party libs
 # TODO: build necessary third party libs
+add_subdirectory( third_party/tbb )
+#add_subdirectory( third_party/glew/build/cmake )
 
 # Assimp library
 #add_subdirectory( third_party/assimp )
 
 # Our stuff
-add_subdirectory( third_party/tbb )
-add_subdirectory( third_party/ri_display )
 add_subdirectory( src )
 add_subdirectory( contrib )
 

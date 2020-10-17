@@ -16,11 +16,16 @@ IFramework* gpFramework = nullptr;
 namespace lava {
 
 Renderer::UniquePtr Renderer::create() {
-	return std::move(UniquePtr( new Renderer()));
+	return std::move(UniquePtr( new Renderer(0)));
 }
 
-Renderer::Renderer(): mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
+Renderer::UniquePtr Renderer::create(Falcor::DeviceManager::DeviceLocalUID uid) {
+    return std::move(UniquePtr( new Renderer(uid)));
+}
+
+Renderer::Renderer(Falcor::DeviceManager::DeviceLocalUID uid): mDeviceUID(uid), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
+    init();
 }
 
 bool Renderer::init() {
@@ -40,8 +45,8 @@ bool Renderer::init() {
     device_desc.width = 1280;
     device_desc.height = 720;
 
-	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(0, device_desc);
-    mpScene = lava::Scene::create(mpDevice);
+	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mDeviceUID, device_desc);
+    mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
 
 	mpClock = new Falcor::Clock(mpDevice);
     //mpClock->setTimeScale(config.timeScale);
@@ -49,17 +54,6 @@ bool Renderer::init() {
     mpFrameRate = new Falcor::FrameRate(mpDevice);
 
     Falcor::gpFramework = this;
-
-    LLOG_DBG << "Getting offscreen FBO";
-    auto pBackBufferFBO = mpDevice->getOffscreenFbo();
-    LLOG_DBG << "Offscreen FBO get";
-    if (!pBackBufferFBO) {
-        LLOG_ERR << "Unable to get rendering device swapchain FBO!!!";
-    }
-
-    //LLOG_DBG << "Created pBackBufferFBO size: " << pBackBufferFBO->getWidth() << " " << pBackBufferFBO->getHeight();
-    //mpTargetFBO = Falcor::Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
-    //LLOG_DBG << "Renderer::init done!";
 
     mInited = true;
     return true;
@@ -139,20 +133,6 @@ bool Renderer::loadScript(const std::string& file_name) {
     	return false;
     }
 
-    /*
-    mGraphs.push_back({});
-	GraphData* data = &mGraphs.back();
-
-	data->pGraph = pGraph;
-	data->pGraph->setScene(mpScene);
-	if (data->pGraph->getOutputCount() != 0) data->mainOutput = data->pGraph->getOutputName(0);
-
-	// Store the original outputs
-    data->originalOutputs = getGraphOutputs(pGraph);
-
-    //for (auto& e : mpExtensions) e->addGraph(pGraph.get());
-	*/
-
     LLOG_DBG << "Frame graph configuration loaded!";
     return true;
 }
@@ -180,6 +160,8 @@ void Renderer::addGraph(const Falcor::RenderGraph::SharedPtr& pGraph) {
             break;
         }
     }
+
+    // FIXME: put individual graphs initalization down the pipeline. Also cache inited graph until scene changed
     initGraph(pGraph, pGraphData);
 }
 
@@ -192,7 +174,7 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
     GraphData& data = *pData;
     // Set input image if it exists
     data.pGraph = pGraph;
-    data.pGraph->setScene(mpScene->getScene());
+    data.pGraph->setScene(mpSceneBuilder->getScene());
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
     // Store the original outputs
@@ -249,7 +231,7 @@ void Renderer::renderFrame(uint samples) {
         LLOG_DBG << "process render graphs";
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
-        auto pScene = mpScene->getScene();
+        auto pScene = mpSceneBuilder->getScene();
         // Update scene and camera.
         if (pScene) {
             pScene->update(pRenderContext, Falcor::gpFramework->getClock().getTime());

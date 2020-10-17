@@ -14,27 +14,25 @@
 #include "Primitive.h"
 #include "Bgeo.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
 namespace parser
 {
 class Run;
 }
 
-class Run: public Primitive
-{
+class Run: public Primitive {
     RTTI_DECLARE(Run, Primitive)
 
 public:
     // FIXME probably ought to be shared ptr
-    Run(const parser::Run& run);
+    Run(const Bgeo& bgeo, const parser::Run& run);
 
     Bgeo::PrimitivePtr getTemplatePrimitive() const;
 
 private:
+	const Bgeo& m_bgeo;
     const parser::Run& m_run;
 };
 

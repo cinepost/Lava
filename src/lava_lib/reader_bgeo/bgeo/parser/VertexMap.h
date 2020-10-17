@@ -10,22 +10,25 @@
 #ifndef BGEO_PARSER_VERTEX_MAP_H
 #define BGEO_PARSER_VERTEX_MAP_H
 
-#include <UT/UT_JSONParser.h>
+#include <iostream>
+#include "types.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
 
-class VertexMap
-{
-public:
+class UT_JSONParser;
+
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class VertexMap {
+ public:    
     VertexMap();
     ~VertexMap();
 
     void load(UT_JSONParser& parser, int64 vertexCount);
+
+    const int32* getVertices() const { return vertices; };
+    const int64  getVertexCount() const { return vertexCount; };
 
     int32* vertices;
     int64 vertexCount;

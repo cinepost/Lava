@@ -16,21 +16,15 @@
 
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-Run::Run(const Detail& detail)
-    : Primitive(detail),
-      runPrimitive(0)
-{
+Run::Run(const Detail& detail): Primitive(detail), runPrimitive(0) { 
+    std::cout << "parser::Run::Run\n";
 }
 
-Run::~Run()
-{
+Run::~Run() {
     // FIXME: use unique_ptr for these...
 //    for (auto primitive : primitives)
 //    {
@@ -40,30 +34,22 @@ Run::~Run()
     delete runPrimitive;
 }
 
-namespace
-{
+namespace {
 
-class StringListHandle : public UT_JSONHandleError
-{
-public:
-    StringListHandle(std::vector<std::string>& strings)
-        : strings(strings)
-    {
-    }
+class StringListHandle : public UT_JSONHandleError {
+ public:
+    StringListHandle(std::vector<std::string>& strings) : strings(strings) { }
 
-    /*virtual*/ bool jsonString(UT_JSONParser &p, const char *value, int64 len)
-    {
+    /*virtual*/ bool jsonString(UT_JSONParser &p, const char *value, int64 len) {
         strings.push_back(value);
         return true;
     }
 
-    /*virtual*/ bool jsonBeginArray(UT_JSONParser &p)
-    {
+    /*virtual*/ bool jsonBeginArray(UT_JSONParser &p) {
         return true;
     }
 
-    /*virtual*/ bool jsonEndArray(UT_JSONParser &p)
-    {
+    /*virtual*/ bool jsonEndArray(UT_JSONParser &p) {
         return true;
     }
 
@@ -73,10 +59,10 @@ private:
 
 } // namespace
 
-void Run::loadType(UT_JSONParser& parser)
-{
+void Run::loadType(UT_JSONParser& parser) {
     UT_String runTypeString;
     parseArrayValueForKey(parser, "runtype", runTypeString);
+    std::cout << "parser::Run::loadType create prim\n";
     runPrimitive = create(runTypeString, detail);
     assert(runPrimitive);
 
@@ -88,22 +74,27 @@ void Run::loadType(UT_JSONParser& parser)
     runPrimitive->loadUniformData(parser);
 }
 
-void Run::loadData(UT_JSONParser &parser)
-{
+void Run::loadData(UT_JSONParser &parser) {
     assert(runPrimitive);
     if (runPrimitive->getRunMode() == Primitive::MergeRunMode)
     {
         // FIXME: this won't work if there are multiple runs in the same file.
-        if (primitives.empty())
-        {
+        if (primitives.empty()) {
             primitives.push_back(runPrimitive->clone());
         }
         primitives[0]->loadVaryingData(parser, varyingFields);
     }
     else if (runPrimitive->getRunMode() == Primitive::SplitRunMode)
     {
-        for (auto it = parser.beginArray(); !it.atEnd(); ++it)
-        {
+        for (auto it = parser.beginArray(); !it.atEnd(); ++it) {
+            auto primitive = runPrimitive->clone();
+            primitive->loadVaryingData(parser, varyingFields);
+            primitives.push_back(primitive);
+        }
+    }
+    else if (runPrimitive->getRunMode() == Primitive::MeshRunMode)
+    {
+        for (auto it = parser.beginArray(); !it.atEnd(); ++it) {
             auto primitive = runPrimitive->clone();
             primitive->loadVaryingData(parser, varyingFields);
             primitives.push_back(primitive);
@@ -111,8 +102,7 @@ void Run::loadData(UT_JSONParser &parser)
     }
     else
     {
-        std::cerr << "Warning: unsupported run type: "
-                  << Primitive::toString(runPrimitive->getType()) << std::endl;
+        std::cerr << "Warning: unsupported run type: " << Primitive::toString(runPrimitive->getType()) << std::endl;
         BGEO_CHECK(parser.skipNextObject());
         primitives.push_back(runPrimitive->clone());
     }

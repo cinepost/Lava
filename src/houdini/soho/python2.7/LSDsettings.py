@@ -26,7 +26,7 @@ from soho import SohoParm
 from LSDapi import *
 import LSDmisc
 import LSDhooks
-import LSDmantra
+import LSDlava
 
 class Settings:
     def __init__(self):
@@ -809,4 +809,4 @@ def getFeature(name):
     return _Settings.Features.get(name, None)
 
 def initializeFeatures():
-    LSDmantra.initializeFeatures(sys.modules[__name__])
+    LSDlava.initializeFeatures(sys.modules[__name__])

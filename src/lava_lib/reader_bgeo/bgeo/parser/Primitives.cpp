@@ -12,6 +12,8 @@
 #include <iostream>
 #include <cassert>
 
+#include <UT/UT_JSONParser.h>
+
 #include "Primitive.h"
 #include "Detail.h"
 #include "Run.h"

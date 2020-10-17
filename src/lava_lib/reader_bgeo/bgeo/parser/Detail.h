@@ -12,33 +12,33 @@
 
 #include <memory>
 
-#include <UT/UT_JSONParser.h>
-#include <UT/UT_String.h>
+//#include <UT/UT_JSONParser.h>
+//#include <UT/UT_String.h>
 
-#include "Info.h"
 #include "VertexMap.h"
-#include "VertexArrayBuilder.h"
 #include "Primitives.h"
 #include "FileVersion.h"
+#include "types.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+class UT_JSONParser;
 
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class Info;
 class Attribute;
 class PrimitiveGroup;
 
-class Detail
-{
-public:
+class Detail {
+ public:
     Detail(bool checkVersion = true);
     ~Detail();
 
     void loadHeaderAndInfo(UT_JSONParser& parser);
     void loadGeometry(UT_JSONParser& parser);
+
+    std::shared_ptr<Info> info() const { return mpInfo; };
 
     friend std::ostream& operator << (std::ostream& co, const Detail& detail);
 
@@ -48,14 +48,15 @@ public:
     const Attribute* getPrimitiveAttributeByName(const char* name) const;
     const Attribute* getDetailAttributeByName(const char* name) const;
 
-    void mapVerticesToPoints(const VertexArrayBuilder::VertexArray& vertices,
-                             VertexArrayBuilder::VertexArray& points) const;
+    const VertexMap& getVertexMap() const { return vertexMap; };
+
+    void mapVerticesToPoints(const VertexArray& vertices, VertexArray& points) const;
 
     FileVersion fileVersion;
     int64 pointCount;
     int64 vertexCount;
     int64 primitiveCount;
-    Info info;
+    std::shared_ptr<Info> mpInfo = nullptr;
     VertexMap vertexMap;
 
     // FIXME: use vector of unique_ptrs instead

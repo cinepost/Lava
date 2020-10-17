@@ -12,31 +12,26 @@
 
 #include <vector>
 
+#include "types.h"
+
 #include "Primitive.h"
-#include "VertexArrayBuilder.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-class Poly : public Primitive
-{
-public:
+class Poly : public Primitive {
+ public:
     Poly(const Detail& detail);
     Poly(const Poly& poly) = default;
 
     /*virtual*/ Poly* clone() const;
 
-    /*virtual*/ PrimType getType() const
-    {
+    /*virtual*/ PrimType getType() const {
         return PolyType;
     }
 
-    /*virtual*/ RunMode getRunMode() const
-    {
+    /*virtual*/ RunMode getRunMode() const {
         return MergeRunMode;
     }
 
@@ -47,13 +42,13 @@ public:
 
     /*virtual*/ std::ostream& encode(std::ostream& co) const;
 
-    VertexArrayBuilder::VertexArray vertices;
-    VertexArrayBuilder::VertexArray sides;
+    VertexArray vertices;
+    VertexArray sides;
 
     typedef std::vector<bool> ClosedArray;
     ClosedArray closed;
 
-    void getVerticesMappedToPoints(VertexArrayBuilder::VertexArray& vertexPoints) const;
+    void getVerticesMappedToPoints(VertexArray& vertexPoints) const;
 };
 
 } // namespace parser

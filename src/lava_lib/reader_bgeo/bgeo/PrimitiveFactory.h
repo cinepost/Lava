@@ -16,24 +16,17 @@
 
 #include "Bgeo.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
 class Primitive;
 }
 
-namespace factory
-{
+namespace factory {
 
 typedef std::map<UT_String, std::shared_ptr<Bgeo>> EmbeddedGeoMap;
-Bgeo::PrimitivePtr create(const Bgeo& bgeo,
-                          const parser::Primitive& parserPrimitive,
-                          EmbeddedGeoMap& embeddedGeoMap,
-                          size_t index);
+Bgeo::PrimitivePtr create(const Bgeo& bgeo, const parser::Primitive& parserPrimitive, EmbeddedGeoMap& embeddedGeoMap, size_t index);
 
 }
 }

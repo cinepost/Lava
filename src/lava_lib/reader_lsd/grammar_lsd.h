@@ -70,8 +70,7 @@ namespace ast {
 
     enum class Type { FLOAT, BOOL, INT, INT2, INT3, INT4, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
     enum class Style { GLOBAL, MATERIAL, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
-    //enum class ObjectType { MATERIAL, SEGMENT, LIGHT, FOG, OBJECT, INSTANCE, PLANE, UNKNOWN };
-    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG };
+    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL };
 
     struct ifthen;
     struct endif;
@@ -564,6 +563,7 @@ namespace parser {
         DisplayTypesTable() {
             add ("\"ip\""       , ast::DisplayType::IP)
                 ("\"md\""       , ast::DisplayType::MD)
+                ("\"sdl\""      , ast::DisplayType::SDL)
                 ("\"JPEG\""     , ast::DisplayType::JPEG)
                 ("\"PNG\""      , ast::DisplayType::PNG)
                 ("\"OpenEXR\""  , ast::DisplayType::OPENEXR)

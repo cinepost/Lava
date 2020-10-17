@@ -35,6 +35,23 @@ void ScopeBase::printSummary(std::ostream& os, uint indent) {
 
 ScopeBase::ScopeBase(SharedPtr pParent): mpParent(pParent) { }
 
+/* Transformable */
+
+Transformable::Transformable(ScopeBase::SharedPtr pParent):ScopeBase(pParent) {
+	mTransform = glm::mat4( 1.0 );
+}
+
+void Transformable::setTransform(const lsd::Matrix4& mat) {
+	mTransform = {
+		mat[0], mat[1], mat[2], mat[3],
+		mat[4], mat[5], mat[6], mat[7],
+		mat[8], mat[9], mat[10], mat[11],
+		mat[12], mat[13], mat[14], mat[15]
+	};
+}
+
+/* Global */
+
 Global::SharedPtr Global::create() {
 	auto pGlobal = Global::SharedPtr(new Global());
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "rendertype", std::string("unknown"), Property::Owner::SYS)) return nullptr;
@@ -101,10 +118,21 @@ std::shared_ptr<Geo> Global::addGeo() {
 	return nullptr;
 }
 
+/* Geo */
+
 Geo::SharedPtr Geo::create(ScopeBase::SharedPtr pParent) {
 	auto pSegment = Geo::SharedPtr(new Geo(pParent));
 	return std::move(pSegment);
 }
+
+void Geo::setDetailFilename(const std::string& filename) {
+	mFileName = filename;
+	if (filename == "stdin") {
+		mIsInline = true;
+	}
+}
+
+/* Object */
 
 Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pObject = Object::SharedPtr(new Object(pParent));
@@ -112,6 +140,8 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 
 	return std::move(pObject);
 }
+
+/* Plane */
 
 Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
 	auto pPlane = Plane::SharedPtr(new Plane(pParent));
@@ -122,6 +152,8 @@ Plane::SharedPtr Plane::create(ScopeBase::SharedPtr pParent) {
 	return std::move(pPlane);
 }
 
+/* Light */
+
 Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 	auto pLight = Light::SharedPtr(new Light(pParent));
 	if(!pLight->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
@@ -130,6 +162,8 @@ Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 
 	return std::move(pLight);
 }
+
+/* Segment */
 
 Segment::SharedPtr Segment::create(ScopeBase::SharedPtr pParent) {
 	auto pSegment = Segment::SharedPtr(new Segment(pParent));

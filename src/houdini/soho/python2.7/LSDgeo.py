@@ -41,6 +41,13 @@ theMaterialOverrideRefsInv = {}
 
 theOverrideFormatStr='<<%s>>'
 
+def _SohoGeometry(soppath, time = 0.0):
+    geo = SohoGeometry(soppath, time)
+    return  geo.tesselate({
+        #'geo:convstyle': 'lod', 
+        'geo:triangulate': True
+    })
+
 
 def _dummyGeometry():
     print """PGEOMETRY V5
@@ -112,7 +119,7 @@ def _getDiskFiles(obj, eval_time, times, velblur):
                 if auto_archive == 'force' or not os.path.exists(filename[0]):
                     soppath = obj.getDefaultedString('object:soppath',
                                                 now, [''])[0]
-                    gdp = SohoGeometry(soppath, now)
+                    gdp = _SohoGeometry(soppath, now)
                     options = getSaveOptions(obj, now)
                     if gdp.Handle >= 0:
                         soho.makeFilePathDirsIfEnabled(filename[0])
@@ -336,7 +343,7 @@ def saveMaterial(now, fullpath):
         details = getReferencingDetails(fullpath)
         if details != None:
             for detail in details:
-                gdp = SohoGeometry(detail, now)
+                gdp = _SohoGeometry(detail, now)
                 if gdp.Handle >= 0:
                     saveProperties(None, detail, gdp, now)
     # It's possible that we don't need to output the base material
@@ -538,7 +545,7 @@ def saveArchive(objpath, now, geofile, matfile):
     options = getSaveOptions(obj, now, saveinfo=True)
     name = soppath
 
-    gdp = SohoGeometry(soppath, now)
+    gdp = _SohoGeometry(soppath, now)
     if gdp.Handle < 0:
         sys.stderr.write('No geometry found for %s\n' % soppath)
         return
@@ -691,7 +698,7 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
             else:
                 if velblur:
                     eval_time = now
-                gdp = SohoGeometry(soppath, eval_time)
+                gdp = _SohoGeometry(soppath, eval_time)
                 saved = False
                 if gdp.Handle >= 0:
                     status = saveProperties(obj, soppath, gdp, eval_time)
@@ -820,7 +827,7 @@ def deleteUnusedGeometry():
             del theDetailRefs[detail]
         cmd_delete('geometry', detail)
         dereferenceMaterials(detail)
-        SohoGeometry.release(detail)
+        _SohoGeometry.release(detail)
 
 def instanceGeometry(obj, now, times):
     # Now, we need to save the geometry for the object out
@@ -939,12 +946,12 @@ def getObjectBounds(obj, now):
 
     fullbounds = SOHOcommon.emptyBounds()
     if velblur:
-        gdb = SohoGeometry(detail, times[0])
+        gdb = _SohoGeometry(detail, times[0])
         fullbounds = gdb.globalValue('geo:boundingbox')
         fullbounds[:] = _computeVBounds(gdb, fullbounds, times[-1]-times[0])
     else:
         for geo_now in times:
-            gdb = SohoGeometry(detail, geo_now)
+            gdb = _SohoGeometry(detail, geo_now)
             dbounds = gdb.globalValue('geo:boundingbox')
             fullbounds[:] = SOHOcommon.enlargeBounds(fullbounds, dbounds)
     return fullbounds
@@ -965,7 +972,7 @@ def getInstancerAttributes(obj, now):
     if not obj.evalString('object:soppath', now, sop_path):
         return          # No geometry associated with this object
 
-    geo = SohoGeometry(sop_path[0], now)
+    geo = _SohoGeometry(sop_path[0], now)
     if geo.Handle < 0:  # No geometry data available
         return
 

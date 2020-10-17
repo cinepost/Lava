@@ -37,7 +37,7 @@ public:
     void getPointList(std::vector<int32_t>& points) const;
     void getVertexList(std::vector<int32_t>& vertices) const;
 
-    /*virtual*/ int32_t getVertexCount() const;
+    /*virtual*/ int32_t getVertexCount() const override;
 
 private:
     const parser::Part& m_part;

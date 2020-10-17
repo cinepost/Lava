@@ -14,18 +14,14 @@
 
 #include "Primitive.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-namespace parser
-{
+namespace parser {
 class Volume;
 } // namespace parser
 
-class Volume : public Primitive
-{
+class Volume : public Primitive {
     RTTI_DECLARE(Volume, Primitive)
 
 public:
@@ -40,7 +36,7 @@ public:
     int64_t getVoxelCount() const;
     void getVoxels(std::vector<float>& voxels) const;
 
-    /*virtual*/ int32_t getVertexCount() const;
+    /*virtual*/ int32_t getVertexCount() const override;
 
 private:
     const parser::Volume& m_volume;

@@ -9,23 +9,20 @@
 
 #include "Volume.h"
 
+#include <UT/UT_JSONHandle.h>
+
 #include "util.h"
 #include "Detail.h"
 #include "Attribute.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-namespace
-{
+namespace {
 
-class UniformDataHandle : public UT_JSONHandleError
-{
-public:
+class UniformDataHandle : public UT_JSONHandleError {
+ public:
     UniformDataHandle(Volume& volume)
         : volume(volume)
     {

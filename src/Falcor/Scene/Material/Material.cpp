@@ -31,26 +31,23 @@
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
 
-namespace Falcor
-{
+namespace Falcor {
+
     static_assert(sizeof(MaterialData) % 16 == 0, "Material::MaterialData size should be a multiple of 16");
 
     Material::UpdateFlags Material::sGlobalUpdates = Material::UpdateFlags::None;
 
-    Material::Material(const std::string& name) : mName(name)
-    {
+    Material::Material(const std::string& name) : mName(name) {
     }
 
-    Material::SharedPtr Material::create(const std::string& name)
-    {
+    Material::SharedPtr Material::create(const std::string& name) {
         Material* pMaterial = new Material(name);
         return SharedPtr(pMaterial);
     }
 
     Material::~Material() = default;
 
-    bool Material::renderUI(Gui::Widgets& widget)
-    {
+    bool Material::renderUI(Gui::Widgets& widget) {
         // We're re-using the material's update flags here to track changes.
         // Cache the previous flag so we can restore it before returning.
         UpdateFlags prevUpdates = mUpdates;
@@ -61,27 +58,21 @@ namespace Falcor
         else if (getShadingModel() == ShadingModelSpecGloss) widget.text("SpecGloss", true);
         else should_not_get_here();
 
-        if (getBaseColorTexture() != nullptr)
-        {
+        if (getBaseColorTexture() != nullptr) {
             widget.text("Base color: " + getBaseColorTexture()->getSourceFilename());
             if (widget.button("Remove texture"))
                 setBaseColorTexture(nullptr);
-        }
-        else
-        {
+        } else {
             float4 baseColor = getBaseColor();
             if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f))
                 setBaseColor(baseColor);
         }
 
-        if (getSpecularTexture() != nullptr)
-        {
+        if (getSpecularTexture() != nullptr) {
             widget.text("Specular params: " + getSpecularTexture()->getSourceFilename());
             if (widget.button("Remove texture"))
                 setSpecularTexture(nullptr);
-        }
-        else
-        {
+        } else {
             float4 specularParams = getSpecularParams();
             if (widget.var("Specular params", specularParams, 0.f, 1.f, 0.01f))
                 setSpecularParams(specularParams);
@@ -92,14 +83,11 @@ namespace Falcor
                 "    specular color(RGB) and glossiness(A)", true);
         }
 
-        if (getEmissiveTexture() != nullptr)
-        {
+        if (getEmissiveTexture() != nullptr) {
             widget.text("Emissive color: " + getEmissiveTexture()->getSourceFilename());
             if (widget.button("Remove texture"))
                 setEmissiveTexture(nullptr);
-        }
-        else
-        {
+        } else {
             float3 emissiveColor = getEmissiveColor();
             if (widget.var("Emissive color", emissiveColor, 0.f, 1.f, 0.01f))
                 setEmissiveColor(emissiveColor);
@@ -128,63 +116,50 @@ namespace Falcor
         return changed;
     }
 
-    void Material::setShadingModel(uint32_t model)
-    {
+    void Material::setShadingModel(uint32_t model) {
         setFlags(PACK_SHADING_MODEL(mData.flags, model));
     }
 
-    void Material::setAlphaMode(uint32_t alphaMode)
-    {
+    void Material::setAlphaMode(uint32_t alphaMode) {
         setFlags(PACK_ALPHA_MODE(mData.flags, alphaMode));
     }
 
-    void Material::setDoubleSided(bool doubleSided)
-    {
+    void Material::setDoubleSided(bool doubleSided) {
         setFlags(PACK_DOUBLE_SIDED(mData.flags, doubleSided ? 1 : 0));
     }
 
-    void Material::setAlphaThreshold(float alpha)
-    {
-        if (mData.alphaThreshold != alpha)
-        {
+    void Material::setAlphaThreshold(float alpha) {
+        if (mData.alphaThreshold != alpha) {
             mData.alphaThreshold = alpha;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void Material::setIndexOfRefraction(float IoR)
-    {
-        if (mData.IoR != IoR)
-        {
+    void Material::setIndexOfRefraction(float IoR) {
+        if (mData.IoR != IoR) {
             mData.IoR = IoR;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void Material::setNestedPriority(uint32_t priority)
-    {
+    void Material::setNestedPriority(uint32_t priority) {
         const uint32_t maxPriority = (1U << NESTED_PRIORITY_BITS) - 1;
-        if (priority > maxPriority)
-        {
+        if (priority > maxPriority) {
             logWarning("Requested nested priority " + std::to_string(priority) + " for material '" + mName + "' is out of range. Clamping to " + std::to_string(maxPriority) + ".");
             priority = maxPriority;
         }
         setFlags(PACK_NESTED_PRIORITY(mData.flags, priority));
     }
 
-    void Material::setSampler(Sampler::SharedPtr pSampler)
-    {
-        if (pSampler != mResources.samplerState)
-        {
+    void Material::setSampler(Sampler::SharedPtr pSampler) {
+        if (pSampler != mResources.samplerState) {
             mResources.samplerState = pSampler;
             markUpdates(UpdateFlags::ResourcesChanged);
         }
     }
 
-    void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor)
-    {
-        if (mResources.baseColor != pBaseColor)
-        {
+    void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor) {
+        if (mResources.baseColor != pBaseColor) {
             mResources.baseColor = pBaseColor;
             markUpdates(UpdateFlags::ResourcesChanged);
             updateBaseColorType();
@@ -193,93 +168,74 @@ namespace Falcor
         }
     }
 
-    void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
-    {
-        if (mResources.specular != pSpecular)
-        {
+    void Material::setSpecularTexture(Texture::SharedPtr pSpecular) {
+        if (mResources.specular != pSpecular) {
             mResources.specular = pSpecular;
             markUpdates(UpdateFlags::ResourcesChanged);
             updateSpecularType();
         }
     }
 
-    void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive)
-    {
-        if (mResources.emissive != pEmissive)
-        {
+    void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive) {
+        if (mResources.emissive != pEmissive) {
             mResources.emissive = pEmissive;
             markUpdates(UpdateFlags::ResourcesChanged);
             updateEmissiveType();
         }
     }
 
-    void Material::setBaseColor(const float4& color)
-    {
-        if (mData.baseColor != color)
-        {
+    void Material::setBaseColor(const float4& color) {
+        if (mData.baseColor != color) {
             mData.baseColor = color;
             markUpdates(UpdateFlags::DataChanged);
             updateBaseColorType();
         }
     }
 
-    void Material::setSpecularParams(const float4& color)
-    {
-        if (mData.specular != color)
-        {
+    void Material::setSpecularParams(const float4& color) {
+        if (mData.specular != color) {
             mData.specular = color;
             markUpdates(UpdateFlags::DataChanged);
             updateSpecularType();
         }
     }
 
-    void Material::setSpecularTransmission(float specularTransmission)
-    {
-        if (mData.specularTransmission != specularTransmission)
-        {
+    void Material::setSpecularTransmission(float specularTransmission) {
+        if (mData.specularTransmission != specularTransmission) {
             mData.specularTransmission = specularTransmission;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void Material::setVolumeAbsorption(const float3& volumeAbsorption)
-    {
-        if (mData.volumeAbsorption != volumeAbsorption)
-        {
+    void Material::setVolumeAbsorption(const float3& volumeAbsorption) {
+        if (mData.volumeAbsorption != volumeAbsorption) {
             mData.volumeAbsorption = volumeAbsorption;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void Material::setEmissiveColor(const float3& color)
-    {
-        if (mData.emissive != color)
-        {
+    void Material::setEmissiveColor(const float3& color) {
+        if (mData.emissive != color) {
             mData.emissive = color;
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveType();
         }
     }
 
-    void Material::setEmissiveFactor(float factor)
-    {
-        if (mData.emissiveFactor != factor)
-        {
+    void Material::setEmissiveFactor(float factor) {
+        if (mData.emissiveFactor != factor) {
             mData.emissiveFactor = factor;
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveType();
         }
     }
 
-    void Material::setNormalMap(Texture::SharedPtr pNormalMap)
-    {
-        if (mResources.normalMap != pNormalMap)
-        {
+    void Material::setNormalMap(Texture::SharedPtr pNormalMap) {
+        if (mResources.normalMap != pNormalMap) {
             mResources.normalMap = pNormalMap;
             markUpdates(UpdateFlags::ResourcesChanged);
             uint32_t normalMode = NormalMapUnused;
-            if (pNormalMap)
-            {
+            if (pNormalMap) {
                 switch(getFormatChannelCount(pNormalMap->getFormat()))
                 {
                 case 2:
@@ -298,10 +254,8 @@ namespace Falcor
         }
     }
 
-    void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap)
-    {
-        if (mResources.occlusionMap != pOcclusionMap)
-        {
+    void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap) {
+        if (mResources.occlusionMap != pOcclusionMap) {
             mResources.occlusionMap = pOcclusionMap;
             markUpdates(UpdateFlags::ResourcesChanged);
             updateOcclusionFlag();
@@ -333,49 +287,40 @@ namespace Falcor
         return true;
     }
 
-    void Material::markUpdates(UpdateFlags updates)
-    {
+    void Material::markUpdates(UpdateFlags updates) {
         mUpdates |= updates;
         sGlobalUpdates |= updates;
     }
 
-    void Material::setFlags(uint32_t flags)
-    {
-        if (mData.flags != flags)
-        {
+    void Material::setFlags(uint32_t flags) {
+        if (mData.flags != flags) {
             mData.flags = flags;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
     template<typename vec>
-    static uint32_t getChannelMode(bool hasTexture, const vec& color)
-    {
+    static uint32_t getChannelMode(bool hasTexture, const vec& color) {
         if (hasTexture) return ChannelTypeTexture;
         if (luminance(color) == 0) return ChannelTypeUnused;
         return ChannelTypeConst;
     }
 
-    void Material::updateBaseColorType()
-    {
+    void Material::updateBaseColorType() {
         setFlags(PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mResources.baseColor != nullptr, mData.baseColor)));
     }
 
-    void Material::updateSpecularType()
-    {
+    void Material::updateSpecularType() {
         setFlags(PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mResources.specular != nullptr, mData.specular)));
     }
 
-    void Material::updateEmissiveType()
-    {
+    void Material::updateEmissiveType() {
         setFlags(PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mResources.emissive != nullptr, mData.emissive * mData.emissiveFactor)));
     }
 
-    void Material::updateOcclusionFlag()
-    {
+    void Material::updateOcclusionFlag() {
         bool hasMap = false;
-        switch (EXTRACT_SHADING_MODEL(mData.flags))
-        {
+        switch (EXTRACT_SHADING_MODEL(mData.flags)) {
         case ShadingModelMetalRough:
             hasMap = (mResources.specular != nullptr);
             break;
@@ -389,8 +334,7 @@ namespace Falcor
         setFlags(PACK_OCCLUSION_MAP(mData.flags, shouldEnable ? 1 : 0));
     }
 
-    SCRIPT_BINDING(Material)
-    {
+    SCRIPT_BINDING(Material) {
         auto material = m.regClass(Material);
         material.roProperty("name", &Material::getName);
         material.property("baseColor", &Material::getBaseColor, &Material::setBaseColor);

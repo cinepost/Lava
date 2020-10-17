@@ -4,4 +4,4 @@
 #add_subdirectory( ropLava ) # Houdini render node
 
 install(DIRECTORY soho DESTINATION houdini)
-install(FILES Renderers DESTINATION houdini)
+install(FILES FBrender DESTINATION houdini)

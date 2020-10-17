@@ -9,21 +9,16 @@
 
 #include "Primitive.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
 RTTI_DEFINE_BASE(Primitive)
 
-Primitive::Primitive()
-{
-}
+Primitive::Primitive() { }
 
 /*virtual*/ Primitive::~Primitive() = default;
 
-int32_t Primitive::getVertexCount() const
-{
+int32_t Primitive::getVertexCount() const {
     return 0;
 }
 

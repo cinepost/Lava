@@ -14,17 +14,13 @@
 #include "util.h"
 
 #include "UT/UT_JSONHandle.h"
+#include <UT/UT_JSONParser.h>
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-Info::Info()
-{
-}
+Info::Info() { }
 
 void parseMapValue(UT_JSONParser& parser, UT_String& value)
 {

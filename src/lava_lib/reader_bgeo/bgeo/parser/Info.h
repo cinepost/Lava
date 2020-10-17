@@ -11,18 +11,15 @@
 #define BGEO_PARSER_INFO_H
 
 #include <UT/UT_String.h>
-#include <UT/UT_JSONParser.h>
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+class UT_JSONParser;
 
-class Info
-{
-public:
+namespace ika {
+namespace bgeo {
+namespace parser {
+
+class Info {
+ public:
     Info();
 
     void load(UT_JSONParser& parser);

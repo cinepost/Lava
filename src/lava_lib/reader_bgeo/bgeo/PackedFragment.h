@@ -15,18 +15,15 @@
 #include "rtti.h"
 #include "PackedGeometry.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
 namespace parser
 {
 class PackedFragment;
 }
 
-class PackedFragment: public PackedGeometry
-{
+class PackedFragment: public PackedGeometry {
     RTTI_DECLARE(PackedFragment, PackedGeometry)
 
 public:

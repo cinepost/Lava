@@ -28,3 +28,6 @@
 [submodule "third_party/bgeo_reader"]
 	path = third_party/bgeo_reader
 	url = https://github.com/LaikaStudios/bgeo_reader.git
+[submodule "third_party/glew"]
+	path = third_party/glew
+	url = https://github.com/nigels-com/glew.git

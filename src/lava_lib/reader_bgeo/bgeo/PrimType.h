@@ -10,10 +10,8 @@
 #ifndef BGEO_PRIMTYPE_H
 #define BGEO_PRIMTYPE_H
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
 enum PrimType
 {
@@ -21,7 +19,13 @@ enum PrimType
     PolyPrimType,
     RunPrimType,
     SpherePrimType,
-    VolumePrimType
+    VolumePrimType,
+    PackedDiskPrimType,
+    PackedFragmentPrimType,
+    PackedGeometryPrimType,
+    ParticlePrimType,
+    AlembicPrimType,
+    MeshPrimType
 };
 
 const char* toString(PrimType type);

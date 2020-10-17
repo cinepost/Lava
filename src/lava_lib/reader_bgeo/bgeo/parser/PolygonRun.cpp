@@ -17,37 +17,26 @@
 #include "ReadError.h"
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-namespace
-{
+namespace {
 
-class UniformDataHandle : public UT_JSONHandleError
-{
-public:
-    UniformDataHandle(PolygonRun& run)
-        : run(run)
-    {
-    }
+class UniformDataHandle : public UT_JSONHandleError {
+ public:
+    UniformDataHandle(PolygonRun& run): run(run) { }
 
-    /*virtual*/ bool jsonKey(UT_JSONParser& parser, const char *v, int64 len)
-    {
+    /*virtual*/ bool jsonKey(UT_JSONParser& parser, const char *v, int64 len) {
         UT_String key(v);
         return run.parseDataWithKey(parser, key);
     }
 
-    /*virtual*/ bool jsonBeginMap(UT_JSONParser& parser)
-    {
+    /*virtual*/ bool jsonBeginMap(UT_JSONParser& parser) {
         return true;
     }
 
-    /*virtual*/ bool jsonEndMap(UT_JSONParser& parser)
-    {
+    /*virtual*/ bool jsonEndMap(UT_JSONParser& parser) {
         return true;
     }
 
@@ -56,14 +45,12 @@ private:
 };
 
 template <typename T>
-void parseArray(UT_JSONParser& parser, std::vector<T>& data, size_t startBlockSize)
-{
+void parseArray(UT_JSONParser& parser, std::vector<T>& data, size_t startBlockSize) {
     auto iterator = parser.beginArray();
     size_t currentBlockSize = startBlockSize;
     size_t currentSize = 0;
 
-    do
-    {
+    do {
         data.resize(currentSize + currentBlockSize);
         int64 numRead = parser.parseArrayValues(iterator, &data[currentSize], currentBlockSize);
 
@@ -80,29 +67,20 @@ void parseArray(UT_JSONParser& parser, std::vector<T>& data, size_t startBlockSi
 
 }
 
-PolygonRun::PolygonRun(const Detail& detail)
-    : Poly(detail),
-    startVertex(0),
-    numPrimitives(0)
-{
-}
+PolygonRun::PolygonRun(const Detail& detail) : Poly(detail), startVertex(0), numPrimitives(0) { }
 
-PolygonRun* PolygonRun::clone() const
-{
+PolygonRun* PolygonRun::clone() const {
     return new PolygonRun(*this);
 }
 
-void PolygonRun::loadData(UT_JSONParser& parser)
-{
+void PolygonRun::loadData(UT_JSONParser& parser) {
     UT_WorkBuffer buffer;
     UT_String key;
 
-    for (auto geoit = parser.beginArray(); !geoit.atEnd(); ++geoit)
-    {
+    for (auto geoit = parser.beginArray(); !geoit.atEnd(); ++geoit) {
         geoit.getLowerKey(buffer);
         key = buffer.buffer();
-        if (!parseDataWithKey(parser, key))
-        {
+        if (!parseDataWithKey(parser, key)) {
             UT_String message;
             message.sprintf("Invalid Polygon_run data: \"%s\"",
                             key.c_str());
@@ -111,15 +89,11 @@ void PolygonRun::loadData(UT_JSONParser& parser)
     }
 }
 
-void PolygonRun::loadVaryingData(UT_JSONParser& parser,
-                                 const Primitive::StringList& fields)
-{
+void PolygonRun::loadVaryingData(UT_JSONParser& parser, const Primitive::StringList& fields) {
     parseBeginArray(parser);
     {
-        for (auto& field : fields)
-        {
-            if (!parseDataWithKey(parser, UT_String(field)))
-            {
+        for (auto& field : fields) {
+            if (!parseDataWithKey(parser, UT_String(field))) {
                 UT_String message;
                 message.sprintf("Invalid Polygon_run varying field: \"%s\"",
                                 field.c_str());
@@ -130,17 +104,13 @@ void PolygonRun::loadVaryingData(UT_JSONParser& parser,
     parseEndArray(parser);
 }
 
-void PolygonRun::loadUniformData(UT_JSONParser& parser)
-{
+void PolygonRun::loadUniformData(UT_JSONParser& parser) {
     UniformDataHandle uniformHandle(*this);
     BGEO_CHECK(parser.parseObject(uniformHandle));
 }
 
-bool PolygonRun::parseDataWithKey(UT_JSONParser& parser,
-                                  const UT_String& key)
-{
-    if (key == "startvertex" || key == "s_v")
-    {
+bool PolygonRun::parseDataWithKey(UT_JSONParser& parser, const UT_String& key) {
+    if (key == "startvertex" || key == "s_v") {
         BGEO_CHECK(parser.parseValue(startVertex));
     }
     else if (key == "nprimitives" || key == "n_p")
@@ -149,34 +119,29 @@ bool PolygonRun::parseDataWithKey(UT_JSONParser& parser,
     }
     else if (key == "nvertices" || key == "n_v")
     {
-        VertexArrayBuilder::VertexArray numVertices;
+        VertexArray numVertices;
         size_t startBlockSize = numPrimitives > 0 ? numPrimitives : 10;
         parseArray(parser, numVertices, startBlockSize);
         setupFromPolygonRunInfo(numVertices);
     }
     else if (key == "nvertices_rle" || key == "r_v")
     {
-        VertexArrayBuilder::VertexArray numVerticesRle;
+        VertexArray numVerticesRle;
         // the number of polygons with different vertex counts should be
         // pretty small so start with a small block size.
         size_t startBlockSize = 5;
         parseArray(parser, numVerticesRle, startBlockSize);
         setupFromPolygonRleInfo(numVerticesRle);
-    }
-    else
-    {
+    } else {
         return false;
     }
 
     return true;
 }
 
-void PolygonRun::setupFromPolygonRunInfo(
-    const VertexArrayBuilder::VertexArray& numVertices)
-{
+void PolygonRun::setupFromPolygonRunInfo(const VertexArray& numVertices) {
     int64 totalVertexCount = 0;
-    for (auto& count : numVertices)
-    {
+    for (auto& count : numVertices) {
         totalVertexCount += count;
     }
 
@@ -184,11 +149,9 @@ void PolygonRun::setupFromPolygonRunInfo(
     sides.reserve(numPrimitives);
 
     int64 currentVertex = startVertex;
-    for (auto& count : numVertices)
-    {
+    for (auto& count : numVertices) {
         sides.push_back(count);
-        for (int64 i = 0; i < count; i++, currentVertex++)
-        {
+        for (int64 i = 0; i < count; i++, currentVertex++) {
             vertices.push_back(currentVertex);
         }
     }
@@ -197,12 +160,10 @@ void PolygonRun::setupFromPolygonRunInfo(
 // RLE for vertices is i.e.
 // [5, 1, 4, 5] -> 1 face with 5 vertices followed by 5 faces with 4 vertices.
 //
-void PolygonRun::setupFromPolygonRleInfo(const VertexArrayBuilder::VertexArray& numVerticesRle)
-{
+void PolygonRun::setupFromPolygonRleInfo(const VertexArray& numVerticesRle) {
     int64 totalVertexCount = 0;
     assert(numVerticesRle.size() % 2 == 0); // must be even size
-    for (int i = 0; i < numVerticesRle.size(); i += 2)
-    {
+    for (int i = 0; i < numVerticesRle.size(); i += 2) {
         auto numVertices = numVerticesRle[i];
         auto count = numVerticesRle[i + 1];
         totalVertexCount += numVertices * count;
@@ -212,16 +173,13 @@ void PolygonRun::setupFromPolygonRleInfo(const VertexArrayBuilder::VertexArray& 
     sides.reserve(numPrimitives);
 
     int64 currentVertex = startVertex;
-    for (int i = 0; i < numVerticesRle.size(); i += 2)
-    {
+    for (int i = 0; i < numVerticesRle.size(); i += 2) {
         auto numVertices = numVerticesRle[i];
         auto count = numVerticesRle[i + 1];
 
-        for (int prim = 0; prim < count; prim++)
-        {
+        for (int prim = 0; prim < count; prim++) {
             sides.push_back(numVertices);
-            for (int vertex = 0; vertex < numVertices; vertex++)
-            {
+            for (int vertex = 0; vertex < numVertices; vertex++) {
                 vertices.push_back(currentVertex++);
             }
         }

@@ -11,77 +11,73 @@
 
 #include "parser/Poly.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(Poly, Primitive)
+RTTI_DEFINE(Poly, Primitive, PrimType::PolyPrimType)
 
-Poly::Poly(const Bgeo& bgeo, const parser::Poly& poly)
-    : m_bgeo(bgeo),
-      m_poly(poly),
-      m_splitting(false)
-{
-}
+Poly::Poly(const Bgeo& bgeo, const parser::Poly& poly): m_bgeo(bgeo), m_poly(poly), m_splitting(false) { }
 
-void Poly::getRawVertexList(std::vector<int32_t>& vertices) const
-{
+void Poly::getRawVertexList(std::vector<int32_t>& vertices) const {
     vertices = m_poly.vertices;
 }
 
-void Poly::getVertexList(std::vector<int32_t>& vertices) const
-{
+const std::vector<int32_t>& Poly::getRawVertexList() const {
+    return m_poly.vertices;
+}
+
+
+void Poly::getSidesList(std::vector<int32_t>& sides) const {
+    sides = m_poly.sides;
+}
+
+const std::vector<int32_t>& Poly::getSidesList() const {
+    return m_poly.sides;
+}
+
+void Poly::getVertexList(std::vector<int32_t>& vertices) const {
     m_poly.getVerticesMappedToPoints(vertices);
 }
 
-void Poly::getStartIndices(std::vector<int32_t>& startIndices) const
-{
+void Poly::getStartIndices(std::vector<int32_t>& startIndices) const {
+    startIndices.clear();
     startIndices.resize(m_poly.sides.size() + 1);
     startIndices[0] = 0;
 
     int64 current = 0;
-    for (int i = 0; i < m_poly.sides.size(); ++i)
-    {
+    for (int i = 0; i < m_poly.sides.size(); ++i) {
         current += m_poly.sides[i];
         startIndices[i + 1] = current;
     }
 }
 
-int32_t Poly::getFaceCount() const
-{
+int32_t Poly::getFaceCount() const {
     return m_poly.sides.size();
 }
 
-int32_t Poly::getVertexCount() const
-{
+int32_t Poly::getVertexCount() const {
     return m_poly.vertices.size();
 }
 
-void Poly::splitByPrimitiveString(const char *attributeName)
-{
+void Poly::splitByPrimitiveString(const char *attributeName) {
     m_splitter.splitByPrimitiveString(m_bgeo, *this, attributeName);
     m_splitting = true;
 }
 
-void Poly::splitThisPoly(size_t primitiveIndex)
-{
+void Poly::splitThisPoly(size_t primitiveIndex) {
     m_splitter.splitThisPoly(m_bgeo, *this, primitiveIndex);
     m_splitting = true;
 }
 
-PolySplitter& Poly::getSplitter()
-{
+PolySplitter& Poly::getSplitter() {
     return m_splitter;
 }
 
-const PolySplitter& Poly::getSplitter() const
-{
+const PolySplitter& Poly::getSplitter() const {
     return m_splitter;
 }
 
-bool Poly::isSplitting() const
-{
+bool Poly::isSplitting() const {
     return m_splitting;
 }
 

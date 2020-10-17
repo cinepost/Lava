@@ -10,30 +10,30 @@
 #include <cstring>
 #include "PrimType.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
 static const char* typeStringMap[] = {
     "Unknown",
     "Poly",
     "run",
     "Sphere",
-    "Volume"
+    "Volume",
+    "PackedDisk",
+    "PackedFragment",
+    "PackedGeometry",
+    "Particle",
+    "Alembic",
+    "Mesh"
 };
 
-const char* toString(PrimType type)
-{
+const char* toString(PrimType type) {
     return typeStringMap[type];
 }
 
-PrimType toPrimType(const char* type)
-{
-    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++)
-    {
-        if (type == typeStringMap[i] || strcmp(type, typeStringMap[i]) == 0)
-        {
+PrimType toPrimType(const char* type) {
+    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++) {
+        if (type == typeStringMap[i] || strcmp(type, typeStringMap[i]) == 0) {
             return static_cast<PrimType>(i);
         }
     }

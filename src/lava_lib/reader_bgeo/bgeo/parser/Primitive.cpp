@@ -23,13 +23,11 @@
 #include "Sphere.h"
 #include "Volume.h"
 #include "AlembicRef.h"
+#include "Mesh.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 static const char* typeStringMap[] = {
     "Unknown",
@@ -42,7 +40,9 @@ static const char* typeStringMap[] = {
     "PolySoup",
     "run",
     "Sphere",
-    "Volume"
+    "Volume",
+    "AlembicRef",
+    "Mesh"
 };
 
 const char* Primitive::toString(PrimType type)
@@ -62,8 +62,7 @@ Primitive::PrimType Primitive::toPrimType(const UT_String& type)
     return Primitive::UnknownType;
 }
 
-Primitive* Primitive::create(const UT_String& type, const Detail& detail)
-{
+Primitive* Primitive::create(const UT_String& type, const Detail& detail) {
     if (type == "Poly")
     {
         return new Poly(detail);
@@ -103,6 +102,10 @@ Primitive* Primitive::create(const UT_String& type, const Detail& detail)
     else if (type == "Volume")
     {
         return new Volume(detail);
+    }
+    else if (type == "Mesh")
+    {
+        return new Mesh(detail);
     }
     //else if (type == "AlembicRef")
     //{

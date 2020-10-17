@@ -31,7 +31,7 @@ class Sphere : public Primitive
 public:
     Sphere(const parser::Sphere& sphereParser);
 
-    /*virtual*/ int32_t getVertexCount() const;
+    /*virtual*/ int32_t getVertexCount() const override;
 
     void getTranslate(double translate [3]) const;
     void getExtraTransform(double transform[16]) const;

@@ -16,23 +16,18 @@
 
 #include "PackedGeometry.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-class PackedDisk : public PackedGeometry
-{
-public:
+class PackedDisk : public PackedGeometry {
+ public:
     explicit PackedDisk(const Detail& detail);
     PackedDisk(const PackedDisk& packed);
 
     /*virtual*/ PackedDisk* clone() const;
 
-    /*virtual*/ PrimType getType() const
-    {
+    /*virtual*/ PrimType getType() const {
         return PackedDiskType;
     }
 

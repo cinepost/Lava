@@ -33,6 +33,7 @@
 #include "Scene.h"
 #include "VertexAttrib.slangh"
 
+
 namespace Falcor {
 
 class Device;
@@ -173,7 +174,7 @@ class dlldecl SceneBuilder {
     */
     bool hasCamera() const { return mCamera.pObject != nullptr; }
 
- private:
+ protected:
     struct InternalNode : Node {
         InternalNode() = default;
         InternalNode(const Node& n) : Node(n) {}

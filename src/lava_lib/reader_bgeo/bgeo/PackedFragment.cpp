@@ -13,12 +13,10 @@
 
 #include "Bgeo.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(PackedFragment, PackedGeometry)
+RTTI_DEFINE(PackedFragment, PackedGeometry, PackedFragmentPrimType)
 
 PackedFragment::PackedFragment(const parser::PackedFragment& fragment,
                                std::shared_ptr<Bgeo> embedded)

@@ -11,12 +11,10 @@
 
 #include "parser/Sphere.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(Sphere, Primitive)
+RTTI_DEFINE(Sphere, Primitive, SpherePrimType)
 
 Sphere::Sphere(const parser::Sphere& sphereParser)
     : m_sphere(sphereParser)

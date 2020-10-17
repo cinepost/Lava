@@ -29,6 +29,8 @@ std::string RendererIface::getExpandedString(const std::string& s) {
 	return result;
 }
 
+std::shared_ptr<SceneBuilder> RendererIface::getSceneBuilder(){ return mpRenderer->mpSceneBuilder; }
+
 bool RendererIface::loadDisplay(const std::string& display_name) {
 	return mpRenderer->loadDisplayDriver(getExpandedString(display_name));
 }
@@ -41,7 +43,7 @@ bool RendererIface::closeDisplay() {
 	return mpRenderer->closeDisplay();
 }
 
-bool RendererIface::loadScript(const std::string& file_name) {
+bool RendererIface::loadScriptFile(const std::string& file_name) {
 	if(!mpRenderer->isInited()) {
 		LLOG_ERR << "Unable lo load script! Renderer is NOT initialized !!!";
 		return false;

@@ -83,6 +83,8 @@ namespace Falcor {
         static const uint32_t kMaxBonesPerVertex = 4;
         static const FileDialogFilterVec kFileExtensionFilters;
 
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
+
         static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
 
         // #SCENE: we should get rid of this. We can't right now because we can't create a structured-buffer of materials (MaterialData contains textures)
@@ -362,8 +364,6 @@ namespace Falcor {
         static constexpr uint32_t kPrevVertexBufferIndex = kStaticDataBufferIndex + 1;
         static constexpr uint32_t kDrawIdBufferIndex = kPrevVertexBufferIndex + 1;
         static constexpr uint32_t kVertexBufferCount = kDrawIdBufferIndex + 1;
-
-        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Create scene parameter block and retrieve pointers to buffers
         */

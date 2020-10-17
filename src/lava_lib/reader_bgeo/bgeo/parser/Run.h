@@ -17,12 +17,9 @@
 #include "Primitive.h"
 #include "Primitives.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 class Run : public Primitive
 {
@@ -30,8 +27,7 @@ public:
     Run(const Detail& detail);
     /*virtual*/ ~Run();
 
-    /*virtual*/ PrimType getType() const
-    {
+    /*virtual*/ PrimType getType() const {
         return RunType;
     }
 

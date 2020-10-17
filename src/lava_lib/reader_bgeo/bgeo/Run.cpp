@@ -10,26 +10,23 @@
 #include "Run.h"
 
 #include <cassert>
+#include <iostream>
 
 #include "PrimitiveFactory.h"
 #include "parser/Run.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(Run, Primitive)
+RTTI_DEFINE(Run, Primitive, PrimType::RunPrimType)
 
-Run::Run(const parser::Run& run)
-    : m_run(run)
-{
+Run::Run(const Bgeo& bgeo, const parser::Run& run): m_bgeo(bgeo), m_run(run) { 
+	std::cout << "Run::Run\n";
 }
 
-Bgeo::PrimitivePtr Run::getTemplatePrimitive() const
-{
+Bgeo::PrimitivePtr Run::getTemplatePrimitive() const {
     assert(m_run.runPrimitive);
-    //return factory::create(*m_run.runPrimitive);
+    //return factory::create(m_bgeo, *m_run.runPrimitive);
     return nullptr;
 }
 

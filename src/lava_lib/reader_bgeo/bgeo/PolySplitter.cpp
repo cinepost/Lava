@@ -17,36 +17,24 @@
 #include "Bgeo.h"
 #include "Poly.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-PolySplitter::PolySplitter()
-    : m_currentSplit(0)
-{
-}
+PolySplitter::PolySplitter(): m_currentSplit(0) { }
 
-size_t PolySplitter::splitByPrimitiveString(const Bgeo& bgeo, const Poly& poly,
-                                            const char* attributeName)
-{
-    if (!bgeo.getPrimitiveCount())
-    {
+size_t PolySplitter::splitByPrimitiveString(const Bgeo& bgeo, const Poly& poly, const char* attributeName) {
+    if (!bgeo.getPrimitiveCount()) {
         return 0;
     }
 
     auto attribute = bgeo.getPrimitiveAttributeByName(attributeName);
-    if (!attribute)
-    {
-        std::cerr << "PolySplitter error: missing primitive attribute \""
-                  << attributeName << "\"" << std::endl;
+    if (!attribute) {
+        std::cerr << "PolySplitter error: missing primitive attribute \"" << attributeName << "\"" << std::endl;
         return 0;
     }
 
-    if (strcmp(attribute->getType(), "string") != 0)
-    {
-        std::cerr << "PolySplitter error: primitive attribute \""
-                  << attributeName << "\" is not string" << std::endl;
+    if (strcmp(attribute->getType(), "string") != 0) {
+        std::cerr << "PolySplitter error: primitive attribute \"" << attributeName << "\" is not string" << std::endl;
         return 0;
     }
 
@@ -59,8 +47,7 @@ size_t PolySplitter::splitByPrimitiveString(const Bgeo& bgeo, const Poly& poly,
 
     m_faceMatches.resize(strings.size());
 
-    for (size_t i = 0; i < values.size(); ++i)
-    {
+    for (size_t i = 0; i < values.size(); ++i) {
         assert(values[i] < m_faceMatches.size());
         m_faceMatches[values[i]].push_back(i);
     }
@@ -85,8 +72,7 @@ size_t PolySplitter::splitByPrimitiveString(const Bgeo& bgeo, const Poly& poly,
     return m_faceMatches.size();
 }
 
-size_t PolySplitter::splitThisPoly(const Bgeo& bgeo, const Poly& poly, size_t primitiveIndex)
-{
+size_t PolySplitter::splitThisPoly(const Bgeo& bgeo, const Poly& poly, size_t primitiveIndex) {
     // match all of the faces in the poly.
     m_faceMatches.resize(1);
     m_faceMatches[0].resize(poly.getFaceCount());
@@ -105,13 +91,11 @@ size_t PolySplitter::splitThisPoly(const Bgeo& bgeo, const Poly& poly, size_t pr
     return m_faceMatches.size();
 }
 
-size_t PolySplitter::getSplitCount() const
-{
+size_t PolySplitter::getSplitCount() const {
     return m_faceMatches.size();
 }
 
-void PolySplitter::setCurrentSplit(size_t splitIndex)
-{
+void PolySplitter::setCurrentSplit(size_t splitIndex) {
     assert(splitIndex < m_faceMatches.size());
 
     m_currentSplit = splitIndex;
@@ -130,8 +114,7 @@ void PolySplitter::setCurrentSplit(size_t splitIndex)
     int32_t previousStartIndex = 0;
     m_currentStartIndices.push_back(0);
 
-    for (const auto& face : faces)
-    {
+    for (const auto& face : faces) {
         assert(face < m_startIndices.size());
         assert((face + 1) < m_startIndices.size());
         auto startIndex = m_startIndices[face];
@@ -139,24 +122,19 @@ void PolySplitter::setCurrentSplit(size_t splitIndex)
 
         // update vertices
 
-        for (int i = 0; i < vertexCount; ++i)
-        {
+        for (int i = 0; i < vertexCount; ++i) {
             auto oldVertex = m_mappedVertices[startIndex + i];
-            if (oldVertex >= m_mapToNewVertices.size())
-            {
+            if (oldVertex >= m_mapToNewVertices.size()) {
                 m_mapToNewVertices.resize(oldVertex + 1, -1);
             }
 
             assert(oldVertex < m_mapToNewVertices.size());
-            if (m_mapToNewVertices[oldVertex] < 0)
-            {
+            if (m_mapToNewVertices[oldVertex] < 0) {
                 m_mapToNewVertices[oldVertex] = currentIndex;
                 m_currentVertices.push_back(currentIndex);
                 m_currentPointIndices.push_back(oldVertex);
                 ++currentIndex;
-            }
-            else
-            {
+            } else {
                 m_currentVertices.push_back(m_mapToNewVertices[oldVertex]);
             }
 
@@ -174,8 +152,7 @@ void PolySplitter::setCurrentSplit(size_t splitIndex)
     }
 
     // reset map for later reuse
-    for (const auto& vertex : m_currentMappedVertices)
-    {
+    for (const auto& vertex : m_currentMappedVertices) {
         assert(vertex < m_mapToNewVertices.size());
         m_mapToNewVertices[vertex] = -1;
     }
@@ -200,41 +177,32 @@ void PolySplitter::setCurrentSplit(size_t splitIndex)
     //    }
 }
 
-size_t PolySplitter::getCurrentSplit() const
-{
+size_t PolySplitter::getCurrentSplit() const {
     return m_currentSplit;
 }
 
-void PolySplitter::getOriginalVertexIndices(std::vector<int32_t>& indices) const
-{
+void PolySplitter::getOriginalVertexIndices(std::vector<int32_t>& indices) const {
     indices = m_currentVertexIndices;
 }
 
-void PolySplitter::getOriginalPointIndices(std::vector<int32_t>& indices) const
-{
+void PolySplitter::getOriginalPointIndices(std::vector<int32_t>& indices) const {
     indices = m_currentPointIndices;
 }
 
-void PolySplitter::getOriginalPrimitiveIndices(std::vector<int32_t>& indices) const
-{
-    if (m_currentMappedPrimitives.size() > 0)
-    {
+void PolySplitter::getOriginalPrimitiveIndices(std::vector<int32_t>& indices) const {
+    if (m_currentMappedPrimitives.size() > 0) {
         indices = m_currentMappedPrimitives;
-    }
-    else
-    {
+    } else {
         assert(m_currentSplit < m_faceMatches.size());
         indices = m_faceMatches[m_currentSplit];
     }
 }
 
-void PolySplitter::getVertexList(std::vector<int32_t>& vertices) const
-{
+void PolySplitter::getVertexList(std::vector<int32_t>& vertices) const {
     vertices = m_currentVertices;
 }
 
-void PolySplitter::getStartIndices(std::vector<int32_t>& startIndices) const
-{
+void PolySplitter::getStartIndices(std::vector<int32_t>& startIndices) const {
     startIndices = m_currentStartIndices;
 }
 

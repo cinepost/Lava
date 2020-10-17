@@ -12,12 +12,11 @@
 
 #include "Poly.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+#include "types.h"
+
+namespace ika {
+namespace bgeo {
+namespace parser {
 
 // Derive from Poly to simplify use of PolySoup by rest of the system (i.e.
 // it acts just like a poly). Override the data loading process to translate
@@ -25,21 +24,18 @@ namespace parser
 // will take more resources since the Poly structures are larger, but is worth
 // it to avoid implementing any other PolySoup specific code.
 //
-class PolySoup : public Poly
-{
-public:
+class PolySoup : public Poly {
+ public:
     PolySoup(const Detail& detail);
     PolySoup(const PolySoup& soup) = default;
 
     /*virtual*/ PolySoup* clone() const;
 
-    /*virtual*/ PrimType getType() const
-    {
+    /*virtual*/ PrimType getType() const {
         return PolySoupType;
     }
 
-    /*virtual*/ RunMode getRunMode() const
-    {
+    /*virtual*/ RunMode getRunMode() const {
         return SplitRunMode;
     }
 
@@ -51,8 +47,8 @@ public:
     bool parseDataWithKey(UT_JSONParser& parser, const UT_String& key);
 
 private:
-    void setupFromSoupInfo(const VertexArrayBuilder::VertexArray& soupSides,
-                           const VertexArrayBuilder::VertexArray& soupCounts);
+    void setupFromSoupInfo(const VertexArray& soupSides,
+                           const VertexArray& soupCounts);
 };
 
 } // namespace parser

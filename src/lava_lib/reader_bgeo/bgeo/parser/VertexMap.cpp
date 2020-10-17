@@ -7,30 +7,23 @@
  *  copied, modified, or distributed except according to those terms.
  */
 
+#include <UT/UT_JSONParser.h>
+
 #include "VertexMap.h"
 
 #include "util.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace parser
-{
+namespace ika {
+namespace bgeo {
+namespace parser {
 
-VertexMap::VertexMap()
-    : vertices(0),
-      vertexCount(0)
-{
-}
+VertexMap::VertexMap(): vertices(0), vertexCount(0) { }
 
-VertexMap::~VertexMap()
-{
+VertexMap::~VertexMap() {
     delete[] vertices;
 }
 
-void VertexMap::load(UT_JSONParser &parser, int64 vertexCount_)
-{
+void VertexMap::load(UT_JSONParser &parser, int64 vertexCount_) {
     vertexCount = vertexCount_;
     vertices = new int32[vertexCount];
 
@@ -49,7 +42,7 @@ void VertexMap::load(UT_JSONParser &parser, int64 vertexCount_)
 std::ostream& operator << (std::ostream& co, const VertexMap& map)
 {
     co << "[";
-    if (map.vertexCount < 20)
+    if (map.vertexCount < 200)
     {
         for (int64 i = 0; i < map.vertexCount; i++)
         {

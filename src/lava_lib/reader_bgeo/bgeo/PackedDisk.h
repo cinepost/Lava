@@ -25,8 +25,7 @@ namespace parser
 class PackedDisk;
 }
 
-class PackedDisk : public PackedGeometry
-{
+class PackedDisk : public PackedGeometry {
     RTTI_DECLARE(PackedDisk, PackedGeometry)
 
 public:

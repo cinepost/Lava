@@ -18,6 +18,7 @@
 #include "parser/Primitive.h"
 #include "parser/PrimitiveGroup.h"
 #include "parser/compression.h"
+#include "parser/Info.h"
 
 #include "Primitive.h"
 #include "Poly.h"
@@ -73,7 +74,8 @@ Bgeo::Impl::Impl(const char *bgeoPath, bool checkVersion): detail(new parser::De
 
 Bgeo::Impl::Impl(std::shared_ptr<parser::Detail> detail): detail(detail) {}
 
-void Bgeo::Impl::parseStream(UT_IStream& stream) {
+void
+ Bgeo::Impl::parseStream(UT_IStream& stream) {
     UT_AutoJSONParser parserLoader(stream);
     assert(detail);
     detail->loadGeometry(parserLoader.parser());
@@ -106,7 +108,7 @@ int64_t Bgeo::getPrimitiveCount() const {
 }
 
 void Bgeo::getBoundingBox(double bound[6]) const {
-    memcpy(bound, m_pimpl->detail->info.bounds, sizeof(double) * 6);
+    memcpy(bound, m_pimpl->detail->info()->bounds, sizeof(double) * 6);
 }
 
 void Bgeo::printSummary(std::ostream &co) const {
@@ -166,16 +168,13 @@ void Bgeo::getVertexUV(std::vector<float>& uv) const {
     attribute->data.copyTo(uv.data(), 2, vertexCount, 0, vertexCount);
 }
 
-Bgeo::PrimitivePtr Bgeo::getPrimitive(int64_t index) const
-{
-    if (index >= m_primitiveCache.size())
-    {
+Bgeo::PrimitivePtr Bgeo::getPrimitive(int64_t index) const {
+    if (index >= m_primitiveCache.size()) {
         m_primitiveCache.resize(index + 1);
     }
 
     auto& primptr = m_primitiveCache[index];
-    if (primptr)
-    {
+    if (primptr) {
         return primptr;
     }
 
@@ -186,117 +185,97 @@ Bgeo::PrimitivePtr Bgeo::getPrimitive(int64_t index) const
     return primptr;
 }
 
-void Bgeo::preCachePrimitives()
-{
-    for (int64_t i = 0; i < getPrimitiveCount(); ++i)
-    {
+void Bgeo::preCachePrimitives() {
+    for (int64_t i = 0; i < getPrimitiveCount(); ++i) {
         getPrimitive(i);
     }
 }
 
-int64_t Bgeo::getPointAttributeCount() const
-{
+int64_t Bgeo::getPointAttributeCount() const {
     return m_pimpl->detail->pointAttributes.size();
 }
 
-Bgeo::AttributePtr Bgeo::getPointAttribute(int64_t index) const
-{
+Bgeo::AttributePtr Bgeo::getPointAttribute(int64_t index) const {
     assert(index < m_pimpl->detail->pointAttributes.size());
     return AttributePtr(new Attribute(*m_pimpl->detail->pointAttributes[index]));
 }
 
-Bgeo::AttributePtr Bgeo::getPointAttributeByName(const char* name) const
-{
+Bgeo::AttributePtr Bgeo::getPointAttributeByName(const char* name) const {
     auto attribute = m_pimpl->detail->getPointAttributeByName(name);
-    if (!attribute)
-    {
+    if (!attribute) {
         return nullptr;
     }
     return AttributePtr(new Attribute(*attribute));
 }
 
-int64_t Bgeo::getVertexAttributeCount() const
-{
+int64_t Bgeo::getVertexAttributeCount() const {
     return m_pimpl->detail->vertexAttributes.size();
 }
 
-Bgeo::AttributePtr Bgeo::getVertexAttribute(int64_t index) const
-{
+Bgeo::AttributePtr Bgeo::getVertexAttribute(int64_t index) const {
     assert(index < m_pimpl->detail->vertexAttributes.size());
     return AttributePtr(new Attribute(*m_pimpl->detail->vertexAttributes[index]));
 }
 
-Bgeo::AttributePtr Bgeo::getVertexAttributeByName(const char* name) const
-{
+Bgeo::AttributePtr Bgeo::getVertexAttributeByName(const char* name) const {
     auto attribute = m_pimpl->detail->getVertexAttributeByName(name);
-    if (!attribute)
-    {
+    if (!attribute) {
         return nullptr;
     }
     return AttributePtr(new Attribute(*attribute));
 }
 
-int64_t Bgeo::getPrimitiveAttributeCount() const
-{
+int64_t Bgeo::getPrimitiveAttributeCount() const {
     return m_pimpl->detail->primitiveAttributes.size();
 }
 
-Bgeo::AttributePtr Bgeo::getPrimitiveAttribute(int64_t index) const
-{
+Bgeo::AttributePtr Bgeo::getPrimitiveAttribute(int64_t index) const {
     assert(index < m_pimpl->detail->primitiveAttributes.size());
     return AttributePtr(new Attribute(*m_pimpl->detail->primitiveAttributes[index]));
 }
 
-Bgeo::AttributePtr Bgeo::getPrimitiveAttributeByName(const char* name) const
-{
+Bgeo::AttributePtr Bgeo::getPrimitiveAttributeByName(const char* name) const {
     auto attribute = m_pimpl->detail->getPrimitiveAttributeByName(name);
-    if (!attribute)
-    {
+    if (!attribute) {
         return nullptr;
     }
     return AttributePtr(new Attribute(*attribute));
 }
 
-int64_t Bgeo::getDetailAttributeCount() const
-{
+std::shared_ptr<parser::Detail> Bgeo::getDetail() const {
+    return m_pimpl->detail;
+}
+
+int64_t Bgeo::getDetailAttributeCount() const {
     return m_pimpl->detail->detailAttributes.size();
 }
 
-Bgeo::AttributePtr Bgeo::getDetailAttribute(int64_t index) const
-{
+Bgeo::AttributePtr Bgeo::getDetailAttribute(int64_t index) const {
     assert(index < m_pimpl->detail->detailAttributes.size());
     return AttributePtr(new Attribute(*m_pimpl->detail->detailAttributes[index]));
 }
 
-Bgeo::AttributePtr Bgeo::getDetailAttributeByName(const char *name) const
-{
+Bgeo::AttributePtr Bgeo::getDetailAttributeByName(const char *name) const {
     auto attribute = m_pimpl->detail->getDetailAttributeByName(name);
-    if (!attribute)
-    {
+    if (!attribute) {
         return nullptr;
     }
     return AttributePtr(new Attribute(*attribute));
 }
 
-int64_t Bgeo::getPrimitiveGroupCount() const
-{
+int64_t Bgeo::getPrimitiveGroupCount() const {
     return m_pimpl->detail->primitiveGroups.size();
 }
 
-std::string Bgeo::getPrimitiveGroupName(int64_t index) const
-{
+std::string Bgeo::getPrimitiveGroupName(int64_t index) const {
     assert(index < m_pimpl->detail->primitiveGroups.size());
-    const parser::PrimitiveGroup& group =
-            *m_pimpl->detail->primitiveGroups[index];
+    const parser::PrimitiveGroup& group = *m_pimpl->detail->primitiveGroups[index];
     return group.name.buffer();
 }
 
-void Bgeo::getPrimitiveGroup(int64_t index,
-                             std::vector<int32_t>& groupIndices) const
-{
+void Bgeo::getPrimitiveGroup(int64_t index, std::vector<int32_t>& groupIndices) const {
     assert(index < m_pimpl->detail->primitiveGroups.size());
-    const parser::PrimitiveGroup& group =
-            *m_pimpl->detail->primitiveGroups[index];
+    const parser::PrimitiveGroup& group = *m_pimpl->detail->primitiveGroups[index];
     group.expandGroup(groupIndices);
 }
 

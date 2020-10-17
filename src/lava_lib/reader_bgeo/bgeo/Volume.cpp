@@ -11,12 +11,10 @@
 
 #include "parser/Volume.h"
 
-namespace ika
-{
-namespace bgeo
-{
+namespace ika {
+namespace bgeo {
 
-RTTI_DEFINE(Volume, Primitive)
+RTTI_DEFINE(Volume, Primitive, VolumePrimType)
 
 Volume::Volume(const parser::Volume& volume)
     : m_volume(volume)

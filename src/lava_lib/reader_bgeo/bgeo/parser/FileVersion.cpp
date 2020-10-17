@@ -11,6 +11,9 @@
 
 #include <sstream>
 
+#include <UT/UT_JSONParser.h>
+#include <UT/UT_String.h>
+
 #include "util.h"
 #include "VersionError.h"
 
