@@ -187,8 +187,11 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Copy depth buffer.
+    LOG_DBG("GBufferRaster::execute call mpDepthPrePassGraph->execute");
     mpDepthPrePassGraph->execute(pRenderContext);
+    LOG_DBG("GBufferRaster::execute call mpFbo->attachDepthStencilTarget");
     mpFbo->attachDepthStencilTarget(mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture());
+    LOG_DBG("GBufferRaster::execute call pRenderContext->copyResource");
     pRenderContext->copyResource(renderData[kDepthName].get(), mpDepthPrePassGraph->getOutput("DepthPrePass.depth").get());
 
     // Bind extra channels as UAV buffers.
@@ -202,7 +205,11 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
     Scene::RenderFlags flags = mForceCullMode ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None;
+
+    LOG_DBG("GBufferRaster::execute mpScene->render");
     mpScene->render(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
+    LOG_DBG("GBufferRaster::execute mpScene->render done");
 
     mGBufferParams.frameCount++;
+    LOG_DBG("GBufferRaster::execute done");
 }

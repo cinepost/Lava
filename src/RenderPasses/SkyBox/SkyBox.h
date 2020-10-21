@@ -72,7 +72,6 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
     Sampler::SharedPtr mpSampler;
-    Device::SharedPtr mpDevice;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_

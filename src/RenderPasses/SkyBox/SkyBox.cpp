@@ -92,6 +92,7 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
     mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
     mpState->setProgram(mpProgram);
 
+    assert(mpDevice);
     setFilter((uint32_t)mFilter);
 }
 

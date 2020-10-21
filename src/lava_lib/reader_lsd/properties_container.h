@@ -149,6 +149,7 @@ class PropertiesContainer {
     bool propertyExist(ast::Style style, const std::string& name) const;
 
     const PropertiesContainer filterProperties(ast::Style style, const std::regex& re) const;
+    const PropertiesContainer filterProperties(ast::Style style) const;
     const PropertiesMap& properties() const { return mPropertiesMap; };
 
     size_t size() const { return mPropertiesMap.size(); };

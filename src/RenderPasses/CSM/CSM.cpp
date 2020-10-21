@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "CSM.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -166,6 +168,7 @@ void CSM::createVisibilityPassResources() {
 }
 
 void CSM::createShadowPassResources() {
+    LOG_DBG("CSM::createShadowPassResources");
     mShadowPass.mapSize = mMapSize;
     const ResourceFormat depthFormat = ResourceFormat::D32Float;
     mCsmData.depthBias = 0.005f;
@@ -191,6 +194,7 @@ void CSM::createShadowPassResources() {
             break;
     }
 
+    LOG_DBG("CSM::createShadowPassResources fboDesc");
     Fbo::Desc fboDesc(mpDevice);
     fboDesc.setDepthStencilTarget(depthFormat);
     uint32_t mipLevels = 1;
@@ -237,6 +241,8 @@ CSM::CSM(Device::SharedPtr pDevice): RenderPass(pDevice) {
 }
 
 CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    assert(pRenderContext->device() && "No device in RenderContext !!!");
+
     auto pCSM = SharedPtr(new CSM(pRenderContext->device()));
     for (const auto& v : dict) {
         if (v.key() == kMapSize) pCSM->mMapSize = (uint2)v.val();

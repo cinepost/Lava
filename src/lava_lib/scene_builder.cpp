@@ -38,6 +38,9 @@
 namespace lava {    
 
 SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags) {
+
+    mCamera.pObject = Falcor::Camera::create();
+
     mpDefaultMatreial = Material::create("default");
     mpDefaultMatreial->setBaseColor({0.5, 0.5, 0.5, 1.0});
 }
@@ -135,7 +138,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
     
     // fill in vertex positions
     for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-        point_idx = vt_idx_ptr[i];
+        point_idx = vt_idx_ptr[i] * 3;
         positions[i] = {P[point_idx], P[point_idx+1], P[point_idx+2]};
     }
 
@@ -145,7 +148,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
         assert(N.size() == P.size() && "Point normals count not equal to the number of bgeo points !!!");
 
         for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-            point_idx = vt_idx_ptr[i];
+            point_idx = vt_idx_ptr[i] * 3;
             normals[i] = {N[point_idx], N[point_idx+1], N[point_idx+2]};
         }
     } else if (vN.size()) {
@@ -164,7 +167,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
         assert(UV.size() == P.size() && "Point texture coordinates count not equal to the number of bgeo points !!!");
 
         for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
-            point_idx = vt_idx_ptr[i];
+            point_idx = vt_idx_ptr[i]*2;
             uv_coords[i] = {UV[point_idx], UV[point_idx+1]};
         }
     } else if (vUV.size()) {
@@ -222,31 +225,31 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
                             LLOG_ERR << "Polygon sides count should be 3 or more !!!";
                             break;
                         case 3:
-                            indices.push_back(csi);
-                            indices.push_back(csi+1);
                             indices.push_back(csi+2);
+                            indices.push_back(csi+1);
+                            indices.push_back(csi);
                             break;
                         case 4:
-                            indices.push_back(csi);
+                            indices.push_back(csi+2);
                             indices.push_back(csi+1);
-                            indices.push_back(csi+2);
-
                             indices.push_back(csi);
-                            indices.push_back(csi+2);
+
                             indices.push_back(csi+3);
+                            indices.push_back(csi+2);
+                            indices.push_back(csi);
                             break;
                         case 5:
-                            indices.push_back(csi);
+                            indices.push_back(csi+2);
                             indices.push_back(csi+1);
-                            indices.push_back(csi+2);
-
                             indices.push_back(csi);
-                            indices.push_back(csi+2);
-                            indices.push_back(csi+3);
 
-                            indices.push_back(csi);
                             indices.push_back(csi+3);
+                            indices.push_back(csi+2);
+                            indices.push_back(csi);
+
                             indices.push_back(csi+4);
+                            indices.push_back(csi+3);
+                            indices.push_back(csi);
                             break;
                         default:
                             LLOG_WRN << "Poly sides more than 5 unsupported for now !";
@@ -263,6 +266,18 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
                 break;
         }
     }
+
+    std::cout << "Mesh indices: [";
+    for(int idx: indices) {
+        std:: cout << " " << idx;
+    }
+    std::cout << " ]\n";
+
+    std::cout << "Mesh positions: [";
+    for(const auto& pos: positions) {
+        std:: cout << " [" << pos[0] << " " << pos[1] << " " << pos[2] << "]";
+    }
+    std::cout << " ]\n";
 
     mesh.pMaterial = mpDefaultMatreial;
     mesh.vertexCount = positions.size();

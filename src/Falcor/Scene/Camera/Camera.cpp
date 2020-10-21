@@ -95,6 +95,12 @@ namespace Falcor {
 
             if (mEnablePersistentViewMat) {
                 mData.viewMat = mPersistentViewMat;
+
+                auto viewInvMat = glm::inverse(mPersistentViewMat);
+
+                // set camera word position from our persistent view matrix
+                mData.posW = {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]};
+
             } else {
                 mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
             }

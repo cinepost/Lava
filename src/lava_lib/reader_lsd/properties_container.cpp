@@ -232,6 +232,45 @@ const Int2 PropertiesContainer::getPropertyValue(ast::Style style, const std::st
     return default_value;
 }
 
+template<>
+const Vector2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector2& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<Vector2>();
+
+    return default_value;
+}
+
+template<>
+const std::string PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const std::string& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<std::string>();
+
+    return default_value;
+}
+
+template<>
+const double PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const double& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<double>();
+
+    return default_value;
+}
+
+template<>
+const float PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const float& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<float>();
+
+    return default_value;
+}
+
+template<>
+const int PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const int& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<int>();
+
+    return default_value;
+}
 
 bool PropertiesContainer::propertyExist(ast::Style style, const std::string& name) const {
     auto propKey = PropertiesContainer::PropertyKey(style, name);
@@ -247,7 +286,21 @@ const PropertiesContainer PropertiesContainer::filterProperties(ast::Style style
     PropertiesContainer container;
 
     for(auto const& item: mPropertiesMap) {
-        if (std::regex_match(item.first.second, re)) {
+        auto const& key = item.first;
+        if ((key.first == style) && std::regex_match(key.second, re)) {
+            container.mPropertiesMap.insert(item);
+        }
+    }
+
+    return container;
+}
+
+const PropertiesContainer PropertiesContainer::filterProperties(ast::Style style) const {
+    PropertiesContainer container;
+
+    for(auto const& item: mPropertiesMap) {
+        auto const& key = item.first;
+        if (key.first == style) {
             container.mPropertiesMap.insert(item);
         }
     }

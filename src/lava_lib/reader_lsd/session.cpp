@@ -1,23 +1,28 @@
 #include <utility>
 #include "session.h"
 
+#include "../display.h"
+
 #include "lava_utils_lib/ut_fsys.h"
 #include "lava_utils_lib/logging.h"
+
 
 namespace lava {
 
 namespace lsd {
 
-std::string resolveDisplayDriverByFileName(const std::string& file_name) {
+using DisplayType = Display::DisplayType;
+
+DisplayType resolveDisplayTypeByFileName(const std::string& file_name) {
 	std::string ext = ut::fsys::getFileExtension(file_name);
 
-    if( ext == ".exr" ) return std::move("openexr");
-    if( ext == ".jpg" ) return std::move("jpeg");
-    if( ext == ".jpeg" ) return std::move("jpeg");
-    if( ext == ".png" ) return std::move("png");
-    if( ext == ".tif" ) return std::move("tiff");
-    if( ext == ".tiff" ) return std::move("tiff");
-    return std::move("openexr");
+    if( ext == ".exr" ) return DisplayType::OPENEXR;
+    if( ext == ".jpg" ) return DisplayType::JPEG;
+    if( ext == ".jpeg" ) return DisplayType::JPEG;
+    if( ext == ".png" ) return DisplayType::PNG;
+    if( ext == ".tif" ) return DisplayType::TIFF;
+    if( ext == ".tiff" ) return DisplayType::TIFF;
+    return DisplayType::OPENEXR;
 }
 
 Session::UniquePtr Session::create(std::unique_ptr<RendererIface> pRendererIface) {
@@ -33,45 +38,11 @@ Session::UniquePtr Session::create(std::unique_ptr<RendererIface> pRendererIface
 	return std::move(pSession);
 }
 
-Session::Session(std::unique_ptr<RendererIface> pRendererIface) { 
+Session::Session(std::unique_ptr<RendererIface> pRendererIface):mFirstRun(true) { 
 	mpRendererIface = std::move(pRendererIface);
 }
 
 Session::~Session() { }
-
-
-bool Session::setDisplayByType(const lsd::ast::DisplayType& display_type) {
-	std::string display_name;
-
-	switch(display_type) {
-		case lsd::ast::DisplayType::IP:
-		case lsd::ast::DisplayType::MD:
-			display_name = "houdini";
-			break;
-		case lsd::ast::DisplayType::SDL:
-			display_name = "sdl";
-			break;
-		case lsd::ast::DisplayType::OPENEXR:
-			display_name = "openexr";
-			break;
-		case lsd::ast::DisplayType::JPEG:
-			display_name = "jpeg";
-			break;
-		case lsd::ast::DisplayType::TIFF:
-			display_name = "tiff";
-			break;
-		case lsd::ast::DisplayType::PNG:
-		default:
-			display_name = "png";
-			break;
-	}
-
-	return mpRendererIface->loadDisplay(display_name);
-}
-
-bool Session::setDisplayByFileName(const std::string& file_name) {
-	return mpRendererIface->loadDisplay(lsd::resolveDisplayDriverByFileName(file_name));
-}
 
 void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 	mpRendererIface->setEnvVariable(key, value);
@@ -79,141 +50,101 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 
 void Session::cmdConfig(const std::string& file_name) {
 	// actual render graph configs loading postponed unitl renderer is initialized
-	mGraphConfigsFileNames.push_back(file_name);
+	mpRendererIface->loadDeferredScriptFile(file_name);
 }
 
 std::string Session::getExpandedString(const std::string& str) {
 	return mpRendererIface->getExpandedString(str);
 }
 
-// initialize renderer and push render data
-bool Session::initRenderData() {
-	LLOG_DBG << "initRenderData";
-	if(!mpRendererIface->initRenderer()) return false;
-
-	for(auto const& graph_conf_file: mGraphConfigsFileNames) {
-		if(!mpRendererIface->loadScriptFile(graph_conf_file)) return false;
-	}
-
-	return true;
-}
-
-bool Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
+void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
 	LLOG_DBG << "cmdImage";
 	mFrameData.imageFileName = filename;
-	std::string display_name;
-    if (display_type != ast::DisplayType::NONE) {
-		switch(display_type) {
-			case lsd::ast::DisplayType::IP:
-			case lsd::ast::DisplayType::MD:
-				display_name = "houdini";
-				break;
-			case lsd::ast::DisplayType::SDL:
-				display_name = "sdl";
-				break;
-			case lsd::ast::DisplayType::OPENEXR:
-				display_name = "openexr";
-				break;
-			case lsd::ast::DisplayType::JPEG:
-				display_name = "jpeg";
-				break;
-			case lsd::ast::DisplayType::TIFF:
-				display_name = "tiff";
-				break;
-			case lsd::ast::DisplayType::PNG:
-			default:
-				display_name = "png";
-				break;
-		}
-    } else {
-    	display_name = lsd::resolveDisplayDriverByFileName(filename);
-    }
-
-	if(!mpRendererIface->loadDisplay(display_name)) {
-		LLOG_FTL << "Failed to load \"" << display_name << "\" display driver !!!";
-		return false;
-	}
-
-    return true;
+    mDisplayData.displayType = display_type;
 }
 
-bool Session::pushScriptFiles() {
-	// this section checks it's our first run, if so load render graph configs
-	bool load_configs = false;
-	if(!mpRendererIface->isRendererInitialized()) {
-		load_configs = true;
-	
-		if(!mpRendererIface->initRenderer()){
-			LLOG_FTL << "Error initializing renderer !!!";
-			return false;
-		}
-	}
-
-	if(load_configs) {
-		for(auto const& script_file_name: mGraphConfigsFileNames) {
-			if(!mpRendererIface->loadScriptFile(script_file_name)) {
-				LLOG_ERR << "Error pushing script: " << script_file_name << " !!!";
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-bool Session::cmdRaytrace() {
-	mpGlobal->printSummary(std::cout);
-	LLOG_DBG << "cmdRaytrace";
-	
-	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
-	mFrameData.imageWidth = resolution[0];
-	mFrameData.imageHeight = resolution[1];
-	
-	// push render graph configuration scripts
-	if(!pushScriptFiles())
-		return false;
+// initialize frame independet render data
+bool Session::prepareDisplayData() {
+	LLOG_DBG << "prepareDisplayData";
 
 	// prepare display driver parameters
 	auto& props_container = mpGlobal->filterProperties(ast::Style::PLANE, std::regex("^IPlay\\.[a-zA-Z]*"));
 	for( auto const& item: props_container.properties()) {
-		LLOG_DBG << "IPlay property: " << to_string(item.first);
+		LLOG_DBG << "Display property: " << to_string(item.first);
 
 		const std::string& parm_name = item.first.second.substr(6); // remove leading "IPlay."
 		const Property& prop = item.second;
 		switch(item.second.type()) {
 			case ast::Type::FLOAT:
 				//LLOG_DBG << "type: " << to_string(prop.type()) << " value: " << to_string(prop.value());
-				mFrameData.displayFloatParameters.push_back(std::pair<std::string, std::vector<float>>( parm_name, {prop.get<float>()} ));
+				mDisplayData.displayFloatParameters.push_back(std::pair<std::string, std::vector<float>>( parm_name, {prop.get<float>()} ));
 				break;
 			case ast::Type::INT:
-				mFrameData.displayIntParameters.push_back(std::pair<std::string, std::vector<int>>( parm_name, {prop.get<int>()} ));
+				mDisplayData.displayIntParameters.push_back(std::pair<std::string, std::vector<int>>( parm_name, {prop.get<int>()} ));
 				break;
 			case ast::Type::STRING:
-				mFrameData.displayStringParameters.push_back(std::pair<std::string, std::vector<std::string>>( parm_name, {prop.get<std::string>()} ));
+				mDisplayData.displayStringParameters.push_back(std::pair<std::string, std::vector<std::string>>( parm_name, {prop.get<std::string>()} ));
 				break;
 			default:
 				break;
 		}
 	}
 
-	// push geometries
-	/*
-	auto pSceneBuilder = mpRendererIface->getSceneBuilder();
-    if(pSceneBuilder) {
+	return true;
+}
 
-    	for (const auto& pGeo: mpGlobal->geos()) {
-    		if(pGeo->isInline()) {
-    			// push inline geometry
-    			uint32_t mesh_id = pSceneBuilder->addMesh(std::move(pGeo->bgeo()));
-    			mMeshMap[pGeo->detailName()] = mesh_id;
-    		}
-    	}
-    } else {
-    	LLOG_WRN << "SceneBuilder is not ready !!!";
-    }
-	*/
+// initialize frame dependet render data
+bool Session::prepareFrameData() {
+	LLOG_DBG << "prepareFrameData";
+	if(!mpRendererIface->initRenderer()) return false;
+
+	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
+	
+	mFrameData.cameraNearPlane = camera_clip[0];
+	mFrameData.cameraFarPlane  = camera_clip[1];
+
+	mFrameData.cameraFocalLength = 50.0 / mpGlobal->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
+	mFrameData.cameraProjectionName = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
+	mFrameData.cameraTransform = mpGlobal->getTransform();
+
+	mFrameData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+
+	return true;
+}
+
+
+bool Session::cmdRaytrace() {
+	mpGlobal->printSummary(std::cout);
+	LLOG_DBG << "cmdRaytrace";
+	
+	// push frame independent data to the rendering interface
+	if(mFirstRun) {
+
+		// prepare display driver parameters
+		if(!prepareDisplayData()) {
+			LLOG_ERR << "Unable to prepare display data !!!";
+			return false;
+		}
+
+		if(!mpRendererIface->setDisplay(mDisplayData)) {
+			LLOG_ERR << "Error setting display data !!!";
+			return false;
+		}
+	}
+
+	// set up frame resolution (as they don't have to be the same size)
+	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
+	mFrameData.imageWidth = resolution[0];
+	mFrameData.imageHeight = resolution[1];
+
+	if(!prepareFrameData()) {
+		LLOG_ERR << "Unable to prepare frame data !";
+		return false;
+	}
 
 	mpRendererIface->renderFrame(mFrameData);
+
+	mFirstRun = false;
 	return true;
 }
 
@@ -230,10 +161,10 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo) {
     }
 }
 
-void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const lsd::PropValue& value) {
-	LLOG_DBG << "cmdProperty";
+void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {
+	LLOG_DBG << "cmdProperty" << to_string(value);
 	if(mpCurrentScope) {
-		mpCurrentScope->setProperty(style, token, value.get());
+		mpCurrentScope->setProperty(style, token, value);
 	}
 }
 
@@ -309,6 +240,8 @@ bool Session::cmdEnd() {
 		return false;
 	}
 
+	bool result = true;
+
 	scope::Geo::SharedPtr pGeo;
 	scope::Object::SharedPtr pObj;
 	scope::Plane::SharedPtr pPlane;
@@ -323,6 +256,7 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
+			result = pushGeometryInstance(pObj);
 			break;
 		case ast::Style::PLANE:
 			pPlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
@@ -337,8 +271,56 @@ bool Session::cmdEnd() {
 	}
 
 	mpCurrentScope = pParent;
+	return result;
+}
+
+bool Session::pushGeometryInstance(scope::Object::SharedPtr pObj) {
+	auto it = mMeshMap.find(pObj->geometryName());
+	if(it == mMeshMap.end()) {
+		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
+		return false;
+	}
+
+	auto pSceneBuilder = mpRendererIface->getSceneBuilder();
+	if (!pSceneBuilder) {
+		LLOG_ERR << "Unable to push geometry instance. SceneBuilder not ready !!!";
+		return false;
+	}
+
+	Falcor::SceneBuilder::Node node = {
+		it->first,
+		pObj->getTransform(),
+		glm::mat4(1),
+		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
+	};
+
+	uint32_t mesh_id = it->second;
+	uint32_t node_id  = pSceneBuilder->addNode(node);
+
+    // add a mesh instance to a node
+    pSceneBuilder->addMeshInstance(node_id, mesh_id);
+
 	return true;
 }
+
+
+bool Session::cmdGeometry(const std::string& name) {
+ 	LLOG_DBG << "cmdGeometry";
+ 	if( mpCurrentScope->type() != ast::Style::OBJECT) {
+ 		LLOG_ERR << "cmd_geometry outside object scope !!!";
+ 		return false;
+ 	}
+
+ 	auto pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
+ 	pObj->setGeometryName(name);
+
+ 	return true;
+}
+
+void Session::cmdTime(double time) {
+	mFrameData.time = time;
+}
+
 
 }  // namespace lsd
 

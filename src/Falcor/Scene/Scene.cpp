@@ -147,23 +147,30 @@ LightCollection::ConstSharedPtrRef Scene::getLightCollection(RenderContext* pCon
 void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags) {
     PROFILE(pContext->device(), "renderScene");
 
+    LOG_DBG("pState->setVao");
     pState->setVao(mpVao);
+    LOG_DBG("pVars->setParameterBlock");
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
     bool overrideRS = !is_set(flags, RenderFlags::UserRasterizerState);
     auto pCurrentRS = pState->getRasterizerState();
 
+    LOG_DBG("mDrawCounterClockwiseMeshes.count %u ", mDrawCounterClockwiseMeshes.count);
     if (mDrawCounterClockwiseMeshes.count > 0) {
         if (overrideRS) pState->setRasterizerState(nullptr);
         pContext->drawIndexedIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
     }
 
+    LOG_DBG("mDrawClockwiseMeshes.count %u ", mDrawClockwiseMeshes.count);
     if (mDrawClockwiseMeshes.count > 0) {
         if (overrideRS) pState->setRasterizerState(mpFrontClockwiseRS);
         pContext->drawIndexedIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
     }
 
-    if (overrideRS) pState->setRasterizerState(pCurrentRS);
+    if (overrideRS) {
+        LOG_DBG("pState->setRasterizerState");
+        pState->setRasterizerState(pCurrentRS);
+    }
 }
 
 #ifdef FALCOR_D3D12

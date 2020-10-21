@@ -13,10 +13,14 @@ namespace lava {
 
 class Display {
  public:
-    using UniquePtr = std::unique_ptr<Display>;
+    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
+
+ public:
+    using SharedPtr = std::shared_ptr<Display>;
 
     ~Display();
-    static UniquePtr create(const std::string& driver_name);
+    static SharedPtr create(Display::DisplayType display_type);
+
 
     bool open(const std::string& image_name, uint width, uint height);
     bool close();
@@ -24,18 +28,20 @@ class Display {
     bool opened() { return mOpened; }
     bool closed() { return mClosed; }
 
+    DisplayType type() const { return mDisplayType; };
+
     uint width() { return mImageWidth; };
     uint height() { return mImageHeight; };
 
-    bool pushStringParameter(const std::string& name, const std::vector<std::string>& strings);
-    bool pushIntParameter(const std::string& name, const std::vector<int>& ints);
-    bool pushFloatParameter(const std::string& name, const std::vector<float>& floats);
+    bool setStringParameter(const std::string& name, const std::vector<std::string>& strings);
+    bool setIntParameter(const std::string& name, const std::vector<int>& ints);
+    bool setFloatParameter(const std::string& name, const std::vector<float>& floats);
 
     bool sendBucket(int x, int y, int width, int height, const uint8_t *data);
     bool sendImage(int width, int height, const uint8_t *data);
 
  private:
-    Display(const std::string& driver_name);
+    Display();
 
     //static void makeStringsParameter(const char* name, const char** strings, int count, UserParameter& parameter);
     static void makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter);
@@ -43,6 +49,8 @@ class Display {
     static void makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter);
 
  private:
+    DisplayType mDisplayType = DisplayType::NONE;
+
     std::string mDriverName = "";
     std::string mImageName = "";
     uint mImageWidth, mImageHeight;

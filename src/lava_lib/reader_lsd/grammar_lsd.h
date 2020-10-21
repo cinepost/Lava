@@ -34,6 +34,8 @@
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
+#include "../display.h"
+
 #include <boost/log/core.hpp>
 #include "lava_utils_lib/logging.h"
 
@@ -51,6 +53,8 @@ namespace lsd {
 
     typedef static_vector<uint, 3> Version;
     
+    typedef double Float;
+
     typedef static_vector<int, 2> Int2;
     typedef static_vector<int, 3> Int3;
     typedef static_vector<int, 4> Int4; 
@@ -70,8 +74,8 @@ namespace ast {
 
     enum class Type { FLOAT, BOOL, INT, INT2, INT3, INT4, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
     enum class Style { GLOBAL, MATERIAL, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
-    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL };
-
+    typedef lava::Display::DisplayType DisplayType;
+    
     struct ifthen;
     struct endif;
     struct setenv;
@@ -134,7 +138,7 @@ namespace ast {
     };
 
     struct cmd_time {
-        float time;
+        double time;
     };
 
     struct cmd_start {
@@ -158,7 +162,7 @@ namespace ast {
     };
 
     struct cmd_geometry {
-        std::string geometry_object;
+        std::string geometry_name;
     };
 
     struct cmd_detail {
@@ -328,7 +332,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, temporary, name, filename)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_object)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, array_size, style, type, token, values)
@@ -563,6 +567,7 @@ namespace parser {
         DisplayTypesTable() {
             add ("\"ip\""       , ast::DisplayType::IP)
                 ("\"md\""       , ast::DisplayType::MD)
+                ("\"idisplay\"" , ast::DisplayType::IDISPLAY)
                 ("\"sdl\""      , ast::DisplayType::SDL)
                 ("\"JPEG\""     , ast::DisplayType::JPEG)
                 ("\"PNG\""      , ast::DisplayType::PNG)

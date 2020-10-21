@@ -161,6 +161,8 @@ namespace Falcor {
         std::ifstream src(fullpath, std::ios::binary);
         std::ofstream dst(fullpath + kPassTempLibSuffix, std::ios::binary);
         dst << src.rdbuf();
+        dst.flush();
+        dst.close();
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename) {
@@ -172,8 +174,8 @@ namespace Falcor {
         //std::string fullpath = getExecutableDirectory() + "/render_passes/" + getFilenameFromPath(filePath.string());
         std::string fullpath;
         
-        if (!findFileInRenderPassDirectories(filename, fullpath)) {
-            logWarning("Can't load render-pass library `" + filename + "`. File not found");
+        if (!findFileInRenderPassDirectories(filePath.string(), fullpath)) {
+            logWarning("Can't load render-pass library `" + filePath.string() + "`. File not found");
             return;
         }
 
@@ -188,6 +190,10 @@ namespace Falcor {
         DllHandle l = loadDll(fullpath + kPassTempLibSuffix);
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
+
+        if(!func) {
+            LOG_ERR("RenderPass library getPasses proc address is NULL !!!");
+        }
 
         // Add the DLL project directory to the search paths
         if (isDevelopmentMode()) {

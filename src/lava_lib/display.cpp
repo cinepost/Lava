@@ -33,21 +33,50 @@ std::string getDspyErrorMessage(const PtDspyError& err) {
     }
 }
 
-Display::Display(const std::string& driver_name): mDriverName(driver_name), mOpened(false), mClosed(false) {
+std::string getDisplayDriverFileName(Display::DisplayType display_type) {
+    if (display_type != Display::DisplayType::NONE) {
+        switch(display_type) {
+            case Display::DisplayType::IP:
+            case Display::DisplayType::MD:
+                return "houdini";
+            case Display::DisplayType::SDL:
+                return "sdl";
+            case Display::DisplayType::IDISPLAY:
+                return "idisplay";
+            case Display::DisplayType::OPENEXR:
+                return "openexr";
+            case Display::DisplayType::JPEG:
+                return "jpeg";
+            case Display::DisplayType::TIFF:
+                return "tiff";
+            case Display::DisplayType::PNG:
+                return "png";
+            default:
+                break;
+        }
+    }
+
+    return "";
+}
+
+Display::Display(): mOpened(false), mClosed(false) {
     mImageWidth = mImageHeight = 0;
-    LLOG_DBG << "Display \"" << mDriverName << "\" constructed!";
 }
 
-Display::~Display() {
-    LLOG_DBG << "Display \"" << mDriverName << "\" destructed!";
-}
+Display::~Display() { }
 
-Display::UniquePtr Display::create(const std::string& driver_name) {
+Display::SharedPtr Display::create(Display::DisplayType display_type) {
 	char *error;
 	char *lava_home = getenv("LAVA_HOME");
 
+    std::string display_driver_name = getDisplayDriverFileName(display_type);
+    if (display_driver_name == "") {
+        LLOG_ERR << "Unable to get display driver name !!!";
+        return nullptr;
+    }
+
 	boost::format libdspy_name("%1%/etc/d_%2%.so");
-	libdspy_name % lava_home % driver_name;
+	libdspy_name % lava_home % display_driver_name;
 
 	void* lib_handle = dlopen(libdspy_name.str().c_str(), RTLD_NOW);
 	if (!lib_handle) {
@@ -55,7 +84,7 @@ Display::UniquePtr Display::create(const std::string& driver_name) {
         return nullptr;
     }
 
-    Display* pDisplay = new Display(driver_name);
+    Display* pDisplay = new Display();
     
     /* Necessary function pointers */
 
@@ -94,7 +123,10 @@ Display::UniquePtr Display::create(const std::string& driver_name) {
         pDisplay->mActiveRegionFunc = nullptr;
     }  
 
-    return UniquePtr(pDisplay);
+    pDisplay->mDriverName = display_driver_name;
+    pDisplay->mDisplayType = display_type;
+
+    return SharedPtr(pDisplay);
 }
 
 bool Display::open(const std::string& image_name, uint width, uint height) {
@@ -239,7 +271,7 @@ bool Display::sendImage(int width, int height, const uint8_t *data) {
     return true;
 }
 
-bool Display::pushStringParameter(const std::string& name, const std::vector<std::string>& strings) {
+bool Display::setStringParameter(const std::string& name, const std::vector<std::string>& strings) {
     LLOG_DBG << "String parameter " << name;
     if(mOpened) {
         LLOG_ERR << "Can't push parameter. Display opened already !!!";
@@ -250,7 +282,7 @@ bool Display::pushStringParameter(const std::string& name, const std::vector<std
     return true;
 }
 
-bool Display::pushIntParameter(const std::string& name, const std::vector<int>& ints) {
+bool Display::setIntParameter(const std::string& name, const std::vector<int>& ints) {
     LLOG_DBG << "Int parameter " << name;
     if(mOpened) {
         LLOG_ERR << "Can't push parameter. Display opened already !!!";
@@ -261,7 +293,7 @@ bool Display::pushIntParameter(const std::string& name, const std::vector<int>& 
     return true;
 }
 
-bool Display::pushFloatParameter(const std::string& name, const std::vector<float>& floats) {
+bool Display::setFloatParameter(const std::string& name, const std::vector<float>& floats) {
     LLOG_DBG << "Float parameter " << name;
     if(mOpened) {
         LLOG_ERR << "Can't push parameter. Display opened already !!!";

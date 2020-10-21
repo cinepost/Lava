@@ -1,20 +1,52 @@
 from falcor import *
 
 def BSDFViewerGraph(device):
+    import falcor
     g = RenderGraph(device, "BSDFViewerGraph")
 
-    #loadRenderPassLibrary("AccumulatePass")
+    loadRenderPassLibrary("AccumulatePass")
     loadRenderPassLibrary("BSDFViewer")
+    loadRenderPassLibrary("DepthPass")
+    loadRenderPassLibrary("CSM")
+    loadRenderPassLibrary("GBuffer")
+    loadRenderPassLibrary("SSAO")
+    loadRenderPassLibrary("SkyBox")
 
-    BSDFViewer = RenderPass(device, "BSDFViewer")
-    g.addPass(BSDFViewer, "BSDFViewer")
+    #BSDFViewer = RenderPass(device, "BSDFViewer")
+    #g.addPass(BSDFViewer, "BSDFViewer")
     
+    GBufferRaster = RenderPass(device, "GBufferRaster", {
+        'samplePattern': SamplePattern.Center, 
+        'sampleCount': 16, 
+        'disableAlphaTest': False, 
+        'forceCullMode': False, 
+        'cull': CullMode.CullNone, #CullMode.CullBack, 
+        'useBentShadingNormals': True
+    })
+
+    SkyBox = RenderPass(device, "SkyBox", {'texName': '/home/max/env.exr', 'loadAsSrgb': True, 'filter': SamplerFilter.Linear})
+    g.addPass(SkyBox, "SkyBox")
+
+    DepthPass = RenderPass(device, "DepthPass")
+    g.addPass(DepthPass, "DepthPass")
+
+    #SSAO = RenderPass(device, "SSAO")
+
+    g.addPass(GBufferRaster, "GBufferRaster")
+    #g.addPass(SSAO, "SSAO")
+
     #AccumulatePass = RenderPass(device, "AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Double})
     #g.addPass(AccumulatePass, "AccumulatePass")
     
     #g.addEdge("BSDFViewer.output", "AccumulatePass.input")
     #g.markOutput("AccumulatePass.output")
-    g.markOutput("BSDFViewer.output")
+    #g.markOutput("BSDFViewer.output")
+    #g.markOutput("GBufferRaster.normW")
+    g.addEdge("DepthPass.depth", "SkyBox.depth")
+    g.markOutput("SkyBox.target")
+    
+    #g.markOutput("SSAO.normals")
+
     return g
 
 def defaultRenderGraph(device):
@@ -51,6 +83,7 @@ default_device = device_manager.defaultRenderingDevice()
 
 #render_graph = defaultRenderGraph(default_device)
 render_graph = BSDFViewerGraph(default_device)
-#try: m.addGraph(render_graph)
+#render_graph = TestGraph(default_device)
+
 try: renderer.addGraph(render_graph)
 except NameError: None

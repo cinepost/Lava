@@ -4,6 +4,8 @@
 #include <memory>
 #include <map>
 
+#include "Externals/GLM/glm/mat4x4.hpp"
+
 #include "display.h"
 
 namespace lava {
@@ -13,15 +15,30 @@ class SceneBuilder;
 
 class RendererIface {
  public:
+    struct DisplayData {
+        Display::DisplayType                                            displayType;
+        std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
+        std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
+        std::vector<std::pair<std::string, std::vector<float>>>         displayFloatParameters;
+    };
+
+    struct GlobalData {
+        double  fps = 25.0;
+    };
+
     struct FrameData {
         std::string imageFileName = "";
         uint imageWidth = 0;
         uint imageHeight = 0;
         uint imageSamples = 0;
 
-        std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
-        std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
-        std::vector<std::pair<std::string, std::vector<float>>>         displayFloatParameters;
+        double time = 0.0;
+
+        std::string cameraProjectionName = "perspective";
+        double      cameraNearPlane = 0.01;
+        double      cameraFarPlane  = 1000.0;
+        glm::mat4   cameraTransform;
+        double      cameraFocalLength = 1.0;
     };
 
  public:
@@ -37,20 +54,20 @@ class RendererIface {
     std::string getExpandedString(const std::string& s);
 
     /**
-     */
-    bool loadDisplay(const std::string& display_name);
-
-    /**
     */
     bool openDisplay(const std::string& image_name, uint width, uint height);
 
     /**
     */
-    bool closeDisplay();
+    bool setDisplay(const DisplayData& display_data);  
 
-    /**
+    /** load and execute python script file
      */
     bool loadScriptFile(const std::string& file_name);
+
+    /** load and deffered execute (before frame being rendered) python script file.
+     */
+    void loadDeferredScriptFile(const std::string& file_name);
 
     /**
     */
@@ -63,6 +80,8 @@ class RendererIface {
  private:
     std::map<std::string, std::string>  mEnvmap;
     Renderer                            *mpRenderer;
+
+    std::vector<std::string>            mDeferredScriptFileNames;
 
     friend class Renderer;
 };

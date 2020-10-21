@@ -25,6 +25,7 @@ Renderer::UniquePtr Renderer::create(Falcor::DeviceManager::DeviceLocalUID uid) 
 
 Renderer::Renderer(Falcor::DeviceManager::DeviceLocalUID uid): mDeviceUID(uid), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
+    mpDisplay = nullptr;
     init();
 }
 
@@ -46,10 +47,20 @@ bool Renderer::init() {
     device_desc.height = 720;
 
 	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mDeviceUID, device_desc);
+    
+
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
+    mpCamera = Falcor::Camera::create();
+    mpSceneBuilder->setCamera(mpCamera);
 
 	mpClock = new Falcor::Clock(mpDevice);
     //mpClock->setTimeScale(config.timeScale);
+
+    auto pBackBufferFBO = mpDevice->getOffscreenFbo();
+    if (!pBackBufferFBO) {
+        logError("Unable to get swap chain FBO!!!");
+    }
+    mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
     mpFrameRate = new Falcor::FrameRate(mpDevice);
 
@@ -97,10 +108,12 @@ void Renderer::releaseInterface(std::unique_ptr<RendererIface> pInterface) {
 	}
 }
 
-bool Renderer::loadDisplayDriver(const std::string& display_name) {
-	mpDisplay = Display::create(display_name);
-	if(!mpDisplay)
+bool Renderer::loadDisplay(Display::DisplayType display_type) {
+	mpDisplay = Display::create(display_type);
+	if(!mpDisplay) {
+        LLOG_ERR << "Unable to create display !!!";
 		return false;
+    }
 
 	return true;
 }
@@ -121,8 +134,6 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str) 
 }
 
 bool Renderer::loadScript(const std::string& file_name) {
-	//auto pGraph = Falcor::RenderGraph::create(mpDevice);
-
 	try {
         LLOG_DBG << "Loading frame graph configuration: " << file_name;
         auto ctx = Falcor::Scripting::getGlobalContext();
@@ -194,7 +205,44 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
     pGraph->execute(pRenderContext);
 }
 
-void Renderer::renderFrame(uint samples) {
+void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
+    // finalize camera
+    mpCamera->setAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
+    mpCamera->setNearPlane(frame_data.cameraNearPlane);
+    mpCamera->setFarPlane(frame_data.cameraFarPlane);
+    mpCamera->setViewMatrix(frame_data.cameraTransform);
+    mpCamera->setFocalLength(frame_data.cameraFocalLength);
+
+    // finalize scene
+    auto pScene = mpSceneBuilder->getScene();;
+
+    if (pScene) {
+        pScene->setCameraAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
+
+        if (mpSampler == nullptr) {
+            // create common texture sampler
+            Sampler::Desc desc;
+            desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+            desc.setMaxAnisotropy(8);
+            mpSampler = Falcor::Sampler::create(mpDevice, desc);
+        }
+        pScene->bindSamplerToMaterials(mpSampler);
+    }
+
+    // finalize rendering graphs
+    for (auto& g : mGraphs) {
+        g.pGraph->setScene(pScene);
+        auto dims = g.pGraph->dims();
+        if (dims.x != frame_data.imageWidth || dims.y != frame_data.imageHeight) {
+            g.pGraph->resize(frame_data.imageWidth, frame_data.imageHeight, Falcor::ResourceFormat::RGBA32Float);
+            //Falcor::Scene::SharedPtr graphScene = g.pGraph->getScene();
+            //if (graphScene) graphScene->setCameraAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
+        }
+    }
+    gpFramework->getClock().setTime(frame_data.time);
+}
+
+void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return;
@@ -205,42 +253,59 @@ void Renderer::renderFrame(uint samples) {
         return;
     }
 
-    if(!mpDisplay->opened()) {
-        LLOG_ERR << "Renderer display not opened !!!";
-        return;
+    if( frame_data.imageSamples == 0) {
+        LLOG_WRN << "Not enough image samples specified in frame data !";
+    }
+
+    if(mpDisplay->opened()) {
+        mpDisplay->close();
+    }
+
+    if(!mpDisplay->open(frame_data.imageFileName, frame_data.imageWidth, frame_data.imageHeight)) {
+        LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
 
     uint image_width, image_height;
     image_width = mpDisplay->width();
     image_height = mpDisplay->height();
 
-    for (auto const& gData: mGraphs) {
-        auto dims = gData.pGraph->dims();
-        if (dims.x != image_width || dims.y != image_height) {
-            gData.pGraph->resize(image_width, image_height, Falcor::ResourceFormat::RGBA32Float);
-        }
-    }
+    finalizeScene(frame_data);
 
     auto pRenderContext = mpDevice->getRenderContext();
 
     LLOG_DBG << "Renderer::renderFrame";
 
+    // Clear viewer frame buffer.
+    const Falcor::float4 clearColor(0.1f, 0.38f, 0.52f, 1);
+    pRenderContext->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, Falcor::FboAttachmentType::All);
+
     //beginFrame(pRenderContext, mpTargetFBO);
 
     if (mGraphs.size()) {
         LLOG_DBG << "process render graphs";
-        auto& pGraph = mGraphs[mActiveGraph].pGraph;
-
+        
         auto pScene = mpSceneBuilder->getScene();
-        // Update scene and camera.
-        if (pScene) {
-            pScene->update(pRenderContext, Falcor::gpFramework->getClock().getTime());
-        }
 
-        executeActiveGraph(pRenderContext);
+        // render image samples
+        double shutter_length = 0.5;
+        double fps = 25.0;
+        double time = frame_data.time;
+        double sample_time_duration = (1.0 * shutter_length) / frame_data.imageSamples;
+        for (uint i = 0; i < frame_data.imageSamples; i++) {
+            LLOG_DBG << "Rendering sample no " << i + 1 << " of " << frame_data.imageSamples;
+            // Update scene and camera.
+            if (pScene)
+                pScene->update(pRenderContext, time);
+
+            executeActiveGraph(pRenderContext);
+        
+            time += sample_time_duration;
+        }
         
         // capture graph(s) ouput(s).
         if (mGraphs[mActiveGraph].mainOutput.size()) {
+            auto& pGraph = mGraphs[mActiveGraph].pGraph;
+
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             assert(pOutTex);
 
@@ -264,14 +329,14 @@ void Renderer::renderFrame(uint samples) {
             
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
             assert(textureData.size() == image_width * image_height * channels * 4); // testing only on 32bit RGBA for now
-            //mpDisplay->sendBucket(0, 0, image_width, image_height, textureData.data());
             
-
+            /*
             for(uint32_t x = 0; x < image_width; x+=4) {
                 for(uint32_t y = 0; y < image_height; y++) {
                     textureData[(x + y*image_width)*4] = 255;
                 }
             }
+            */
 
             mpDisplay->sendImage(image_width, image_height, textureData.data());
 
@@ -294,33 +359,6 @@ void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::F
 
 void Renderer::endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
     //for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
-}
-
-bool Renderer::pushDisplayStringParameter(const std::string& name, const std::vector<std::string>& strings) {
-    if(!mpDisplay) {
-        LLOG_ERR << "No display driver loaded !!!";
-        return false;
-    }
-
-    return mpDisplay->pushStringParameter(name, strings);
-}
-
-bool Renderer::pushDisplayIntParameter(const std::string& name, const std::vector<int>& ints) {
-    if(!mpDisplay) {
-        LLOG_ERR << "No display driver loaded !!!";
-        return false;
-    }
-    
-    return mpDisplay->pushIntParameter(name, ints);
-}
-
-bool Renderer::pushDisplayFloatParameter(const std::string& name, const std::vector<float>& floats) {
-    if(!mpDisplay) {
-        LLOG_ERR << "No display driver loaded !!!";
-        return false;
-    }
-    
-    return mpDisplay->pushFloatParameter(name, floats);
 }
 
 // IFramework 

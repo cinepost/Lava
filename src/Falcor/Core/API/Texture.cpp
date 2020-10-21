@@ -33,6 +33,8 @@
 #include "RenderContext.h"
 #include "Falcor/Utils/Threading.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor {
 
 // namespace {
@@ -121,6 +123,9 @@ Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t 
 
 Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
     : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
+    
+    LOG_DBG("Texture width %u height %u depth %u", width, height, depth);
+
     assert(width > 0 && height > 0 && depth > 0);
     assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
     assert(format != ResourceFormat::Unknown);

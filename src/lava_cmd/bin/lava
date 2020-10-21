@@ -11,7 +11,7 @@ fi
 
 # Initialize application environment.
 APP_DIR="$(dirname "$f")"
-source "${APP_DIR}/app_init.sh" "${APP_DIR}"
+source "${APP_DIR}/lava_app_init.sh" "${APP_DIR}"
 
 # Now run the requested binary.
 exec "$f-bin" "$@"

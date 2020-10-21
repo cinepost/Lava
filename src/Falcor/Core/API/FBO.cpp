@@ -327,7 +327,6 @@ namespace Falcor {
     }
 
     void Fbo::finalize() const {
-        LOG_DBG("finalizing...");
         if (mpDesc == nullptr) {
             if (calcAndValidateProperties() == false) {
                 LOG_ERR("error finalizing!!!");
@@ -335,7 +334,6 @@ namespace Falcor {
             }
             initApiHandle();
         }
-        LOG_DBG("done finalizing!");
     }
 
     void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]) {

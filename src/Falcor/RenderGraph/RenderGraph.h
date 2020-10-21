@@ -59,6 +59,10 @@ class Device;
 
         static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
 
+        static SharedPtr create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name = "");
+
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name = "");
+
         /** Set a scene
         */
         void setScene(const Scene::SharedPtr& pScene);
@@ -222,7 +226,15 @@ class Device;
         friend class RenderPassLibrary;
         friend class RenderGraphCompiler;
 
+        /** Default consturctor for FBO rendering (relies on gpFramework )
+         */
         RenderGraph(std::shared_ptr<Device> device, const std::string& name);
+
+        /** Special consturctors for rendering without gpFramework
+         */
+        RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name);
+        RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name);
+
         std::string mName;
 
         struct EdgeData {

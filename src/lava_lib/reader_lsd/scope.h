@@ -121,8 +121,14 @@ class Object: public Transformable {
 
     ast::Style type() override { return ast::Style::OBJECT; };
 
+    const std::string& geometryName() const { return mGeometryName; };
+    void setGeometryName(const std::string& name) { mGeometryName = name; };
+
  private:
-    Object(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
+    Object(ScopeBase::SharedPtr pParent): Transformable(pParent), mGeometryName() {};
+
+ private:
+    std::string mGeometryName;
 };
 
 class Plane: public ScopeBase {

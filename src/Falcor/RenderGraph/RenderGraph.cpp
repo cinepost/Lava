@@ -45,14 +45,36 @@ RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, const
     return SharedPtr(new RenderGraph(device, name));
 }
 
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, Fbo::SharedPtr pTargetFbo, const std::string& name) {
+    return SharedPtr(new RenderGraph(device, pTargetFbo, name));
+}
+
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
+    return SharedPtr(new RenderGraph(device, frame_size, format, name));
+}
+
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name): mName(name), mpDevice(pDevice) {
-    //if (gpFramework == nullptr) {
-    //    throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
-    //}
+    if (gpFramework == nullptr) {
+        throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
+    }
     mpGraph = DirectedGraph::create();
     mpPassDictionary = Dictionary::create();
     gRenderGraphs.push_back(this);
-    //onResize(gpFramework->getTargetFbo().get());
+    onResize(gpFramework->getTargetFbo().get());
+}
+
+RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mName(name), mpDevice(pDevice) {
+    mpGraph = DirectedGraph::create();
+    mpPassDictionary = Dictionary::create();
+    gRenderGraphs.push_back(this);
+    onResize(pTargetFbo.get());
+}
+
+RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mName(name), mpDevice(pDevice) {
+    mpGraph = DirectedGraph::create();
+    mpPassDictionary = Dictionary::create();
+    gRenderGraphs.push_back(this);
+    resize(frame_size[0], frame_size[1], format);
 }
 
 RenderGraph::~RenderGraph() {
@@ -344,6 +366,7 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
 }
 
 void RenderGraph::execute(RenderContext* pContext) {
+    LOG_DBG("RenderGraph::execute dims %u %u", mCompilerDeps.defaultResourceProps.dims[0], mCompilerDeps.defaultResourceProps.dims[1]);
     std::string log;
     if (!compile(pContext, log)) {
         logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");

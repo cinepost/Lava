@@ -174,7 +174,7 @@ void EchoVisitor::operator()(ast::cmd_transform const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_geometry const& c) const {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_object << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_name << "\x1b[0m\n";
 }
 
 void EchoVisitor::operator()(ast::cmd_property const& c) const {

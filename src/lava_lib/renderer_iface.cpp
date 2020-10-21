@@ -31,16 +31,8 @@ std::string RendererIface::getExpandedString(const std::string& s) {
 
 std::shared_ptr<SceneBuilder> RendererIface::getSceneBuilder(){ return mpRenderer->mpSceneBuilder; }
 
-bool RendererIface::loadDisplay(const std::string& display_name) {
-	return mpRenderer->loadDisplayDriver(getExpandedString(display_name));
-}
-
 bool RendererIface::openDisplay(const std::string& image_name, uint width, uint height) {
 	return mpRenderer->openDisplay(getExpandedString(image_name), width, height);
-}
-
-bool RendererIface::closeDisplay() {
-	return mpRenderer->closeDisplay();
 }
 
 bool RendererIface::loadScriptFile(const std::string& file_name) {
@@ -51,12 +43,40 @@ bool RendererIface::loadScriptFile(const std::string& file_name) {
 	return mpRenderer->loadScript(getExpandedString(file_name));
 }
 
+void RendererIface::loadDeferredScriptFile(const std::string& file_name) {
+	mDeferredScriptFileNames.push_back(file_name);
+}
+
 bool RendererIface::initRenderer() {
 	LLOG_DBG << "initRenderer";
 	if(mpRenderer->isInited())
 		return true;
 
 	return mpRenderer->init();
+}
+
+bool RendererIface::setDisplay(const DisplayData& display_data) {
+	auto pDisplay = mpRenderer->display();
+
+	if(!pDisplay) {
+		if(!mpRenderer->loadDisplay(display_data.displayType)) {
+			return false;
+		}
+
+		pDisplay = mpRenderer->display();
+	}
+
+	// push display driver parameters
+	for(auto const& parm: display_data.displayStringParameters)
+		pDisplay->setStringParameter(parm.first, parm.second);
+
+	for(auto const& parm: display_data.displayIntParameters)
+		pDisplay->setIntParameter(parm.first, parm.second);
+
+	for(auto const& parm: display_data.displayFloatParameters)
+		pDisplay->setFloatParameter(parm.first, parm.second);
+
+	return true;
 }
 
 bool RendererIface::isRendererInitialized() const {
@@ -70,17 +90,19 @@ void RendererIface::renderFrame(const FrameData& frame_data) {
 		return;
 	}
 
-	for(auto const& parm: frame_data.displayStringParameters)
-		mpRenderer->pushDisplayStringParameter(parm.first, parm.second);
+	// load deferred scripts
+	for( auto const& file_name: mDeferredScriptFileNames ) {
+		if(!loadScriptFile(file_name)) {
+			LLOG_ERR << "Error loading deferred script file " << file_name;
+		}
+	}
 
-	for(auto const& parm: frame_data.displayIntParameters)
-		mpRenderer->pushDisplayIntParameter(parm.first, parm.second);
+	if(!mpRenderer->display()) {
+		LLOG_ERR << "Renderer display is not ready !!!";
+		return;
+	}
 
-	for(auto const& parm: frame_data.displayFloatParameters)
-		mpRenderer->pushDisplayFloatParameter(parm.first, parm.second);
-
-	mpRenderer->openDisplay(frame_data.imageFileName, frame_data.imageWidth, frame_data.imageHeight);
-	mpRenderer->renderFrame();
+	mpRenderer->renderFrame(frame_data);
 	mpRenderer->closeDisplay();
 }
 

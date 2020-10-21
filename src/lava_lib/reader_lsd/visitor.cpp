@@ -89,8 +89,7 @@ void Visitor::operator()(ast::setenv const& c) const {
 };
 
 void Visitor::operator()(ast::cmd_image const& c) const {
-    if(!mpSession->cmdImage(c.display_type, c.filename))
-        throw std::runtime_error("Error processing image command !!!");
+    mpSession->cmdImage(c.display_type, c.filename);
 }
 
 void Visitor::operator()(ast::cmd_quit const& c) const { 
@@ -110,7 +109,7 @@ void Visitor::operator()(ast::cmd_end const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_time const& c) const {
-
+    mpSession->cmdTime(c.time);
 }
 
 void Visitor::operator()(ast::cmd_detail const& c) {
@@ -156,7 +155,7 @@ void Visitor::operator()(ast::cmd_transform const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_geometry const& c) const {
-
+    mpSession->cmdGeometry(c.geometry_name);
 }
 
 void Visitor::operator()(ast::cmd_deviceoption const& c) const {
@@ -164,18 +163,27 @@ void Visitor::operator()(ast::cmd_deviceoption const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_property const& c) const {
+    if(!c.values.size())
+        return;
+
     if (c.values.size() != 1) {
         LLOG_WRN << "Value arrays not supported !!! Ignored for token: " << c.token;
         return;
     }
-   mpSession->cmdProperty(c.style, c.token, c.values[0]);
+   
+   auto const& value = c.values[0];
+   mpSession->cmdProperty(c.style, c.token, value.get());
 }
 
 void Visitor::operator()(ast::cmd_declare const& c) const {
-    if (c.values.size() != 1) {
+    if(!c.values.size())
+        return;
+
+    if (c.values.size() > 1) {
         LLOG_WRN << "Value arrays not supported !!! Ignored for token: " << c.token;
         return;
     }
+
     mpSession->cmdDeclare(c.style, c.type, c.token, c.values[0]);
 }
 

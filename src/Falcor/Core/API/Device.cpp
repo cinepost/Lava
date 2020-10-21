@@ -169,6 +169,7 @@ void Device::release() {
     decltype(mDeferredReleases)().swap(mDeferredReleases);  
 }
 
+
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
     ResourceHandle apiHandle;
     getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
@@ -191,6 +192,10 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
+    if(headless){
+        return updateOffscreenFBO(width, height, colorFormat, depthFormat);
+    }
+
     ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
     getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 

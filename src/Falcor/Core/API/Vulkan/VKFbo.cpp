@@ -54,16 +54,12 @@ uint32_t Fbo::getMaxColorTargetCount(std::shared_ptr<Device> pDevice) {
 }
 
 void Fbo::initApiHandle() const {
-    LOG_DBG("Fbo::initApiHandle");
     // Bind the color buffers
     uint32_t arraySize = -1;
     std::vector<VkImageView> attachments(Fbo::getMaxColorTargetCount(mpDevice) + 1);  // 1 is for the depth
 
-    LOG_DBG("1");
-
     uint32_t rtCount = 0;
     for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(mpDevice); i++) {
-        LOG_DBG("1.1");
         if (mColorAttachments[i].pTexture) {
             assert(arraySize == -1 || arraySize == getRenderTargetView(i)->getViewInfo().arraySize);
             arraySize = getRenderTargetView(i)->getViewInfo().arraySize;
@@ -72,21 +68,11 @@ void Fbo::initApiHandle() const {
         }
     }
 
-    LOG_DBG("2");
-
     // Bind the depth buffer
     if (mDepthStencil.pTexture) {
         assert(arraySize == -1 || arraySize == getDepthStencilView()->getViewInfo().arraySize);
         if (arraySize == -1) {
             arraySize = getDepthStencilView()->getViewInfo().arraySize;
-        }
-        auto test = getDepthStencilView();
-        if (!test) {
-            printf("ERROR getDepthStencilView returned NULL\n");
-        }
-        auto test2 = test->getApiHandle();
-        if (!test2) {
-            printf("ERROR getDepthStencilView->getApiHandle() returned NULL\n");
         }
         attachments[rtCount] = getDepthStencilView()->getApiHandle();
         rtCount++;
@@ -94,10 +80,8 @@ void Fbo::initApiHandle() const {
 
     // Render Pass
     RenderPassCreateInfo renderPassInfo;
-    LOG_DBG("Fbo::initApiHandle initVkRenderPassInfo");
     initVkRenderPassInfo(*mpDesc, renderPassInfo);
     VkRenderPass pass;
-    LOG_DBG("Fbo::initApiHandle vkCreateRenderPass");
     vkCreateRenderPass(mpDevice->getApiHandle(), &renderPassInfo.info, nullptr, &pass);
 
     // Framebuffer
@@ -112,12 +96,10 @@ void Fbo::initApiHandle() const {
 
     VkFramebuffer frameBuffer;
 
-    LOG_DBG("Fbo::initApiHandle vkCreateFramebuffer");
     vkCreateFramebuffer(mpDevice->getApiHandle(), &frameBufferInfo, nullptr, &frameBuffer);
 
     if (mApiHandle) mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
     mApiHandle = ApiHandle::create(mpDevice, pass, frameBuffer);
-    LOG_DBG("Fbo::initApiHandle done");
 }
 
 void Fbo::applyColorAttachment(uint32_t rtIndex) {}

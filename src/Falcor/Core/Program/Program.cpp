@@ -276,7 +276,6 @@ bool Program::checkIfFilesChanged() {
 }
 
 const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
-    LOG_DBG("Program::getActiveVersion");
     if (mLinkRequired) {
         LOG_DBG("Program link required");
         const auto& it = mProgramVersions.find(mDefineList);
@@ -293,7 +292,6 @@ const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
         }
         mLinkRequired = false;
     }
-    LOG_DBG("Program NO link required");
     assert(mpActiveVersion);
     return mpActiveVersion;
 }

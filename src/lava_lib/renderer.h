@@ -14,6 +14,7 @@
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include "Falcor/Core/Renderer.h"
+#include "Falcor/Scene/Camera/Camera.h"
 
 #include "display.h"
 #include "renderer_iface.h"
@@ -44,16 +45,15 @@ class Renderer: public Falcor::IFramework {
  public:
  	bool init();
  	bool isInited() const { return mInited; }
- 	bool loadDisplayDriver(const std::string& display_name);
+ 	
+    Display::SharedPtr display() { return mpDisplay; };
+    bool loadDisplay(Display::DisplayType display_type);
     bool openDisplay(const std::string& image_name, uint width, uint height);
     bool closeDisplay();
+
  	bool loadScript(const std::string& file_name);
 
-    bool pushDisplayStringParameter(const std::string& name, const std::vector<std::string>& strings);
-    bool pushDisplayIntParameter(const std::string& name, const std::vector<int>& ints);
-    bool pushDisplayFloatParameter(const std::string& name, const std::vector<float>& floats);
-
- 	void renderFrame(uint samples = 16);
+ 	void renderFrame(const RendererIface::FrameData frame_data);
 
  	void registerScriptBindings(Falcor::ScriptBindings::Module& m);
 
@@ -136,6 +136,11 @@ class Renderer: public Falcor::IFramework {
     virtual bool isVsyncEnabled() override{ return false; };
 
  private:
+    /** This should be called before any graph execution
+    */
+    void finalizeScene(const RendererIface::FrameData& frame_data);
+
+ private:
 	Renderer(Falcor::DeviceManager::DeviceLocalUID uid);
  	std::vector<std::string> 	mErrorMessages;
  	Falcor::Device::SharedPtr 	mpDevice;
@@ -144,7 +149,9 @@ class Renderer: public Falcor::IFramework {
     
  	bool mIfaceAquired = false;
 
- 	Display::UniquePtr 			mpDisplay;
+ 	Display::SharedPtr 			mpDisplay;
+
+    Falcor::Camera::SharedPtr   mpCamera;
 
  	Falcor::Fbo::SharedPtr 		mpTargetFBO;		///< The FBO available to renderers
  	Falcor::FrameRate*			mpFrameRate;
@@ -152,6 +159,8 @@ class Renderer: public Falcor::IFramework {
     Falcor::ArgList 			mArgList;
 
     lava::SceneBuilder::SharedPtr   mpSceneBuilder;
+    Falcor::Scene::SharedPtr        mpScene;
+    Falcor::Sampler::SharedPtr      mpSampler;
     std::vector<GraphData>          mGraphs;
     uint32_t mActiveGraph = 0;
 

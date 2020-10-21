@@ -385,6 +385,7 @@ namespace Falcor {
             return nullptr;
         }
 
+        LOG_DBG("SceneBuilder cache scene");
         mpScene = Scene::create(mpDevice);
 
         if (mCamera.pObject == nullptr) mCamera.pObject = Camera::create();

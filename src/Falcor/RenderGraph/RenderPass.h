@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_
+#define SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_
+
 #include "RenderPassReflection.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "ResourceCache.h"
@@ -154,3 +156,5 @@ namespace Falcor {
         
     };
 }
+
+#endif  // SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_
