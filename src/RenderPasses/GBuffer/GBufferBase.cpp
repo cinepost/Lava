@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -32,9 +32,7 @@
 #ifdef FALCOR_D3D
 #include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRT.h"
-#endif
-
-#include "Falcor/Utils/Debug/debug.h"
+#endif  // FALCOR_D3D
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -45,15 +43,16 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
     lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
 
-    #ifdef FALCOR_D3D
+#ifdef FALCOR_D3D
     lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
     lib.registerClass("VBufferRT", VBufferRT::kDesc, VBufferRT::create);
-    #endif  // FALCOR_D3D
+#endif  // FALCOR_D3D
 
     Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
-    #ifdef FALCOR_D3D
+    
+#ifdef FALCOR_D3D
     Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
-    #endif  // FALCOR_D3D
+#endif  // FALCOR_D3D
 }
 
 GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {
@@ -62,6 +61,11 @@ GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
 void GBufferBase::registerBindings(ScriptBindings::Module& m) {
     auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
+    //pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
+    //samplePattern.value("Center", GBufferBase::SamplePattern::Center);
+    //samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
+    //samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
+    //samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
     e.regEnumVal(GBufferBase::SamplePattern::Center);
     e.regEnumVal(GBufferBase::SamplePattern::DirectX);
     e.regEnumVal(GBufferBase::SamplePattern::Halton);
@@ -81,18 +85,19 @@ namespace {
         { (uint32_t)GBufferBase::SamplePattern::Halton, "Halton" },
         { (uint32_t)GBufferBase::SamplePattern::Stratified, "Stratified" },
     };
-}  // namespace
+}
 
 void GBufferBase::parseDictionary(const Dictionary& dict) {
-    for (const auto& v : dict) {
-        if (v.key() == kSamplePattern) mSamplePattern = (SamplePattern)v.val();
-        else if (v.key() == kSampleCount) mSampleCount = v.val();
-        else if (v.key() == kDisableAlphaTest) mDisableAlphaTest = v.val();
+    for (const auto& [key, value] : dict) {
+        if (key == kSamplePattern) mSamplePattern = value;
+        else if (key == kSampleCount) mSampleCount = value;
+        else if (key == kDisableAlphaTest) mDisableAlphaTest = value;
         // TODO: Check for unparsed fields, including those parsed in derived classes.
     }
 }
 
-Dictionary GBufferBase::getScriptingDictionary() {
+Dictionary GBufferBase::getScriptingDictionary()
+{
     Dictionary dict;
     dict[kSamplePattern] = mSamplePattern;
     dict[kSampleCount] = mSampleCount;
@@ -120,12 +125,6 @@ void GBufferBase::renderUI(Gui::Widgets& widget) {
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {
-    assert(mpDevice);
-    assert(pContext->device());
-    LOG_DBG("mpDevice uid %u", mpDevice->uid());
-    LOG_DBG("pContext device uid %u", pContext->device()->uid());
-    assert(mpDevice == pContext->device());
-
     mFrameDim = compileData.defaultTexDims;
     mInvFrameDim = 1.f / float2(mFrameDim);
 
@@ -135,34 +134,44 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
     }
 }
 
-void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    assert(mpDevice == pRenderContext->device());
-    assert(mpDevice == pScene->device());
+void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    // Update refresh flag if options that affect the output have changed.
+    auto& dict = renderData.getDictionary();
+    if (mOptionsChanged) {
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        //auto flags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
 
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
+        mOptionsChanged = false;
+    }
+
+    // Setup camera with sample generator.
+    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+}
+
+void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     updateSamplePattern();
 }
 
 static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount) {
     switch (type) {
-        case GBufferBase::SamplePattern::Center:
-            return nullptr;
-        case GBufferBase::SamplePattern::DirectX:
-            return DxSamplePattern::create(sampleCount);
-        case GBufferBase::SamplePattern::Halton:
-            return HaltonSamplePattern::create(sampleCount);
-        case GBufferBase::SamplePattern::Stratified:
-            return StratifiedSamplePattern::create(sampleCount);
-        default:
-            should_not_get_here();
-            return nullptr;
+    case GBufferBase::SamplePattern::Center:
+        return nullptr;
+    case GBufferBase::SamplePattern::DirectX:
+        return DxSamplePattern::create(sampleCount);
+    case GBufferBase::SamplePattern::Halton:
+        return HaltonSamplePattern::create(sampleCount);
+    case GBufferBase::SamplePattern::Stratified:
+        return StratifiedSamplePattern::create(sampleCount);
+    default:
+        should_not_get_here();
+        return nullptr;
     }
 }
 
-void GBufferBase::updateSamplePattern() {
-    if (mpScene) {
-        auto pGen = createSamplePattern(mSamplePattern, mSampleCount);
-        if (pGen) mSampleCount = pGen->getSampleCount();
-        mpScene->getCamera()->setPatternGenerator(pGen, mInvFrameDim);
-    }
+void GBufferBase::updateSamplePattern()
+{
+    mpSampleGenerator = createSamplePattern(mSamplePattern, mSampleCount);
+    if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
 }

@@ -90,7 +90,7 @@ class dlldecl GraphicsStateObject {
         friend class GraphicsStateObject;
         friend class GraphicsState;
 
-        Desc(std::shared_ptr<Device> device);
+        Desc(std::shared_ptr<Device> pDevice);
 
         Fbo::Desc mFboDesc;
         VertexLayout::SharedConstPtr mpLayout;
@@ -120,14 +120,14 @@ class dlldecl GraphicsStateObject {
         \param[in] desc State object description.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     const ApiHandle& getApiHandle() { return mApiHandle; }
 
     const Desc& getDesc() const { return mDesc; }
 
  private:
-    GraphicsStateObject(std::shared_ptr<Device> device, const Desc& desc);
+    GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
     void apiInit();
 
     Desc mDesc;

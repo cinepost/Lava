@@ -45,7 +45,7 @@ namespace Falcor {
     }
 
     SCRIPT_BINDING(ComputeProgram) {
-        m.regClass(ComputeProgram);
+        pybind11::class_<ComputeProgram, ComputeProgram::SharedPtr>(m, "ComputeProgram");
     }
 
 }  // namespace Falcor

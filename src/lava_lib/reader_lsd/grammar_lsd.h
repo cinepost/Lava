@@ -84,6 +84,7 @@ namespace ast {
     struct cmd_config;
     struct cmd_defaults;
     struct cmd_transform;
+    struct cmd_mtransform;
     struct cmd_quit;
     struct cmd_start;
     struct cmd_end;
@@ -94,13 +95,14 @@ namespace ast {
     struct cmd_image;
     struct cmd_declare;
     struct cmd_deviceoption;
+    struct cmd_reset;
 
     struct NoValue {
         bool operator==(NoValue const &) const { return true; }
     };
 
     typedef x3::variant<
-        NoValue,
+        //NoValue,
         ifthen,
         endif,
         setenv,
@@ -110,6 +112,7 @@ namespace ast {
         cmd_config,
         cmd_defaults,
         cmd_transform,
+        cmd_mtransform,
         cmd_end,
         cmd_quit,
         cmd_detail,
@@ -118,7 +121,8 @@ namespace ast {
         cmd_raytrace,
         cmd_image,
         cmd_declare,
-        cmd_deviceoption
+        cmd_deviceoption,
+        cmd_reset
     > Command;
 
     // nullary commands
@@ -146,6 +150,10 @@ namespace ast {
     };
 
     struct cmd_transform {
+        Matrix4 m;
+    };
+
+    struct cmd_mtransform {
         Matrix4 m;
     };
 
@@ -196,6 +204,12 @@ namespace ast {
         Type type;
         std::string token;
         std::vector<PropValue> values;
+    };
+
+    struct cmd_reset {
+        bool lights = false;
+        bool objects = false;
+        bool fogs = false;
     };
 
 }  // namespace ast
@@ -327,6 +341,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::setenv, key, value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_time, time)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, object_type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_mtransform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
@@ -336,6 +351,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, array_size, style, type, token, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_reset)
 
 namespace lava { 
 
@@ -494,7 +510,7 @@ namespace parser {
     auto const keyword
         = x3::rule<class keyword>{"keyword"}
         = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
-        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config");
+        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -596,6 +612,18 @@ namespace parser {
     //    _val(ctx).bgeo = _attr(ctx); 
     //};
 
+    auto reset_lights = [](auto& ctx) { 
+        _val(ctx).lights = true; 
+    };
+
+    auto reset_objects = [](auto& ctx) { 
+        _val(ctx).objects = true; 
+    };
+
+    auto reset_fogs = [](auto& ctx) { 
+        _val(ctx).fogs = true; 
+    };
+
     static auto const skipper = lexeme[ 
         "/*" >> *(char_ - "*/") >> "*/"
         | "//" >> *~char_("\r\n")
@@ -626,9 +654,17 @@ namespace parser {
         = "cmd_declare" >> lit("-v") >> int_ >> declare_style >> prop_type >> prop_name >> prop_values |
           "cmd_declare" >> attr(0) >> declare_style >> prop_type >> prop_name >> prop_values;
 
+    auto const cmd_reset
+        = x3::rule<class cmd_reset, ast::cmd_reset>{"cmd_reset"}
+        = "cmd_reset" >> *(lit("-l")[reset_lights] | lit("-o")[reset_objects] | lit("-f")[reset_fogs]);
+
     auto const cmd_transform
         = x3::rule<class cmd_transform, ast::cmd_transform>{"cmd_transform"}
         = "cmd_transform" >> matrix4 >> eps;
+
+    auto const cmd_mtransform
+        = x3::rule<class cmd_mtransform, ast::cmd_mtransform>{"cmd_mtransform"}
+        = "cmd_mtransform" >> matrix4 >> eps;
 
     auto const cmd_start
         = x3::rule<class cmd_start, ast::cmd_start>{"cmd_start"}
@@ -688,8 +724,8 @@ namespace parser {
         = x3::rule<class endif, ast::endif>{"endif"}
         = "endif" >> eps;
 
-    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | 
-        cmd_transform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption |
+    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset |
+        cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption |
         ifthen | endif;
 
     auto const input  = skip(skipper) [*cmd % eol];

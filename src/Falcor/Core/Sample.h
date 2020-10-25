@@ -129,7 +129,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
     void startScripting();
-    void registerScriptBindings(ScriptBindings::Module& m);
+    void registerScriptBindings(pybind11::module& m);
 
     bool mSuppressInput = false;
     bool mVsyncOn = false;

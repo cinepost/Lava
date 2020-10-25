@@ -68,7 +68,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Device configuration
     */
-    struct Desc : ScriptBindings::enable_to_string {
+    struct Desc {
         ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
         ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
         uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.

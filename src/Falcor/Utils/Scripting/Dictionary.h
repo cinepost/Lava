@@ -68,9 +68,11 @@ class __attribute__((visibility("default"))) Dictionary {
         IteratorT& operator++() { mIt++; return *this; }
         IteratorT operator++(int) { ++mIt; return *this; }
 
-        IteratorT& operator*() { return *this; }
-        std::string key() const { return mIt->first.cast<std::string>(); }
-        Value val() const { return Value(*mpContainer, key()); }
+        std::pair<std::string, Value>& operator*() {
+            std::string key = mIt->first.cast<std::string>();
+            return { key, Value(*mpContainer, key) };
+        }
+
      private:
         pybind11::detail::dict_iterator mIt;
         ContainerType* mpContainer;

@@ -25,135 +25,108 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_ANIMATION_ANIMATIONCONTROLLER_H_
+#define SRC_FALCOR_SCENE_ANIMATION_ANIMATIONCONTROLLER_H_
+
 #include "Animation.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "Scene/SceneTypes.slang"
 
-namespace Falcor
-{
-    class Scene;
+namespace Falcor {
 
-    struct Bone
-    {
-        uint32_t parentID;
-        uint32_t boneID;
-        std::string name;
-        glm::mat4 offset;
-        glm::mat4 localTransform;
-        glm::mat4 originalLocalTransform;
-        glm::mat4 globalTransform;
-    };
+class Scene;
 
-    class Model;
-    class AssimpModelImporter;
+struct Bone {
+    uint32_t parentID;
+    uint32_t boneID;
+    std::string name;
+    glm::mat4 offset;
+    glm::mat4 localTransform;
+    glm::mat4 originalLocalTransform;
+    glm::mat4 globalTransform;
+};
 
-    class dlldecl AnimationController
-    {
-    public:
-        using UniquePtr = std::unique_ptr<AnimationController>;
-        using UniqueConstPtr = std::unique_ptr<const AnimationController>;
-        static const uint32_t kBindPoseAnimationId = -1;
-        static const uint32_t kInvalidBoneID = -1;
-        ~AnimationController() = default;
+class Model;
+class AssimpModelImporter;
 
-        using StaticVertexVector = std::vector<PackedStaticVertexData>;
-        using DynamicVertexVector = std::vector<DynamicVertexData>;
+class dlldecl AnimationController {
+ public:
+    using UniquePtr = std::unique_ptr<AnimationController>;
+    using UniqueConstPtr = std::unique_ptr<const AnimationController>;
+    static const uint32_t kInvalidBoneID = -1;
+    ~AnimationController() = default;
 
-        /** Create a new object
-        */
-        static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
-        
-        /** Add an animation for a mesh
-        */
-        void addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation);
+    using StaticVertexVector = std::vector<PackedStaticVertexData>;
+    using DynamicVertexVector = std::vector<DynamicVertexData>;
 
-        /** Toggle all mesh animations on or off.
-        */
-        void toggleAnimations(bool animate);
+    /** Create a new object
+    */
+    static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
 
-        /** Run the animation
-            \return true if a change occurred, otherwise false
-        */
-        bool animate(RenderContext* pContext, double currentTime);
+    /** Add an animation
+    */
+    void addAnimation(const Animation::SharedPtr& pAnimation);
 
-        /** Get number of animations for a mesh
-        */
-        uint32_t getMeshAnimationCount(uint32_t meshID) const;
+    /** Returns true if controller contains animations.
+    */
+    bool hasAnimations() const { return mAnimations.size() > 0; }
 
-        /** Get the name of a mesh's animation
-            If the animation doesn't exist it will return an empty string.
-            Don't use this function to detect if an animation exists or not. Use `getMeshAnimationCount()` instead
-        */
-        const std::string& getAnimationName(uint32_t meshID, uint32_t animID) const;
+    /** Enable/disable animations.
+    */
+    void setEnabled(bool enabled);
 
-        /** Set a mesh active animation. Use kBindPoseAnimationId to disable animations for the mesh
-            \If the mesh/animation exists, will return true. Otherwise returns false
-        */
-        bool setActiveAnimation(uint32_t meshID, uint32_t animID);
+    /** Returns true if animations are enabled.
+    */
+    bool isEnabled() const { return mEnabled; };
 
-        /** Get a mesh's active animation.
-            \return Active animation ID, or kBindPoseAnimationId if no animations exist for the mesh.
-        */
-        uint32_t getActiveAnimation(uint32_t meshID) const;
+    /** Run the animation
+        \return true if a change occurred, otherwise false
+    */
+    bool animate(RenderContext* pContext, double currentTime);
 
-        /** Whether the controller is handling any animations.
-        */
-        bool hasAnimations() const { return mHasAnimations; }
+    /** Check if a matrix changed
+    */
+    bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
 
-        /** Render the UI
-        */
-        void renderUI(Gui::Widgets& widget);
+    /** Get the global matrices
+    */
+    const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
 
-        /** Get the global matrices
-        */
-        const std::vector<glm::mat4>& getGlobalMatrices() const { return mGlobalMatrices; }
+ private:
+    friend class SceneBuilder;
+    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
 
-        /** Check if a matrix changed
-        */
-        bool didMatrixChanged(size_t matrixID) const { return mMatricesChanged[matrixID]; }
+    void bindBuffers();
+    void updateMatrices();
 
-    private:
-        friend class SceneBuilder;
-        AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData);
+    std::vector<Animation::SharedPtr> mAnimations;
+    std::vector<glm::mat4> mLocalMatrices;
+    std::vector<glm::mat4> mGlobalMatrices;
+    std::vector<glm::mat4> mInvTransposeGlobalMatrices;
+    std::vector<bool> mMatricesChanged;
 
-        void allocatePrevWorldMatrixBuffer();
-        void bindBuffers();
-        void updateMatrices();
-        bool validateIndices(uint32_t meshID, uint32_t animID, const std::string& warningPrefix) const;
+    bool mEnabled = true;
+    bool mAnimationChanged = true;
+    double mLastAnimationTime = 0;
+    Scene* mpScene = nullptr;
 
-        struct MeshAnimation
-        {
-            std::vector<Animation::SharedPtr> pAnimations;
-            uint32_t activeAnimation = kBindPoseAnimationId;
-        };
+    Buffer::SharedPtr mpWorldMatricesBuffer;
+    Buffer::SharedPtr mpPrevWorldMatricesBuffer;
+    Buffer::SharedPtr mpInvTransposeWorldMatricesBuffer;
 
-        std::map<uint32_t, MeshAnimation> mMeshes;
-        std::vector<glm::mat4> mLocalMatrices;
-        std::vector<glm::mat4> mGlobalMatrices;
-        std::vector<glm::mat4> mInvTransposeGlobalMatrices;
-        std::vector<bool> mMatricesChanged;
+    // Skinning
+    ComputePass::SharedPtr mpSkinningPass;
+    std::vector<glm::mat4> mSkinningMatrices;
+    std::vector<glm::mat4> mInvTransposeSkinningMatrices;
+    uint32_t mSkinningDispatchSize = 0;
+    void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
+    void executeSkinningPass(RenderContext* pContext);
 
-        bool mHasAnimations = false;
-        bool mAnimationChanged = true;
-        uint32_t mActiveAnimationCount = 0;
-        double mLastAnimationTime = 0;
-        Scene* mpScene = nullptr;
+    Buffer::SharedPtr mpSkinningMatricesBuffer;
+    Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
+    void initLocalMatrices();
+};
 
-        Buffer::SharedPtr mpWorldMatricesBuffer;
-        Buffer::SharedPtr mpPrevWorldMatricesBuffer;
-        Buffer::SharedPtr mpInvTransposeWorldMatricesBuffer;
+}  // namespace Falcor
 
-        // Skinning
-        ComputePass::SharedPtr mpSkinningPass;
-        std::vector<glm::mat4> mSkinningMatrices;
-        std::vector<glm::mat4> mInvTransposeSkinningMatrices;
-        uint32_t mSkinningDispatchSize = 0;
-        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
-        void executeSkinningPass(RenderContext* pContext);
-
-        Buffer::SharedPtr mpSkinningMatricesBuffer;
-        Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
-        void initLocalMatrices();
-    };
-}
+#endif  // SRC_FALCOR_SCENE_ANIMATION_ANIMATIONCONTROLLER_H_

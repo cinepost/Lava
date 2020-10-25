@@ -25,75 +25,80 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RENDERGRAPH_RENDERGRAPHEXE_H_
+#define FALCOR_RENDERGRAPH_RENDERGRAPHEXE_H_
+
 #include "ResourceCache.h"
-#include "Utils/Scripting/Dictionary.h"
+#include "Utils/InternalDictionary.h"
 #include "RenderPass.h"
 
 namespace Falcor {
 
-    class RenderGraphCompiler;
+class RenderGraphCompiler;
 
-    class dlldecl RenderGraphExe {
-     public:
-        using SharedPtr = std::shared_ptr<RenderGraphExe>;
-        struct Context {
-            RenderContext* pRenderContext;
-            Dictionary::SharedPtr pGraphDictionary;
-            uint2 defaultTexDims;
-            ResourceFormat defaultTexFormat;
-        };
-
-        /** Execute the graph
-        */
-        void execute(const Context& ctx);
-
-        /** Render the UI
-        */
-        void renderUI(Gui::Widgets& widget);
-
-        /** Mouse event handler.
-            Returns true if the event was handled by the object, false otherwise
-        */
-        bool onMouseEvent(const MouseEvent& mouseEvent);
-
-        /** Keyboard event handler
-        Returns true if the event was handled by the object, false otherwise
-        */
-        bool onKeyEvent(const KeyboardEvent& keyEvent);
-
-        /** Called upon hot reload (by pressing F5).
-            \param[in] reloaded Resources that have been reloaded.
-        */
-        void onHotReload(HotReloadFlags reloaded);
-
-        /** Get a resource from the cache
-        */
-        Resource::SharedPtr getResource(const std::string& name) const;
-
-        /** Set an external input resource
-            \param[in] name Input name. Has the format `renderPassName.resourceName`
-            \param[in] pResource The resource to bind. If this is nullptr, will unregister the resource
-        */
-        void setInput(const std::string& name, const Resource::SharedPtr& pResource);
-
-    private:
-        friend class RenderGraphCompiler;
-        static SharedPtr create() { return SharedPtr(new RenderGraphExe); }
-        RenderGraphExe() = default;
-
-        void insertPass(const std::string& name, const RenderPass::SharedPtr& pPass);
-
-        struct Pass
-        {
-            std::string name;
-            RenderPass::SharedPtr pPass;
-        private:
-            friend class RenderGraphExe; // Force RenderGraphCompiler to use insertPass() by hiding this Ctor from it
-            Pass(const std::string& name_, const RenderPass::SharedPtr& pPass_) : name(name_), pPass(pPass_) {}
-        };
-
-        std::vector<Pass> mExecutionList;
-        ResourceCache::SharedPtr mpResourceCache;
+class dlldecl RenderGraphExe {
+ public:
+    using SharedPtr = std::shared_ptr<RenderGraphExe>;
+    struct Context {
+        RenderContext* pRenderContext;
+        InternalDictionary::SharedPtr pGraphDictionary;
+        uint2 defaultTexDims;
+        ResourceFormat defaultTexFormat;
     };
-}
+
+    /** Execute the graph
+    */
+    void execute(const Context& ctx);
+
+    /** Render the UI
+    */
+    void renderUI(Gui::Widgets& widget);
+
+    /** Mouse event handler.
+        Returns true if the event was handled by the object, false otherwise
+    */
+    bool onMouseEvent(const MouseEvent& mouseEvent);
+
+    /** Keyboard event handler
+    Returns true if the event was handled by the object, false otherwise
+    */
+    bool onKeyEvent(const KeyboardEvent& keyEvent);
+
+    /** Called upon hot reload (by pressing F5).
+        \param[in] reloaded Resources that have been reloaded.
+    */
+    void onHotReload(HotReloadFlags reloaded);
+
+    /** Get a resource from the cache
+    */
+    Resource::SharedPtr getResource(const std::string& name) const;
+
+    /** Set an external input resource
+        \param[in] name Input name. Has the format `renderPassName.resourceName`
+        \param[in] pResource The resource to bind. If this is nullptr, will unregister the resource
+    */
+    void setInput(const std::string& name, const Resource::SharedPtr& pResource);
+
+private:
+    friend class RenderGraphCompiler;
+    static SharedPtr create() { return SharedPtr(new RenderGraphExe); }
+    RenderGraphExe() = default;
+
+    void insertPass(const std::string& name, const RenderPass::SharedPtr& pPass);
+
+    struct Pass
+    {
+        std::string name;
+        RenderPass::SharedPtr pPass;
+    private:
+        friend class RenderGraphExe; // Force RenderGraphCompiler to use insertPass() by hiding this Ctor from it
+        Pass(const std::string& name_, const RenderPass::SharedPtr& pPass_) : name(name_), pPass(pPass_) {}
+    };
+
+    std::vector<Pass> mExecutionList;
+    ResourceCache::SharedPtr mpResourceCache;
+};
+
+}  // namespace Falcor
+
+#endif  // FALCOR_RENDERGRAPH_RENDERGRAPHEXE_H_

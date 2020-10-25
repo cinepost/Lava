@@ -33,10 +33,11 @@ class Session {
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);
     void cmdImage(lsd::ast::DisplayType display_type, const std::string& filename);
     void cmdTransform(const Matrix4& transform);
+    void cmdMTransform(const Matrix4& transform);
     bool cmdGeometry(const std::string& name);
     void cmdTime(double time);
 
-
+    void pushLight(const scope::Light::SharedPtr pLight);
     void pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo);
     std::string getExpandedString(const std::string& str);
 
@@ -58,7 +59,8 @@ class Session {
  	scope::ScopeBase::SharedPtr		mpCurrentScope;
  	scope::Global::SharedPtr		mpGlobal;
 
- 	std::map<std::string, uint32_t>	mMeshMap; // maps detail(mesh) name to SceneBuilder mesh id	
+ 	std::map<std::string, uint32_t>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	
+    std::map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
 };
 
 }  // namespace lsd

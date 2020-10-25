@@ -45,17 +45,13 @@ static const char* typeStringMap[] = {
     "Mesh"
 };
 
-const char* Primitive::toString(PrimType type)
-{
+const char* Primitive::toString(PrimType type) {
     return typeStringMap[type];
 }
 
-Primitive::PrimType Primitive::toPrimType(const UT_String& type)
-{
-    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++)
-    {
-        if (type == typeStringMap[i])
-        {
+Primitive::PrimType Primitive::toPrimType(const UT_String& type) {
+    for (int i = 0; i < (sizeof(typeStringMap) / sizeof(const char*)); i++) {
+        if (type == typeStringMap[i]) {
             return static_cast<Primitive::PrimType>(i);
         }
     }

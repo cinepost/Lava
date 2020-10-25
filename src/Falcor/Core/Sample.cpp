@@ -610,34 +610,38 @@ void Sample::handleWindowSizeChange() {
         std::string filename;
         if (saveFileDialog(Scripting::kFileExtensionFilters, filename)) {
             SampleConfig c = getConfig();
-            std::string s = "sampleConfig = " + ScriptBindings::to_string(c) + "\n";
+            std::string s = "sampleConfig = " + ScriptBindings::repr(c) + "\n";
             std::ofstream(filename) << s;
         }
     }
 
     void Sample::startScripting() {
         Scripting::start();
-        auto bindFunc = [this](ScriptBindings::Module& m) { this->registerScriptBindings(m); };
+        auto bindFunc = [this](pybind11::module& m) { this->registerScriptBindings(m); };
         ScriptBindings::registerBinding(bindFunc);
     }
 
-    void Sample::registerScriptBindings(ScriptBindings::Module& m) {
-        auto sampleDesc = m.regClass(SampleConfig);
-#define field(f_) rwField(#f_, &SampleConfig::f_)
-        sampleDesc.field(windowDesc).field(deviceDesc).field(showMessageBoxOnError).field(timeScale);
-        sampleDesc.field(pauseTime).field(showUI);
+    void Sample::registerScriptBindings(pybind11::module& m) {
+ScriptBindings::SerializableStruct<SampleConfig> sampleConfig(m, "SampleConfig");
+#define field(f_) field(#f_, &SampleConfig::f_)
+        sampleConfig.field(windowDesc);
+        sampleConfig.field(deviceDesc);
+        sampleConfig.field(showMessageBoxOnError);
+        sampleConfig.field(timeScale);
+        sampleConfig.field(pauseTime);
+        sampleConfig.field(showUI);
 #undef field
         auto exit = [](int32_t errorCode) { postQuitMessage(errorCode); };
-        m.func_("exit", exit, "errorCode"_a = 0);
+        m.def("exit", exit, "errorCode"_a = 0);
 
         auto renderFrame = [this]() {ProgressBar::close(); this->renderFrame(); };
-        m.func_("renderFrame", renderFrame);
+        m.def("renderFrame", renderFrame);
 
         auto setWindowPos = [this](int32_t x, int32_t y) {getWindow()->setWindowPos(x, y); };
-        m.func_("setWindowPos", setWindowPos, "x"_a, "y"_a);
+        m.def("setWindowPos", setWindowPos, "x"_a, "y"_a);
 
         auto resize = [this](uint32_t width, uint32_t height) {resizeSwapChain(width, height); };
-        m.func_("resizeSwapChain", resize, "width"_a, "height"_a);
+        m.def("resizeSwapChain", resize, "width"_a, "height"_a);
     }
 
 }  // namespace Falcor

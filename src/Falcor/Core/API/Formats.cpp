@@ -121,10 +121,10 @@ namespace Falcor
     SCRIPT_BINDING(ResourceFormat)
     {
         // Resource formats
-        auto formats = m.enum_<ResourceFormat>("ResourceFormat");
+        pybind11::enum_<ResourceFormat> resourceFormat(m, "ResourceFormat");
         for (uint32_t i = 0; i < (uint32_t)ResourceFormat::Count; i++)
         {
-            formats.regEnumVal(ResourceFormat(i));
+            resourceFormat.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
         }
     }
 }

@@ -50,15 +50,18 @@ class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this
 class Transformable: public ScopeBase {
  public:
     using SharedPtr = std::shared_ptr<Transformable>;
+    using TransformList = std::vector<glm::mat4x4>;
 
     Transformable(ScopeBase::SharedPtr pParent);
     virtual ~Transformable() {};
 
     void setTransform(const lsd::Matrix4& mat);
-    const glm::mat4x4& getTransform(){ return mTransform; };
+    void addTransform(const lsd::Matrix4& mat);
+    const TransformList getTransformList() { return mTransformList; };
+    uint transformSamples() { return mTransformList.size(); };
 
  private:
-    glm::mat4x4 mTransform;
+    TransformList mTransformList;
 };
 
 class Global: public Transformable {
@@ -74,8 +77,11 @@ class Global: public Transformable {
     std::shared_ptr<Light>      addLight();
     std::shared_ptr<Segment>    addSegment();
 
-    const std::vector<std::shared_ptr<Plane>>&  planes() { return mPlanes; };
-    const std::vector<std::shared_ptr<Geo>>&    geos() { return mGeos; };
+    const std::vector<std::shared_ptr<Object>>&     objects() { return mObjects; };
+    const std::vector<std::shared_ptr<Plane>>&      planes() { return mPlanes; };
+    const std::vector<std::shared_ptr<Light>>&      lights() { return mLights; };
+    const std::vector<std::shared_ptr<Geo>>&        geos() { return mGeos; };
+    const std::vector<std::shared_ptr<Segment>>&    segments() { return mSegments; };
 
  private:
     Global():Transformable(nullptr) {};

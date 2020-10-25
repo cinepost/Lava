@@ -54,7 +54,7 @@ class dlldecl Window {
 
     /** Window configuration configuration
     */
-    struct Desc : ScriptBindings::enable_to_string {
+    struct Desc {
         uint32_t width = 1920;                  ///< The width of the client area size.
         uint32_t height = 1080;                 ///< The height of the client area size.
         std::string title = "Falcor Sample";    ///< Window title.

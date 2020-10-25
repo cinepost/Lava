@@ -58,21 +58,21 @@ RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& nam
         throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
     }
     mpGraph = DirectedGraph::create();
-    mpPassDictionary = Dictionary::create();
+    mpPassDictionary = InternalDictionary::create();
     gRenderGraphs.push_back(this);
     onResize(gpFramework->getTargetFbo().get());
 }
 
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mName(name), mpDevice(pDevice) {
     mpGraph = DirectedGraph::create();
-    mpPassDictionary = Dictionary::create();
+    mpPassDictionary = InternalDictionary::create();
     gRenderGraphs.push_back(this);
     onResize(pTargetFbo.get());
 }
 
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name): mName(name), mpDevice(pDevice) {
     mpGraph = DirectedGraph::create();
-    mpPassDictionary = Dictionary::create();
+    mpPassDictionary = InternalDictionary::create();
     gRenderGraphs.push_back(this);
     resize(frame_size[0], frame_size[1], format);
 }

@@ -267,21 +267,7 @@ void* Buffer::map(MapType type) {
             // For buffers without CPU access we must copy the contents to a staging buffer.
             logWarning("Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work");
             if (mpStagingResource == nullptr) {
-                //if(isStructured()) {
-                //    LOG_WARN("map structured buffer if struct size %u", mStructSize);
-                //    if (mFormat == ResourceFormat::RGB32Float) {
-                        // due to glsl std120/std430 float3 (12 bytes ) aligned to 16 bytes
-                //        mpStagingResource = Buffer::createStructured(mStructSize, mElementCount, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr); 
-                //    } else {
-                //        mpStagingResource = Buffer::createStructured(mStructSize, mElementCount, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-                //    }
-                //} else if (isTyped()){
-                //    LOG_WARN("map typed buffer");
-                //    mpStagingResource = Buffer::createTyped(mFormat, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-                //} else {
-                //    LOG_WARN("map buffer");
-                    mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-                //}
+                mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
             }
 
             // Copy the buffer and flush the pipeline
@@ -301,7 +287,7 @@ ConstantBufferView::SharedPtr Buffer::getCBV() {
 }
 
 SCRIPT_BINDING(Buffer) {
-    m.regClass(Buffer);
+    pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
 }
 
 }  // namespace Flacor

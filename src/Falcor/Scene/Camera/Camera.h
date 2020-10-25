@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_CAMERA_CAMERA_H_
 
 #include "CameraData.slang"
+#include "Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Falcor/Core/BufferTypes/ParameterBlock.h"
 
@@ -39,11 +40,10 @@ namespace Falcor {
 
     /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
     */
-    class dlldecl Camera {
+    class dlldecl Camera : public Animatable {
      public:
         using SharedPtr = std::shared_ptr<Camera>;
         using SharedConstPtr = std::shared_ptr<const Camera>;
-        using ConstSharedPtrRef = const SharedPtr&;
 
         // Default dimensions of full frame cameras and 35mm film
         static const float kDefaultFrameHeight;

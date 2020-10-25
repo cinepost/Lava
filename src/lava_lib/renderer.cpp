@@ -185,7 +185,7 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
     GraphData& data = *pData;
     // Set input image if it exists
     data.pGraph = pGraph;
-    data.pGraph->setScene(mpSceneBuilder->getScene());
+    //data.pGraph->setScene(mpSceneBuilder->getScene());
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
     // Store the original outputs
@@ -212,6 +212,7 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
     mpCamera->setFarPlane(frame_data.cameraFarPlane);
     mpCamera->setViewMatrix(frame_data.cameraTransform);
     mpCamera->setFocalLength(frame_data.cameraFocalLength);
+    mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
 
     // finalize scene
     auto pScene = mpSceneBuilder->getScene();;

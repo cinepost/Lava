@@ -74,7 +74,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
 }
 
 SCRIPT_BINDING(ComputeState) {
-    m.regClass(ComputeState);
+    pybind11::class_<ComputeState, ComputeState::SharedPtr>(m, "ComputeState");
 }
 
 }  // namespace Falcor

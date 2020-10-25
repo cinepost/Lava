@@ -1,7 +1,6 @@
 #ifndef LAVA_UTILS_UT_STRING_H_
 #define LAVA_UTILS_UT_STRING_H_
 
-//#include <regex>
 #include <string>
 
 namespace lava { namespace ut { namespace string {

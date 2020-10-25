@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,58 +25,54 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 
-#include "Falcor/Core/API/Buffer.h"
-#include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/Framework.h"
+#include "EnvMap.h"
 
 namespace Falcor {
-/** Environment map based radiance probe.
+
+class Device;
+
+/** Environment map sampler.
     Utily class for sampling and evaluating radiance stored in an omnidirectional environment map.
 */
-class dlldecl EnvProbe : public std::enable_shared_from_this<EnvProbe> {
+class dlldecl EnvMapSampler : public std::enable_shared_from_this<EnvMapSampler> {
  public:
-    using SharedPtr = std::shared_ptr<EnvProbe>;
-    using SharedConstPtr = std::shared_ptr<const EnvProbe>;
+    using SharedPtr = std::shared_ptr<EnvMapSampler>;
 
-    virtual ~EnvProbe() = default;
+    virtual ~EnvMapSampler() = default;
 
-    /** Create a new object
-        \param[in] pRenderContext A render-context that will be used for processing
-        \param[in] filename The env-map texture filename
+    /** Create a new object.
+        \param[in] pRenderContext A render-context that will be used for processing.
+        \param[in] pEnvMap The environment map.
     */
-    static SharedPtr create(RenderContext* pRenderContext, const std::string& filename);
+    static SharedPtr create(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
 
-    /** Bind the environment map probe to a given shader variable.
+    /** Bind the environment map sampler to a given shader variable.
         \param[in] var Shader variable.
-        \return True if successful, false otherwise.
     */
-    bool setShaderData(const ShaderVar& var) const;
+    void setShaderData(const ShaderVar& var) const;
 
-    const Texture::SharedPtr& getEnvMap() const { return mpEnvMap; }
+    const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
+
     const Texture::SharedPtr& getImportanceMap() const { return mpImportanceMap; }
-    const Sampler::SharedPtr& getEnvSampler() const { return mpEnvSampler; }
 
  protected:
-    EnvProbe() = default;
+    EnvMapSampler(RenderContext* pRenderContext, EnvMap::SharedPtr pEnvMap);
 
-    bool init(RenderContext* pRenderContext, const std::string& filename);
     bool createImportanceMap(RenderContext* pRenderContext, uint32_t dimension, uint32_t samples);
+
+    EnvMap::SharedPtr       mpEnvMap;           ///< Environment map.
 
     ComputePass::SharedPtr  mpSetupPass;        ///< Compute pass for creating the importance map.
 
-    Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
-    Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
+    std::shared_ptr<Device> mpDevice;
 
-    Sampler::SharedPtr      mpEnvSampler;
+    Texture::SharedPtr      mpImportanceMap;    ///< Hierarchical importance map (luminance).
     Sampler::SharedPtr      mpImportanceSampler;
 };
 
-inline std::string to_string(const std::shared_ptr<Falcor::EnvProbe>& probe) {
-    std::string s = "EnvProbe";
-    return s;
-}
-
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_

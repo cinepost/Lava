@@ -405,6 +405,6 @@ namespace Falcor {
     }
 
     SCRIPT_BINDING(Fbo) {
-        m.regClass(Fbo);
+        pybind11::class_<Fbo, Fbo::SharedPtr>(m, "Fbo");
     }
 }

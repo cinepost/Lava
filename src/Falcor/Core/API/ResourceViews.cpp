@@ -102,11 +102,11 @@ ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView(std::s
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView(std::shared_ptr<Device> pDevice) { return gNullTypedBufferViews[pDevice->uid()].uav; }
 
 SCRIPT_BINDING(ResourceView) {
-    m.regClass(ShaderResourceView);
-    m.regClass(RenderTargetView);
-    m.regClass(UnorderedAccessView);
-    m.regClass(ConstantBufferView);
-    m.regClass(DepthStencilView);
+        pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
+        pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
+        pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
+        pybind11::class_<ConstantBufferView, ConstantBufferView::SharedPtr>(m, "ConstantBufferView");
+        pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
 }
 
 }  // namespace Falcor

@@ -172,6 +172,11 @@ void EchoVisitor::operator()(ast::cmd_transform const& c) const {
     _os << "\x1b[32m" << "> cmd_transform: " << c.m << "\x1b[0m\n";
 }
 
+void EchoVisitor::operator()(ast::cmd_mtransform const& c) const {
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_mtransform: " << c.m << "\x1b[0m\n";
+}
+
 void EchoVisitor::operator()(ast::cmd_geometry const& c) const {
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_geometry: geometry_object: " << c.geometry_name << "\x1b[0m\n";
@@ -201,6 +206,15 @@ void EchoVisitor::operator()(ast::cmd_declare const& c) const {
 void EchoVisitor::operator()(ast::cmd_raytrace const& c) const {
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_raytrace: " << "\x1b[0m\n";
+} 
+
+void EchoVisitor::operator()(ast::cmd_reset const& c) const {
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_reset: ";
+    if (c.lights) _os << "lights ";
+    if (c.objects) _os << "objects";
+    if (c.fogs) _os << "fogs";
+    _os << "\x1b[0m\n";
 } 
 
 }  // namespace lsd

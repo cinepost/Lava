@@ -319,7 +319,7 @@ void Texture::generateMips(RenderContext* pContext) {
 }
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {
-    ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
+    ID3D12DevicePtr pDevicePtr = mpDevice->getApiHandle();
     ID3D12ResourcePtr pTexResource = this->getApiHandle();
 
     D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
@@ -335,19 +335,20 @@ uint32_t Texture::getTextureSizeInBytes() {
 #endif
 
 SCRIPT_BINDING(Texture) {
-    auto c = m.regClass(Texture);
-    c.roProperty("width", &Texture::getWidth);
-    c.roProperty("height", &Texture::getHeight);
-    c.roProperty("depth", &Texture::getDepth);
-    c.roProperty("mipCount", &Texture::getMipCount);
-    c.roProperty("arraySize", &Texture::getArraySize);
-    c.roProperty("samples", &Texture::getSampleCount);
-    c.roProperty("format", &Texture::getFormat);
+    pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
+    texture.def_property_readonly("width", &Texture::getWidth);
+    texture.def_property_readonly("height", &Texture::getHeight);
+    texture.def_property_readonly("depth", &Texture::getDepth);
+    texture.def_property_readonly("mipCount", &Texture::getMipCount);
+    texture.def_property_readonly("arraySize", &Texture::getArraySize);
+    texture.def_property_readonly("samples", &Texture::getSampleCount);
+    texture.def_property_readonly("format", &Texture::getFormat);
 
-    auto data = [](Texture* pTexture, uint32_t subresource) {
+    auto data = [](Texture* pTexture, uint32_t subresource)
+    {
         return pTexture->device()->getRenderContext()->readTextureSubresource(pTexture, subresource);
     };
-    c.func_("data", data, "subresource"_a);
+    texture.def("data", data, "subresource"_a);
 }
 
 }  // namespace Falcor

@@ -1,9 +1,10 @@
 from falcor import *
 
-def BSDFViewerGraph(device):
+def defaultRenderGraph(device):
     import falcor
     g = RenderGraph(device, "BSDFViewerGraph")
 
+    loadRenderPassLibrary("BlitPass")
     loadRenderPassLibrary("AccumulatePass")
     loadRenderPassLibrary("BSDFViewer")
     loadRenderPassLibrary("DepthPass")
@@ -14,6 +15,8 @@ def BSDFViewerGraph(device):
 
     #BSDFViewer = RenderPass(device, "BSDFViewer")
     #g.addPass(BSDFViewer, "BSDFViewer")
+
+    g.addPass(RenderPass(device, "BlitPass"), "BlitPass")
     
     GBufferRaster = RenderPass(device, "GBufferRaster", {
         'samplePattern': SamplePattern.Center, 
@@ -41,49 +44,61 @@ def BSDFViewerGraph(device):
     #g.addEdge("BSDFViewer.output", "AccumulatePass.input")
     #g.markOutput("AccumulatePass.output")
     #g.markOutput("BSDFViewer.output")
-    #g.markOutput("GBufferRaster.normW")
     g.addEdge("DepthPass.depth", "SkyBox.depth")
-    g.markOutput("SkyBox.target")
     
+    g.addEdge("GBufferRaster.normW", "BlitPass.src")
+    
+    g.markOutput("BlitPass.dst")
+    #g.markOutput("SkyBox.target")
     #g.markOutput("SSAO.normals")
 
-    return g
-
-def defaultRenderGraph(device):
-    g = RenderGraph(device, "DefaultRenderGraph")
-
-    #loadRenderPassLibrary("DebugPasses.rpl")
-    loadRenderPassLibrary("GBuffer.rpl")
-    loadRenderPassLibrary("SkyBox.rpl")
-    loadRenderPassLibrary("AccumulatePass.rpl")
-    
-    SkyBox = RenderPass(device, "SkyBox")
-    g.addPass(SkyBox, "SkyBox")
-
-    AccumulatePass = RenderPass(device, "AccumulatePass", {'enableAccumulation': True, 'precisionMode': AccumulatePrecision.Single})
-    g.addPass(AccumulatePass, "AccumulatePass")
-    
-    GBufferRaster = RenderPass(device, "GBufferRaster", {'samplePattern': SamplePattern.Center, 'sampleCount': 16, 'disableAlphaTest': False, 'forceCullMode': False, 'cull': CullMode.CullBack, 'useBentShadingNormals': True})
-    g.addPass(GBufferRaster, "GBufferRaster")
-    
-    #SplitScreenPass = RenderPass(device, "SplitScreenPass", {'splitLocation': 0.0, 'showTextLabels': False, 'leftLabel': 'Left side', 'rightLabel': 'Right side'})
-    #g.addPass(SplitScreenPass, "SplitScreenPass")
-    #g.addEdge("SplitScreenPass.output", "AccumulatePass.input")
-    #g.addEdge("GBufferRaster.texC", "SplitScreenPass.leftInput")
-    #g.addEdge("GBufferRaster.diffuseOpacity", "SplitScreenPass.rightInput")
-    
-    #g.markOutput("GBufferRaster.texC")
-    
-    #g.markOutput("AccumulatePass.output")
-    g.markOutput("SkyBox.target")
     return g
 
 device_manager = DeviceManager.instance()
 default_device = device_manager.defaultRenderingDevice()
 
-#render_graph = defaultRenderGraph(default_device)
-render_graph = BSDFViewerGraph(default_device)
-#render_graph = TestGraph(default_device)
+render_graph = defaultRenderGraph(default_device)
 
 try: renderer.addGraph(render_graph)
 except NameError: None
+
+"""
+def render_graph_forward_renderer():
+    loadRenderPassLibrary("Antialiasing")
+    loadRenderPassLibrary("BlitPass")
+    loadRenderPassLibrary("CSM")
+    loadRenderPassLibrary("DepthPass")
+    loadRenderPassLibrary("ForwardLightingPass")
+    loadRenderPassLibrary("SSAO")
+    loadRenderPassLibrary("ToneMapper")
+
+    skyBox = RenderPass("SkyBox")
+
+    forward_renderer = RenderGraph("ForwardRenderer")
+    forward_renderer.addPass(RenderPass("DepthPass"), "DepthPrePass")
+    forward_renderer.addPass(RenderPass("ForwardLightingPass"), "LightingPass")
+    forward_renderer.addPass(RenderPass("CSM"), "ShadowPass")
+    forward_renderer.addPass(RenderPass("BlitPass"), "BlitPass")
+    forward_renderer.addPass(RenderPass("ToneMapper", {'autoExposure': True}), "ToneMapping")
+    forward_renderer.addPass(RenderPass("SSAO"), "SSAO")
+    forward_renderer.addPass(RenderPass("FXAA"), "FXAA")
+
+    forward_renderer.addPass(skyBox, "SkyBox")
+
+    forward_renderer.addEdge("DepthPrePass.depth", "SkyBox.depth")
+    forward_renderer.addEdge("SkyBox.target", "LightingPass.color")
+    forward_renderer.addEdge("DepthPrePass.depth", "ShadowPass.depth")
+    forward_renderer.addEdge("DepthPrePass.depth", "LightingPass.depth")
+    forward_renderer.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
+    forward_renderer.addEdge("LightingPass.color", "ToneMapping.src")
+    forward_renderer.addEdge("ToneMapping.dst", "SSAO.colorIn")
+    forward_renderer.addEdge("LightingPass.normals", "SSAO.normals")
+    forward_renderer.addEdge("LightingPass.depth", "SSAO.depth")
+    forward_renderer.addEdge("SSAO.colorOut", "FXAA.src")
+    forward_renderer.addEdge("FXAA.dst", "BlitPass.src")
+
+    forward_renderer.markOutput("BlitPass.dst")
+
+    return forward_renderer
+
+"""

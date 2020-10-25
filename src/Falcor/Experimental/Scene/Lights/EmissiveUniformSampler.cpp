@@ -46,11 +46,10 @@ namespace Falcor
     SCRIPT_BINDING(EmissiveUniformSampler)
     {
         // TODO use a nested class in the bindings when supported.
-        auto options = m.class_<EmissiveUniformSampler::Options>("EmissiveUniformSamplerOptions");
-#define field(f_) rwField(#f_, &EmissiveUniformSampler::Options::f_)
+        ScriptBindings::SerializableStruct<EmissiveUniformSampler::Options> options(m, "EmissiveUniformSamplerOptions");
+#define field(f_) field(#f_, &EmissiveUniformSampler::Options::f_)
         // TODO
         //options.field(usePreintegration);
 #undef field
-
     }
 }

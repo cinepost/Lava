@@ -1,3 +1,7 @@
+#include <memory>
+#include <string>
+#include <stdexcept>
+
 #include "ut_string.h"
 
 namespace lava { namespace ut { namespace string {

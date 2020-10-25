@@ -205,7 +205,7 @@ class Device;
 
         /** Get the dictionary objects used to communicate app data to the render-passes
         */
-        const Dictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+        const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
 
         /** Get the name
         */
@@ -274,7 +274,7 @@ class Device;
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
         bool isGraphOutput(const GraphOut& graphOut) const;
 
-        Dictionary::SharedPtr mpPassDictionary;
+        InternalDictionary::SharedPtr mpPassDictionary;
         RenderGraphExe::SharedPtr mpExe;
         bool mRecompile = false;
         RenderGraphCompiler::Dependencies mCompilerDeps;

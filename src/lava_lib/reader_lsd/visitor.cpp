@@ -154,6 +154,10 @@ void Visitor::operator()(ast::cmd_transform const& c) const {
     mpSession->cmdTransform(c.m);
 }
 
+void Visitor::operator()(ast::cmd_mtransform const& c) const {
+    mpSession->cmdMTransform(c.m);
+}
+
 void Visitor::operator()(ast::cmd_geometry const& c) const {
     mpSession->cmdGeometry(c.geometry_name);
 }
@@ -190,6 +194,10 @@ void Visitor::operator()(ast::cmd_declare const& c) const {
 void Visitor::operator()(ast::cmd_raytrace const& c) const {
     if(!mpSession->cmdRaytrace())
         throw std::runtime_error("Error rendering image !!!");
+}
+
+void Visitor::operator()(ast::cmd_reset const& c) const {
+
 }
 
 }  // namespace lsd

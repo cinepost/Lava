@@ -69,10 +69,11 @@ GraphicsStateObject::~GraphicsStateObject() {
     mpDevice->releaseResource(mApiHandle);
 }
 
-GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> device, const Desc& desc) : mpDevice(device), mDesc(desc) {
+GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
+    assert(mpDevice);
     if (spDefaultBlendState == nullptr) {
         // Create default objects
-        spDefaultBlendState = BlendState::create(BlendState::Desc(device));
+        spDefaultBlendState = BlendState::create(BlendState::Desc(mpDevice));
         spDefaultDepthStencilState = DepthStencilState::create(DepthStencilState::Desc());
         spDefaultRasterizerState = RasterizerState::create(RasterizerState::Desc());
     }
@@ -85,11 +86,11 @@ GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> device, const D
     apiInit();
 }
 
-GraphicsStateObject::SharedPtr GraphicsStateObject::create(std::shared_ptr<Device> device, const Desc& desc) {
-    return SharedPtr(new GraphicsStateObject(device, desc));
+GraphicsStateObject::SharedPtr GraphicsStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+    return SharedPtr(new GraphicsStateObject(pDevice, desc));
 }
 
-GraphicsStateObject::Desc::Desc (std::shared_ptr<Device> device): mFboDesc(device) {
+GraphicsStateObject::Desc::Desc (std::shared_ptr<Device> pDevice): mFboDesc(pDevice) {
 
 }
 

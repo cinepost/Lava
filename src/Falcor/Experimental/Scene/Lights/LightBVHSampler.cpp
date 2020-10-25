@@ -162,14 +162,14 @@ const Gui::DropdownList kSolidAngleBoundList = {
     }
 
     SCRIPT_BINDING(LightBVHSampler) {
-        auto e = m.enum_<SolidAngleBoundMethod>("SolidAngleBoundMethod");
-        e.regEnumVal(SolidAngleBoundMethod::BoxToAverage);
-        e.regEnumVal(SolidAngleBoundMethod::BoxToCenter);
-        e.regEnumVal(SolidAngleBoundMethod::Sphere);
+        pybind11::enum_<SolidAngleBoundMethod> solidAngleBoundMethod(m, "SolidAngleBoundMethod");
+        solidAngleBoundMethod.value("BoxToAverage", SolidAngleBoundMethod::BoxToAverage);
+        solidAngleBoundMethod.value("BoxToCenter", SolidAngleBoundMethod::BoxToCenter);
+        solidAngleBoundMethod.value("Sphere", SolidAngleBoundMethod::Sphere);
 
         // TODO use a nested class in the bindings when supported.
-        auto options = m.class_<LightBVHSampler::Options>("LightBVHSamplerOptions");
-#define field(f_) rwField(#f_, &LightBVHSampler::Options::f_)
+        ScriptBindings::SerializableStruct<LightBVHSampler::Options> options(m, "LightBVHSamplerOptions");
+#define field(f_) field(#f_, &LightBVHSampler::Options::f_)
         options.field(buildOptions);
         options.field(useBoundingCone);
         options.field(useLightingCone);

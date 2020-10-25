@@ -38,16 +38,31 @@ ScopeBase::ScopeBase(SharedPtr pParent): mpParent(pParent) { }
 /* Transformable */
 
 Transformable::Transformable(ScopeBase::SharedPtr pParent):ScopeBase(pParent) {
-	mTransform = glm::mat4( 1.0 );
+	mTransformList.clear();
+	mTransformList.push_back(glm::mat4( 1.0 ));
 }
 
 void Transformable::setTransform(const lsd::Matrix4& mat) {
-	mTransform = {
+	if(mTransformList.size() > 1) {
+		LLOG_WRN << "Setting transfrorm on transfrorm list that is larger than 1 !!!";
+		return;
+	}
+
+	mTransformList[0] = {
 		mat[0], mat[1], mat[2], mat[3],
 		mat[4], mat[5], mat[6], mat[7],
 		mat[8], mat[9], mat[10], mat[11],
 		mat[12], mat[13], mat[14], mat[15]
 	};
+}
+
+void Transformable::addTransform(const lsd::Matrix4& mat) {
+	mTransformList.push_back({
+		mat[0], mat[1], mat[2], mat[3],
+		mat[4], mat[5], mat[6], mat[7],
+		mat[8], mat[9], mat[10], mat[11],
+		mat[12], mat[13], mat[14], mat[15]
+	});
 }
 
 /* Global */
@@ -66,6 +81,7 @@ Global::SharedPtr Global::create() {
 	if(!pGlobal->declareProperty(Style::CAMERA, Type::STRING, "projection", std::string("perspective"), Property::Owner::SYS)) return nullptr;
 	
 	if(!pGlobal->declareProperty(Style::OBJECT, Type::FLOAT, "velocityscale", 1.0 , Property::Owner::SYS)) return nullptr;
+	if(!pGlobal->declareProperty(Style::OBJECT, Type::INT, "xformsamples", 1 , Property::Owner::SYS)) return nullptr;
 
 	return std::move(pGlobal);
 }

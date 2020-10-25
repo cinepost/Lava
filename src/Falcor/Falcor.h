@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_SRC_FALCOR_FALCOR_H_
+#define FALCOR_SRC_FALCOR_FALCOR_H_
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -169,3 +170,5 @@
 #define FALCOR_MAJOR_VERSION 4
 #define FALCOR_REVISION 1
 #define FALCOR_VERSION_STRING "4.1"
+
+#endif  // FALCOR_SRC_FALCOR_FALCOR_H_

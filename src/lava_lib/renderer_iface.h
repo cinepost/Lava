@@ -39,6 +39,7 @@ class RendererIface {
         double      cameraFarPlane  = 1000.0;
         glm::mat4   cameraTransform;
         double      cameraFocalLength = 1.0;
+        double      cameraFrameHeight = 1.0;
     };
 
  public:

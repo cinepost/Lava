@@ -1,9 +1,13 @@
 #include <utility>
+
+#include "Falcor/Scene/Lights/Light.h"
+
 #include "session.h"
 
 #include "../display.h"
 
 #include "lava_utils_lib/ut_fsys.h"
+#include "lava_utils_lib/ut_string.h"
 #include "lava_utils_lib/logging.h"
 
 
@@ -98,14 +102,27 @@ bool Session::prepareFrameData() {
 	LLOG_DBG << "prepareFrameData";
 	if(!mpRendererIface->initRenderer()) return false;
 
+	// set up frame resolution (as they don't have to be the same size)
+	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
+	mFrameData.imageWidth = resolution[0];
+	mFrameData.imageHeight = resolution[1];
+
+	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 	
 	mFrameData.cameraNearPlane = camera_clip[0];
 	mFrameData.cameraFarPlane  = camera_clip[1];
-
-	mFrameData.cameraFocalLength = 50.0 / mpGlobal->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
 	mFrameData.cameraProjectionName = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
-	mFrameData.cameraTransform = mpGlobal->getTransform();
+	mFrameData.cameraTransform = mpGlobal->getTransformList()[0];
+
+	const auto& segments = mpGlobal->segments();
+	if(segments.size()) {
+		const auto& pSegment = segments[0];
+		mFrameData.cameraFocalLength = 50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
+		
+		double height_k = static_cast<double>(mFrameData.imageHeight) / static_cast<double>(mFrameData.imageWidth);
+		mFrameData.cameraFrameHeight = height_k * 50.0;
+	}
 
 	mFrameData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 
@@ -132,11 +149,6 @@ bool Session::cmdRaytrace() {
 		}
 	}
 
-	// set up frame resolution (as they don't have to be the same size)
-	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
-	mFrameData.imageWidth = resolution[0];
-	mFrameData.imageHeight = resolution[1];
-
 	if(!prepareFrameData()) {
 		LLOG_ERR << "Unable to prepare frame data !";
 		return false;
@@ -158,6 +170,27 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo) {
     	mMeshMap[name] = mesh_id;
     } else {
     	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+    }
+}
+
+void Session::pushLight(const scope::Light::SharedPtr pLight) {
+
+	static std::string unnamed = "unnamed"; // safety. in case light scope has no name specified
+
+    auto pSceneBuilder = mpRendererIface->getSceneBuilder();
+    if(pSceneBuilder) {
+    	std::string light_name = pLight->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
+
+    	const auto& transform = pLight->getTransformList()[0];
+
+    	auto pFalcorLight = Falcor::PointLight::create();
+    	pFalcorLight->setWorldPosition({transform[3][0], transform[3][1], transform[3][2]});
+    	uint32_t light_id = pSceneBuilder->addLight(pFalcorLight);
+    	mMeshMap[light_name] = light_id;
+
+    	unnamed += "_";
+    } else {
+    	LLOG_ERR << "Can't push light. SceneBuilder not ready !!!";
     }
 }
 
@@ -183,6 +216,16 @@ void Session::cmdTransform(const Matrix4& transform) {
 		return;
 	}
 	pScope->setTransform(transform);
+}
+
+void Session::cmdMTransform(const Matrix4& transform) {
+	LLOG_DBG << "cmdMTransform";
+	auto pScope = std::dynamic_pointer_cast<scope::Transformable>(mpCurrentScope);
+	if(!pScope) {
+		LLOG_DBG << "Trying to add transform to non-transformable scope !!!";
+		return;
+	}
+	pScope->addTransform(transform);
 }
 
 scope::Geo::SharedPtr Session::getCurrentGeo() {
@@ -246,6 +289,7 @@ bool Session::cmdEnd() {
 	scope::Object::SharedPtr pObj;
 	scope::Plane::SharedPtr pPlane;
 	scope::Light::SharedPtr pLight;
+
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
@@ -263,8 +307,11 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
+			pushLight(pLight);
 			break;
+		case ast::Style::SEGMENT:
 		case ast::Style::GLOBAL:
+			break;
 		default:
 			LLOG_ERR << "cmd_end makes no sence. Current scope type is " << to_string(mpCurrentScope->type()) << " !!!";
 			break;
@@ -289,7 +336,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedPtr pObj) {
 
 	Falcor::SceneBuilder::Node node = {
 		it->first,
-		pObj->getTransform(),
+		pObj->getTransformList()[0],
 		glm::mat4(1),
 		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
 	};

@@ -56,15 +56,11 @@ bool RendererIface::initRenderer() {
 }
 
 bool RendererIface::setDisplay(const DisplayData& display_data) {
-	auto pDisplay = mpRenderer->display();
-
-	if(!pDisplay) {
-		if(!mpRenderer->loadDisplay(display_data.displayType)) {
-			return false;
-		}
-
-		pDisplay = mpRenderer->display();
+	if(!mpRenderer->loadDisplay(display_data.displayType)) {
+		return false;
 	}
+
+	auto pDisplay = mpRenderer->display();
 
 	// push display driver parameters
 	for(auto const& parm: display_data.displayStringParameters)

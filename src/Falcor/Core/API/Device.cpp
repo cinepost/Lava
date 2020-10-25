@@ -385,6 +385,7 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
     return getSwapChainFbo();
 }
 
+/*
 SCRIPT_BINDING(Device) {
     auto deviceDesc = m.class_<Device::Desc>("DeviceDesc");
 #define desc_field(f_) rwField(#f_, &Device::Desc::f_)
@@ -399,49 +400,25 @@ SCRIPT_BINDING(Device) {
     //deviceClass.ctor(&Device::create);
     deviceClass.ctor(&create_headless);
 }
+*/
+
+SCRIPT_BINDING(Device) {
+    ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
+#define field(f_) field(#f_, &Device::Desc::f_)
+    deviceDesc.field(colorFormat);
+    deviceDesc.field(depthFormat);
+    deviceDesc.field(apiMajorVersion);
+    deviceDesc.field(apiMinorVersion);
+    deviceDesc.field(enableVsync);
+    deviceDesc.field(enableDebugLayer);
+    deviceDesc.field(cmdQueues);
+#undef field
+
+    // Device
+    Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
+    pybind11::class_<Device, Device::SharedPtr> device(m, "Device");
+    device.def_static("create", &create_headless);
+
+}
 
 }  // namespace Falcor
-
-/*
-SCRIPT_BINDING(RenderGraph) {
-    auto graphClass = m.regClass(RenderGraph);
-    graphClass.ctor(&RenderGraph::create);
-    graphClass.property("name", &RenderGraph::getName, &RenderGraph::setName);
-    graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
-    graphClass.func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
-    graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
-    graphClass.func_(RenderGraphIR::kRemoveEdge, ScriptBindings::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
-    graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
-    graphClass.func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
-    graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
-    graphClass.func_("getPass", &RenderGraph::getPass, "name"_a);
-    graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
-    auto printGraph = [](RenderGraph::SharedPtr pGraph) { pybind11::print(RenderGraphExporter::getIR(pGraph)); };
-    graphClass.func_("print", printGraph);
-
-    // RenderPass
-    auto passClass = m.regClass(RenderPass);
-
-    // RenderPassLibrary
-    const auto& createRenderPass = [](std::shared_ptr<Device> device, const std::string& passName, pybind11::dict d = {}) {
-        auto pPass = RenderPassLibrary::instance().createPass(device->getRenderContext(), passName.c_str(), Dictionary(d));
-        if (!pPass) { 
-            throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
-        }
-        return pPass;
-    };
-    passClass.ctor(createRenderPass, "device"_a, "name"_a, "dict"_a = pybind11::dict());
-
-    const auto& loadPassLibrary = [](const std::string& library) {
-        return RenderPassLibrary::instance().loadLibrary(library);
-    };
-
-    m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "name"_a);
-
-    const auto& updateRenderPass = [](std::shared_ptr<Device> device, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
-        pGraph->updatePass(device->getRenderContext(), passName, Dictionary(d));
-    };
-
-    graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);
-}
-*/

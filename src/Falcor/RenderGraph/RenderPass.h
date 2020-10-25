@@ -30,6 +30,7 @@
 
 #include "RenderPassReflection.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/InternalDictionary.h"
 #include "ResourceCache.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Scene.h"
@@ -57,7 +58,7 @@ namespace Falcor {
 
         /** Get the global dictionary. You can use it to pass data between different passes
         */
-        Dictionary& getDictionary() const { return (*mpDictionary); }
+        InternalDictionary& getDictionary() const { return (*mpDictionary); }
 
         /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
         */
@@ -68,10 +69,10 @@ namespace Falcor {
         ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
      protected:
         friend class RenderGraphExe;
-        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
+        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;
-        Dictionary::SharedPtr mpDictionary;
+        InternalDictionary::SharedPtr mpDictionary;
         uint2 mDefaultTexDims;
         ResourceFormat mDefaultTexFormat;
     };

@@ -69,6 +69,6 @@ namespace Falcor
     }
 
     SCRIPT_BINDING(BlendState) {
-        m.regClass(BlendState);
+        pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
     }
 }

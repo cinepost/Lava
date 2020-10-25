@@ -140,10 +140,10 @@ Device::SharedPtr DeviceManager::defaultDisplayDevice() {
 }
 
 SCRIPT_BINDING(DeviceManager) {
-    auto deviceManagerClass = m.regClass(DeviceManager);
-    deviceManagerClass.staticFunc_("instance", [](){ return std::unique_ptr<DeviceManager, py::nodelete>(&DeviceManager::instance()); });
-    deviceManagerClass.func_("listDevices", &DeviceManager::listDevices);
-    deviceManagerClass.func_("defaultRenderingDevice", &DeviceManager::defaultRenderingDevice);
+    pybind11::class_<DeviceManager> deviceManagerClass(m, "DeviceManager");
+    deviceManagerClass.def_static("instance", [](){ return std::unique_ptr<DeviceManager, py::nodelete>(&DeviceManager::instance()); });
+    deviceManagerClass.def("listDevices", &DeviceManager::listDevices);
+    deviceManagerClass.def("defaultRenderingDevice", &DeviceManager::defaultRenderingDevice);
 }
 
 }  // namespace Falcor

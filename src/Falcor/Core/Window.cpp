@@ -467,18 +467,22 @@ void Window::pollForEvents() {
 }
 
 SCRIPT_BINDING(Window) {
-    auto w = m.class_<Window>("Window");
-    w.func_("setWindowPos", &Window::setWindowPos);
+    pybind11::class_<Window, Window::SharedPtr> window(m, "Window");
+    window.def("setWindowPos", &Window::setWindowPos);
 
-    auto windowMode = m.enum_<Window::WindowMode>("WindowMode");
-    windowMode.regEnumVal(Window::WindowMode::Normal);
-    windowMode.regEnumVal(Window::WindowMode::Fullscreen);
-    windowMode.regEnumVal(Window::WindowMode::Minimized);
+    pybind11::enum_<Window::WindowMode> windowMode(m, "WindowMode");
+    windowMode.value("Normal", Window::WindowMode::Normal);
+    windowMode.value("Fullscreen", Window::WindowMode::Fullscreen);
+    windowMode.value("Minimized", Window::WindowMode::Minimized);
 
-    auto winDesc = m.class_<Window::Desc>("WindowDesc");
-#define desc_field(f_) rwField(#f_, &Window::Desc::f_)
-    winDesc.desc_field(width).desc_field(height).desc_field(title).desc_field(mode).desc_field(resizableWindow);
-#undef desc_field
+    ScriptBindings::SerializableStruct<Window::Desc> windowDesc(m, "WindowDesc");
+#define field(f_) field(#f_, &Window::Desc::f_)
+    windowDesc.field(width);
+    windowDesc.field(height);
+    windowDesc.field(title);
+    windowDesc.field(mode);
+    windowDesc.field(resizableWindow);
+#undef field
 }
 
 }  // namespace Falcor

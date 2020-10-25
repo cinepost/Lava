@@ -47,23 +47,25 @@ class Scene;
     The LightCollection can be used standalone, but more commonly it will be wrapped
     by an emissive light sampler.
 */
-class dlldecl LightCollection : public std::enable_shared_from_this<LightCollection> {
- public:
+class dlldecl LightCollection : public std::enable_shared_from_this<LightCollection>
+{
+public:
     using SharedPtr = std::shared_ptr<LightCollection>;
-    using ConstSharedPtrRef = const std::shared_ptr<LightCollection>&;
     using SharedConstPtr = std::shared_ptr<const LightCollection>;
 
-    enum class UpdateFlags : uint32_t {
+    enum class UpdateFlags : uint32_t
+    {
         None                = 0u,   ///< Nothing was changed.
         MatrixChanged       = 1u,   ///< Mesh instance transform changed.
-        AnimationChanged    = 2u,   ///< Vertices changed due to animation.
     };
 
-    struct UpdateStatus {
+    struct UpdateStatus
+    {
         std::vector<UpdateFlags> lightsUpdateInfo;
     };
 
-    struct MeshLightStats {
+    struct MeshLightStats
+    {
         // Stats before pre-processing (input data).
         uint32_t meshLightCount = 0;                ///< Number of mesh lights.
         uint32_t triangleCount = 0;                 ///< Number of mesh light triangles (total).
@@ -79,27 +81,30 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
 
     /** Represents one mesh light triangle vertex.
     */
-    struct MeshLightVertex {
+    struct MeshLightVertex
+    {
         float3 pos;     ///< World-space position.
         float2 uv;      ///< Texture coordinates in emissive texture (if textured).
     };
 
     /** Represents one mesh light triangle.
     */
-    struct MeshLightTriangle {
+    struct MeshLightTriangle
+    {
         // TODO: Perf of indexed vs non-indexed on GPU. We avoid level of indirection, but have more bandwidth non-indexed.
         MeshLightVertex vtx[3];                             ///< Vertices. These are non-indexed for now.
-        uint32_t        lightIdx = kInvalidIndex;           ///< Per-triangle index into mesh lights array.
+        uint32_t        lightIdx = MeshLightData::kInvalidIndex; ///< Per-triangle index into mesh lights array.
 
         // Pre-computed quantities.
         float3          normal = float3(0);                 ///< Triangle's face normal in world space.
         float3          averageRadiance = float3(0);        ///< Average radiance emitted over triangle. For textured emissive the radiance varies over the surface.
-        float           luminousFlux = 0.f;                 ///< Pre-integrated luminous flux (lumens) emitted per side of the triangle for double-sided emitters (total flux is 2x this value).
+        float           flux = 0.f;                         ///< Pre-integrated flux emitted by the triangle. Note that emitters are single-sided.
         float           area = 0.f;                         ///< Triangle area in world space units.
 
         /** Returns the center of the triangle in world space.
         */
-        float3 getCenter() const {
+        float3 getCenter() const
+        {
             return (vtx[0].pos + vtx[1].pos + vtx[2].pos) / 3.0f;
         }
     };
@@ -107,7 +112,8 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
 
     ~LightCollection() = default;
 
-    std::shared_ptr<Device> const device() { return mpDevice; }
+    std::shared_ptr<Device> device() { return mpDevice; };
+    std::shared_ptr<Device> device() const { return mpDevice; };
 
     /** Creates a light collection for the given scene.
         Note that update() must be called before the collection is ready to use.
@@ -123,10 +129,6 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
         \return True if the lighting in the scene has changed since the last frame.
     */
     bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr);
-
-    /** Render the GUI.
-    */
-    void renderUI(Gui::Widgets& widgets);
 
     /** Bind the light collection data to a given shader var
         Note that prepareProgram() must have been called before this function.
@@ -166,29 +168,31 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     void prepareSyncCPUData(RenderContext* pRenderContext) const { copyDataToStagingBuffer(pRenderContext); }
 
     // Internal update flags. This only public for enum_class_operators() to work.
-    enum class CPUOutOfDateFlags : uint32_t {
-        None = 0u,
-        Positions = 1u << 0,
-        TexCoords = 1u << 1,
-        TriangleData = 1u << 2,
-        All = (1u << 3) - 1
+    enum class CPUOutOfDateFlags : uint32_t
+    {
+        None         = 0,
+        TriangleData = 0x1,
+        FluxData     = 0x2,
+
+        All          = TriangleData | FluxData
     };
 
- private:
+private:
     std::shared_ptr<Device> mpDevice;
 
- protected:
-    LightCollection() = default;
+protected:
+    LightCollection(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {};
 
     bool init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
-    bool initIntegrator(RenderContext* pRenderContext);
+    bool initIntegrator();
     bool setupMeshLights();
     void build(RenderContext* pRenderContext);
     void prepareTriangleData(RenderContext* pRenderContext);
-    void prepareMeshData(RenderContext* pRenderContext);
+    void prepareMeshData();
     void integrateEmissive(RenderContext* pRenderContext);
     void computeStats() const;
     void buildTriangleList(RenderContext* pRenderContext);
+    void updateActiveTriangleList();
     void updateTrianglePositions(RenderContext* pRenderContext, const std::vector<uint32_t>& updatedLights);
 
     void copyDataToStagingBuffer(RenderContext* pRenderContext) const;
@@ -201,15 +205,14 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.
 
     mutable std::vector<MeshLightTriangle>  mMeshLightTriangles;    ///< List of all pre-processed mesh light triangles.
+    mutable std::vector<uint32_t>           mActiveTriangleList;    ///< List of active (non-culled) emissive triangles.
     mutable MeshLightStats                  mMeshLightStats;        ///< Stats before/after pre-processing of mesh lights. Do not access this directly, use getStats() which ensures the stats are up-to-date.
     mutable bool                            mStatsValid = false;    ///< True when stats are valid.
 
-    // GPU resources for the mesh light vertex/triangle data.
-    // TODO: Perf of individual buffers vs StructuredBuffer<vertex>?
-    // We should profile. The code would be simpler with StructuredBuffer.
-    Buffer::SharedPtr                       mpMeshLightsVertexPos;  ///< Vertex positions in world space for all mesh light triangles (3 * mTriangleCount elements).
-    Buffer::SharedPtr                       mpMeshLightsTexCoords;  ///< Texture coordinates for all mesh light triangles (3 * mTriangleCount elements).
-    Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle data for emissive triangles (mTriangleCount elements).
+    // GPU resources for the mesh lights and emissive triangles.
+    Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle geometry data for emissive triangles (mTriangleCount elements).
+    Buffer::SharedPtr                       mpActiveTriangleList;   ///< List of active (non-culled) emissive triangle.
+    Buffer::SharedPtr                       mpFluxData;             ///< Per-triangle flux data for emissive triangles (mTriangleCount elements).
     Buffer::SharedPtr                       mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
     Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
 
@@ -219,7 +222,8 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     Sampler::SharedPtr                      mpSamplerState;         ///< Material sampler for emissive textures.
 
     // Shader programs.
-    struct {
+    struct
+    {
         GraphicsProgram::SharedPtr          pProgram;
         GraphicsVars::SharedPtr             pVars;
         GraphicsState::SharedPtr            pState;

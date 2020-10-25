@@ -41,7 +41,7 @@ class FrameRate;
 
 /** Sample configuration
 */
-struct SampleConfig : ScriptBindings::enable_to_string {
+struct SampleConfig {
     Window::Desc windowDesc;                 ///< Controls window creation
     Device::Desc deviceDesc;                 ///< Controls device creation
     bool suppressInput = false;              ///< Suppress all keyboard and mouse input (other than escape to terminate)

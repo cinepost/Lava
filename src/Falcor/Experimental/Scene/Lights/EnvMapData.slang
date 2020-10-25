@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,26 +30,14 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-static const float kInvalidCosConeAngle = -1.0f;
-
-// IMPORTANT: these constants must be kept in sync with the definitions of
-// InternalNode and LeafNode in Experimental/Scene/Lights/LightBVH.h.
-
-// Common internal and leaf nodes' members offset
-static const uint32_t kNodeTypeOffset            =  0u;
-static const uint32_t kNodeAABBMinOffset         =  4u;
-static const uint32_t kNodeFluxOffset            = 16u;
-static const uint32_t kNodeAABBMaxOffset         = 20u;
-static const uint32_t kNodeCosConeAngleOffset    = 32u;
-static const uint32_t kNodeConeDirectionOffset   = 36u;
-
-// Internal nodes' specific members offset
-static const uint32_t kNodeLeftByteOffsetOffset  = 48u;
-static const uint32_t kNodeRightByteOffsetOffset = 52u;
-
-// Leaf nodes' specific members offset
-static const uint32_t kNodeTriangleCountOffset   = 48u;
-static const uint32_t kNodeTriangleIndicesOffset = 52u;
-static const uint32_t kNodeTriangleIndexByteSize =  4u;
+/** This is a host/device structure that describes the environment map proeprties.
+*/
+struct EnvMapData
+{
+    float3x4    transform;              ///< Local to world transform.
+    float3x4    invTransform;           ///< World to local transform.
+    float       intensity = 1.f;        ///< Radiance scale
+    float3      tint = {1.f, 1.f, 1.f}; ///< Color tint
+};
 
 END_NAMESPACE_FALCOR

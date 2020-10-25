@@ -64,50 +64,78 @@ GraphicsState::GraphicsState(std::shared_ptr<Device> device): mpDevice(device), 
 GraphicsState::~GraphicsState() = default;
 
 GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars) {
+    LOG_DBG("getCSO 0");
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
+    LOG_DBG("getCSO 1");
     bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
     
+    LOG_DBG("getCSO 2");    
     if (newProgVersion) {
+        LOG_DBG("getCSO 2.2");
         mCachedData.pProgramKernels = pProgramKernels.get();
+        LOG_DBG("getCSO 2.3");
         mpGsoGraph->walk((void*)pProgramKernels.get());
     }
-
+    LOG_DBG("getCSO 3");
     RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty(mpDevice);
 
+    LOG_DBG("getCSO 4");
     if (mCachedData.pRootSig != pRoot.get()) {
+        LOG_DBG("getCSO 4.1");
         mCachedData.pRootSig = pRoot.get();
+        LOG_DBG("getCSO 4.2");
         mpGsoGraph->walk((void*)mCachedData.pRootSig);
     }
 
+    LOG_DBG("getCSO 5");
     const Fbo::Desc* pFboDesc = mpFbo ? &mpFbo->getDesc() : nullptr;
+    LOG_DBG("getCSO 6");
     if(mCachedData.pFboDesc != pFboDesc) {
+        LOG_DBG("getCSO 6.1");
         mpGsoGraph->walk((void*)pFboDesc);
+        LOG_DBG("getCSO 6.2");
         mCachedData.pFboDesc = pFboDesc;
     }
 
+    LOG_DBG("getCSO 7");
     GraphicsStateObject::SharedPtr pGso = mpGsoGraph->getCurrentNode();
+    LOG_DBG("getCSO 8");
     if(pGso == nullptr) {
+        LOG_DBG("getCSO 8.1");
         mDesc.setProgramKernels(pProgramKernels);
+        LOG_DBG("getCSO 8.2");
         mDesc.setFboFormats(mpFbo ? mpFbo->getDesc() : Fbo::Desc(mpDevice));
 #ifdef FALCOR_VK
+        LOG_DBG("getCSO 8.3");
         mDesc.setRenderPass(mpFbo ? (VkRenderPass)mpFbo->getApiHandle() : VK_NULL_HANDLE);
 #endif
+        LOG_DBG("getCSO 8.4");
         mDesc.setVertexLayout(mpVao->getVertexLayout());
+        LOG_DBG("getCSO 8.5");
         mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
+        LOG_DBG("getCSO 8.6");
         mDesc.setRootSignature(pRoot);
 
+        LOG_DBG("getCSO 9");
         _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](GraphicsStateObject::SharedPtr pGso) -> bool
         {
+            LOG_DBG("getCSO 9.1");
             return pGso && (desc == pGso->getDesc());
         };
 
+        LOG_DBG("getCSO 10");
         if (mpGsoGraph->scanForMatchingNode(cmpFunc)) {
+            LOG_DBG("getCSO 10.1");
             pGso = mpGsoGraph->getCurrentNode();
         } else {
+            LOG_DBG("getCSO 10.2");
             pGso = GraphicsStateObject::create(mpDevice, mDesc);
+            LOG_DBG("getCSO 10.3");
             mpGsoGraph->setCurrentNodeData(pGso);
+            LOG_DBG("getCSO 10.4");
         }
     }
+    LOG_DBG("getCSO done!");
     return pGso;
 }
 
@@ -230,7 +258,7 @@ void GraphicsState::setScissors(uint32_t index, const GraphicsState::Scissor& sc
 }
 
 SCRIPT_BINDING(GraphicsState) {
-    m.regClass(GraphicsState);
+    pybind11::class_<GraphicsState, GraphicsState::SharedPtr>(m, "GraphicsState");
 }
 
 }  // namespace Falcor

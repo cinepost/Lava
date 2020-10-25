@@ -129,7 +129,7 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 }
 
 SCRIPT_BINDING(Resource) {
-    auto c = m.regClass(Resource);
+    pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
 }
 
 }  // namespace Falcor
