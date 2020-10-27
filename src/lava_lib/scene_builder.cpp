@@ -39,9 +39,9 @@ namespace lava {
 
 SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags) {
 
-    mCamera.pObject = Falcor::Camera::create();
+    //mCamera.pObject = Falcor::Camera::create();
 
-    mpDefaultMatreial = Material::create("default");
+    mpDefaultMatreial = Material::create(pDevice, "default");
     mpDefaultMatreial->setBaseColor({0.5, 0.5, 0.5, 1.0});
 }
 
@@ -187,6 +187,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
 
     // process primitives and build indices
 
+    uint32_t face_count = 0;
     std::vector<uint32_t> indices;
 
     std::vector<int32_t> prim_start_indices;
@@ -228,6 +229,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
                             indices.push_back(csi+2);
                             indices.push_back(csi+1);
                             indices.push_back(csi);
+                            face_count += 1;
                             break;
                         case 4:
                             indices.push_back(csi+2);
@@ -237,6 +239,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
                             indices.push_back(csi+3);
                             indices.push_back(csi+2);
                             indices.push_back(csi);
+                            face_count += 2;
                             break;
                         case 5:
                             indices.push_back(csi+2);
@@ -250,6 +253,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
                             indices.push_back(csi+4);
                             indices.push_back(csi+3);
                             indices.push_back(csi);
+                            face_count += 3;
                             break;
                         default:
                             LLOG_WRN << "Poly sides more than 5 unsupported for now !";
@@ -280,15 +284,22 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo) {
     std::cout << " ]\n";
 
     mesh.pMaterial = mpDefaultMatreial;
+    mesh.faceCount = face_count;
     mesh.vertexCount = positions.size();
     mesh.indexCount = indices.size();
     mesh.pIndices = (uint32_t*)indices.data();
-    mesh.pPositions = (float3*)positions.data();
-    mesh.pNormals = (float3*)normals.data();
-    mesh.pTexCrd = (float2*)uv_coords.data();
-    mesh.pBitangents = nullptr;
-    mesh.pBoneIDs = nullptr;
-    mesh.pBoneWeights = nullptr;
+    
+    mesh.positions.pData = (float3*)positions.data();
+    mesh.positions.frequency = Mesh::AttributeFrequency::FaceVarying;
+    
+    mesh.normals.pData = (float3*)normals.data();
+    mesh.normals.frequency = Mesh::AttributeFrequency::FaceVarying;
+
+    mesh.texCrds.pData = (float2*)uv_coords.data();
+    mesh.texCrds.frequency = Mesh::AttributeFrequency::FaceVarying;
+
+    //mesh.pBoneIDs = nullptr;
+    //mesh.pBoneWeights = nullptr;
     mesh.topology = Falcor::Vao::Topology::TriangleList;
 
     return Falcor::SceneBuilder::addMesh(mesh);

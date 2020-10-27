@@ -29,266 +29,281 @@
 #define SRC_FALCOR_SCENE_CAMERA_CAMERA_H_
 
 #include "CameraData.slang"
-#include "Scene/Animation/Animatable.h"
+
+#include "Falcor/Core/Framework.h" 
+#include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Falcor/Core/BufferTypes/ParameterBlock.h"
 
 namespace Falcor {
-    struct BoundingBox;
-    class ParameterBlock;
-    class Gui;
 
-    /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
+struct BoundingBox;
+class ParameterBlock;
+class Gui;
+
+/** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
+*/
+class dlldecl Camera : public Animatable
+{
+public:
+    using SharedPtr = std::shared_ptr<Camera>;
+    using SharedConstPtr = std::shared_ptr<const Camera>;
+
+    // Default dimensions of full frame cameras and 35mm film
+    static const float kDefaultFrameHeight;
+
+    /** Create a new camera object.
     */
-    class dlldecl Camera : public Animatable {
-     public:
-        using SharedPtr = std::shared_ptr<Camera>;
-        using SharedConstPtr = std::shared_ptr<const Camera>;
+    static SharedPtr create();
+    ~Camera();
 
-        // Default dimensions of full frame cameras and 35mm film
-        static const float kDefaultFrameHeight;
+    /** Name the camera.
+    */
+    void setName(const std::string& name) { mName = name; }
 
-        /** Create a new camera object.
-        */
-        static SharedPtr create();
-        ~Camera();
+    /** Get the camera's name.
+    */
+    const std::string& getName() const { return mName; }
 
-        /** Name the camera.
-        */
-        void setName(const std::string& name) { mName = name; }
+    /** Set the camera's aspect ratio.
+    */
+    void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; mDirty = true; }
 
-        /** Get the camera's name.
-        */
-        const std::string& getName() const { return mName; }
+    /** Get the camera's aspect ratio.
+    */
+    float getAspectRatio() const { return mData.aspectRatio; }
 
-        /** Set the camera's aspect ratio.
-        */
-        void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; mDirty = true; }
+    /** Set camera focal length in mm. See FalcorMath.h for helper functions to convert between fovY angles.
+    */
+    void setFocalLength(float length) { mData.focalLength = length; mDirty = true; }
 
-        /** Get the camera's aspect ratio.
-        */
-        float getAspectRatio() const { return mData.aspectRatio; }
+    /** Get the camera's focal length. See FalcorMath.h for helper functions to convert between fovY angles.
+    */
+    float getFocalLength() const { return mData.focalLength; }
 
-        /** Set camera focal length in mm. See FalcorMath.h for helper functions to convert between fovY angles.
-        */
-        void setFocalLength(float length) { mData.focalLength = length; mDirty = true; }
+    /** Set the camera's film plane height in mm.
+    */
+    void setFrameHeight(float height) { mData.frameHeight = height; mPreserveHeight = true;  mDirty = true; }
 
-        /** Get the camera's focal length. See FalcorMath.h for helper functions to convert between fovY angles.
-        */
-        float getFocalLength() const { return mData.focalLength; }
+    /** Get the camera's film plane height in mm.
+    */
+    float getFrameHeight() const { return mData.frameHeight; }
 
-        /** Set the camera's film plane height in mm.
-        */
-        void setFrameHeight(float height) { mData.frameHeight = height; mDirty = true; }
+    /** Set the camera's film plane width in mm.
+    */
+    void setFrameWidth(float width) { mData.frameWidth = width; mPreserveHeight = false;  mDirty = true; }
 
-        /** Get the camera's film plane height in mm.
-        */
-        float getFrameHeight() const { return mData.frameHeight; }
+    /** Get the camera's film plane width in mm.
+    */
+    float getFrameWidth() const { return mData.frameWidth; }
 
-        /** Set the camera's focal distance in scene units.  Used for depth-of-field.
-        */
-        void setFocalDistance(float distance) { mData.focalDistance = distance; mDirty = true; }
+    /** Set the camera's focal distance in scene units.  Used for depth-of-field.
+    */
+    void setFocalDistance(float distance) { mData.focalDistance = distance; mDirty = true; }
 
-        /** Get the camera's focal distance in scene units.
-        */
-        float getFocalDistance() const { return mData.focalDistance; }
+    /** Get the camera's focal distance in scene units.
+    */
+    float getFocalDistance() const { return mData.focalDistance; }
 
-        /** Set camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
-        */
-        void setApertureRadius(float radius) { mData.apertureRadius = radius; mDirty = true; }
+    /** Set camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
+    */
+    void setApertureRadius(float radius) { mData.apertureRadius = radius; mDirty = true; }
 
-        /** Get camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
-        */
-        float getApertureRadius() const { return mData.apertureRadius; }
+    /** Get camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
+    */
+    float getApertureRadius() const { return mData.apertureRadius; }
 
-        /** Set camera shutter speed in seconds.
-        */
-        void setShutterSpeed(float shutterSpeed) { mData.shutterSpeed = shutterSpeed; mDirty = true; }
+    /** Set camera shutter speed in seconds.
+    */
+    void setShutterSpeed(float shutterSpeed) { mData.shutterSpeed = shutterSpeed; mDirty = true; }
 
-        /** Get camera shutter speed in seconds.
-        */
-        float getShutterSpeed() const { return mData.shutterSpeed; }
+    /** Get camera shutter speed in seconds.
+    */
+    float getShutterSpeed() const { return mData.shutterSpeed; }
 
-        /** Set camera's film speed based on ISO standards.
-        */
-        void setISOSpeed(float ISOSpeed) { mData.ISOSpeed = ISOSpeed; mDirty = true; }
+    /** Set camera's film speed based on ISO standards.
+    */
+    void setISOSpeed(float ISOSpeed) { mData.ISOSpeed = ISOSpeed; mDirty = true; }
 
-        /** Get camera's film speed based on ISO standards.
-        */
-        float getISOSpeed() const { return mData.ISOSpeed; }
+    /** Get camera's film speed based on ISO standards.
+    */
+    float getISOSpeed() const { return mData.ISOSpeed; }
 
-        /** Get the camera's world space position.
-        */
-        const float3& getPosition() const { return mData.posW; }
+    /** Get the camera's world space position.
+    */
+    const float3& getPosition() const { return mData.posW; }
 
-        /** Get the camera's world space up vector.
-        */
-        const float3& getUpVector() const {return mData.up;}
+    /** Get the camera's world space up vector.
+    */
+    const float3& getUpVector() const {return mData.up;}
 
-        /** Get the camera's world space target position.
-        */
-        const float3& getTarget() const { return mData.target; }
+    /** Get the camera's world space target position.
+    */
+    const float3& getTarget() const { return mData.target; }
 
-        /** Set the camera's world space position.
-        */
-        void setPosition(const float3& posW) { mData.posW = posW; mDirty = true; }
+    /** Set the camera's world space position.
+    */
+    void setPosition(const float3& posW) { mData.posW = posW; mDirty = true; }
 
-        /** Set the camera's world space up vector.
-        */
-        void setUpVector(const float3& up) { mData.up = up; mDirty = true; }
+    /** Set the camera's world space up vector.
+    */
+    void setUpVector(const float3& up) { mData.up = up; mDirty = true; }
 
-        /** Set the camera's world space target position.
-        */
-        void setTarget(const float3& target) { mData.target = target; mDirty = true; }
+    /** Set the camera's world space target position.
+    */
+    void setTarget(const float3& target) { mData.target = target; mDirty = true; }
 
-        /** Set the camera's depth range.
-        */
-        void setDepthRange(float nearZ, float farZ) { mData.farZ = farZ;  mData.nearZ = nearZ; mDirty = true; }
+    /** Set the camera's depth range.
+    */
+    void setDepthRange(float nearZ, float farZ) { mData.farZ = farZ;  mData.nearZ = nearZ; mDirty = true; }
 
-        /** Set the near plane depth.
-        */
-        void setNearPlane(float nearZ) { mData.nearZ = nearZ; mDirty = true; }
+    /** Set the near plane depth.
+    */
+    void setNearPlane(float nearZ) { mData.nearZ = nearZ; mDirty = true; }
 
-        /** Get the near plane depth.
-        */
-        float getNearPlane() const { return mData.nearZ; }
+    /** Get the near plane depth.
+    */
+    float getNearPlane() const { return mData.nearZ; }
 
-        /** Set the far plane depth.
-        */
-        void setFarPlane(float farZ) { mData.farZ = farZ; mDirty = true; }
+    /** Set the far plane depth.
+    */
+    void setFarPlane(float farZ) { mData.farZ = farZ; mDirty = true; }
 
-        /** Get the far plane depth.
-        */
-        float getFarPlane() const { return mData.farZ; }
+    /** Get the far plane depth.
+    */
+    float getFarPlane() const { return mData.farZ; }
 
-        /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
-        */
-        void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1));
+    /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
+    */
+    void setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale = float2(1));
 
-        /** Get the bound pattern generator
-        */
-        const CPUSampleGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
+    /** Get the bound pattern generator
+    */
+    const CPUSampleGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
 
-        /** Set the camera's jitter.
-            \param[in] jitterX Subpixel offset along X axis divided by screen width (positive value shifts the image right).
-            \param[in] jitterY Subpixel offset along Y axis divided by screen height (positive value shifts the image up).
-        */
-        void setJitter(float jitterX, float jitterY);
-        float getJitterX() const { return mData.jitterX; }
-        float getJitterY() const { return mData.jitterY; }
+    /** Set the camera's jitter.
+        \param[in] jitterX Subpixel offset along X axis divided by screen width (positive value shifts the image right).
+        \param[in] jitterY Subpixel offset along Y axis divided by screen height (positive value shifts the image up).
+    */
+    void setJitter(float jitterX, float jitterY);
+    float getJitterX() const { return mData.jitterX; }
+    float getJitterY() const { return mData.jitterY; }
 
-        /** Compute pixel spread in screen space -- to be used with RayCones for texture level-of-detail.
-            \param[in] winHeightPixels Window height in pixels
-            \return the pixel spread angle in screen space
-        */
-        float computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const;
+    /** Compute pixel spread in screen space -- to be used with RayCones for texture level-of-detail.
+        \param[in] winHeightPixels Window height in pixels
+        \return the pixel spread angle in screen space
+    */
+    float computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const;
 
-        /** Get the view matrix.
-        */
-        const glm::mat4& getViewMatrix() const;
+    /** Get the view matrix.
+    */
+    const glm::mat4& getViewMatrix() const;
 
-        /** Get the projection matrix.
-        */
-        const glm::mat4& getProjMatrix() const;
+    /** Get the projection matrix.
+    */
+    const glm::mat4& getProjMatrix() const;
 
-        /** Get the view-projection matrix.
-        */
-        const glm::mat4& getViewProjMatrix() const;
+    /** Get the view-projection matrix.
+    */
+    const glm::mat4& getViewProjMatrix() const;
 
-        /** Get the inverse of the view-projection matrix.
-        */
-        const glm::mat4& getInvViewProjMatrix() const;
+    /** Get the inverse of the view-projection matrix.
+    */
+    const glm::mat4& getInvViewProjMatrix() const;
 
-        /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
-        */
-        void setProjectionMatrix(const glm::mat4& proj);
+    /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
+    */
+    void setProjectionMatrix(const glm::mat4& proj);
 
-        /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
-        */
-        void setViewMatrix(const glm::mat4& view);
+    /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
+    */
+    void setViewMatrix(const glm::mat4& view);
 
-        /** Enable or disable usage of persistent projection matrix
-            \param[in] persistent whether to set it persistent
-        */
-        void togglePersistentProjectionMatrix(bool persistent);
-        void togglePersistentViewMatrix(bool persistent);
+    /** Enable or disable usage of persistent projection matrix
+        \param[in] persistent whether to set it persistent
+    */
+    void togglePersistentProjectionMatrix(bool persistent);
+    void togglePersistentViewMatrix(bool persistent);
 
-        /** Check if an object should be culled
-            \param[in] box Bounding box of the object to check
-        */
-        bool isObjectCulled(const BoundingBox& box) const;
+    /** Check if an object should be culled
+        \param[in] box Bounding box of the object to check
+    */
+    bool isObjectCulled(const BoundingBox& box) const;
 
-        /** Set the camera into a shader var
-        */
-        void setShaderData(const ShaderVar& var) const;
+    /** Set the camera into a shader var
+    */
+    void setShaderData(const ShaderVar& var) const;
 
-        /** Returns the raw camera data
-        */
-        const CameraData& getData() const { calculateCameraParameters(); return  mData; }
+    /** Returns the raw camera data
+    */
+    const CameraData& getData() const { calculateCameraParameters(); return  mData; }
 
-        /** Set transform matrices for the right eye
-            \param[in] view Right eye view matrix
-            \param[in] proj Right eye projection matrix
-        */
-        void setRightEyeMatrices(const glm::mat4& view, const glm::mat4& proj);
+    void updateFromAnimation(const glm::mat4& transform) override;
 
-        /** Render the UI
-        */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+    /** Render the UI
+    */
+    void renderUI(Gui::Widgets& widget);
 
-        enum class Changes {
-            None            = 0x0,
-            Movement        = 0x1,
-            Exposure        = 0x2,
-            FocalDistance   = 0x4,
-            Jitter          = 0x8,
-            Frustum         = 0x10,
-            Aperture        = 0x20,
-            History         = 0x40, ///< The previous frame matrix changed. This indicates that the camera motion-vectors changed
-        };
-
-
-        /** Begin frame. Should be called once at the start of each frame.
-            This is where we store the previous frame matrices.
-            \param[in] firstFrame Set to true on the first frame or after switching cameras.
-        */
-        Changes beginFrame(bool firstFrame = false);
-
-        /** Get the camera changes that happened in since the previous frame
-        */
-        Changes getChanges() const { return mChanges; }
-
-    private:
-        Camera();
-        Changes mChanges = Changes::None;
-
-        mutable bool mDirty = true;
-        mutable bool mEnablePersistentProjMat = false;
-        mutable bool mEnablePersistentViewMat = false;
-        mutable glm::mat4 mPersistentProjMat;
-        mutable glm::mat4 mPersistentViewMat;
-
-        std::string mName;
-
-        void calculateCameraParameters() const;
-        mutable CameraData mData;
-        CameraData mPrevData;
-
-        struct {
-            float3 xyz;     ///< Camera frustum plane position
-            float negW;     ///< Camera frustum plane, sign of the coordinates
-            float3 sign;    ///< Camera frustum plane position
-        } mutable mFrustumPlanes[6];
-
-        struct {
-            CPUSampleGenerator::SharedPtr pGenerator;
-            float2 scale;
-        } mJitterPattern;
-
-        void setJitterInternal(float jitterX, float jitterY);
+    enum class Changes
+    {
+        None            = 0x0,
+        Movement        = 0x1,
+        Exposure        = 0x2,
+        FocalDistance   = 0x4,
+        Jitter          = 0x8,
+        Frustum         = 0x10,
+        Aperture        = 0x20,
+        History         = 0x40, ///< The previous frame matrix changed. This indicates that the camera motion-vectors changed
     };
 
-    enum_class_operators(Camera::Changes);
+    /** Begin frame. Should be called once at the start of each frame.
+        This is where we store the previous frame matrices.
+        \param[in] firstFrame Set to true on the first frame or after switching cameras.
+    */
+    Changes beginFrame(bool firstFrame = false);
+
+    /** Get the camera changes that happened in since the previous frame
+    */
+    Changes getChanges() const { return mChanges; }
+
+    std::string getScript(const std::string& cameraVar);
+
+private:
+    Camera();
+    Changes mChanges = Changes::None;
+
+    mutable bool mDirty = true;
+    mutable bool mEnablePersistentProjMat = false;
+    mutable bool mEnablePersistentViewMat = false;
+    mutable glm::mat4 mPersistentProjMat;
+    mutable glm::mat4 mPersistentViewMat;
+
+    std::string mName;
+    bool mPreserveHeight = true;    ///< If true, preserve frame height on change of aspect ratio. Otherwise, preserve width.
+
+    void calculateCameraParameters() const;
+    mutable CameraData mData;
+    CameraData mPrevData;
+
+    struct
+    {
+        float3 xyz;     ///< Camera frustum plane position
+        float negW;     ///< Camera frustum plane, sign of the coordinates
+        float3 sign;    ///< Camera frustum plane position
+    } mutable mFrustumPlanes[6];
+
+    struct
+    {
+        CPUSampleGenerator::SharedPtr pGenerator;
+        float2 scale;
+    } mJitterPattern;
+
+    void setJitterInternal(float jitterX, float jitterY);
+
+    friend class SceneBuilder;
+};
+
+enum_class_operators(Camera::Changes);
 
 }  // namespace Falcor
 

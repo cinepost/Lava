@@ -25,14 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_UTILS_UI_GUI_H_
+#define FALCOR_UTILS_UI_GUI_H_
 
 #include <unordered_map>
 
-#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/Framework.h"
+//#include "Falcor/Core/Program/ProgramVars.h"
+#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/VAO.h"
+#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/Program/GraphicsProgram.h"
-#include "Falcor/Core/State/GraphicsState.h"
+//#include "Falcor/Core/State/GraphicsState.h"
 
 struct ImFont;
 
@@ -100,8 +104,16 @@ namespace Falcor {
             Inactive = 0x2,     ///< Inactive widget, disallow edits
         };
 
+        class dlldecl Group;
+
         class dlldecl Widgets {
          public:
+            /** Begin a new group
+                \param[in] label the name of the group
+                \param[in] beginExpanded Optional whether the group is open or closed by default
+            */
+            Group group(const std::string& label, bool beginExpanded = false);
+
             /** Indent the next item
             */
             void indent(float i);
@@ -400,7 +412,11 @@ namespace Falcor {
 
             /** Check if the current group is open or closed.
             */
-            bool open();
+            bool open() const;
+
+            /** Bool operator to check if the current group is open or closed.
+            */
+            operator bool() const { return open(); }
 
             ~Group();
 
@@ -532,3 +548,5 @@ namespace Falcor {
     enum_class_operators(Gui::TextFlags);
 
 }  // namespace Falcor
+
+#endif  // FALCOR_UTILS_UI_GUI_H_

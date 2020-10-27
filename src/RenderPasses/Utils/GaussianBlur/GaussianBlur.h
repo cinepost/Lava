@@ -42,10 +42,9 @@ using namespace Falcor;
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib);
 
-class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_this<RenderPass, GaussianBlur> {
+class dllpassdecl GaussianBlur : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<GaussianBlur>;
-    using inherit_shared_from_this::shared_from_this;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
@@ -77,7 +76,7 @@ class dllpassdecl GaussianBlur : public RenderPass, public inherit_shared_from_t
     Device::SharedPtr mpDevice;
 
     static const char* kDesc;
-    static void registerBindings(ScriptBindings::Module& m);
+    static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 

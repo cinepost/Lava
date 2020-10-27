@@ -41,10 +41,10 @@ namespace {
     const char kShaderFilename[] = "RenderPasses/Utils/GaussianBlur/GaussianBlur.ps.slang";
 }
 
-void GaussianBlur::registerBindings(ScriptBindings::Module& m) {
-    auto c = m.regClass(GaussianBlur);
-    c.property(kKernelWidth, &GaussianBlur::getKernelWidth, &GaussianBlur::setKernelWidth);
-    c.property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
+void GaussianBlur::registerBindings(pybind11::module& m) {
+    pybind11::class_<GaussianBlur, RenderPass, GaussianBlur::SharedPtr> pass(m, "GaussianBlur");
+    pass.def_property(kKernelWidth, &GaussianBlur::getKernelWidth, &GaussianBlur::setKernelWidth);
+    pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
 GaussianBlur::GaussianBlur(Device::SharedPtr pDevice): RenderPass(pDevice) {
@@ -56,10 +56,11 @@ GaussianBlur::GaussianBlur(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
 GaussianBlur::SharedPtr GaussianBlur::create(RenderContext* pRenderContext, const Dictionary& dict) {
     SharedPtr pBlur = SharedPtr(new GaussianBlur(pRenderContext->device()));
-    for (const auto& v : dict) {
-        if (v.key() == kKernelWidth) pBlur->mKernelWidth = v.val();
-        else if (v.key() == kSigma) pBlur->mSigma = v.val();
-        else logWarning("Unknown field '" + v.key() + "' in a GaussianBlur dictionary");
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kKernelWidth) pBlur->mKernelWidth = value;
+        else if (key == kSigma) pBlur->mSigma = value;
+        else logWarning("Unknown field '" + key + "' in a GaussianBlur dictionary");
     }
     return pBlur;
 }

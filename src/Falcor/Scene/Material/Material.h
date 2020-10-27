@@ -28,8 +28,16 @@
 #ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
+
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
+
+#include "Falcor/Utils/UI/Gui.h"
+
+#include <memory>
 
 namespace Falcor {
 /** Channel Layout For Different Shading Models
@@ -61,24 +69,41 @@ namespace Falcor {
             - 3-Channel standard normal map, or 2-Channel BC5 format
 */
 
-class dlldecl Material : public std::enable_shared_from_this<Material> {
- public:
+class Device;
+
+class dlldecl Material : public std::enable_shared_from_this<Material>
+{
+public:
     using SharedPtr = std::shared_ptr<Material>;
-    using ConstSharedPtrRef = const SharedPtr&;
     using SharedConstPtr = std::shared_ptr<const Material>;
 
     /** Flags indicating if and what was updated in the material
     */
-    enum class UpdateFlags {
+    enum class UpdateFlags
+    {
         None                = 0x0,  ///< Nothing updated
         DataChanged         = 0x1,  ///< Material data (properties) changed
         ResourcesChanged    = 0x2,  ///< Material resources (textures, sampler) changed
     };
 
+    /** Texture slots available in the material
+    */
+    enum class TextureSlot
+    {
+        BaseColor,
+        Specular,
+        Emissive,
+        Normal,
+        Occlusion,
+        SpecularTransmission,
+
+        Count // Must be last
+    };
+
     /** Create a new material.
         \param[in] name The material name
     */
-    static SharedPtr create(const std::string& name);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name);
 
     ~Material();
 
@@ -111,6 +136,31 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     const std::string& getName() const { return mName; }
 
+    /** Set one of the available texture slots.
+    */
+    void setTexture(TextureSlot slot, Texture::SharedPtr pTexture);
+
+    /** Load one of the available texture slots.
+    */
+    void loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb = true);
+
+    /** Clear one of the available texture slots.
+    */
+    void clearTexture(TextureSlot slot);
+
+    /** Get one of the available texture slots.
+    */
+    Texture::SharedPtr getTexture(TextureSlot slot) const;
+
+    /** Return the maximum dimensions of the bound textures.
+    */
+    uint2 getMaxTextureDimensions() const;
+
+    /** Check if a texture is required to be in sRGB format
+        Note: This depends on the shading model being used for the material.
+    */
+    bool isSrgbTextureRequired(TextureSlot slot);
+
     /** Set the base color texture
     */
     void setBaseColorTexture(Texture::SharedPtr pBaseColor);
@@ -134,6 +184,14 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     /** Get the emissive texture
     */
     Texture::SharedPtr getEmissiveTexture() const { return mResources.emissive; }
+
+    /** Set the specular transmission texture
+    */
+    void setSpecularTransmissionTexture(const Texture::SharedPtr& pTransmission);
+
+    /** Get the specular transmission texture
+    */
+    Texture::SharedPtr getSpecularTransmissionTexture() const { return mResources.specularTransmission; }
 
     /** Set the shading model
     */
@@ -174,6 +232,26 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     /** Get the specular parameters
     */
     const float4& getSpecularParams() const { return mData.specular; }
+
+    /** Set the roughness
+        Only available for metallic/roughness shading model.
+    */
+    void setRoughness(float roughness);
+
+    /** Get the roughness
+        Only available for metallic/roughness shading model.
+    */
+    float getRoughness() const { return getShadingModel() == ShadingModelMetalRough ? mData.specular.g : 0.f; }
+
+    /** Set the metallic value
+        Only available for metallic/roughness shading model.
+    */
+    void setMetallic(float metallic);
+
+    /** Get the metallic value
+        Only available for metallic/roughness shading model.
+    */
+    float getMetallic() const { return getShadingModel() == ShadingModelMetalRough ? mData.specular.b : 0.f; }
 
     /** Set the specular transmission
     */
@@ -283,14 +361,17 @@ private:
     void updateSpecularType();
     void updateEmissiveType();
     void updateOcclusionFlag();
+    void updateSpecularTransmissionType();
 
-    Material(const std::string& name);
+    Material(std::shared_ptr<Device> pDevice, const std::string& name);
     std::string mName;
     MaterialData mData;
     MaterialResources mResources;
     bool mOcclusionMapEnabled = false;
     mutable UpdateFlags mUpdates = UpdateFlags::None;
     static UpdateFlags sGlobalUpdates;
+
+    std::shared_ptr<Device> mpDevice;
 };
 
 enum_class_operators(Material::UpdateFlags);

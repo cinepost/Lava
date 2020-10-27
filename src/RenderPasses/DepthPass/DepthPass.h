@@ -61,6 +61,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+    DepthPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
  private:
     DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
@@ -69,6 +70,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     Fbo::SharedPtr mpFbo;
     GraphicsState::SharedPtr mpState;
     GraphicsVars::SharedPtr mpVars;
+    RasterizerState::SharedPtr mpRsState;
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
 };

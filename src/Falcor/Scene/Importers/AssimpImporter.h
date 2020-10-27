@@ -35,16 +35,16 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl AssimpImporter {
- public:
-    using InstanceMatrices = SceneBuilder::InstanceMatrices;
-
-    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder);
-    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder, const InstanceMatrices& meshInstances);
- private:
+class dlldecl AssimpImporter
+{
+public:
+    static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+private:
     AssimpImporter() = default;
     AssimpImporter(const AssimpImporter&) = delete;
     void operator=(const AssimpImporter&) = delete;
+
+    std::shared_ptr<Device>		mpDeivce;
 };
 
 }  // namespace Falcor

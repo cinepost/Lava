@@ -37,17 +37,14 @@ namespace Falcor {
         if (auto it = sFactory.find(type); it != sFactory.end()) {
             return it->second();
         } else {
-            #ifdef _WIN32
-            throw std::exception("Can't create SampleGenerator. Unknown type");
-            #else
             throw std::runtime_error("Can't create SampleGenerator. Unknown type");
-            #endif
         }
     }
 
-    void SampleGenerator::prepareProgram(Program* pProgram) const {
-        assert(pProgram);
-        pProgram->addDefine("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
+    Shader::DefineList SampleGenerator::getDefines() const {
+        Shader::DefineList defines;
+        defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
+        return defines;
     }
 
     const Gui::DropdownList& SampleGenerator::getGuiDropdownList() {

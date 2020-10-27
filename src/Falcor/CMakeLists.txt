@@ -17,7 +17,7 @@ file( GLOB SOURCES
     ./Scene/Importers/*.cpp
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
-    ./Scene/ParticleSystem/*.cpp
+    #./Scene/ParticleSystem/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -31,7 +31,7 @@ file( GLOB SOURCES
     ./Utils/UI/*.cpp
     ./Utils/Video/*.cpp
     ./Experimental/Scene/Lights/*.cpp
-    ./Testing/*.cpp
+    #./Testing/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
@@ -41,6 +41,13 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )
+
+# PyBind11
+find_package(pybind11 REQUIRED CONFIG)
+
+# Python
+find_package( Python3 COMPONENTS Development )
+include_directories( ${Python3_INCLUDE_DIRS} )
 
 # ImGui
 include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
@@ -94,11 +101,6 @@ LINK_DIRECTORIES(${GTK3_LIBRARY_DIRS})
 # Add other flags to the compiler
 ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
 
-
-# Python
-find_package( PythonLibs 3.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
-
 # FreeImage
 find_package(FreeImage REQUIRED)
 include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
@@ -127,6 +129,7 @@ set( SLANG_LIBRARY
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
+add_definitions(-DFALCOR_DLL)
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 #add_dependencies( falcor_lib assimp )
 
@@ -141,7 +144,7 @@ target_link_libraries(
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${PYTHON_LIBRARIES}
+    ${Python3_LIBRARIES}
     ${Vulkan_LIBRARY}
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}

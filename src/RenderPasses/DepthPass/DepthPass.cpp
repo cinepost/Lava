@@ -46,13 +46,10 @@ namespace {
 }  // namespace
 
 void DepthPass::parseDictionary(const Dictionary& dict) {
-    for (const auto& v : dict) {
-        if (v.key() == kDepthFormat) {
-            ResourceFormat f = (ResourceFormat)v.val();
-            setDepthBufferFormat(f);
-        } else {
-            logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
-        }
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kDepthFormat) setDepthBufferFormat(value);
+        else logWarning("Unknown field '" + key + "' in a DepthPass dictionary");
     }
 }
 
@@ -111,6 +108,12 @@ DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {
 
 DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {
     mpState->setDepthStencilState(pDsState);
+    return *this;
+}
+
+DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState) {
+    mpRsState = pRsState;
+    mpState->setRasterizerState(mpRsState);
     return *this;
 }
 

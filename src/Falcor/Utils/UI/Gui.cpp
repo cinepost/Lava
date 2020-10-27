@@ -992,6 +992,11 @@ namespace Falcor {
         }
     }
 
+    Gui::Group Gui::Widgets::group(const std::string& label, bool beginExpanded)
+    {
+        return Group(mpGui, label, beginExpanded);
+    }
+
     void Gui::Widgets::indent(float i) {
         if (mpGui) mpGui->mpWrapper->indent(i);
     }
@@ -1238,7 +1243,7 @@ namespace Falcor {
         if (pGui && pGui->mpWrapper->beginGroup(label, beginExpanded)) mpGui = pGui;
     }
 
-    bool Gui::Group::open() {
+    bool Gui::Group::open() const {
         return mpGui != nullptr;
     }
 

@@ -55,7 +55,7 @@ class Renderer: public Falcor::IFramework {
 
  	void renderFrame(const RendererIface::FrameData frame_data);
 
- 	void registerScriptBindings(Falcor::ScriptBindings::Module& m);
+ 	static void registerBindings(pybind11::module& m);
 
  private:
  	void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);

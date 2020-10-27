@@ -42,7 +42,6 @@
 #include "Falcor/Core/API/Resource.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Experimental/Scene/Lights/EnvProbe.h"
 
 /** This file defines both the user-visible API for the unit testing framework as well as the various classes that implement it
 */

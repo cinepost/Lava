@@ -104,7 +104,7 @@ bool OrbiterCameraController::update() {
 }
 
 template<bool b6DoF>
-FirstPersonCameraControllerCommon<b6DoF>::FirstPersonCameraControllerCommon(Camera::ConstSharedPtrRef pCamera) : CameraController(pCamera) {
+FirstPersonCameraControllerCommon<b6DoF>::FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {
     mTimer.update();
 }
 

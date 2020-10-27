@@ -491,7 +491,7 @@ void Sample::handleWindowSizeChange() {
             }
         }
 
-        Console::flush();
+        Console::instance().flush();
     }
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory) {

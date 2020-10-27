@@ -28,7 +28,10 @@
 #ifndef SRC_FALCOR_SCENE_EXPERIMENTAL_H_
 #define SRC_FALCOR_SCENE_EXPERIMENTAL_H_
 
-#include "Falcor.h"
+//#include "Falcor.h"
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Utils/UI/Gui.h"
 #include "EnvMapData.slang"
 
 namespace Falcor {

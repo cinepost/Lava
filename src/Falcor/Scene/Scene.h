@@ -28,18 +28,21 @@
 #ifndef SRC_FALCOR_SCENE_SCENE_H_
 #define SRC_FALCOR_SCENE_SCENE_H_
 
+#include <memory>
+
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/VAO.h"
-#include "Animation/Animatable.h"
-#include "Animation/Animation.h"
-#include "Lights/Light.h"
-#include "Lights/LightProbe.h"
-#include "Camera/Camera.h"
-#include "Material/Material.h"
-#include "Utils/Math/AABB.h"
-#include "Animation/AnimationController.h"
-#include "Camera/CameraController.h"
-#include "Experimental/Scene/Lights/LightCollection.h"
-#include "Experimental/Scene/Lights/EnvMap.h"
+#include "Falcor/Scene/Animation/Animatable.h"
+#include "Falcor/Scene/Animation/Animation.h"
+#include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Lights/LightProbe.h"
+#include "Falcor/Scene/Camera/Camera.h"
+#include "Falcor/Scene/Material/Material.h"
+#include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Scene/Animation/AnimationController.h"
+#include "Falcor/Scene/Camera/CameraController.h"
+#include "Falcor/Experimental/Scene/Lights/LightCollection.h"
+#include "Falcor/Experimental/Scene/Lights/EnvMap.h"
 #include "SceneTypes.slang"
 
 namespace Falcor {
@@ -555,6 +558,7 @@ private:
         size_t rectLightCount = 0;          ///< Number of rect lights.
         size_t sphereLightCount = 0;        ///< Number of sphere lights.
         size_t distantLightCount = 0;       ///< Number of distant lights.
+        size_t discLightCount = 0;       ///< Number of disc lights.
     };
 
     Scene(std::shared_ptr<Device> pDevice);
@@ -638,12 +642,6 @@ private:
     AnimationController::UniquePtr mpAnimationController;
 
     // Raytracing Data
-#ifdef FALCOR_D3D12
-    UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
-    UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
-
-    std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
-
 
     struct TlasData {
         Buffer::SharedPtr pTlas;
@@ -654,6 +652,13 @@ private:
 
     std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
                                                         ///< Number of ray types in program affects Shader Table indexing
+
+#ifdef FALCOR_D3D12
+    UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
+    UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
+
+    std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
+
     Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
 

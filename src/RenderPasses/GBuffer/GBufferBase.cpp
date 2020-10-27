@@ -59,17 +59,12 @@ GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {
     assert(pDevice);
 }
 
-void GBufferBase::registerBindings(ScriptBindings::Module& m) {
-    auto e = m.enum_<GBufferBase::SamplePattern>("SamplePattern");
-    //pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
-    //samplePattern.value("Center", GBufferBase::SamplePattern::Center);
-    //samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
-    //samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
-    //samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
-    e.regEnumVal(GBufferBase::SamplePattern::Center);
-    e.regEnumVal(GBufferBase::SamplePattern::DirectX);
-    e.regEnumVal(GBufferBase::SamplePattern::Halton);
-    e.regEnumVal(GBufferBase::SamplePattern::Stratified);
+void GBufferBase::registerBindings(pybind11::module& m) {
+    pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
+    samplePattern.value("Center", GBufferBase::SamplePattern::Center);
+    samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
+    samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
+    samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
 }
 
 namespace {

@@ -35,10 +35,11 @@ namespace Falcor {
 
 class Device;
     
-class PythonImporter {
- public:
-    static bool import(std::shared_ptr<Device> pDevice, const std::string& filename, SceneBuilder& builder);
- private:
+class PythonImporter
+{
+public:
+    static bool import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict);
+private:
     PythonImporter() = default;
 };
 

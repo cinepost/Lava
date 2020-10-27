@@ -25,7 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#ifndef FALCOR_FALCOREXPERIMENTAL_H_
+#define FALCOR_FALCOREXPERIMENTAL_H_
+
+#include "Experimental/Scene/Lights/EnvMap.h"
 #include "Experimental/Scene/Lights/EmissiveLightSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
+
+#endif

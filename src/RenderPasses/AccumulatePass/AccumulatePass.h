@@ -40,7 +40,7 @@ using namespace Falcor;
     is not always sufficient. The pass supports higher precision modes using
     either error compensation (Kahan summation) or double precision math.
 */
-class AccumulatePass : public RenderPass, public inherit_shared_from_this<RenderPass, AccumulatePass> {
+class AccumulatePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
     virtual ~AccumulatePass() = default;
@@ -57,6 +57,9 @@ class AccumulatePass : public RenderPass, public inherit_shared_from_this<Render
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
     virtual void onHotReload(HotReloadFlags reloaded) override;
+
+    // Scripting functions
+    void reset() { mFrameCount = 0; }
 
     enum class Precision : uint32_t {
         Double,                 ///< Standard summation in double precision.
@@ -83,7 +86,10 @@ class AccumulatePass : public RenderPass, public inherit_shared_from_this<Render
 
     // UI variables
     bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
+    bool                        mAutoReset = true;              ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
+    uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
+
 };
 
 #define enum2str(a) case  AccumulatePass::Precision::a: return #a

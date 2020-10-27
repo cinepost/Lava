@@ -39,7 +39,7 @@ namespace fs = boost::filesystem;
 #include "Falcor/stdafx.h"
 #include "Scripting.h"
 
-#include <pybind11/embed.h>
+#include "pybind11/embed.h"
 
 namespace Falcor {
 
@@ -108,7 +108,7 @@ static std::string runScript(const std::string& script, pybind11::dict& locals) 
 }
 
 template<>
-static std::string Scripting::getArgString(const Dictionary& dictionary) {
+std::string Scripting::getArgString(const Dictionary& dictionary) {
     return dictionary.toString();
 }
 
@@ -130,7 +130,7 @@ Scripting::Context Scripting::getGlobalContext() {
 std::string Scripting::runScriptFromFile(const std::string& filename, Context& context)
 {
     if (fs::exists(filename)) return Scripting::runScript(readFile(filename), context);
-    throw std::exception(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
+    throw std::runtime_error(std::string("Failed to run script. Can't find the file '" + filename + "'.").c_str());
 }
 
 std::string Scripting::interpretScript(const std::string& script) {

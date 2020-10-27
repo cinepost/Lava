@@ -69,7 +69,7 @@ class GBufferBase : public RenderPass {
     bool                            mDisableAlphaTest = false;                  ///< Disable alpha test.
     bool                            mOptionsChanged = false;
 
-    static void registerBindings(ScriptBindings::Module& m);
+    static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 

@@ -31,6 +31,8 @@
 #include "Scene/Scene.h"
 #include <sstream>
 
+#include "MeshLightData.slang"
+
 namespace Falcor {
 
 static_assert(sizeof(MeshLightData) % 16 == 0, "MeshLightData size should be a multiple of 16");
@@ -53,7 +55,8 @@ LightCollection::SharedPtr LightCollection::create(RenderContext* pRenderContext
 
 bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus)
 {
-    PROFILE("LightCollection::update()");
+    assert(mpDevice);
+    PROFILE(mpDevice, "LightCollection::update()");
 
     if (pUpdateStatus)
     {
@@ -256,11 +259,11 @@ void LightCollection::prepareTriangleData(RenderContext* pRenderContext)
     // Create GPU buffers.
     mpTriangleData = Buffer::createStructured(mpDevice, mpTriangleListBuilder["gTriangleData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
     mpTriangleData->setName("LightCollection::mpTriangleData");
-    if (mpTriangleData->getStructSize() != sizeof(PackedEmissiveTriangle)) throw std::exception("Struct PackedEmissiveTriangle size mismatch between CPU/GPU");
+    if (mpTriangleData->getStructSize() != sizeof(PackedEmissiveTriangle)) throw std::runtime_error("Struct PackedEmissiveTriangle size mismatch between CPU/GPU");
 
     mpFluxData = Buffer::createStructured(mpDevice, mpFinalizeIntegration["gFluxData"], mTriangleCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
     mpFluxData->setName("LightCollection::mpFluxData");
-    if (mpFluxData->getStructSize() != sizeof(EmissiveFlux)) throw std::exception("Struct EmissiveFlux size mismatch between CPU/GPU");
+    if (mpFluxData->getStructSize() != sizeof(EmissiveFlux)) throw std::runtime_error("Struct EmissiveFlux size mismatch between CPU/GPU");
 
     // Compute triangle data (vertices, uv-coordinates, materialID) for all mesh lights.
     buildTriangleList(pRenderContext);
@@ -281,7 +284,7 @@ void LightCollection::prepareMeshData()
         mpMeshData->setName("LightCollection::mpMeshData");
         if (mpMeshData->getStructSize() != sizeof(MeshLightData))
         {
-            throw std::exception("Size mismatch for structured buffer of MeshLightData");
+            throw std::runtime_error("Size mismatch for structured buffer of MeshLightData");
         }
         size_t meshDataSize = mMeshLights.size() * sizeof(mMeshLights[0]);
         assert(mpMeshData->getSize() == meshDataSize);
@@ -292,14 +295,14 @@ void LightCollection::prepareMeshData()
     // This is useful in ray tracing for locating the emissive triangle that was hit for MIS computation etc.
     uint32_t instanceCount = mpScene->getMeshInstanceCount();
     assert(instanceCount > 0);
-    std::vector<uint32_t> triangleOffsets(instanceCount, MeshLightData::kInvalidIndex);
+    std::vector<uint32_t> triangleOffsets(instanceCount, 0xffffffff); //MeshLightData::kInvalidIndex);
     for (const auto& it : mMeshLights)
     {
         assert(it.meshInstanceID < instanceCount);
         triangleOffsets[it.meshInstanceID] = it.triangleOffset;
     }
 
-    mpPerMeshInstanceOffset = Buffer::createStructured(sizeof(uint32_t), instanceCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, triangleOffsets.data(), false);
+    mpPerMeshInstanceOffset = Buffer::createStructured(mpDevice, sizeof(uint32_t), instanceCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, triangleOffsets.data(), false);
     mpPerMeshInstanceOffset->setName("LightCollection::mpPerMeshInstanceOffset");
     assert(mpPerMeshInstanceOffset->getSize() == triangleOffsets.size() * sizeof(triangleOffsets[0]));
 }
@@ -539,13 +542,14 @@ bool LightCollection::setShaderData(const ShaderVar& var) const
 
 void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) const
 {
+    assert(mpDevice);
     if (mStagingBufferValid) return;
 
     // Allocate staging buffer for readback. The data from our different GPU buffers is stored consecutively.
     const size_t stagingSize = mpTriangleData->getSize() + mpFluxData->getSize();
     if (!mpStagingBuffer || mpStagingBuffer->getSize() < stagingSize)
     {
-        mpStagingBuffer = Buffer::create(stagingSize, Resource::BindFlags::None, Buffer::CpuAccess::Read);
+        mpStagingBuffer = Buffer::create(mpDevice, stagingSize, Resource::BindFlags::None, Buffer::CpuAccess::Read);
         mpStagingBuffer->setName("LightCollection::mpStagingBuffer");
         mCPUInvalidData = CPUOutOfDateFlags::All;
     }

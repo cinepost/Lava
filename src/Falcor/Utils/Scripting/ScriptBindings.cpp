@@ -29,7 +29,8 @@
 
 #include "Falcor/stdafx.h"
 #include "ScriptBindings.h"
-#include "pybind11/embed.h"
+
+#include <pybind11/embed.h>
 
 #include "Falcor/Utils/Debug/debug.h"
 

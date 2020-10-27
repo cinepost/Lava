@@ -5,6 +5,7 @@
 #include "session.h"
 
 #include "../display.h"
+#include "../scene_builder.h" 
 
 #include "lava_utils_lib/ut_fsys.h"
 #include "lava_utils_lib/ut_string.h"

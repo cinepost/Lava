@@ -52,43 +52,20 @@ const std::string kTimeVar = "t";
 
 }
 
-void Renderer::registerScriptBindings(Falcor::ScriptBindings::Module& m) {
-    auto c = m.class_<Renderer>("Renderer");
+void Renderer::registerBindings(pybind11::module& m) {
+    pybind11::class_<Renderer> scene(m, "Renderer");
 
-    //c.func_(kRunScript.c_str(), &Renderer::loadScript, "filename"_a = std::string());
-    //c.func_(kLoadScene.c_str(), &Renderer::loadScene, "filename"_a = std::string(), "buildFlags"_a = SceneBuilder::Flags::Default);
-    //c.func_(kSaveConfig.c_str(), &Renderer::dumpConfig, "filename"_a = std::string());
-    c.func_(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
-    //c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
-    //c.func_(kRemoveGraph.c_str(), ScriptBindings::overload_cast<const RenderGraph::SharedPtr&>(&Renderer::removeGraph), "graph"_a);
-    //c.func_(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
-    //c.func_("graph", &Renderer::getGraph);  // PYTHONDEPRECATED
-    //auto envMap = [](Renderer* pRenderer, const std::string& filename) { if (pRenderer->getScene()) pRenderer->getScene()->loadEnvironmentMap(filename); };
-    //c.func_("envMap", envMap, "filename"_a);  // PYTHONDEPRECATED
-
-    //c.roProperty(kScene.c_str(), &Renderer::getScene);
-    //c.roProperty(kActiveGraph.c_str(), &Renderer::getActiveGraph);
-
+    scene.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
     auto getUI = [](Renderer* pRenderer) { return Falcor::gpFramework->isUiEnabled(); };
     auto setUI = [](Renderer* pRenderer, bool show) { Falcor::gpFramework->toggleUI(show); };
-    c.property(kUI.c_str(), getUI, setUI);
-
-    //Extension::Bindings b(m, c);
-    //b.addGlobalObject(kRendererVar, this, "The engine");
-    //b.addGlobalObject(kTimeVar, &Falcor::gpFramework->getClock(), "Time Utilities");
-    //for (auto& pe : mpExtensions) pe->scriptBindings(b);
-    //mGlobalHelpMessage = prepareHelpMessage(b.mGlobalObjects);
-
-    // Replace the `help` function
-    //auto globalHelp = [this]() { pybind11::print(mGlobalHelpMessage);};
-    //m.func_("help", globalHelp);
+    scene.def_property(kUI.c_str(), getUI, setUI);
 
     auto objectHelp = [](pybind11::object o) {
         auto b = pybind11::module::import("builtins");
         auto h = b.attr("help");
         h(o);
     };
-    m.func_("help", objectHelp, "object"_a);
+    m.def("help", objectHelp, "object"_a);
 
     // PYTHONDEPRECATED Use the global function defined in the script bindings in Sample.cpp when resizing from a Python script.
     //auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };

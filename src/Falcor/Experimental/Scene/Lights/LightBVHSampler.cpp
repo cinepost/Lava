@@ -92,52 +92,47 @@ const Gui::DropdownList kSolidAngleBoundList = {
 
     bool LightBVHSampler::setShaderData(const ShaderVar& var) const {
         assert(var.isValid());
-
-        // In the following we validate that the struct has the correct fields and set the data.
-
-        // Bind the BVH resources.
         assert(mpBVH);
-        if (!mpBVH->setShaderData(var["_lightBVH"])) {
-            logError("LightBVHSampler::setShaderData() - Failed to bind the light BVH");
-            return false;
-        }
-
+        mpBVH->setShaderData(var["_lightBVH"]);
         return true;
     }
 
     bool LightBVHSampler::renderUI(Gui::Widgets& widgets) {
         bool optionsChanged = false;
 
-        auto buildGroup = Gui::Group(widgets, "BVH building options");
-        if (buildGroup.open()) {
-            if (mpBVHBuilder->renderUI(buildGroup)) {
+        if (auto buildGroup = widgets.group("BVH building options"))
+        {
+            if (mpBVHBuilder->renderUI(buildGroup))
+            {
                 mOptions.buildOptions = mpBVHBuilder->getOptions();
                 mNeedsRebuild = optionsChanged = true;
             }
-
-            buildGroup.release();
         }
 
-        auto traversalGroup = Gui::Group(widgets, "BVH traversal options");
-        if (traversalGroup.open()) {
+        if (auto traversalGroup = widgets.group("BVH traversal options"))
+        {
             optionsChanged |= traversalGroup.checkbox("Use bounding cone (NdotL)", mOptions.useBoundingCone);
-            if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone)) {
+            if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone))
+            {
                 mNeedsRebuild = optionsChanged = true;
             }
             optionsChanged |= traversalGroup.checkbox("Disable node flux", mOptions.disableNodeFlux);
             optionsChanged |= traversalGroup.checkbox("Use triangle uniform sampling", mOptions.useUniformTriangleSampling);
 
-            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod)) {
+            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod))
+            {
                 mNeedsRebuild = optionsChanged = true;
             }
-
-            traversalGroup.release();
+            traversalGroup.tooltip("Selects the bounding method for the dot(N,L) term:\n\n"
+                "Sphere - Use a bounding sphere around the AABB. This is the fastest, but least conservative method.\n"
+                "Cone around center dir - Compute a bounding cone around the direction to the center of the AABB. This is more expensive, but gives tighter bounds.\n"
+                "Cone around average dir - Computes a bounding cone to the average direction of all AABB corners. This is the most expensive, but gives the tightest bounds.");
         }
 
-        auto statGroup = Gui::Group(widgets, "BVH statistics");
-        if (statGroup.open()) {
+
+        if (auto statGroup = widgets.group("BVH statistics"))
+        {
             mpBVH->renderUI(statGroup);
-            statGroup.release();
         }
 
         return optionsChanged;
@@ -155,7 +150,7 @@ const Gui::DropdownList kSolidAngleBoundList = {
         if (!mpBVHBuilder) {
             throw std::runtime_error("Failed to create BVH builder");
         }
-        mpBVH = LightBVH::create(pRenderContext->device(), pScene->getLightCollection(pRenderContext));
+        mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
         if (!mpBVH) {
             throw std::runtime_error("Failed to create BVH");
         }

@@ -33,17 +33,18 @@
 #include "BSDFViewerParams.slang"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#include "Experimental/Scene/Lights/EnvMap.h"
 
 using namespace Falcor;
 
-class BSDFViewer : public RenderPass, public inherit_shared_from_this<RenderPass, BSDFViewer> {
- public:
+class BSDFViewer : public RenderPass
+{
+public:
     using SharedPtr = std::shared_ptr<BSDFViewer>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
 
     virtual std::string getDesc() override { return sDesc; }
     virtual Dictionary getScriptingDictionary() override;
@@ -57,14 +58,13 @@ class BSDFViewer : public RenderPass, public inherit_shared_from_this<RenderPass
 
     static const char* sDesc;
 
- private:
+private:
     BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict);
-    bool loadEnvMap(RenderContext* pRenderContext, const std::string& filename);
+    bool loadEnvMap(const std::string& filename);
 
     // Internal state
     Scene::SharedPtr                mpScene;                ///< Loaded scene if any, nullptr otherwise.
-    EnvProbe::SharedPtr             mpEnvProbe;             ///< Environment map if loaded, nullptr otherwise.
-    std::string                     mEnvProbeFilename;      ///< Filename of loaded environment map, or empty string otherwise.
+    EnvMap::SharedPtr               mpEnvMap;               ///< Environment map if loaded, nullptr otherwise.
 
     BSDFViewerParams                mParams;                ///< Parameters shared with the shaders.
     SampleGenerator::SharedPtr      mpSampleGenerator;      ///< Random number generator for the integrator.

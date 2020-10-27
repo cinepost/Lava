@@ -237,7 +237,7 @@ namespace Falcor {
     }
 
     SCRIPT_BINDING(LightProbe) {
-        m.regClass(LightProbe);
+        pybind11::class_<LightProbe, LightProbe::SharedPtr>(m, "LightProbe");
     }
 
 }  // namespace Falcor

@@ -216,22 +216,21 @@ void Clock::renderUI(Gui::Window& w) {
 }
 
 SCRIPT_BINDING(Clock) {
-    auto c = m.regClass(Clock);
-    
+    pybind11::class_<Clock> clock(m, "Clock");
+
     auto setTime = [](Clock* pClock, double t) {pClock->setTime(t, true); };
-    c.property(kTime, &Clock::getTime, setTime);
+    clock.def_property(kTime, &Clock::getTime, setTime);
     auto setFrame = [](Clock* pClock, uint64_t f) {pClock->setFrame(f, true); };
-    c.property(kFrame, &Clock::getFrame, setFrame);
-    c.property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
-    c.property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
-    c.property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
-    c.property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
+    clock.def_property(kFrame, &Clock::getFrame, setFrame);
+    clock.def_property(kFramerate, &Clock::getFramerate, &Clock::setFramerate);
+    clock.def_property(kTimeScale, &Clock::getTimeScale, &Clock::setTimeScale);
+    clock.def_property(kExitTime, &Clock::getExitTime, &Clock::setExitTime);
+    clock.def_property(kExitFrame, &Clock::getExitFrame, &Clock::setExitFrame);
 
-    c.func_(kPause, &Clock::pause);
-    c.func_(kPlay, &Clock::play);
-    c.func_(kStop, &Clock::stop);
-    c.func_(kStep, &Clock::step, "frames"_a = 1);
-
+    clock.def(kPause, &Clock::pause);
+    clock.def(kPlay, &Clock::play);
+    clock.def(kStop, &Clock::stop);
+    clock.def(kStep, &Clock::step, "frames"_a = 1);
 }
 
 void Clock::start() {

@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_CORE_BUFFERTYPES_PARAMETERBLOCK_H_
 #define SRC_FALCOR_CORE_BUFFERTYPES_PARAMETERBLOCK_H_
 
+#include <variant>
+
 #include "Falcor/Core/Program/ProgramReflection.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"

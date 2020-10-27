@@ -153,6 +153,9 @@ class dlldecl SceneBuilder {
 
     using InstanceMatrices = std::vector<glm::mat4>;
 
+    std::shared_ptr<Device> device() { return mpDevice; };
+    std::shared_ptr<Device> device() const { return mpDevice; };
+
     /** Create a new object
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, Flags mFlags = Flags::Default);
@@ -250,7 +253,7 @@ class dlldecl SceneBuilder {
     */
     void setCameraSpeed(float speed) { mCameraSpeed = speed; }
 
-private:
+protected:
     SceneBuilder(std::shared_ptr<Device> pDevice, Flags buildFlags);
 
     struct InternalNode : Node {

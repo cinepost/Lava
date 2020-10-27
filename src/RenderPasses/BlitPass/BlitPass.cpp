@@ -52,13 +52,10 @@ RenderPassReflection BlitPass::reflect(const CompileData& compileData) {
 }
 
 void BlitPass::parseDictionary(const Dictionary& dict) {
-    for (const auto& v : dict) {
-        if (v.key() == kFilter) {
-            Sampler::Filter f = (Sampler::Filter)v.val();
-            setFilter(f);
-        } else {
-            logWarning("Unknown field `" + v.key() + "` in a BlitPass dictionary");
-        }
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kFilter) setFilter(value);
+        else logWarning("Unknown field '" + key + "' in a BlitPass dictionary");
     }
 }
 

@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 #define SRC_FALCOR_UTILS_MATH_PACKEDFORMATS_H_
 
-#include "Utils/Math/Vector.h"
+#include "Falcor/Utils/Math/Vector.h"
 
 /** Host-side utility functions for format conversion.
 

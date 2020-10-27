@@ -28,12 +28,16 @@
 #ifndef SRC_FALCOR_SCENE_ANIMATION_ANIMATIONCONTROLLER_H_
 #define SRC_FALCOR_SCENE_ANIMATION_ANIMATIONCONTROLLER_H_
 
+#include "Falcor/Core/Framework.h"
+
 #include "Animation.h"
-#include "RenderGraph/BasePasses/ComputePass.h"
-#include "Scene/SceneTypes.slang"
+
+#include "Falcor/RenderGraph/BasePasses/ComputePass.h"
+#include "Falcor/Scene/SceneTypes.slang"
 
 namespace Falcor {
 
+class Device;
 class Scene;
 
 struct Bone {
@@ -98,6 +102,8 @@ class dlldecl AnimationController {
 
     void bindBuffers();
     void updateMatrices();
+
+    std::shared_ptr<Device> mpDevice;
 
     std::vector<Animation::SharedPtr> mAnimations;
     std::vector<glm::mat4> mLocalMatrices;

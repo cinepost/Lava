@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "Falcor/Core/Framework.h"
 #include "Resource.h"
 #include "Falcor/Utils/Image/Bitmap.h"
 

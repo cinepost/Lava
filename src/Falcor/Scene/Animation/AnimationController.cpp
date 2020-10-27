@@ -32,9 +32,9 @@
 namespace Falcor {
     
 namespace {
-    const static std::string kWorldMatricesBufferName = "worldMatrices";
+    const static std::string kWorldMatrices = "worldMatrices";
     const static std::string kInverseTransposeWorldMatrices = "inverseTransposeWorldMatrices";
-    const static std::string kPreviousWorldMatrices = "previousFrameWorldMatrices";
+    const static std::string kPreviousFrameWorldMatrices = "previousFrameWorldMatrices";
 }  // namespace
 
 AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData)
@@ -43,15 +43,16 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
     , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
 {
+    assert(mpScene);
     assert(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
     uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
 
-    auto pDevice = mpScene->device();
-    mpWorldMatricesBuffer = Buffer::createStructured(pDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpDevice = mpScene->device();
+    mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
-    mpPrevWorldMatricesBuffer = Buffer::createStructured(pDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
-    mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(pDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+    mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
     createSkinningPass(staticVertexData, dynamicVertexData);
 }
@@ -78,7 +79,9 @@ void AnimationController::initLocalMatrices() {
 }
 
 bool AnimationController::animate(RenderContext* pContext, double currentTime) {
-    PROFILE("animate");
+    assert(mpDevice);
+
+    PROFILE(mpDevice, "animate");
 
     mMatricesChanged.assign(mMatricesChanged.size(), false);
 

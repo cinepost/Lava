@@ -25,52 +25,45 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "stdafx.h"
+#include "Importer.h"
 
-/** Helper functions for generating the G-buffer.
-*/
-
-import GBufferParams;
-import Scene.SceneTypes;
-import Utils.Math.MathHelpers;
-__exported import Experimental.Scene.Material.MaterialHelpers;
-
-struct GBuffer
+namespace Falcor
 {
-    float4 posW;
-    float4 normW;
-    float4 tangentW;
-    float4 texC;
-    float4 diffuseOpacity;
-    float4 specRough;
-    float4 emissive;
-    float4 matlExtra;
-};
+    namespace
+    {
+        static std::vector<Importer::Desc> sImporters;
+        static std::unordered_map<std::string, Importer::ImportFunction> sImportFunctions;
+        static FileDialogFilterVec sFileExtensionsFilters;
+    }
 
-cbuffer PerFrameCB
-{
-    GBufferParams   gParams;
-};
+    const FileDialogFilterVec& Importer::getFileExtensionFilters()
+    {
+        return sFileExtensionsFilters;
+    }
 
-/** Helper function to store G-buffer channels.
-*/
-GBuffer storeGBufferOutput(ShadingData sd, VertexData v)
-{
-    GBuffer gbuf;
+    bool Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
+    {
+        auto ext = getExtensionFromFile(filename);
+        auto it = sImportFunctions.find(ext);
+        if (it == sImportFunctions.end())
+        {
+            logError("Error when loading '" + filename + "'. Unknown file extension.");
+            return false;
+        }
+        return it->second(filename, builder, instances, dict);
+    }
 
-    // Check that tangent space exists, otherwise create one based on the normal.
-    // Note that this check also catches NaNs, should they occur.
-    float4 tangent = v.tangentW.w != 0.f ? v.tangentW : float4(perp_stark(sd.N), 1.f);
+    void Importer::registerImporter(const Desc& desc)
+    {
+        sImporters.push_back(desc);
 
-    gbuf.posW           = float4(sd.posW, 1.f);
-    gbuf.normW          = float4(sd.N, 0.f);
-    gbuf.tangentW       = tangent;
-    gbuf.texC           = float4(sd.uv, 0.f, 0.f);
+        for (const auto& ext : desc.extensions)
+        {
+            assert(sImportFunctions.find(ext) == sImportFunctions.end());
+            sImportFunctions[ext] = desc.import;
+            sFileExtensionsFilters.push_back(ext);
+        }
+    }
 
-    MaterialParams matParams = getMaterialParams(sd);
-    gbuf.diffuseOpacity = matParams.diffuseOpacity;
-    gbuf.specRough      = matParams.specularRoughness;
-    gbuf.emissive       = matParams.emissive;
-    gbuf.matlExtra      = matParams.extraParams;
-
-    return gbuf;
-}
+}  // namespace Falcor

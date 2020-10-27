@@ -37,8 +37,7 @@ bool Renderer::init() {
 	Falcor::OSServices::start();
 
 	Falcor::Scripting::start();
-    auto regBinding = [this](Falcor::ScriptBindings::Module& m) {this->registerScriptBindings(m); };
-    Falcor::ScriptBindings::registerBinding(regBinding);
+    Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
 
     Falcor::Threading::start();
 
@@ -51,7 +50,9 @@ bool Renderer::init() {
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
     mpCamera = Falcor::Camera::create();
-    mpSceneBuilder->setCamera(mpCamera);
+    mpCamera->setName("main");
+    mpSceneBuilder->addCamera(mpCamera);
+    mpSceneBuilder->setCamera("main");
 
 	mpClock = new Falcor::Clock(mpDevice);
     //mpClock->setTimeScale(config.timeScale);

@@ -8,7 +8,7 @@
 #include "../renderer_iface.h"
 #include "scope.h"
 
-#include "../scene_builder.h"
+//#include "../scene_builder.h" 
 
 namespace lava {
 

@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -51,12 +51,7 @@ struct BSDFViewerParams
     int     useFixedTexCoords = 0;               ///< Use fixed texture coordinates.
 
     float3  baseColor = { 0.5f, 0.5f, 0.5f };   ///< Material base color.
-    float   _mpad1;
-
     float   linearRoughness = 1.f;              ///< Linear roughness in [0,1].
-    float   _mpad2;
-    float   _mpad3;
-    float   _mpad4;
 
     float   metallic = 0.f;                     ///< Metallic factor in [0,1]. This blends between the dielectric BSDF and the metallic BRDF.
     float   IoR = 1.5f;                         ///< Index of refraction in [1,inf). This is used to compute the specular reflectance/transmittance for dielectrics.
@@ -78,16 +73,11 @@ struct BSDFViewerParams
     int     useEnvMap = 0;                      ///< Use environment light (as opposed to omnidirectional).
     int2    _pad3;
 
+    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
     float3  lightColor = { 1.f, 1.f, 1.f };     ///< Light color.
-    float   _mapd5;
-
-    float3  lightDir = { 0.f, 0.f, -1.f };      ///< Light direction to use when 'useDirectionalLight' is true (note: not normalized).
-    float   _mpad6;
 
     int     useDirectionalLight = 0;            ///< Use directional light (as opposed to omnidirectional/envmap).
-    float   lightIntensity = 1.f;               ///< Light intensity, acts as a multiplier for the light color.
-    int     _mpad7;
-    int     _mpad8;
+    float3  lightDir = { 0.f, 0.f, -1.f };      ///< Light direction to use when 'useDirectionalLight' is true (note: not normalized).
 
     // Camera settings
     int     orthographicCamera = 0;             ///< Use orthographic camera.
@@ -102,9 +92,7 @@ struct BSDFViewerParams
 
     int     useLegacyBSDF = 1;
     //int     debugSwitch0 = 0;
-    int     _pad6;
-    int     _pad7;
-    int     _pad8;
+    int3    _pad6;
 };
 
 /** Struct for readback of per-pixel data.
@@ -112,36 +100,17 @@ struct BSDFViewerParams
 struct PixelData
 {
     float2 texC;
-
     float3 baseColor;
-    float  _pad0;
-
     float3 diffuse;
-    float  _pad1;
-
     float3 specular;
-    float  _pad2;
-
     float  linearRoughness;
     float  metallic;
-    
     float3 T;
-    float  _pad3;
-
     float3 B;
-    float  _pad4;
-
     float3 N;
-    float  _pad5;
-
     float3 wo;
-    float  _pad6;
-
     float3 wi;
-    float  _pad7;
-
     float3 output;
-    float  _pad8;
 };
 
 END_NAMESPACE_FALCOR
