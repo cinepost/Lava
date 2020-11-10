@@ -85,6 +85,7 @@ endif(WIN32 OR APPLE)
 
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+  add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
 
@@ -138,6 +139,7 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 # thirt party libs
 # TODO: build necessary third party libs
 add_subdirectory( third_party/tbb )
+#add_subdirectory( third_party/embree )
 #add_subdirectory( third_party/glew/build/cmake )
 
 # Assimp library

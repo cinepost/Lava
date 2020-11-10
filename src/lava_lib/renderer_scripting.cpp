@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <string>
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "renderer.h"
@@ -42,6 +43,7 @@ const std::string kSaveConfig = "saveConfig";
 const std::string kAddGraph = "addGraph";
 const std::string kRemoveGraph = "removeGraph";
 const std::string kGetGraph = "getGraph";
+const std::string kGetDevice = "getDevice";
 const std::string kUI = "ui";
 const std::string kResizeSwapChain = "resizeSwapChain";
 const std::string kActiveGraph = "activeGraph";
@@ -53,12 +55,17 @@ const std::string kTimeVar = "t";
 }
 
 void Renderer::registerBindings(pybind11::module& m) {
-    pybind11::class_<Renderer> scene(m, "Renderer");
+    pybind11::class_<Renderer> renderer(m, "Renderer");
 
-    scene.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
+    auto getDevice = [](Renderer* pRenderer) { return pRenderer->device(); };
+    renderer.def(kGetDevice.c_str(), getDevice);
+
+    renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
     auto getUI = [](Renderer* pRenderer) { return Falcor::gpFramework->isUiEnabled(); };
     auto setUI = [](Renderer* pRenderer, bool show) { Falcor::gpFramework->toggleUI(show); };
-    scene.def_property(kUI.c_str(), getUI, setUI);
+    renderer.def_property(kUI.c_str(), getUI, setUI);
+
+
 
     auto objectHelp = [](pybind11::object o) {
         auto b = pybind11::module::import("builtins");

@@ -721,11 +721,6 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
             }
 
             if (failed) {                
-                //LOG_DBG("sources:\n");
-                //for (auto const& src: mDesc.mSources) {
-                    //LOG_DBG("source: %s", src.str.c_str());
-                    //LOG_DBG("desc: %s", getProgramDescString().c_str());
-                //}
                 return nullptr;
             }
             

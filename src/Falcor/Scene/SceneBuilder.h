@@ -199,6 +199,10 @@ class dlldecl SceneBuilder {
     */
     void addMeshInstance(uint32_t nodeID, uint32_t meshID);
 
+    /** Add a mesh instance to a node
+    */
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial);
+
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
         \return The ID of the mesh in the scene. Note that all of the instances share the same mesh ID.
@@ -263,6 +267,12 @@ protected:
         std::vector<uint32_t> meshes;
     };
 
+    struct MeshInstanceSpec {
+        uint32_t    nodeId;
+        uint32_t    materialId;
+        bool        overrideMaterial = false;
+    };
+
     struct MeshSpec {
         MeshSpec() = default;
         Vao::Topology topology;
@@ -273,7 +283,8 @@ protected:
         uint32_t indexCount = 0;
         uint32_t vertexCount = 0;
         bool hasDynamicData = false;
-        std::vector<uint32_t> instances; // Node IDs
+        //std::vector<uint32_t> instances; // Node IDs
+        std::vector<MeshInstanceSpec> instances;
     };
 
     // Geometry data

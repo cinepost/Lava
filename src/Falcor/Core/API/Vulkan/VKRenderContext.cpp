@@ -173,52 +173,40 @@ namespace Falcor {
 
     //bool RenderContext::prepareForDraw()
     bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars) {
-        LOG_DBG("prepare for draw");
         assert(pState);
         // Vao must be valid so at least primitive topology is known
         assert(pState->getVao().get());
 
-        LOG_DBG("0");
         auto pGSO = pState->getGSO(pVars);
-        LOG_DBG("0.1");
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags)) {
             if (pVars) {
                 if (applyGraphicsVars(pVars, pGSO->getDesc().getRootSignature().get()) == false) {
-                    LOG_WARN("Skip the call");
                     return false; // Skip the call
                 }
             }
         }
-        LOG_DBG("1");
         if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags)) {
             vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
         }
-        LOG_DBG("2");
         if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags)) {
             transitionFboResources(this, pState->getFbo().get());
         }
-        LOG_DBG("3");
         if (is_set(StateBindFlags::SamplePositions, mBindFlags)) {
             if (pState->getFbo() && pState->getFbo()->getSamplePositions().size()) {
                 logWarning("The Vulkan backend doesn't support programmable sample positions");
             }
         }
-        LOG_DBG("4");
         if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags)) {
             setViewports(mpLowLevelData->getCommandList(), pState->getViewports());
         }
-        LOG_DBG("5");
         if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags)) {
             setScissors(mpLowLevelData->getCommandList(), pState->getScissors());
         }
-        LOG_DBG("6");
         if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags)) {
             setVao(this, pState->getVao().get());
         }
-        LOG_DBG("7");
         beginRenderPass(mpLowLevelData->getCommandList(), pState->getFbo().get());
-        LOG_DBG("done");
         return true;
     }
 

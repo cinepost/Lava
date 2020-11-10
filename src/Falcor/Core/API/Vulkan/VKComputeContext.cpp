@@ -78,15 +78,15 @@ namespace Falcor {
             }
         } 
 
-        //LOG_DBG("get command list");
-        //auto cmd_list = mpLowLevelData->getCommandList();
+        LOG_DBG("get command list");
+        auto cmd_list = mpLowLevelData->getCommandList();
 
-        //LOG_DBG("get pCSO api handle");
-        //auto cso_api_handle = pCSO->getApiHandle();
+        LOG_DBG("get pCSO api handle");
+        auto cso_api_handle = pCSO->getApiHandle();
         
-        //LOG_DBG("vkCmdBindPipeline");
-        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
-        //vkCmdBindPipeline(cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, cso_api_handle);
+        LOG_DBG("vkCmdBindPipeline");
+        //vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
+        vkCmdBindPipeline(cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, cso_api_handle);
 
         mpLastBoundComputeVars = pVars;
         mCommandsPending = true;
@@ -155,11 +155,12 @@ namespace Falcor {
         if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION) {
-            logError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
+            logError("ComputeContext::dispatch(...) - Dispatch dimension exceeds maximum. Skipping.");
             return;
         }
 
         if (prepareForDispatch(pState, pVars) == false) {
+            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
             return;
         }
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
@@ -171,6 +172,7 @@ namespace Falcor {
         assert(pArgBuffer);
 
         if (prepareForDispatch(pState, pVars) == false) {
+            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
             return;
         }
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);

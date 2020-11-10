@@ -34,7 +34,11 @@ const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
 namespace
 {
     const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+    #ifdef FALCOR_D3D12
     const std::string shaderModel = "6_1";
+    #else
+    const std::string shaderModel = "450";
+    #endif
 
     // Additional output channels.
     // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.

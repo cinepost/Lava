@@ -37,6 +37,7 @@ ComputeState::ComputeState(std::shared_ptr<Device> device): mpDevice(device) {
 }
 
 ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
+    LOG_DBG("getCSO");
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
     bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
     
@@ -59,6 +60,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
         mDesc.setRootSignature(pRoot);
 
         _StateGraph::CompareFunc cmpFunc = [&desc = mDesc](ComputeStateObject::SharedPtr pCso) -> bool {
+            LOG_DBG("getCSO done 1");
             return pCso && (desc == pCso->getDesc());
         };
 
@@ -69,7 +71,7 @@ ComputeStateObject::SharedPtr ComputeState::getCSO(const ComputeVars* pVars) {
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }
-
+    LOG_DBG("getCSO done 2");
     return pCso;
 }
 

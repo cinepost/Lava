@@ -60,13 +60,13 @@ class dlldecl ComputeStateObject {
         \param[in] desc State object description.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     const ApiHandle& getApiHandle() { return mApiHandle; }
     const Desc& getDesc() const { return mDesc; }
 
  private:
-    ComputeStateObject(std::shared_ptr<Device> device, const Desc& desc);
+    ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
     void apiInit();
 
     Desc mDesc;

@@ -98,22 +98,6 @@ namespace Falcor {
     void RootSignature::apiInit() {
         // Find the max set index
         uint32_t maxIndex = 0;
-
-        /*
-        // add root descriptors
-        LOG_WARN("trying to add root descriptos to mSets !");
-        for (uint32_t i =0; i < mDesc.getRootDescriptorCount(); i++) {
-            const auto& root_desc = mDesc.getRootDescriptorDesc(i);
-
-            for (auto& set : mDesc.mSets) {
-                if (set.getRange(0).regSpace == root_desc.spaceIndex) {
-                    LOG_WARN("adding root descript to set");
-                    set.addRange(root_desc.type, root_desc.regIndex, 1, root_desc.spaceIndex);
-                }
-            }
-        }
-        //
-        */
         
         for (const auto& set : mDesc.mSets) {
             maxIndex = std::max(set.getRange(0).regSpace, maxIndex);
@@ -125,38 +109,6 @@ namespace Falcor {
         for (const auto& set : mDesc.mSets) {
             vkSetLayouts[set.getRange(0).regSpace] = createDescriptorSetLayout(mpDevice, set); //createDescriptorSetLayout() verifies that all ranges use the same register space
         }
-
-        /*/----------------------------------------------------
-        if (mDesc.getRootDescriptorCount() > 0) {
-            std::vector<VkDescriptorSetLayoutBinding> root_bindings(mDesc.getRootDescriptorCount());
-            //for (const auto& desc : mDesc.mRootDescriptors) {
-            for (uint32_t i =0; i < mDesc.getRootDescriptorCount(); i++) {
-                const auto& desc = mDesc.getRootDescriptorDesc(i);
-                LOG_DBG("createRootDescriptorSetLayout spaceIndex %u regIndex %u", desc.spaceIndex, desc.regIndex);
-                
-                VkDescriptorSetLayoutBinding& b = root_bindings[i];
-                b.binding = desc.regIndex;
-                b.pImmutableSamplers = nullptr;
-                b.descriptorCount = 1; // ???
-                b.stageFlags = 0; // TODO: set to all
-                b.descriptorType = falcorToVkDescType(desc.type);
-            }
-
-            VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-            layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            layoutInfo.bindingCount = (uint32_t)root_bindings.size();
-            layoutInfo.pBindings = root_bindings.data();
-
-            VkDescriptorSetLayout vkHandle;
-            if (VK_FAILED(vkCreateDescriptorSetLayout(gpDevice->getApiHandle(), &layoutInfo, nullptr, &vkHandle))){
-                LOG_FTL("createRootDescriptorSetLayout failed !!!");
-            }
-            vkSetLayouts.insert(vkSetLayouts.begin(), vkHandle);
-            //vkSetLayouts.back() = vkHandle;
-        }
-        LOG_DBG("vec size %zu", vkSetLayouts.size());
-        //----------------------------------------------------
-        */
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.pNext = nullptr;

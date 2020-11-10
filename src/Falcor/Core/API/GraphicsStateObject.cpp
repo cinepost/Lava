@@ -87,6 +87,7 @@ GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const 
 }
 
 GraphicsStateObject::SharedPtr GraphicsStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+    assert(pDevice);
     return SharedPtr(new GraphicsStateObject(pDevice, desc));
 }
 

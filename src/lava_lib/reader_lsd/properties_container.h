@@ -17,6 +17,13 @@ namespace lava {
 
 namespace lsd {
 
+static inline std::ostream& indentStream(std::ostream& os, uint indent = 0) {
+    for(uint i = 0; i < indent; i++) {
+        os << " ";
+    }
+    return os;
+}
+
 class PropertiesContainer;
 
 template <typename R, typename A> R convert_variant(A const& arg) {
@@ -68,6 +75,11 @@ class Property {
         template<typename T>
         const T get() const;
 
+
+        bool hasSubContainer() const { return mpSubContainer ? true : false; };
+        std::shared_ptr<PropertiesContainer> createSubContainer();
+        std::shared_ptr<PropertiesContainer> subContainer() const { return mpSubContainer; };
+
     private:
         Property(): mType(Type::UNKNOWN), mOwner(Owner::SYS) { }
         Property(Type type, const Value& value, Owner owner = Owner::SYS): mType(type), mValue(value), mOwner(owner) { }
@@ -75,6 +87,8 @@ class Property {
         ast::Type   mType;
         Value       mValue;
         Owner       mOwner;
+
+        std::shared_ptr<PropertiesContainer> mpSubContainer = nullptr;
 
     friend class PropertiesContainer;
 };
@@ -141,6 +155,8 @@ class PropertiesContainer {
 
     bool declareProperty(ast::Style style, Property::Type type, const std::string& name, const Property::Value& value, Property::Owner owner = Property::Owner::SYS);
     bool setProperty(ast::Style style, const std::string& name, const Property::Value& value);
+
+    Property* getProperty(ast::Style style, const std::string& name);
     const Property* getProperty(ast::Style style, const std::string& name) const;
 
     template<typename T>
@@ -153,6 +169,8 @@ class PropertiesContainer {
     const PropertiesMap& properties() const { return mPropertiesMap; };
 
     size_t size() const { return mPropertiesMap.size(); };
+
+    virtual const void printSummary(std::ostream& os, uint indent = 0) const;
 
  private:
     const Property::Value& _getPropertyValue(ast::Style style, const std::string& name, const Property::Value& default_value) const;

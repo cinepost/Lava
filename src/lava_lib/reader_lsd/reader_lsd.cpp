@@ -104,9 +104,13 @@ bool ReaderLSD::parseStream(std::istream& in) {
             if (!mpVisitor->ignoreCommands()) {
                 try {
                     boost::apply_visitor(*mpVisitor, cmd);
-                } catch (...) {
+                } catch (const std::runtime_error& re) {
+                    LLOG_FTL << "Runtime error: " << re.what();
                     return false;
-                }
+                }// catch (...) {
+                //    LLOG_FTL << "Unknown error occured !!!";
+                //    return false;
+                //}
             }
         }
     }

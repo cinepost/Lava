@@ -134,8 +134,7 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
     auto& dict = renderData.getDictionary();
     if (mOptionsChanged) {
         auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
-        //auto flags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-
+        
         dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }

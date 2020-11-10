@@ -109,10 +109,8 @@ void Fbo::applyDepthAttachment() {}
 RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
     const auto& rt = mColorAttachments[rtIndex];
     if (rt.pTexture) {
-        LOG_DBG("Fbo::getRenderTargetView rt.pTexture");
         return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
     } else {
-        LOG_DBG("Fbo::getRenderTargetView null");
         return RenderTargetView::getNullView(mpDevice);
     }
 }

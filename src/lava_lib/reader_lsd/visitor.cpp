@@ -4,6 +4,8 @@
 #include "visitor.h"
 #include "session.h"
 
+#include "properties_container.h"
+
 namespace x3 = boost::spirit::x3;
 namespace fs = boost::filesystem;
 
@@ -167,16 +169,20 @@ void Visitor::operator()(ast::cmd_deviceoption const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_property const& c) const {
-    if(!c.values.size())
+    if (c.values.size() == 0)
         return;
 
     if (c.values.size() != 1) {
-        LLOG_WRN << "Value arrays not supported !!! Ignored for token: " << c.token;
+        std::vector<std::pair<std::string, Property::Value>> v;
+        for(auto const& value: c.values) {
+            v.push_back({value.first, value.second.get()});
+        }
+        mpSession->cmdPropertyV(c.style, v);
         return;
     }
    
    auto const& value = c.values[0];
-   mpSession->cmdProperty(c.style, c.token, value.get());
+   mpSession->cmdProperty(c.style, value.first, value.second.get());
 }
 
 void Visitor::operator()(ast::cmd_declare const& c) const {

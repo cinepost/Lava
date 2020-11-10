@@ -60,7 +60,7 @@ class SDLOpenGLWindow {
     void ErrorExit(const std::string &_msg) const;
 
     SDL_Window *m_window;
-    GLenum m_pixelFormat;
+    GLenum m_pixelFormat, m_texFormat;
     float m_scale=1.0f;
     float m_xPos=0.0f;
     float m_yPos=0.0f;

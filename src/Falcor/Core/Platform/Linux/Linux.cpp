@@ -30,9 +30,13 @@
 #include "Falcor/Core/Platform/OS.h"
 // #include "Utils/Logger.h"
 //
-// #include <sys/types.h>
-// #include <sys/stat.h>
-// #include <sys/ptrace.h>
+
+#ifdef _DEBUG
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/ptrace.h>
+#endif
+
 #include <gtk/gtk.h>
 // #include <fstream>
 #include <fcntl.h>

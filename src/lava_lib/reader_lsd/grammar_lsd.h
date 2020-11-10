@@ -31,6 +31,8 @@
 
 #include <boost/container/static_vector.hpp>
 
+#include "Falcor/Utils/Math/Vector.h"
+
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
@@ -69,6 +71,22 @@ namespace lsd {
     typedef static_vector<double, 9> Matrix3;
     typedef static_vector<double, 16> Matrix4;
     typedef x3::variant<int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
+
+    static inline Falcor::float2 to_float2(const Vector2& vec) {
+        return {vec[0], vec[1]};
+    }
+
+    static inline Falcor::float3 to_float3(const Vector3& vec) {
+        return {vec[0], vec[1], vec[2]};
+    }
+
+    static inline glm::mat4 to_mat4(const Matrix4& m) {
+        return {m[0], m[1], m[2], m[3],
+                m[4], m[5], m[6], m[7],
+                m[8], m[9], m[10],m[11],
+                m[12],m[13],m[14],m[15]
+        };
+    }
 
 namespace ast {
 
@@ -188,8 +206,7 @@ namespace ast {
 
     struct cmd_property {
         Style style;
-        std::string token;
-        std::vector<PropValue> values;
+        std::vector<std::pair<std::string, PropValue>> values;
     };
 
     struct cmd_deviceoption {
@@ -348,7 +365,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, temporary, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, token, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, array_size, style, type, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_reset)
@@ -403,7 +420,7 @@ namespace parser {
         = lexeme[+graph];
 
     auto const string_char
-        = esc_char | alnum | char_("$/_.:-+@!~");
+        = esc_char | alnum | char(':') | char_("$/_.:-+@!~?");
 
     x3::rule<class unquoted_string_, std::string> const unquoted_string = "unquoted_string";
     auto const unquoted_string_def = //lexeme[+(~char_(" \"\'"))];
@@ -515,6 +532,10 @@ namespace parser {
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
     BOOST_SPIRIT_DEFINE(prop_values)
+
+    x3::rule<class prop_values_array_, std::vector<std::pair<std::string, PropValue>>> const prop_values_array = "prop_values_array";
+    auto const prop_values_array_def = *(prop_name >> prop_value) - keyword;
+    BOOST_SPIRIT_DEFINE(prop_values_array)
 
     x3::rule<class image_values_, std::vector<std::string>> const image_values = "image_values";
     auto const image_values_def = *(quoted_string);
@@ -643,7 +664,7 @@ namespace parser {
 
     auto const cmd_property
         = x3::rule<class cmd_property, ast::cmd_property>{"cmd_property"}
-        = "cmd_property" >> property_style >> identifier >> prop_values;
+        = "cmd_property" >> property_style >> prop_values_array;
     
     auto const cmd_deviceoption
         = x3::rule<class cmd_deviceoption, ast::cmd_deviceoption>{"cmd_deviceoption"}

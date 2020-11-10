@@ -69,13 +69,14 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
     for (uint l = 0; l < gScene.getLightCount(); l++)
     {
         float shadowFactor = 1;
-       if (l == 0)
+        if (l == 0)
         {
             shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
-            shadowFactor *= sd.opacity;
+            //shadowFactor *= sd.opacity;
         }
         finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color.rgb;
     }
+
 
     // Add the emissive component
     finalColor.rgb += sd.emissive;
@@ -94,5 +95,6 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
     float3 cascadeColor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).gba;
     psOut.color.rgb *= cascadeColor;
 #endif
+
     return psOut;
 }

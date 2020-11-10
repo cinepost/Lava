@@ -42,12 +42,13 @@ ComputeStateObject::~ComputeStateObject() {
     mpDevice->releaseResource(mApiHandle);
 }
 
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> device, const Desc& desc) : mpDevice(device), mDesc(desc) {
+ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
     apiInit();
 }
 
-ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> device, const Desc& desc) {
-    return SharedPtr(new ComputeStateObject(device, desc));
+ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+	assert(pDevice);
+    return SharedPtr(new ComputeStateObject(pDevice, desc));
 }
 
 }  // namespace Falcor

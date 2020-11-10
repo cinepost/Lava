@@ -60,8 +60,7 @@ float4 ps(float3 dir : NORMAL) : SV_TARGET
 {
 #ifdef _SPHERICAL_MAP
     float2 uv = dirToSphericalCrd(dir);
-float4 color = gTexture.Sample(gSampler, uv);
-return color;
+    return gTexture.Sample(gSampler, uv);
 #else
     return gTexture.SampleLevel(gSampler, normalize(dir), 0);
 #endif

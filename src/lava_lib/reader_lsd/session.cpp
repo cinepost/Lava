@@ -163,42 +163,113 @@ bool Session::cmdRaytrace() {
 
 void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo) {
 	LLOG_DBG << "pushBgeo";
-    bgeo.printSummary(std::cout);
+    //bgeo.printSummary(std::cout);
 
     auto pSceneBuilder = mpRendererIface->getSceneBuilder();
     if(pSceneBuilder) {
-    	uint32_t mesh_id = pSceneBuilder->addMesh(std::move(bgeo));
+    	uint32_t mesh_id = pSceneBuilder->addMesh(std::move(bgeo), name);
     	mMeshMap[name] = mesh_id;
     } else {
     	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
     }
 }
 
-void Session::pushLight(const scope::Light::SharedPtr pLight) {
-
+void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
+	LLOG_DBG << "pushLight";
 	static std::string unnamed = "unnamed"; // safety. in case light scope has no name specified
 
     auto pSceneBuilder = mpRendererIface->getSceneBuilder();
-    if(pSceneBuilder) {
-    	std::string light_name = pLight->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
 
-    	const auto& transform = pLight->getTransformList()[0];
+    if (!pSceneBuilder) {
+		LLOG_ERR << "Unable to push light. SceneBuilder not ready !!!";
+		return;
+	}
 
-    	auto pFalcorLight = Falcor::PointLight::create();
-    	pFalcorLight->setWorldPosition({transform[3][0], transform[3][1], transform[3][2]});
-    	uint32_t light_id = pSceneBuilder->addLight(pFalcorLight);
-    	mMeshMap[light_name] = light_id;
+	std::string light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
+	const auto& transform = pLightScope->getTransformList()[0];
 
-    	unnamed += "_";
-    } else {
-    	LLOG_ERR << "Can't push light. SceneBuilder not ready !!!";
-    }
+	std::string light_type = "point"; // default light type
+	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
+	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
+
+	//Falcor::float3 light_dir = (glm::vec4{0.0, 0.0, -1.0, 0.0} * transform).xyz; // light direction
+	//light_dir = glm::normalize(light_dir);
+	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
+	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
+
+	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
+	if(pShaderProp) {
+		auto pShaderProps = pShaderProp->subContainer();
+		light_type = pShaderProps->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
+		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+		light_color *= Falcor::float3{10.0, 10.0, 10.0}; // just to match houdini intensity
+	} else {
+		LLOG_ERR << "No shader property set for light " << light_name;
+	}
+
+	Falcor::Light::SharedPtr pLight;
+
+	if( light_type == "distant") {
+		auto pDistantLight = Falcor::DistantLight::create();
+		pDistantLight->setWorldDirection(light_dir);
+		
+		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
+	} else {
+		auto pPointLight = Falcor::PointLight::create();
+		pPointLight->setWorldPosition(light_pos);
+		pPointLight->setWorldDirection(light_dir);
+
+		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
+	}
+
+	LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
+
+	pLight->setName(light_name);
+	pLight->setHasAnimation(false);
+	pLight->setIntensity(light_color);
+	uint32_t light_id = pSceneBuilder->addLight(pLight);
+	mLightsMap[light_name] = light_id;
+
+	unnamed += "_";
 }
 
 void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {
-	LLOG_DBG << "cmdProperty" << to_string(value);
-	if(mpCurrentScope) {
-		mpCurrentScope->setProperty(style, token, value);
+	LLOG_DBG << "cmdProperty " << to_string(value);
+	if(!mpCurrentScope) {
+		LLOG_ERR << "No current scope is set !!!";
+		return; 
+	}
+	mpCurrentScope->setProperty(style, token, value);
+}
+
+void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values) {
+	LLOG_DBG << "cmdPropertyV ";
+	if(!mpCurrentScope) {
+		LLOG_ERR << "No current scope is set !!!";
+		return; 
+	}
+
+	if (values.size() < 2) {
+		LLOG_ERR << "Property array size should be at least 2 elements !!!";
+		return;
+	}
+
+	mpCurrentScope->setProperty(style, values[0].first, values[0].second);
+	Property* pProp = mpCurrentScope->getProperty(style, values[0].first);
+
+	if(!pProp) {
+		LLOG_ERR << "Error getting property " << values[0].first;
+		return;
+	}
+
+	auto pSubContainer = pProp->subContainer();
+	if(!pSubContainer) {
+		LLOG_ERR << "No sub-container for property " << values[0].first;
+		return;
+	}
+
+	for(auto it = values.begin() + 1; it != values.end(); it++) {
+		pSubContainer->setProperty(style, it->first, it->second);
 	}
 }
 
@@ -322,7 +393,7 @@ bool Session::cmdEnd() {
 	return result;
 }
 
-bool Session::pushGeometryInstance(scope::Object::SharedPtr pObj) {
+bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 	auto it = mMeshMap.find(pObj->geometryName());
 	if(it == mMeshMap.end()) {
 		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
@@ -345,8 +416,42 @@ bool Session::pushGeometryInstance(scope::Object::SharedPtr pObj) {
 	uint32_t mesh_id = it->second;
 	uint32_t node_id  = pSceneBuilder->addNode(node);
 
+	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
+
+	// TODO: this is naive test. Should make separate material manager with pulicate materials removal, etc
+	// fetch basic material data
+	Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
+    
+    Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
+    std::string 	surface_base_color_texture = "";
+    bool 			surface_use_base_color_texture = false;
+    float 		 	surface_ior = 1.5;
+    float 			surface_metallic = 0.0;
+    float 			surface_roughness = 0.3;
+
+    if(pShaderProp) {
+    	auto pShaderProps = pShaderProp->subContainer();
+    	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}));
+    	surface_base_color_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
+
+    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
+    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
+    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
+    } else {
+    	LLOG_ERR << "No surface property set for object " << obj_name;
+    }
+
+    auto pMaterial = Falcor::Material::create(pSceneBuilder->device(), obj_name);
+    pMaterial->setBaseColor({surface_base_color, 1.0});
+    pMaterial->setIndexOfRefraction(surface_ior);
+    pMaterial->setMetallic(surface_metallic);
+    pMaterial->setRoughness(surface_roughness);
+
+    if(surface_base_color_texture != "") 
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture);
+
     // add a mesh instance to a node
-    pSceneBuilder->addMeshInstance(node_id, mesh_id);
+    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);
 
 	return true;
 }

@@ -198,7 +198,32 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID)
 {
     assert(meshID < mMeshes.size());
     mSceneGraph.at(nodeID).meshes.push_back(meshID);
-    mMeshes.at(meshID).instances.push_back(nodeID);
+
+    auto &mesh = mMeshes.at(meshID);
+    mesh.instances.push_back({});
+
+    MeshInstanceSpec &instance = mesh.instances.back();
+    instance.nodeId = nodeID;
+    instance.overrideMaterial = false;
+
+    //mMeshes.at(meshID).instances.push_back(instance);
+    mDirty = true;
+}
+
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial)
+{
+    assert(meshID < mMeshes.size());
+    mSceneGraph.at(nodeID).meshes.push_back(meshID);
+
+    auto &mesh = mMeshes.at(meshID);
+    mesh.instances.push_back({});
+
+    MeshInstanceSpec &instance = mesh.instances.back();
+    instance.nodeId = nodeID;
+    instance.materialId = addMaterial(pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));;
+    instance.overrideMaterial = true;
+
+    //mMeshes.at(meshID).instances.push_back(instance);
     mDirty = true;
 }
 
@@ -581,8 +606,8 @@ uint32_t SceneBuilder::createMeshData(Scene* pScene)
         {
             instanceData.push_back({});
             auto& meshInstance = instanceData.back();
-            meshInstance.globalMatrixID = instance;
-            meshInstance.materialID = mesh.materialId;
+            meshInstance.globalMatrixID = instance.nodeId;
+            meshInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
             meshInstance.meshID = meshID;
             meshInstance.vbOffset = mesh.staticVertexOffset;
             meshInstance.ibOffset = mesh.indexOffset;
@@ -595,7 +620,7 @@ uint32_t SceneBuilder::createMeshData(Scene* pScene)
 
             for (uint32_t i = 0; i < mesh.vertexCount; i++)
             {
-                mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0];
+                mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0].nodeId;
             }
         }
     }

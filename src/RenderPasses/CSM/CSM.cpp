@@ -34,29 +34,29 @@ extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-static void regCSM(ScriptBindings::Module& m) {
-    auto c = m.regClass(CSM);
-    c.property("cascadeCount", &CSM::getCascadeCount, &CSM::setCascadeCount);
-    c.property("mapSize", &CSM::getMapSize, &CSM::setMapSize);
-    c.property("visibilityBitCount", &CSM::getVisibilityBufferBitsPerChannel, &CSM::setVisibilityBufferBitsPerChannel);
-    c.property("filter", &CSM::getFilterMode, &CSM::setFilterMode);
-    c.property("sdsmLatency", &CSM::getSdsmReadbackLatency, &CSM::setSdsmReadbackLatency);
-    c.property("partition", &CSM::getPartitionMode, &CSM::setPartitionMode);
-    c.property("lambda", &CSM::getPSSMLambda, &CSM::setPSSMLambda);
-    c.property("minDistance", &CSM::getMinDistanceRange, &CSM::setMinDistanceRange);
-    c.property("maxDistance", &CSM::getMaxDistanceRange, &CSM::setMaxDistanceRange);
-    c.property("cascadeThreshold", &CSM::getCascadeBlendThreshold, &CSM::setCascadeBlendThreshold);
-    c.property("depthBias", &CSM::getDepthBias, &CSM::setDepthBias);
-    c.property("kernelWidth", &CSM::getPcfKernelWidth, &CSM::setPcfKernelWidth);
-    c.property("maxAniso", &CSM::getVsmMaxAnisotropy, &CSM::setVsmMaxAnisotropy);
-    c.property("bleedReduction", &CSM::getVsmLightBleedReduction, &CSM::setVsmLightBleedReduction);
-    c.property("positiveExp", &CSM::getEvsmPositiveExponent, &CSM::setEvsmPositiveExponent);
-    c.property("negativeExp", &CSM::getEvsmNegativeExponent, &CSM::setEvsmNegativeExponent);
+static void regCSM(pybind11::module& m) {
+    pybind11::class_<CSM, RenderPass, CSM::SharedPtr> pass(m, "CSM");
+    pass.def_property("cascadeCount", &CSM::getCascadeCount, &CSM::setCascadeCount);
+    pass.def_property("mapSize", &CSM::getMapSize, &CSM::setMapSize);
+    pass.def_property("visibilityBitCount", &CSM::getVisibilityBufferBitsPerChannel, &CSM::setVisibilityBufferBitsPerChannel);
+    pass.def_property("filter", &CSM::getFilterMode, &CSM::setFilterMode);
+    pass.def_property("sdsmLatency", &CSM::getSdsmReadbackLatency, &CSM::setSdsmReadbackLatency);
+    pass.def_property("partition", &CSM::getPartitionMode, &CSM::setPartitionMode);
+    pass.def_property("lambda", &CSM::getPSSMLambda, &CSM::setPSSMLambda);
+    pass.def_property("minDistance", &CSM::getMinDistanceRange, &CSM::setMinDistanceRange);
+    pass.def_property("maxDistance", &CSM::getMaxDistanceRange, &CSM::setMaxDistanceRange);
+    pass.def_property("cascadeThreshold", &CSM::getCascadeBlendThreshold, &CSM::setCascadeBlendThreshold);
+    pass.def_property("depthBias", &CSM::getDepthBias, &CSM::setDepthBias);
+    pass.def_property("kernelWidth", &CSM::getPcfKernelWidth, &CSM::setPcfKernelWidth);
+    pass.def_property("maxAniso", &CSM::getVsmMaxAnisotropy, &CSM::setVsmMaxAnisotropy);
+    pass.def_property("bleedReduction", &CSM::getVsmLightBleedReduction, &CSM::setVsmLightBleedReduction);
+    pass.def_property("positiveExp", &CSM::getEvsmPositiveExponent, &CSM::setEvsmPositiveExponent);
+    pass.def_property("negativeExp", &CSM::getEvsmNegativeExponent, &CSM::setEvsmNegativeExponent);
 
-    auto partitionEnum = m.enum_<CSM::PartitionMode>("PartitionMode");
-    partitionEnum.regEnumVal(CSM::PartitionMode::Linear);
-    partitionEnum.regEnumVal(CSM::PartitionMode::Logarithmic);
-    partitionEnum.regEnumVal(CSM::PartitionMode::PSSM);
+    pybind11::enum_<CSM::PartitionMode> partitionMode(m, "PartitionMode");
+    partitionMode.value("Linear", CSM::PartitionMode::Linear);
+    partitionMode.value("Logarithmic", CSM::PartitionMode::Logarithmic);
+    partitionMode.value("PSSM", CSM::PartitionMode::PSSM);
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
@@ -244,15 +244,16 @@ CSM::SharedPtr CSM::create(RenderContext* pRenderContext, const Dictionary& dict
     assert(pRenderContext->device() && "No device in RenderContext !!!");
 
     auto pCSM = SharedPtr(new CSM(pRenderContext->device()));
-    for (const auto& v : dict) {
-        if (v.key() == kMapSize) pCSM->mMapSize = (uint2)v.val();
-        else if (v.key() == kVisBufferSize) pCSM->mVisibilityPassData.screenDim = (uint2)v.val();
-        else if (v.key() == kCascadeCount) pCSM->setCascadeCount(v.val());
-        else if (v.key() == kVisMapBitsPerChannel) pCSM->setVisibilityBufferBitsPerChannel(v.val());
-        else if (v.key() == kSdsmReadbackLatency) pCSM->setSdsmReadbackLatency(v.val());
-        else if (v.key() == kBlurKernelWidth) pCSM->mBlurDict["kernelWidth"] = (uint32_t)v.val();
-        else if (v.key() == kBlurSigma) pCSM->mBlurDict["sigma"] = (float)v.val();
-        else logWarning("Unknown field `" + v.key() + "` in a CSM dictionary");
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kMapSize) pCSM->mMapSize = value;
+        else if (key == kVisBufferSize) pCSM->mVisibilityPassData.screenDim = value;
+        else if (key == kCascadeCount) pCSM->setCascadeCount(value);
+        else if (key == kVisMapBitsPerChannel) pCSM->setVisibilityBufferBitsPerChannel(value);
+        else if (key == kSdsmReadbackLatency) pCSM->setSdsmReadbackLatency(value);
+        else if (key == kBlurKernelWidth) pCSM->mBlurDict["kernelWidth"] = (uint32_t)value;
+        else if (key == kBlurSigma) pCSM->mBlurDict["sigma"] = (float)value;
+        else logWarning("Unknown field '" + key + "' in a CSM dictionary");
     }
     pCSM->createShadowPassResources();
     return pCSM;
@@ -640,7 +641,7 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData) {
 
 void CSM::setLight(const Light::SharedConstPtr& pLight) {
     mpLight = pLight;
-    if (mpLight && mpLight->getType() != LightType::Directional) {
+    if (mpLight && (mpLight->getType() != LightType::Directional || mpLight->getType() != LightType::Distant)) {
         setCascadeCount(1);
     }
 }

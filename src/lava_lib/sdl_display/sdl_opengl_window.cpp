@@ -13,10 +13,13 @@ SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _w
   m_width=_width;
   m_height=_height;
   init();
-  if(_ppp ==3)
-    m_pixelFormat=GL_RGB;
-  else if(_ppp ==4)
-    m_pixelFormat=GL_RGBA;
+  if(_ppp ==3) {
+    m_pixelFormat = GL_RGB;
+    m_texFormat = GL_RGBA32F;
+  } else if(_ppp ==4) {
+    m_pixelFormat = GL_RGBA;
+    m_texFormat = GL_RGBA32F;
+  }
 }
 
 void SDLOpenGLWindow::init() {
@@ -47,7 +50,7 @@ void SDLOpenGLWindow::init() {
 }
 
 void SDLOpenGLWindow::updateImage(const float *_image) {
-  glTexImage2D(GL_TEXTURE_2D, 0, m_pixelFormat, m_width, m_height, 0, m_pixelFormat, GL_FLOAT, _image);
+  glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, GL_FLOAT, _image);
 }
 
 void NGLCheckGLError( const std::string  &_file, const int _line ) noexcept {

@@ -21,11 +21,9 @@ static inline std::ostream& indentStream(std::ostream& os, uint indent = 0) {
     return os;
 }
 
-void ScopeBase::printSummary(std::ostream& os, uint indent) {
+const void ScopeBase::printSummary(std::ostream& os, uint indent) const {
 	indentStream(os, indent) << this->type() << " {\n";
-	for( auto const& [key, prop]: mPropertiesMap) {
-		indentStream(os, indent) << (prop.isUserProperty() ? "user" : "sys ") << " property " << to_string(key) << " type: " << to_string(prop.type()) << " value: " << to_string(prop.value()) << "\n"; 
-	}
+	PropertiesContainer::printSummary(os, indent);
 
 	for( auto const& child: mChildren) {
 		child->printSummary(os, indent + 4); 
@@ -157,6 +155,22 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pObject = Object::SharedPtr(new Object(pParent));
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
 
+	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "surface", std::string(), Property::Owner::SYS)) return nullptr;	
+
+	auto pProp = pObject->getProperty(Style::OBJECT, "surface");
+	if(!pProp) return nullptr;
+	
+	auto pSubContainer = pProp->createSubContainer();
+	if(!pSubContainer) return nullptr;
+
+	pSubContainer->declareProperty(Style::OBJECT, Type::VECTOR3, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "basecolor_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "basecolor_texture", std::string(), Property::Owner::SYS);
+	
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "rough", 0.3, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "ior", 1.5, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "metallic", 0.0, Property::Owner::SYS);
+
 	return std::move(pObject);
 }
 
@@ -178,6 +192,17 @@ Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 	if(!pLight->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
 	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "projection", std::string("perspective"), Property::Owner::SYS)) return nullptr;
 	if(!pLight->declareProperty(Style::LIGHT, Type::VECTOR2, "zoom", lsd::Vector2{0.01, 1000.0}, Property::Owner::SYS)) return nullptr;
+
+	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shader", std::string(), Property::Owner::SYS)) return nullptr;	
+	
+	auto pProp = pLight->getProperty(Style::LIGHT, "shader");
+	if(!pProp) return nullptr;
+	
+	auto pSubContainer = pProp->createSubContainer();
+	if(!pSubContainer) return nullptr;
+
+	pSubContainer->declareProperty(Style::LIGHT, Type::VECTOR3, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::LIGHT, Type::STRING, "type", std::string("point"), Property::Owner::SYS);
 
 	return std::move(pLight);
 }

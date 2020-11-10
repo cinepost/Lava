@@ -42,6 +42,8 @@ class Renderer: public Falcor::IFramework {
  	static UniquePtr create();
     static UniquePtr create(Falcor::DeviceManager::DeviceLocalUID uid);
 
+    Falcor::Device::SharedPtr device() { return mpDevice; };
+
  public:
  	bool init();
  	bool isInited() const { return mInited; }
@@ -71,7 +73,7 @@ class Renderer: public Falcor::IFramework {
     virtual Falcor::RenderContext* getRenderContext() override;
 
     /** Get the current FBO*/
-    virtual std::shared_ptr<Falcor::Fbo> getTargetFbo() override;
+    virtual std::shared_ptr<Falcor::Fbo> getTargetFbo  () override;
 
     /** Get the window*/
     virtual Falcor::Window* getWindow() override { return nullptr; };

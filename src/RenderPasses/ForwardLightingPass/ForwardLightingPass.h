@@ -34,10 +34,9 @@
 
 using namespace Falcor;
 
-class ForwardLightingPass : public RenderPass, public inherit_shared_from_this<RenderPass, ForwardLightingPass> {
+class ForwardLightingPass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<ForwardLightingPass>;
-    using inherit_shared_from_this<RenderPass, ForwardLightingPass>::shared_from_this;
     static const char* kDesc;
 
     /** Create a new object
@@ -95,7 +94,7 @@ class ForwardLightingPass : public RenderPass, public inherit_shared_from_this<R
     Scene::SharedPtr mpScene;
     GraphicsVars::SharedPtr mpVars;
 
-    ResourceFormat mColorFormat = ResourceFormat::Unknown;
+    ResourceFormat mColorFormat = ResourceFormat::RGB32Float; //Unknown;
     ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
     ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
     uint32_t mSampleCount = 0;

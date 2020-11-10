@@ -1,6 +1,8 @@
 #include <variant>
 #include <map>
 
+#include "Falcor/Utils/Math/Vector.h"
+
 #include "grammar_lsd.h"
 #include "properties_container.h"
 
@@ -21,10 +23,14 @@ bool Property::create(Property::Type type, const Property::Value& value, Propert
     return true;
 }
 
-//template<typename T>
-//const T Property::get() const {
-//    return boost::get<T>(mValue);
-//}
+std::shared_ptr<PropertiesContainer> Property::createSubContainer() {
+    if(mpSubContainer) {
+        LLOG_WRN << "Sub-container already exist for property !"; 
+    } else {
+        mpSubContainer = std::shared_ptr<PropertiesContainer>( new PropertiesContainer());
+    }
+    return mpSubContainer;
+}
 
 template<>
 const bool Property::get() const {
@@ -201,7 +207,7 @@ bool PropertiesContainer::setProperty(ast::Style style, const std::string& name,
     return true;
 }
 
-const Property* PropertiesContainer::getProperty(ast::Style style, const std::string& name) const {
+Property* PropertiesContainer::getProperty(ast::Style style, const std::string& name) {
     auto it = mPropertiesMap.find(PropertyKey(style, name));
     if (it == mPropertiesMap.end()) {
         LLOG_ERR << "Property " << to_string(style) << " " <<  name << " does not exist !!!";
@@ -210,6 +216,14 @@ const Property* PropertiesContainer::getProperty(ast::Style style, const std::st
     return &it->second;
 }
 
+const Property* PropertiesContainer::getProperty(ast::Style style, const std::string& name) const {
+    auto it = mPropertiesMap.find(PropertyKey(style, name));
+    if (it == mPropertiesMap.end()) {
+        LLOG_ERR << "Property " << to_string(style) << " " <<  name << " does not exist !!!";
+        return nullptr;
+    }
+    return &it->second;
+}
 
 const Property::Value& PropertiesContainer::_getPropertyValue(ast::Style style, const std::string& name, const  Property::Value& default_value) const {
     auto pProperty = getProperty(style, name);
@@ -228,7 +242,23 @@ template<>
 const Int2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int2& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Int2>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
+    return default_value;
+}
 
+template<>
+const Int3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int3& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<Int3>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
+    return default_value;
+}
+
+template<>
+const Int4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int4& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<Int4>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -236,7 +266,23 @@ template<>
 const Vector2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector2& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Vector2>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
+    return default_value;
+}
 
+template<>
+const Vector3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector3& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<Vector3>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
+    return default_value;
+}
+
+template<>
+const Vector4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector4& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<Vector4>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -244,7 +290,7 @@ template<>
 const std::string PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const std::string& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<std::string>();
-
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -252,7 +298,7 @@ template<>
 const double PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const double& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<double>();
-
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -260,7 +306,7 @@ template<>
 const float PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const float& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<float>();
-
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -268,7 +314,7 @@ template<>
 const int PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const int& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<int>();
-
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
     return default_value;
 }
 
@@ -308,6 +354,18 @@ const PropertiesContainer PropertiesContainer::filterProperties(ast::Style style
     return container;
 }
 
+const void PropertiesContainer::printSummary(std::ostream& os, uint indent) const { 
+    for( auto const& [key, prop]: mPropertiesMap) {
+        indentStream(os, indent) << (prop.isUserProperty() ? "user" : "sys ") << " property " << to_string(key) << " type: " << to_string(prop.type()) << " value: " << to_string(prop.value()) << "\n";
+        if (prop.hasSubContainer()) {
+            indentStream(os, indent) << "Sub-container {\n";
+            prop.subContainer()->printSummary(os, indent + 4);
+            indentStream(os, indent) << "}\n";
+        } 
+    }
+}
+
+
 std::string to_string(const PropertiesContainer::PropertyKey& key) {
     return "style: " + to_string(key.first) + " name: \"" + key.second + "\"";
 };
@@ -332,56 +390,56 @@ std::string to_string(const Value& val) {
     }
     if (val.type() == typeid(lava::lsd::Int2)) {
         auto const& v = boost::get<lava::lsd::Int2>(val);
-        ss << "[ ";
+        ss << "Int2[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Int3)) {
         auto const& v = boost::get<lava::lsd::Int3>(val);
-        ss << "[ ";
+        ss << "Int3[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Int4)) {
         auto const& v = boost::get<lava::lsd::Int4>(val);
-        ss << "[ ";
+        ss << "Int4[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<int>(ss, " "));
         ss << " ]";
         return ss.str();
     }
     if (val.type() == typeid(lava::lsd::Vector2)) {
         auto const& v = boost::get<lava::lsd::Vector2>(val);
-        ss << "[ ";
+        ss << "Vector2[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<double>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Vector3)) {
         auto const& v = boost::get<lava::lsd::Vector3>(val);
-        ss << "[ ";
+        ss << "Vector3[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<double>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Vector4)) {
         auto const& v = boost::get<lava::lsd::Vector4>(val);
-        ss << "[ ";
+        ss << "Vector4[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<double>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Matrix3)) {
         auto const& v = boost::get<lava::lsd::Matrix3>(val);
-        ss << "[ ";
+        ss << "Matrix3[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<double>(ss, " "));
         ss << " ]";
         return ss.str();
     };
     if (val.type() == typeid(lava::lsd::Matrix4)) {
         auto const& v = boost::get<lava::lsd::Matrix4>(val);
-        ss << "[ ";
+        ss << "Matrix4[ ";
         std::copy(v.begin(), v.end(), std::ostream_iterator<double>(ss, " "));
         ss << " ]";
         return ss.str();

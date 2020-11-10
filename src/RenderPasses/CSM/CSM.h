@@ -35,10 +35,9 @@
 
 using namespace Falcor;
 
-class CSM : public RenderPass, public inherit_shared_from_this<RenderPass, CSM> {
+class CSM : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<CSM>;
-    using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
 
     enum class PartitionMode {

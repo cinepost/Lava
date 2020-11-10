@@ -177,7 +177,7 @@ DirectionalLight::DirectionalLight()
 DirectionalLight::SharedPtr DirectionalLight::create()
 {
     DirectionalLight* pLight = new DirectionalLight;
-    return SharedPtr(pLight);
+    return DirectionalLight::SharedPtr(pLight);
 }
 
 DirectionalLight::~DirectionalLight() = default;

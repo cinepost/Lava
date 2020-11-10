@@ -366,7 +366,7 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
 }
 
 void RenderGraph::execute(RenderContext* pContext) {
-    LOG_DBG("RenderGraph::execute dims %u %u", mCompilerDeps.defaultResourceProps.dims[0], mCompilerDeps.defaultResourceProps.dims[1]);
+    //LOG_DBG("RenderGraph::execute dims %u %u", mCompilerDeps.defaultResourceProps.dims[0], mCompilerDeps.defaultResourceProps.dims[1]);
     std::string log;
     if (!compile(pContext, log)) {
         logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");
@@ -744,67 +744,6 @@ SCRIPT_BINDING(RenderGraph)
     };
     renderGraph.def(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);
 }
-
-/*
-SCRIPT_BINDING(RenderGraph) {
-    RenderGraph::SharedPtr (&create_default)(const std::string&) = RenderGraph::create;
-    RenderGraph::SharedPtr (&create_on_device)(std::shared_ptr<Device>, const std::string&) = RenderGraph::create;
-
-    auto graphClass = m.regClass(RenderGraph);
-    
-    graphClass.ctor(&create_default);
-    graphClass.ctor(&create_on_device);
-
-    graphClass.property("name", &RenderGraph::getName, &RenderGraph::setName);
-    graphClass.func_(RenderGraphIR::kAddPass, &RenderGraph::addPass, "pass"_a, "name"_a);
-    graphClass.func_(RenderGraphIR::kRemovePass, &RenderGraph::removePass, "name"_a);
-    graphClass.func_(RenderGraphIR::kAddEdge, &RenderGraph::addEdge, "src"_a, "dst"_a);
-    graphClass.func_(RenderGraphIR::kRemoveEdge, ScriptBindings::overload_cast<const std::string&, const std::string&>(&RenderGraph::removeEdge), "src"_a, "src"_a);
-    graphClass.func_(RenderGraphIR::kMarkOutput, &RenderGraph::markOutput, "name"_a);
-    graphClass.func_(RenderGraphIR::kUnmarkOutput, &RenderGraph::unmarkOutput, "name"_a);
-    graphClass.func_(RenderGraphIR::kAutoGenEdges, &RenderGraph::autoGenEdges, "executionOrder"_a);
-    graphClass.func_("getPass", &RenderGraph::getPass, "name"_a);
-    graphClass.func_("getOutput", ScriptBindings::overload_cast<const std::string&>(&RenderGraph::getOutput), "name"_a);
-    auto printGraph = [](RenderGraph::SharedPtr pGraph) { pybind11::print(RenderGraphExporter::getIR(pGraph)); };
-    graphClass.func_("print", printGraph);
-
-    // RenderPass
-    auto passClass = m.regClass(RenderPass);
-
-    // RenderPassLibrary with specified device
-    
-    const auto& createRenderPass = [](std::shared_ptr<Device> pDevice, const std::string& passName, pybind11::dict d = {}) {
-        auto pPass = RenderPassLibrary::instance(pDevice).createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
-        if (!pPass) { 
-            throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
-        }
-        return pPass;
-    };
-    passClass.ctor(createRenderPass, "device"_a, "name"_a, "dict"_a = pybind11::dict());
-
-    
-    const auto& loadPassLibrary = [](std::shared_ptr<Device> pDevice, const std::string& library) {
-        return RenderPassLibrary::instance(pDevice).loadLibrary(library);
-    };
-
-    m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "device"_a, "name"_a);
-
-    const auto& loadPassLibraryDefault = [](const std::string& library) {
-        for(auto& pDevice: DeviceManager::instance().renderingDevices()) {
-            RenderPassLibrary::instance(pDevice).loadLibrary(library);
-        }
-        return;
-    };
-
-    m.func_(RenderGraphIR::kLoadPassLibrary, loadPassLibraryDefault, "name"_a);
-
-    const auto& updateRenderPass = [](std::shared_ptr<Device> pDevice, const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d) {
-        pGraph->updatePass(pDevice->getRenderContext(), passName, Dictionary(d));
-    };
-
-    graphClass.func_(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);
-}
-*/
 
 }  // namespace Falcor
 

@@ -110,6 +110,7 @@ namespace Falcor {
         auto featureBits = getFormatFeatureBitsFromUsage(usage);
         if ((p.optimalTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_OPTIMAL;
         if ((p.linearTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_LINEAR;
+
         should_not_get_here();
         return VkImageTiling(-1);
     }

@@ -321,11 +321,8 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
         assert(mpOffscreenFbo->getSampleCount() == 1);
 
         // Delete all the FBOs
-        LOG_DBG("Device::resizeSwapChain releaseFboData");
         releaseFboData();
-        LOG_DBG("Device::resizeSwapChain apiResizeOffscreenFBO");
         apiResizeOffscreenFBO(width, height, colorFormat);
-        LOG_DBG("Device::resizeSwapChain updateOffscreenFBO");
         updateOffscreenFBO(width, height, colorFormat, depthFormat);
 
         LOG_DBG("Device::resizeSwapChain headless done");
@@ -384,23 +381,6 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
 
     return getSwapChainFbo();
 }
-
-/*
-SCRIPT_BINDING(Device) {
-    auto deviceDesc = m.class_<Device::Desc>("DeviceDesc");
-#define desc_field(f_) rwField(#f_, &Device::Desc::f_)
-    deviceDesc.desc_field(colorFormat).desc_field(depthFormat).desc_field(apiMajorVersion).desc_field(apiMinorVersion);
-    deviceDesc.desc_field(enableVsync).desc_field(enableDebugLayer).desc_field(cmdQueues);
-#undef desc_field
-
-    // Device
-    Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
-
-    auto deviceClass = m.regClass(Device);
-    //deviceClass.ctor(&Device::create);
-    deviceClass.ctor(&create_headless);
-}
-*/
 
 SCRIPT_BINDING(Device) {
     ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");

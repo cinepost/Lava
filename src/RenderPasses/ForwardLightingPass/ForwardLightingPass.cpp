@@ -56,11 +56,11 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
     auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
     pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
 
-    for (const auto& v : dict)
+    for (const auto& [key, value] : dict)
     {
-        if (v.key() == kSampleCount) pThis->setSampleCount(v.val());
-        else if (v.key() == kSuperSampling) pThis->setSuperSampling(v.val());
-        else logWarning("Unknown field `" + v.key() + "` in a ForwardLightingPass dictionary");
+        if (key == kSampleCount) pThis->setSampleCount(value);
+        else if (key == kSuperSampling) pThis->setSuperSampling(value);
+        else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
 
     return pThis;

@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "VertexAttrib.slangh"
 __exported import Scene.Scene;
-__exported import Scene.ShadingData;
+__exported import Scene.Shading;
 
 struct VSIn
 {

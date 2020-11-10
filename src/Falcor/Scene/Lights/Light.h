@@ -156,7 +156,7 @@ public:
     using SharedPtr = std::shared_ptr<DirectionalLight>;
     using SharedConstPtr = std::shared_ptr<const DirectionalLight>;
 
-    static SharedPtr create();
+    static DirectionalLight::SharedPtr create();
     ~DirectionalLight();
 
     /** Render UI elements for this light.

@@ -184,8 +184,19 @@ void EchoVisitor::operator()(ast::cmd_geometry const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_property const& c) const {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_property: style: " << c.style << " token: " << c.token << " values: ";
-    EchoVisitor::operator()(c.values);
+    _os << "\x1b[32m" << "> cmd_property: style: " << c.style;
+    if(c.values.size() > 1) {
+        _os << " [ ";
+        for( const auto& value: c.values ) {
+            _os << " token: " << value.first << " value: ";
+            EchoVisitor::operator()(value.second);
+            _os << ", ";
+        }
+        _os << " ]";
+    } else {
+        _os << " token: " << c.values[0].first << " value: ";
+        EchoVisitor::operator()(c.values[0].second);
+    }
     _os << "\x1b[0m\n";
 }
 

@@ -70,7 +70,11 @@ bool DeviceManager::deviceEnumerated(DeviceLocalUID luid) {
 }
 
 Device::SharedPtr DeviceManager::createDisplayDevice(DeviceLocalUID luid, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc) {
-    if (!deviceEnumerated(luid)) return nullptr;
+    if (!deviceEnumerated(luid)) {
+        logError("Display device " + to_string(luid) + " not enumerated !!!");
+        return nullptr;
+    }
+
     Device::SharedPtr pDevice = displayDevice(luid);
     if(pDevice) return pDevice;
 
@@ -82,7 +86,11 @@ Device::SharedPtr DeviceManager::createDisplayDevice(DeviceLocalUID luid, Falcor
 }
 
 Device::SharedPtr DeviceManager::createRenderingDevice(DeviceLocalUID luid, const Device::Desc &desc) {
-    if (!deviceEnumerated(luid)) return nullptr;
+    if (!deviceEnumerated(luid)) {
+        logError("Rendering device " + to_string(luid) + " not enumerated !!!");
+        return nullptr;
+    }
+
     Device::SharedPtr pDevice = renderingDevice(luid);
     if(pDevice) return pDevice;
 

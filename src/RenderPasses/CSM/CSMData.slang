@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,9 +28,9 @@
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
 
-BEGIN_NAMESPACE_FALCOR
+#define kMaxCascades 8
 
-static const uint32_t kCSMMaxCascades = 8;
+BEGIN_NAMESPACE_FALCOR
 
 enum class CsmFilter
 {
@@ -46,23 +46,28 @@ enum class CsmFilter
 struct CsmData
 {
     float4x4 globalMat;
-    float4 cascadeScale[kCSMMaxCascades];
-    float4 cascadeOffset[kCSMMaxCascades];
+    float4 cascadeScale[kMaxCascades];
+    float4 cascadeOffset[kMaxCascades];
 
     //Only uses xy
-    float4 cascadeRange[kCSMMaxCascades];  // In camera clip-space
+    float4 cascadeRange[kMaxCascades];  // In camera clip-space
 
     float depthBias = 0.005f;
-    int cascadeCount = 4;
+    uint32_t cascadeCount = 4;
     uint32_t filterMode = (uint32_t)CsmFilter::HwPcf; // TODO: Make the field an enum when that works in Slang
     int32_t pcfKernelWidth = 5;
-    
+
     float3 lightDir;
-    float lightBleedingReduction = 0;
+    float _pad1;
 
     float2 evsmExponents = float2(5.54f, 3.0f); // posExp, negExp
+    float _pad2;
+    float _pad3;
+
+    float lightBleedingReduction = 0;
     float cascadeBlendThreshold = 0.0f;
-    uint32_t padding;
+    float _pad4;
+    float _pad5;
 
 #ifndef HOST_CODE
     Texture2DArray shadowMap;

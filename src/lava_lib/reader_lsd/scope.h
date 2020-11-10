@@ -36,11 +36,11 @@ class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this
     ScopeBase(SharedPtr pParent);
     virtual ~ScopeBase() {};
 
-    virtual ast::Style type() = 0;
+    virtual ast::Style type() const = 0;
 
     SharedPtr parent() { return mpParent; };
 
-    void printSummary(std::ostream& os, uint indent = 0);
+    virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
 
  protected:
     SharedPtr mpParent;
@@ -69,7 +69,7 @@ class Global: public Transformable {
     using SharedPtr = std::shared_ptr<Global>;
     static SharedPtr create();
 
-    ast::Style type() override { return ast::Style::GLOBAL; };
+    ast::Style type() const override { return ast::Style::GLOBAL; };
 
     std::shared_ptr<Geo>        addGeo();
     std::shared_ptr<Object>     addObject();
@@ -97,7 +97,7 @@ class Geo: public ScopeBase {
     using SharedPtr = std::shared_ptr<Geo>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() override { return ast::Style::GEO; };
+    ast::Style type() const override { return ast::Style::GEO; };
 
     void setDetailFilename(const std::string& filename);
     void setDetailName(const std::string& name) { mName = name; };
@@ -125,7 +125,7 @@ class Object: public Transformable {
     using SharedPtr = std::shared_ptr<Object>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() override { return ast::Style::OBJECT; };
+    ast::Style type() const override { return ast::Style::OBJECT; };
 
     const std::string& geometryName() const { return mGeometryName; };
     void setGeometryName(const std::string& name) { mGeometryName = name; };
@@ -142,7 +142,7 @@ class Plane: public ScopeBase {
     using SharedPtr = std::shared_ptr<Plane>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() override { return ast::Style::PLANE; };
+    ast::Style type() const override { return ast::Style::PLANE; };
 
  private:
     Plane(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
@@ -153,7 +153,7 @@ class Light: public Transformable {
     using SharedPtr = std::shared_ptr<Light>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() override { return ast::Style::LIGHT; };
+    ast::Style type() const override { return ast::Style::LIGHT; };
 
  private:
     Light(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
@@ -164,7 +164,7 @@ class Segment: public ScopeBase {
     using SharedPtr = std::shared_ptr<Segment>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() override { return ast::Style::SEGMENT; };
+    ast::Style type() const override { return ast::Style::SEGMENT; };
 
  private:
     Segment(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};

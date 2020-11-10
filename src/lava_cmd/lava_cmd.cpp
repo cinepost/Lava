@@ -18,6 +18,8 @@
 #include <boost/algorithm/string/join.hpp>
 namespace po = boost::program_options;
 
+#include "Falcor/Core/API/DeviceManager.h"
+
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
 #include "lava_lib/reader_lsd/reader_lsd.h"
@@ -53,6 +55,15 @@ void signalHandler( int signum ){
     exit(signum);
 }
 
+void listGPUs() {
+  std::cout << "Available devices:\n____________________________________________\n";
+  const std::unordered_map<Falcor::DeviceManager::DeviceLocalUID, std::string>& deviceMap = Falcor::DeviceManager::instance().listDevices();
+  for( auto const& [uid, name]: deviceMap ) {
+    std::cout << "[" << uid << "] : " << name << "\n";
+  }
+  std::cout << std::endl;
+}
+
 typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
 
 int main(int argc, char** argv){
@@ -60,6 +71,7 @@ int main(int argc, char** argv){
     lava::ut::log::init_log();
     boost::log::core::get()->set_filter(  boost::log::trivial::severity >=  boost::log::trivial::debug );
     
+    Falcor::Device::DeviceLocalUID deviceUID = 0;
     int verbose_level = 6;
     bool echo_input = true;
 
@@ -75,33 +87,29 @@ int main(int argc, char** argv){
     namespace po = boost::program_options; 
     po::options_description generic("Options"); 
     generic.add_options() 
-        ("help,h", "Print help messages") 
+        ("help,h", "Show helps") 
         ("version,v", "Shout version information")
+        ("list-gpus,L", "List GPUs")
         ;
 
     // Declare a group of options that will be allowed both on command line and in config file
     po::options_description config("Configuration");
     config.add_options()
-        ("optimization", po::value<int>(&opt)->default_value(10), "optimization level")
-        ("include-path,I", po::value< std::vector<std::string> >()->composing(), "include path")
+        ("gpus,g", po::value<Falcor::Device::DeviceLocalUID>(&deviceUID)->default_value(0), "Use specific gpu")
+        ("include-path,I", po::value< std::vector<std::string> >()->composing(), "Include path")
         ;
 
     po::options_description input("Input");
     input.add_options()
         ("stdin,C", "stdin compatibility mode")
-        ;
-
-    // Hidden options, will be allowed both on command line and in config file, but will not be shown to the user.
-    po::options_description hidden("Hidden options");
-    hidden.add_options()
-        ("input-file,f", po::value< std::vector<std::string> >(), "input file")
+        ("input-file,f", po::value< std::vector<std::string> >(), "Input file")
         ;
 
     po::options_description cmdline_options;
-    cmdline_options.add(generic).add(config).add(hidden).add(input);
+    cmdline_options.add(generic).add(config).add(input);
 
     po::options_description config_file_options;
-    config_file_options.add(config).add(hidden);
+    config_file_options.add(config);
 
     po::options_description visible("Allowed options");
     visible.add(generic).add(config).add(input);
@@ -117,13 +125,20 @@ int main(int argc, char** argv){
     /** --help option 
      */ 
     if ( vm.count("help")  ) { 
-        printUsage();
-        exit(EXIT_SUCCESS);
+      std::cout << generic << "\n";
+      std::cout << config << "\n";
+      std::cout << input << "\n";
+      exit(EXIT_SUCCESS);
+    }
+
+    if ( vm.count("list-gpus")) {
+      listGPUs();
+      exit(EXIT_SUCCESS);
     }
 
     if (vm.count("version")) {
-        std::cout << "Lava, version 0.0\n";
-        exit(EXIT_SUCCESS);
+      std::cout << "Lava, version 0.0\n";
+      exit(EXIT_SUCCESS);
     }
 
     // Handle config file
@@ -142,7 +157,7 @@ int main(int argc, char** argv){
     );
 
 
-    Renderer::UniquePtr renderer = Renderer::create();
+    Renderer::UniquePtr pRenderer = Renderer::create(deviceUID);;
 
     if (vm.count("input-file")) {
       // loading provided files
@@ -156,7 +171,7 @@ int main(int argc, char** argv){
           BOOST_LOG_TRIVIAL(debug) << "ext " << file_extension;
 
           auto reader = SceneReadersRegistry::getInstance().getReaderByExt(file_extension);
-          reader->init(renderer->aquireInterface(), echo_input);
+          reader->init(pRenderer->aquireInterface(), echo_input);
 
           LLOG_DBG << "Reading "<< *fi << " scene file with " << reader->formatName() << " reader";
           if (!reader->readStream(in_file)) {
@@ -172,7 +187,7 @@ int main(int argc, char** argv){
       // loading from stdin
       BOOST_LOG_TRIVIAL(debug) << "Reading scene from stdin ...\n";
       auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
-      reader->init(renderer->aquireInterface(), echo_input);
+      reader->init(pRenderer->aquireInterface(), echo_input);
 
       if (!reader->readStream(std::cin)) {
         // error loading scene from stdin

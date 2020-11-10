@@ -45,8 +45,9 @@ bool Renderer::init() {
     device_desc.width = 1280;
     device_desc.height = 720;
 
+    LLOG_DBG << "Creating rendering device " << mDeviceUID;
 	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mDeviceUID, device_desc);
-    
+    LLOG_DBG << "Rendering device " << mDeviceUID << " created";
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
     mpCamera = Falcor::Camera::create();
@@ -86,7 +87,7 @@ Renderer::~Renderer() {
 
 	if(mpDisplay) mpDisplay->close();
 
-    //mpTargetFBO.reset();
+    mpTargetFBO.reset();
 	if(mpDevice) mpDevice->cleanup();
 	mpDevice.reset();
     Falcor::OSServices::stop();
@@ -202,7 +203,7 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
     LLOG_DBG << "Execute graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
 
     // Execute graph.
-    (*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = (uint32_t)Falcor::RenderPassRefreshFlags::None;
+    (*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
     pGraph->execute(pRenderContext);
 }
 
@@ -267,9 +268,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
 
-    uint image_width, image_height;
-    image_width = mpDisplay->width();
-    image_height = mpDisplay->height();
+    this->resizeSwapChain(frame_data.imageWidth, frame_data.imageHeight);
 
     finalizeScene(frame_data);
 
@@ -278,8 +277,8 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     LLOG_DBG << "Renderer::renderFrame";
 
     // Clear viewer frame buffer.
-    const Falcor::float4 clearColor(0.1f, 0.38f, 0.52f, 1);
-    pRenderContext->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, Falcor::FboAttachmentType::All);
+    //const Falcor::float4 clearColor(0.1f, 0.38f, 0.52f, 1);
+    //pRenderContext->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, Falcor::FboAttachmentType::All);
 
     //beginFrame(pRenderContext, mpTargetFBO);
 
@@ -293,15 +292,20 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         double fps = 25.0;
         double time = frame_data.time;
         double sample_time_duration = (1.0 * shutter_length) / frame_data.imageSamples;
-        for (uint i = 0; i < frame_data.imageSamples; i++) {
-            LLOG_DBG << "Rendering sample no " << i + 1 << " of " << frame_data.imageSamples;
-            // Update scene and camera.
-            if (pScene)
-                pScene->update(pRenderContext, time);
-
-            executeActiveGraph(pRenderContext);
         
-            time += sample_time_duration;
+        executeActiveGraph(pRenderContext);
+
+        if ( frame_data.imageSamples > 1 ) {
+            for (uint i = 1; i < frame_data.imageSamples; i++) {
+                LLOG_DBG << "Rendering sample no " << i << " of " << frame_data.imageSamples;
+                // Update scene and camera.
+                if (pScene)
+                    pScene->update(pRenderContext, time);
+
+                executeActiveGraph(pRenderContext);
+        
+                time += sample_time_duration;
+            }
         }
         
         // capture graph(s) ouput(s).
@@ -311,16 +315,8 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             assert(pOutTex);
 
-            // image save test
-            Falcor::Texture* pTex = pOutTex.get();//pGraph->getOutput(i)->asTexture().get();
+            Falcor::Texture* pTex = pOutTex.get();
             assert(pTex);
-
-            //std::string filename = "/home/max/test/lava_render_test_2.";
-            //auto ext = Falcor::Bitmap::getFileExtFromResourceFormat(pTex->getFormat());
-            //filename += ext;
-            //auto format = Falcor::Bitmap::getFormatFromFileExtension(ext);
-            
-            //pTex->captureToFileBlocking(0, 0, filename, format);
             
             {
             
@@ -330,17 +326,9 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
             
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-            assert(textureData.size() == image_width * image_height * channels * 4); // testing only on 32bit RGBA for now
-            
-            /*
-            for(uint32_t x = 0; x < image_width; x+=4) {
-                for(uint32_t y = 0; y < image_height; y++) {
-                    textureData[(x + y*image_width)*4] = 255;
-                }
-            }
-            */
+            assert(textureData.size() == frame_data.imageWidth * frame_data.imageHeight * channels * 4); // testing only on 32bit RGBA for now
 
-            mpDisplay->sendImage(image_width, image_height, textureData.data());
+            mpDisplay->sendImage(frame_data.imageWidth, frame_data.imageHeight, textureData.data());
 
             }
 
@@ -381,7 +369,11 @@ Falcor::FrameRate& Renderer::getFrameRate() {
 }
 
 void Renderer::resizeSwapChain(uint32_t width, uint32_t height) {
-
+    auto pBackBufferFBO = mpDevice->getOffscreenFbo();
+    if( (pBackBufferFBO->getWidth() != width) || (pBackBufferFBO->getHeight() != height) ) {
+        mpDevice->resizeSwapChain(width, height);
+        mpTargetFBO = Fbo::create2D(mpDevice, width, height, mpDevice->getOffscreenFbo()->getDesc());
+    }
 }
 
 Falcor::SampleConfig Renderer::getConfig() {
