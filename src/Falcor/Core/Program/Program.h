@@ -244,7 +244,7 @@ class dlldecl Program : public std::enable_shared_from_this<Program> {
 
     Program() = default;
 
-    void init(std::shared_ptr<Device> device, Desc const& desc, DefineList const& programDefines);
+    void init(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& programDefines);
 
     bool link() const;
 

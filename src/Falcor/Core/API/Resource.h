@@ -35,7 +35,6 @@
 
 #include "ResourceViews.h"
 
-
 namespace Falcor {
 
 class Device;
@@ -100,6 +99,10 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     std::shared_ptr<Device> device() { return mpDevice; }
     std::shared_ptr<Device> device() const { return mpDevice; }
+
+    size_t id() { return mID; }
+    size_t id() const { return mID; }
+
 
     /** Get the bind flags
     */
@@ -173,10 +176,13 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         //return std::dynamic_pointer_cast<Buffer>(shared_from_this());
     }
 
+ private:
+    static std::atomic<size_t> newResourceID;
+
  protected:
     friend class CopyContext;
 
-    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size) {}
+    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
     Type mType;
     BindFlags mBindFlags;
@@ -197,6 +203,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     std::string mName;
 
     std::shared_ptr<Device> mpDevice;
+    size_t mID;
 
     mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
     mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

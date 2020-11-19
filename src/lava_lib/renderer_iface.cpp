@@ -13,7 +13,11 @@ RendererIface::RendererIface(Renderer *renderer): mpRenderer(renderer) {
 	mEnvmap["LAVA_HOME"] = getenv("LAVA_HOME");
 }
 
-RendererIface::~RendererIface() { }
+RendererIface::~RendererIface() {
+	LLOG_DBG << "RendererIface::~RendererIface";
+	if (mpRenderer) delete mpRenderer;
+	LLOG_DBG << "RendererIface::~RendererIface done";
+}
 
 void RendererIface::setEnvVariable(const std::string& key, const std::string& value){
 	LLOG_DBG << "setEnvVariable: " << key << " : " << value;

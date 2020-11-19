@@ -41,9 +41,9 @@ const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0"
 
 static Program::DefineList sGlobalDefineList;
 
-static Shader::SharedPtr createShaderFromBlob(std::shared_ptr<Device> device, const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log) {
+static Shader::SharedPtr createShaderFromBlob(std::shared_ptr<Device> pDevice, const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log) {
     std::string errorMsg;
-    auto pShader = Shader::create(device, shaderBlob, shaderType, entryPointName, flags, log);
+    auto pShader = Shader::create(pDevice, shaderBlob, shaderType, entryPointName, flags, log);
     return pShader;
 }
 
@@ -151,10 +151,10 @@ bool Program::Desc::hasEntryPoint(ShaderType stage) const {
 // Program
 std::vector<std::weak_ptr<Program>> Program::sPrograms;
 
-void Program::init(std::shared_ptr<Device> device, Desc const& desc, DefineList const& defineList) {
+void Program::init(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& defineList) {
     mDesc = desc;
     mDefineList = defineList;
-    mpDevice = device;
+    mpDevice = pDevice;
 
     sPrograms.push_back(shared_from_this());
 }

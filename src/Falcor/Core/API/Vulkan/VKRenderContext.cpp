@@ -166,12 +166,6 @@ namespace Falcor {
         vkCmdEndRenderPass(cmdList);
     }
 
-    //static void endVkDraw(VkCommandBuffer cmdBuffer) {
-    //    LOG_ERR("end vk draw 2");
-    //    vkCmdEndRenderPass(cmdBuffer);
-    //}
-
-    //bool RenderContext::prepareForDraw()
     bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars) {
         assert(pState);
         // Vao must be valid so at least primitive topology is known

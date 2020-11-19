@@ -46,14 +46,16 @@
 
 namespace Falcor {
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
     #define DEFAULT_ENABLE_DEBUG_LAYER true
-#else
-    #define DEFAULT_ENABLE_DEBUG_LAYER false
-#endif
+//#else
+//    #define DEFAULT_ENABLE_DEBUG_LAYER false
+//#endif
 
 struct DeviceApiData;
+
 class DeviceManager;
+class TextureManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
@@ -100,19 +102,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     };
 
     using MemoryType = GpuMemoryHeap::Type;
-
-    /** Create a new rendering(headless) device.
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(const Desc& desc);
-
-    /** Create a new device.
-        \param[in] pWindow a previously-created window object
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
     /** Device unique id.
     */
@@ -227,6 +216,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffersCount];
     Fbo::SharedPtr mpOffscreenFbo;
 
+    Device(const Desc& desc);
+    Device(uint32_t gpuId, const Desc& desc);
     Device(Window::SharedPtr pWindow, const Desc& desc);
 
     void executeDeferredReleases();
@@ -272,20 +263,38 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void toggleFullScreen(bool fullscreen);
 
  protected:
+    /** Create a new rendering(headless) device.
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(const Desc& desc);
+
+    /** Create a new rendering(headless) device.
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(uint32_t deviceId, const Desc& desc);
+
+    /** Create a new device.
+        \param[in] pWindow a previously-created window object
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
+
     friend class DeviceManager;
+    friend class TextureManager;
     
     bool init();
 
     std::string mPhysicalDeviceName;
+    uint8_t mGpuId = 0;
 
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
+
+    VkPhysicalDeviceFeatures deviceFeatures;
 };
-
-
-
-dlldecl extern Device::SharedPtr _gpDevice;
-dlldecl extern Device::SharedPtr _gpDeviceHeadless;
 
 enum_class_operators(Device::SupportedFeatures);
 

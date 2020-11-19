@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Material.h"
+
+#include "Falcor/Core/API/TextureManager.h"
 #include "Core/Program/GraphicsProgram.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
@@ -270,7 +272,8 @@ void Material::loadTexture(TextureSlot slot, const std::string& filename, bool u
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath))
     {
-        auto texture = Texture::createFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
+        //auto texture = Texture::createFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
+        auto texture = TextureManager::instance().createTextureFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
         if (texture)
         {
             setTexture(slot, texture);

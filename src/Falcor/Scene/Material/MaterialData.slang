@@ -68,14 +68,9 @@ struct MaterialData
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
     float    IoR                    = 1.5f;             ///< Index of refraction.
     float    specularTransmission   = 0.f;              ///< Specular transmission.
-    
-    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
-    float    _pad2;
-    float    _pad3;
-    float    _pad4;
 
     float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
-    float    _pad5;
+    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
 
     uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
 };

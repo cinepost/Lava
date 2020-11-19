@@ -44,11 +44,18 @@ static NullResourceViews gNullTypedBufferViews[FALCOR_MAX_DEVICES];
 
 Buffer::SharedPtr getEmptyBuffer(std::shared_ptr<Device> pDevice);
 Buffer::SharedPtr getEmptyTypedBuffer(std::shared_ptr<Device> pDevice);
+Buffer::SharedPtr getEmptyConstantBuffer(std::shared_ptr<Device> pDevice);
+
 Buffer::SharedPtr createZeroBuffer(std::shared_ptr<Device> pDevice);
 Buffer::SharedPtr createZeroTypedBuffer(std::shared_ptr<Device> pDevice);
 
 Texture::SharedPtr getEmptyTexture(std::shared_ptr<Device> pDevice);
 Texture::SharedPtr createBlackTexture(std::shared_ptr<Device> pDevice);
+
+void ReleaseBlackTextures(Device::SharedPtr pDevice);
+void ReleaseZeroBuffers(Device::SharedPtr pDevice);
+void ReleaseZeroTypedBuffers(Device::SharedPtr pDevice);
+void ReleaseZeroConstantBuffers(Device::SharedPtr pDevice);
 
 void createNullViews(std::shared_ptr<Device> pDevice) {
     assert(pDevice);
@@ -56,7 +63,7 @@ void createNullViews(std::shared_ptr<Device> pDevice) {
     gNullViews[pDevice->uid()].dsv = DepthStencilView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
     gNullViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
     gNullViews[pDevice->uid()].rtv = RenderTargetView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
-    gNullViews[pDevice->uid()].cbv = ConstantBufferView::create(pDevice, Buffer::SharedPtr());
+    gNullViews[pDevice->uid()].cbv = ConstantBufferView::create(pDevice, getEmptyConstantBuffer(pDevice));
 }
 
 void createNullBufferViews(std::shared_ptr<Device> pDevice) {
@@ -71,22 +78,16 @@ void createNullTypedBufferViews(std::shared_ptr<Device> pDevice) {
     gNullTypedBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
 }
 
-void releaseNullViews() {
-    for (auto& views: gNullViews) {
-        views = {};
-    }
+void releaseNullViews(Device::SharedPtr pDevice) {
+    gNullViews[pDevice->uid()] = {};
 }
 
-void releaseNullBufferViews() {
-    for (auto& views: gNullBufferViews) {
-        views = {};
-    }
+void releaseNullBufferViews(Device::SharedPtr pDevice) {
+    gNullBufferViews[pDevice->uid()] = {};
 }
 
-void releaseNullTypedBufferViews() {
-    for (auto& views: gNullTypedBufferViews) {
-        views = {};
-    }
+void releaseNullTypedBufferViews(Device::SharedPtr pDevice) {
+    gNullTypedBufferViews[pDevice->uid()] = {};
 }
 
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }

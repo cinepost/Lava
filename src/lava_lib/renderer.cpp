@@ -5,6 +5,8 @@
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+#include "Falcor/Core/API/TextureManager.h"
+
 #include "lava_utils_lib/logging.h"
 
 namespace Falcor { 
@@ -19,14 +21,13 @@ Renderer::UniquePtr Renderer::create() {
 	return std::move(UniquePtr( new Renderer(0)));
 }
 
-Renderer::UniquePtr Renderer::create(Falcor::DeviceManager::DeviceLocalUID uid) {
-    return std::move(UniquePtr( new Renderer(uid)));
+Renderer::UniquePtr Renderer::create(int gpuId) {
+    return std::move(UniquePtr( new Renderer(gpuId)));
 }
 
-Renderer::Renderer(Falcor::DeviceManager::DeviceLocalUID uid): mDeviceUID(uid), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
+Renderer::Renderer(int gpuId): mGpuId(gpuId), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
     mpDisplay = nullptr;
-    init();
 }
 
 bool Renderer::init() {
@@ -45,9 +46,20 @@ bool Renderer::init() {
     device_desc.width = 1280;
     device_desc.height = 720;
 
-    LLOG_DBG << "Creating rendering device " << mDeviceUID;
-	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mDeviceUID, device_desc);
-    LLOG_DBG << "Rendering device " << mDeviceUID << " created";
+    LLOG_DBG << "Creating rendering device on GPU id " << to_string(mGpuId);
+	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mGpuId, device_desc);
+    LLOG_DBG << "Rendering device " << to_string(mGpuId) << " created";
+
+    // init texture manager
+    Falcor::TextureManager::InitDesc initDesc;
+    initDesc.pDevice = mpDevice;
+    initDesc.cacheDir = "/tmp/lava/tex_cache";
+
+    if(!Falcor::TextureManager::instance().init(initDesc)) {
+        LLOG_WRN << "Error initializing texture manager !!!";
+        //return false;
+    }
+    //
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
     mpCamera = Falcor::Camera::create();
@@ -80,19 +92,38 @@ Renderer::~Renderer() {
 
 	delete mpClock;
     delete mpFrameRate;
+
+    LLOG_DBG << "0";
+    mpDevice->flushAndSync();
+    mGraphs.clear();
+
+    LLOG_DBG << "0.1";
+    mpSceneBuilder = nullptr;
+    LLOG_DBG << "0.2";
+    mpSampler = nullptr;
 	
+    LLOG_DBG << "1";
 	Falcor::Threading::shutdown();
+    LLOG_DBG << "2";
 	Falcor::Scripting::shutdown();
+    LLOG_DBG << "3";
     Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
+    LLOG_DBG << "4";
 	if(mpDisplay) mpDisplay->close();
 
+    LLOG_DBG << "5";
     mpTargetFBO.reset();
+    LLOG_DBG << "6";
 	if(mpDevice) mpDevice->cleanup();
-	mpDevice.reset();
+	LLOG_DBG << "7";
+    mpDevice.reset();
+    LLOG_DBG << "8";
     Falcor::OSServices::stop();
+    LLOG_DBG << "9";
+    Falcor::gpFramework = nullptr;
 
-    //Falcor::gpFramework = nullptr;
+    LLOG_DBG << "Renderer::~Renderer done";
 }
 
 std::unique_ptr<RendererIface> Renderer::aquireInterface() {
@@ -307,9 +338,13 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
                 time += sample_time_duration;
             }
         }
+
+        LLOG_DBG << "Rendering done.";
         
+
         // capture graph(s) ouput(s).
         if (mGraphs[mActiveGraph].mainOutput.size()) {
+            LLOG_DBG << "Reading rendered image data...";
             auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
@@ -323,8 +358,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             Falcor::ResourceFormat resourceFormat;
             uint32_t channels;
             std::vector<uint8_t> textureData;
+            LLOG_DBG << "readTextureData";
             pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-            
+            LLOG_DBG << "readTextureData done";
+
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
             assert(textureData.size() == frame_data.imageWidth * frame_data.imageHeight * channels * 4); // testing only on 32bit RGBA for now
 

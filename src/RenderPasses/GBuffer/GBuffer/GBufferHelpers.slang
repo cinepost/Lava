@@ -46,7 +46,9 @@ struct GBuffer
     float4 matlExtra;
 };
 
-cbuffer PerFrameCB
+[[vk::binding(0, 0)]]
+cbuffer PerFrameCB : register(b0)
+//cbuffer PerFrameCB
 {
     GBufferParams   gParams;
 };

@@ -32,56 +32,65 @@
 
 namespace Falcor {
     
-void createNullViews(Device::SharedPtr device);
-void releaseNullViews();
-void createNullBufferViews(Device::SharedPtr device);
-void releaseNullBufferViews();
-void createNullTypedBufferViews(Device::SharedPtr device);
-void releaseNullTypedBufferViews();
-
-Device::SharedPtr _gpDevice;
-Device::SharedPtr _gpDeviceHeadless;
-
-std::vector<Device::SharedPtr> _gDevices;
-std::vector<Device::SharedPtr> _gDevicesHeadless;
+void createNullViews(Device::SharedPtr pDevice);
+void releaseNullViews(Device::SharedPtr pDevice);
+void createNullBufferViews(Device::SharedPtr pDevice);
+void releaseNullBufferViews(Device::SharedPtr pDevice);
+void createNullTypedBufferViews(Device::SharedPtr pDevice);
+void releaseNullTypedBufferViews(Device::SharedPtr pDevice);
+void releaseStaticResources(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mPhysicalDeviceName("Unknown") {
+Device::Device(const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+    headless = true;
+    LOG_DBG("GPU device id: %u type headless", mGpuId);
+}
+
+Device::Device(uint32_t gpuId, const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(gpuId), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+    headless = true;
+    LOG_DBG("GPU device id: %u type headless", mGpuId);
+}
+
+Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
     if (!pWindow){
         headless = true;
-        LOG_DBG("Device uid: %u type headless", _uid);
+        LOG_DBG("GPU device id: %u type headless", mGpuId);
     } else {
         headless = false;
-        LOG_DBG("Device uid: %u", _uid);
+        LOG_DBG("GPU device id: %u", mGpuId);
     }
 }
 
 Device::~Device() {}
 
 Device::SharedPtr Device::create(const Device::Desc& desc) {
-    if (_gpDeviceHeadless) {
-        logError("Falcor only supports a single headless device");
+    auto pDevice = SharedPtr(new Device(desc));
+    if (pDevice->init() == false)
         return nullptr;
-    }
 
-    _gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
-    if (_gpDeviceHeadless->init() == false) { _gpDeviceHeadless = nullptr;}
-    return _gpDeviceHeadless;
+    return pDevice;
+}
+
+Device::SharedPtr Device::create(uint32_t deviceId, const Device::Desc& desc) {
+    auto pDevice = SharedPtr(new Device(deviceId, desc));  // headless device
+    if (pDevice->init() == false)
+        return nullptr;
+
+    return pDevice;
 }
 
 Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
-        // Swapchain enabled device
-        if (_gpDevice) {
-            logError("Falcor only supports a single device");
-            return nullptr;
-        }
 
-        _gpDevice = SharedPtr(new Device(pWindow, desc));
-        if (_gpDevice->init() == false) { _gpDevice = nullptr;}
-        return _gpDevice;
+        auto pDevice = SharedPtr(new Device(pWindow, desc));
+        if (pDevice->init() == false)
+            return nullptr;
+
+        return pDevice;
     } else {
         // Headless device
         return create(desc);
@@ -268,22 +277,35 @@ void Device::toggleVSync(bool enable) {
 void Device::cleanup() {
     toggleFullScreen(false);
     mpRenderContext->flush(true);
+    
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+
+    if(headless) {
+        mpOffscreenFbo.reset();
+    } else {
+        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+    }
+
     mDeferredReleases = decltype(mDeferredReleases)();
-    releaseNullViews();
-    releaseNullBufferViews();
-    releaseNullTypedBufferViews();
+    
+    releaseNullViews(shared_from_this());
+    releaseNullBufferViews(shared_from_this());
+    releaseNullTypedBufferViews(shared_from_this());
+    releaseStaticResources(shared_from_this());
+
     mpRenderContext.reset();
     mpUploadHeap.reset();
     mpCpuDescPool.reset();
     mpGpuDescPool.reset();
     mpFrameFence.reset();
+
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
     destroyApiObjects();
-    mpWindow.reset();
+    
+    if(!headless)
+        mpWindow.reset();
 }
 
 void Device::present() {
@@ -395,9 +417,9 @@ SCRIPT_BINDING(Device) {
 #undef field
 
     // Device
-    Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
+    //Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
     pybind11::class_<Device, Device::SharedPtr> device(m, "Device");
-    device.def_static("create", &create_headless);
+    //device.def_static("create", &create_headless);
 
 }
 

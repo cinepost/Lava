@@ -40,7 +40,7 @@ class Renderer: public Falcor::IFramework {
 
  public:
  	static UniquePtr create();
-    static UniquePtr create(Falcor::DeviceManager::DeviceLocalUID uid);
+    static UniquePtr create(int gpuId);
 
     Falcor::Device::SharedPtr device() { return mpDevice; };
 
@@ -143,11 +143,11 @@ class Renderer: public Falcor::IFramework {
     void finalizeScene(const RendererIface::FrameData& frame_data);
 
  private:
-	Renderer(Falcor::DeviceManager::DeviceLocalUID uid);
+	Renderer(int gpuId);
  	std::vector<std::string> 	mErrorMessages;
  	Falcor::Device::SharedPtr 	mpDevice;
 
- 	Falcor::DeviceManager::DeviceLocalUID mDeviceUID;
+ 	int mGpuId;
     
  	bool mIfaceAquired = false;
 
@@ -161,7 +161,6 @@ class Renderer: public Falcor::IFramework {
     Falcor::ArgList 			mArgList;
 
     lava::SceneBuilder::SharedPtr   mpSceneBuilder;
-    Falcor::Scene::SharedPtr        mpScene;
     Falcor::Sampler::SharedPtr      mpSampler;
     std::vector<GraphData>          mGraphs;
     uint32_t mActiveGraph = 0;

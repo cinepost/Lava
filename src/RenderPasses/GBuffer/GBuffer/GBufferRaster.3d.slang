@@ -61,7 +61,6 @@ VSOut vsMain(VSIn vsIn)
 }
 
 [earlydepthstencil]
-// GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
 #ifdef __D3D12__
 GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
 #else 
@@ -80,6 +79,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
 #endif
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
+    //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
     ShadingData sd = prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
 
     GBuffer gbuf = storeGBufferOutput(sd, v);

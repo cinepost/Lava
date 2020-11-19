@@ -41,6 +41,7 @@ using TypedBufferBase = Buffer;
 static Texture::SharedPtr sBlackTextures[FALCOR_MAX_DEVICES] = {nullptr};
 static Buffer::SharedPtr sZeroBuffers[FALCOR_MAX_DEVICES] = {nullptr};
 static Buffer::SharedPtr sZeroTypedBuffers[FALCOR_MAX_DEVICES] = {nullptr};
+static Buffer::SharedPtr sZeroConstantBuffers[FALCOR_MAX_DEVICES] = {nullptr};
 
 VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
@@ -50,6 +51,14 @@ ResourceView<ApiHandleType>::~ResourceView() {
     if (_pResource) {
         _pResource->device()->releaseResource(mApiHandle);
     }
+}
+
+void releaseStaticResources(Device::SharedPtr pDevice) {
+    auto uid = pDevice->uid();
+    sBlackTextures[uid] = nullptr;
+    sZeroBuffers[uid] = nullptr;
+    sZeroTypedBuffers[uid] = nullptr;
+    sZeroConstantBuffers[uid] = nullptr;
 }
 
 Texture::SharedPtr createBlackTexture(Device::SharedPtr pDevice) {
@@ -67,6 +76,12 @@ Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr pDevice) {
     return Buffer::createTyped<uint32_t>(pDevice, 1, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
 }
 
+Buffer::SharedPtr createZeroConstantBuffer(Device::SharedPtr pDevice) {
+    LOG_DBG("Create zero constant buffer");
+    static const uint32_t zero = 0;
+    return Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::Constant, Buffer::CpuAccess::None, &zero);
+}
+
 Texture::SharedPtr getEmptyTexture(Device::SharedPtr pDevice) {
     assert(pDevice);
     auto uid = pDevice->uid();
@@ -79,6 +94,13 @@ Buffer::SharedPtr getEmptyBuffer(Device::SharedPtr pDevice) {
     auto uid = pDevice->uid();
     if(!sZeroBuffers[uid]) sZeroBuffers[uid] = createZeroBuffer(pDevice);
     return sZeroBuffers[uid];
+}
+
+Buffer::SharedPtr getEmptyConstantBuffer(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    auto uid = pDevice->uid();
+    if(!sZeroConstantBuffers[uid]) sZeroConstantBuffers[uid] = createZeroConstantBuffer(pDevice);
+    return sZeroConstantBuffers[uid];
 }
 
 Buffer::SharedPtr getEmptyTypedBuffer(Device::SharedPtr pDevice) {

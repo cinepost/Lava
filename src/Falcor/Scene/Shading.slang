@@ -181,8 +181,9 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     float4 spec = sampleTexture(mr.specular, mr.samplerState, v.texC, md.specular, EXTRACT_SPECULAR_TYPE(md.flags), lod);
     if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelMetalRough)
     {
-        // R - Occlusion; G - Roughness; B - Metallic
+        // spec.r - Occlusion; spec.g - Roughness; spec.b - Metallic
         sd.diffuse = lerp(baseColor.rgb, float3(0), spec.b);
+        sd.diffuse = baseColor.rgb;
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
@@ -197,6 +198,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     else // if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelSpecGloss)
     {
         sd.diffuse = baseColor.rgb;
+        
         sd.specular = spec.rgb;
         sd.linearRoughness = 1 - spec.a;
         sd.metallic = getMetallic(sd.diffuse, sd.specular);

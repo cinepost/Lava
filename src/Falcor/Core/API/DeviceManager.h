@@ -48,27 +48,31 @@ namespace Falcor {
 
 class dlldecl DeviceManager {
  public:
-    using DeviceLocalUID = Device::DeviceLocalUID;
-
     static DeviceManager& instance() {
         static DeviceManager instance;      // Guaranteed to be destroyed.
         return instance;                    // Instantiated on first use.
     }
 
-    const std::unordered_map<DeviceLocalUID, std::string>& listDevices() { return mDeviceNames; }
+    const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
     std::vector<Device::SharedPtr> displayDevices();
     std::vector<Device::SharedPtr> renderingDevices();
 
-    Device::SharedPtr displayDevice(DeviceLocalUID luid);
-    Device::SharedPtr renderingDevice(DeviceLocalUID luid);
+    Device::SharedPtr displayDevice(uint8_t gpuId);
+    Device::SharedPtr renderingDevice(uint8_t gpuId);
 
-    Device::SharedPtr createDisplayDevice(DeviceLocalUID luid, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc);
-    Device::SharedPtr createRenderingDevice(DeviceLocalUID luid, const Device::Desc &desc);
+    Device::SharedPtr createDisplayDevice(uint8_t gpuId, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc);
+    Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
 
     Device::SharedPtr defaultDisplayDevice();
     Device::SharedPtr defaultRenderingDevice();
 
+    void setDefaultDisplayDevice(uint8_t gpuId);
+    void setDefaultRenderingDevice(uint8_t gpuId);
+
     void printEnumeratedDevices();
+
+    uint32_t physicalDevicesCount() { return mPhysicalDevicesCount; }
+    const std::vector<VkPhysicalDevice>& physicalDevices() { return mPhysicalDevices; }
 
  public:
     DeviceManager(DeviceManager const&)     = delete;
@@ -78,13 +82,19 @@ class dlldecl DeviceManager {
     DeviceManager();
 
     bool init();
-    bool deviceEnumerated(DeviceLocalUID luid);
+    bool deviceEnumerated(uint8_t gpuId);
     void enumerateDevices();
 
     bool initialized;
-    std::unordered_map<DeviceLocalUID, std::string> mDeviceNames;
-    std::unordered_map<DeviceLocalUID, Device::SharedPtr> mDisplayDevices;
-    std::unordered_map<DeviceLocalUID, Device::SharedPtr> mRenderingDevices;    
+    std::unordered_map<uint8_t, std::string> mDeviceNames;
+    std::unordered_map<uint8_t, Device::SharedPtr> mDisplayDevices;
+    std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 
+
+    uint8_t mDefaultDisplayDeviceID = 0;
+    uint8_t mDefaultRenderingDeviceID = 0;   
+
+    uint32_t                        mPhysicalDevicesCount = 0;
+    std::vector<VkPhysicalDevice>   mPhysicalDevices;
 };
 
 

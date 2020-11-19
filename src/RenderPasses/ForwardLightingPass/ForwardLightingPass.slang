@@ -71,7 +71,7 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
         float shadowFactor = 1;
         if (l == 0)
         {
-            shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
+            //shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
             //shadowFactor *= sd.opacity;
         }
         finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color.rgb;

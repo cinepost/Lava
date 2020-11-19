@@ -47,7 +47,11 @@ Session::Session(std::unique_ptr<RendererIface> pRendererIface):mFirstRun(true) 
 	mpRendererIface = std::move(pRendererIface);
 }
 
-Session::~Session() { }
+Session::~Session() {
+	LLOG_DBG << "Session::~Session";
+	mpRendererIface.reset(nullptr);
+	LLOG_DBG << "Session::~Session done";
+}
 
 void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 	mpRendererIface->setEnvVariable(key, value);

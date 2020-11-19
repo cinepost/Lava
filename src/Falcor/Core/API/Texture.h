@@ -43,6 +43,7 @@ class Engine;
 class Sampler;
 class Device;
 class RenderContext;
+class TextureManager;
 
 /** Abstracts the API texture objects
 */
@@ -264,12 +265,18 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     uint32_t getTextureSizeInBytes();
 
  protected:
+    static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
+
     Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
+    
+    void createImage(const void* pData);
     void apiInit(const void* pData, bool autoGenMips);
     void uploadInitData(const void* pData, bool autoGenMips);
 
     bool mReleaseRtvsAfterGenMips = true;
     std::string mSourceFilename;
+
+    VkImage mImage = VK_NULL_HANDLE;
 
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
@@ -283,6 +290,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     friend class Device;
     friend class Engine;
+    friend class TextureManager;
 };
 
 inline std::string to_string(const std::shared_ptr<Texture>& tex) {

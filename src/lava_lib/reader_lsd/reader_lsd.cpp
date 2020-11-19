@@ -23,7 +23,7 @@ namespace lava {
 
 ReaderLSD::ReaderLSD(): ReaderBase(), mInitialized(false) { }
 
-ReaderLSD::~ReaderLSD() { }
+ReaderLSD::~ReaderLSD() {}
 
 void ReaderLSD::init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) {
     auto pSession = lsd::Session::create(std::move(pRendererInterface));
@@ -107,10 +107,10 @@ bool ReaderLSD::parseStream(std::istream& in) {
                 } catch (const std::runtime_error& re) {
                     LLOG_FTL << "Runtime error: " << re.what();
                     return false;
-                }// catch (...) {
-                //    LLOG_FTL << "Unknown error occured !!!";
-                //    return false;
-                //}
+                } catch (...) {
+                    LLOG_FTL << "Unknown error occured !!!";
+                    return false;
+                }
             }
         }
     }

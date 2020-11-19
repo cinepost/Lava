@@ -28,6 +28,8 @@
 #include "SkyBox.h"
 #include "glm/gtx/transform.hpp"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -63,6 +65,8 @@ namespace {
 }
 
 SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    LOG_DBG("SkyBox::SkyBox");
+
     mpCubeScene = Scene::create(pDevice, "cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
@@ -94,6 +98,7 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
     assert(mpDevice);
     setFilter((uint32_t)mFilter);
+    LOG_DBG("SkyBox::SkyBox done");
 }
 
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -131,6 +136,7 @@ RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
 }
 
 void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    LOG_DBG("SkyBox::execute");
     mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
     mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
 
@@ -144,7 +150,9 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpState->setFbo(mpFbo);
+    LOG_DBG("SkyBox::execute render");
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    LOG_DBG("SkyBox::SkyBox done");
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

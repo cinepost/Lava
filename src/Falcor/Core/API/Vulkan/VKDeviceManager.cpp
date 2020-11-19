@@ -42,6 +42,9 @@ VkInstance gVulkanInstance = VK_NULL_HANDLE;
 
 
 bool DeviceManager::init() {
+    if (initialized)
+        return true;
+
     const Device::Desc desc;
 
     auto pApiData = new DeviceApiData;
@@ -50,23 +53,30 @@ bool DeviceManager::init() {
     if (!gVulkanInstance)
         return false;
 
-    return true;
+    enumerateDevices();
+
+    initialized = true;
+    return initialized;
 }
 
 void DeviceManager::enumerateDevices() {
+    if (initialized)
+        return;
+
     // Enumerate devices
-    uint32_t count = 0;
-    vkEnumeratePhysicalDevices(gVulkanInstance, &count, nullptr);
-    assert(count > 0);
+    vkEnumeratePhysicalDevices(gVulkanInstance, &mPhysicalDevicesCount, nullptr);
+    assert(mPhysicalDevicesCount > 0);
 
-    std::vector<VkPhysicalDevice> devices(count);
-    vkEnumeratePhysicalDevices(gVulkanInstance, &count, devices.data());
+    mPhysicalDevices.clear();
+    mPhysicalDevices.resize(mPhysicalDevicesCount);
+    vkEnumeratePhysicalDevices(gVulkanInstance, &mPhysicalDevicesCount, mPhysicalDevices.data());
 
-    DeviceLocalUID luid = 0;
+    uint8_t id = 0;
     VkPhysicalDeviceProperties properties;
-    for( auto &physicalDevice: devices) {
+    for( auto const &physicalDevice: mPhysicalDevices) {
         vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-        mDeviceNames[luid++] = std::string(properties.deviceName);
+        mDeviceNames[id] = std::string(properties.deviceName);
+        id++;
     }
 }
 

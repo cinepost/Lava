@@ -37,20 +37,16 @@ namespace Falcor {
 std::vector<RenderGraph*> gRenderGraphs;
 const FileDialogFilterVec RenderGraph::kFileExtensionFilters = { { "py", "Render Graph Files"} };
 
-RenderGraph::SharedPtr RenderGraph::create(const std::string& name) {
-    return SharedPtr(new RenderGraph(_gpDeviceHeadless, name));
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, const std::string& name) {
+    return SharedPtr(new RenderGraph(pDevice, name));
 }
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, const std::string& name) {
-    return SharedPtr(new RenderGraph(device, name));
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name) {
+    return SharedPtr(new RenderGraph(pDevice, pTargetFbo, name));
 }
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, Fbo::SharedPtr pTargetFbo, const std::string& name) {
-    return SharedPtr(new RenderGraph(device, pTargetFbo, name));
-}
-
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> device, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
-    return SharedPtr(new RenderGraph(device, frame_size, format, name));
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
+    return SharedPtr(new RenderGraph(pDevice, frame_size, format, name));
 }
 
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name): mName(name), mpDevice(pDevice) {
@@ -691,12 +687,12 @@ void RenderGraph::onHotReload(HotReloadFlags reloaded) {
 
 SCRIPT_BINDING(RenderGraph)
 {
-    RenderGraph::SharedPtr (&create_default)(const std::string&) = RenderGraph::create;
+    //RenderGraph::SharedPtr (&create_default)(const std::string&) = RenderGraph::create;
     RenderGraph::SharedPtr (&create_on_device)(std::shared_ptr<Device>, const std::string&) = RenderGraph::create;
 
     pybind11::class_<RenderGraph, RenderGraph::SharedPtr> renderGraph(m, "RenderGraph");
     
-    renderGraph.def(pybind11::init(&create_default));
+    //renderGraph.def(pybind11::init(&create_default));
     renderGraph.def(pybind11::init(&create_on_device));
 
     renderGraph.def_property("name", &RenderGraph::getName, &RenderGraph::setName);

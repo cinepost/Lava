@@ -85,19 +85,26 @@ namespace Falcor {
         // Create the pipeline object
         VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
         pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineCreateInfo.pNext = NULL;
+        pipelineCreateInfo.flags = 0;
         pipelineCreateInfo.stageCount = (uint32_t)shaderStageInfos.size();
+        
         pipelineCreateInfo.pStages = shaderStageInfos.data();
         pipelineCreateInfo.pVertexInputState = &vertexInputInfo.info;
         pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
+        pipelineCreateInfo.pTessellationState = NULL;
         pipelineCreateInfo.pViewportState = &viewportStateInfo;
         pipelineCreateInfo.pRasterizationState = &rasterizerInfo;
         pipelineCreateInfo.pMultisampleState = &multisampleInfo;
         pipelineCreateInfo.pDepthStencilState = &depthStencilInfo;
         pipelineCreateInfo.pColorBlendState = &blendInfo.info;
         pipelineCreateInfo.pDynamicState = &dynamicInfo;
+        
         pipelineCreateInfo.layout = mDesc.mpRootSignature->getApiHandle();
         pipelineCreateInfo.renderPass = mDesc.getRenderPass();
         pipelineCreateInfo.subpass = 0;
+        pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineCreateInfo.basePipelineIndex = 0;
 
         VkPipeline pipeline;
         if (VK_FAILED(vkCreateGraphicsPipelines(mpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline))) {

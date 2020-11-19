@@ -37,6 +37,7 @@ namespace Falcor {
     };
 
     Texture::~Texture() {
+        LOG_DBG("Deleting texture (resource id %u )with source name %s", id(), mSourceFilename.c_str());
         // #VKTODO the `if` is here because of the black texture in VkResourceView.cpp
         if (mpDevice ) mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
     }
@@ -115,7 +116,18 @@ namespace Falcor {
         return VkImageTiling(-1);
     }
 
-    void Texture::apiInit(const void* pData, bool autoGenMips) {
+    uint32_t Texture::getTextureSizeInBytes() {
+        assert(mpDevice);
+        if (mImage == VK_NULL_HANDLE)
+            return 0;
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &memRequirements);
+        return memRequirements.size;
+    }
+
+    // create VkImage with no memory allocation and no data
+    void Texture::createImage(const void* pData) {
         VkImageCreateInfo imageInfo = {};
 
         imageInfo.arrayLayers = mArraySize;
@@ -126,7 +138,7 @@ namespace Falcor {
         imageInfo.imageType = getVkImageType(mType);
         
         imageInfo.initialLayout = pData ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
-        //imageInfo.initialLayout = pData ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+        
         imageInfo.mipLevels = std::min(mMipLevels, getMaxMipCount(imageInfo.extent));
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.queueFamilyIndexCount = 0;
@@ -143,18 +155,23 @@ namespace Falcor {
 
         mState.global = pData ? Resource::State::PreInitialized : Resource::State::Undefined;
 
-        VkImage image;
-        auto result = vkCreateImage(mpDevice->getApiHandle(), &imageInfo, nullptr, &image);
+        auto result = vkCreateImage(mpDevice->getApiHandle(), &imageInfo, nullptr, &mImage);
         if (VK_FAILED(result)) {
+            mImage = VK_NULL_HANDLE;
             throw std::runtime_error("Failed to create texture.");
         }
+    }
+
+    void Texture::apiInit(const void* pData, bool autoGenMips) {
+        if( mImage == VK_NULL_HANDLE )
+            createImage(pData);
 
         // Allocate the GPU memory
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), image, &memRequirements);
+        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &memRequirements);
         VkDeviceMemory deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
-        vkBindImageMemory(mpDevice->getApiHandle(), image, deviceMem, 0);
-        mApiHandle = ApiHandle::create(mpDevice, image, deviceMem);
+        vkBindImageMemory(mpDevice->getApiHandle(), mImage, deviceMem, 0);
+        mApiHandle = ApiHandle::create(mpDevice, mImage, deviceMem);
   
         if (pData != nullptr) {
             uploadInitData(pData, autoGenMips);

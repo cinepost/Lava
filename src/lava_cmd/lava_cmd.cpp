@@ -57,9 +57,9 @@ void signalHandler( int signum ){
 
 void listGPUs() {
   std::cout << "Available devices:\n____________________________________________\n";
-  const std::unordered_map<Falcor::DeviceManager::DeviceLocalUID, std::string>& deviceMap = Falcor::DeviceManager::instance().listDevices();
-  for( auto const& [uid, name]: deviceMap ) {
-    std::cout << "[" << uid << "] : " << name << "\n";
+  const auto& deviceMap = Falcor::DeviceManager::instance().listDevices();
+  for( auto const& [gpu_id, name]: deviceMap ) {
+    std::cout << "[" << to_string(gpu_id) << "] : " << name << "\n";
   }
   std::cout << std::endl;
 }
@@ -71,7 +71,7 @@ int main(int argc, char** argv){
     lava::ut::log::init_log();
     boost::log::core::get()->set_filter(  boost::log::trivial::severity >=  boost::log::trivial::debug );
     
-    Falcor::Device::DeviceLocalUID deviceUID = 0;
+    int gpuID = -1; // automatic gpu selection
     int verbose_level = 6;
     bool echo_input = true;
 
@@ -95,7 +95,7 @@ int main(int argc, char** argv){
     // Declare a group of options that will be allowed both on command line and in config file
     po::options_description config("Configuration");
     config.add_options()
-        ("gpus,g", po::value<Falcor::Device::DeviceLocalUID>(&deviceUID)->default_value(0), "Use specific gpu")
+        ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
         ("include-path,I", po::value< std::vector<std::string> >()->composing(), "Include path")
         ;
 
@@ -157,7 +157,12 @@ int main(int argc, char** argv){
     );
 
 
-    Renderer::UniquePtr pRenderer = Renderer::create(deviceUID);;
+    Falcor::DeviceManager::instance().setDefaultRenderingDevice(gpuID);
+    Renderer::UniquePtr pRenderer = Renderer::create(gpuID);
+
+    if(!pRenderer->init()) {
+      exit(EXIT_FAILURE);
+    }
 
     if (vm.count("input-file")) {
       // loading provided files

@@ -60,15 +60,27 @@ struct MaterialParams
 struct GeometryParams
 {
     float3 posW;                ///< World-space position.
+    float _pad0;
+
     float3 V;                   ///< Normalized view direction in world space.
+    float _pad1;
+
     float2 uv;                  ///< Texture coordinate at hit point, or 0 if not available.
+    float _pad2;
+
     float3 faceN;               ///< Face normal in world space.
+    float _pad3;
 
     // Surface frame in world space. The axes (T,B,N) form an orthonormal basis.
     // The normal and tangent are normally provided by the framework, while bitangent is computed based on those.
     float3 N;                   ///< Shading normal (z-axis in local frame).
+    float _pad4;
+
     float3 B;                   ///< Shading bitangent (y-axis in local frame).
+    float _pad5;
+
     float3 T;                   ///< Shading tangent (x-axis in local frame).
+    float _pad6;
 };
 
 /******************************************************************************

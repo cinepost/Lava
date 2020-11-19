@@ -58,9 +58,11 @@ __exported import Experimental.Scene.Material.MaterialHelpers;
 struct BSDFSample
 {
     float3  wi;             ///< Incident direction in world space (normalized).
-    float   pdf;            ///< pdf with respect to solid angle for sampling incident direction wi.
-    float3  weight;         ///< Sample weight f(wo, wi) * dot(wi, n) / pdf(wi).
     uint    lobe;           ///< Sampled lobe. This is a combination of LobeType flags (see BxDFTypes.slang).
+
+    float3  weight;         ///< Sample weight f(wo, wi) * dot(wi, n) / pdf(wi).
+    float   pdf;            ///< pdf with respect to solid angle for sampling incident direction wi.
+
 
     bool isLobe(LobeType type)
     {

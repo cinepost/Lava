@@ -22,6 +22,10 @@ SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _w
   }
 }
 
+SDLOpenGLWindow::~SDLOpenGLWindow() {
+  SDL_Quit();
+}
+
 void SDLOpenGLWindow::init() {
   if(SDL_Init(SDL_INIT_EVERYTHING) < 0){
     printf("SDL_Init failed: %s\n", SDL_GetError());

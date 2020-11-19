@@ -15,6 +15,7 @@
 class SDLOpenGLWindow {
   public :
     SDLOpenGLWindow(const std::string &_name, int _x, int _y, int _width, int _height, int _ppp);
+    ~SDLOpenGLWindow();
 
     void makeCurrent() { SDL_GL_MakeCurrent(m_window,m_glContext);}
     void swapWindow() { SDL_GL_SwapWindow(m_window); }

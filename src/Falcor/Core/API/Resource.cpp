@@ -31,6 +31,9 @@
 
 namespace Falcor {
 
+Resource::Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size) : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size), mID(newResourceID++) {
+}
+
 Resource::~Resource() = default;
 
 const std::string to_string(Resource::Type type) {
@@ -131,5 +134,7 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
 SCRIPT_BINDING(Resource) {
     pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
 }
+
+std::atomic<size_t> Resource::newResourceID = 0;
 
 }  // namespace Falcor

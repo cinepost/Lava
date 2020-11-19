@@ -37,13 +37,12 @@
 
 namespace Falcor {
 
-// namespace {
-Texture::BindFlags updateBindFlags(Device::SharedPtr device, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
+Texture::BindFlags Texture::updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
     if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
         flags |= Texture::BindFlags::RenderTarget;
     }
 
-    Texture::BindFlags supported = getFormatBindFlags(device, format);
+    Texture::BindFlags supported = getFormatBindFlags(pDevice, format);
     supported |= ResourceBindFlags::Shared;
     if ((flags & supported) != flags) {
         logError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
@@ -54,7 +53,7 @@ Texture::BindFlags updateBindFlags(Device::SharedPtr device, Texture::BindFlags 
 
     return flags;
 }
-// } 
+
 
 Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags) {
     assert(handle);
@@ -124,6 +123,8 @@ Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t 
 Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
     : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
     
+    LOG_DBG("Create texture %zu width %u height %u format %s bindFlags %s", id(), width, height, to_string(format).c_str(),to_string(bindFlags).c_str());
+
     assert(width > 0 && height > 0 && depth > 0);
     assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
     assert(format != ResourceFormat::Unknown);
@@ -271,7 +272,7 @@ void Texture::uploadInitData(const void* pData, bool autoGenMips) {
     assert(mpDevice);
     auto pRenderContext = mpDevice->getRenderContext();
     if (!pRenderContext) {
-        throw std::runtime_error("Cannon get gpDevice rendering context !!!");
+        throw std::runtime_error("Can't get device rendering context !!!");
     }
     if (autoGenMips) {
         // Upload just the first mip-level
@@ -315,6 +316,7 @@ void Texture::generateMips(RenderContext* pContext) {
         mReleaseRtvsAfterGenMips = false;
     }
 }
+
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {
     ID3D12DevicePtr pDevicePtr = mpDevice->getApiHandle();

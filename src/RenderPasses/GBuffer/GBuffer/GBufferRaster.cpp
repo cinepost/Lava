@@ -103,7 +103,7 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
 void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
-    mpDepthPrePassGraph = RenderGraph::create("Depth Pre-Pass");
+    mpDepthPrePassGraph = RenderGraph::create(pContext->device(), "Depth Pre-Pass");
     mpDepthPrePass = DepthPass::create(pContext);
     mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
