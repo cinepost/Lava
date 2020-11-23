@@ -109,9 +109,9 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
 
      protected:
         Filter mMagFilter = Filter::Linear;
-        Filter mMinFilter = Filter::Linear;
+        Filter mMinFilter = Filter::Point;//Filter::Linear;
         Filter mMipFilter = Filter::Linear;
-        uint32_t mMaxAnisotropy = 1;
+        uint32_t mMaxAnisotropy = 8;
         float mMaxLod = 1000;
         float mMinLod = -1000;
         float mLodBias = 0;

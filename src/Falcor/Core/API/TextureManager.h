@@ -15,14 +15,15 @@
 
 namespace Falcor {
 
+
 class dlldecl TextureManager {
  public:
     struct InitDesc {
         std::string cacheDir = "/tmp/lava/tex"; // converted textures cache directory
-        uint32_t    cacheMemSize = 1024;        // memory cache size in megabytes
+        uint32_t    cacheMemSize = 1073741824;        // memory cache size in bytes
 
         std::shared_ptr<Device> pDevice;
-        uint32_t    deviceCacheMemSize = 512;   // GPU memory cache size in megabytes
+        uint32_t    deviceCacheMemSize = 536870912;   // GPU memory cache size in bytes
     };
 
     static TextureManager& instance() {
@@ -31,30 +32,42 @@ class dlldecl TextureManager {
     }
 
  public:
+    ~TextureManager();
     bool init(const InitDesc& initDesc);
+    void clear();
 
     TextureManager(TextureManager const&)    = delete;
     void operator=(TextureManager const&)    = delete;
 
  public:
-    Texture::SharedPtr createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource);
+    Texture::SharedPtr createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
+
+    void printStats();
 
  private:
     TextureManager();
     bool checkDeviceFeatures(const std::shared_ptr<Device>&  pDevice);
 
-    Texture::SharedPtr createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags);
+    Texture::SharedPtr  createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags);
 
+    static ResourceFormat      compressedFormat(ResourceFormat format);
 
     bool initialized = false;
 
     VkPhysicalDeviceFeatures enabledFeatures{};
 
+    InitDesc mDesc;
+
     std::shared_ptr<Device>  mpDevice = nullptr;
-    uint32_t    cacheMemSize = 1024;
-    uint32_t    deviceCacheMemSize = 512;
+    uint32_t    hostCacheMemSize;
+    uint32_t    hostCacheMemSizeLeft;
+    uint32_t    deviceCacheMemSize;
+    uint32_t    deviceCacheMemSizeLeft;
 
     std::map<size_t, Texture::SharedPtr> mTexturesMap;
+
+    std::map<std::string, Texture::SharedPtr> mLoadedTexturesMap;
+    std::map<std::string, Bitmap::UniqueConstPtr> mLoadedBitmapsMap;
 };
 
 }  // namespace Falcor

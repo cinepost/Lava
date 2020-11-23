@@ -86,6 +86,10 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
 
     ~Bitmap();
 
+    /** Get data size in bytes
+    */
+    size_t getDataSize() const;
+
     /** Get a pointer to the bitmap's data store
     */
     uint8_t* getData() const { return mpData; }

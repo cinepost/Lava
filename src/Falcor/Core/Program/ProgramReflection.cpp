@@ -1543,7 +1543,7 @@ namespace Falcor
             uint32_t                regSpace,
             DescriptorSet::Type     descriptorType)
         {
-            LOG_DBG("computeDescriptorSetIndex space %u type %s", regSpace, to_string(descriptorType).c_str());
+            //LOG_DBG("computeDescriptorSetIndex space %u type %s", regSpace, to_string(descriptorType).c_str());
             
             SetIndex origIndex(regSpace, descriptorType);
             
@@ -1554,10 +1554,10 @@ namespace Falcor
                 setIndex = (uint32_t) pPrimaryReflector->mDescriptorSets.size();
                 newSetIndices[origIndex] = setIndex;
                 pPrimaryReflector->mDescriptorSets.push_back({});
-                LOG_DBG("new setIndex %u", setIndex);
+                //LOG_DBG("new setIndex %u", setIndex);
             } else {
                 setIndex = newSetIndices[origIndex];
-                LOG_DBG("setIndex %u", setIndex);
+                //LOG_DBG("setIndex %u", setIndex);
             }
             return setIndex;
         }
@@ -1607,7 +1607,7 @@ namespace Falcor
                     }
 
                     auto subRange = subSet.layout.getRange(r);
-                    LOG_DBG("adding %s subRange %u", to_string(subRange.type).c_str(), subRange.baseRegIndex);
+                    //LOG_DBG("adding %s subRange %u", to_string(subRange.type).c_str(), subRange.baseRegIndex);
                     setInfo.layout.addRange(
                         subRange.type,
                         subRange.baseRegIndex,
@@ -1618,12 +1618,12 @@ namespace Falcor
         }
 
         void finalize(ParameterBlockReflection* pReflector) {
-            LOG_DBG("finalize");
+            //LOG_DBG("finalize");
 
             pPrimaryReflector = pReflector;
 
             if (pReflector->hasDefaultConstantBuffer()) {
-                LOG_DBG("has default constant buffer");
+                //LOG_DBG("has default constant buffer");
                 auto descriptorType = DescriptorSet::Type::Cbv;
                 auto& bindingInfo = pReflector->mDefaultConstantBufferBindingInfo;
 
@@ -1634,7 +1634,7 @@ namespace Falcor
                     bindingInfo.descriptorSetIndex = setIndex;
                     auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
-                    LOG_DBG("adding Cbv range %u", bindingInfo.regIndex);
+                    //LOG_DBG("adding Cbv range %u", bindingInfo.regIndex);
                     setInfo.layout.addRange(
                         descriptorType,
                         // FIXME: Why the hell do we get non zero indexes here !??
@@ -1661,7 +1661,7 @@ namespace Falcor
                         rangeBindingInfo.descriptorSetIndex = setIndex;
                         auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
-                        LOG_DBG("adding simple %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
+                        //LOG_DBG("adding simple %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
                         setInfo.layout.addRange(
                             range.descriptorType,
                             rangeBindingInfo.regIndex,
@@ -1685,7 +1685,7 @@ namespace Falcor
                         rangeBindingInfo.descriptorSetIndex = setIndex;
                         auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
-                        LOG_DBG("adding root descriptor %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
+                        //LOG_DBG("adding root descriptor %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
                         setInfo.layout.addRange(
                             range.descriptorType,
                             rangeBindingInfo.regIndex,
@@ -1746,7 +1746,7 @@ namespace Falcor
 
             // TODO: Do we need to handle interface sub-object slots here?
         
-            LOG_DBG("finalize done");
+            //LOG_DBG("finalize done");
         }
     };
 

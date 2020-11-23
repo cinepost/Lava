@@ -202,6 +202,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint32_t  getDeviceVendorID() const;
 #endif
 
+    DeviceApiData* apiData() const { return mpApiData; };
+
  private:
     static constexpr uint32_t kSwapChainBuffersCount = 5;
 

@@ -30,6 +30,7 @@
 
 #include "GBuffer.h"
 #include "../RenderPasses/DepthPass/DepthPass.h"
+#include "../RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 
 using namespace Falcor;
 
@@ -54,6 +55,9 @@ class GBufferRaster : public GBuffer {
 
     // Internal state
     DepthPass::SharedPtr            mpDepthPrePass;
+    TexturesResolvePass::SharedPtr  mpTexturesResolvePass;
+    
+    RenderGraph::SharedPtr          mpTexturesResolvePassGraph;
     RenderGraph::SharedPtr          mpDepthPrePassGraph;
     Fbo::SharedPtr                  mpFbo;
 

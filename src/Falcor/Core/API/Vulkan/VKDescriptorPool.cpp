@@ -87,7 +87,7 @@ VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
 }
 
 void DescriptorPool::apiInit() {
-    LOG_DBG("DescriptorPool apiInit");
+    //LOG_DBG("DescriptorPool apiInit");
     mpApiData = std::make_shared<DescriptorPool::ApiData>();
     uint32_t totalDescCount = 0;
     VkDescriptorPoolSize poolSizeForType[kTypeCount];
@@ -114,7 +114,7 @@ void DescriptorPool::apiInit() {
         throw std::runtime_error("Error creating descriptor pool!");
     }
     mpApiData->descriptorPool = ApiHandle::create(mpDevice, pool);
-    LOG_DBG("DescriptorPool apiInit done");
+    //LOG_DBG("DescriptorPool apiInit done");
 }
 
 const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const {

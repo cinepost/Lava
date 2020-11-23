@@ -99,9 +99,10 @@ Texture::SharedPtr Texture::create2D(std::shared_ptr<Device> device, uint32_t wi
     return pTexture;
 }
 
-Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool isSparse) {
+Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool sparse) {
     bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
     Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
+    pTexture->mIsSparse = sparse;
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
@@ -316,6 +317,7 @@ void Texture::generateMips(RenderContext* pContext) {
         mReleaseRtvsAfterGenMips = false;
     }
 }
+
 
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {

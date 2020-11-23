@@ -213,22 +213,23 @@ ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) {
             return ResourceFormat::R8Int;
         case FORMAT_A8_UNORM:
             return ResourceFormat::Alpha8Unorm;
+
         case FORMAT_BC1_UNORM:
-            return ResourceFormat::BC1Unorm;
+            return ResourceFormat::BC1RGBAUnorm;
         case FORMAT_BC1_UNORM_SRGB:
-            return ResourceFormat::BC1UnormSrgb;
+            return ResourceFormat::BC1RGBASrgb;
         case FORMAT_BC4_UNORM:
             return ResourceFormat::BC4Unorm;
         case FORMAT_BC4_SNORM:
             return ResourceFormat::BC4Snorm;
         case FORMAT_BC2_UNORM:
-            return ResourceFormat::BC2Unorm;
+            return ResourceFormat::BC2RGBAUnorm;
         case FORMAT_BC2_UNORM_SRGB:
-            return ResourceFormat::BC2UnormSrgb;
+            return ResourceFormat::BC2RGBASrgb;
         case FORMAT_BC3_UNORM:
-            return ResourceFormat::BC3Unorm;
+            return ResourceFormat::BC3RGBAUnorm;
         case FORMAT_BC3_UNORM_SRGB:
-            return ResourceFormat::BC3UnormSrgb;
+            return ResourceFormat::BC3RGBASrgb;
         case FORMAT_BC5_UNORM:
             return ResourceFormat::BC5Unorm;
         case FORMAT_BC5_SNORM:
@@ -240,7 +241,7 @@ ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) {
         case FORMAT_BC7_UNORM:
             return ResourceFormat::BC7Unorm;
         case FORMAT_BC7_UNORM_SRGB:
-            return ResourceFormat::BC7UnormSrgb;
+            return ResourceFormat::BC7Srgb;
         default:
             return ResourceFormat::Unknown;
     }

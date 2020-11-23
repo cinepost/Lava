@@ -45,7 +45,7 @@ DescriptorSet::~DescriptorSet() {
 }
 
 DescriptorSet::Layout& DescriptorSet::Layout::addRange(DescriptorSet::Type type, uint32_t baseRegIndex, uint32_t descriptorCount, uint32_t regSpace) {
-    LOG_DBG("addRange type %s baseRegIndex %u, regSpace %u, descriptorCount %u", to_string(type).c_str(), baseRegIndex, regSpace, descriptorCount);
+    //LOG_DBG("addRange type %s baseRegIndex %u, regSpace %u, descriptorCount %u", to_string(type).c_str(), baseRegIndex, regSpace, descriptorCount);
 
     Range r;
     r.descCount = descriptorCount;

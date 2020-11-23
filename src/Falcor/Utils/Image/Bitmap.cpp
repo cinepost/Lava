@@ -281,6 +281,14 @@ namespace Falcor {
         return UniqueConstPtr(pBmp);
     }
 
+    size_t Bitmap::getDataSize() const {
+        if (mpData)
+            return sizeof(mpData);
+
+        return 0;
+    }
+
+
     Bitmap::~Bitmap() {
         delete[] mpData;
         mpData = nullptr;

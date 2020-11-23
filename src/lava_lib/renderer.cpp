@@ -53,7 +53,7 @@ bool Renderer::init() {
     // init texture manager
     Falcor::TextureManager::InitDesc initDesc;
     initDesc.pDevice = mpDevice;
-    initDesc.cacheDir = "/tmp/lava/tex_cache";
+    initDesc.cacheDir = "/home/max/lava/tex_cache";
 
     if(!Falcor::TextureManager::instance().init(initDesc)) {
         LLOG_WRN << "Error initializing texture manager !!!";
@@ -90,37 +90,30 @@ Renderer::~Renderer() {
 	if(!mInited)
 		return;
 
+    Falcor::TextureManager::instance().printStats();
+
 	delete mpClock;
     delete mpFrameRate;
 
-    LLOG_DBG << "0";
     mpDevice->flushAndSync();
     mGraphs.clear();
 
-    LLOG_DBG << "0.1";
     mpSceneBuilder = nullptr;
-    LLOG_DBG << "0.2";
     mpSampler = nullptr;
 	
-    LLOG_DBG << "1";
-	Falcor::Threading::shutdown();
-    LLOG_DBG << "2";
-	Falcor::Scripting::shutdown();
-    LLOG_DBG << "3";
+    Falcor::Threading::shutdown();
+    Falcor::Scripting::shutdown();
     Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
-    LLOG_DBG << "4";
-	if(mpDisplay) mpDisplay->close();
+    if(mpDisplay) mpDisplay->close();
 
-    LLOG_DBG << "5";
     mpTargetFBO.reset();
-    LLOG_DBG << "6";
-	if(mpDevice) mpDevice->cleanup();
-	LLOG_DBG << "7";
-    mpDevice.reset();
-    LLOG_DBG << "8";
+
+    Falcor::TextureManager::instance().clear();
+
+    if(mpDevice) mpDevice->cleanup();
+	mpDevice.reset();
     Falcor::OSServices::stop();
-    LLOG_DBG << "9";
     Falcor::gpFramework = nullptr;
 
     LLOG_DBG << "Renderer::~Renderer done";
@@ -130,7 +123,7 @@ std::unique_ptr<RendererIface> Renderer::aquireInterface() {
 	if (!mIfaceAquired) {
 		return std::move(std::make_unique<RendererIface>(this));
 	}
-	LLOG_ERR << "cannot aquire renderer interface. relase old first!";
+	LLOG_ERR << "Сan't aquire renderer interface. Relase old first!";
 	return nullptr;
 }
 
@@ -256,8 +249,12 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
         if (mpSampler == nullptr) {
             // create common texture sampler
             Sampler::Desc desc;
-            desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-            desc.setMaxAnisotropy(8);
+            //desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Linear, Sampler::Filter::Linear);
+            desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+
+            //desc.setLodParams(0,8,1);
+            //desc.setMaxAnisotropy(16);
+            
             mpSampler = Falcor::Sampler::create(mpDevice, desc);
         }
         pScene->bindSamplerToMaterials(mpSampler);
@@ -363,6 +360,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             LLOG_DBG << "readTextureData done";
 
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+            
             assert(textureData.size() == frame_data.imageWidth * frame_data.imageHeight * channels * 4); // testing only on 32bit RGBA for now
 
             mpDisplay->sendImage(frame_data.imageWidth, frame_data.imageHeight, textureData.data());

@@ -25,10 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <memory>
+
 #include "Falcor/stdafx.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Resource.h"
+
+#include "Falcor/Core/API/Vulkan/VKDevice.h"
 
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
@@ -37,9 +41,19 @@ namespace Falcor {
     };
 
     Texture::~Texture() {
-        LOG_DBG("Deleting texture (resource id %u )with source name %s", id(), mSourceFilename.c_str());
+        LOG_DBG("Deleting texture (resource id %zu )with source name %s", id(), mSourceFilename.c_str());
+
         // #VKTODO the `if` is here because of the black texture in VkResourceView.cpp
-        if (mpDevice ) mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+        if (mpDevice ) {
+
+            for( auto pPage: mPages)
+                pPage->release();
+
+            for (auto bind : mOpaqueMemoryBinds)
+                vkFreeMemory(mpDevice->getApiHandle(), bind.memory, nullptr);
+        
+            mpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+        }
     }
 
     // Like getD3D12ResourceFlags but for Images specifically
@@ -116,18 +130,72 @@ namespace Falcor {
         return VkImageTiling(-1);
     }
 
-    uint32_t Texture::getTextureSizeInBytes() {
-        assert(mpDevice);
-        if (mImage == VK_NULL_HANDLE)
-            return 0;
+    void Texture::updateSparseBindInfo() {
+        assert(mImage != VK_NULL_HANDLE);
+        // Update list of memory-backed sparse image memory binds
+        
+        mSparseImageMemoryBinds.clear();
+        for (auto pPage : mPages) {
+            mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
+        }
 
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &memRequirements);
-        return memRequirements.size;
+        // Update sparse bind info
+        mBindSparseInfo = {};
+        mBindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+        // todo: Semaphore for queue submission
+        // bindSparseInfo.signalSemaphoreCount = 1;
+        // bindSparseInfo.pSignalSemaphores = &bindSparseSemaphore;
+
+        // Image memory binds
+        mImageMemoryBindInfo = {};
+        mImageMemoryBindInfo.image = mImage;
+        mImageMemoryBindInfo.bindCount = static_cast<uint32_t>(mSparseImageMemoryBinds.size());
+        mImageMemoryBindInfo.pBinds = mSparseImageMemoryBinds.data();
+
+        mBindSparseInfo.imageBindCount = (mImageMemoryBindInfo.bindCount > 0) ? 1 : 0;
+        mBindSparseInfo.pImageBinds = &mImageMemoryBindInfo;
+
+        // Opaque image memory binds for the mip tail
+        mOpaqueMemoryBindInfo.image = mImage;
+        mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(mOpaqueMemoryBinds.size());
+        mOpaqueMemoryBindInfo.pBinds = mOpaqueMemoryBinds.data();
+        mBindSparseInfo.imageOpaqueBindCount = (mOpaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
+        mBindSparseInfo.pImageOpaqueBinds = &mOpaqueMemoryBindInfo;
     }
 
-    // create VkImage with no memory allocation and no data
-    void Texture::createImage(const void* pData) {
+    VirtualTexturePage::SharedPtr Texture::addPage(int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
+        if (!mIsSparse) return nullptr;
+
+        auto newPage = VirtualTexturePage::create(mpDevice);
+        if (!newPage) return nullptr;
+
+        newPage->mOffset = {offset[0], offset[1], offset[2]};
+        newPage->mExtent = {extent[0], extent[1], extent[2]};
+        newPage->mDevMemSize = size;
+        newPage->mMipLevel = mipLevel;
+        newPage->mLayer = layer;
+        newPage->mIndex = static_cast<uint32_t>(mPages.size());
+        newPage->mImageMemoryBind = {};
+        newPage->mImageMemoryBind.offset = {offset[0], offset[1], offset[2]};
+        newPage->mImageMemoryBind.extent = {extent[0], extent[1], extent[2]};
+        mPages.push_back(newPage);
+        return mPages.back();
+    }
+
+    uint32_t Texture::getTextureSizeInBytes() {
+        if (mImage == VK_NULL_HANDLE)
+            return 0; 
+
+        return mMemRequirements.size;
+    }
+
+    void Texture::apiInit(const void* pData, bool autoGenMips) {
+        if (mImage != VK_NULL_HANDLE) {
+            LOG_WARN("Texture api already initialized !!!");
+            return;
+        }
+
+        mMemRequirements.size = 0;
         VkImageCreateInfo imageInfo = {};
 
         imageInfo.arrayLayers = mArraySize;
@@ -137,7 +205,7 @@ namespace Falcor {
         imageInfo.format = getVkFormat(mFormat);
         imageInfo.imageType = getVkImageType(mType);
         
-        imageInfo.initialLayout = pData ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.initialLayout = (pData && !mIsSparse ) ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
         
         imageInfo.mipLevels = std::min(mMipLevels, getMaxMipCount(imageInfo.extent));
         imageInfo.pQueueFamilyIndices = nullptr;
@@ -153,27 +221,85 @@ namespace Falcor {
             imageInfo.arrayLayers *= 6;
         }
 
-        mState.global = pData ? Resource::State::PreInitialized : Resource::State::Undefined;
+        if(mIsSparse) {
+            imageInfo.flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
+        }
+
+        mState.global = (pData && !mIsSparse ) ? Resource::State::PreInitialized : Resource::State::Undefined;
 
         auto result = vkCreateImage(mpDevice->getApiHandle(), &imageInfo, nullptr, &mImage);
         if (VK_FAILED(result)) {
             mImage = VK_NULL_HANDLE;
             throw std::runtime_error("Failed to create texture.");
         }
-    }
 
-    void Texture::apiInit(const void* pData, bool autoGenMips) {
-        if( mImage == VK_NULL_HANDLE )
-            createImage(pData);
 
-        // Allocate the GPU memory
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &memRequirements);
-        VkDeviceMemory deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, memRequirements.memoryTypeBits, memRequirements.size);
+        vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &mMemRequirements);
+        std::cout << "Image memory requirements:" << std::endl;
+        std::cout << "\t Size: " << mMemRequirements.size << std::endl;
+        std::cout << "\t Alignment: " << mMemRequirements.alignment << std::endl;
+
+        if (mIsSparse) {
+            // Check requested image size against hardware sparse limit            
+            if (mMemRequirements.size > mpDevice->apiData()->properties.limits.sparseAddressSpaceSize) {
+                std::cout << "Error: Requested sparse image size exceeds supports sparse address space size!" << std::endl;
+                return;
+            };
+
+            // Get sparse memory requirements
+            // Count
+            uint32_t sparseMemoryReqsCount = 32;
+            std::vector<VkSparseImageMemoryRequirements> sparseMemoryReqs(sparseMemoryReqsCount);
+            vkGetImageSparseMemoryRequirements(mpDevice->getApiHandle(), mImage, &sparseMemoryReqsCount, sparseMemoryReqs.data());
+            
+            if (sparseMemoryReqsCount == 0) {
+                std::cout << "Error: No memory requirements for the sparse image!" << std::endl;
+                return;
+            }
+            sparseMemoryReqs.resize(sparseMemoryReqsCount);
+            // Get actual requirements
+            vkGetImageSparseMemoryRequirements(mpDevice->getApiHandle(), mImage, &sparseMemoryReqsCount, sparseMemoryReqs.data());
+
+            std::cout << "Sparse image memory requirements: " << sparseMemoryReqsCount << std::endl;
+            
+            for (auto reqs : sparseMemoryReqs) {
+                std::cout << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " << reqs.formatProperties.imageGranularity.depth << std::endl;
+                std::cout << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod << std::endl;
+                std::cout << "\t Mip tail size: " << reqs.imageMipTailSize << std::endl;
+                std::cout << "\t Mip tail offset: " << reqs.imageMipTailOffset << std::endl;
+                std::cout << "\t Mip tail stride: " << reqs.imageMipTailStride << std::endl;
+                //todo:multiple reqs
+                mMipTailStart = reqs.imageMipTailFirstLod;
+            }
+
+            // Get sparse image requirements for the color aspect
+            VkSparseImageMemoryRequirements sparseMemoryReq;
+            bool colorAspectFound = false;
+            for (auto reqs : sparseMemoryReqs) {
+                if (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+                    sparseMemoryReq = reqs;
+                    colorAspectFound = true;
+                    break;
+                }
+            }
+            if (!colorAspectFound) {
+                std::cout << "Error: Could not find sparse image memory requirements for color aspect bit!" << std::endl;
+                return;
+            }
+
+            // Calculate number of required sparse memory bindings by alignment
+            assert((mMemRequirements.size % mMemRequirements.alignment) == 0);
+            //mMemoryTypeIndex = vulkanDevice->getMemoryType(sparseImageMemoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            //mMemoryTypeIndex = mpDevice->getVkMemoryType(mMemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        }
+
+        // Allocate the GPU memory        
+        VkDeviceMemory deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, mMemRequirements.memoryTypeBits, mMemRequirements.size);
         vkBindImageMemory(mpDevice->getApiHandle(), mImage, deviceMem, 0);
         mApiHandle = ApiHandle::create(mpDevice, mImage, deviceMem);
   
-        if (pData != nullptr) {
+        if (pData && !mIsSparse) {
             uploadInitData(pData, autoGenMips);
         }
     }

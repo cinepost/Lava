@@ -5,29 +5,34 @@ def defaultRenderGraph(device):
     g = RenderGraph(device, "BSDFViewerGraph")
 
     loadRenderPassLibrary("DepthPass")
-    loadRenderPassLibrary("SkyBox")
-    loadRenderPassLibrary("GBuffer")
+    #loadRenderPassLibrary("SkyBox")
+    #loadRenderPassLibrary("GBuffer")
+    loadRenderPassLibrary("TexturesResolvePass")
 
-    SkyBox = RenderPass(device, "SkyBox", {'texName': '/home/max/env.exr', 'loadAsSrgb': True, 'filter': SamplerFilter.Linear})
-    g.addPass(SkyBox, "SkyBox")
+    #SkyBox = RenderPass(device, "SkyBox", {'texName': '/home/max/env.exr', 'loadAsSrgb': True, 'filter': SamplerFilter.Linear})
+    #g.addPass(SkyBox, "SkyBox")
 
     DepthPass = RenderPass(device, "DepthPass")
     g.addPass(DepthPass, "DepthPass")
 
-    GBufferRaster = RenderPass(device, "GBufferRaster", {
-        'samplePattern': SamplePattern.Halton, 
-        'sampleCount': 16, 
-        'disableAlphaTest': False, 
-        'forceCullMode': False, 
-        'cull': CullMode.CullNone, 
-        'useBentShadingNormals': True
-    })
-    g.addPass(GBufferRaster, "GBufferRaster")
+    TexturesResolvePass = RenderPass(device, "TexturesResolve")
+    g.addPass(TexturesResolvePass, "TexturesResolve")
 
-    g.addEdge("GBufferRaster.depth", "SkyBox.depth")
+    #GBufferRaster = RenderPass(device, "GBufferRaster", {
+    #    'samplePattern': SamplePattern.Halton, 
+    #    'sampleCount': 16, 
+    #    'disableAlphaTest': False, 
+    #    'forceCullMode': False, 
+    #    'cull': CullMode.CullNone, 
+    #    'useBentShadingNormals': True
+    #})
+    #g.addPass(GBufferRaster, "GBufferRaster")
+
+    #g.addEdge("GBufferRaster.depth", "SkyBox.depth")
     
     #g.markOutput("SkyBox.target")
-    g.markOutput("GBufferRaster.diffuseOpacity")
+    #g.markOutput("GBufferRaster.diffuseOpacity")
+    g.markOutput("TexturesResolve.debugColor")
 
     return g
 

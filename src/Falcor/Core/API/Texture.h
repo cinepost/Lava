@@ -35,6 +35,7 @@
 
 #include "Falcor/Core/Framework.h"
 #include "Resource.h"
+#include "VirtualTexturePage.h"
 #include "Falcor/Utils/Image/Bitmap.h"
 
 namespace Falcor {
@@ -55,6 +56,11 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     using WeakPtr = std::weak_ptr<Texture>;
     using WeakConstPtr = std::weak_ptr<const Texture>;
     using inherit_shared_from_this<Resource, Texture>::shared_from_this;
+
+    struct MipTailInfo {
+        bool singleMipTail;
+        bool alignedMipSize;
+    };
 
     ~Texture();
 
@@ -148,7 +154,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] isSparse If true, the texture is created using sparse texture options supported by the API.
         \return A pointer to a new texture, or throws an exception if creation failed.
     */
-    static SharedPtr create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool isSparse = false);
+    static SharedPtr create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool sparse = false);
 
     /** Create a cube texture.
         \param[in] width The width of the texture.
@@ -264,19 +270,23 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     */
     uint32_t getTextureSizeInBytes();
 
+    // Call before sparse binding to update memory bind list etc.
+    void updateSparseBindInfo();
+
+    bool isSparse() { return mIsSparse; };
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 
     Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
     
-    void createImage(const void* pData);
+    VirtualTexturePage::SharedPtr addPage(int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
+
     void apiInit(const void* pData, bool autoGenMips);
     void uploadInitData(const void* pData, bool autoGenMips);
 
     bool mReleaseRtvsAfterGenMips = true;
     std::string mSourceFilename;
-
-    VkImage mImage = VK_NULL_HANDLE;
 
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
@@ -285,8 +295,28 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     uint32_t mSampleCount = 0;
     uint32_t mArraySize = 0;
     ResourceFormat mFormat = ResourceFormat::Unknown;
+
     bool mIsSparse = false;
     int3 mSparsePageRes = int3(0);
+
+    MipTailInfo mMipTailInfo;
+    uint32_t mMipTailStart;                                         // First mip level in mip tail
+    uint32_t memoryTypeIndex;                                       // @todo: Comment
+
+#ifdef FALCOR_VK
+    // Vulkan
+    VkImage mImage = VK_NULL_HANDLE;
+    VkMemoryRequirements mMemRequirements;
+
+    VkBindSparseInfo mBindSparseInfo;                               // Sparse queue binding information
+    std::vector<VirtualTexturePage::SharedPtr> mPages;              // Contains all virtual pages of the texture
+    std::vector<VkSparseImageMemoryBind> mSparseImageMemoryBinds;   // Sparse image memory bindings of all memory-backed virtual tables
+    std::vector<VkSparseMemoryBind> mOpaqueMemoryBinds;             // Sparse ópaque memory bindings for the mip tail (if present)
+    VkSparseImageMemoryBindInfo mImageMemoryBindInfo;               // Sparse image memory bind info
+    VkSparseImageOpaqueMemoryBindInfo mOpaqueMemoryBindInfo;        // Sparse image opaque memory bind info (mip tail)
+    VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
+#endif
+
 
     friend class Device;
     friend class Engine;

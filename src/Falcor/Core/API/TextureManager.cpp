@@ -14,7 +14,16 @@ TextureManager::TextureManager() {
     initialized = false;
 }
 
+TextureManager::~TextureManager() {
+    if(!mpDevice)
+        return;
+
+    clear();
+}
+
 bool TextureManager::init(const InitDesc& initDesc) {
+    mDesc = initDesc;
+
     if(initDesc.pDevice) {
         mpDevice = initDesc.pDevice;
         if(!checkDeviceFeatures(mpDevice)) {
@@ -50,10 +59,22 @@ bool TextureManager::init(const InitDesc& initDesc) {
         return false;
     }
 
-    cacheMemSize = initDesc.cacheMemSize;
-    deviceCacheMemSize = initDesc.deviceCacheMemSize;
+    clear();
 
     return initialized;
+}
+
+void TextureManager::clear() {
+    if(!initialized) return;
+
+    mTexturesMap.clear();
+    mLoadedTexturesMap.clear();
+
+    hostCacheMemSize = mDesc.cacheMemSize;
+    hostCacheMemSizeLeft = hostCacheMemSize;
+
+    deviceCacheMemSize = mDesc.deviceCacheMemSize;
+    deviceCacheMemSizeLeft = deviceCacheMemSize;
 }
 
 bool TextureManager::checkDeviceFeatures(const std::shared_ptr<Device>&  pDevice) {
@@ -72,14 +93,77 @@ bool TextureManager::checkDeviceFeatures(const std::shared_ptr<Device>&  pDevice
     return true;
 }
 
+/*
+// Compressed formats
+        BC1RGBUnorm,
+        BC1RGBSrgb,
+        BC1RGBAUnorm,
+        BC1RGBASrgb,
+
+        BC2RGBAUnorm,
+        BC2RGBASrgb,
+        
+        BC3RGBAUnorm,
+        BC3RGBASrgb,
+        
+        BC4Unorm,
+        BC4Snorm,
+        
+        BC5Unorm,
+        BC5Snorm,
+        
+        BC6HS16,
+        BC6HU16,
+        
+        BC7Unorm,
+        BC7Srgb,
+*/
+
+ResourceFormat TextureManager::compressedFormat(ResourceFormat format) {
+    switch(format) {
+        case ResourceFormat::RGBA32Float:    // 4xfloat32 HDR format
+            return ResourceFormat::BC1RGBAUnorm;
+        
+        case ResourceFormat::RGB32Float: 
+            return ResourceFormat::BC1RGBUnorm;
+
+        case ResourceFormat::RGBA16Float:    // 4xfloat16 HDR format
+            return ResourceFormat::BC1RGBAUnorm;
+
+        case ResourceFormat::RGB16Float:     // 3xfloat16 HDR format
+            return ResourceFormat::BC1RGBUnorm;
+
+        case ResourceFormat::BGRA8Unorm:
+        case ResourceFormat::BGRX8Unorm:
+            return ResourceFormat::BC1RGBUnorm;
+
+        case ResourceFormat::RG8Unorm:
+        case ResourceFormat::R8Unorm:
+        default:
+            LOG_WARN("Unable to find appropriate compression format for source format %s", to_string(format).c_str());
+            break;
+    }
+
+    return format;
+}
+
 Texture::SharedPtr TextureManager::createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags) {
     bindFlags = Texture::updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
     Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture(pDevice, width, height, 1, arraySize, mipLevels, 1, format, Texture::Type::Texture2D, bindFlags));
     return pTexture;
 }
 
-Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
+    assert(initialized);
     assert(mpDevice == pDevice);
+
+    bool doCompression = false;
+
+    auto search = mLoadedTexturesMap.find(filename);
+    if(search != mLoadedTexturesMap.end()) {
+        LOG_DBG("Using already loaded texture %s", filename.c_str());
+        return search->second;
+    }
 
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
@@ -95,23 +179,63 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
         Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullpath, true);
         if (pBitmap) {
             ResourceFormat texFormat = pBitmap->getFormat();
+            if (doCompression) {
+                LOG_DBG("Compressing texture from format %s", to_string(texFormat).c_str());
+                texFormat = compressedFormat(texFormat);
+            }
+
             if (loadAsSrgb) {
                 texFormat = linearToSrgbFormat(texFormat);
             }
 
             pTex = createTexture2D(pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
-            pTex->createImage(pBitmap->getData());
+            pTex->setSourceFilename(fullpath);
+
+            pTex->mIsSparse = true;
+
+            try {
+                pTex->apiInit(pBitmap->getData(), generateMipLevels);
+            } catch (const std::runtime_error& e) {
+                LOG_ERR("Error initializing texture %s !!!\n %s", fullpath.c_str(), e.what());
+                pTex = nullptr;
+                return pTex;
+            } catch (...) {
+                LOG_ERR("Error initializing texture %s !!!", fullpath.c_str());
+                pTex = nullptr;
+                return pTex;
+            }
+
             uint32_t deviceMemRequiredSize = pTex->getTextureSizeInBytes();
-            LOG_WARN("Texture require %u bytes of device memory", deviceMemRequiredSize);
-            pTex->apiInit(pBitmap->getData(), generateMipLevels);
+            LOG_DBG("Texture require %u bytes of device memory", deviceMemRequiredSize);
+            if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
+                deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
+            } else {
+                LOG_ERR("No texture space left for %s !!!", fullpath.c_str());
+                pTex = nullptr;
+            }
+            
         }
     }
 
     if (pTex != nullptr) {
-        pTex->setSourceFilename(fullpath);
+        mLoadedTexturesMap[filename] = pTex;
     }
 
     return pTex;
+}
+
+void TextureManager::printStats() {
+    std::cout << "-------------- TextureManager stats --------------\n";
+    
+    printf("Host cache mem cap: %u bytes\n", hostCacheMemSize);
+    printf("Host cache mem used: %u bytes\n", hostCacheMemSize - hostCacheMemSizeLeft);
+    
+    std::cout << "---\n";
+    
+    printf("Device cache mem cap: %u bytes\n", deviceCacheMemSize);
+    printf("Device cache mem used: %u bytes\n", deviceCacheMemSize - deviceCacheMemSizeLeft);
+
+    std::cout << "--------------------------------------------------\n";
 }
 
 }  // namespace Falcor

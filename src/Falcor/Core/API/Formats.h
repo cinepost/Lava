@@ -140,20 +140,28 @@ class Device;
         D24UnormS8,
 
         // Compressed formats
-        BC1Unorm,   // DXT1
-        BC1UnormSrgb,
-        BC2Unorm,   // DXT3
-        BC2UnormSrgb,
-        BC3Unorm,   // DXT5
-        BC3UnormSrgb,
-        BC4Unorm,   // RGTC Unsigned Red
-        BC4Snorm,   // RGTC Signed Red
-        BC5Unorm,   // RGTC Unsigned RG
-        BC5Snorm,   // RGTC Signed RG
+        BC1RGBUnorm,
+        BC1RGBSrgb,
+        BC1RGBAUnorm,
+        BC1RGBASrgb,
+
+        BC2RGBAUnorm,
+        BC2RGBASrgb,
+        
+        BC3RGBAUnorm,
+        BC3RGBASrgb,
+        
+        BC4Unorm,
+        BC4Snorm,
+        
+        BC5Unorm,
+        BC5Snorm,
+        
         BC6HS16,
         BC6HU16,
+        
         BC7Unorm,
-        BC7UnormSrgb,
+        BC7Srgb,
 
         Count
     };
@@ -272,19 +280,21 @@ class Device;
     */
     inline ResourceFormat srgbToLinearFormat(ResourceFormat format) {
         switch (format) {
-            case ResourceFormat::BC1UnormSrgb:
-                return ResourceFormat::BC1Unorm;
-            case ResourceFormat::BC2UnormSrgb:
-                return ResourceFormat::BC2Unorm;
-            case ResourceFormat::BC3UnormSrgb:
-                return ResourceFormat::BC3Unorm;
+            case ResourceFormat::BC1RGBSrgb:
+                return ResourceFormat::BC1RGBUnorm;
+            case ResourceFormat::BC1RGBASrgb:
+                return ResourceFormat::BC1RGBAUnorm; 
+            case ResourceFormat::BC2RGBASrgb:
+                return ResourceFormat::BC2RGBAUnorm;
+            case ResourceFormat::BC3RGBASrgb:
+                return ResourceFormat::BC3RGBAUnorm;
             case ResourceFormat::BGRA8UnormSrgb:
                 return ResourceFormat::BGRA8Unorm;
             case ResourceFormat::BGRX8UnormSrgb:
                 return ResourceFormat::BGRX8Unorm;
             case ResourceFormat::RGBA8UnormSrgb:
                 return ResourceFormat::RGBA8Unorm;
-            case ResourceFormat::BC7UnormSrgb:
+            case ResourceFormat::BC7Srgb:
                 return ResourceFormat::BC7Unorm;
             default:
                 assert(isSrgbFormat(format) == false);
@@ -296,12 +306,14 @@ class Device;
     */
     inline ResourceFormat linearToSrgbFormat(ResourceFormat format) {
         switch (format) {
-            case ResourceFormat::BC1Unorm:
-                return ResourceFormat::BC1UnormSrgb;
-            case ResourceFormat::BC2Unorm:
-                return ResourceFormat::BC2UnormSrgb;
-            case ResourceFormat::BC3Unorm:
-                return ResourceFormat::BC3UnormSrgb;
+            case ResourceFormat::BC1RGBUnorm:
+                return ResourceFormat::BC1RGBSrgb;
+            case ResourceFormat::BC1RGBAUnorm:
+                return ResourceFormat::BC1RGBASrgb;
+            case ResourceFormat::BC2RGBAUnorm:
+                return ResourceFormat::BC2RGBASrgb;
+            case ResourceFormat::BC3RGBAUnorm:
+                return ResourceFormat::BC3RGBASrgb;
             case ResourceFormat::BGRA8Unorm:
                 return ResourceFormat::BGRA8UnormSrgb;
             case ResourceFormat::BGRX8Unorm:
@@ -309,7 +321,7 @@ class Device;
             case ResourceFormat::RGBA8Unorm:
                 return ResourceFormat::RGBA8UnormSrgb;
             case ResourceFormat::BC7Unorm:
-                return ResourceFormat::BC7UnormSrgb;
+                return ResourceFormat::BC7Srgb;
             default:
                 return format;
         }
