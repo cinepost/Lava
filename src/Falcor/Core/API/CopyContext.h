@@ -39,6 +39,7 @@ namespace Falcor {
 
 class Device;
 class Texture;
+class TextureManager;
 
 class dlldecl CopyContext {
  public:
@@ -164,6 +165,8 @@ class dlldecl CopyContext {
 
  //private:
     std::shared_ptr<Device> mpDevice;
+
+    friend class TextureManager;
 };
 
 }  // namespace Falcor

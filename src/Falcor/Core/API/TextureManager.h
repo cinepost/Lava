@@ -12,6 +12,7 @@
 #include "Falcor/Core/API/Device.h"
 
 #include "Texture.h"
+#include "VirtualTexturePage.h"
 
 namespace Falcor {
 
@@ -49,6 +50,8 @@ class dlldecl TextureManager {
     bool checkDeviceFeatures(const std::shared_ptr<Device>&  pDevice);
 
     Texture::SharedPtr  createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags);
+
+    void fillPage(VirtualTexturePage::SharedPtr pPage);
 
     static ResourceFormat      compressedFormat(ResourceFormat format);
 

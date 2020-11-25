@@ -44,27 +44,6 @@ namespace Falcor {
 
     ComputeContext::~ComputeContext() = default;
 
-    /*
-    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
-    {
-        assert(pState);
-
-        auto pCSO = pState->getCSO(pVars);
-
-        // Apply the vars. Must be first because applyComputeVars() might cause a flush
-        if (pVars)
-        {
-            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
-        }
-        else mpLowLevelData->getCommandList()->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle());
-
-        mpLastBoundComputeVars = pVars;
-        mpLowLevelData->getCommandList()->SetPipelineState(pCSO->getApiHandle());
-        mCommandsPending = true;
-        return true;
-    }
-    */
-
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
         assert(pState);
         assert(pVars);

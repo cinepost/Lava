@@ -318,6 +318,10 @@ void Texture::generateMips(RenderContext* pContext) {
     }
 }
 
+const std::vector<VirtualTexturePage::SharedPtr>& Texture::pages() {
+    return mPages;
+}
+
 
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {

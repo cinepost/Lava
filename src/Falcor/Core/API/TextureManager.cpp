@@ -219,9 +219,36 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
 
     if (pTex != nullptr) {
         mLoadedTexturesMap[filename] = pTex;
+
+        for(auto& pPage: pTex->pages()) {
+            pPage->allocate();
+            fillPage(pPage);
+        }
     }
 
     return pTex;
+}
+
+void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage) {
+    // Generate some random image data and upload as a buffer
+    const uint32_t elementCount = pPage->width() * pPage->height();
+
+    std::vector<uint8_t> initData;
+    initData.resize(elementCount * 4);
+
+    for(size_t i = 0; i < initData.size(); i++) {
+        initData[i] = 255;
+    }
+
+    //auto pBuffer = Buffer::createTyped(mpDevice, ResourceFormat::BGRX8Unorm, elementCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, initData.data());
+
+    auto pCtx = mpDevice->getRenderContext();
+    assert(pCtx);
+
+    uint32_t firstSubresource = 0;
+    uint32_t subresourceCount = 1;
+
+    pCtx->updateTextureSubresources(pPage->texture().get(), firstSubresource, subresourceCount, initData.data(), pPage->offset(), pPage->extent());
 }
 
 void TextureManager::printStats() {

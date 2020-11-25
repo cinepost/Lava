@@ -48,6 +48,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 struct DeviceApiData {
     VkSwapchainKHR swapchain;
     VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceMemoryProperties memoryProperties;
     uint32_t falcorToVulkanQueueType[Device::kQueueTypeCount];
     uint32_t vkMemoryTypeBits[(uint32_t)Device::MemoryType::Count];
     VkPhysicalDeviceLimits deviceLimits;

@@ -275,6 +275,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     bool isSparse() { return mIsSparse; };
 
+    const std::vector<VirtualTexturePage::SharedPtr>& pages();
+
+    uint32_t memoryTypeIndex() const { return mMemoryTypeIndex; }
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 
@@ -301,7 +305,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     MipTailInfo mMipTailInfo;
     uint32_t mMipTailStart;                                         // First mip level in mip tail
-    uint32_t memoryTypeIndex;                                       // @todo: Comment
+    uint32_t mMemoryTypeIndex;                                       // @todo: Comment
 
 #ifdef FALCOR_VK
     // Vulkan
@@ -315,6 +319,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     VkSparseImageMemoryBindInfo mImageMemoryBindInfo;               // Sparse image memory bind info
     VkSparseImageOpaqueMemoryBindInfo mOpaqueMemoryBindInfo;        // Sparse image opaque memory bind info (mip tail)
     VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
+
+    VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
 #endif
 
 

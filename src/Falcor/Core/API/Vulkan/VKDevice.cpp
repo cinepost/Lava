@@ -357,8 +357,13 @@ VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devic
 VkPhysicalDevice initPhysicalDevice(VkInstance instance, uint8_t gpuId, DeviceApiData* pData, const Device::Desc& desc) {
     // Pick a device
     VkPhysicalDevice physicalDevice = DeviceManager::instance().physicalDevices()[gpuId];
+
+    // Get device physical properties
     vkGetPhysicalDeviceProperties(physicalDevice, &pData->properties);
     pData->deviceLimits = pData->properties.limits;
+
+    // Get device memory properties
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pData->memoryProperties);
 
     // Check that the device/driver supports the requested API version
     uint32_t vkApiVersion = VK_MAKE_VERSION(desc.apiMajorVersion, desc.apiMinorVersion, 0);
@@ -372,6 +377,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, uint8_t gpuId, DeviceAp
     // Get queue families and match them to what type they are
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    LOG_WARN("Vulkan physical device queue family count is: %u", queueFamilyCount);
 
     std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
@@ -385,7 +391,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, uint8_t gpuId, DeviceAp
     uint32_t& graphicsQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Direct];
     uint32_t& computeQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Compute];
     uint32_t& transferQueue = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Copy];
-
+    
     for (uint32_t i = 0; i < (uint32_t)queueFamilyProperties.size(); i++) {
         VkQueueFlags flags = queueFamilyProperties[i].queueFlags;
 
@@ -697,6 +703,16 @@ bool Device::isExtensionSupported(const std::string& name) const
 }
 */
 
+CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const {
+    auto& queue = mCmdQueues[(uint32_t)type];
+
+    if(index >= queue.size()) {
+        throw std::runtime_error("No queue index " + to_string(index) + " for queue type " + to_string(type));
+    }
+
+    return queue[index];
+}
+
 ApiCommandQueueType Device::getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const {
     return mpApiData->falcorToVulkanQueueType[(uint32_t)type];
 }
@@ -705,6 +721,30 @@ uint32_t Device::getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memory
     uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
     assert(mask != 0);
     return bitScanForward(mask);
+}
+
+
+uint32_t Device::getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const {
+    auto& deviceMemoryProperties = apiData()->memoryProperties;
+
+    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+        if ((typeBits & 1) == 1) {
+            if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                if (memTypeFound) {
+                    *memTypeFound = true;
+                }
+                return i;
+            }
+        }
+        typeBits >>= 1;
+    }
+
+    if (memTypeFound) {
+        *memTypeFound = false;
+        return 0;
+    } else {
+        throw std::runtime_error("Could not find a matching Vulkan memory type !!!");
+    }
 }
 
 const VkPhysicalDeviceLimits& Device::getPhysicalDeviceLimits() const {

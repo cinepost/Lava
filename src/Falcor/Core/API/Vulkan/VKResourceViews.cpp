@@ -171,9 +171,9 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
+            LOG_WARN("createViewCommon image id %zu", pSharedPtr->id());
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
-            assert(pResource->device());
             vk_call(vkCreateImageView(pResource->device()->getApiHandle(), &info, nullptr, &imageView));
             return VkResource<VkImageView, VkBufferView>::SharedPtr::create(pResource->device(), imageView, nullptr);
         }
@@ -202,7 +202,6 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device>
         return getNullView(pDevice);
     }
 
-    // Resource::ApiHandle resHandle = pTexture->getApiHandle();
     auto view = createViewCommon(pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
     return SharedPtr(new ShaderResourceView(pDevice, pTexture, view, mostDetailedMip, mipCount, firstArraySlice, arraySize));
 }

@@ -84,6 +84,20 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
     std::shared_ptr<Device> mpDevice; 
 };
 
+inline std::string to_string(LowLevelContextData::CommandQueueType typ) {
+    switch (typ) {
+        case LowLevelContextData::CommandQueueType::Copy:
+            return "Copy";
+        case LowLevelContextData::CommandQueueType::Compute:
+            return "Compute";
+        case LowLevelContextData::CommandQueueType::Direct:
+            return "Direct";
+        default: 
+            should_not_get_here(); 
+            return "";
+    }
+}
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_LOWLEVELCONTEXTDATA_H_

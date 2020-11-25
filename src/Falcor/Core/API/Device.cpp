@@ -126,14 +126,15 @@ bool Device::init() {
     mpCpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+
+    //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     
+    assert(mpRenderContext);
+
     createNullViews(shared_from_this());
     createNullBufferViews(shared_from_this());
     createNullTypedBufferViews(shared_from_this());
-
-    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     
-    assert(mpRenderContext);
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 

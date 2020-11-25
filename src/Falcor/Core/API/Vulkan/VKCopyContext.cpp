@@ -197,8 +197,7 @@ namespace Falcor {
 
         mCommandsPending = true;
         const uint8_t* pSubResData = (uint8_t*)pData;
-        for (uint32_t i = 0; i < subresourceCount; i++)
-        {
+        for (uint32_t i = 0; i < subresourceCount; i++) {
             uint32_t subresource = i + firstSubresource;
             updateTextureSubresource(this, pTexture, subresource, pSubResData, offset, size);
             uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresource);

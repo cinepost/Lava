@@ -3,15 +3,16 @@
 #include <memory>
 
 #include "Device.h"
+#include "Buffer.h"
 #include "VirtualTexturePage.h"
 
 namespace Falcor {
 
-VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr& pDevice) {
-    return SharedPtr(new VirtualTexturePage(pDevice));
+VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture) {
+    return SharedPtr(new VirtualTexturePage(pDevice, pTexture));
 }
 
-VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice): mpDevice(pDevice) {
+VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture): mpDevice(pDevice), mpTexture(pTexture) {
     // Pages are initially not backed up by memory (non-resident)
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
@@ -21,9 +22,11 @@ bool VirtualTexturePage::isResident() {
 }
 
 // Allocate Vulkan memory for the virtual page
-void VirtualTexturePage::allocate(uint32_t memoryTypeIndex) {
-    if (mImageMemoryBind.memory != VK_NULL_HANDLE)
+void VirtualTexturePage::allocate() {
+    if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
+        LOG_ERR("VirtualTexturePage already allocated !!!");
         return;
+    }
 
     mImageMemoryBind = {};
 
@@ -31,7 +34,7 @@ void VirtualTexturePage::allocate(uint32_t memoryTypeIndex) {
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.pNext = NULL;
     memAllocInfo.allocationSize = mDevMemSize;
-    memAllocInfo.memoryTypeIndex = memoryTypeIndex;
+    memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
     
     if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
         throw std::runtime_error("Error allocating memory for virtual texture page !!!");
@@ -50,12 +53,13 @@ void VirtualTexturePage::allocate(uint32_t memoryTypeIndex) {
 
 // Release Vulkan memory allocated for this page
 void VirtualTexturePage::release() {
-    if (mImageMemoryBind.memory == VK_NULL_HANDLE)
+    if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
+        LOG_ERR("VirtualTexturePage already released !!!");
         return;
+    }
 
     vkFreeMemory(mpDevice->getApiHandle(), mImageMemoryBind.memory, nullptr);
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
-
 
 }  // namespace Falcor

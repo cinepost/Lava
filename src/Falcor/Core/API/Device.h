@@ -198,6 +198,19 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool isFeatureSupported(SupportedFeatures flags) const;
 #ifdef FALCOR_VK
     uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
+
+    /** Get the index of a memory type that has all the requested property bits set
+        *
+        * @param typeBits Bitmask with bits set for each memory type supported by the resource to request for (from VkMemoryRequirements)
+        * @param properties Bitmask of properties for the memory type to request
+        * @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
+        * 
+        * @return Index of the requested memory type
+        *
+        * @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
+        */
+    uint32_t getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) const;
+    
     const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
     uint32_t  getDeviceVendorID() const;
 #endif

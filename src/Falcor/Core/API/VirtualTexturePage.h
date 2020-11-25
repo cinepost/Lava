@@ -20,16 +20,26 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     /** Create a new vertex buffer layout object.
         \return New object, or throws an exception on error.
     */
-    static SharedPtr create(const std::shared_ptr<Device>& pDevice);
+    static SharedPtr create(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
 
     bool isResident();
-    void allocate(uint32_t memoryTypeIndex);
+    void allocate();
     void release();
 
+    uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+    uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+
+    uint32_t width() const { return mExtent.width; }
+    uint32_t height() const { return mExtent.height; }
+    uint32_t depth() const { return mExtent.depth; }
+
+    const std::shared_ptr<Texture>  texture() { return mpTexture; }
+
  protected:
-    VirtualTexturePage(const std::shared_ptr<Device>& pDevice);
+    VirtualTexturePage(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
 
     const std::shared_ptr<Device>   mpDevice;
+    const std::shared_ptr<Texture>  mpTexture;
 
     VkOffset3D mOffset;
     VkExtent3D mExtent;
