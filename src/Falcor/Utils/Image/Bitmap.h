@@ -78,6 +78,15 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
     */
     static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
 
+    /** Store a memory buffer to a sparse file.
+        \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.
+        \param[in] width The width of the image.
+        \param[in] height The height of the image.
+        \param[in] ResourceFormat the format of the resource data
+        \param[in] pData Pointer to the buffer containing the image
+    */
+    static void saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData);
+
     /**  Open dialog to save image to a file
         \param[in] pTexture Texture to save to file
          
@@ -105,6 +114,10 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
     /** Get the number of bytes per pixel
     */
     ResourceFormat getFormat() const { return mFormat; }
+
+    /** Read data region
+    */
+    void readDataRegion(uint2 offset, uint2 extent, std::vector<uint8_t>& data ) const;
 
     /** Get the file dialog filter vec for images.
         \param[in] format If set to ResourceFormat::Unknown, will return all the supported image file formats. If set to something else, will only return file types which support this format.

@@ -57,29 +57,7 @@ namespace Falcor {
                 return (VkShaderStageFlagBits)0;
         }
     }
-    /*
-    void initVkShaderStageInfo(const ProgramVersion* pProgram, std::vector<VkPipelineShaderStageCreateInfo>& infosOut)
-    {
-        infosOut.clear();
 
-        for (uint32_t i = 0; i < (uint32_t)ShaderType::Count; i++)
-        {
-            ShaderType type = (ShaderType)i;
-            //const Shader* pShader = pProgram->getShader(type);
-            const Shader* pShader = pProgram->getKernels()->getShader(type);
-
-            if (pShader != nullptr)
-            {
-                VkPipelineShaderStageCreateInfo info = {};
-                info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                info.stage = getVkShaderStage(type);
-                info.module = pShader->getApiHandle();
-                info.pName = "main";
-                infosOut.push_back(info);
-            }
-        }
-    }
-    */
     void initVkShaderStageInfo(const ProgramKernels::SharedConstPtr& pProgramKernels, std::vector<VkPipelineShaderStageCreateInfo>& infosOut) {
         infosOut.clear();
 

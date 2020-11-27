@@ -32,7 +32,6 @@
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
 
-
 namespace Falcor {
 
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false) {
@@ -156,7 +155,7 @@ namespace Falcor {
 
     void CopyContext::bindDescriptorHeaps() { }
 
-    static void initTexAccessParams(std::shared_ptr<Device> device, const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize) {
+    static void initTexAccessParams(std::shared_ptr<Device> pDevice, const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize) {
         assert(isDepthStencilFormat(pTexture->getFormat()) == false); // #VKTODO Nothing complicated here, just that Vulkan doesn't support writing to both depth and stencil, which may be confusing to the user
         uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
 
@@ -175,7 +174,7 @@ namespace Falcor {
         dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
 
         // Upload the data to a staging buffer
-        pStaging = Buffer::create(device, dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
+        pStaging = Buffer::create(pDevice, dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
     }
 
@@ -204,6 +203,64 @@ namespace Falcor {
             uint32_t offset = getMipLevelPackedDataSize(pTexture, pTexture->getWidth(mipLevel), pTexture->getHeight(mipLevel), pTexture->getDepth(mipLevel), pTexture->getFormat());
             pSubResData += offset;
         }
+    }
+
+    void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+        if(!pPage->isResident()) {
+            LOG_ERR("Unable to update non-resident texture page !!!");
+            return;
+        }
+
+        if(!pData) {
+            LOG_ERR("No pData provided for updateTexturePage(...) call !!!");
+            return;
+        }
+
+        VkBufferImageCopy vkCopy;
+        Buffer::SharedPtr pStaging;
+        
+        vkCopy = {};
+        vkCopy.bufferRowLength = 0;
+        vkCopy.bufferImageHeight = 0;
+        vkCopy.imageSubresource.baseArrayLayer = 0;
+        vkCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        vkCopy.imageSubresource.layerCount = 1;
+        vkCopy.imageSubresource.mipLevel = pPage->mipLevel();
+        vkCopy.imageOffset = pPage->offsetVK();
+        vkCopy.imageExtent = pPage->extentVK();
+
+        auto pTexture = pPage->texture().get();
+
+        size_t dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());;//2097152; // for now just to test
+
+        LOG_DBG("vkCopy image offset x: %u offset y: %u width: %u height %u size: %zu", vkCopy.imageOffset.x, vkCopy.imageOffset.y, vkCopy.imageExtent.width, vkCopy.imageExtent.height, dataSize);
+
+        pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
+        
+        uint8_t* pDst = (uint8_t*)pStaging->map(Buffer::MapType::Write);
+        if (!pDst) {
+            LOG_ERR("Unable to map staging buffer !!!");
+        }
+
+        //for(uint32_t i = 0; i < 4096; i++) {
+        //    pDst[i] = 255;
+        //}
+
+        LOG_WARN("staging buffer first element %u", pDst[0]);
+
+        pStaging->unmap();
+        vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
+
+        LOG_WARN("staging buffer gpu offset %zu", vkCopy.bufferOffset);
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStaging.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
+    
+        flush(true);
+
+        //pStaging = nullptr;
     }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {

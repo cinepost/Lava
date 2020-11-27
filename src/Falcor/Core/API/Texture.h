@@ -32,6 +32,7 @@
 #include <string>
 #include <algorithm>
 #include <memory>
+#include <atomic>
 
 #include "Falcor/Core/Framework.h"
 #include "Resource.h"
@@ -45,6 +46,7 @@ class Sampler;
 class Device;
 class RenderContext;
 class TextureManager;
+class VirtualTexturePage;
 
 /** Abstracts the API texture objects
 */
@@ -268,7 +270,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     /** Returns the size of the texture in bytes as allocated in GPU memory.
     */
-    uint32_t getTextureSizeInBytes();
+    size_t getTextureSizeInBytes();
 
     // Call before sparse binding to update memory bind list etc.
     void updateSparseBindInfo();
@@ -302,6 +304,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     bool mIsSparse = false;
     int3 mSparsePageRes = int3(0);
+    std::atomic<size_t> mSparseResidentMemSize = 0;
 
     MipTailInfo mMipTailInfo;
     uint32_t mMipTailStart;                                         // First mip level in mip tail
@@ -321,12 +324,15 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
 
     VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
+
+    bool mSparseBindDirty = true;
 #endif
 
 
     friend class Device;
     friend class Engine;
     friend class TextureManager;
+    friend class VirtualTexturePage;
 };
 
 inline std::string to_string(const std::shared_ptr<Texture>& tex) {

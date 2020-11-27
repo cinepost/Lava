@@ -172,11 +172,12 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
     }
 
     Texture::SharedPtr pTex;
+    Bitmap::UniqueConstPtr pBitmap;
     if (hasSuffix(filename, ".dds")) {
         //pTex = createTextureFromDDSFile(device, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
         assert(1==2 && "Unimplemented !!!");
     } else {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullpath, true);
+        pBitmap = Bitmap::createFromFile(pDevice, fullpath, true);
         if (pBitmap) {
             ResourceFormat texFormat = pBitmap->getFormat();
             if (doCompression) {
@@ -221,23 +222,61 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
         mLoadedTexturesMap[filename] = pTex;
 
         for(auto& pPage: pTex->pages()) {
-            pPage->allocate();
-            fillPage(pPage);
+            LOG_DBG("Mip level %u", pPage->mipLevel());
+            if(pPage->mipLevel() == 0) {
+                pPage->allocate();
+                pTex->updateSparseBindInfo();
+
+                std::vector<uint8_t> bitmapData;
+                uint3 offset = pPage->offset();
+                uint3 extent = pPage->extent();
+                pBitmap->readDataRegion({offset[0], offset[1]} ,{extent[0], extent[1]}, bitmapData);
+                fillPage(pPage, bitmapData.data());
+            }
         }
+
+        if(pTex->isSparse()) pTex->updateSparseBindInfo();
     }
 
     return pTex;
 }
 
-void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage) {
+const VirtualTexturePage::SharedPtr TextureManager::addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
+        assert(pTexture);
+
+        LOG_DBG("Creating VirtualTexturePage of size %zu, mipLevel: %u layer %u", size, mipLevel, layer);
+
+        auto pPage = VirtualTexturePage::create(mpDevice, pTexture);
+        if (!pPage) return nullptr;
+
+        pPage->mOffset = {offset[0], offset[1], offset[2]};
+        pPage->mExtent = {extent[0], extent[1], extent[2]};
+        pPage->mDevMemSize = size;
+        pPage->mMipLevel = mipLevel;
+        pPage->mLayer = layer;
+        pPage->mIndex = static_cast<uint32_t>(mPages.size());
+        pPage->mImageMemoryBind = {};
+        pPage->mImageMemoryBind.offset = {offset[0], offset[1], offset[2]};
+        pPage->mImageMemoryBind.extent = {extent[0], extent[1], extent[2]};
+        
+        mPages.push_back(pPage);
+        return mPages.back();
+    }
+
+void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData) {
     // Generate some random image data and upload as a buffer
     const uint32_t elementCount = pPage->width() * pPage->height();
 
     std::vector<uint8_t> initData;
     initData.resize(elementCount * 4);
 
-    for(size_t i = 0; i < initData.size(); i++) {
-        initData[i] = 255;
+    LOG_DBG("Update virtual texture page with %zu bytes of data", initData.size());
+
+    for(size_t i = 0; i < initData.size(); i+=4) {
+        initData[i] = 0;
+        initData[i+1] = 255;
+        initData[i+2] = 0;
+        initData[i+3] = 255;
     }
 
     //auto pBuffer = Buffer::createTyped(mpDevice, ResourceFormat::BGRX8Unorm, elementCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, initData.data());
@@ -248,7 +287,8 @@ void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage) {
     uint32_t firstSubresource = 0;
     uint32_t subresourceCount = 1;
 
-    pCtx->updateTextureSubresources(pPage->texture().get(), firstSubresource, subresourceCount, initData.data(), pPage->offset(), pPage->extent());
+    //pCtx->updateTextureSubresources(pPage->texture().get(), firstSubresource, subresourceCount, initData.data(), pPage->offset(), pPage->extent());
+    pCtx->updateTexturePage(pPage.get(), pData ? pData : initData.data());
 }
 
 void TextureManager::printStats() {
@@ -259,8 +299,13 @@ void TextureManager::printStats() {
     
     std::cout << "---\n";
     
+    size_t usedDeviceMemSize = 0;
+    for (auto const& elem: mLoadedTexturesMap) {
+        usedDeviceMemSize += elem.second->getTextureSizeInBytes();
+    }
+
     printf("Device cache mem cap: %u bytes\n", deviceCacheMemSize);
-    printf("Device cache mem used: %u bytes\n", deviceCacheMemSize - deviceCacheMemSizeLeft);
+    printf("Device cache mem used: %zu bytes\n", usedDeviceMemSize); //deviceCacheMemSize - deviceCacheMemSizeLeft);
 
     std::cout << "--------------------------------------------------\n";
 }

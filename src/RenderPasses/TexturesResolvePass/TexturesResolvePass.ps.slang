@@ -1,3 +1,6 @@
+//#extension GL_ARB_sparse_texture2 : enable
+//#extension GL_ARB_sparse_texture_clamp : enable
+
 import Scene.Raster;
 import Scene.Shading;
 import Utils.Helpers;
@@ -119,6 +122,11 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     //psOut.debugColor = float4(vOut.texC.y, 0, 0, 1);
 
     psOut.debugColor = float4( materialResources.baseColor.Sample(gSampler, vOut.texC).rgb, 1);
+
+    float4 sp_color = float4(0, 0, 0, 0);
+    float inLodBias = 0.0;
+
+    //int residencyCode = sparseTexture(gSampler, vOut.texC, sp_color, inLodBias);
 
     return psOut;
 }

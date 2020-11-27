@@ -17,8 +17,15 @@ VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice, const s
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
 
-bool VirtualTexturePage::isResident() {
+bool VirtualTexturePage::isResident() const {
     return (mImageMemoryBind.memory != VK_NULL_HANDLE);
+}
+
+size_t VirtualTexturePage::usedMemSize() const {
+    if (mImageMemoryBind.memory != VK_NULL_HANDLE)
+        return mDevMemSize;
+
+    return 0;
 }
 
 // Allocate Vulkan memory for the virtual page
@@ -40,6 +47,8 @@ void VirtualTexturePage::allocate() {
         throw std::runtime_error("Error allocating memory for virtual texture page !!!");
     }
 
+    mpTexture->mSparseResidentMemSize += mDevMemSize;
+
     VkImageSubresource subResource{};
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subResource.mipLevel = mMipLevel;
@@ -59,6 +68,8 @@ void VirtualTexturePage::release() {
     }
 
     vkFreeMemory(mpDevice->getApiHandle(), mImageMemoryBind.memory, nullptr);
+
+    mpTexture->mSparseResidentMemSize -= mDevMemSize;
     mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
 

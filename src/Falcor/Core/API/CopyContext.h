@@ -33,7 +33,7 @@
 #include "Resource.h"
 #include "Buffer.h"
 #include "LowLevelContextData.h"
-
+#include "VirtualTexturePage.h"
 
 namespace Falcor {
 
@@ -127,6 +127,10 @@ class dlldecl CopyContext {
     */
     void updateTextureData(const Texture* pTexture, const void* pData);
 
+    /** Update texture page data
+    */
+    void updateTexturePage(const VirtualTexturePage* pPage, const void* pData);
+
     /** Update a buffer
     */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
@@ -166,6 +170,7 @@ class dlldecl CopyContext {
  //private:
     std::shared_ptr<Device> mpDevice;
 
+    friend class Texture;
     friend class TextureManager;
 };
 

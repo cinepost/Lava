@@ -102,7 +102,6 @@ Texture::SharedPtr Texture::create2D(std::shared_ptr<Device> device, uint32_t wi
 Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool sparse) {
     bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
     Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
-    pTexture->mIsSparse = sparse;
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
@@ -223,6 +222,8 @@ ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t
         return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
     };
 
+    updateSparseBindInfo();
+
     return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
 
@@ -300,6 +301,11 @@ void Texture::generateMips(RenderContext* pContext) {
     if (mType != Type::Texture2D) {
         logWarning("Texture::generateMips() was only tested with Texture2Ds");
     }
+
+    if (mIsSparse) {
+        logWarning("Texture::generateMips() does not work with sparse textures !!!");
+    }
+
     // #OPTME: should blit support arrays?
     for (uint32_t m = 0; m < mMipLevels - 1; m++) {
         for (uint32_t a = 0 ; a < mArraySize ; a++) {

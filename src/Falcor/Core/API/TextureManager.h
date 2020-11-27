@@ -43,6 +43,8 @@ class dlldecl TextureManager {
  public:
     Texture::SharedPtr createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
 
+    const VirtualTexturePage::SharedPtr addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
+
     void printStats();
 
  private:
@@ -51,7 +53,7 @@ class dlldecl TextureManager {
 
     Texture::SharedPtr  createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags);
 
-    void fillPage(VirtualTexturePage::SharedPtr pPage);
+    void fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData = nullptr);
 
     static ResourceFormat      compressedFormat(ResourceFormat format);
 
@@ -68,6 +70,7 @@ class dlldecl TextureManager {
     uint32_t    deviceCacheMemSizeLeft;
 
     std::map<size_t, Texture::SharedPtr> mTexturesMap;
+    std::vector<VirtualTexturePage::SharedPtr> mPages;
 
     std::map<std::string, Texture::SharedPtr> mLoadedTexturesMap;
     std::map<std::string, Bitmap::UniqueConstPtr> mLoadedBitmapsMap;

@@ -22,18 +22,24 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     */
     static SharedPtr create(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
 
-    bool isResident();
+    bool isResident() const ;
     void allocate();
     void release();
 
     uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+    VkOffset3D offsetVK() const { return mOffset; }
     uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+    VkExtent3D extentVK() const { return mExtent; }
+
+    size_t usedMemSize() const;
 
     uint32_t width() const { return mExtent.width; }
     uint32_t height() const { return mExtent.height; }
     uint32_t depth() const { return mExtent.depth; }
 
-    const std::shared_ptr<Texture>  texture() { return mpTexture; }
+    uint32_t mipLevel() const { return mMipLevel; }
+
+    const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
  protected:
     VirtualTexturePage(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
@@ -50,6 +56,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     uint32_t mIndex;
 
     friend class Texture;
+    friend class TextureManager;
 };
 
 }  // namespace Falcor

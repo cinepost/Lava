@@ -536,4 +536,24 @@ namespace Falcor {
         FreeImage_Unload(pImage);
     }
 
+    void Bitmap::saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData) {
+
+    }
+
+    void Bitmap::readDataRegion(uint2 offset, uint2 extent, std::vector<uint8_t>& data ) const {
+        uint32_t bytesPerPixel = getFormatBytesPerBlock(mFormat);
+
+        data.resize(extent[0] * extent[1] * bytesPerPixel);
+
+        size_t bytesPerSourceLine = mWidth * bytesPerPixel;
+        size_t bytesPerRegionLine = extent[0] * bytesPerPixel;
+        size_t srcDataOffset = (offset[0] + mWidth *offset[1]) * bytesPerPixel;
+        size_t dstDataOffset = 0;
+        for( uint32_t line = offset[1]; line < (offset[1] + extent[1]); line++) {
+            memcpy(data.data() + dstDataOffset, mpData + srcDataOffset, bytesPerRegionLine);
+            srcDataOffset += bytesPerSourceLine;
+            dstDataOffset += bytesPerRegionLine;
+        }
+    }
+
 }  // namespace Falcor
