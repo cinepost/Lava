@@ -537,7 +537,10 @@ namespace Falcor {
     }
 
     void Bitmap::saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData) {
-
+        if(!hasSuffix(filename, ".ltx")) {
+            LOG_ERR("Only LTX format supported for saving sparse images !!!");
+            return;
+        }
     }
 
     void Bitmap::readDataRegion(uint2 offset, uint2 extent, std::vector<uint8_t>& data ) const {

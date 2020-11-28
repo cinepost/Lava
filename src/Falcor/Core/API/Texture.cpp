@@ -324,6 +324,10 @@ void Texture::generateMips(RenderContext* pContext) {
     }
 }
 
+uint8_t Texture::getMaxMipCount(const uint3& size) {
+    return 1 + uint8_t(glm::log2(static_cast<float>(glm::max(glm::max(size[0], size[1]), size[2]))));
+}
+
 const std::vector<VirtualTexturePage::SharedPtr>& Texture::pages() {
     return mPages;
 }

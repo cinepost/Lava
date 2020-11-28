@@ -281,6 +281,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     uint32_t memoryTypeIndex() const { return mMemoryTypeIndex; }
 
+    static uint8_t getMaxMipCount(const uint3& size);
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 

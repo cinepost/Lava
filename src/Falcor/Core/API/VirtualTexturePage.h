@@ -38,6 +38,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     uint32_t depth() const { return mExtent.depth; }
 
     uint32_t mipLevel() const { return mMipLevel; }
+    uint32_t index() const { return mIndex; }
 
     const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
@@ -53,7 +54,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     VkDeviceSize mDevMemSize;                                           // Page (memory) size in bytes
     uint32_t mMipLevel;                                                 // Mip level that this page belongs to
     uint32_t mLayer;                                                    // Array layer that this page belongs to
-    uint32_t mIndex;
+    uint32_t mIndex;  // texture page index 
 
     friend class Texture;
     friend class TextureManager;

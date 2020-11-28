@@ -45,6 +45,7 @@ class dlldecl TextureManager {
 
     const VirtualTexturePage::SharedPtr addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
 
+    const std::string& getCacheDirPath() const { return mDesc.cacheDir; } 
     void printStats();
 
  private:

@@ -21,7 +21,7 @@ file( GLOB SOURCES
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
-    ./Utils/Image/Bitmap.cpp
+    ./Utils/Image/*.cpp
     ./Utils/Perception/*.cpp
     ./Utils/SampleGenerators/*.cpp
     ./Utils/Sampling/*.cpp

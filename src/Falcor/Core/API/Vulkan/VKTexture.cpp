@@ -98,7 +98,7 @@ namespace Falcor {
         return vkFlags;
     }
 
-    uint32_t getMaxMipCount(const VkExtent3D& size) {
+    uint32_t getMaxMipCountVK(const VkExtent3D& size) {
         return 1 + uint32_t(glm::log2(static_cast<float>(glm::max(glm::max(size.width, size.height), size.depth))));
     }
 
@@ -240,7 +240,7 @@ namespace Falcor {
         
         imageCreateInfo.initialLayout = (pData && !mIsSparse ) ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
         
-        imageCreateInfo.mipLevels = std::min(mMipLevels, getMaxMipCount(imageCreateInfo.extent));
+        imageCreateInfo.mipLevels = std::min(mMipLevels, getMaxMipCountVK(imageCreateInfo.extent));
         imageCreateInfo.pQueueFamilyIndices = nullptr;
         imageCreateInfo.queueFamilyIndexCount = 0;
         imageCreateInfo.samples = (VkSampleCountFlagBits)mSampleCount;
@@ -389,6 +389,7 @@ namespace Falcor {
 
                                 // Add new virtual page
                                 VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
+                                pPage->mIndex = index;
                                 pPage->mImageMemoryBind.subresource = subResource;
                                 mPages.push_back(pPage);
 

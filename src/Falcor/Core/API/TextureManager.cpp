@@ -1,6 +1,7 @@
 #include "Falcor/stdafx.h"
 #include "TextureManager.h"
 
+#include "Falcor/Utils/Image/LTX_Bitmap.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include <boost/filesystem/operations.hpp>
@@ -173,6 +174,7 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
 
     Texture::SharedPtr pTex;
     Bitmap::UniqueConstPtr pBitmap;
+    LTX_Bitmap::UniquePtr pLtxBitmap;
     if (hasSuffix(filename, ".dds")) {
         //pTex = createTextureFromDDSFile(device, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
         assert(1==2 && "Unimplemented !!!");
@@ -180,9 +182,22 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
         pBitmap = Bitmap::createFromFile(pDevice, fullpath, true);
         if (pBitmap) {
             ResourceFormat texFormat = pBitmap->getFormat();
-            if (doCompression) {
-                LOG_DBG("Compressing texture from format %s", to_string(texFormat).c_str());
-                texFormat = compressedFormat(texFormat);
+            
+            //if (doCompression) {
+            //    LOG_DBG("Compressing texture from format %s", to_string(texFormat).c_str());
+            //    texFormat = compressedFormat(texFormat);
+            //}
+
+            LOG_WARN("LTX convert start...");
+            std::string ltxFilename = fullpath + ".ltx";
+            LTX_Bitmap::convertToKtxFile(pDevice, fullpath, ltxFilename, true);
+            LOG_WARN("LTX convert done. %s", ltxFilename.c_str());
+
+            pLtxBitmap = LTX_Bitmap::createFromFile(pDevice, ltxFilename, true);
+            if (!pLtxBitmap) {
+                LOG_ERR("Error loading converted ltx bitmap from %s !!!", ltxFilename.c_str());
+                pTex = nullptr;
+                return pTex;
             }
 
             if (loadAsSrgb) {
@@ -221,6 +236,9 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
     if (pTex != nullptr) {
         mLoadedTexturesMap[filename] = pTex;
 
+        std::vector<uint8_t> tmpPageData;
+        tmpPageData.resize(65536); // 64K page temp data
+
         for(auto& pPage: pTex->pages()) {
             LOG_DBG("Mip level %u", pPage->mipLevel());
             if(pPage->mipLevel() == 0) {
@@ -230,8 +248,10 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
                 std::vector<uint8_t> bitmapData;
                 uint3 offset = pPage->offset();
                 uint3 extent = pPage->extent();
-                pBitmap->readDataRegion({offset[0], offset[1]} ,{extent[0], extent[1]}, bitmapData);
-                fillPage(pPage, bitmapData.data());
+                //pBitmap->readDataRegion({offset[0], offset[1]} ,{extent[0], extent[1]}, bitmapData);
+                pLtxBitmap->readPageData(pPage->index(), tmpPageData.data());
+
+                fillPage(pPage, tmpPageData.data());
             }
         }
 
@@ -279,15 +299,9 @@ void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* p
         initData[i+3] = 255;
     }
 
-    //auto pBuffer = Buffer::createTyped(mpDevice, ResourceFormat::BGRX8Unorm, elementCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, initData.data());
-
     auto pCtx = mpDevice->getRenderContext();
     assert(pCtx);
-
-    uint32_t firstSubresource = 0;
-    uint32_t subresourceCount = 1;
-
-    //pCtx->updateTextureSubresources(pPage->texture().get(), firstSubresource, subresourceCount, initData.data(), pPage->offset(), pPage->extent());
+    
     pCtx->updateTexturePage(pPage.get(), pData ? pData : initData.data());
 }
 
