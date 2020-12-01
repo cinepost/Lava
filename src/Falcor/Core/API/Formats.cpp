@@ -46,6 +46,8 @@ namespace Falcor
         {ResourceFormat::RGB16Snorm,         "RGB16Snorm",      6,              3,  FormatType::Snorm,      {false,  false, false,},        {1, 1},                                                  {16, 16, 16, 0 }},
         {ResourceFormat::R24UnormX8,         "R24UnormX8",      4,              2,  FormatType::Unorm,      {false,  false, false,},        {1, 1},                                                  {24, 8, 0, 0   }},
         {ResourceFormat::RGB5A1Unorm,        "RGB5A1Unorm",     2,              4,  FormatType::Unorm,      {false,  false, false,},        {1, 1},                                                  {5, 5, 5, 1    }},
+        {ResourceFormat::RGB8Unorm,          "RGB8Unorm",       3,              3,  FormatType::Unorm,      {false,  false, false,},        {1, 1},                                                  {8, 8, 8, 0    }},
+        {ResourceFormat::RGB8Snorm,          "RGB8Snorm",       3,              3,  FormatType::Snorm,      {false,  false, false,},        {1, 1},                                                  {8, 8, 8, 0    }},
         {ResourceFormat::RGBA8Unorm,         "RGBA8Unorm",      4,              4,  FormatType::Unorm,      {false,  false, false,},        {1, 1},                                                  {8, 8, 8, 8    }},
         {ResourceFormat::RGBA8Snorm,         "RGBA8Snorm",      4,              4,  FormatType::Snorm,      {false,  false, false,},        {1, 1},                                                  {8, 8, 8, 8    }},
         {ResourceFormat::RGB10A2Unorm,       "RGB10A2Unorm",    4,              4,  FormatType::Unorm,      {false,  false, false,},        {1, 1},                                                  {10, 10, 10, 2 }},

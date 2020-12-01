@@ -8,7 +8,6 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 
 # we will use static libs
 add_definitions(-DBOOST_LOG_DYN_LINK=1)
-#set_target_properties(lava_utils_lib PROPERTIES COMPILE_DEFINITIONS "BOOST_LOG_DYN_LINK")
 
 add_library( lava_utils_lib SHARED ${SOURCES} ${HEADERS} )
 

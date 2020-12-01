@@ -29,7 +29,8 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/antlr4/runtime/Cpp/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src/cmake
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -89,6 +90,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
 
+
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
@@ -105,6 +107,9 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Externals
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/Imath/src/Imath
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/src
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
 )
@@ -138,11 +143,9 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # thirt party libs
 # TODO: build necessary third party libs
-add_subdirectory( third_party/tbb )
+#add_subdirectory( third_party/tbb )
 #add_subdirectory( third_party/embree )
 #add_subdirectory( third_party/glew/build/cmake )
-
-# Assimp library
 #add_subdirectory( third_party/assimp )
 
 # Our stuff

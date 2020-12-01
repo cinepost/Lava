@@ -45,6 +45,8 @@ namespace Falcor
         { ResourceFormat::RGB16Snorm,                    VK_FORMAT_R16G16B16_SNORM },
         { ResourceFormat::R24UnormX8,                    VK_FORMAT_UNDEFINED },
         { ResourceFormat::RGB5A1Unorm,                   VK_FORMAT_B5G5R5A1_UNORM_PACK16 }, // VK different component order?
+        { ResourceFormat::RGB8Unorm,                     VK_FORMAT_R8G8B8_UNORM },
+        { ResourceFormat::RGB8Snorm,                     VK_FORMAT_R8G8B8_SNORM },
         { ResourceFormat::RGBA8Unorm,                    VK_FORMAT_R8G8B8A8_UNORM },
         { ResourceFormat::RGBA8Snorm,                    VK_FORMAT_R8G8B8A8_SNORM },
         { ResourceFormat::RGB10A2Unorm,                  VK_FORMAT_A2R10G10B10_UNORM_PACK32 }, // VK different component order?

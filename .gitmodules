@@ -40,3 +40,18 @@
 [submodule "third_party/embree"]
 	path = third_party/embree
 	url = https://github.com/embree/embree.git
+[submodule "third_party/OpenImageIO"]
+	path = third_party/OpenImageIO
+	url = https://github.com/OpenImageIO/oiio.git
+[submodule "third_party/OpenEXR"]
+	path = third_party/OpenEXR
+	url = https://github.com/AcademySoftwareFoundation/openexr.git
+[submodule "third_party/OpenCV"]
+	path = third_party/OpenCV
+	url = https://github.com/opencv/opencv.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "third_party/Imath"]
+	path = third_party/Imath
+	url = https://github.com/AcademySoftwareFoundation/Imath.git

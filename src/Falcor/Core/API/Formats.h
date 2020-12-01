@@ -84,6 +84,8 @@ class Device;
         RGB16Snorm,
         R24UnormX8,
         RGB5A1Unorm,
+        RGB8Unorm,
+        RGB8Snorm,
         RGBA8Unorm,
         RGBA8Snorm,
         RGB10A2Unorm,

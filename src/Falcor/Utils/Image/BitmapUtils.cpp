@@ -19,9 +19,10 @@ bool isRGB32fSupported(std::shared_ptr<Device> pDevice) { return false; } // FIX
 
 bool isConvertibleToRGBA32Float(ResourceFormat format) {
     FormatType type = getFormatType(format);
+    bool isRGBFloatFormat = (type == FormatType::Float && getNumChannelBits(format, 0) == 32);
     bool isHalfFormat = (type == FormatType::Float && getNumChannelBits(format, 0) == 16);
     bool isLargeIntFormat = ((type == FormatType::Uint || type == FormatType::Sint) && getNumChannelBits(format, 0) >= 16);
-    return isHalfFormat || isLargeIntFormat;
+    return isHalfFormat || isLargeIntFormat || isRGBFloatFormat;
 }
 
 /** Converts half float image to RGBA float image.
@@ -34,6 +35,23 @@ std::vector<float> convertHalfToRGBA32Float(uint32_t width, uint32_t height, uin
     for (uint32_t i = 0; i < width * height; ++i) {
         for (uint32_t c = 0; c < channelCount; ++c) {
             *pDst++ = glm::detail::toFloat32(*pSrc++);
+        }
+        pDst += (4 - channelCount);
+    }
+
+    return newData;
+}
+
+/** Converts RGB float image to RGBA float image.
+*/
+std::vector<float> convertRGB32FloatToRGBA32Float(uint32_t width, uint32_t height, uint32_t channelCount, const void* pData) {
+    std::vector<float> newData(width * height * 4u, 1.f);
+    const float* pSrc = static_cast<const float*>(pData);
+    float* pDst = newData.data();
+
+    for (uint32_t i = 0; i < width * height; ++i) {
+        for (uint32_t c = 0; c < channelCount; ++c) {
+            *pDst++ = *pSrc++;
         }
         pDst += (4 - channelCount);
     }
@@ -74,6 +92,11 @@ std::vector<float> convertToRGBA32Float(ResourceFormat format, uint32_t width, u
     if (type == FormatType::Float && channelBits == 16)
     {
         floatData = convertHalfToRGBA32Float(width, height, channelCount, pData);
+    }
+    else if (type == FormatType::Float && channelBits == 32 && channelCount == 3)
+    {
+        floatData = convertRGB32FloatToRGBA32Float(width, height, channelCount, pData);
+        return floatData;
     }
     else if (type == FormatType::Uint && channelBits == 16)
     {

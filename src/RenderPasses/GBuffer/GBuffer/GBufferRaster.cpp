@@ -103,6 +103,8 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
 void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
+    mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), "Textures resolve Pre-Pass");
+
     mpDepthPrePassGraph = RenderGraph::create(pContext->device(), "Depth Pre-Pass");
     mpDepthPrePass = DepthPass::create(pContext);
     mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
@@ -171,7 +173,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Setup depth pass to use same culling mode.
-    //mpDepthPrePass->setRasterizerState(mForceCullMode ? mRaster.pRsState : nullptr);
+    mpDepthPrePass->setRasterizerState(mForceCullMode ? mRaster.pRsState : nullptr);
 
     // Copy depth buffer.
     mpDepthPrePassGraph->execute(pRenderContext);

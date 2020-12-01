@@ -42,6 +42,7 @@ class dlldecl TextureManager {
 
  public:
     Texture::SharedPtr createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
+    Texture::SharedPtr createSparseTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
 
     const VirtualTexturePage::SharedPtr addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
 
@@ -52,7 +53,7 @@ class dlldecl TextureManager {
     TextureManager();
     bool checkDeviceFeatures(const std::shared_ptr<Device>&  pDevice);
 
-    Texture::SharedPtr  createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags);
+    Texture::SharedPtr  createSparseTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags bindFlags);
 
     void fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData = nullptr);
 
@@ -65,6 +66,9 @@ class dlldecl TextureManager {
     InitDesc mDesc;
 
     std::shared_ptr<Device>  mpDevice = nullptr;
+
+    RenderContext* mpCtx;
+
     uint32_t    hostCacheMemSize;
     uint32_t    hostCacheMemSizeLeft;
     uint32_t    deviceCacheMemSize;

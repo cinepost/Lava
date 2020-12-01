@@ -27,6 +27,8 @@
  **************************************************************************/
 #include <algorithm>
 
+#include <OpenImageIO/imageio.h>
+
 #include "stdafx.h"
 #include "Bitmap.h"
 #include "LTX_Bitmap.h"
@@ -37,6 +39,8 @@
 #include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
+
+namespace oiio = OpenImageIO_v2_3;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 
@@ -81,6 +85,7 @@ LTX_Bitmap::UniquePtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice
         file.seekg(0, file.beg);
     } else {
         LOG_ERR("Error opening file: %s !!!", filename.c_str());
+        return nullptr;
     }
 
     auto pLtxBitmap = new LTX_Bitmap();
@@ -105,15 +110,107 @@ LTX_Bitmap::~LTX_Bitmap() {
         fclose(mpFile);
 }
 
-void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown) {
-    auto pBitmap = Bitmap::createFromFile(pDevice, srcFilename, isTopDown);
-    if (!pBitmap) {
-        LOG_ERR("Unable to create bitmap from file %s", srcFilename.c_str());
+static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
+    using BASETYPE = oiio::TypeDesc::BASETYPE;
+    switch (nchannels) {
+        case 1:
+            switch (BASETYPE(baseType)) {
+                case BASETYPE::UINT8:
+                    return ResourceFormat::R8Unorm;
+                case BASETYPE::UINT32:
+                    return ResourceFormat::R32Uint;
+                case BASETYPE::FLOAT:
+                    return ResourceFormat::R32Float;
+                default:
+                    should_not_get_here();
+                    break;
+            }
+            break;
+        case 2:
+            switch (BASETYPE(baseType)) {
+                case BASETYPE::UINT8:
+                    return ResourceFormat::RG8Unorm;
+                case BASETYPE::UINT32:
+                    return ResourceFormat::RG32Uint;
+                case BASETYPE::FLOAT:
+                    return ResourceFormat::RG32Float;
+                default:
+                    should_not_get_here();
+                    break;
+            }
+            break;
+        case 3:
+            switch (BASETYPE(baseType)) {
+                case BASETYPE::UINT8:
+                    return ResourceFormat::RGB8Unorm;
+                case BASETYPE::UINT32:
+                    return ResourceFormat::RGB32Uint;
+                case BASETYPE::FLOAT:
+                    return ResourceFormat::RGB32Float;
+                default:
+                    should_not_get_here();
+                    break;
+            }
+            break;
+
+        case 4:
+            switch (BASETYPE(baseType)) {
+                case BASETYPE::UINT8:
+                    return ResourceFormat::RGBA8Unorm;
+                case BASETYPE::UINT32:
+                    return ResourceFormat::RGBA32Uint;
+                case BASETYPE::FLOAT:
+                    return ResourceFormat::RGBA32Float;
+                default:
+                    should_not_get_here();
+                    break;
+            }
+            break;
+        default:
+            should_not_get_here();
+            break;
+    }
+    return ResourceFormat::RGBA8Unorm;
+}
+
+static ResourceFormat getDestFormat(ResourceFormat format) {
+    switch (format) {
+        case ResourceFormat::RGB8Unorm:
+            return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
+        case ResourceFormat::RGB32Uint:
+            return ResourceFormat::RGBA32Uint;  // this should force 96bit to 128bit conversion
+        case ResourceFormat::RGB32Float:
+            return ResourceFormat::RGBA32Float; // this should force 96bit to 128bit conversion
+        default:
+            break;
     }
 
-    uint3 pageDims = {128, 128, 1};  // test hardcode
-    uint3 srcDims = {pBitmap->getWidth(), pBitmap->getHeight(), 1}; 
+    return format;
+}
 
+void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown) {
+    auto in = oiio::ImageInput::open(srcFilename);
+    if (!in) {
+        LOG_ERR("Error reading image file %s", srcFilename.c_str());
+    }
+    const oiio::ImageSpec &spec = in->spec();
+
+    LOG_WARN("OIIO channel formats size: %zu", spec.channelformats.size());
+    LOG_WARN("OIIO is signed: %s", spec.format.is_signed() ? "YES" : "NO");
+    LOG_WARN("OIIO is float: %s", spec.format.is_floating_point() ? "YES" : "NO");
+    LOG_WARN("OIIO basetype %u", oiio::TypeDesc::BASETYPE(spec.format.basetype));
+    LOG_WARN("OIIO bytes per pixel %zu", spec.pixel_bytes());
+    LOG_WARN("OIIO nchannels %i", spec.nchannels);
+    
+    auto srcFormat = getFormatOIIO(spec.format.basetype, spec.nchannels);
+    LOG_WARN("Source ResourceFormat from OIIO: %s", to_string(srcFormat).c_str());
+    auto dstFormat = getDestFormat(srcFormat);
+
+    uint3 pageDims = {64, 64, 1};  // test hardcode
+    uint3 srcDims = {spec.width, spec.height, spec.depth};
+
+    bool canReadTiles = (spec.tile_width != 0 && spec.tile_height != 0) ? true : false; 
+    LOG_WARN("OIIO can read tiles %s", canReadTiles ? "YES" : "NO");
 
     // make header
     LTX_Header header;
@@ -127,7 +224,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     header.pageDataSize = 65536;
     header.arrayLayersCount = 1;
     header.mipLevelsCount = Texture::getMaxMipCount({srcDims[0], srcDims[1], srcDims[2]});
-    header.format = pBitmap->getFormat();
+    header.format = dstFormat;//pBitmap->getFormat();
 
     // open file
     FILE *pFile = fopen(dstFilename.c_str(), "wb");
@@ -135,28 +232,46 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     // write header
     fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
 
-    uint8_t *pSrcData = pBitmap->getData();
-
     // first mip level naive copy
     uint32_t pagesNumX = srcDims[0] / pageDims[0];
     uint32_t pagesNumY = srcDims[1] / pageDims[1];
     uint32_t pagesNumZ = srcDims[2] / pageDims[2];
 
-    size_t srcBytesPerPixel = 4; // hardcode 4 bytes per pixel
-    size_t srcWidthStride = srcDims[0] * srcBytesPerPixel;
-    size_t tileWidthStride = pageDims[0] * srcBytesPerPixel;
+    size_t srcBytesPerPixel = spec.pixel_bytes(); // hardcode 4 bytes per pixel
 
-    for(uint32_t tileIdxZ = 0; tileIdxZ < pagesNumZ; tileIdxZ++) {
+    uint32_t dstChannelCount = getFormatChannelCount(dstFormat);
+    uint32_t dstChannelBits = getNumChannelBits(dstFormat, 0);
+
+    size_t tileWidthStride = pageDims[0] * dstChannelCount * dstChannelBits / 8;
+    size_t bufferWidthStride = srcDims[0] * srcBytesPerPixel;
+
+    std::vector<unsigned char> tiles_buffer (spec.width * pageDims[1] * srcBytesPerPixel);
+
+    for(uint32_t z = 0; z < pagesNumZ; z++) {
         for(uint32_t tileIdxY = 0; tileIdxY < pagesNumY; tileIdxY++) {
-            for(uint32_t tileIdxX = 0; tileIdxX < pagesNumX; tileIdxX++) {
+            int y_begin = tileIdxY * pageDims[1];
             
-                uint8_t *pTileData = pSrcData + tileIdxX * tileWidthStride 
-                    + tileIdxY * srcWidthStride * pageDims[1]
-                    + tileIdxZ * srcWidthStride * srcDims[1];
+            in->read_scanlines(0, 0, y_begin, y_begin + pageDims[1], z, 0, spec.nchannels, spec.format, tiles_buffer.data());
+
+            unsigned char *pBufferData = tiles_buffer.data();
+            if(srcFormat != dstFormat) {
+                auto convertedData = convertToRGBA32Float(srcFormat, spec.width, pageDims[1], pBufferData);
+                bufferWidthStride = srcDims[0] * dstChannelCount * dstChannelBits / 8;
+
+                LOG_WARN("Converted buffer size (bytes): %zu", convertedData.size() * 4);
+                LOG_WARN("Tile width stride: %zu", tileWidthStride);
+                LOG_WARN("Buffer width stride: %zu", bufferWidthStride);
+                pBufferData = static_cast<unsigned char*>(static_cast<void*>(convertedData.data()));
+            }
+
+            for(uint32_t tileIdxX = 0; tileIdxX < pagesNumX; tileIdxX++) {
                 
+                unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
+
                 for(uint32_t lineNum = 0; lineNum < pageDims[1]; lineNum++) {
+                    LOG_WARN("write tile %u line %u", tileIdxX, lineNum);
                     fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
-                    pTileData += srcWidthStride;
+                    pTileData += bufferWidthStride;
                 }
             
             }

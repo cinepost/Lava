@@ -60,6 +60,8 @@ bool TextureManager::init(const InitDesc& initDesc) {
         return false;
     }
 
+    mpCtx = mpDevice->getRenderContext();
+
     clear();
 
     return initialized;
@@ -148,23 +150,15 @@ ResourceFormat TextureManager::compressedFormat(ResourceFormat format) {
     return format;
 }
 
-Texture::SharedPtr TextureManager::createTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, Texture::BindFlags bindFlags) {
-    bindFlags = Texture::updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
+Texture::SharedPtr TextureManager::createSparseTexture2D(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+    bindFlags = Texture::updateBindFlags(pDevice, bindFlags, false, mipLevels, format, "SparseTexture2D");
     Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture(pDevice, width, height, 1, arraySize, mipLevels, 1, format, Texture::Type::Texture2D, bindFlags));
     return pTexture;
 }
 
-Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
+Texture::SharedPtr TextureManager::createSparseTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
     assert(initialized);
     assert(mpDevice == pDevice);
-
-    bool doCompression = false;
-
-    auto search = mLoadedTexturesMap.find(filename);
-    if(search != mLoadedTexturesMap.end()) {
-        LOG_DBG("Using already loaded texture %s", filename.c_str());
-        return search->second;
-    }
 
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
@@ -172,73 +166,78 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
         return nullptr;
     }
 
-    Texture::SharedPtr pTex;
-    Bitmap::UniqueConstPtr pBitmap;
-    LTX_Bitmap::UniquePtr pLtxBitmap;
-    if (hasSuffix(filename, ".dds")) {
-        //pTex = createTextureFromDDSFile(device, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
-        assert(1==2 && "Unimplemented !!!");
-    } else {
-        pBitmap = Bitmap::createFromFile(pDevice, fullpath, true);
-        if (pBitmap) {
-            ResourceFormat texFormat = pBitmap->getFormat();
-            
-            //if (doCompression) {
-            //    LOG_DBG("Compressing texture from format %s", to_string(texFormat).c_str());
-            //    texFormat = compressedFormat(texFormat);
-            //}
+    std::string ltxFilename = fullpath + ".ltx";
 
-            LOG_WARN("LTX convert start...");
-            std::string ltxFilename = fullpath + ".ltx";
-            LTX_Bitmap::convertToKtxFile(pDevice, fullpath, ltxFilename, true);
-            LOG_WARN("LTX convert done. %s", ltxFilename.c_str());
+    bool doCompression = false;
 
-            pLtxBitmap = LTX_Bitmap::createFromFile(pDevice, ltxFilename, true);
-            if (!pLtxBitmap) {
-                LOG_ERR("Error loading converted ltx bitmap from %s !!!", ltxFilename.c_str());
-                pTex = nullptr;
-                return pTex;
-            }
-
-            if (loadAsSrgb) {
-                texFormat = linearToSrgbFormat(texFormat);
-            }
-
-            pTex = createTexture2D(pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
-            pTex->setSourceFilename(fullpath);
-
-            pTex->mIsSparse = true;
-
-            try {
-                pTex->apiInit(pBitmap->getData(), generateMipLevels);
-            } catch (const std::runtime_error& e) {
-                LOG_ERR("Error initializing texture %s !!!\n %s", fullpath.c_str(), e.what());
-                pTex = nullptr;
-                return pTex;
-            } catch (...) {
-                LOG_ERR("Error initializing texture %s !!!", fullpath.c_str());
-                pTex = nullptr;
-                return pTex;
-            }
-
-            uint32_t deviceMemRequiredSize = pTex->getTextureSizeInBytes();
-            LOG_DBG("Texture require %u bytes of device memory", deviceMemRequiredSize);
-            if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
-                deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
-            } else {
-                LOG_ERR("No texture space left for %s !!!", fullpath.c_str());
-                pTex = nullptr;
-            }
-            
-        }
+    auto search = mLoadedTexturesMap.find(ltxFilename);
+    if(search != mLoadedTexturesMap.end()) {
+        LOG_DBG("Using already loaded texture %s", ltxFilename.c_str());
+        return search->second;
     }
 
+
+    Texture::SharedPtr pTex;
+    if (hasSuffix(filename, ".dds")) {
+        LOG_ERR("Sparse texture handling for DDS format unimplemented !!!");
+        return nullptr;
+    } 
+        
+    //if (doCompression) {
+    //    LOG_DBG("Compressing texture from format %s", to_string(texFormat).c_str());
+    //    texFormat = compressedFormat(texFormat);
+    //}
+
+    LOG_WARN("LTX convert start...");
+    LTX_Bitmap::convertToKtxFile(pDevice, fullpath, ltxFilename, true);
+    LOG_WARN("LTX convert done. %s", ltxFilename.c_str());
+
+    auto pLtxBitmap = LTX_Bitmap::createFromFile(pDevice, ltxFilename, true);
+    if (!pLtxBitmap) {
+        LOG_ERR("Error loading converted ltx bitmap from %s !!!", ltxFilename.c_str());
+        pTex = nullptr;
+        return pTex;
+    }
+    ResourceFormat texFormat = pLtxBitmap->getFormat();
+
+    //if (loadAsSrgb) {
+    //    texFormat = linearToSrgbFormat(texFormat);
+    //}
+
+    pTex = createSparseTexture2D(pDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, bindFlags);
+    pTex->setSourceFilename(ltxFilename);
+
+    pTex->mIsSparse = true;
+
+    try {
+        pTex->apiInit(nullptr, generateMipLevels);
+    } catch (const std::runtime_error& e) {
+        LOG_ERR("Error initializing sparse texture %s !!!\n %s", ltxFilename.c_str(), e.what());
+        pTex = nullptr;
+        return pTex;
+    } catch (...) {
+        LOG_ERR("Error initializing sparse texture %s !!!", ltxFilename.c_str());
+        pTex = nullptr;
+        return pTex;
+    }
+
+    uint32_t deviceMemRequiredSize = pTex->getTextureSizeInBytes();
+    LOG_DBG("Texture require %u bytes of device memory", deviceMemRequiredSize);
+    if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
+        deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
+    } else {
+        LOG_ERR("No texture space left for %s !!!", ltxFilename.c_str());
+        pTex = nullptr;
+    }
+    
     if (pTex != nullptr) {
-        mLoadedTexturesMap[filename] = pTex;
+        mLoadedTexturesMap[ltxFilename] = pTex;
 
         std::vector<uint8_t> tmpPageData;
         tmpPageData.resize(65536); // 64K page temp data
 
+        // allocate and fill pages
+        
         for(auto& pPage: pTex->pages()) {
             LOG_DBG("Mip level %u", pPage->mipLevel());
             if(pPage->mipLevel() == 0) {
@@ -264,7 +263,7 @@ Texture::SharedPtr TextureManager::createTextureFromFile(std::shared_ptr<Device>
 const VirtualTexturePage::SharedPtr TextureManager::addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
         assert(pTexture);
 
-        LOG_DBG("Creating VirtualTexturePage of size %zu, mipLevel: %u layer %u", size, mipLevel, layer);
+        //LOG_DBG("Creating VirtualTexturePage of size %zu, mipLevel: %u layer %u", size, mipLevel, layer);
 
         auto pPage = VirtualTexturePage::create(mpDevice, pTexture);
         if (!pPage) return nullptr;
@@ -284,25 +283,7 @@ const VirtualTexturePage::SharedPtr TextureManager::addTexturePage(const Texture
     }
 
 void TextureManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData) {
-    // Generate some random image data and upload as a buffer
-    const uint32_t elementCount = pPage->width() * pPage->height();
-
-    std::vector<uint8_t> initData;
-    initData.resize(elementCount * 4);
-
-    LOG_DBG("Update virtual texture page with %zu bytes of data", initData.size());
-
-    for(size_t i = 0; i < initData.size(); i+=4) {
-        initData[i] = 0;
-        initData[i+1] = 255;
-        initData[i+2] = 0;
-        initData[i+3] = 255;
-    }
-
-    auto pCtx = mpDevice->getRenderContext();
-    assert(pCtx);
-    
-    pCtx->updateTexturePage(pPage.get(), pData ? pData : initData.data());
+    mpCtx->updateTexturePage(pPage.get(), pData);
 }
 
 void TextureManager::printStats() {

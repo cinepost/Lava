@@ -49,25 +49,61 @@ find_package(pybind11 REQUIRED CONFIG)
 find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
+# ZLIB
+find_package( ZLIB REQUIRED )
+if(ZLIB_FOUND)
+    set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
+endif()
+
+if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+  if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    set( ZLIB_LIBRARY ${ZLIB_LIBRARY_DBG} )
+  else()
+    set( ZLIB_LIBRARY ${ZLIB_LIBRARY_RELEASE} )
+  endif()
+
+  add_library(ZLIB::ZLIB INTERFACE IMPORTED)
+  set_target_properties(ZLIB::ZLIB PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES "${ZLIB_LIBRARY}"
+  )
+endif()
+
+
+# Imath
+find_package( Imath REQUIRED CONFIG )
+
+# OpenEXR
+find_package( OpenEXR REQUIRED CONFIG )
+
+# OpenImageIO
+find_package( OpenImageIO REQUIRED CONFIG )
+if (OpenImageIO_FOUND)
+    message( "OpenImageIO found: ${OpenImageIO_FOUND}" ) 
+    message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
+    message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
+    message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
+endif()
+include_directories( ${OPENIMAGEIO_INCLUDES} )
+
 # ImGui
 include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
 
 # Assimp (built within project)
 #set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${CMAKE_BINARY_DIR}/third_party/assimp)# ASSIMP search path
-#find_package(assimp CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
 #include_directories(${assimp_INCLUDE_DIRS})
 #if (assimp_FOUND)
 #    message("Assimp inc: ${ASSIMP_INCLUDE_DIR}" )
 #endif()
 
 # set any variables you might need to set for your app and assimp
-set(BUILD_ASSIMP_TOOLS  ON)
-set(ASSIMP_BUILD_STATIC_LIB ON)
+#set(BUILD_ASSIMP_TOOLS  ON)
+#set(ASSIMP_BUILD_STATIC_LIB ON)
 
 # add assimp source dir as a subdirectory, effectively making 
 # assimp's CMakeLists.txt part of your build
-add_subdirectory( ${PROJECT_SOURCE_DIR}/third_party/assimp ${CMAKE_BINARY_DIR}/assimp)
-
+#add_subdirectory( ${PROJECT_SOURCE_DIR}/third_party/assimp ${CMAKE_BINARY_DIR}/assimp)
 
 # GLFW 
 find_package(glfw3 CONFIG REQUIRED)
@@ -135,6 +171,7 @@ add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     falcor_lib
+    
     assimp
     glfw
     avutil
@@ -149,6 +186,7 @@ target_link_libraries(
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
     ${TIFF_LIBRARIES}
+    OpenImageIO::OpenImageIO
 )
 
 # Copy/install all needed shaders
@@ -168,8 +206,7 @@ file(
 
 if(UNIX)
     install( 
-        TARGETS 
-        falcor_lib
+        TARGETS falcor_lib
         DESTINATION lib 
     )
 
