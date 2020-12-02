@@ -35,3 +35,6 @@ build
 build/
 venv
 venv/
+
+# lava textures
+*.ltx
