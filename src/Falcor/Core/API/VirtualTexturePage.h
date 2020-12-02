@@ -20,7 +20,9 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     /** Create a new vertex buffer layout object.
         \return New object, or throws an exception on error.
     */
-    static SharedPtr create(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
+    static SharedPtr create(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture, uint32_t mipLevel, uint32_t layer);
+
+    ~VirtualTexturePage();
 
     bool isResident() const ;
     void allocate();
@@ -43,7 +45,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
  protected:
-    VirtualTexturePage(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture);
+    VirtualTexturePage(const std::shared_ptr<Device>& pDevice, const std::shared_ptr<Texture>& pTexture, uint32_t mipLevel, uint32_t layer);
 
     const std::shared_ptr<Device>   mpDevice;
     const std::shared_ptr<Texture>  mpTexture;
@@ -55,6 +57,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     uint32_t mMipLevel;                                                 // Mip level that this page belongs to
     uint32_t mLayer;                                                    // Array layer that this page belongs to
     uint32_t mIndex;  // texture page index 
+    size_t mID;
 
     friend class Texture;
     friend class TextureManager;

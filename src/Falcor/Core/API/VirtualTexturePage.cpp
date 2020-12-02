@@ -8,13 +8,26 @@
 
 namespace Falcor {
 
-VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture) {
-    return SharedPtr(new VirtualTexturePage(pDevice, pTexture));
+VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture, uint32_t mipLevel, uint32_t layer) {
+    return SharedPtr(new VirtualTexturePage(pDevice, pTexture, mipLevel, layer));
 }
 
-VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture): mpDevice(pDevice), mpTexture(pTexture) {
+VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture, uint32_t mipLevel, uint32_t layer): mpDevice(pDevice), mpTexture(pTexture), mMipLevel(mipLevel), mLayer(layer) {
     // Pages are initially not backed up by memory (non-resident)
+    mImageMemoryBind = {};
     mImageMemoryBind.memory = VK_NULL_HANDLE;
+
+    VkImageSubresource subResource = {};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subResource.mipLevel = mMipLevel;
+    subResource.arrayLayer = mLayer;
+    mImageMemoryBind.subresource = subResource;
+    mImageMemoryBind.flags = VK_SPARSE_MEMORY_BIND_METADATA_BIT;
+
+}
+
+VirtualTexturePage::~VirtualTexturePage() {
+    if (mImageMemoryBind.memory != VK_NULL_HANDLE) release();
 }
 
 bool VirtualTexturePage::isResident() const {
@@ -35,8 +48,6 @@ void VirtualTexturePage::allocate() {
         return;
     }
 
-    mImageMemoryBind = {};
-
     VkMemoryAllocateInfo memAllocInfo = {};
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.pNext = NULL;
@@ -49,13 +60,7 @@ void VirtualTexturePage::allocate() {
 
     mpTexture->mSparseResidentMemSize += mDevMemSize;
 
-    VkImageSubresource subResource{};
-    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    subResource.mipLevel = mMipLevel;
-    subResource.arrayLayer = mLayer;
-
     // Sparse image memory binding
-    mImageMemoryBind.subresource = subResource;
     mImageMemoryBind.extent = mExtent;
     mImageMemoryBind.offset = mOffset;
 }

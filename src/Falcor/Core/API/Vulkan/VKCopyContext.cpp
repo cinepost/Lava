@@ -231,23 +231,12 @@ namespace Falcor {
 
         auto pTexture = pPage->texture().get();
 
-        size_t dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());;//2097152; // for now just to test
-
-        //LOG_DBG("vkCopy image offset x: %u offset y: %u width: %u height %u size: %zu", vkCopy.imageOffset.x, vkCopy.imageOffset.y, vkCopy.imageExtent.width, vkCopy.imageExtent.height, dataSize);
+        size_t dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
 
         pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
-        
-        uint8_t* pDst = (uint8_t*)pStaging->map(Buffer::MapType::Write);
-        if (!pDst) {
-            LOG_ERR("Unable to map staging buffer !!!");
-        }
+        //pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, Buffer::CpuAccess::None, pData);
 
-        //LOG_WARN("staging buffer first element %u", pDst[0]);
-
-        pStaging->unmap();
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
-
-        //LOG_WARN("staging buffer gpu offset %zu", vkCopy.bufferOffset);
 
         // Execute the copy
         resourceBarrier(pTexture, Resource::State::CopyDest);
@@ -255,8 +244,6 @@ namespace Falcor {
         vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     
         flush(false);
-
-        //pStaging = nullptr;
     }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {

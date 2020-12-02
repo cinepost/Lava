@@ -29,6 +29,9 @@ std::vector<float> convertIntToRGBA32Float(uint32_t width, uint32_t height, uint
 */
 std::vector<float> convertToRGBA32Float(ResourceFormat format, uint32_t width, uint32_t height, const void* pData);
 
+/** Converts an image of the given format from any RGB format of any depth to an RGBA image of the same depth.
+*/
+std::vector<unsigned char> convertToRGBA(ResourceFormat format, uint32_t width, uint32_t height, const void* pData);
 
 /** Converts 96bpp to 128bpp RGBA without clamping.
     Note that we can't use FreeImage_ConvertToRGBAF() as it clamps to [0,1].

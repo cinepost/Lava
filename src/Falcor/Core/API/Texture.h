@@ -288,8 +288,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
     
-    VirtualTexturePage::SharedPtr addPage(int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
-
     void apiInit(const void* pData, bool autoGenMips);
     void uploadInitData(const void* pData, bool autoGenMips);
 

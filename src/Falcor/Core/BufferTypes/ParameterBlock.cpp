@@ -548,16 +548,15 @@ ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const BindLocation& 
 }
 
 bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const Resource::SharedPtr& pResource, const char* funcName) {
-    if(pResource) LOG_DBG("setResourceSrvUavCommon resource id: %zu", pResource->id());
+    //if(pResource) LOG_DBG("setResourceSrvUavCommon resource id: %zu", pResource->id());
 
     size_t flatIndex = getFlatIndex(bindLoc);
 
     if (isUavType(bindLoc.getType())) {
-        LOG_WARN("isUavType");
         auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView(mpDevice);
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) {
-            if(pResource) LOG_ERR("isUavType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
+            //if(pResource) LOG_ERR("isUavType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
         
@@ -567,11 +566,10 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         assignedUAV.pView = pUAV;
         assignedUAV.pResource = pResource;
     } else if (isSrvType(bindLoc.getType())) {
-        LOG_WARN("isSrvType");
         auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView(mpDevice);
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
-            if(pResource) LOG_ERR("isSrvType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
+            //if(pResource) LOG_ERR("isSrvType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
 
@@ -581,7 +579,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         assignedSRV.pResource = pResource;
     } else {
         logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
-        if(pResource) LOG_ERR("Error trying to bind resource to non SRV/UAV variable. Ignoring call. resource id: %zu", pResource->id());
+        //if(pResource) LOG_ERR("Error trying to bind resource to non SRV/UAV variable. Ignoring call. resource id: %zu", pResource->id());
         return false;
     }
 

@@ -16,6 +16,9 @@ bool isRGB32fSupported(std::shared_ptr<Device> pDevice) { return false; } // FIX
 
 #endif
 
+bool isConvertibleToRGBA(ResourceFormat format) {
+    return getFormatChannelCount(format) == 3 ? true : false;
+}
 
 bool isConvertibleToRGBA32Float(ResourceFormat format) {
     FormatType type = getFormatType(format);
@@ -35,6 +38,23 @@ std::vector<float> convertHalfToRGBA32Float(uint32_t width, uint32_t height, uin
     for (uint32_t i = 0; i < width * height; ++i) {
         for (uint32_t c = 0; c < channelCount; ++c) {
             *pDst++ = glm::detail::toFloat32(*pSrc++);
+        }
+        pDst += (4 - channelCount);
+    }
+
+    return newData;
+}
+
+/** Converts RGB float image to RGBA unsigned 8bit image.
+*/
+std::vector<unsigned char> convertRGB32UByteToRGBA32UByte(uint32_t width, uint32_t height, uint32_t channelCount, const void* pData) {
+    std::vector<unsigned char> newData(width * height * 4u, 255);
+    const unsigned char* pSrc = static_cast<const unsigned char*>(pData);
+    unsigned char* pDst = newData.data();
+
+    for (uint32_t i = 0; i < width * height; ++i) {
+        for (uint32_t c = 0; c < channelCount; ++c) {
+            *pDst++ = *pSrc++;
         }
         pDst += (4 - channelCount);
     }
@@ -92,11 +112,6 @@ std::vector<float> convertToRGBA32Float(ResourceFormat format, uint32_t width, u
     if (type == FormatType::Float && channelBits == 16)
     {
         floatData = convertHalfToRGBA32Float(width, height, channelCount, pData);
-    }
-    else if (type == FormatType::Float && channelBits == 32 && channelCount == 3)
-    {
-        floatData = convertRGB32FloatToRGBA32Float(width, height, channelCount, pData);
-        return floatData;
     }
     else if (type == FormatType::Uint && channelBits == 16)
     {

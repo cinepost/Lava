@@ -200,9 +200,9 @@ Texture::SharedPtr TextureManager::createSparseTextureFromFile(std::shared_ptr<D
     }
     ResourceFormat texFormat = pLtxBitmap->getFormat();
 
-    //if (loadAsSrgb) {
-    //    texFormat = linearToSrgbFormat(texFormat);
-    //}
+    if (loadAsSrgb) {
+        texFormat = linearToSrgbFormat(texFormat);
+    }
 
     pTex = createSparseTexture2D(pDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, bindFlags);
     pTex->setSourceFilename(ltxFilename);
@@ -236,47 +236,41 @@ Texture::SharedPtr TextureManager::createSparseTextureFromFile(std::shared_ptr<D
         std::vector<uint8_t> tmpPageData;
         tmpPageData.resize(65536); // 64K page temp data
 
-        // allocate and fill pages
+        // allocate and bind pages
         
         for(auto& pPage: pTex->pages()) {
-            LOG_DBG("Mip level %u", pPage->mipLevel());
-            if(pPage->mipLevel() == 0) {
+            if(pPage->mipLevel() < 3)
                 pPage->allocate();
-                pTex->updateSparseBindInfo();
-
-                std::vector<uint8_t> bitmapData;
-                uint3 offset = pPage->offset();
-                uint3 extent = pPage->extent();
-                //pBitmap->readDataRegion({offset[0], offset[1]} ,{extent[0], extent[1]}, bitmapData);
+        }
+        pTex->updateSparseBindInfo();
+        
+        // fill pages
+        for(auto& pPage: pTex->pages()) {
+            LOG_DBG("Mip level %u", pPage->mipLevel());
+            if(pPage->mipLevel() < 3) {
                 pLtxBitmap->readPageData(pPage->index(), tmpPageData.data());
 
                 fillPage(pPage, tmpPageData.data());
             }
         }
-
-        if(pTex->isSparse()) pTex->updateSparseBindInfo();
     }
 
     return pTex;
 }
 
-const VirtualTexturePage::SharedPtr TextureManager::addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
+const VirtualTexturePage::SharedPtr TextureManager::addTexturePage(const Texture::SharedPtr pTexture,  uint32_t index, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
         assert(pTexture);
 
         //LOG_DBG("Creating VirtualTexturePage of size %zu, mipLevel: %u layer %u", size, mipLevel, layer);
 
-        auto pPage = VirtualTexturePage::create(mpDevice, pTexture);
+        auto pPage = VirtualTexturePage::create(mpDevice, pTexture, mipLevel, layer);
         if (!pPage) return nullptr;
 
         pPage->mOffset = {offset[0], offset[1], offset[2]};
         pPage->mExtent = {extent[0], extent[1], extent[2]};
         pPage->mDevMemSize = size;
-        pPage->mMipLevel = mipLevel;
-        pPage->mLayer = layer;
-        pPage->mIndex = static_cast<uint32_t>(mPages.size());
-        pPage->mImageMemoryBind = {};
-        pPage->mImageMemoryBind.offset = {offset[0], offset[1], offset[2]};
-        pPage->mImageMemoryBind.extent = {extent[0], extent[1], extent[2]};
+        pPage->mIndex = index;
+        pPage->mID = static_cast<uint32_t>(mPages.size());
         
         mPages.push_back(pPage);
         return mPages.back();

@@ -116,7 +116,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown);
 
     void readPageData (size_t pageNum, void *pData);
-    void readPagesData (std::vector<std::pair<size_t, void*>>& pages);
+    void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = true);
 
     friend class TextureManager;
 

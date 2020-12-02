@@ -28,11 +28,14 @@
 #include <algorithm>
 
 #include <OpenImageIO/imageio.h>
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
 
 #include "stdafx.h"
 #include "Bitmap.h"
 #include "LTX_Bitmap.h"
 #include "BitmapUtils.h"
+#include "LTX_BitmapUtils.h"
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/TextureManager.h"
@@ -188,6 +191,31 @@ static ResourceFormat getDestFormat(ResourceFormat format) {
     return format;
 }
 
+static uint3 getPageDims(ResourceFormat format) {
+    uint32_t channelCount = getFormatChannelCount(format);
+    uint32_t totalBits = 0;
+
+    for(uint i = 0; i < channelCount; i++) totalBits += getNumChannelBits(format, i);
+
+    switch(totalBits) {
+        case 8:
+            return {256, 256, 1};
+        case 16:
+            return {256, 128, 1};
+        case 32:
+            return {128, 128, 1};
+        case 64:
+            return {128, 64, 1};
+        case 128:
+            return {64, 64, 1};
+        default:
+            should_not_get_here();
+            break;
+    } 
+
+    return {0, 0, 0};
+}
+
 void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown) {
     auto in = oiio::ImageInput::open(srcFilename);
     if (!in) {
@@ -206,9 +234,33 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     LOG_WARN("Source ResourceFormat from OIIO: %s", to_string(srcFormat).c_str());
     auto dstFormat = getDestFormat(srcFormat);
 
-    uint3 pageDims = {64, 64, 1};  // test hardcode
+    uint3 pageDims = getPageDims(dstFormat);
     uint3 srcDims = {spec.width, spec.height, spec.depth};
+    uint3 dstDims = srcDims;
 
+    // check for image size is able to fin integer number of pages along each axis.
+    // if not we have to load the whole image and resize it to the appropriate size
+    int cx = (int)spec.width / pageDims.x;
+    int cy = (int)spec.height / pageDims.y;
+
+    int dx = spec.width % pageDims.x;
+    int dy = spec.height % pageDims.y;
+
+    oiio::ImageBuf srcBuff; // used when source resize/resample required. we use this to compute secont mip level and avoid double insterpolation
+    oiio::ImageBuf dstBuff; // used when source resize/resample required
+    bool doSourceResize = false;
+    if (dx != 0) dstDims.x = (cx + 1) * pageDims.x;
+    if (dy != 0) dstDims.y = (cy + 1) * pageDims.y;
+    if (srcDims != dstDims) {
+        doSourceResize = true;
+        LOG_WARN("Source image have to be resized !!!");
+
+        srcBuff = oiio::ImageBuf(srcFilename); 
+        oiio::ROI roi (0, dstDims.x, 0, dstDims.y, 0, 1, /*chans:*/ 0, srcBuff.nchannels());
+        dstBuff = oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi);
+    }
+
+    // check if we can read tiles natively
     bool canReadTiles = (spec.tile_width != 0 && spec.tile_height != 0) ? true : false; 
     LOG_WARN("OIIO can read tiles %s", canReadTiles ? "YES" : "NO");
 
@@ -217,65 +269,128 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     unsigned char magic[12];
     makeMagic(9, 8, &header.magic[0]);
 
-    header.width = srcDims[0];
-    header.height = srcDims[1];
-    header.depth = srcDims[2];
-    header.pageDims = {pageDims[0], pageDims[1], pageDims[2]};
+    header.width = dstDims.x;
+    header.height = dstDims.y;
+    header.depth = dstDims.z;
+    header.pageDims = {pageDims.x, pageDims.y, pageDims.z};
     header.pageDataSize = 65536;
     header.arrayLayersCount = 1;
-    header.mipLevelsCount = Texture::getMaxMipCount({srcDims[0], srcDims[1], srcDims[2]});
+    header.mipLevelsCount = Texture::getMaxMipCount({dstDims.x, dstDims.y, dstDims.z});
     header.format = dstFormat;//pBitmap->getFormat();
 
     // open file
     FILE *pFile = fopen(dstFilename.c_str(), "wb");
 
     // write header
+    uint mipLevelsCount = header.mipLevelsCount;
     fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
 
-    // first mip level naive copy
-    uint32_t pagesNumX = srcDims[0] / pageDims[0];
-    uint32_t pagesNumY = srcDims[1] / pageDims[1];
-    uint32_t pagesNumZ = srcDims[2] / pageDims[2];
-
-    size_t srcBytesPerPixel = spec.pixel_bytes(); // hardcode 4 bytes per pixel
-
+    // 
     uint32_t dstChannelCount = getFormatChannelCount(dstFormat);
     uint32_t dstChannelBits = getNumChannelBits(dstFormat, 0);
 
-    size_t tileWidthStride = pageDims[0] * dstChannelCount * dstChannelBits / 8;
-    size_t bufferWidthStride = srcDims[0] * srcBytesPerPixel;
+    size_t srcBytesPerPixel = spec.pixel_bytes();
+    size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
-    std::vector<unsigned char> tiles_buffer (spec.width * pageDims[1] * srcBytesPerPixel);
+    size_t tileWidthStride = pageDims.x * dstBytesPerPixel;
+    size_t bufferWidthStride = dstDims.x * srcBytesPerPixel;
+
+    std::vector<unsigned char> tiles_buffer (dstDims.x * pageDims.y * srcBytesPerPixel);
+    std::vector<unsigned char> mip_tiles_buffer;
+    if (mipLevelsCount > 1) {
+        mip_tiles_buffer.resize(dstDims.x * dstDims.y * dstBytesPerPixel / 4);
+    }
+
+    uint32_t pagesNumX = dstDims.x / pageDims.x;
+    uint32_t pagesNumY = dstDims.y / pageDims.y;
+    uint32_t pagesNumZ = dstDims.z / pageDims.z;
+
+    // write mip level 0
+    LOG_WARN("Writing mip level 0 tiles...");
 
     for(uint32_t z = 0; z < pagesNumZ; z++) {
         for(uint32_t tileIdxY = 0; tileIdxY < pagesNumY; tileIdxY++) {
-            int y_begin = tileIdxY * pageDims[1];
+            int y_begin = tileIdxY * pageDims.y;
             
-            in->read_scanlines(0, 0, y_begin, y_begin + pageDims[1], z, 0, spec.nchannels, spec.format, tiles_buffer.data());
+            if(!doSourceResize) {
+                in->read_scanlines(0, 0, y_begin, y_begin + pageDims.y, z, 0, spec.nchannels, spec.format, tiles_buffer.data());
+            } else {
+                oiio::ROI roi(0, dstDims.x, tileIdxY * pageDims.y, (tileIdxY + 1) * pageDims.y, 0, 1, /*chans:*/ 0, spec.nchannels);
+                dstBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+            }
 
-            unsigned char *pBufferData = tiles_buffer.data();
             if(srcFormat != dstFormat) {
-                auto convertedData = convertToRGBA32Float(srcFormat, spec.width, pageDims[1], pBufferData);
-                bufferWidthStride = srcDims[0] * dstChannelCount * dstChannelBits / 8;
+                convertToRGBA(srcFormat, dstFormat, dstDims.x, pageDims.y, tiles_buffer);
+                bufferWidthStride = dstDims.x * dstBytesPerPixel;
+            }
+            unsigned char *pBufferData = tiles_buffer.data();
 
-                LOG_WARN("Converted buffer size (bytes): %zu", convertedData.size() * 4);
-                LOG_WARN("Tile width stride: %zu", tileWidthStride);
-                LOG_WARN("Buffer width stride: %zu", bufferWidthStride);
-                pBufferData = static_cast<unsigned char*>(static_cast<void*>(convertedData.data()));
+            if(mipLevelsCount > 1) {
+                // resample(downscale) current tiles buffer and append it to mip_tiles_buffer
+                if(!doSourceResize) {
+                    oiio::ImageSpec mip_spec = spec;
+                    mip_spec.nchannels = dstChannelCount;
+                    // TODO:: add data offset !!!
+                    oiio::ImageBuf tmpBuff(mip_spec, mip_tiles_buffer.data());
+                } else {
+                    LOG_WARN("Scaling down %u tiles row", tileIdxY);
+                    // we use srcBuff here to avoid double interpolation
+                    size_t mipTilesBufferWidthStride = (dstDims.x / 2) * srcBytesPerPixel;
+                    size_t tilesRowOffset = tileIdxY * (pageDims.y / 2) * mipTilesBufferWidthStride;
+                    oiio::ROI roi(0, dstDims.x / 2, tileIdxY * pageDims.y / 2, (tileIdxY + 1) * pageDims.y / 2, 0, 1, /*chans:*/ 0, spec.nchannels);
+                    //oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, mip_tiles_buffer.data() + tilesRowOffset, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+                }
             }
 
             for(uint32_t tileIdxX = 0; tileIdxX < pagesNumX; tileIdxX++) {
                 
                 unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
 
-                for(uint32_t lineNum = 0; lineNum < pageDims[1]; lineNum++) {
-                    LOG_WARN("write tile %u line %u", tileIdxX, lineNum);
+                for(uint32_t lineNum = 0; lineNum < pageDims.y; lineNum++) {
+                    //LOG_WARN("write tile %u line %u", tileIdxX, lineNum);
                     fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
                     pTileData += bufferWidthStride;
                 }
             
             }
         }
+    }
+
+    // write mip levels 
+    pagesNumX /= 2;
+    pagesNumY /= 2;
+
+    if(srcFormat != dstFormat && doSourceResize) {
+        // convert mip tiles buffer to RGBA as we reused original srcBuff and thus source channels count
+        convertToRGBA(srcFormat, dstFormat, dstDims.x / 2, dstDims.y / 2, mip_tiles_buffer);
+    }
+
+    std::vector<unsigned char> _mip_tiles_buffer(dstDims.x * dstDims.y * dstBytesPerPixel / 4, 255);
+
+    for(uint8_t mipLevel = 1; mipLevel < mipLevelsCount; mipLevel++) {
+        LOG_WARN("Writing mip level %u tiles...", mipLevel);
+
+        size_t mipTilesBufferWidthStride = (dstDims.x / 2) * dstBytesPerPixel;
+
+        for(uint32_t z = 0; z < pagesNumZ; z++) {
+            for(uint32_t tileIdxY = 0; tileIdxY < pagesNumY; tileIdxY++) {
+
+                unsigned char *pBufferData = _mip_tiles_buffer.data() + mipTilesBufferWidthStride * pageDims.y * tileIdxY;
+
+                for(uint32_t tileIdxX = 0; tileIdxX < pagesNumX; tileIdxX++) {
+                    
+                    unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
+
+                    for(uint32_t lineNum = 0; lineNum < pageDims.y; lineNum++) {
+                        //LOG_WARN("write tile %u line %u", tileIdxX, lineNum);
+                        fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
+                        pTileData += mipTilesBufferWidthStride;
+                    }
+                }
+            }
+        }
+        pagesNumX /= 2;
+        pagesNumY /= 2;
     }
 
     fclose(pFile);
@@ -289,12 +404,14 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData) {
     mpFile = nullptr;
 }
 
-void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages) {
+void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) {
     mpFile = fopen(mFilename.c_str(), "rb");
 
-    std::sort (pages.begin(), pages.end(), [](std::pair<size_t, void*> a, std::pair<size_t, void*> b) {
-        return a.first < b.first;   
-    });
+    if (unsorted) {
+        std::sort (pages.begin(), pages.end(), [](std::pair<size_t, void*> a, std::pair<size_t, void*> b) {
+            return a.first < b.first;   
+        });
+    }
 
     for(auto& page: pages) {
         fseek(mpFile, kLtxHeaderOffset + page.first * mHeader.pageDataSize, SEEK_SET);

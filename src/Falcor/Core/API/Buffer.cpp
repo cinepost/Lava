@@ -60,7 +60,7 @@ size_t getBufferDataAlignment(const Buffer* pBuffer);
 void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size);
 
 Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess): Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess) {
-    LOG_DBG("Create buffer %zu bindFlags %s", id(), to_string(bindFlags).c_str());
+    //LOG_DBG("Create buffer %zu bindFlags %s", id(), to_string(bindFlags).c_str());
 }
 
 Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {

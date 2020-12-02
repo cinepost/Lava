@@ -155,7 +155,8 @@ namespace Falcor {
         // Update list of memory-backed sparse image memory binds
         mSparseImageMemoryBinds.clear();
         for (auto pPage : mPages) {
-            mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
+            if ( pPage->isResident())
+                mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
         }
 
         // Update sparse bind info
@@ -191,28 +192,6 @@ namespace Falcor {
         
         //todo: use sparse bind semaphore
         vkQueueWaitIdle(queue);
-    }
-
-    VirtualTexturePage::SharedPtr Texture::addPage(int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer) {
-        if (!mIsSparse) return nullptr;
-
-        LOG_DBG("Creating VirtualTexturePage of size %zu, mipLevel: %u layer %u", size, mipLevel, layer);
-
-        auto newPage = VirtualTexturePage::create(mpDevice, shared_from_this());
-        if (!newPage) return nullptr;
-
-        newPage->mOffset = {offset[0], offset[1], offset[2]};
-        newPage->mExtent = {extent[0], extent[1], extent[2]};
-        newPage->mDevMemSize = size;
-        newPage->mMipLevel = mipLevel;
-        newPage->mLayer = layer;
-        newPage->mIndex = static_cast<uint32_t>(mPages.size());
-        newPage->mImageMemoryBind = {};
-        newPage->mImageMemoryBind.offset = {offset[0], offset[1], offset[2]};
-        newPage->mImageMemoryBind.extent = {extent[0], extent[1], extent[2]};
-        
-        mPages.push_back(newPage);
-        return mPages.back();
     }
 
     size_t Texture::getTextureSizeInBytes() {
@@ -358,11 +337,6 @@ namespace Falcor {
                     extent.height = std::max(imageCreateInfo.extent.height >> mipLevel, 1u);
                     extent.depth = std::max(imageCreateInfo.extent.depth >> mipLevel, 1u);
 
-                    VkImageSubresource subResource{};
-                    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    subResource.mipLevel = mipLevel;
-                    subResource.arrayLayer = layer;
-
                     // Aligned sizes by image granularity
                     VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;
                     glm::uvec3 sparseBindCounts = alignedDivision(extent, imageGranularity);
@@ -388,9 +362,7 @@ namespace Falcor {
                                 extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
                                 // Add new virtual page
-                                VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
-                                pPage->mIndex = index;
-                                pPage->mImageMemoryBind.subresource = subResource;
+                                VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), index, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
                                 mPages.push_back(pPage);
 
                                 index++;
@@ -443,15 +415,6 @@ namespace Falcor {
 
             // Prepare bind sparse info for reuse in queue submission
             updateSparseBindInfo();
-
-            // Bind to queue
-            //auto queue = mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0);
-
-            // todo: in draw?
-            //vkQueueBindSparse(queue, 1, &mBindSparseInfo, VK_NULL_HANDLE);
-            //todo: use sparse bind semaphore
-            //vkQueueWaitIdle(queue);
-
         }
 
         // Allocate the GPU memory        

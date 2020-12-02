@@ -1,6 +1,3 @@
-//#extension GL_ARB_sparse_texture2 : enable
-//#extension GL_ARB_sparse_texture_clamp : enable
-
 import Scene.Raster;
 import Scene.Shading;
 import Utils.Helpers;
@@ -13,30 +10,24 @@ cbuffer PerFrameCB {
 
 static int lodBase[8] = { 0, 1, 5, 21, 85, 341, 1365, 5461};
 
-/*
-static float4 dbgColors[16] = {
-    {1, 0, 0, 1},
-    float4(0, 1, 0, 1),
-    float4(0, 0, 1, 1),
-    float4(1, 1, 0, 1),
-    
-    float4(0, 1, 1, 1),
-    float4(1, 0, 1, 1),
-
-    float4(1, 0.5, 0, 1),
-    float4(0.5, 1, 0, 1),
-    
-    float4(0, 0.5, 1, 1),
-    float4(1, 1, 0.5, 1),
-    float4(0.5, 1, 1, 1),
-    float4(1, 0.5, 1, 1),
-
-    float4(0, 0.5, 0, 1),
-    float4(0, 0, 0.5, 1),
-    float4(0.5, 0, 0, 1),
-    float4(0.5, 0.5, 0.5, 1)
+static const float4 dbgColors[16] = {
+        {1, 0, 0, 1},
+        {0, 1, 0, 1},
+        {0, 0, 1, 1},
+        {1, 1, 0, 1},
+        {0, 1, 1, 1},
+        {1, 0, 1, 1},
+        {1, 0.5, 0, 1},
+        {0.5, 1, 0, 1},
+        {0, 0.5, 1, 1},
+        {1, 1, 0.5, 1},
+        {0.5, 1, 1, 1},
+        {1, 0.5, 1, 1},
+        {0, 0.5, 0, 1},
+        {0, 0, 0.5, 1},
+        {0.5, 0, 0, 1},
+        {0.5, 0.5, 0.5, 1}
 };
-*/
 
 SamplerState gSampler;
 
@@ -63,25 +54,6 @@ uint divMod(int x, int y) {
 };
 
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
-
-    const float4 dbgColors[16] = {
-        {1, 0, 0, 1},
-        {0, 1, 0, 1},
-        {0, 0, 1, 1},
-        {1, 1, 0, 1},
-        {0, 1, 1, 1},
-        {1, 0, 1, 1},
-        {1, 0.5, 0, 1},
-        {0.5, 1, 0, 1},
-        {0, 0.5, 1, 1},
-        {1, 1, 0.5, 1},
-        {0.5, 1, 1, 1},
-        {1, 0.5, 1, 1},
-        {0, 0.5, 0, 1},
-        {0, 0, 0.5, 1},
-        {0.5, 0, 0, 1},
-        {0.5, 0.5, 0.5, 1}
-    };
 
     PsOut psOut;
     

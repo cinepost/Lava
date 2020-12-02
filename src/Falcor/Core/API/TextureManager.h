@@ -44,7 +44,7 @@ class dlldecl TextureManager {
     Texture::SharedPtr createTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
     Texture::SharedPtr createSparseTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource, bool compress = true);
 
-    const VirtualTexturePage::SharedPtr addTexturePage(const Texture::SharedPtr pTexture, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
+    const VirtualTexturePage::SharedPtr addTexturePage(const Texture::SharedPtr pTexture, uint32_t index, int3 offset, uint3 extent, const uint64_t size, const uint32_t mipLevel, uint32_t layer);
 
     const std::string& getCacheDirPath() const { return mDesc.cacheDir; } 
     void printStats();
