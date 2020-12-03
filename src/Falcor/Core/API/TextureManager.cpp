@@ -233,9 +233,7 @@ Texture::SharedPtr TextureManager::createSparseTextureFromFile(std::shared_ptr<D
     if (pTex != nullptr) {
         mLoadedTexturesMap[ltxFilename] = pTex;
 
-        std::vector<uint8_t> tmpPageData;
-        tmpPageData.resize(65536); // 64K page temp data
-
+        std::vector<uint8_t> tmpPageData(65536); // 64K page temp data
         // allocate and bind pages
         
         for(auto& pPage: pTex->pages()) {

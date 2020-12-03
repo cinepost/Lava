@@ -327,6 +327,7 @@ namespace Falcor {
 
             auto& textureManager = TextureManager::instance();
 
+            uint32_t pageIndex = 0;
             // Sparse bindings for each mip level of all layers outside of the mip tail
             for (uint32_t layer = 0; layer < mArraySize; layer++) {
 
@@ -345,8 +346,9 @@ namespace Falcor {
                     lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
                     lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
 
+                    LOG_WARN("apiInit mip level %u sparse binds count: %u %u %u", mipLevel, sparseBindCounts.x, sparseBindCounts.y, sparseBindCounts.z);
+
                     // @todo: Comment
-                    uint32_t index = 0;
                     for (uint32_t z = 0; z < sparseBindCounts.z; z++) {
                         for (uint32_t y = 0; y < sparseBindCounts.y; y++) {
                             for (uint32_t x = 0; x < sparseBindCounts.x; x++) {
@@ -362,10 +364,12 @@ namespace Falcor {
                                 extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
                                 // Add new virtual page
-                                VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), index, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
+                                VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), pageIndex, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
                                 mPages.push_back(pPage);
 
-                                index++;
+                                LOG_WARN("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
+
+                                pageIndex++;
                             }
                         }
                     }

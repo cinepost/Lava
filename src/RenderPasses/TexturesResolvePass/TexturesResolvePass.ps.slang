@@ -94,6 +94,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     //psOut.debugColor = float4(vOut.texC.y, 0, 0, 1);
 
     psOut.debugColor = float4( materialResources.baseColor.Sample(gSampler, vOut.texC).rgb, 1);
+    //psOut.debugColor = float4( materialResources.baseColor.SampleLevel(gSampler, vOut.texC, 0).rgb, 1);
 
     float4 sp_color = float4(0, 0, 0, 0);
     float inLodBias = 0.0;
