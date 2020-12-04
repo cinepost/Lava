@@ -319,6 +319,16 @@ namespace Falcor {
 
             mSparseImageMemoryRequirements = sparseMemoryReq;
 
+            mSparsePageRes = {
+                sparseMemoryReq.formatProperties.imageGranularity.width,
+                sparseMemoryReq.formatProperties.imageGranularity.width,
+                sparseMemoryReq.formatProperties.imageGranularity.width
+            };
+
+            LOG_DBG("!!!!!!!!!!!!");
+            LOG_WARN("mSparsePageRes %u %u %u", mSparsePageRes.x, mSparsePageRes.y, mSparsePageRes.z);
+            LOG_DBG("!!!!!!!!!!!!");
+
             // The mip tail contains all mip levels > sparseMemoryReq.imageMipTailFirstLod
             // Check if the format has a single mip tail for all layers or one mip tail for each layer
             // @todo: Comment
@@ -337,6 +347,8 @@ namespace Falcor {
                     extent.width = std::max(imageCreateInfo.extent.width >> mipLevel, 1u);
                     extent.height = std::max(imageCreateInfo.extent.height >> mipLevel, 1u);
                     extent.depth = std::max(imageCreateInfo.extent.depth >> mipLevel, 1u);
+
+
 
                     // Aligned sizes by image granularity
                     VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "TexturesResolvePass.h"
 
 #include "Falcor/Utils/Debug/debug.h"
@@ -97,22 +98,7 @@ void TexturesResolvePass::initResources() {
 }
 */
 void TexturesResolvePass::updateTexturesResolveData() {
-    if(!mpTexResolveDataBuffer) return;
-
-    auto materialCount = mpScene->getMaterialCount();
-
-    for( uint32_t m_i = 0; m_i < materialCount; m_i++ ) {
-        auto pMaterial =  mpScene->getMaterial(m_i);
-
-        TexturesResolveData texResolveData = {};
-
-        for( uint32_t t_i = 0; t_i < MAX_VTEX_COUNT_PER_MATERIAL; t_i++) {
-            auto &texData = texResolveData.virtualTextures[t_i];
-            texData.testColor = {1, 0, 0, 1};
-        }
-
-        mpTexResolveDataBuffer->setElement(m_i, texResolveData);
-    }
+ 
 }
 
 void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -150,8 +136,53 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
     //pContext->clearUAVCounter(mpTexResolveDataBuffer, 0);
 
+    std::vector<MaterialResolveData> materialsResolveBuffer;
+    if (mpScene) {
+        uint32_t materialsCount = mpScene->getMaterialCount();
+
+        for( uint32_t m_i = 0; m_i < materialsCount; m_i++ ) {
+            auto pMaterial =  mpScene->getMaterial(m_i);
+            auto materialResources = pMaterial->getResources();
+
+            std::vector<Texture::SharedPtr> materialTextures;
+
+            if(materialResources.baseColor) {
+                if (materialResources.baseColor->isSparse()) {
+                    materialTextures.push_back(materialResources.baseColor);
+                }
+            }
+
+            MaterialResolveData materialResolveData = {};
+
+            size_t virtualTexturesCount = std::min((size_t)MAX_VTEX_COUNT_PER_MATERIAL, materialTextures.size());
+            materialResolveData.virtualTexturesCount = virtualTexturesCount;
+            for( size_t t_i = 0; t_i < virtualTexturesCount; t_i++) {
+                auto &textureData = materialResolveData.virtualTextures[t_i];
+                auto &pTexture = materialTextures[t_i];
+
+                textureData.textureID = pTexture->id();
+                textureData.width = pTexture->getWidth();
+                textureData.height = pTexture->getHeight();
+                textureData.mipLevelsCount = pTexture->getMipCount();
+
+                auto pageRes = pTexture->getSparsePageRes();
+                textureData.pageSizeW = pageRes.x;
+                textureData.pageSizeH = pageRes.y;
+                textureData.pageSizeD = pageRes.z;
+                
+                textureData.testColor = {1, 0, 0, 1};
+            }
+
+            materialsResolveBuffer.push_back(materialResolveData);
+        }
+
+        auto buffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
+        mpVars->setBuffer("materialsResolveData", buffer);
+    }
+
     if (mpScene) {
         mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+        mpVars["PerFrameCB"]["materialsResolveDataSize"] = materialsResolveBuffer.size();
         mpScene->render(pContext, mpState.get(), mpVars.get());
     }
 }

@@ -2,18 +2,26 @@
 
 #define MAX_VTEX_COUNT_PER_MATERIAL 16
 
+// Basic virtual texture data needed
 struct VirtualTextureData {
     uint    textureID;
     uint    width;
     uint    height;
-    uint    lodLevels;
+    uint    mipLevelsCount;
 
     float4  testColor = float4(1, 1, 1, 1);
 
     uint    pageSizeW;
     uint    pageSizeH;    
+    uint    pageSizeD;
+    uint    uvSetID;
 };
 
-struct TexturesResolveData {
+// Array of virtual textures that needs to be resolved
+struct MaterialResolveData {
     VirtualTextureData virtualTextures[MAX_VTEX_COUNT_PER_MATERIAL];     // max virtual textures per material
+    uint virtualTexturesCount = 0;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
 };

@@ -283,6 +283,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     static uint8_t getMaxMipCount(const uint3& size);
 
+    uint3 getSparsePageRes() const { return mSparsePageRes; }
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 
@@ -303,7 +305,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     ResourceFormat mFormat = ResourceFormat::Unknown;
 
     bool mIsSparse = false;
-    int3 mSparsePageRes = int3(0);
+    uint3 mSparsePageRes = int3(0);
     std::atomic<size_t> mSparseResidentMemSize = 0;
 
     MipTailInfo mMipTailInfo;
