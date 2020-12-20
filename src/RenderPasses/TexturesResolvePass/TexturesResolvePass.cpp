@@ -2,6 +2,7 @@
 #include "TexturesResolvePass.h"
 
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -17,11 +18,10 @@ const char* TexturesResolvePass::kDesc = "Creates a depth-buffer using the scene
 namespace {
     const std::string kProgramFile = "RenderPasses/TexturesResolvePass/TexturesResolvePass.ps.slang";
 
-    const std::string kTileData = "tileData";
+    const std::string kDepth = "depth";
     const std::string kDebugColor = "debugColor";
 
     const std::string kTexResolveData = "gTexResolveData";
-
     const std::string kParameterBlockName = "gResolveData";
 
 }  // namespace
@@ -43,27 +43,19 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
 
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(pDevice, desc);
+    mpProgram = GraphicsProgram::create(pDevice, desc);
 
-    mpState = GraphicsState::create(pDevice);
-    mpState->setProgram(pProgram);
     mpFbo = Fbo::create(pDevice);
 
-    //mpTexResolveDataBuffer = Buffer::createStructured(pDevice, pProgram.get(), "gTexResolveData", 256);
-    //mpTexResolveDataBuffer = Buffer::createStructured(pDevice, sizeof(TexturesResolveData), 256);
-    
-    //ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
-    //assert(pReflection);
+    mpState = GraphicsState::create(pDevice);
 
-    //mpDataBlock = ParameterBlock::create(pDevice, pReflection);
+    DepthStencilState::Desc dsDesc;
+    dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+    //dsDesc.setDepthWriteMask(false).setDepthEnabled(true).setDepthFunc(DepthStencilState::Func::Never);
+    mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
+    mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
-    // Allocate GPU buffers.
-    //LOG_WARN("Create structured buffer");    
-    //mpTexResolveDataBuffer = Buffer::createStructured(pDevice, mpDataBlock["texData"], 256, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    //mpTexResolveDataBuffer->setName("TexturesResolvePass::mpTexResolveDataBuffer");
-    //if (mpTexResolveDataBuffer->getStructSize() != sizeof(TexturesResolveData)) throw std::runtime_error("Struct TexturesResolveData size mismatch between CPU/GPU");
-    //LOG_WARN("Structured buffer created");
-
+    mpState->setProgram(mpProgram);
 
     parseDictionary(dict);
 }
@@ -71,32 +63,11 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    //reflector.addOutput(kTileData, "TileData-buffer").format(mTileDataFormat).texture2D(0, 0, 0);
     reflector.addOutput(kDebugColor, "DebugColor-buffer").format(mTileDataDebugFormat).texture2D(0, 0, 0);
+    auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }
-/*
-void TexturesResolvePass::initResources() {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main", getSceneDefines());
-    ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
-    assert(pReflection);
 
-    mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);
-    mpMeshesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMeshesBuffer->setName("Scene::mpMeshesBuffer");
-    mpMeshInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMeshInstancesBuffer->setName("Scene::mpMeshInstancesBuffer");
-
-    mpMaterialsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMaterialsBuffer->setName("Scene::mpMaterialsBuffer");
-
-    if (mLights.size())
-    {
-        mpLightsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpLightsBuffer->setName("Scene::mpLightsBuffer");
-    }
-}
-*/
 void TexturesResolvePass::updateTexturesResolveData() {
  
 }
@@ -111,13 +82,13 @@ void TexturesResolvePass::setScene(RenderContext* pRenderContext, const Scene::S
 }
 
 void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& renderData) {
-    mpState->setDepthStencilState(nullptr);
-  
-    if (mpFbo->getDepthStencilTexture() == nullptr) {
-        auto pDepth = Texture::create2D(pContext->device(), 1920, 1080, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
-        mpFbo->attachDepthStencilTarget(pDepth);
+    const auto& pDepth = renderData[kDepth]->asTexture();
 
-        pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
+    if (pDepth) {
+        mpState->setDepthStencilState(mpDsNoDepthWrite);
+        mpFbo->attachDepthStencilTarget(pDepth);
+    } else {
+        LOG_WARN("No required depth channel provided !!!");
     }
 }
 
@@ -125,66 +96,156 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
     initDepth(pContext, renderData);
 
-    const auto& pTileData = renderData[kTileData]->asTexture();
     const auto& pDebugData = renderData[kDebugColor]->asTexture();
-    mpFbo->attachColorTarget(pTileData, 0);
-    mpFbo->attachColorTarget(pDebugData, 1);
+    mpFbo->attachColorTarget(pDebugData, 0);
 
     mpState->setFbo(mpFbo);
-    //pContext->clearRtv(pTileData->getRTV().get(), {0, 0, 0, 0});
-    pContext->clearRtv(pDebugData->getRTV().get(), {0, 0, 0, 0});
+    pContext->clearRtv(pDebugData->getRTV().get(), {0, 1.0, 0, 0});
 
-    //pContext->clearUAVCounter(mpTexResolveDataBuffer, 0);
+    if (!mpScene)
+        return;
+
+    uint32_t totalPagesToUpdateCount = 0;
+    uint32_t currPagesStartOffset = 0;
+    uint32_t currTextureResolveID = 0; // texture id used to identify texture inside pass. always starts from 0.
 
     std::vector<MaterialResolveData> materialsResolveBuffer;
-    if (mpScene) {
-        uint32_t materialsCount = mpScene->getMaterialCount();
+    std::map<uint32_t, Texture::SharedPtr> texturesMap; // maps real texture ID to textures
 
-        for( uint32_t m_i = 0; m_i < materialsCount; m_i++ ) {
-            auto pMaterial =  mpScene->getMaterial(m_i);
-            auto materialResources = pMaterial->getResources();
+    uint32_t materialsCount = mpScene->getMaterialCount();
 
-            std::vector<Texture::SharedPtr> materialTextures;
+    for( uint32_t m_i = 0; m_i < materialsCount; m_i++ ) {
+        auto pMaterial =  mpScene->getMaterial(m_i);
+        auto materialResources = pMaterial->getResources();
 
-            if(materialResources.baseColor) {
-                if (materialResources.baseColor->isSparse()) {
-                    materialTextures.push_back(materialResources.baseColor);
-                }
+        std::vector<Texture::SharedPtr> materialSparseTextures;
+
+        if(materialResources.baseColor) {
+            if (materialResources.baseColor->isSparse()) {
+                materialSparseTextures.push_back(materialResources.baseColor);
             }
-
-            MaterialResolveData materialResolveData = {};
-
-            size_t virtualTexturesCount = std::min((size_t)MAX_VTEX_COUNT_PER_MATERIAL, materialTextures.size());
-            materialResolveData.virtualTexturesCount = virtualTexturesCount;
-            for( size_t t_i = 0; t_i < virtualTexturesCount; t_i++) {
-                auto &textureData = materialResolveData.virtualTextures[t_i];
-                auto &pTexture = materialTextures[t_i];
-
-                textureData.textureID = pTexture->id();
-                textureData.width = pTexture->getWidth();
-                textureData.height = pTexture->getHeight();
-                textureData.mipLevelsCount = pTexture->getMipCount();
-
-                auto pageRes = pTexture->getSparsePageRes();
-                textureData.pageSizeW = pageRes.x;
-                textureData.pageSizeH = pageRes.y;
-                textureData.pageSizeD = pageRes.z;
-                
-                textureData.testColor = {1, 0, 0, 1};
-            }
-
-            materialsResolveBuffer.push_back(materialResolveData);
         }
 
-        auto buffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
-        mpVars->setBuffer("materialsResolveData", buffer);
+        if(materialResources.specular) {
+            if (materialResources.specular->isSparse()) {
+                materialSparseTextures.push_back(materialResources.specular);
+            }
+        }
+
+        if(materialResources.normalMap) {
+            if (materialResources.normalMap->isSparse()) {
+                materialSparseTextures.push_back(materialResources.normalMap);
+            }
+        }
+
+        MaterialResolveData materialResolveData = {};
+
+        size_t virtualTexturesCount = std::min((size_t)MAX_VTEX_PER_MATERIAL_COUNT, materialSparseTextures.size());
+        materialResolveData.virtualTexturesCount = virtualTexturesCount;
+        
+        // pre-fill some data
+        for( size_t t_i = 0; t_i < static_cast<size_t>(MAX_VTEX_PER_MATERIAL_COUNT); t_i++)
+            materialResolveData.virtualTextures[t_i].empty = true;
+
+        // fill data for active(used) textures
+        for( size_t t_i = 0; t_i < virtualTexturesCount; t_i++) {
+            auto &pTexture = materialSparseTextures[t_i];
+            uint32_t textureID = pTexture->id();
+                
+            auto &textureData = materialResolveData.virtualTextures[t_i];
+
+            textureData.empty = false;
+            textureData.textureID = textureID;
+            textureData.textureResolveID = currTextureResolveID;
+            textureData.width = pTexture->getWidth();
+            textureData.height = pTexture->getHeight();
+            textureData.mipLevelsCount = pTexture->getMipCount();
+            textureData.mipTailStart = pTexture->getMipTailStart();
+            textureData.pagesStartOffset = currPagesStartOffset;
+
+            auto pageRes = pTexture->getSparsePageRes();
+            textureData.pageSizeW = pageRes.x;
+            textureData.pageSizeH = pageRes.y;
+            textureData.pageSizeD = pageRes.z;
+            
+            auto const& mipBases = pTexture->getMipBases();
+
+            memcpy(&textureData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
+
+            // Check if this sparse texture data not stored for resolving
+            if (texturesMap.find(textureID) == texturesMap.end() ) {
+                currTextureResolveID++;
+                currPagesStartOffset += pTexture->getSparsePagesCount();
+                texturesMap[textureID] = pTexture;
+            }
+            
+            // debug info
+            LOG_WARN("Texture id: %u pages offset: %u width: %u height: %u", textureData.textureID, textureData.pagesStartOffset, textureData.width, textureData.height);
+            std::cout << "Mip bases : \n";
+            for( uint i = 0; i < 16; i++) std::cout << mipBases[i] << " ";
+            std::cout << "\n";
+        }
+
+        materialsResolveBuffer.push_back(materialResolveData);
     }
 
-    if (mpScene) {
-        mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-        mpVars["PerFrameCB"]["materialsResolveDataSize"] = materialsResolveBuffer.size();
-        mpScene->render(pContext, mpState.get(), mpVars.get());
+    totalPagesToUpdateCount = currPagesStartOffset;
+
+    auto pDataToResolveBuffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
+    mpVars->setBuffer("materialsResolveData", pDataToResolveBuffer);
+
+    uint32_t resolvedTexturesCount = currTextureResolveID;
+
+    LOG_WARN("Total pages to update for %u textures is %u", resolvedTexturesCount, totalPagesToUpdateCount);
+
+    std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount);
+    std::fill(pagesInitDataBuffer.begin(), pagesInitDataBuffer.end(), 0);
+
+    auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
+    mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
+
+    mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+    mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
+    mpVars["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
+
+    LOG_WARN("%u textures needs to be resolved", resolvedTexturesCount);
+
+    mpScene->render(pContext, mpState.get(), mpVars.get());
+    //pContext->flush(true);
+
+    // Test resolved data
+    const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
+
+    std::cout << "Page ids: \n";
+    for( uint32_t i = 0; i < totalPagesToUpdateCount; i++) {
+        std::cout << static_cast<int16_t>(pOutPagesData[i]) << " ";
     }
+    std::cout << "\n\n";
+
+    // test count pages
+    std::vector<int8_t> page_flags(pOutPagesData, pOutPagesData + sizeof(int8_t) * totalPagesToUpdateCount);
+    uint32_t pagesToLoadCount = std::count(page_flags.begin(), page_flags.end(), 1);
+    LOG_WARN("%u pages needs to be loaded", pagesToLoadCount);
+
+    // test load pages
+    uint32_t pagesStartOffset = 0;
+    for (auto const& [textureID, pTexture] :texturesMap) {
+        uint32_t texturePagesCount = pTexture->getSparsePagesCount();
+        LOG_DBG("Analyzing %u pages for texture %u", texturePagesCount, textureID);
+
+        std::vector<uint32_t> pageIDs;
+
+        // index 'i' is a page index relative to the texture. starts with 0
+        for(uint32_t i = 0; i < texturePagesCount; i++) {
+
+            if (pOutPagesData[i + pagesStartOffset] == 1)
+            pageIDs.push_back(i + pagesStartOffset);
+        }
+        SparseResourceManager::instance().loadPages(pTexture, pageIDs); 
+
+        pagesStartOffset += texturePagesCount;
+    }
+
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

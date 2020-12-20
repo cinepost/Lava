@@ -19,6 +19,7 @@
 namespace po = boost::program_options;
 
 #include "Falcor/Core/API/DeviceManager.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
@@ -74,6 +75,7 @@ int main(int argc, char** argv){
     int gpuID = -1; // automatic gpu selection
     int verbose_level = 6;
     bool echo_input = true;
+    bool vtoff_flag = false; // virtual texturing enabled by default
 
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
@@ -96,6 +98,7 @@ int main(int argc, char** argv){
     po::options_description config("Configuration");
     config.add_options()
         ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
+        ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
         ("include-path,I", po::value< std::vector<std::string> >()->composing(), "Include path")
         ;
 
@@ -159,6 +162,9 @@ int main(int argc, char** argv){
 
     Falcor::DeviceManager::instance().setDefaultRenderingDevice(gpuID);
     Renderer::UniquePtr pRenderer = Renderer::create(gpuID);
+
+    if(vtoff_flag)
+      SparseResourceManager::instance().setVirtualTexturingEnabled(false);
 
     if(!pRenderer->init()) {
       exit(EXIT_FAILURE);

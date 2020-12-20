@@ -451,8 +451,7 @@ SlangCompileRequest* Program::createSlangCompileRequest(const DefineList&   defi
     mFileTimeMap.clear();
 
     SlangCompileRequest* pSlangRequest = nullptr;
-    pSlangSession->createCompileRequest(
-        &pSlangRequest);
+    pSlangSession->createCompileRequest(&pSlangRequest);
     assert(pSlangRequest);
 
     // Enable/disable intermediates dump

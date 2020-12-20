@@ -234,7 +234,6 @@ namespace Falcor {
         size_t dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
 
         pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
-        //pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, Buffer::CpuAccess::None, pData);
 
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
 
@@ -243,7 +242,7 @@ namespace Falcor {
         resourceBarrier(pStaging.get(), Resource::State::CopySource);
         vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     
-        flush(false);
+        //flush(false);
     }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {

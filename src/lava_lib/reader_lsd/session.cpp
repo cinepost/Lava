@@ -372,6 +372,9 @@ bool Session::cmdEnd() {
 			if( pGeo->isInline()) {
 				pGeo->bgeo().printSummary(std::cout);
 				pushBgeo(pGeo->detailName(), pGeo->bgeo());
+			} else {
+				pGeo->bgeo().printSummary(std::cout);
+				pushBgeo(pGeo->detailName(), pGeo->bgeo());
 			}
 			break;
 		case ast::Style::OBJECT:

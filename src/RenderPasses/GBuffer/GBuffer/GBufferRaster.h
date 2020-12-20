@@ -44,6 +44,7 @@ class GBufferRaster : public GBuffer {
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
+    void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     std::string getDesc(void) override { return kDesc; }

@@ -222,7 +222,8 @@ ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t
         return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
     };
 
-    updateSparseBindInfo();
+    if(mIsSparse)
+        updateSparseBindInfo();
 
     return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
@@ -304,6 +305,7 @@ void Texture::generateMips(RenderContext* pContext) {
 
     if (mIsSparse) {
         logWarning("Texture::generateMips() does not work with sparse textures !!!");
+        return;
     }
 
     // #OPTME: should blit support arrays?
@@ -322,6 +324,11 @@ void Texture::generateMips(RenderContext* pContext) {
         mRtvs.clear();
         mReleaseRtvsAfterGenMips = false;
     }
+}
+
+uint32_t Texture::getMipTailStart() const { 
+    assert(mIsSparse);
+    return mMipTailStart; 
 }
 
 uint8_t Texture::getMaxMipCount(const uint3& size) {

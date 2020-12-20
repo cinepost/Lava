@@ -31,7 +31,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Resource.h"
-#include "Falcor/Core/API/TextureManager.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 
 #include "Falcor/Core/API/Vulkan/VKDevice.h"
 
@@ -335,13 +335,14 @@ namespace Falcor {
             mMipTailInfo.singleMipTail = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
             mMipTailInfo.alignedMipSize = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
 
-            auto& textureManager = TextureManager::instance();
+            auto& sparseResourceManager = SparseResourceManager::instance();
 
             uint32_t pageIndex = 0;
             // Sparse bindings for each mip level of all layers outside of the mip tail
             for (uint32_t layer = 0; layer < mArraySize; layer++) {
 
                 // sparseMemoryReq.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
+                uint32_t currentMipBase = 0;
                 for (uint32_t mipLevel = 0; mipLevel < sparseMemoryReq.imageMipTailFirstLod; mipLevel++) {
                     VkExtent3D extent;
                     extent.width = std::max(imageCreateInfo.extent.width >> mipLevel, 1u);
@@ -376,7 +377,7 @@ namespace Falcor {
                                 extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
                                 // Add new virtual page
-                                VirtualTexturePage::SharedPtr pPage = textureManager.addTexturePage(shared_from_this(), pageIndex, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
+                                VirtualTexturePage::SharedPtr pPage = sparseResourceManager.addTexturePage(shared_from_this(), pageIndex, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
                                 mPages.push_back(pPage);
 
                                 LOG_WARN("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
@@ -385,6 +386,10 @@ namespace Falcor {
                             }
                         }
                     }
+                    mMipBases[mipLevel] = currentMipBase;
+                    
+                    mSparsePagesCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
+                    currentMipBase = mSparsePagesCount;
                 }
 
                 // @todo: proper comment
@@ -411,6 +416,8 @@ namespace Falcor {
                     sparseMemoryBind.memory = deviceMemory;
 
                     mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+
+                    mSparsePagesCount += 1;
                 }
             } // end layers and mips
 

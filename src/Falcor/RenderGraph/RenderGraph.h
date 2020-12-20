@@ -105,6 +105,14 @@ class Device;
         */
         void execute(RenderContext* pContext);
 
+        /** Resolves graph's per frame sparse resources
+        */
+        void resolvePerFrameSparseResources(RenderContext* pContext);
+
+        /** Resolves graph's per sample sparse resources
+        */
+        void resolvePerSampleSparseResources(RenderContext* pContext);
+
         /** Update graph based on another graph's topology
         */
         void update(const SharedPtr& pGraph);

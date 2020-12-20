@@ -10,6 +10,8 @@
 #include "compression.h"
 #include "ReadError.h"
 
+#define HVERSION_MAJOR 17
+
 namespace ika {
 namespace bgeo {
 namespace parser {

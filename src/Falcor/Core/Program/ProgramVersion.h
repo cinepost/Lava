@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+#define SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+
 #include "Core/Program/ProgramReflection.h"
 #include "Core/API/Shader.h"
 #include "Core/API/RootSignature.h"
@@ -261,4 +263,7 @@ namespace Falcor {
         // Cached version of compiled kernels for this program version
         mutable std::unordered_map<std::string, ProgramKernels::SharedPtr> mpKernels;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_

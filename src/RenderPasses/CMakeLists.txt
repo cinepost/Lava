@@ -128,6 +128,6 @@ makeRenderPassLib(NAME "BSDFViewer")
 #makeRenderPassLib(NAME "SVGFPass")
 
 # Render passes with dependecies
-makeRenderPassLib(NAME "GBuffer" DEPS DepthPass)
+makeRenderPassLib(NAME "GBuffer" DEPS DepthPass TexturesResolvePass)
 #makeRenderPassLib(NAME "SSAO" DEPS Utils)
 makeRenderPassLib(NAME "CSM" DEPS Utils)

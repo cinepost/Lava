@@ -362,7 +362,6 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
 }
 
 void RenderGraph::execute(RenderContext* pContext) {
-    //LOG_DBG("RenderGraph::execute dims %u %u", mCompilerDeps.defaultResourceProps.dims[0], mCompilerDeps.defaultResourceProps.dims[1]);
     std::string log;
     if (!compile(pContext, log)) {
         logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");
@@ -376,6 +375,38 @@ void RenderGraph::execute(RenderContext* pContext) {
     c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
     c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
     mpExe->execute(c);
+}
+
+void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
+    std::string log;
+    if (!compile(pContext, log)) {
+        logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::resolvePerFrameSparseResources() call");
+        return;
+    }
+
+    assert(mpExe);
+    RenderGraphExe::Context c;
+    c.pGraphDictionary = mpPassDictionary;
+    c.pRenderContext = pContext;
+    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
+    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    mpExe->resolvePerFrameSparseResources(c);
+}
+
+void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext) {
+    std::string log;
+    if (!compile(pContext, log)) {
+        logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::resolvePerSampleSparseResources() call");
+        return;
+    }
+
+    assert(mpExe);
+    RenderGraphExe::Context c;
+    c.pGraphDictionary = mpPassDictionary;
+    c.pRenderContext = pContext;
+    c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
+    c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
+    mpExe->resolvePerSampleSparseResources(c);
 }
 
 void RenderGraph::update(const SharedPtr& pGraph) {

@@ -31,13 +31,38 @@
 namespace Falcor {
 
     void RenderGraphExe::execute(const Context& ctx) {
-        PROFILE(ctx.pRenderContext->device(), "RenderGraphExe::execute()");
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::execute()");
 
         for (const auto& pass : mExecutionList) {
-            PROFILE(ctx.pRenderContext->device(), pass.name);
+            PROFILE(pDevice, pass.name);
 
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->execute(ctx.pRenderContext, renderData);
+        }
+    }
+
+    void RenderGraphExe::resolvePerFrameSparseResources(const Context& ctx) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::resolvePerFrameSparseResources()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            pass.pPass->resolvePerFrameSparseResources(ctx.pRenderContext, renderData);
+        }
+    }
+
+    void RenderGraphExe::resolvePerSampleSparseResources(const Context& ctx) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::resolvePerSampleSparseResources()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            pass.pPass->resolvePerSampleSparseResources(ctx.pRenderContext, renderData);
         }
     }
 

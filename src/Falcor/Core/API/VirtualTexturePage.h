@@ -5,10 +5,13 @@
 #include <string>
 #include <memory>
 
+#include "Falcor/Core/Framework.h"
+
 namespace Falcor {
 
 class Device;
 class Texture;
+class SparseResourceManager;
 
 // Virtual texture page as a part of the partially resident texture
 // Contains memory bindings, offsets and status information
@@ -35,12 +38,14 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
     size_t usedMemSize() const;
 
-    uint32_t width() const { return mExtent.width; }
-    uint32_t height() const { return mExtent.height; }
-    uint32_t depth() const { return mExtent.depth; }
+    const uint32_t width() const { return mExtent.width; }
+    const uint32_t height() const { return mExtent.height; }
+    const uint32_t depth() const { return mExtent.depth; }
 
-    uint32_t mipLevel() const { return mMipLevel; }
-    uint32_t index() const { return mIndex; }
+    const uint32_t mipLevel() const { return mMipLevel; }
+    const uint32_t index() const { return mIndex; }
+
+    const uint32_t id() const { return mID; }
 
     const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
@@ -57,10 +62,10 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     uint32_t mMipLevel;                                                 // Mip level that this page belongs to
     uint32_t mLayer;                                                    // Array layer that this page belongs to
     uint32_t mIndex;  // texture page index 
-    size_t mID;
+    uint32_t mID;       // global page id
 
     friend class Texture;
-    friend class TextureManager;
+    friend class SparseResourceManager;
 };
 
 }  // namespace Falcor

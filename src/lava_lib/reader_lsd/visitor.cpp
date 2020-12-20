@@ -124,9 +124,8 @@ void Visitor::operator()(ast::cmd_detail const& c) {
         throw std::runtime_error("Unable to process cmd_detail out of Geo scope !!!");
     }
 
+    auto& bgeo = pGeo->bgeo();
     if(c.filename == "stdin") {
-        auto& bgeo = pGeo->bgeo();
-
         bool result = readInlineBGEO(mpParserStream, bgeo);
         if (!result) {
             LLOG_ERR << "Error reading inline bgeo !!!";
@@ -135,7 +134,8 @@ void Visitor::operator()(ast::cmd_detail const& c) {
         bgeo.preCachePrimitives();
         //mpSession->pushBgeo(c.name, bgeo);
     } else {
-        // ika::bgeo::Bgeo bgeo(mpSession->getExpandedString(c.filename), false); // FIXME: don't check version for now
+        bgeo.readGeoFromFile(mpSession->getExpandedString(c.filename).c_str(), false); // FIXME: don't check version for now
+        bgeo.preCachePrimitives();
         //mpSession->pushBgeo(c.name, c.filename);
     }
 }

@@ -103,14 +103,19 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
 void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileData) {
     GBuffer::compile(pContext, compileData);
 
-    mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), "Textures resolve Pre-Pass");
-
     mpDepthPrePassGraph = RenderGraph::create(pContext->device(), "Depth Pre-Pass");
     mpDepthPrePass = DepthPass::create(pContext);
     mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
     mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
     mpDepthPrePassGraph->setScene(mpScene);
+
+    mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), "Sparse textures resolve Pre-Pass");
+    mpTexturesResolvePass = TexturesResolvePass::create(pContext);
+    mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
+    //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.debugColor");
+    mpTexturesResolvePassGraph->setScene(mpScene);
 }
 
 void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -136,6 +141,23 @@ void GBufferRaster::setCullMode(RasterizerState::CullMode mode) {
     mRaster.pRsState = RasterizerState::create(rsDesc);
     assert(mRaster.pState);
     mRaster.pState->setRasterizerState(mRaster.pRsState);
+}
+
+void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
+    LOG_WARN("GBufferRaster::resolvePerFrameSparseResources !!!");
+    GBuffer::resolvePerFrameSparseResources(pRenderContext, renderData);
+
+    // Setup depth pass to use same culling mode.
+    mpDepthPrePass->setRasterizerState(mForceCullMode ? mRaster.pRsState : nullptr);
+
+    // Copy depth buffer.
+    mpDepthPrePassGraph->execute(pRenderContext);
+    //mpFbo->attachDepthStencilTarget(mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture());
+    //pRenderContext->copyResource(renderData[kDepthName].get(), mpDepthPrePassGraph->getOutput("DepthPrePass.depth").get());
+
+    // Execute sparse textures resolve pass
+    mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    mpTexturesResolvePassGraph->execute(pRenderContext);
 }
 
 void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {

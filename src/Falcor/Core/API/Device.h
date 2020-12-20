@@ -55,7 +55,7 @@ namespace Falcor {
 struct DeviceApiData;
 
 class DeviceManager;
-class TextureManager;
+class SparseResourceManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
@@ -298,7 +298,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
     friend class DeviceManager;
-    friend class TextureManager;
+    friend class SparseResourceManager;
     
     bool init();
 

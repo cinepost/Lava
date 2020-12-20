@@ -38,7 +38,7 @@
 #include "LTX_BitmapUtils.h"
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/TextureManager.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
@@ -93,13 +93,13 @@ LTX_Bitmap::UniquePtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice
 
     auto pLtxBitmap = new LTX_Bitmap();
     pLtxBitmap->mFilename = filename;
-    pLtxBitmap->mpFile = fopen(filename.c_str(), "rb");
-    fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pLtxBitmap->mpFile );
+    
+    auto pFile = fopen(filename.c_str(), "rb");
+    fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pFile );
 
-    fseek(pLtxBitmap->mpFile, 0L, SEEK_END);
-    size_t mDataSize = ftell(pLtxBitmap->mpFile) - sizeof(LTX_Header);
-    fclose(pLtxBitmap->mpFile);
-    pLtxBitmap->mpFile = nullptr;
+    fseek(pFile, 0L, SEEK_END);
+    size_t mDataSize = ftell(pFile) - sizeof(LTX_Header);
+    fclose(pFile);
 
     return UniquePtr(pLtxBitmap);
 }
@@ -109,8 +109,7 @@ LTX_Bitmap::LTX_Bitmap() {
 }
 
 LTX_Bitmap::~LTX_Bitmap() {
-    if(mpFile != nullptr)
-        fclose(mpFile);
+
 }
 
 static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
@@ -421,16 +420,15 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     fclose(pFile);
 }
 
-void LTX_Bitmap::readPageData(size_t pageNum, void *pData) {
-    mpFile = fopen(mFilename.c_str(), "rb");
-    fseek(mpFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
-    fread(pData, 1, mHeader.pageDataSize, mpFile);
-    fclose(mpFile);
-    mpFile = nullptr;
+void LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
+    auto pFile = fopen(mFilename.c_str(), "rb");
+    fseek(pFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
+    fread(pData, 1, mHeader.pageDataSize, pFile);
+    fclose(pFile);
 }
 
-void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) {
-    mpFile = fopen(mFilename.c_str(), "rb");
+void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) const {
+    auto pFile = fopen(mFilename.c_str(), "rb");
 
     if (unsorted) {
         std::sort (pages.begin(), pages.end(), [](std::pair<size_t, void*> a, std::pair<size_t, void*> b) {
@@ -439,11 +437,10 @@ void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, boo
     }
 
     for(auto& page: pages) {
-        fseek(mpFile, kLtxHeaderOffset + page.first * mHeader.pageDataSize, SEEK_SET);
+        fseek(pFile, kLtxHeaderOffset + page.first * mHeader.pageDataSize, SEEK_SET);
     }
     
-    fclose(mpFile);
-    mpFile = nullptr;
+    fclose(pFile);
 }
 
 }  // namespace Falcor

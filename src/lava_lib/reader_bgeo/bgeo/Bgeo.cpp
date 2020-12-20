@@ -87,6 +87,10 @@ bool Bgeo::readInlineGeo(const std::string& bgeoString, bool checkVersion) {
     m_pimpl = std::make_unique<Impl>(bgeoString, checkVersion);
 }
 
+bool Bgeo::readGeoFromFile(const char* bgeoPath, bool checkVersion) {
+    m_pimpl = std::make_unique<Impl>(bgeoPath, checkVersion);
+}
+
 Bgeo::Bgeo(const std::string& bgeoString, bool checkVersion): m_pimpl(new Impl(bgeoString, checkVersion)) {}
 
 Bgeo::Bgeo(const char* bgeoPath, bool checkVersion): m_pimpl(new Impl(bgeoPath, checkVersion)) {}

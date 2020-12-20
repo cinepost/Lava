@@ -227,8 +227,7 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     mDirty = true;
 }
 
-uint32_t SceneBuilder::addMesh(const Mesh& meshDesc)
-{
+uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     logInfo("Adding mesh with name '" + meshDesc.name + "'");
 
     // Copy the mesh desc so we can update it. The caller retains the ownership of the data.
@@ -648,8 +647,11 @@ Scene::SharedPtr SceneBuilder::getScene()
     }
 
     TimeReport timeReport;
+    LOG_DBG("getScene timeReport");
 
     mpScene = Scene::create(mpDevice);
+    timeReport.measure("getScene Scene::create");
+    
     mpScene->mCameras = mCameras;
     mpScene->mSelectedCamera = mSelectedCamera;
     mpScene->mCameraSpeed = mCameraSpeed;
@@ -660,15 +662,26 @@ Scene::SharedPtr SceneBuilder::getScene()
     mpScene->mFilename = mFilename;
 
     createGlobalMatricesBuffer(mpScene.get());
+    timeReport.measure("getScene createGlobalMatricesBuffer");
+
     uint32_t drawCount = createMeshData(mpScene.get());
+    timeReport.measure("getScene createMeshData");
+
     assert(drawCount <= std::numeric_limits<uint16_t>::max());
     mpScene->mpVao = createVao(drawCount);
+    timeReport.measure("getScene createVao");
+
     calculateMeshBoundingBoxes(mpScene.get());
+    timeReport.measure("getScene calculateMeshBoundingBoxes");
+
     createAnimationController(mpScene.get());
+    timeReport.measure("getScene createAnimationController");
+
     mpScene->finalize();
+    timeReport.measure("getScene finalize mpScene");
     mDirty = false;
 
-    timeReport.measure("Creating resources");
+    timeReport.addTotal("getScene done in");
     timeReport.printToLog();
 
     return mpScene;

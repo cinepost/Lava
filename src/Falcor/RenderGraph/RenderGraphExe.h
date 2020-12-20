@@ -50,6 +50,14 @@ class dlldecl RenderGraphExe {
     */
     void execute(const Context& ctx);
 
+    /** Resolve graph's per frame sparse resources
+    */
+    void resolvePerFrameSparseResources(const Context& ctx);
+
+    /** Resolve graph's per sample sparse resources
+    */
+    void resolvePerSampleSparseResources(const Context& ctx);
+
     /** Render the UI
     */
     void renderUI(Gui::Widgets& widget);

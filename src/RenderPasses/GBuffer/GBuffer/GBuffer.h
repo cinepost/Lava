@@ -39,6 +39,7 @@ using namespace Falcor;
 class GBuffer : public GBufferBase {
  public:
     virtual void renderUI(Gui::Widgets& widget) override;
+    virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;

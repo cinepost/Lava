@@ -28,7 +28,7 @@
 #include "stdafx.h"
 #include "Material.h"
 
-#include "Falcor/Core/API/TextureManager.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 #include "Core/Program/GraphicsProgram.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
@@ -270,10 +270,9 @@ uint2 Material::getMaxTextureDimensions() const
 void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath)) {
-        //auto texture = Texture::createFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
-        auto texture = TextureManager::instance().createSparseTextureFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
-        if (texture) {
-            setTexture(slot, texture);
+        auto pTexture = SparseResourceManager::instance().createSparseTextureFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
+        if (pTexture) {
+            setTexture(slot, pTexture);
             // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
             // every texture creation is overly conservative, and will likely lead to performance issues
             // due to the forced CPU/GPU sync.

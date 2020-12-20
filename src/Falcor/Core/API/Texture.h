@@ -45,7 +45,7 @@ class Engine;
 class Sampler;
 class Device;
 class RenderContext;
-class TextureManager;
+class SparseResourceManager;
 class VirtualTexturePage;
 
 /** Abstracts the API texture objects
@@ -285,6 +285,12 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     uint3 getSparsePageRes() const { return mSparsePageRes; }
 
+    uint32_t getSparsePagesCount() const { return mSparsePagesCount; }
+
+    uint32_t getMipTailStart() const;
+
+    const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 
@@ -306,10 +312,12 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     bool mIsSparse = false;
     uint3 mSparsePageRes = int3(0);
+    uint32_t mSparsePagesCount = 0;
     std::atomic<size_t> mSparseResidentMemSize = 0;
+    std::array<uint32_t, 16> mMipBases = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     MipTailInfo mMipTailInfo;
-    uint32_t mMipTailStart;                                         // First mip level in mip tail
+    uint32_t mMipTailStart;                                          // First mip level in mip tail
     uint32_t mMemoryTypeIndex;                                       // @todo: Comment
 
 #ifdef FALCOR_VK
@@ -333,7 +341,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     friend class Device;
     friend class Engine;
-    friend class TextureManager;
+    friend class SparseResourceManager;
     friend class VirtualTexturePage;
 };
 

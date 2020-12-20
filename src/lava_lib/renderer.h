@@ -63,8 +63,11 @@ class Renderer: public Falcor::IFramework {
  	void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);
  	void initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData* pData);
  	std::vector<std::string> getGraphOutputs(const Falcor::RenderGraph::SharedPtr& pGraph);
+
+    void resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContext* pRenderContext);
  	void executeActiveGraph(Falcor::RenderContext* pRenderContext);
- 	void beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
+ 	
+    void beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
  	void endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
 
  // IFramework
@@ -73,7 +76,7 @@ class Renderer: public Falcor::IFramework {
     virtual Falcor::RenderContext* getRenderContext() override;
 
     /** Get the current FBO*/
-    virtual std::shared_ptr<Falcor::Fbo> getTargetFbo  () override;
+    virtual std::shared_ptr<Falcor::Fbo> getTargetFbo() override;
 
     /** Get the window*/
     virtual Falcor::Window* getWindow() override { return nullptr; };

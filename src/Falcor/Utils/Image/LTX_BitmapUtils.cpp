@@ -38,6 +38,11 @@ void convertToRGBA(ResourceFormat srcFormat, ResourceFormat dstFormat, uint32_t 
     
     for(size_t i = 0; i < numPixels; i++) {
         memcpy(lastDstPixelAddr, lastSrcPixelAddr, srcPixelBytesStride);
+
+        // now fill aplha value
+        // TODO: this works only for 8bit images. Need a separate cycle for other formats to set proper full missing alpha channel
+        memset(lastDstPixelAddr + srcPixelBytesStride, 255, dstPixelBytesStride - srcPixelBytesStride);
+        
         lastSrcPixelAddr -= srcPixelBytesStride;
         lastDstPixelAddr -= dstPixelBytesStride;
     }

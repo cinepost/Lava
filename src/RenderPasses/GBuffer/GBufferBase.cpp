@@ -129,7 +129,7 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
     }
 }
 
-void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+void GBufferBase::updateFlags(const RenderData& renderData) {
     // Update refresh flag if options that affect the output have changed.
     auto& dict = renderData.getDictionary();
     if (mOptionsChanged) {
@@ -137,7 +137,15 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
         
         dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
-    }
+    }  
+}
+
+void GBufferBase::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
+    updateFlags(renderData);
+}
+
+void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    updateFlags(renderData);
 
     // Setup camera with sample generator.
     if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);

@@ -25,13 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <chrono>
+
 #include "stdafx.h"
 #include "ProgramVersion.h"
 
 #include <slang/slang.h>
 
-namespace Falcor
-{
+namespace Falcor {
     //
     // EntryPointGroupKernels
     //
@@ -48,10 +49,8 @@ namespace Falcor
         , mShaders(shaders)
     {}
 
-    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
-    {
-        for( auto& pShader : mShaders )
-        {
+    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const {
+        for( auto& pShader : mShaders ) {
             if(pShader->getType() == type)
                 return pShader.get();
         }
@@ -119,10 +118,8 @@ namespace Falcor
         return mpVersion->shared_from_this();
     }
 
-    const Shader* ProgramKernels::getShader(ShaderType type) const
-    {
-        for( auto& pEntryPointGroup : mUniqueEntryPointGroups )
-        {
+    const Shader* ProgramKernels::getShader(ShaderType type) const {
+        for( auto& pEntryPointGroup : mUniqueEntryPointGroups ) {
             if(auto pShader = pEntryPointGroup->getShader(type))
                 return pShader;
         }
@@ -169,12 +166,14 @@ namespace Falcor
         pVars->collectSpecializationArgs(specializationArgs);
 
         bool first = true;
-        for( auto specializationArg : specializationArgs )
-        {
+        for( auto specializationArg : specializationArgs ) {
             if(!first) specializationKey += ",";
             specializationKey += std::string(specializationArg.type->getName());
             first = false;
         }
+
+        LOG_DBG("ProgramVersion::getKernels specialization key: %s", specializationKey.c_str());
+        auto start = std::chrono::high_resolution_clock::now();
 
         auto foundKernels = mpKernels.find(specializationKey);
         if( foundKernels != mpKernels.end() ) {
@@ -194,6 +193,10 @@ namespace Falcor
                 }
 
                 mpKernels[specializationKey] = pKernels;
+
+                auto end = std::chrono::high_resolution_clock::now();
+                std::cout << "Program version getKernels time is: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+
                 return pKernels;
             } else {
                 // Failure

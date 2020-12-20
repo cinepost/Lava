@@ -9,7 +9,7 @@ namespace Falcor {
 
 class Device;
 class Texture;
-class TextureManager;
+class SparseResourceManager;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 5,6 used to store major,minor versions
 
@@ -29,6 +29,7 @@ struct LTX_Header {
     uint32_t        pageDataSize = 0;
     uint32_t        arrayLayersCount = 0;
     uint8_t         mipLevelsCount = 0;
+    uint32_t        mipBases[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // starting tile id at each mip level
 
     ResourceFormat  format;
     
@@ -115,10 +116,10 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
  protected:
     static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown);
 
-    void readPageData (size_t pageNum, void *pData);
-    void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = true);
+    void readPageData (size_t pageNum, void *pData) const;
+    void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
-    friend class TextureManager;
+    friend class SparseResourceManager;
 
  private:
     LTX_Bitmap();
@@ -126,7 +127,6 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     static bool checkMagic(const unsigned char* magic);
     static void makeMagic(uint8_t minor, uint8_t major, unsigned char *magic);
 
-    FILE*       mpFile = nullptr;
     uint8_t*    mpData = nullptr;
     size_t      mDataSize = 0;
     

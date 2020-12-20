@@ -187,10 +187,15 @@ typedef struct D3D12_DRAW_ARGUMENTS {
     }
     #endif  // FALCOR_D3D12
 
-    void Scene::initResources()
-    {
+    void Scene::initResources() {
+        TimeReport timeReport;
+        LOG_DBG("Scene::initResources timeReport");
+
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main", getSceneDefines());
+        timeReport.measure("Scene::initResources GraphicsProgram::createFromFile");
+
         ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
+        timeReport.measure("Scene::initResources program reflection");
         assert(pReflection);
 
         mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);
@@ -202,11 +207,14 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mpMaterialsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpMaterialsBuffer->setName("Scene::mpMaterialsBuffer");
 
-        if (mLights.size())
-        {
+        if (mLights.size()) {
             mpLightsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
             mpLightsBuffer->setName("Scene::mpLightsBuffer");
         }
+        
+        timeReport.addTotal("Scene::initResources done in");
+        timeReport.printToLog();
+
     }
 
     void Scene::uploadResources()
@@ -316,16 +324,27 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         }
     }
 
-    void Scene::finalize()
-    {
+    void Scene::finalize() {
+        TimeReport timeReport;
+        LOG_DBG("Scene::finalize timeReport");
+
         sortMeshes();
+        timeReport.measure("Scene::finalize sortMeshes");
+
         initResources();
+        timeReport.measure("Scene::finalize initResources");
+
         mpAnimationController->animate(mpDevice->getRenderContext(), 0); // Requires Scene block to exist
         updateMeshInstances(true);
+        timeReport.measure("Scene::finalize updateMeshInstances");
+
         updateBounds();
+        timeReport.measure("Scene::finalize updateBounds");
+
         createDrawList();
-        if (mCameras.size() == 0)
-        {
+        timeReport.measure("Scene::finalize createDrawList");
+
+        if (mCameras.size() == 0) {
             // Create a new camera to use in the event of a scene with no cameras
             mCameras.push_back(Camera::create());
             resetCamera();
@@ -336,17 +355,24 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         addViewpoint();
         updateLights(true);
         updateEnvMap(true);
+        timeReport.measure("Scene::finalize misc");
+
         updateMaterials(true);
+        timeReport.measure("Scene::finalize updateMaterials");
+        
         uploadResources(); // Upload data after initialization is complete
+        timeReport.measure("Scene::finalize uploadResources");
+
         updateGeometryStats();
         updateLightStats();
-        prepareUI();
+        //prepareUI();
+
+        timeReport.addTotal("Scene::finalize done in");
+        timeReport.printToLog();
     }
 
-    void Scene::initializeCameras()
-    {
-        for (auto& camera : mCameras)
-        {
+    void Scene::initializeCameras() {
+        for (auto& camera : mCameras) {
             updateAnimatable(*camera, *mpAnimationController, true);
             camera->beginFrame();
         }

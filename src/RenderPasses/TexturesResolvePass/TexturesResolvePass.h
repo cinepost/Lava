@@ -80,11 +80,15 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     RasterizerState::SharedPtr  mpRsState;
     Scene::SharedPtr            mpScene;
 
+    GraphicsProgram::SharedPtr      mpProgram;
+    DepthStencilState::SharedPtr    mpDsNoDepthWrite;
+
     ResourceFormat mTileDataFormat = ResourceFormat::RGB16Int;
     ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA32Float;
 
     ParameterBlock::SharedPtr   mpDataBlock;
     Buffer::SharedPtr           mpTexResolveDataBuffer;
+    bool                        mUsePreGenDepth = false;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_TEXTURESRESOLVEPASS_H_

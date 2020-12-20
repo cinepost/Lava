@@ -1,0 +1,59 @@
+from falcor import *
+
+def defaultRenderGraph(device):
+    import falcor
+    g = RenderGraph(device, "BSDFViewerGraph")
+
+    loadRenderPassLibrary("DepthPass")
+    #loadRenderPassLibrary("SkyBox")
+    loadRenderPassLibrary("GBuffer")
+    loadRenderPassLibrary("TexturesResolvePass")
+    loadRenderPassLibrary("ForwardLightingPass")
+    loadRenderPassLibrary("AccumulatePass")
+
+    #SkyBox = RenderPass(device, "SkyBox", {'texName': '/home/max/env.exr', 'loadAsSrgb': True, 'filter': SamplerFilter.Linear})
+    #g.addPass(SkyBox, "SkyBox")
+
+    DepthPass = RenderPass(device, "DepthPass")
+    g.addPass(DepthPass, "DepthPass")
+
+    AccumulatePass = RenderPass(device, "AccumulatePass", {
+        'enableAccumulation': True,
+        'precisionMode': AccumulatePrecision.Double
+    })
+    g.addPass(AccumulatePass, "AccumulatePass")
+
+    TexturesResolvePass = RenderPass(device, "TexturesResolve")
+    g.addPass(TexturesResolvePass, "TexturesResolve")
+
+    g.addPass(RenderPass(device, "ForwardLightingPass"), "LightingPass")
+
+    GBufferRaster = RenderPass(device, "GBufferRaster", {
+        'samplePattern': SamplePattern.Halton, 
+        'sampleCount': 16, 
+        'disableAlphaTest': False, 
+        'forceCullMode': False, 
+        'cull': CullMode.CullNone, 
+        'useBentShadingNormals': True
+    })
+    g.addPass(GBufferRaster, "GBufferRaster")
+
+    #g.addEdge("GBufferRaster.depth", "SkyBox.depth")
+    g.addEdge("GBufferRaster.depth", "LightingPass.depth")
+    
+    #g.markOutput("SkyBox.target")
+    #g.markOutput("GBufferRaster.diffuseOpacity")
+    
+    #g.addEdge("DepthPass.depth", "TexturesResolve.depth")
+    #g.markOutput("TexturesResolve.debugColor")
+
+    g.addEdge("LightingPass.color", "AccumulatePass.input")
+    g.markOutput("AccumulatePass.output")
+
+    return g
+
+rendering_device = renderer.getDevice()
+render_graph = defaultRenderGraph(rendering_device)
+
+try: renderer.addGraph(render_graph)
+except NameError: None

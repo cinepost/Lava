@@ -97,6 +97,10 @@ void GBuffer::renderUI(Gui::Widgets& widget) {
     }
 }
 
+void GBuffer::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
+    GBufferBase::resolvePerFrameSparseResources(pRenderContext, renderData);
+}
+
 void GBuffer::compile(RenderContext* pContext, const CompileData& compileData) {
     GBufferBase::compile(pContext, compileData);
 

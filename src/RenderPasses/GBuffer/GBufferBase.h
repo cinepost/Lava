@@ -47,9 +47,13 @@ class GBufferBase : public RenderPass {
 
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+    virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+
+ private:
+    void updateFlags(const RenderData& renderData);
 
  protected:
     GBufferBase(Device::SharedPtr pDevice);

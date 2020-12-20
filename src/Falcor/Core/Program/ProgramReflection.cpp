@@ -338,6 +338,13 @@ namespace Falcor
             case 4:
                 return ReflectionBasicType::Type::Bool4;
             }
+        case TypeReflection::ScalarType::UInt8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionBasicType::Type::Uint_8;
+            }
         case TypeReflection::ScalarType::UInt32:
             assert(rows == 1);
             switch (columns)
@@ -376,6 +383,13 @@ namespace Falcor
                 return ReflectionBasicType::Type::Int3;
             case 4:
                 return ReflectionBasicType::Type::Int4;
+            }
+        case TypeReflection::ScalarType::Int8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionBasicType::Type::Int_8;
             }
         case TypeReflection::ScalarType::Int64:
             assert(rows == 1);

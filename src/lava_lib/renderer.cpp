@@ -5,7 +5,7 @@
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#include "Falcor/Core/API/TextureManager.h"
+#include "Falcor/Core/API/SparseResourceManager.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -51,12 +51,12 @@ bool Renderer::init() {
     LLOG_DBG << "Rendering device " << to_string(mGpuId) << " created";
 
     // init texture manager
-    Falcor::TextureManager::InitDesc initDesc;
+    Falcor::SparseResourceManager::InitDesc initDesc;
     initDesc.pDevice = mpDevice;
     initDesc.cacheDir = "/home/max/lava/tex_cache";
 
-    if(!Falcor::TextureManager::instance().init(initDesc)) {
-        LLOG_WRN << "Error initializing texture manager !!!";
+    if(!Falcor::SparseResourceManager::instance().init(initDesc)) {
+        LLOG_WRN << "Error initializing sparse resource manager !!!";
         //return false;
     }
     //
@@ -90,7 +90,7 @@ Renderer::~Renderer() {
 	if(!mInited)
 		return;
 
-    Falcor::TextureManager::instance().printStats();
+    Falcor::SparseResourceManager::instance().printStats();
 
 	delete mpClock;
     delete mpFrameRate;
@@ -109,7 +109,7 @@ Renderer::~Renderer() {
 
     mpTargetFBO.reset();
 
-    Falcor::TextureManager::instance().clear();
+    Falcor::SparseResourceManager::instance().clear();
 
     if(mpDevice) mpDevice->cleanup();
 	mpDevice.reset();
@@ -216,8 +216,17 @@ void Renderer::initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData
 
     // Store the original outputs
     data.originalOutputs = getGraphOutputs(pGraph);
+}
 
-    //for (auto& e : mpExtensions) e->addGraph(pGraph.get());
+void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContext* pRenderContext) {
+    if (mGraphs.empty()) return;
+
+    auto& pGraph = mGraphs[mActiveGraph].pGraph;
+    LLOG_DBG << "Resolve per frame sparse resources for graph: " << pGraph->getName() << " output name: " << mGraphs[mActiveGraph].mainOutput;
+
+    // Execute graph.
+    (*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
+    pGraph->resolvePerFrameSparseResources(pRenderContext);
 }
 
 void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
@@ -228,6 +237,7 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
 
     // Execute graph.
     (*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
+    //pGraph->resolvePerSampleSparseResources(pRenderContext);
     pGraph->execute(pRenderContext);
 }
 
@@ -304,12 +314,6 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    // Clear viewer frame buffer.
-    //const Falcor::float4 clearColor(0.1f, 0.38f, 0.52f, 1);
-    //pRenderContext->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, Falcor::FboAttachmentType::All);
-
-    //beginFrame(pRenderContext, mpTargetFBO);
-
     if (mGraphs.size()) {
         LLOG_DBG << "process render graphs";
         
@@ -321,6 +325,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         double time = frame_data.time;
         double sample_time_duration = (1.0 * shutter_length) / frame_data.imageSamples;
         
+        resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
         executeActiveGraph(pRenderContext);
 
         if ( frame_data.imageSamples > 1 ) {
