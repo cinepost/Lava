@@ -23,6 +23,8 @@ class SceneBuilder: public Falcor::SceneBuilder {
 
     uint32_t addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& name = "");
 
+    void finalize();
+
  private:
     SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags = Flags::Default);
 

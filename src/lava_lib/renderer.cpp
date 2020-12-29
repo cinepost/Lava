@@ -227,6 +227,8 @@ void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContex
     // Execute graph.
     (*pGraph->getPassesDictionary())[Falcor::kRenderPassRefreshFlags] = Falcor::RenderPassRefreshFlags::None;
     pGraph->resolvePerFrameSparseResources(pRenderContext);
+
+    //mpSceneBuilder->finalize();
 }
 
 void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {

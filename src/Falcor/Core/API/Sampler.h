@@ -110,10 +110,10 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
      protected:
         Filter mMagFilter = Filter::Linear;
         Filter mMinFilter = Filter::Linear;
-        Filter mMipFilter = Filter::Linear;
-        uint32_t mMaxAnisotropy = 8;
+        Filter mMipFilter = Filter::Linear; // Linear
+        uint32_t mMaxAnisotropy = 8; //8;
         float mMaxLod = 1000;
-        float mMinLod = -1000;
+        float mMinLod = -1000;//-1000;
         float mLodBias = 0;
         ComparisonMode mComparisonMode = ComparisonMode::Disabled;
         AddressMode mModeU = AddressMode::Wrap;

@@ -376,4 +376,10 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& n
     return Falcor::SceneBuilder::addMesh(mesh);
 }
 
+void SceneBuilder::finalize() {
+    mDirty = true;
+    getScene();
+}
+
+
 }  // namespace lava

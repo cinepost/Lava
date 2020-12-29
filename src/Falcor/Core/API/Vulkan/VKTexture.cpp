@@ -349,7 +349,7 @@ namespace Falcor {
                     extent.height = std::max(imageCreateInfo.extent.height >> mipLevel, 1u);
                     extent.depth = std::max(imageCreateInfo.extent.depth >> mipLevel, 1u);
 
-
+                    LOG_WARN("Mip level width %u height %u ...", extent.width, extent.height);
 
                     // Aligned sizes by image granularity
                     VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;

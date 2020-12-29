@@ -28,6 +28,7 @@
 #include "Scene/VertexAttrib.slangh"
 
 import Scene.Raster;
+import Scene.Shading;
 import Scene.HitInfo;
 import Utils.Helpers;
 import GBufferHelpers;
@@ -40,6 +41,8 @@ RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float2> gPosNormalFwidth;
 RWTexture2D<float2> gLinearZAndDeriv;
 RWTexture2D<float>  gSurfaceSpreadAngle;
+
+SamplerState gSampler;
 
 #define isValid(name) (is_valid_##name != 0)
 
@@ -76,7 +79,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     VertexData v = prepareVertexData(vsOut, faceNormal);
 
 #if !DISABLE_ALPHA_TEST
-    if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
+    //if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
 #endif
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
@@ -147,5 +150,15 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     {
         gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N) * sign(dot(viewDir, sd.N));
     }
+
+    // test
+    Texture2D testTexture = gScene.materialResources[vsOut.materialID].baseColor;
+    //psOut.diffuseOpacity = testTexture.Sample(gSampler, v.texC);
+    //psOut.diffuseOpacity = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 1);
+    
+    //psOut.diffuseOpacity = testTexture.Sample(gScene.materialResources[vsOut.materialID].samplerState, v.texC);
+    psOut.diffuseOpacity.b = 1.0;
+    //
+
     return psOut;
 }

@@ -62,14 +62,12 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
 
             uint byte4_addr = int(floor(float(loMipLevelTileID) / 4.0) * 4);
             uint byte_num = loMipLevelTileID - byte4_addr;
-
             resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
-
+            
             byte4_addr = int(floor(float(hiMipLevelTileID) / 4.0) * 4);
             byte_num = hiMipLevelTileID - byte4_addr;
-
             resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
-
+            
             debugTileID = loMipLevelTileID;
         }
     }

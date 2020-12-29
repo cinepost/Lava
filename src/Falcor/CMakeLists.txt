@@ -69,6 +69,14 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
   )
 endif()
 
+# VIPS
+#find_package(PkgConfig)
+#if (PKG_CONFIG_FOUND)
+#  pkg_check_modules(VIPS "vips-cpp")
+#  if (VIPS_FOUND)    
+#    add_definitions(${VIPS_CFLAGS} ${VIPS_CFLAGS_OTHER})
+#  endif()
+#endif()
 
 # Imath
 find_package( Imath REQUIRED CONFIG )
@@ -186,6 +194,8 @@ target_link_libraries(
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
     ${TIFF_LIBRARIES}
+    #${VIPS_LIBRARIES}
+    ${ZLIB_LIBRARY}
     OpenImageIO::OpenImageIO
 )
 
