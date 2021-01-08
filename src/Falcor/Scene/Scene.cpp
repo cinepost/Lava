@@ -620,7 +620,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mUpdates |= updateSelectedCamera(false);
         mUpdates |= updateLights(false);
         mUpdates |= updateEnvMap(false);
-        mUpdates |= updateMaterials(false);
+        //mUpdates |= updateMaterials(false); // TODO: check this! textures got screwed during per sample scene updates !!! 
         pContext->flush();
         if (is_set(mUpdates, UpdateFlags::MeshesMoved))
         {

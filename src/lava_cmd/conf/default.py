@@ -14,7 +14,7 @@ def defaultRenderGraph(device):
 
     AccumulatePass = RenderPass(device, "AccumulatePass", {
         'enableAccumulation': True,
-        'precisionMode': AccumulatePrecision.Double
+        'precisionMode': AccumulatePrecision.Single
     })
     g.addPass(AccumulatePass, "AccumulatePass")
     
@@ -57,10 +57,9 @@ def defaultRenderGraph(device):
     #g.addEdge("GBufferRaster.normW", "BlitPass.src")
     
     #g.markOutput("SkyBox.target")
-    g.addEdge("LightingPass.color", "AccumulatePass.input")
+    g.addEdge("GBufferRaster.diffuseOpacity", "AccumulatePass.input")
     #g.markOutput("LightingPass.color")
-    #g.markOutput("AccumulatePass.output")
-    g.markOutput("GBufferRaster.diffuseOpacity")
+    g.markOutput("AccumulatePass.output")
 
     return g
 

@@ -111,14 +111,14 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         Filter mMagFilter = Filter::Linear;
         Filter mMinFilter = Filter::Linear;
         Filter mMipFilter = Filter::Linear; // Linear
-        uint32_t mMaxAnisotropy = 8; //8;
+        uint32_t mMaxAnisotropy = 1;
         float mMaxLod = 1000;
-        float mMinLod = -1000;//-1000;
+        float mMinLod = -1000;
         float mLodBias = 0;
         ComparisonMode mComparisonMode = ComparisonMode::Disabled;
-        AddressMode mModeU = AddressMode::Wrap;
-        AddressMode mModeV = AddressMode::Wrap;
-        AddressMode mModeW = AddressMode::Wrap;
+        AddressMode mModeU = AddressMode::Clamp; //Wrap;
+        AddressMode mModeV = AddressMode::Clamp; //Wrap;
+        AddressMode mModeW = AddressMode::Clamp; //Wrap;
         float4 mBorderColor = float4(0, 0, 0, 0);
     };
 

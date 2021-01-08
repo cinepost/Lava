@@ -333,9 +333,11 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         if ( frame_data.imageSamples > 1 ) {
             for (uint i = 1; i < frame_data.imageSamples; i++) {
                 LLOG_DBG << "Rendering sample no " << i << " of " << frame_data.imageSamples;
+                
                 // Update scene and camera.
-                if (pScene)
+                if (pScene) {
                     pScene->update(pRenderContext, time);
+                }
 
                 executeActiveGraph(pRenderContext);
         

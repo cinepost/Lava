@@ -37,9 +37,9 @@ float4 randomTileColor(int tileID) {
 
 // Virtual textureing resolve pass helper functions
 
-// computes mip level at texCoord for a tecture with texDims
+// computes maximum floatin mip level at texCoord for a tecture with texDims
 // the current pixel
-float calculateMipMapLevel2D(float2 texCoord, float2 texDims) {
+float calculateMaxMipMapLevel2D(float2 texCoord, float2 texDims) {
     // The OpenGL Graphics System: A Specification 4.2
     //  - chapter 3.9.11, equation 3.21
 
@@ -48,6 +48,17 @@ float calculateMipMapLevel2D(float2 texCoord, float2 texDims) {
     float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
 
     return max(0.0, 0.5 * log2(delta_max_sqr));
+}
+
+float calculateMinMipMapLevel2D(float2 texCoord, float2 texDims) {
+    // The OpenGL Graphics System: A Specification 4.2
+    //  - chapter 3.9.11, equation 3.21
+
+    float2 dx_vtc = ddx(texCoord) * texDims.x;
+    float2 dy_vtc = ddy(texCoord) * texDims.y;
+    float delta_min_sqr = min(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
+
+    return max(0.0, 0.5 * log2(delta_min_sqr));
 }
 
 // computes tile ID for a given mipLevel of a virtual texture at given tex_coord
@@ -70,5 +81,5 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
     int tX = int(texCoord.x * k_u * cellsNumX); //column index in current level of detail
     int tY = int(texCoord.y * k_v * cellsNumY); //row index in current level of detail
 
-    return vtexData.mipBases[mipLevel] + tX + tY * cellsNumX;
+    return vtexData.mipBases[mipLevel] + tX + tY * cellsNumX + vtexData.pagesStartOffset;
 }

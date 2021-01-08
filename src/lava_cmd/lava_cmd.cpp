@@ -76,6 +76,7 @@ int main(int argc, char** argv){
     int verbose_level = 6;
     bool echo_input = true;
     bool vtoff_flag = false; // virtual texturing enabled by default
+    bool fconv_flag = false; // force virtual textures (re)conversion
 
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalHandler);
@@ -99,6 +100,7 @@ int main(int argc, char** argv){
     config.add_options()
         ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
         ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
+        ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
         ("include-path,I", po::value< std::vector<std::string> >()->composing(), "Include path")
         ;
 
@@ -164,7 +166,10 @@ int main(int argc, char** argv){
     Renderer::UniquePtr pRenderer = Renderer::create(gpuID);
 
     if(vtoff_flag)
-      SparseResourceManager::instance().setVirtualTexturingEnabled(false);
+      SparseResourceManager::setVirtualTexturingEnabled(false);
+
+    if(fconv_flag)
+      SparseResourceManager::setForceTexturesConversion(true);
 
     if(!pRenderer->init()) {
       exit(EXIT_FAILURE);

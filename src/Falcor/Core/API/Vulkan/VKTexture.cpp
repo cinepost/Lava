@@ -155,7 +155,7 @@ namespace Falcor {
         // Update list of memory-backed sparse image memory binds
         mSparseImageMemoryBinds.clear();
         for (auto pPage : mPages) {
-            if ( pPage->isResident())
+            //if ( pPage->isResident())
                 mSparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
         }
 
@@ -417,6 +417,7 @@ namespace Falcor {
 
                     mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
+                    mMipBases[sparseMemoryReq.imageMipTailFirstLod] = mSparsePagesCount;
                     mSparsePagesCount += 1;
                 }
             } // end layers and mips

@@ -100,7 +100,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     mpFbo->attachColorTarget(pDebugData, 0);
 
     mpState->setFbo(mpFbo);
-    pContext->clearRtv(pDebugData->getRTV().get(), {0, 1.0, 0, 0});
+    pContext->clearRtv(pDebugData->getRTV().get(), {0, 0, 0, 0});
 
     if (!mpScene)
         return;
@@ -111,6 +111,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
     std::vector<MaterialResolveData> materialsResolveBuffer;
     std::map<uint32_t, Texture::SharedPtr> texturesMap; // maps real texture ID to textures
+    std::map<uint32_t, VirtualTextureData> virtualTexturesDataMap; //
 
     uint32_t materialsCount = mpScene->getMaterialCount();
 
@@ -154,42 +155,50 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
                 
             auto &textureData = materialResolveData.virtualTextures[t_i];
 
-            textureData.empty = false;
-            textureData.textureID = textureID;
-            textureData.textureResolveID = currTextureResolveID;
-            textureData.width = pTexture->getWidth();
-            textureData.height = pTexture->getHeight();
-            textureData.mipLevelsCount = pTexture->getMipCount();
-            textureData.mipTailStart = pTexture->getMipTailStart();
-            textureData.pagesStartOffset = currPagesStartOffset;
-
-            auto pageRes = pTexture->getSparsePageRes();
-            textureData.pageSizeW = pageRes.x;
-            textureData.pageSizeH = pageRes.y;
-            textureData.pageSizeD = pageRes.z;
-            
-            auto const& mipBases = pTexture->getMipBases();
-
-            memcpy(&textureData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
-
             // Check if this sparse texture data not stored for resolving
-            if (texturesMap.find(textureID) == texturesMap.end() ) {
+            if (virtualTexturesDataMap.find(textureID) == virtualTexturesDataMap.end() ) {
+                // Fill vitrual texture data
+                textureData.empty = false;
+                textureData.textureID = textureID;
+                textureData.textureResolveID = currTextureResolveID;
+                textureData.width = pTexture->getWidth();
+                textureData.height = pTexture->getHeight();
+                textureData.mipLevelsCount = pTexture->getMipCount();
+                textureData.mipTailStart = pTexture->getMipTailStart();
+                textureData.pagesStartOffset = currPagesStartOffset;
+
+                auto pageRes = pTexture->getSparsePageRes();
+                textureData.pageSizeW = pageRes.x;
+                textureData.pageSizeH = pageRes.y;
+                textureData.pageSizeD = pageRes.z;
+                
+                auto const& mipBases = pTexture->getMipBases();
+
+                memcpy(&textureData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
+
                 currTextureResolveID++;
                 currPagesStartOffset += pTexture->getSparsePagesCount();
+                virtualTexturesDataMap[textureID] = textureData; 
                 texturesMap[textureID] = pTexture;
-            }
             
-            // debug info
-            LOG_WARN("Texture id: %u pages offset: %u width: %u height: %u", textureData.textureID, textureData.pagesStartOffset, textureData.width, textureData.height);
-            std::cout << "Mip bases : \n";
-            for( uint i = 0; i < 16; i++) std::cout << mipBases[i] << " ";
-            std::cout << "\n";
+                // --- debug info 
+                LOG_WARN("Texture id: %u pages offset: %u width: %u height: %u", textureData.textureID, textureData.pagesStartOffset, textureData.width, textureData.height);
+                LOG_WARN("Texture id: %u mip levels: %u tail start: %u", textureData.textureID, textureData.mipLevelsCount, textureData.mipTailStart);
+                std::cout << "Mip bases : \n";
+                for( uint i = 0; i < 16; i++) std::cout << textureData.mipBases[i] << " ";
+                std::cout << "\n";
+
+            } else {
+                // Virtual texture data cached in map, reuse it
+                textureData = virtualTexturesDataMap[textureID];
+            }
         }
 
         materialsResolveBuffer.push_back(materialResolveData);
     }
 
     totalPagesToUpdateCount = currPagesStartOffset;
+    totalPagesToUpdateCount += 16;
 
     auto pDataToResolveBuffer = Buffer::createStructured(mpDevice, sizeof(MaterialResolveData), materialsCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, materialsResolveBuffer.data(), true);
     mpVars->setBuffer("materialsResolveData", pDataToResolveBuffer);
@@ -198,9 +207,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
     LOG_WARN("Total pages to update for %u textures is %u", resolvedTexturesCount, totalPagesToUpdateCount);
 
-    std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount);
-    std::fill(pagesInitDataBuffer.begin(), pagesInitDataBuffer.end(), 0);
-
+    std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount, 0);
     auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
     mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
 
@@ -211,7 +218,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     LOG_WARN("%u textures needs to be resolved", resolvedTexturesCount);
 
     mpScene->render(pContext, mpState.get(), mpVars.get());
-    //pContext->flush(true);
+    pContext->flush(true);
 
     // Test resolved data
     const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
@@ -238,7 +245,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
         // index 'i' is a page index relative to the texture. starts with 0
         for(uint32_t i = 0; i < texturePagesCount; i++) {
 
-            if (pOutPagesData[i + pagesStartOffset] == 1)
+            if (pOutPagesData[i + pagesStartOffset] != 0)
             pageIDs.push_back(i + pagesStartOffset);
         }
         SparseResourceManager::instance().loadPages(pTexture, pageIDs); 

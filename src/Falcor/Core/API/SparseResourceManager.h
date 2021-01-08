@@ -53,6 +53,7 @@ class dlldecl SparseResourceManager {
     bool hasSparseResources() const { return mHasSparseResources; }
 
     static void setVirtualTexturingEnabled(bool on_off = true);
+    static void setForceTexturesConversion(bool on_off = false);
 
     void loadPages(Texture::SharedPtr pTexture, const std::vector<uint32_t>& pageIDs); 
 
@@ -66,6 +67,7 @@ class dlldecl SparseResourceManager {
 
     static ResourceFormat      compressedFormat(ResourceFormat format);
 
+    bool mForceTexturesConversion = false;
     bool mSparseTexturesEnabled = true;
     bool mInitialized = false;
     bool mHasSparseResources = false;

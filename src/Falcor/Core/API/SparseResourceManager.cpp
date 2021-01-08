@@ -31,6 +31,13 @@ void SparseResourceManager::setVirtualTexturingEnabled(bool on_off) {
     manager.mSparseTexturesEnabled = on_off;
 }
 
+void SparseResourceManager::setForceTexturesConversion(bool on_off) {
+    auto& manager = instance();
+    assert(!manager.mInitialized);
+
+    manager.mForceTexturesConversion = on_off;
+}
+
 bool SparseResourceManager::init(const InitDesc& initDesc) {
     mDesc = initDesc;
 
@@ -221,9 +228,11 @@ Texture::SharedPtr SparseResourceManager::createSparseTextureFromFile(std::share
     //    texFormat = compressedFormat(texFormat);
     //}
 
-    LOG_WARN("LTX convert start...");
-    LTX_Bitmap::convertToKtxFile(pDevice, fullpath, ltxFilename, true);
-    LOG_WARN("LTX convert done. %s", ltxFilename.c_str());
+    if(mForceTexturesConversion || !fs::exists(ltxFilename) ) {
+        LOG_WARN("Converting texture %s to LTX format ...",  fullpath.c_str());
+        LTX_Bitmap::convertToKtxFile(pDevice, fullpath, ltxFilename, true);
+        LOG_WARN("Conversion done %s", ltxFilename.c_str());
+    }
 
     auto pLtxBitmap = LTX_Bitmap::createFromFile(pDevice, ltxFilename, true);
     if (!pLtxBitmap) {
@@ -270,9 +279,9 @@ Texture::SharedPtr SparseResourceManager::createSparseTextureFromFile(std::share
         
         // allocate and bind pages
         for(auto& pPage: pTex->pages()) {
-            if(pPage->mipLevel() < 4) {
+            if(pPage->mipLevel() < 2) {
                 //if(pPage->index() % 2 == 0) {
-                    pPage->allocate();
+                    //pPage->allocate();
                 //}
             }
         }
@@ -281,7 +290,7 @@ Texture::SharedPtr SparseResourceManager::createSparseTextureFromFile(std::share
         // TODO: remove! This is just for testing !!! fill pages first 3 mipLayers 
         for(auto& pPage: pTex->pages()) {
             LOG_DBG("Mip level %u index %u", pPage->mipLevel(), pPage->index());
-            if(pPage->mipLevel() < 4) {
+            if(pPage->mipLevel() < 2) {
                 if(pPage->isResident()) {
                     //pLtxBitmap->readPageData(pPage->index(), tmpPageData.data());
                     //fillPage(pPage, tmpPageData.data());
@@ -320,8 +329,16 @@ void SparseResourceManager::loadPages(Texture::SharedPtr pTexture, const std::ve
         return;
     }
 
+    // sort pages
+    std::vector<uint32_t> sortedPageIDs = pageIDs;
+    //for(uint32_t i = 0; i < sortedPageIDs.size(); i++) {
+    //    sortedPageIDs[i] = i;
+    //}
+
+    std::sort (sortedPageIDs.begin(), sortedPageIDs.end());
+
     // allocate pages
-    for( uint32_t pageID: pageIDs ) {
+    for( uint32_t pageID: sortedPageIDs ) {
         mPages[pageID]->allocate();
     }
     pTexture->updateSparseBindInfo();
@@ -329,7 +346,7 @@ void SparseResourceManager::loadPages(Texture::SharedPtr pTexture, const std::ve
     // read data and fill pages
     std::vector<uint8_t> tmpPage(65536);
     auto pTmpPageData = tmpPage.data();
-    for( uint32_t pageID: pageIDs ) {
+    for( uint32_t pageID: sortedPageIDs ) {
         auto pPage = mPages[pageID];
         std::cout << "load page " << pageID << "level " << pPage->mipLevel() << "\n";
         mTextureLTXBitmapsMap[textureID]->readPageData(pPage->index(), pTmpPageData);
@@ -341,7 +358,6 @@ void SparseResourceManager::loadPages(Texture::SharedPtr pTexture, const std::ve
 
     //pTexture->invalidateViews();
     //pTexture->updateSparseBindInfo();
-
     //mpDevice->flushAndSync();
 
 }

@@ -242,6 +242,8 @@ namespace Falcor {
         resourceBarrier(pStaging.get(), Resource::State::CopySource);
         vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     
+        //textureBarrier(pTexture, Resource::State::ShaderResource);
+        //flush(true);
         //flush(false);
     }
 

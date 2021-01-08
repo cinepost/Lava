@@ -40,9 +40,9 @@ struct GBufferParams
     float2  frameSize;          ///< Frame buffer dimension in pixels.
     float2  invFrameSize;       ///< 1.0 / frameSize.
     uint    frameCount;
+    uint    sampleCount;
     uint    rayFlags;           ///< Ray flags for TraceRay(). See D3D12_RAY_FLAG_* in d3d12.h.
     float   screenSpacePixelSpreadAngle; ///< For anisotropic lookups with GBufferRT and ray cones.
-    int     _pad0;
 };
 
 END_NAMESPACE_FALCOR
