@@ -43,7 +43,7 @@ set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
 # Set python virtualenv for USD
-set( PYTHON_EXECUTABLE "python")
+set( PYTHON_EXECUTABLE "python3.8")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -142,15 +142,12 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 # Now setup targets
 
 # thirt party libs
-# TODO: build necessary third party libs
-#add_subdirectory( third_party/tbb )
-#add_subdirectory( third_party/embree )
-#add_subdirectory( third_party/glew/build/cmake )
-#add_subdirectory( third_party/assimp )
+#add_subdirectory( third_party )
 
 # Our stuff
 add_subdirectory( src )
-add_subdirectory( contrib )
+#add_subdirectory( contrib )
+
 
 #install(
 #    DIRECTORY

@@ -228,19 +228,17 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
 }
 
 uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
-    logInfo("Adding mesh with name '" + meshDesc.name + "'");
+    logInfo("Adding mesh '" + meshDesc.name + "'");
 
     // Copy the mesh desc so we can update it. The caller retains the ownership of the data.
     Mesh mesh = meshDesc;
 
     // Error checking.
-    auto throw_on_missing_element = [&](const std::string& element)
-    {
+    auto throw_on_missing_element = [&](const std::string& element) {
         throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nThe mesh is missing " + element + ".");
     };
 
-    auto missing_element_warning = [&](const std::string& element)
-    {
+    auto missing_element_warning = [&](const std::string& element) {
         logWarning("The mesh '" + mesh.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
     };
 
@@ -256,25 +254,20 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     if (mesh.normals.pData == nullptr) missing_element_warning("normals");
     if (mesh.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
 
-    if (mesh.hasBones())
-    {
+    if (mesh.hasBones()) {
         if (mesh.boneIDs.pData == nullptr) throw_on_missing_element("bone IDs");
         if (mesh.boneWeights.pData == nullptr) throw_on_missing_element("bone weights");
     }
 
     // Generate tangent space if that's required.
     std::vector<float4> tangents;
-    if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData)
-    {
+    if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
         tangents = MikkTSpaceWrapper::generateTangents(mesh);
-        if (!tangents.empty())
-        {
+        if (!tangents.empty()) {
             assert(tangents.size() == mesh.indexCount);
             mesh.tangents.pData = tangents.data();
             mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
-        }
-        else
-        {
+        } else {
             mesh.tangents.pData = nullptr;
             mesh.tangents.frequency = Mesh::AttributeFrequency::None;
         }
@@ -295,10 +288,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     std::vector<uint32_t> indices(mesh.indexCount);
     std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
-    for (uint32_t face = 0; face < mesh.faceCount; face++)
-    {
-        for (uint32_t vert = 0; vert < 3; vert++)
-        {
+    for (uint32_t face = 0; face < mesh.faceCount; face++) {
+        for (uint32_t vert = 0; vert < 3; vert++) {
             const Mesh::Vertex v = mesh.getVertex(face, vert);
             const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
 
@@ -307,10 +298,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
             uint32_t index = heads[origIndex];
             bool found = false;
 
-            while (index != invalidIndex)
-            {
-                if (compareVertices(v, vertices[index].first))
-                {
+            while (index != invalidIndex) {
+                if (compareVertices(v, vertices[index].first)) {
                     found = true;
                     break;
                 }
@@ -318,8 +307,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
             }
 
             // Insert new vertex if we couldn't find it.
-            if (!found)
-            {
+            if (!found) {
                 assert(vertices.size() < std::numeric_limits<uint32_t>::max());
                 index = (uint32_t)vertices.size();
                 vertices.push_back({ v, heads[origIndex] });
@@ -333,16 +321,14 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
 
     assert(vertices.size() > 0);
     assert(indices.size() == mesh.indexCount);
-    if (vertices.size() != mesh.vertexCount)
-    {
+    if (vertices.size() != mesh.vertexCount) {
         logInfo("Mesh with name '" + mesh.name + "' had original vertex count " + std::to_string(mesh.vertexCount) + ", new vertex count " + std::to_string(vertices.size()));
     }
 
     // Validate vertex data to check for invalid numbers and missing tangent frame.
     size_t invalidCount = 0;
     size_t zeroCount = 0;
-    for (const auto& v : vertices)
-    {
+    for (const auto& v : vertices) {
         validateVertex(v.first, invalidCount, zeroCount);
     }
     if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
@@ -350,14 +336,12 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
 
     // Match texture coordinate quantization for textured emissives to match PackedEmissiveTriangle.
     // This is to avoid mismatch when sampling and evaluating emissive triangles.
-    if (mesh.pMaterial->getEmissiveTexture() != nullptr)
-    {
+    if (mesh.pMaterial->getEmissiveTexture() != nullptr) {
         float2 minTexCrd = float2(std::numeric_limits<float>::infinity());
         float2 maxTexCrd = float2(-std::numeric_limits<float>::infinity());
         float2 maxError = float2(0);
 
-        for (auto& v : vertices)
-        {
+        for (auto& v : vertices) {
             float2 texCrd = v.first.texCrd;
             minTexCrd = min(minTexCrd, texCrd);
             maxTexCrd = max(maxTexCrd, texCrd);
@@ -367,20 +351,16 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
 
         // Issue warning if quantization errors are too large.
         float2 maxAbsCrd = max(abs(minTexCrd), abs(maxTexCrd));
-        if (maxAbsCrd.x > HLF_MAX || maxAbsCrd.y > HLF_MAX)
-        {
+        if (maxAbsCrd.x > HLF_MAX || maxAbsCrd.y > HLF_MAX) {
             logWarning("Texture coordinates for emissive textured mesh '" + mesh.name + "' are outside the representable range, expect rendering errors.");
-        }
-        else
-        {
+        } else {
             // Compute maximum quantization error in texels.
             // The texcoords are used for all texture channels so taking the maximum dimensions.
             uint2 maxTexDim = mesh.pMaterial->getMaxTextureDimensions();
             maxError *= maxTexDim;
             float maxTexelError = std::max(maxError.x, maxError.y);
 
-            if (maxTexelError > kMaxTexelError)
-            {
+            if (maxTexelError > kMaxTexelError) {
                 std::ostringstream oss;
                 oss << "Texture coordinates for emissive textured mesh '" << mesh.name << "' have a large quantization error of " << maxTexelError << " texels. "
                     << "The coordinate range is [" << minTexCrd.x << ", " << maxTexCrd.x << "] x [" << minTexCrd.y << ", " << maxTexCrd.y << "] for maximum texture dimensions ("
@@ -401,8 +381,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     spec.staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
     spec.dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
 
-    if (isIndexed)
-    {
+    if (isIndexed) {
         spec.indexOffset = (uint32_t)mBuffersData.indices.size();
         spec.indexCount = mesh.indexCount;
     }
@@ -411,20 +390,17 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     spec.topology = mesh.topology;
     spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
 
-    if (mesh.hasBones())
-    {
+    if (mesh.hasBones()) {
         spec.hasDynamicData = true;
     }
 
     // Copy indices into global index array.
-    if (isIndexed)
-    {
+    if (isIndexed) {
         mBuffersData.indices.insert(mBuffersData.indices.end(), indices.begin(), indices.end());
     }
 
     // Copy vertices into global vertex arrays.
-    for (uint32_t i = 0; i < outputVertexCount; i++)
-    {
+    for (uint32_t i = 0; i < outputVertexCount; i++) {
         uint32_t index = isIndexed ? i : indices[i];
         assert(index < vertices.size());
         const Mesh::Vertex& v = vertices[index].first;
@@ -436,8 +412,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         s.tangent = v.tangent;
         mBuffersData.staticData.push_back(PackedStaticVertexData(s));
 
-        if (mesh.hasBones())
-        {
+        if (mesh.hasBones()) {
             DynamicVertexData d;
             d.boneWeight = v.boneWeights;
             d.boneID = v.boneIDs;
@@ -450,6 +425,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     mDirty = true;
 
     assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
+    logInfo("Mesh '" + meshDesc.name + "' added.");
     return (uint32_t)mMeshes.size() - 1;
 }
 

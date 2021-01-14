@@ -35,6 +35,8 @@ build
 build/
 venv
 venv/
+third_party/FreeImage/Dist
+third_party/FreeImage/Dist/
 
 # lava textures
 *.ltx

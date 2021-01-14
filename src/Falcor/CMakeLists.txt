@@ -42,6 +42,8 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )
 
+add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+
 # PyBind11
 find_package(pybind11 REQUIRED CONFIG)
 
@@ -69,15 +71,6 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
   )
 endif()
 
-# VIPS
-#find_package(PkgConfig)
-#if (PKG_CONFIG_FOUND)
-#  pkg_check_modules(VIPS "vips-cpp")
-#  if (VIPS_FOUND)    
-#    add_definitions(${VIPS_CFLAGS} ${VIPS_CFLAGS_OTHER})
-#  endif()
-#endif()
-
 # Imath
 find_package( Imath REQUIRED CONFIG )
 
@@ -91,27 +84,13 @@ if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
     message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
+else()
+    add_dependencies( falcor_lib ThirdParty_OpenImageIO )
 endif()
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
 # ImGui
-include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
-
-# Assimp (built within project)
-#set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${CMAKE_BINARY_DIR}/third_party/assimp)# ASSIMP search path
-find_package(assimp CONFIG REQUIRED)
-#include_directories(${assimp_INCLUDE_DIRS})
-#if (assimp_FOUND)
-#    message("Assimp inc: ${ASSIMP_INCLUDE_DIR}" )
-#endif()
-
-# set any variables you might need to set for your app and assimp
-#set(BUILD_ASSIMP_TOOLS  ON)
-#set(ASSIMP_BUILD_STATIC_LIB ON)
-
-# add assimp source dir as a subdirectory, effectively making 
-# assimp's CMakeLists.txt part of your build
-#add_subdirectory( ${PROJECT_SOURCE_DIR}/third_party/assimp ${CMAKE_BINARY_DIR}/assimp)
+include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
 
 # GLFW 
 find_package(glfw3 CONFIG REQUIRED)
@@ -139,14 +118,14 @@ PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
 # Setup CMake to use GTK+, tell the compiler where to look for headers
 # and to the linker where to look for libraries
-INCLUDE_DIRECTORIES(${GTK3_INCLUDE_DIRS})
-LINK_DIRECTORIES(${GTK3_LIBRARY_DIRS})
+include_directories( ${GTK3_INCLUDE_DIRS} )
+link_directories( ${GTK3_LIBRARY_DIRS} )
 
 # Add other flags to the compiler
-ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
+add_definitions(${GTK3_CFLAGS_OTHER})
 
 # FreeImage
-find_package(FreeImage REQUIRED)
+find_package( FreeImage REQUIRED )
 include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
 
 # TIFF (required by FreeImage )
@@ -155,6 +134,7 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
 find_package( Boost COMPONENTS system filesystem REQUIRED )
+message( "Boost include dirs: " ${Boost_INCLUDE_DIRS} )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # We use Boost static libs
@@ -174,8 +154,6 @@ message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
-add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
-#add_dependencies( falcor_lib assimp )
 
 target_link_libraries(
     falcor_lib
@@ -194,9 +172,9 @@ target_link_libraries(
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
     ${TIFF_LIBRARIES}
-    #${VIPS_LIBRARIES}
     ${ZLIB_LIBRARY}
-    OpenImageIO::OpenImageIO
+    ${OPENIMAGEIO_LIBRARIES}
+    #OpenImageIO::OpenImageIO
 )
 
 # Copy/install all needed shaders

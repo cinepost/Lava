@@ -14,8 +14,8 @@ find_package( PythonLibs 3.7 REQUIRED )
 include_directories( ${PYTHON_INCLUDE_DIRS} )
 
 # FreeImage
-find_package(FreeImage REQUIRED)
-include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
+#find_package(FreeImage REQUIRED)
+#include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
 
 # Find Boost libs
 find_package( Boost COMPONENTS system filesystem REQUIRED )
@@ -28,7 +28,9 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 # We use Boost static libs
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
+
 add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )
+add_dependencies( lava_lib ThirdParty_Imath)
 
 target_link_libraries(
     lava_lib
