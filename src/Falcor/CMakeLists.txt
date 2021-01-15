@@ -84,8 +84,6 @@ if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
     message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
-else()
-    add_dependencies( falcor_lib ThirdParty_OpenImageIO )
 endif()
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
@@ -96,7 +94,6 @@ include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
 find_package(glfw3 CONFIG REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 link_libraries(${GLFW_LIBRARIES})
-
 
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
@@ -173,8 +170,7 @@ target_link_libraries(
     ${FREEIMAGE_LIBRARIES}
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
-    ${OPENIMAGEIO_LIBRARIES}
-    #OpenImageIO::OpenImageIO
+    OpenImageIO::OpenImageIO
 )
 
 # Copy/install all needed shaders

@@ -548,8 +548,6 @@ ParameterBlock::SharedPtr ParameterBlock::getParameterBlock(const BindLocation& 
 }
 
 bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const Resource::SharedPtr& pResource, const char* funcName) {
-    if(pResource) LOG_DBG("setResourceSrvUavCommon resource id: %zu", pResource->id());
-
     size_t flatIndex = getFlatIndex(bindLoc);
 
     if (isUavType(bindLoc.getType())) {

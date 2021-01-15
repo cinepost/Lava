@@ -84,7 +84,7 @@ const std::string to_string(Resource::State state) {
 }
 
 void Resource::invalidateViews() const {
-    logInfo("Invalidating resource views");
+    //logInfo("Invalidating resource views");
     mSrvs.clear();
     mUavs.clear();
     mRtvs.clear();

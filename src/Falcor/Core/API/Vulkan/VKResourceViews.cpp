@@ -171,7 +171,7 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
-            LOG_WARN("createViewCommon image id %zu", pSharedPtr->id());
+            //LOG_DBG("createViewCommon image id %zu", pSharedPtr->id());
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
             vk_call(vkCreateImageView(pResource->device()->getApiHandle(), &info, nullptr, &imageView));

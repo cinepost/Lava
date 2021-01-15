@@ -23,7 +23,6 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE) # add the automatically determined p
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )
-add_dependencies( lava_cmd ThirdParty_Imath)
 set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava-bin" )
  
 target_link_libraries( lava_cmd

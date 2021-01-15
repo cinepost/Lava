@@ -325,10 +325,8 @@ namespace Falcor {
                 sparseMemoryReq.formatProperties.imageGranularity.width
             };
 
-            LOG_DBG("!!!!!!!!!!!!");
-            LOG_WARN("mSparsePageRes %u %u %u", mSparsePageRes.x, mSparsePageRes.y, mSparsePageRes.z);
-            LOG_DBG("!!!!!!!!!!!!");
-
+            LOG_DBG("mSparsePageRes %u %u %u", mSparsePageRes.x, mSparsePageRes.y, mSparsePageRes.z);
+            
             // The mip tail contains all mip levels > sparseMemoryReq.imageMipTailFirstLod
             // Check if the format has a single mip tail for all layers or one mip tail for each layer
             // @todo: Comment
@@ -349,7 +347,7 @@ namespace Falcor {
                     extent.height = std::max(imageCreateInfo.extent.height >> mipLevel, 1u);
                     extent.depth = std::max(imageCreateInfo.extent.depth >> mipLevel, 1u);
 
-                    LOG_WARN("Mip level width %u height %u ...", extent.width, extent.height);
+                    LOG_DBG("Mip level width %u height %u ...", extent.width, extent.height);
 
                     // Aligned sizes by image granularity
                     VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;
@@ -359,7 +357,7 @@ namespace Falcor {
                     lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
                     lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
 
-                    LOG_WARN("apiInit mip level %u sparse binds count: %u %u %u", mipLevel, sparseBindCounts.x, sparseBindCounts.y, sparseBindCounts.z);
+                    LOG_DBG("apiInit mip level %u sparse binds count: %u %u %u", mipLevel, sparseBindCounts.x, sparseBindCounts.y, sparseBindCounts.z);
 
                     // @todo: Comment
                     for (uint32_t z = 0; z < sparseBindCounts.z; z++) {
@@ -380,7 +378,7 @@ namespace Falcor {
                                 VirtualTexturePage::SharedPtr pPage = sparseResourceManager.addTexturePage(shared_from_this(), pageIndex, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
                                 mPages.push_back(pPage);
 
-                                LOG_WARN("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
+                                LOG_DBG("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
 
                                 pageIndex++;
                             }

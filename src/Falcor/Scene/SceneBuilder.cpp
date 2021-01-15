@@ -51,7 +51,7 @@ public:
     {
         if (!mesh.normals.pData || !mesh.positions.pData || !mesh.texCrds.pData || !mesh.pIndices)
         {
-            logWarning("Can't generate tangent space. The mesh '" + mesh.name + "' doesn't have positions/normals/texCrd/indices.");
+            logWarning("Can't generate tangent space. The mesh '" + std::string(mesh.name) + "' doesn't have positions/normals/texCrd/indices.");
             return {};
         }
 
@@ -71,7 +71,7 @@ public:
 
         if (genTangSpaceDefault(&context) == false)
         {
-            logError("Failed to generate MikkTSpace tangents for the mesh '" + mesh.name + "'.");
+            logError("Failed to generate MikkTSpace tangents for the mesh '" + std::string(mesh.name) + "'.");
             return {};
         }
 

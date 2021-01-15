@@ -123,21 +123,14 @@ void AccumulatePass::compile(RenderContext* pContext, const CompileData& compile
 }
 
 void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    LOG_DBG("AccumulatePass::execute");
-    if (mAutoReset)
-    {
-        LOG_DBG("AccumulatePass::execute 0");
+    if (mAutoReset) {
         if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.
         {
-            LOG_DBG("AccumulatePass::execute 0.0");
             if (mFrameCount == mSubFrameCount)
             {
                 mFrameCount = 0;
             }
-        }
-        else
-        {
-            LOG_DBG("AccumulatePass::execute 0.1");
+        } else {
             // Query refresh flags passed down from the application and other passes.
             auto& dict = renderData.getDictionary();
             auto refreshFlags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
@@ -164,7 +157,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         }
     }
 
-    LOG_DBG("AccumulatePass::execute 1");
     // Grab our input/output buffers.
     Texture::SharedPtr pSrc = renderData[kInputChannel]->asTexture();
     Texture::SharedPtr pDst = renderData[kOutputChannel]->asTexture();
@@ -174,15 +166,12 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     const uint2 resolution = uint2(pSrc->getWidth(), pSrc->getHeight());
 
     // If accumulation is disabled, just blit the source to the destination and return.
-    if (!mEnableAccumulation)
-    {
-        LOG_DBG("AccumulatePass::execute skip");
+    if (!mEnableAccumulation) {
         // Only blit mip 0 and array slice 0, because that's what the accumulation uses otherwise otherwise.
         pRenderContext->blit(pSrc->getSRV(0, 1, 0, 1), pDst->getRTV(0, 0, 1));
         return;
     }
 
-    LOG_DBG("AccumulatePass::execute 2");
     // Setup accumulation.
     prepareAccumulation(pRenderContext, resolution.x, resolution.y);
 
@@ -199,17 +188,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     mpVars["gLastFrameSumHi"] = mpLastFrameSumHi;
 
     // Run the accumulation program.
-    LOG_DBG("AccumulatePass::execute 3");
     auto pProgram = mpProgram[mPrecisionMode];
-    LOG_DBG("AccumulatePass::execute 4");
     assert(pProgram);
     uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pProgram);
 
-    LOG_DBG("AccumulatePass::execute dispatch");
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 
-    LOG_DBG("AccumulatePass::execute done");
 }
 
 void AccumulatePass::renderUI(Gui::Widgets& widget) {

@@ -37,6 +37,8 @@ venv
 venv/
 third_party/FreeImage/Dist
 third_party/FreeImage/Dist/
+third_party/slang/bin
+third_party/slang/bin/
 
 # lava textures
 *.ltx

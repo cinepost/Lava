@@ -30,7 +30,6 @@ add_definitions( -DBOOST_LOG_DYN_LINK )
 
 
 add_library( lava_lib SHARED ${SOURCES} ${HEADERS} )
-add_dependencies( lava_lib ThirdParty_Imath)
 
 target_link_libraries(
     lava_lib

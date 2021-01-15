@@ -172,7 +172,7 @@ namespace Falcor {
             first = false;
         }
 
-        LOG_DBG("ProgramVersion::getKernels specialization key: %s", specializationKey.c_str());
+        //LOG_DBG("ProgramVersion::getKernels specialization key: %s", specializationKey.c_str());
         auto start = std::chrono::high_resolution_clock::now();
 
         auto foundKernels = mpKernels.find(specializationKey);
@@ -195,7 +195,7 @@ namespace Falcor {
                 mpKernels[specializationKey] = pKernels;
 
                 auto end = std::chrono::high_resolution_clock::now();
-                std::cout << "Program version getKernels time is: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+                LOG_DBG("Program version getKernels time is: %zu ms", std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
 
                 return pKernels;
             } else {

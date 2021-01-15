@@ -10,4 +10,4 @@ export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LAVA_HOM
 export PATH=$HFS/bin:$PATH
 
 # source virtualenv
-source /home/max/dev/Falcor/venv/bin/activate
+source /home/max/dev/Lava/venv/bin/activate

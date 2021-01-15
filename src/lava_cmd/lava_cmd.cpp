@@ -68,12 +68,8 @@ void listGPUs() {
 typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
 
 int main(int argc, char** argv){
-    // Set up logging level quick 
-    lava::ut::log::init_log();
-    boost::log::core::get()->set_filter(  boost::log::trivial::severity >=  boost::log::trivial::debug );
-    
     int gpuID = -1; // automatic gpu selection
-    int verbose_level = 6;
+    boost::log::trivial::severity_level logSeverity = boost::log::trivial::warning;
     bool echo_input = true;
     bool vtoff_flag = false; // virtual texturing enabled by default
     bool fconv_flag = false; // force virtual textures (re)conversion
@@ -90,25 +86,30 @@ int main(int argc, char** argv){
     namespace po = boost::program_options; 
     po::options_description generic("Options"); 
     generic.add_options() 
-        ("help,h", "Show helps") 
-        ("version,v", "Shout version information")
-        ("list-gpus,L", "List GPUs")
-        ;
+      ("help,h", "Show helps") 
+      ("version,v", "Shout version information")
+      ("list-gpus,L", "List GPUs")
+      ;
 
     // Declare a group of options that will be allowed both on command line and in config file
     po::options_description config("Configuration");
     config.add_options()
-        ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
-        ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
-        ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
-        ("include-path,I", po::value< std::vector<std::string> >()->composing(), "Include path")
-        ;
+      ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
+      ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
+      ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
+      ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
+      ;
+
+    po::options_description logging("Logging");
+    logging.add_options()
+      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity),"log level to output")
+      ;
 
     po::options_description input("Input");
     input.add_options()
-        ("stdin,C", "stdin compatibility mode")
-        ("input-file,f", po::value< std::vector<std::string> >(), "Input file")
-        ;
+      ("stdin,C", "stdin compatibility mode")
+      ("input-file,f", po::value< std::vector<std::string> >(), "Input file")
+      ;
 
     po::options_description cmdline_options;
     cmdline_options.add(generic).add(config).add(input);
@@ -117,14 +118,14 @@ int main(int argc, char** argv){
     config_file_options.add(config);
 
     po::options_description visible("Allowed options");
-    visible.add(generic).add(config).add(input);
+    visible.add(generic).add(config).add(input).add(logging);
 
     po::positional_options_description p;
     p.add("input-file", -1);
  
     po::variables_map vm; 
     po::store(po::command_line_parser(argc, argv).
-      options(cmdline_options).positional(p).run(), vm); // can throw 
+      options(visible).positional(p).run(), vm); // can throw 
     po::notify(vm); // throws on error, so do after help in case there are any problems
 
     /** --help option 
@@ -133,8 +134,13 @@ int main(int argc, char** argv){
       std::cout << generic << "\n";
       std::cout << config << "\n";
       std::cout << input << "\n";
+      std::cout << logging << "\n";
       exit(EXIT_SUCCESS);
     }
+
+    // Set up logging 
+    lava::ut::log::init_log();
+    boost::log::core::get()->set_filter(  boost::log::trivial::severity >= logSeverity );
 
     if ( vm.count("list-gpus")) {
       listGPUs();
