@@ -8,9 +8,9 @@
 #include <iostream>
 #include <variant>
 
-#include <boost/array.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/range.hpp>
+#include "boost/array.hpp"
+#include "boost/filesystem.hpp"
+#include "boost/range.hpp"
 //#include <boost/range/join.hpp>
 //#include <boost/algorithm/string/join.hpp>
 
@@ -18,18 +18,18 @@
    // #define BOOST_SPIRIT_X3_DEBUG
 #endif
 
-#include <boost/spirit/home/x3.hpp>
-#include <boost/spirit/home/x3/support/ast/variant.hpp>
-#include <boost/spirit/home/x3/support/traits/container_traits.hpp>
-#include <boost/spirit/include/support_istream_iterator.hpp>
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/io.hpp>
-#include <boost/fusion/sequence/io.hpp>
-#include <boost/fusion/include/io.hpp>
-#include <boost/fusion/adapted/array.hpp>
-#include <boost/fusion/adapted/std_pair.hpp>
+#include "boost/spirit/home/x3.hpp"
+#include "boost/spirit/home/x3/support/ast/variant.hpp"
+#include "boost/spirit/home/x3/support/traits/container_traits.hpp"
+#include "boost/spirit/include/support_istream_iterator.hpp"
+#include "boost/fusion/include/adapt_struct.hpp"
+#include "boost/fusion/include/io.hpp"
+#include "boost/fusion/sequence/io.hpp"
+#include "boost/fusion/include/io.hpp"
+#include "boost/fusion/adapted/array.hpp"
+#include "boost/fusion/adapted/std_pair.hpp"
 
-#include <boost/container/static_vector.hpp>
+#include "boost/container/static_vector.hpp"
 
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -38,7 +38,7 @@
 
 #include "../display.h"
 
-#include <boost/log/core.hpp>
+#include "boost/log/core.hpp"
 #include "lava_utils_lib/logging.h"
 
 namespace x3 = boost::spirit::x3;
@@ -294,7 +294,7 @@ static inline std::ostream& operator<<(std::ostream& os, const PropValue& v) {
 };
 
 static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> v) {
-    std::copy(v.begin(), v.end(), std::ostream_iterator<PropValue>(os, " "));
+    //std::copy(v.begin(), v.end(), std::ostream_iterator<PropValue>(os, " "));
     return os;
 };
 

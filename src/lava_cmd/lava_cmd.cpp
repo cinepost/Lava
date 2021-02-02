@@ -102,7 +102,7 @@ int main(int argc, char** argv){
 
     po::options_description logging("Logging");
     logging.add_options()
-      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity),"log level to output")
+      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity)->default_value(boost::log::trivial::warning),"log level to output")
       ;
 
     po::options_description input("Input");

@@ -144,7 +144,6 @@ void GBufferRaster::setCullMode(RasterizerState::CullMode mode) {
 }
 
 void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
-    LOG_WARN("GBufferRaster::resolvePerFrameSparseResources !!!");
     GBuffer::resolvePerFrameSparseResources(pRenderContext, renderData);
 
     // Setup depth pass to use same culling mode.
@@ -152,9 +151,7 @@ void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext
 
     // Copy depth buffer.
     mpDepthPrePassGraph->execute(pRenderContext);
-    //mpFbo->attachDepthStencilTarget(mpDepthPrePassGraph->getOutput("DepthPrePass.depth")->asTexture());
-    //pRenderContext->copyResource(renderData[kDepthName].get(), mpDepthPrePassGraph->getOutput("DepthPrePass.depth").get());
-
+    
     // Execute sparse textures resolve pass
     mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     mpTexturesResolvePassGraph->execute(pRenderContext);
@@ -162,12 +159,15 @@ void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext
 
 void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBuffer::execute(pRenderContext, renderData);
-
+    
     // Bind primary channels as render targets and clear them.
     for (size_t i = 0; i < kGBufferChannels.size(); ++i) {
-        Texture::SharedPtr pTex = renderData[kGBufferChannels[i].name]->asTexture();
+        auto pResource = renderData[kGBufferChannels[i].name];
+        if (!pResource) continue;
+        Texture::SharedPtr pTex = pResource->asTexture();
         mpFbo->attachColorTarget(pTex, uint32_t(i));
     }
+
     pRenderContext->clearFbo(mpFbo.get(), float4(0), 1.f, 0, FboAttachmentType::Color);
 
     // If there is no scene, clear the outputs and return.
@@ -205,7 +205,9 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kGBufferExtraChannels) {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        auto pResource = renderData[channel.name];
+        if(!pResource) continue;
+        Texture::SharedPtr pTex = pResource->asTexture();
         if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
         mRaster.pVars[channel.texname] = pTex;
     }

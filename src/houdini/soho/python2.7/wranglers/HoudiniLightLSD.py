@@ -230,7 +230,6 @@ lshaderParms = {
     'sharpspot' : SohoParm('sharpspot',         'int', [0], False),
 }
 
-
 def light_shader(obj, now, value):
     if obj.evalShader('shop_lightpath', now, value):
         if value[0]:

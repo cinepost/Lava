@@ -134,8 +134,12 @@ void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& r
 
 void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData) {
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
-    mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
-    mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
+    
+    if(renderData[kNormals])
+        mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
+    
+    if(renderData[kMotionVecs])
+        mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
 
     for (uint32_t i = 1; i < 3; i++) {
         const auto& pRtv = mpFbo->getRenderTargetView(i).get();
@@ -149,11 +153,13 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
 void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
     initDepth(pContext, renderData);
     initFbo(pContext, renderData);
-
+    
     if (mpScene) {
         mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-        mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
-
+        
+        if(renderData[kVisBuffer])
+            mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+        
         mpState->setFbo(mpFbo);
         mpScene->render(pContext, mpState.get(), mpVars.get());
     }

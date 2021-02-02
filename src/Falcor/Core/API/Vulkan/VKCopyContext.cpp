@@ -44,7 +44,7 @@ namespace Falcor {
         return flags;
     }
 
-    static uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
+    uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
         uint32_t perW = getFormatWidthCompressionRatio(format);
         uint32_t bw = align_to(perW, w) / perW;
 
@@ -206,6 +206,9 @@ namespace Falcor {
     }
 
     void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+        assert(pPage);
+        assert(pData);
+
         if(!pPage->isResident()) {
             LOG_ERR("Unable to update non-resident texture page !!!");
             return;
@@ -241,10 +244,72 @@ namespace Falcor {
         resourceBarrier(pTexture, Resource::State::CopyDest);
         resourceBarrier(pStaging.get(), Resource::State::CopySource);
         vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
-    
-        //textureBarrier(pTexture, Resource::State::ShaderResource);
-        //flush(true);
-        //flush(false);
+    }
+
+    void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
+        assert(pPage);
+        if(!pPage->isResident()) {
+            LOG_ERR("Unable to update non-resident texture page !!!");
+            return;
+        }
+
+        if(!pStagingBuffer) {
+            LOG_ERR("No staging buffer provided for updateTexturePage(...) call !!!");
+            return;
+        }
+
+        VkBufferImageCopy vkCopy;
+
+        vkCopy = {};
+        vkCopy.bufferRowLength = 0;
+        vkCopy.bufferImageHeight = 0;
+        vkCopy.imageSubresource.baseArrayLayer = 0;
+        vkCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        vkCopy.imageSubresource.layerCount = 1;
+        vkCopy.imageSubresource.mipLevel = pPage->mipLevel();
+        vkCopy.imageOffset = pPage->offsetVK();
+        vkCopy.imageExtent = pPage->extentVK();
+
+        auto pTexture = pPage->texture().get();
+
+        vkCopy.bufferOffset = pStagingBuffer->getGpuAddressOffset();
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStagingBuffer.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStagingBuffer->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
+    }
+
+    void CopyContext::updateMipTailData(const Texture* pTexture, const int3& offset, const uint3& extent, uint8_t mipLevel, const void* pData) {
+        assert(pTexture);
+        assert(pData);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.layerCount = 1;
+        region.imageSubresource.mipLevel = mipLevel;
+        region.imageOffset = { offset.x, offset.y, offset.z };
+        region.imageExtent = { extent.x, extent.y, extent.z };
+
+
+        Buffer::SharedPtr pStaging;
+        auto const format = pTexture->getFormat();
+
+        uint32_t numChannels = getFormatChannelCount(format);
+        uint32_t totalChannelsBits = 0;
+
+        for( uint32_t i = 0; i < numChannels; i++ ) {
+            totalChannelsBits += getNumChannelBits(format, i);
+        }
+
+        size_t dataSize = region.imageExtent.width * region.imageExtent.height * region.imageExtent.depth * (totalChannelsBits / 8);
+        
+        pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStaging.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {

@@ -166,6 +166,16 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	pSubContainer->declareProperty(Style::OBJECT, Type::VECTOR3, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "basecolor_useTexture", bool(false), Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "basecolor_texture", std::string(), Property::Owner::SYS);
+
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "baseBumpAndNormal_enable", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT,   "baseNormal_scale", 0.5, Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "baseNormal_texture", std::string(), Property::Owner::SYS);
+
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "metallic_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "metallic_texture", std::string(), Property::Owner::SYS);
+
+	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "rough_useTexture", bool(false), Property::Owner::SYS);
+	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "rough_texture", std::string(), Property::Owner::SYS);
 	
 	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "rough", 0.3, Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::FLOAT, "ior", 1.5, Property::Owner::SYS);

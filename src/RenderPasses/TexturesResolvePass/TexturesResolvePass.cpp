@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include "TexturesResolvePass.h"
 
 #include "Falcor/Utils/Debug/debug.h"
@@ -105,6 +106,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     if (!mpScene)
         return;
 
+    auto exec_started = std::chrono::high_resolution_clock::now();
+
     uint32_t totalPagesToUpdateCount = 0;
     uint32_t currPagesStartOffset = 0;
     uint32_t currTextureResolveID = 0; // texture id used to identify texture inside pass. always starts from 0.
@@ -130,6 +133,12 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
         if(materialResources.specular) {
             if (materialResources.specular->isSparse()) {
                 materialSparseTextures.push_back(materialResources.specular);
+            }
+        }
+
+        if(materialResources.roughness) {
+            if (materialResources.roughness->isSparse()) {
+                materialSparseTextures.push_back(materialResources.roughness);
             }
         }
 
@@ -223,11 +232,12 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     // Test resolved data
     const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
 
-    std::cout << "Page ids: \n";
-    for( uint32_t i = 0; i < totalPagesToUpdateCount; i++) {
-        std::cout << static_cast<int16_t>(pOutPagesData[i]) << " ";
-    }
-    std::cout << "\n\n";
+    // dev print pages
+    //std::cout << "Page ids: \n";
+    //for( uint32_t i = 0; i < totalPagesToUpdateCount; i++) {
+    //    std::cout << static_cast<int16_t>(pOutPagesData[i]) << " ";
+    //}
+    //std::cout << "\n\n";
 
     // test count pages
     std::vector<int8_t> page_flags(pOutPagesData, pOutPagesData + sizeof(int8_t) * totalPagesToUpdateCount);
@@ -235,6 +245,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     LOG_WARN("%u pages needs to be loaded", pagesToLoadCount);
 
     // test load pages
+    auto started = std::chrono::high_resolution_clock::now();
+
     uint32_t pagesStartOffset = 0;
     for (auto const& [textureID, pTexture] :texturesMap) {
         uint32_t texturePagesCount = pTexture->getSparsePagesCount();
@@ -246,13 +258,17 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
         for(uint32_t i = 0; i < texturePagesCount; i++) {
 
             if (pOutPagesData[i + pagesStartOffset] != 0)
-            pageIDs.push_back(i + pagesStartOffset);
+                pageIDs.push_back(i + pagesStartOffset);
         }
         SparseResourceManager::instance().loadPages(pTexture, pageIDs); 
 
         pagesStartOffset += texturePagesCount;
     }
+    auto done = std::chrono::high_resolution_clock::now();
+    std::cout << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << std::endl;
+    std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
 
+    LOG_DBG("TexturesResolvePass::execute done");
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

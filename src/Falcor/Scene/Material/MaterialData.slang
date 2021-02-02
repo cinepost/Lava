@@ -38,11 +38,11 @@ BEGIN_NAMESPACE_FALCOR
 
 /** This is a host/device structure that describes material resources.
 */
-struct MaterialResources
-{
+struct MaterialResources {
     // See Material.h for channel layout
     Texture2D baseColor;
     Texture2D specular;
+    Texture2D roughness;
     Texture2D emissive;
     Texture2D normalMap;
     Texture2D specularTransmission;
@@ -55,14 +55,18 @@ struct MaterialResources
 
 /** This is a host/device structure that describes a material.
 */
-struct MaterialData
-{
-    float4   baseColor              = float4(1);        ///< Material base color (RGB) and opacity (A).
+struct MaterialData {
+    float4   baseColor              = float4(0);        ///< Material base color (RGB) and opacity (A).
     
     float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
     
     float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
-    float    _pad1;
+    float    roughness              = 0.0;
+    
+    float    metalness              = 0.0;
+    float    anisotropic;
+    float    sheen;
+    float    subsurface;
 
     float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.

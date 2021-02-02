@@ -1,0 +1,15 @@
+{
+    "HD_HoudiniRendererPlugin" : {
+		"valid" : true,
+		"menulabel" : "Lava",
+		"menupriority" : 30,
+		"allowbackgroundupdate" : true,
+		"needsdepth" : false,
+		"depthstyle" : "opengl",
+		"needsselection" : true,
+		"defaultpurposes" : [ "render" ],
+		"drawmodesupport" : true,
+		"aovsupport" : false,
+		"complexitymultiplier" : 1.3,
+    }
+}

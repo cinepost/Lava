@@ -229,6 +229,7 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
 
 uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     logInfo("Adding mesh '" + meshDesc.name + "'");
+    TimeReport timeReport;
 
     // Copy the mesh desc so we can update it. The caller retains the ownership of the data.
     Mesh mesh = meshDesc;
@@ -259,7 +260,10 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         if (mesh.boneWeights.pData == nullptr) throw_on_missing_element("bone weights");
     }
 
+    timeReport.measure("SceneBuilder::addMesh early checks");
+
     // Generate tangent space if that's required.
+#if 0
     std::vector<float4> tangents;
     if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
         tangents = MikkTSpaceWrapper::generateTangents(mesh);
@@ -272,6 +276,9 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
             mesh.tangents.frequency = Mesh::AttributeFrequency::None;
         }
     }
+#endif
+
+    timeReport.measure("SceneBuilder::addMesh tangent space generation");
 
     // Build new vertex/index buffers by merging identical vertices.
     // The search is based on the topology defined by the original index buffer.
@@ -319,6 +326,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         }
     }
 
+    timeReport.measure("SceneBuilder::addMesh new vertex/index buffer generation");
+
     assert(vertices.size() > 0);
     assert(indices.size() == mesh.indexCount);
     if (vertices.size() != mesh.vertexCount) {
@@ -333,6 +342,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     }
     if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
     if (zeroCount > 0) logWarning("The mesh '" + mesh.name + "' has zero-length normals/tangents at " + std::to_string(zeroCount) + " vertices. Please fix the asset.");
+
+    timeReport.measure("SceneBuilder::addMesh vertex data validation");
 
     // Match texture coordinate quantization for textured emissives to match PackedEmissiveTriangle.
     // This is to avoid mismatch when sampling and evaluating emissive triangles.
@@ -369,6 +380,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
             }
         }
     }
+
+    timeReport.measure("SceneBuilder::addMesh texture coordinates quantization");
 
     // Add the mesh to the scene.
     // If the non-indexed vertices build flag is set, we will de-index the data below.
@@ -409,7 +422,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         s.position = v.position;
         s.normal = v.normal;
         s.texCrd = v.texCrd;
-        s.tangent = v.tangent;
+        //s.tangent = v.tangent;
         mBuffersData.staticData.push_back(PackedStaticVertexData(s));
 
         if (mesh.hasBones()) {
@@ -425,6 +438,11 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     mDirty = true;
 
     assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
+
+    timeReport.measure("SceneBuilder::addMesh final steps");
+    timeReport.addTotal("SceneBuilder::addMesh done in");
+    timeReport.printToLog();
+
     logInfo("Mesh '" + meshDesc.name + "' added.");
     return (uint32_t)mMeshes.size() - 1;
 }

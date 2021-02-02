@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "SkyBox.h"
 #include "glm/gtx/transform.hpp"
+#include "glm/gtx/euler_angles.hpp"
 
 #include "Falcor/Utils/Debug/debug.h"
 
@@ -39,6 +40,7 @@ static void regSkyBox(pybind11::module& m) {
     pybind11::class_<SkyBox, RenderPass, SkyBox::SharedPtr> pass(m, "SkyBox");
     pass.def_property("scale", &SkyBox::getScale, &SkyBox::setScale);
     pass.def_property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
+    pass.def_property("intensity", &SkyBox::getIntensity, &SkyBox::setIntensity);
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
@@ -61,6 +63,7 @@ namespace {
     const std::string kTexName = "texName";
     const std::string kLoadAsSrgb = "loadAsSrgb";
     const std::string kFilter = "filter";
+    const std::string kIntensity = "intensity";
 
 }
 
@@ -108,6 +111,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
         if (key == kTexName) pSkyBox->mTexName = value.operator std::string();
         else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
         else if (key == kFilter) pSkyBox->setFilter(value);
+        else if (key == kIntensity) pSkyBox->setIntensity(value);
         else logWarning("Unknown field '" + key + "' in a SkyBox dictionary");
     }
 
@@ -125,6 +129,7 @@ Dictionary SkyBox::getScriptingDictionary() {
     dict[kTexName] = mTexName;
     dict[kLoadAsSrgb] = mLoadSrgb;
     dict[kFilter] = mFilter;
+    dict[kIntensity] = mIntensity;
     return dict;
 }
 
@@ -144,11 +149,13 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
 
     if (!mpScene) return;
 
+    auto skyRotation = glm::eulerAngleYXZ(0.0, -90.0, 0.0);
     glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());
     mpVars["PerFrameCB"]["gWorld"] = world;
     mpVars["PerFrameCB"]["gScale"] = mScale;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
+    mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpState->setFbo(mpFbo);
     LOG_DBG("SkyBox::execute render");
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);

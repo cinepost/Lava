@@ -114,6 +114,12 @@ bool Property::set(const Value& value) {
         return true;
     }
 
+    if (mType == Type::BOOL && type == Type::INT) {
+        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        mValue = (bool) (boost::get<int>(value) == 0 ? false : true);
+        return true;
+    }
+
     if (mType == Type::INT && type == Type::FLOAT) {
         LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (int) boost::get<double>(value);
@@ -315,6 +321,14 @@ const int PropertiesContainer::getPropertyValue(ast::Style style, const std::str
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<int>();
     LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << to_string(default_value);
+    return default_value;
+}
+
+template<>
+const bool PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const bool& default_value) const {
+    auto pProperty = getProperty(style, name);
+    if(pProperty) return pProperty->get<bool>();
+    LLOG_WRN << "Returning default value for property " << to_string(style) << " " << name << " " << (default_value ? "True" : "False");
     return default_value;
 }
 

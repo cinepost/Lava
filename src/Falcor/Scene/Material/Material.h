@@ -71,16 +71,14 @@ namespace Falcor {
 
 class Device;
 
-class dlldecl Material : public std::enable_shared_from_this<Material>
-{
-public:
+class dlldecl Material : public std::enable_shared_from_this<Material> {
+  public:
     using SharedPtr = std::shared_ptr<Material>;
     using SharedConstPtr = std::shared_ptr<const Material>;
 
     /** Flags indicating if and what was updated in the material
     */
-    enum class UpdateFlags
-    {
+    enum class UpdateFlags {
         None                = 0x0,  ///< Nothing updated
         DataChanged         = 0x1,  ///< Material data (properties) changed
         ResourcesChanged    = 0x2,  ///< Material resources (textures, sampler) changed
@@ -88,10 +86,10 @@ public:
 
     /** Texture slots available in the material
     */
-    enum class TextureSlot
-    {
+    enum class TextureSlot {
         BaseColor,
         Specular,
+        Roughness,
         Emissive,
         Normal,
         Occlusion,
@@ -176,6 +174,14 @@ public:
     /** Get the specular texture
     */
     Texture::SharedPtr getSpecularTexture() const { return mResources.specular; }
+
+    /** Set the roughness texture
+    */
+    void setRoughnessTexture(Texture::SharedPtr pRoughness);
+
+    /** Get the roughness texture
+    */
+    Texture::SharedPtr getRoughnessTexture() const { return mResources.roughness; }
 
     /** Set the emissive texture
     */
@@ -359,6 +365,7 @@ private:
     void setFlags(uint32_t flags);
     void updateBaseColorType();
     void updateSpecularType();
+    void updateRoughnessType();
     void updateEmissiveType();
     void updateOcclusionFlag();
     void updateSpecularTransmissionType();

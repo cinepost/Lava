@@ -31,7 +31,12 @@ def defaultRenderGraph(device):
     })
     g.addPass(GBufferRaster, "GBufferRaster")
 
-    SkyBox = RenderPass(device, "SkyBox", {'texName': '/home/max/env.exr', 'loadAsSrgb': True, 'filter': SamplerFilter.Linear})
+    SkyBox = RenderPass(device, "SkyBox", {
+        'texName': '/home/max/env.exr', 
+        'loadAsSrgb': True, 
+        'filter': SamplerFilter.Linear,
+        'intensity': 0.0
+    })
     g.addPass(SkyBox, "SkyBox")
 
     DepthPass = RenderPass(device, "DepthPass")
@@ -49,7 +54,7 @@ def defaultRenderGraph(device):
     g.addEdge("GBufferRaster.depth", "SkyBox.depth")
     #g.addEdge("GBufferRaster.depth", "ShadowPass.depth")
     g.addEdge("GBufferRaster.depth", "LightingPass.depth")
-    #g.addEdge("GBufferRaster.normW", "LightingPass.normals")
+    g.addEdge("GBufferRaster.normW", "LightingPass.normals")
 
     #g.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
     g.addEdge("SkyBox.target", "LightingPass.color")
@@ -57,7 +62,8 @@ def defaultRenderGraph(device):
     #g.addEdge("GBufferRaster.normW", "BlitPass.src")
     
     #g.markOutput("SkyBox.target")
-    g.addEdge("GBufferRaster.diffuseOpacity", "AccumulatePass.input")
+    #g.addEdge("GBufferRaster.diffuseOpacity", "AccumulatePass.input")
+    g.addEdge("LightingPass.color", "AccumulatePass.input")
     #g.markOutput("LightingPass.color")
     g.markOutput("AccumulatePass.output")
 

@@ -375,12 +375,12 @@ namespace Falcor {
                                 extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
                                 // Add new virtual page
-                                VirtualTexturePage::SharedPtr pPage = sparseResourceManager.addTexturePage(shared_from_this(), pageIndex, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
+                                VirtualTexturePage::SharedPtr pPage = sparseResourceManager.addTexturePage(shared_from_this(), pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
                                 mPages.push_back(pPage);
 
-                                LOG_DBG("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
+                                //LOG_DBG("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
 
-                                pageIndex++;
+                                //pageIndex++;
                             }
                         }
                     }
@@ -415,14 +415,41 @@ namespace Falcor {
 
                     mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
-                    mMipBases[sparseMemoryReq.imageMipTailFirstLod] = mSparsePagesCount;
-                    mSparsePagesCount += 1;
+                    mMipBases[sparseMemoryReq.imageMipTailFirstLod] = mSparsePagesCount;                    
+                    //mSparsePagesCount += 1;
                 }
             } // end layers and mips
 
             std::cout << "Texture info:" << std::endl;
             std::cout << "\tDim: " << mWidth << " x " << mHeight << std::endl;
             std::cout << "\tVirtual pages: " << mPages.size() << std::endl;
+            std::cout << "\tSingle mip tail: " << (mMipTailInfo.singleMipTail ? "Yes" : "No") << std::endl;
+            std::cout << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod << std::endl;
+            std::cout << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize << std::endl;
+
+            // Check if format has one mip tail for all layers
+            if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < mMipLevels)) {
+                 std::cout << "\tOne mip tail for all mip layers " << std::endl;
+                // Allocate memory for the mip tail
+                VkMemoryAllocateInfo memAllocInfo = {};
+                memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+                memAllocInfo.memoryTypeIndex = mMemoryTypeIndex;
+
+                VkDeviceMemory deviceMemory;
+                if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &deviceMemory)) ) {
+                    LOG_ERR("Could not allocate memory !!!");
+                    return;
+                }
+
+                // (Opaque) sparse memory binding
+                VkSparseMemoryBind sparseMemoryBind{};
+                sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset;
+                sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
+                sparseMemoryBind.memory = deviceMemory;
+
+                mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+            }
 
             // Create signal semaphore for sparse binding
             VkSemaphoreCreateInfo semaphoreCreateInfo = {};

@@ -148,8 +148,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 #endif
 
     // Sample the diffuse texture and apply the alpha test
-    float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod);
-    //float4 baseColor = mr.baseColor.SampleLevel(mr.samplerState, v.texC, 3);
+    float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, float4(1), EXTRACT_DIFFUSE_TYPE(md.flags), lod) * md.baseColor;
     sd.opacity = baseColor.a;
     applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
 
@@ -179,29 +178,33 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     // Sample the spec texture
     sd.occlusion = 1.0f;
     bool sampleOcclusion = EXTRACT_OCCLUSION_MAP(md.flags) > 0;
-    float4 spec = sampleTexture(mr.specular, mr.samplerState, v.texC, md.specular, EXTRACT_SPECULAR_TYPE(md.flags), lod);
+    
+    float occ = 1.0; // TODO: read occlusion texture
+    float3 specular = sampleTexture(mr.specular, mr.samplerState, v.texC, float4(1), EXTRACT_SPECULAR_TYPE(md.flags), lod).rgb; // metallic component stored in B channel of MaterialData
+    float metallic = pow(specular.r, 1.0/2.2) * md.specular.b;
+
+    float rough = sampleTexture(mr.roughness, mr.samplerState, v.texC, float4(1), EXTRACT_ROUGHNESS_TYPE(md.flags), lod).r * md.roughness;
+    
     if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelMetalRough)
     {
-        // spec.r - Occlusion; spec.g - Roughness; spec.b - Metallic
-        sd.diffuse = lerp(baseColor.rgb, float3(0), spec.b);
-        sd.diffuse = baseColor.rgb;
+        sd.diffuse = lerp(baseColor.rgb, float3(0), metallic);
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
         float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
         float F0 = f * f;
 
-        sd.specular = lerp(float3(F0), baseColor.rgb, spec.b);
-        sd.linearRoughness = spec.g;
-        sd.metallic = spec.b;
-        if (sampleOcclusion) sd.occlusion = spec.r;
+        sd.specular = lerp(float3(F0), baseColor.rgb, metallic);
+        sd.linearRoughness = rough;
+        sd.metallic = metallic;
+        if (sampleOcclusion) sd.occlusion = occ;
     }
     else // if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelSpecGloss)
     {
         sd.diffuse = baseColor.rgb;
         
-        sd.specular = spec.rgb;
-        sd.linearRoughness = 1 - spec.a;
+        sd.specular = specular.rgb;
+        sd.linearRoughness = 1 - rough;
         sd.metallic = getMetallic(sd.diffuse, sd.specular);
 
         if (sampleOcclusion)
@@ -213,7 +216,8 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     // Compute GGX alpha value.
     // TODO: ggxAlpha should be removed and computed where it's needed.
     // The threshold of 0.0064 is because in previous versions we used to clamp linearRoughness to 0.08.
-    sd.ggxAlpha = max(0.0064, sd.linearRoughness * sd.linearRoughness);
+    //sd.ggxAlpha = max(0.0064, sd.linearRoughness * sd.linearRoughness);
+    sd.ggxAlpha = max(0.001, sd.linearRoughness * sd.linearRoughness); // Mantra style
 
     // Sample the emissive texture. Note that triangles are emissive only on the front-facing side.
     if (sd.frontFacing)
@@ -324,12 +328,12 @@ ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
     sd.NdotV = saturate(sd.NdotV);
 
     // Calculate the diffuse term
-    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);
+    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);// * 0.0;
     sr.diffuse = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
     sr.color = sr.diffuse;
 
     // Calculate the specular term
-    sr.specularBrdf = evalSpecularBrdf(sd, ls);
+    sr.specularBrdf = evalSpecularBrdfMantra_(sd, ls);
     sr.specular = ls.specular * sr.specularBrdf * ls.NdotL;
     sr.color += sr.specular;
 

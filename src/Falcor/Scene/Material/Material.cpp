@@ -217,6 +217,9 @@ void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture)
     case TextureSlot::Specular:
         setSpecularTexture(pTexture);
         break;
+    case TextureSlot::Roughness:
+        setRoughnessTexture(pTexture);
+        break;
     case TextureSlot::Emissive:
         setEmissiveTexture(pTexture);
         break;
@@ -242,6 +245,8 @@ Texture::SharedPtr Material::getTexture(TextureSlot slot) const
         return getBaseColorTexture();
     case TextureSlot::Specular:
         return getSpecularTexture();
+    case TextureSlot::Roughness:
+        return getRoughnessTexture();
     case TextureSlot::Emissive:
         return getEmissiveTexture();
     case TextureSlot::Normal:
@@ -281,35 +286,32 @@ void Material::loadTexture(TextureSlot slot, const std::string& filename, bool u
     }
 }
 
-void Material::clearTexture(TextureSlot slot)
-{
+void Material::clearTexture(TextureSlot slot) {
     setTexture(slot, nullptr);
 }
 
-bool Material::isSrgbTextureRequired(TextureSlot slot)
-{
+bool Material::isSrgbTextureRequired(TextureSlot slot) {
     uint32_t shadingModel = getShadingModel();
 
-    switch (slot)
-    {
-    case TextureSlot::Specular:
-        return (shadingModel == ShadingModelSpecGloss);
-    case TextureSlot::BaseColor:
-    case TextureSlot::Emissive:
-    case TextureSlot::Occlusion:
-        return true;
-    case TextureSlot::Normal:
-        return false;
-    default:
-        should_not_get_here();
-        return false;
+    switch (slot) {
+        case TextureSlot::Specular:
+            return false;
+            return (shadingModel == ShadingModelSpecGloss);
+        case TextureSlot::BaseColor:
+        case TextureSlot::Emissive:
+        case TextureSlot::Occlusion:
+            return true;
+        case TextureSlot::Normal:
+        case TextureSlot::Roughness:
+            return false;
+        default:
+            should_not_get_here();
+            return false;
     }
 }
 
-void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor)
-{
-    if (mResources.baseColor != pBaseColor)
-    {
+void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor) {
+    if (mResources.baseColor != pBaseColor) {
         mResources.baseColor = pBaseColor;
         markUpdates(UpdateFlags::ResourcesChanged);
         updateBaseColorType();
@@ -318,159 +320,136 @@ void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor)
     }
 }
 
-void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
-{
-    if (mResources.specular != pSpecular)
-    {
+void Material::setSpecularTexture(Texture::SharedPtr pSpecular) {
+    if (mResources.specular != pSpecular) {
         mResources.specular = pSpecular;
         markUpdates(UpdateFlags::ResourcesChanged);
         updateSpecularType();
     }
 }
 
-void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive)
-{
-    if (mResources.emissive != pEmissive)
-    {
+void Material::setRoughnessTexture(Texture::SharedPtr pRoughness) {
+    if (mResources.roughness != pRoughness) {
+        mResources.roughness = pRoughness;
+        markUpdates(UpdateFlags::ResourcesChanged);
+        updateRoughnessType();
+    }
+}
+
+void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive) {
+    if (mResources.emissive != pEmissive) {
         mResources.emissive = pEmissive;
         markUpdates(UpdateFlags::ResourcesChanged);
         updateEmissiveType();
     }
 }
 
-void Material::setSpecularTransmissionTexture(const Texture::SharedPtr& pSpecularTransmission)
-{
-    if (mResources.specularTransmission != pSpecularTransmission)
-    {
+void Material::setSpecularTransmissionTexture(const Texture::SharedPtr& pSpecularTransmission) {
+    if (mResources.specularTransmission != pSpecularTransmission) {
         mResources.specularTransmission = pSpecularTransmission;
         markUpdates(UpdateFlags::ResourcesChanged);
         updateSpecularTransmissionType();
     }
 }
 
-
-void Material::setBaseColor(const float4& color)
-{
-    if (mData.baseColor != color)
-    {
+void Material::setBaseColor(const float4& color) {
+    if (mData.baseColor != color) {
         mData.baseColor = color;
         markUpdates(UpdateFlags::DataChanged);
         updateBaseColorType();
     }
 }
 
-void Material::setSpecularParams(const float4& color)
-{
-    if (mData.specular != color)
-    {
+void Material::setSpecularParams(const float4& color) {
+    if (mData.specular != color) {
         mData.specular = color;
         markUpdates(UpdateFlags::DataChanged);
         updateSpecularType();
     }
 }
 
-void Material::setRoughness(float roughness)
-{
-    if (getShadingModel() != ShadingModelMetalRough)
-    {
+void Material::setRoughness(float roughness) {
+    if (getShadingModel() != ShadingModelMetalRough) {
         logWarning("Ignoring setRoughness(). Material '" + mName + "' does not use the metallic/roughness shading model.");
         return;
     }
 
-    if (mData.specular.g != roughness)
-    {
-        mData.specular.g = roughness;
+    if (mData.roughness != roughness) {
+        mData.roughness = roughness;
         markUpdates(UpdateFlags::DataChanged);
-        updateSpecularType();
+        updateRoughnessType();
     }
 }
 
-void Material::setMetallic(float metallic)
-{
-    if (getShadingModel() != ShadingModelMetalRough)
-    {
+void Material::setMetallic(float metallic) {
+    if (getShadingModel() != ShadingModelMetalRough) {
         logWarning("Ignoring setMetallic(). Material '" + mName + "' does not use the metallic/roughness shading model.");
         return;
     }
 
-    if (mData.specular.b != metallic)
-    {
+    if (mData.specular.b != metallic) {
         mData.specular.b = metallic;
         markUpdates(UpdateFlags::DataChanged);
         updateSpecularType();
     }
 }
 
-void Material::setSpecularTransmission(float specularTransmission)
-{
-    if (mData.specularTransmission != specularTransmission)
-    {
+void Material::setSpecularTransmission(float specularTransmission) {
+    if (mData.specularTransmission != specularTransmission) {
         mData.specularTransmission = specularTransmission;
         markUpdates(UpdateFlags::DataChanged);
         updateSpecularTransmissionType();
     }
 }
 
-void Material::setVolumeAbsorption(const float3& volumeAbsorption)
-{
-    if (mData.volumeAbsorption != volumeAbsorption)
-    {
+void Material::setVolumeAbsorption(const float3& volumeAbsorption) {
+    if (mData.volumeAbsorption != volumeAbsorption) {
         mData.volumeAbsorption = volumeAbsorption;
         markUpdates(UpdateFlags::DataChanged);
     }
 }
 
-void Material::setEmissiveColor(const float3& color)
-{
-    if (mData.emissive != color)
-    {
+void Material::setEmissiveColor(const float3& color) {
+    if (mData.emissive != color) {
         mData.emissive = color;
         markUpdates(UpdateFlags::DataChanged);
         updateEmissiveType();
     }
 }
 
-void Material::setEmissiveFactor(float factor)
-{
-    if (mData.emissiveFactor != factor)
-    {
+void Material::setEmissiveFactor(float factor) {
+    if (mData.emissiveFactor != factor) {
         mData.emissiveFactor = factor;
         markUpdates(UpdateFlags::DataChanged);
         updateEmissiveType();
     }
 }
 
-void Material::setNormalMap(Texture::SharedPtr pNormalMap)
-{
-    if (mResources.normalMap != pNormalMap)
-    {
+void Material::setNormalMap(Texture::SharedPtr pNormalMap) {
+    if (mResources.normalMap != pNormalMap) {
         mResources.normalMap = pNormalMap;
         markUpdates(UpdateFlags::ResourcesChanged);
         uint32_t normalMode = NormalMapUnused;
-        if (pNormalMap)
-        {
-            switch(getFormatChannelCount(pNormalMap->getFormat()))
-            {
-            case 2:
-                normalMode = NormalMapRG;
-                break;
-            case 3:
-            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                normalMode = NormalMapRGB;
-                break;
-            default:
-                should_not_get_here();
-                logWarning("Unsupported normal map format for material " + mName);
+        if (pNormalMap) {
+            switch(getFormatChannelCount(pNormalMap->getFormat())) {
+                case 2:
+                    normalMode = NormalMapRG;
+                    break;
+                case 3:
+                case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
+                    normalMode = NormalMapRGB;
+                    break;
+                default:
+                    should_not_get_here();
+                    logWarning("Unsupported normal map format for material " + mName);
             }
         }
         setFlags(PACK_NORMAL_MAP_TYPE(mData.flags, normalMode));
     }
 }
 
-void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap)
-{
-    if (mResources.occlusionMap != pOcclusionMap)
-    {
+void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap) {
+    if (mResources.occlusionMap != pOcclusionMap) {
         mResources.occlusionMap = pOcclusionMap;
         markUpdates(UpdateFlags::ResourcesChanged);
         updateOcclusionFlag();
@@ -482,6 +461,7 @@ bool Material::operator==(const Material& other) const
 #define compare_field(_a) if (mData._a != other.mData._a) return false
     compare_field(baseColor);
     compare_field(specular);
+    compare_field(roughness);
     compare_field(emissive);
     compare_field(emissiveFactor);
     compare_field(alphaThreshold);
@@ -494,6 +474,7 @@ bool Material::operator==(const Material& other) const
 #define compare_texture(_a) if (mResources._a != other.mResources._a) return false
     compare_texture(baseColor);
     compare_texture(specular);
+    compare_texture(roughness);
     compare_texture(emissive);
     compare_texture(normalMap);
     compare_texture(occlusionMap);
@@ -536,6 +517,11 @@ void Material::updateSpecularType()
     setFlags(PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mResources.specular != nullptr, mData.specular)));
 }
 
+void Material::updateRoughnessType()
+{
+    setFlags(PACK_ROUGHNESS_TYPE(mData.flags, getChannelMode(mResources.roughness != nullptr, mData.roughness)));
+}
+
 void Material::updateEmissiveType()
 {
     setFlags(PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mResources.emissive != nullptr, mData.emissive * mData.emissiveFactor)));
@@ -569,6 +555,7 @@ SCRIPT_BINDING(Material)
     pybind11::enum_<Material::TextureSlot> textureSlot(m, "MaterialTextureSlot");
     textureSlot.value("BaseColor", Material::TextureSlot::BaseColor);
     textureSlot.value("Specular", Material::TextureSlot::Specular);
+    textureSlot.value("Roughness", Material::TextureSlot::Roughness);
     textureSlot.value("Emissive", Material::TextureSlot::Emissive);
     textureSlot.value("Normal", Material::TextureSlot::Normal);
     textureSlot.value("Occlusion", Material::TextureSlot::Occlusion);

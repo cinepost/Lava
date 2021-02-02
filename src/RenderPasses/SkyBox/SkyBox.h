@@ -49,6 +49,8 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
+    void setIntensity(float intensity) { mIntensity = intensity; }
+    float getIntensity() const { return mIntensity; }
     void setScale(float scale) { mScale = scale; }
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
@@ -59,6 +61,7 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
+    float mIntensity = 1.0;
     float mScale = 1;
     bool mLoadSrgb = true;
     Sampler::Filter mFilter = Sampler::Filter::Linear;

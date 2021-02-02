@@ -1,13 +1,16 @@
 #include <unistd.h>
 
+#include <array>
+
 #include "Falcor/stdafx.h"
 #include "SparseResourceManager.h"
 
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+//#include "boost/asio/post.hpp"
+#include "boost/filesystem/operations.hpp"
+#include "boost/filesystem/path.hpp"
 namespace fs = boost::filesystem;
 
 namespace Falcor {
@@ -15,11 +18,14 @@ namespace Falcor {
 SparseResourceManager::SparseResourceManager() {
     mpDevice = nullptr;
     mInitialized = false;
+    //mpThreadPool = nullptr;
 }
 
 SparseResourceManager::~SparseResourceManager() {
     if(!mpDevice)
         return;
+
+    //delete mpThreadPool;
 
     clear();
 }
@@ -77,6 +83,7 @@ bool SparseResourceManager::init(const InitDesc& initDesc) {
     }
 
     mpCtx = mpDevice->getRenderContext();
+    //mpThreadPool = new boost::asio::thread_pool();
 
     clear();
 
@@ -111,32 +118,6 @@ bool SparseResourceManager::checkDeviceFeatures(const std::shared_ptr<Device>&  
 
     return true;
 }
-
-/*
-// Compressed formats
-        BC1RGBUnorm,
-        BC1RGBSrgb,
-        BC1RGBAUnorm,
-        BC1RGBASrgb,
-
-        BC2RGBAUnorm,
-        BC2RGBASrgb,
-        
-        BC3RGBAUnorm,
-        BC3RGBASrgb,
-        
-        BC4Unorm,
-        BC4Snorm,
-        
-        BC5Unorm,
-        BC5Snorm,
-        
-        BC6HS16,
-        BC6HU16,
-        
-        BC7Unorm,
-        BC7Srgb,
-*/
 
 ResourceFormat SparseResourceManager::compressedFormat(ResourceFormat format) {
     switch(format) {
@@ -194,7 +175,6 @@ Texture::SharedPtr SparseResourceManager::createTextureFromFile(std::shared_ptr<
 }
 
 Texture::SharedPtr SparseResourceManager::createSparseTextureFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
-    assert(mInitialized);
     assert(mpDevice == pDevice);
 
     if (!mSparseTexturesEnabled)
@@ -292,8 +272,12 @@ const VirtualTexturePage::SharedPtr SparseResourceManager::addTexturePage(const 
     return mPages.back();
 }
 
-void SparseResourceManager::loadPages(Texture::SharedPtr pTexture, const std::vector<uint32_t>& pageIDs) {
-    assert(pTexture);
+void SparseResourceManager::loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIDs) {
+    assert(mInitialized);
+    if(!mInitialized)
+        return;
+
+    assert(pTexture.get());
 
     uint32_t textureID = pTexture->id();
 
@@ -303,24 +287,81 @@ void SparseResourceManager::loadPages(Texture::SharedPtr pTexture, const std::ve
         return;
     }
 
-    std::vector<uint32_t> sortedPageIDs = pageIDs;
-    std::sort (sortedPageIDs.begin(), sortedPageIDs.end());
+    //std::vector<uint32_t> sortedPageIDs = pageIDs;
+    //std::sort (sortedPageIDs.begin(), sortedPageIDs.end());
 
     // allocate pages
-    for( uint32_t pageID: sortedPageIDs ) {
+    for( uint32_t pageID: pageIDs ) {
         mPages[pageID]->allocate();
     }
     pTexture->updateSparseBindInfo();
 
     // read data and fill pages
+    auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+    std::string ltxFilename = pLtxBitmap->getFilename();
+    auto pFile = fopen(ltxFilename.c_str(), "rb");
     std::vector<uint8_t> tmpPage(65536);
     auto pTmpPageData = tmpPage.data();
-    for( uint32_t pageID: sortedPageIDs ) {
+    
+    for( uint32_t pageID: pageIDs ) {
         auto pPage = mPages[pageID];
-        LOG_DBG("Load texture page %u level %u", pageID, pPage->mipLevel());
-        mTextureLTXBitmapsMap[textureID]->readPageData(pPage->index(), pTmpPageData);
+        //LOG_DBG("Load texture page index %u level %u", pPage->index(), pPage->mipLevel());
+        pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile);
         mpCtx->updateTexturePage(pPage.get(), pTmpPageData);
     }
+
+    fclose(pFile);
+
+    fillMipTail(pTexture);
+    pTexture->updateSparseBindInfo();
+}
+
+void SparseResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
+    assert(mInitialized);
+    if(!mInitialized)
+        return;
+
+    assert(pTexture.get());
+
+    uint32_t textureID = pTexture->id();
+
+    auto it = mTextureLTXBitmapsMap.find(textureID);
+    if (it == mTextureLTXBitmapsMap.end()) {
+        LOG_ERR("Not LTX_Bitmap stored for texture %u", textureID);
+        return;
+    }
+
+    auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+    auto pTex = pTexture.get();
+
+    //uint32_t mipLevel = pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod;
+    //uint32_t width = std::max(pTex->mWidth >> pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
+    //uint32_t height = std::max(pTex->mHeight >> pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
+    //uint32_t depth = 1;
+
+    VkSparseImageMemoryBind mipTailimageMemoryBind{};
+
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.allocationSize = pTex->mSparseImageMemoryRequirements.imageMipTailSize;
+    allocInfo.memoryTypeIndex = pTex->mMemoryTypeIndex;
+    
+    if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &allocInfo, nullptr, &mipTailimageMemoryBind.memory)) ) {
+        LOG_ERR("Could not allocate memory !!!");
+        return;
+    }
+
+    for (uint32_t mipLevel = pTex->mMipTailStart; mipLevel < pTex->mMipLevels; mipLevel++) {
+
+        const uint32_t width = std::max(pTex->mWidth >> mipLevel, 1u);
+        const uint32_t height = std::max(pTex->mHeight >> mipLevel, 1u);
+        const uint32_t depth = 1;
+
+        std::vector<unsigned char> tmpPage(65536, 255);
+
+        LOG_WARN("Fill mip tail level %u", mipLevel);
+        mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
+    }
+    mpCtx->flush(true);
 }
 
 void SparseResourceManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData) {

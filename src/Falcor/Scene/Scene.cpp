@@ -253,6 +253,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 #define set_texture(texName) var[#texName] = resources.texName;
         set_texture(baseColor);
         set_texture(specular);
+        set_texture(roughness);
         set_texture(emissive);
         set_texture(normalMap);
         set_texture(occlusionMap);

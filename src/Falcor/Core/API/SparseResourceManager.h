@@ -11,6 +11,7 @@
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
+//#include "boost/asio/thread_pool.hpp"
 
 #include "Texture.h"
 #include "VirtualTexturePage.h"
@@ -55,7 +56,8 @@ class dlldecl SparseResourceManager {
     static void setVirtualTexturingEnabled(bool on_off = true);
     static void setForceTexturesConversion(bool on_off = false);
 
-    void loadPages(Texture::SharedPtr pTexture, const std::vector<uint32_t>& pageIDs); 
+    void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIDs); 
+    void fillMipTail(const Texture::SharedPtr& pTexture);
 
  private:
     SparseResourceManager();
@@ -80,6 +82,8 @@ class dlldecl SparseResourceManager {
 
     RenderContext* mpCtx;
 
+    //boost::asio::thread_pool* mpThreadPool = nullptr;
+
     uint32_t    hostCacheMemSize;
     uint32_t    hostCacheMemSizeLeft;
     uint32_t    deviceCacheMemSize;
@@ -90,7 +94,7 @@ class dlldecl SparseResourceManager {
 
     std::map<std::string, Texture::SharedPtr> mLoadedTexturesMap;
     std::map<std::string, Bitmap::UniqueConstPtr> mLoadedBitmapsMap;
-    std::map<uint32_t, LTX_Bitmap::UniqueConstPtr> mTextureLTXBitmapsMap;
+    std::map<uint32_t, LTX_Bitmap::SharedConstPtr> mTextureLTXBitmapsMap;
 };
 
 }  // namespace Falcor

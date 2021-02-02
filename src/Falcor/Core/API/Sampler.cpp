@@ -84,9 +84,9 @@ Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
 Sampler::SharedPtr Sampler::getDefault(std::shared_ptr<Device> device) {
     if (gSamplerData.pDefaultSampler == nullptr) {
         Sampler::Desc desc;
-        desc.setMaxAnisotropy(1);
-        desc.setLodParams(0.0f, 16.0f, -0.5f);
-        desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+        desc.setMaxAnisotropy(8);
+        desc.setLodParams(0.0f, 16.0f, 0.0f);
+        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
         gSamplerData.pDefaultSampler = create(device, desc);
     }
     return gSamplerData.pDefaultSampler;

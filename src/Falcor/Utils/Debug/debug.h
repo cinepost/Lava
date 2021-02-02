@@ -18,7 +18,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #ifdef NDEBUG
-#define LOG_DEBUG 0
+#define LOG_DEBUG 1
 #else
 #define LOG_DEBUG 1
 #endif

@@ -16,11 +16,13 @@ RWByteAddressBuffer resolvedPagesBuff; // all virtual pages needed buffer, 0 mea
 //RWByteAddressBuffer resolvedPagesBitsetBuff; // all virtual pages needed buffer, unset bits means unused page
 
 SamplerState gSampler;
+Texture2DArray <uint4>  g_tTex2du4a;
 
 // Vertex
 
 static VSOut vsData;
 
+[shader("vertex")]
 VSOut vsMain(VSIn vIn) {
     VSOut vsOut;
     vsOut = defaultVS(vIn);
@@ -48,32 +50,42 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     MaterialResolveData matData = materialsResolveData[materialID];
 
     int debugTileID = 0;
+    float debug_mip_level = 0.0;
     uint virtualTexturesCount = matData.virtualTexturesCount;
     
     for(uint v = 0; v < virtualTexturesCount; v++) {
         
         SamplerState currTextureSampler = gSampler; // TODO: use actual texture sampler
-        bool anisotropicFileteringRequired = false; // TODO: calculate maximum anisotropy level needed for given texture with the given sampler
+        bool anisotropicFilteringRequired = true; // TODO: calculate maximum anisotropy level needed for given texture with the given sampler
         
         VirtualTextureData vtexData = matData.virtualTextures[v];
         uint32_t textureID = vtexData.textureID;
 
         if (!vtexData.empty) {
-            float fMipLevel = calculateMaxMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height));
+            float mipBias = -0.25; // TODO: use actual texture sampler bias
+            mipBias = 0.0;
             
-            int loMipLevelTileID = calculateTileID2D(vOut.texC, floor(fMipLevel), vtexData);
-            int hiMipLevelTileID = calculateTileID2D(vOut.texC, ceil(fMipLevel), vtexData);
+            float fMipLevel = 0.0;
+            if (anisotropicFilteringRequired) { 
+                fMipLevel = calculateAnisoMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
+            } else {
+                fMipLevel = calculateBaseMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
+            }
             
+            debug_mip_level = fMipLevel;
+
+            int loMipLevel = floor(fMipLevel);
+            int hiMipLevel = ceil(fMipLevel);
+            
+            int loMipLevelTileID = calculateTileID2D(vOut.texC, loMipLevel, vtexData);
+            int hiMipLevelTileID = calculateTileID2D(vOut.texC, hiMipLevel, vtexData);
+
             writeTileID(loMipLevelTileID);
             writeTileID(hiMipLevelTileID);
 
+            writeTileID(calculateTileID2D(vOut.texC, max(0.0, loMipLevel - 1), vtexData));
+
             debugTileID = loMipLevelTileID;
-
-            // If required we need to analytically ro resolve lower mip level tiles needed for anisotropic filtering.
-            if (anisotropicFileteringRequired) {
-                // TODO: implement (using sampler feedback)
-            }
-
         }
     }
 
@@ -82,16 +94,9 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     psOut.debugColor = float4(0, 0, 0, 0);
 
     //float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    //psOut.debugColor.r = 1.0 - dot(viewDir, vOut.normalW);
-    //psOut.debugColor = randomTileColor(debugTileID);
+    psOut.debugColor = randomColor(debugTileID);
+    psOut.debugColor = randomColor(floor(debug_mip_level));
     // ---------------------------------
 
     return psOut;
 }
-
-/*
-
-uint txw, txh;
-        t.GetDimensions(txw, txh);
-
-*/

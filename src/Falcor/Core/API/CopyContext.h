@@ -41,6 +41,8 @@ class Device;
 class Texture;
 class TextureManager;
 
+uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format);
+
 class dlldecl CopyContext {
  public:
     using SharedPtr = std::shared_ptr<CopyContext>;
@@ -131,6 +133,14 @@ class dlldecl CopyContext {
     */
     void updateTexturePage(const VirtualTexturePage* pPage, const void* pData);
 
+    /** Update texture page data
+    */
+    void updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer);
+
+    /** Uodate texture image data (used to fill mip tail data)
+    */
+    void updateMipTailData(const Texture* pTexture, const int3& offset, const uint3& extent, uint8_t mipLevel, const void* pData);
+    
     /** Update a buffer
     */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);

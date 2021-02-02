@@ -32,10 +32,14 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+
 #include "stdafx.h"
 #include "Bitmap.h"
 #include "LTX_Bitmap.h"
 #include "BitmapUtils.h"
+#include "LTX_BitmapAlgo.h"
 #include "LTX_BitmapUtils.h"
 
 #include "Falcor/Core/API/Texture.h"
@@ -75,7 +79,7 @@ void LTX_Bitmap::makeMagic(uint8_t minor, uint8_t major, unsigned char *magic) {
     magic[6] = 48 + static_cast<unsigned char>(minor);
 }
 
-LTX_Bitmap::UniquePtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
     std::ifstream file (filename, std::ios::in | std::ios::binary);
     if (file.is_open()) {
         unsigned char magic[12];
@@ -102,7 +106,7 @@ LTX_Bitmap::UniquePtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice
     size_t mDataSize = ftell(pFile) - sizeof(LTX_Header);
     fclose(pFile);
 
-    return UniquePtr(pLtxBitmap);
+    return SharedConstPtr(pLtxBitmap);
 }
 
 LTX_Bitmap::LTX_Bitmap() {
@@ -176,7 +180,7 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
     return ResourceFormat::RGBA8Unorm;
 }
 
-static ResourceFormat getDestFormat(ResourceFormat format) {
+static ResourceFormat getDestFormat(const ResourceFormat &format) {
     switch (format) {
         case ResourceFormat::RGB8Unorm:
             return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
@@ -191,7 +195,7 @@ static ResourceFormat getDestFormat(ResourceFormat format) {
     return format;
 }
 
-static uint3 getPageDims(ResourceFormat format) {
+static uint3 getPageDims(const ResourceFormat &format) {
     uint32_t channelCount = getFormatChannelCount(format);
     uint32_t totalBits = 0;
 
@@ -216,6 +220,34 @@ static uint3 getPageDims(ResourceFormat format) {
     return {0, 0, 0};
 }
 
+static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &format) {
+    LTX_MipInfo info;
+
+    info.mipLevelsCount = Texture::getMaxMipCount(imgDims);
+    info.mipTailStart = info.mipLevelsCount;
+    info.pageDims = getPageDims(format);
+    info.mipLevelsDims = std::vector<uint3>(info.mipLevelsCount);
+
+    // pre calculate image dimensions for each mip level (mipLevelDims)
+    for( uint mipLevel = 0; mipLevel < info.mipLevelsCount; mipLevel++) {
+        info.mipLevelsDims[mipLevel].x = imgDims.x / pow(2, mipLevel);
+        info.mipLevelsDims[mipLevel].y = imgDims.y / pow(2, mipLevel);
+        info.mipLevelsDims[mipLevel].z = 1;//imgDims.z / pow(2, mipLevel);
+    }
+
+    // find mip tail starting mip level
+    uint8_t cMipLevel = 0;
+    for( auto const& mipDims: info.mipLevelsDims) {
+        if( (info.pageDims.x > mipDims.x) && (info.pageDims.y > mipDims.y)) {
+            info.mipTailStart = cMipLevel;
+            break;
+        }
+        cMipLevel += 1;
+    }
+
+    return info;
+}
+
 void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown) {
     auto in = oiio::ImageInput::open(srcFilename);
     if (!in) {
@@ -223,28 +255,16 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     }
     const oiio::ImageSpec &spec = in->spec();
 
-    LOG_WARN("OIIO channel formats size: %zu", spec.channelformats.size());
-    LOG_WARN("OIIO is signed: %s", spec.format.is_signed() ? "YES" : "NO");
-    LOG_WARN("OIIO is float: %s", spec.format.is_floating_point() ? "YES" : "NO");
-    LOG_WARN("OIIO basetype %u", oiio::TypeDesc::BASETYPE(spec.format.basetype));
-    LOG_WARN("OIIO bytes per pixel %zu", spec.pixel_bytes());
-    LOG_WARN("OIIO nchannels %i", spec.nchannels);
+    LOG_DBG("OIIO channel formats size: %zu", spec.channelformats.size());
+    LOG_DBG("OIIO is signed: %s", spec.format.is_signed() ? "YES" : "NO");
+    LOG_DBG("OIIO is float: %s", spec.format.is_floating_point() ? "YES" : "NO");
+    LOG_DBG("OIIO basetype %u", oiio::TypeDesc::BASETYPE(spec.format.basetype));
+    LOG_DBG("OIIO bytes per pixel %zu", spec.pixel_bytes());
+    LOG_DBG("OIIO nchannels %i", spec.nchannels);
     
     auto srcFormat = getFormatOIIO(spec.format.basetype, spec.nchannels);
     LOG_WARN("Source ResourceFormat from OIIO: %s", to_string(srcFormat).c_str());
     auto dstFormat = getDestFormat(srcFormat);
-
-    uint3 pageDims = getPageDims(dstFormat);
-    uint3 srcDims = {spec.width, spec.height, spec.depth};
-    uint3 dstDims = srcDims;
-
-    // check for image size is able to fin integer number of pages along each axis.
-    // if not we have to load the whole image and resize it to the appropriate size
-    int cx = (int)spec.width / pageDims.x;
-    int cy = (int)spec.height / pageDims.y;
-
-    int dx = spec.width % pageDims.x;
-    int dy = spec.height % pageDims.y;
 
     oiio::ImageBuf srcBuff;
 
@@ -259,33 +279,38 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     } else {
         srcBuff = oiio::ImageBuf(srcFilename);
     }
-    
-    // check if we can read tiles natively
-    bool canReadTiles = (spec.tile_width != 0 && spec.tile_height != 0) ? true : false; 
-    LOG_WARN("OIIO can read tiles %s", canReadTiles ? "YES" : "NO");
 
+    // TODO: make image analysis (pre scale down source with blurry data) and reflect that in dstDims
+    uint3 srcDims = {spec.width, spec.height, spec.depth};
+    uint3 dstDims = srcDims;
+
+    // calc mip related info
+    auto mipInfo = calcMipInfo(dstDims, dstFormat);
+    
     // make header
     LTX_Header header;
     unsigned char magic[12];
     makeMagic(9, 8, &header.magic[0]);
 
+    header.srcLastWriteTime = fs::last_write_time(srcFilename);
     header.width = dstDims.x;
     header.height = dstDims.y;
     header.depth = dstDims.z;
-    header.pageDims = {pageDims.x, pageDims.y, pageDims.z};
+    header.pageDims = {mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z};
     header.pageDataSize = 65536;
+    header.pagesCount = 0;
     header.arrayLayersCount = 1;
-    header.mipLevelsCount = Texture::getMaxMipCount({dstDims.x, dstDims.y, dstDims.z});
+    header.mipLevelsCount = mipInfo.mipLevelsCount;
+    header.mipTailStart   = mipInfo.mipTailStart;
     header.format = dstFormat;//pBitmap->getFormat();
 
-    // open file
+    // open file and write header
     FILE *pFile = fopen(dstFilename.c_str(), "wb");
-
-    // write header
-    uint mipLevelsCount = header.mipLevelsCount;
     fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
 
     // 
+    /*
+    uint32_t pagesCount = 0;
     uint32_t dstChannelCount = getFormatChannelCount(dstFormat);
     uint32_t dstChannelBits = getNumChannelBits(dstFormat, 0);
 
@@ -293,7 +318,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
     size_t tileWidthStride = pageDims.x * dstBytesPerPixel;
-    size_t bufferWidthStride = dstDims.x * dstBytesPerPixel; //srcBytesPerPixel;
+    size_t bufferWidthStride = dstDims.x * dstBytesPerPixel;
 
     uint32_t pagesNumX = dstDims.x / pageDims.x;
     uint32_t pagesNumY = dstDims.y / pageDims.y;
@@ -318,6 +343,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     LOG_WARN("Writing mip level 0 tiles %u %u ...", pagesNumX, pagesNumY);
     LOG_WARN("Partial page dims: %u %u %u", partialPageDims.x, partialPageDims.y, partialPageDims.z);
 
+    pagesCount += pagesNumX * pagesNumY * pagesNumZ;
     for(uint32_t z = 0; z < pagesNumZ; z++) {
         for(uint32_t tileIdxY = 0; tileIdxY < pagesNumY; tileIdxY++) {
             int y_begin = tileIdxY * pageDims.y;
@@ -329,7 +355,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
                 partialRow = true;
             }
 
-            oiio::ROI roi(0, dstDims.x, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
+            oiio::ROI roi(0, dstDims.x, y_begin, y_begin + writeLinesCount, z, z + 1, 0, dstChannelCount);
             srcBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
             unsigned char *pBufferData = tiles_buffer.data();
@@ -377,11 +403,8 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
         }
     }
 
-    // Write 1+ MIP tiles 
-
-    mipLevelsCount = 5;
-
-    for(uint8_t mipLevel = 1; mipLevel < mipLevelsCount; mipLevel++) {
+    // Write 1+ MIP tiles
+    for(uint8_t mipLevel = 1; mipLevel < header.mipLevelsCount; mipLevel++) {
         uint32_t mipLevelWidth = srcDims.x / pow(2, mipLevel);
         uint32_t mipLevelHeight = srcDims.y / pow(2, mipLevel);
         uint32_t mipLevelDepth = srcDims.z / pow(2, mipLevel);
@@ -389,6 +412,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
         pagesNumX = mipLevelWidth / pageDims.x;
         pagesNumY = mipLevelHeight / pageDims.y;
         pagesNumZ = 1;//mipLevelDepth / pageDims.z;
+        pagesCount += pagesNumX * pagesNumY * pagesNumZ;
 
         partialPageDims = {
             (mipLevelWidth % pageDims.x == 0) ? 0 : mipLevelWidth - pageDims.x * pagesNumX,
@@ -467,15 +491,43 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
             }
         }
     }
+    */
 
+    LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
+
+    //if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile)) {
+    if(ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile)) {
+        // re-write header as it might get modified ... 
+        // TODO: increment pagesCount ONLY upon successfull fwrite !
+        fseek(pFile, 0, SEEK_SET);
+        fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+    }
     fclose(pFile);
 }
 
 void LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
+    if (pageNum >= mHeader.pagesCount ) {
+        logError("LTX_Bitmap::readPageData pageNum exceeds pages count !!!");
+        return;
+    }
+
     auto pFile = fopen(mFilename.c_str(), "rb");
     fseek(pFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
     fread(pData, 1, mHeader.pageDataSize, pFile);
     fclose(pFile);
+}
+
+// This version uses previously opened file. On large scenes this saves us at least 50% time
+void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
+    assert(pFile);
+
+    if (pageNum >= mHeader.pagesCount ) {
+        logError("LTX_Bitmap::readPageData pageNum exceeds pages count !!!");
+        return;
+    }
+
+    fseek(pFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
+    fread(pData, 1, mHeader.pageDataSize, pFile);
 }
 
 void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) const {

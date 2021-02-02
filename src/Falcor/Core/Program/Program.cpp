@@ -747,13 +747,18 @@ ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
 }
 
 ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const {
+    TimeReport timeReport;
+
     auto pSlangRequest = createSlangCompileRequest(mDefineList);
     if (pSlangRequest == nullptr) {
         LOG_ERR("Error creating slang compile request !!!");
         return nullptr;
     }
 
+    timeReport.measure("Program::preprocessAndCreateProgramVersion createCompileRequest");
+
     SlangResult slangResult = spCompile(pSlangRequest);
+    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompile");
     log += spGetDiagnosticOutput(pSlangRequest);
     
     if(SLANG_FAILED(slangResult)) {
@@ -765,8 +770,10 @@ ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string
     spCompileRequest_getProgram(
         pSlangRequest,
         pSlangGlobalScope.writeRef());
+    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getProgram");
 
     ComPtr<slang::ISession> pSlangSession(pSlangGlobalScope->getSession());
+    timeReport.measure("Program::preprocessAndCreateProgramVersion pSlangSession");
 
     std::vector<ComPtr<slang::IComponentType>> pSlangEntryPoints;
     uint32_t entryPointCount = (uint32_t) mDesc.mEntryPoints.size();
@@ -783,13 +790,18 @@ ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string
         pSlangEntryPoints.push_back(pSlangEntryPoint);
     }
 
+    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getEntryPoint's");
+
     // Extract list of files referenced, for dependency-tracking purposes
     int depFileCount = spGetDependencyFileCount(pSlangRequest);
+    timeReport.measure("Program::preprocessAndCreateProgramVersion spGetDependencyFileCount's");
     
     for(int ii = 0; ii < depFileCount; ++ii) {
         std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
         mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
     }
+
+    timeReport.measure("Program::preprocessAndCreateProgramVersion dependency-tracking time stamps");
 
     // Note: the `ProgramReflection` needs to be able to refer back to the
     // `ProgramVersion`, but the `ProgramVersion` can't be initialized
@@ -817,6 +829,7 @@ ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string
     spCompileRequest_getProgram(
         pSlangRequest,
         pSlangProgram.writeRef());
+    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getProgram");
 
     ProgramReflection::SharedPtr pReflector;
     
@@ -824,11 +837,17 @@ ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string
         return nullptr;
     }
 
+    timeReport.measure("Program::preprocessAndCreateProgramVersion doSlangReflection");
+
     pVersion->init(
         mDefineList,
         pReflector,
         getProgramDescString(),
         pSlangEntryPoints);
+
+    timeReport.measure("Program::preprocessAndCreateProgramVersion pVersion->init");
+    timeReport.addTotal("Program::preprocessAndCreateProgramVersion done in");
+    timeReport.printToLog();
 
     return pVersion;
 }

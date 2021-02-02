@@ -15,6 +15,13 @@ set( PROJECT_VERSION_PATCH 001 )
 set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} )
 project( Falcor VERSION ${PROJECT_VERSION} )
 
+# Set up houdini hdk and installation paths
+set(HOUDINI_HOME "/opt/houdini18.5")
+set(HOUDINI_USER "$ENV{HOME}/houdini18.5")
+
+list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
+
+
 # Add folder where are supportive functions
 set( CMAKE_MODULE_PATH 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake 
@@ -37,7 +44,7 @@ set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
 # Set python virtualenv for USD
-set( PYTHON_EXECUTABLE "python3.8")
+set( PYTHON_EXECUTABLE "python")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -120,12 +127,6 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-# Set up houdini hdk and installation paths
-set(HOUDINI_HOME "/opt/houdini17.5")
-set(HOUDINI_USER "$ENV{HOME}/houdini17.5")
-
-list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
 
 #------------------------------------------
 # Documentation

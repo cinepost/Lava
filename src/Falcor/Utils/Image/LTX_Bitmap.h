@@ -15,7 +15,7 @@ const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xB
 
 struct LTX_Header {
     unsigned char   magic[12] = {0xAB, 'L', 'T', 'X', ' ', '1', '0', 0xBB, '\r', '\n', '\x1A', '\n'};
-    time_t          srcWriteTime;
+    time_t          srcLastWriteTime;
     uint32_t        width = 0;
     uint32_t        height = 0;
     uint32_t        depth = 0;
@@ -26,9 +26,11 @@ struct LTX_Header {
         uint32_t depth;
     } pageDims = {0, 0, 0};
 
+    uint32_t        pagesCount = 0; // number of mem pages that were physycally written
     uint32_t        pageDataSize = 0;
     uint32_t        arrayLayersCount = 0;
     uint8_t         mipLevelsCount = 0;
+    uint8_t         mipTailStart = 0;
     uint32_t        mipBases[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // starting tile id at each mip level
 
     ResourceFormat  format;
@@ -37,6 +39,13 @@ struct LTX_Header {
         uint32_t width;
         uint32_t height;
     } compressionRatio = {1, 1};
+};
+
+struct LTX_MipInfo {
+    uint8_t mipLevelsCount = 0;
+    uint8_t mipTailStart = 0;
+    uint3   pageDims;
+    std::vector<uint3> mipLevelsDims;
 };
 
 /** A class representing a memory bitmap with sparse storage
@@ -58,15 +67,15 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
         ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
     };
 
-    using UniquePtr = std::unique_ptr<LTX_Bitmap>;
-    using UniqueConstPtr = std::unique_ptr<const LTX_Bitmap>;
+    using SharedPtr = std::shared_ptr<LTX_Bitmap>;
+    using SharedConstPtr = std::shared_ptr<const LTX_Bitmap>;
 
     /** Create a new object from file.
         \param[in] filename Filename, including a path. If the file can't be found relative to the current directory, Falcor will search for it in the common directories.
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
-    static UniquePtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown = true);
+    static SharedConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown = true);
 
     
     /** Store a memory buffer to a sparse file.
@@ -112,11 +121,14 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     */
     ResourceFormat getFormat() const { return mHeader.format; }
 
+    const std::string& getFilename() const { return mFilename; }
+
     
  protected:
     static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown);
 
     void readPageData (size_t pageNum, void *pData) const;
+    void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
     friend class SparseResourceManager;

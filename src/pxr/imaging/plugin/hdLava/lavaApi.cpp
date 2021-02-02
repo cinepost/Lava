@@ -174,7 +174,7 @@ void HdLavaApi::Render(HdLavaRenderThread* renderThread) {
             break;
         }
 
-        auto status = mRenderer->RenderSample();
+        auto status = lava::LAVA_SUCCESS;// = mRenderer->RenderSample();
 
         if (status == lava::LAVA_ERROR_ABORTED) {
             stopRequested = true;
@@ -184,13 +184,13 @@ void HdLavaApi::Render(HdLavaRenderThread* renderThread) {
         if (!isBatch && !IsConverged()) {
             // Last framebuffer resolve will be called after "while" in case framebuffer is converged.
             // We do not resolve framebuffers in case user requested render stop
-            ResolveFramebuffers(&firstResolve);
+            //ResolveFramebuffers(&firstResolve);
         }
         stopRequested = renderThread->IsStopRequested();
     }
 
     if (!stopRequested) {
-        ResolveFramebuffers(&firstResolve);
+        //ResolveFramebuffers(&firstResolve);
     }
 }
 

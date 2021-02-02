@@ -206,7 +206,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		auto pShaderProps = pShaderProp->subContainer();
 		light_type = pShaderProps->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-		light_color *= Falcor::float3{10.0, 10.0, 10.0}; // just to match houdini intensity
+		light_color *= Falcor::float3{6.285714286, 6.285714286, 6.285714286}; // just to match houdini intensity (10 times. gamma 2.2)
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -431,19 +431,35 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     
     Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
     std::string 	surface_base_color_texture = "";
-    bool 			surface_use_base_color_texture = false;
+    std::string 	surface_base_normal_texture = "";
+    std::string 	surface_metallic_texture = "";
+    std::string 	surface_rough_texture = "";
+
+    bool 			surface_use_basecolor_texture = false;
+    bool 			surface_use_roughness_texture = false;
+    bool 			surface_use_metallic_texture = false;
+    bool 			surface_use_basenormal_texture = false;
+
     float 		 	surface_ior = 1.5;
     float 			surface_metallic = 0.0;
-    float 			surface_roughness = 0.3;
+    float 			surface_roughness = 0.5;
 
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}));
     	surface_base_color_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
+    	surface_base_normal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
+    	surface_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
+    	surface_rough_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
+
+    	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
+    	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
+    	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
+    	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
 
     	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
     	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
-    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
+    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.5);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
@@ -454,8 +470,17 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
 
-    if(surface_base_color_texture != "") 
+    if(surface_base_color_texture != "" && surface_use_basecolor_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture);
+
+    if(surface_metallic_texture != "" && surface_use_metallic_texture) 
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Specular, surface_metallic_texture);
+
+    if(surface_rough_texture != "" && surface_use_roughness_texture) 
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture);
+
+    if(surface_base_normal_texture != "" && surface_use_basenormal_texture) 
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture);
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);

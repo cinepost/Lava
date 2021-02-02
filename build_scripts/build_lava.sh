@@ -19,7 +19,7 @@ LAVA_3RDPARTY_LIB_INSTALL_DIR=$LAVA_3RDPARTY_INSTALL_DIR/lib
 # Required ubuntu packages
 #------------------------------------
 
-sudo apt install -y libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers
+sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers
 
 #------------------------------------
 # Lava deps
@@ -29,6 +29,11 @@ echo 'Building LAVA deps ...'
 mkdir -p $LAVA_3RDPARTY_INSTALL_DIR
 mkdir -p $LAVA_3RDPARTY_INC_INSTALL_DIR
 mkdir -p $LAVA_3RDPARTY_LIB_INSTALL_DIR
+
+#cd $LAVA_3RDPARTY_SOURCE_DIR/boost_1_75_0
+#./bootstrap.sh --prefix=$LAVA_3RDPARTY_INSTALL_DIR
+#./b2 install
+
 
 cd $LAVA_3RDPARTY_SOURCE_DIR/zlib
 export INCDIR=$LAVA_3RDPARTY_INC_INSTALL_DIR
@@ -61,8 +66,8 @@ cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=${LAVA_3RDPARTY_INSTA
 
 cd $LAVA_3RDPARTY_SOURCE_DIR/slang
 git submodule update --init
-premake5 gmake 
-if [ "$LAVA_BUILD_TYPE" == "RELEASE" ] 
+premake5 gmake --cc=clang --os=linux
+if [ "$LAVA_BUILD_TYPE" == "RELEASE" ]
 then
 	make config=release_x64 && make -j$CPU_CORES
 	rsync $LAVA_3RDPARTY_SOURCE_DIR/slang/bin/linux-x64/release/*.so ${LAVA_3RDPARTY_LIB_INSTALL_DIR}/
@@ -85,4 +90,4 @@ cmake .. -DCMAKE_BUILD_TYPE=${LAVA_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${LAVA_HOM
 #	-DZLIB_ROOT=${LAVA_3RDPARTY_INSTALL_DIR} \
 #	-DFREEIMAGE_ROOT_DIR=${LAVA_3RDPARTY_INSTALL_DIR}
 
-make -j$CPU_CORES install
+#make -j$CPU_CORES install

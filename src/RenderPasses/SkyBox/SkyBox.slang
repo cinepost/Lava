@@ -43,6 +43,7 @@ cbuffer PerFrameCB : register(b0)
     float4x4 gViewMat;
     float4x4 gProjMat;
     float gScale;
+    float gIntensity;
 };
 
 [shader("vertex")]
@@ -60,8 +61,9 @@ float4 ps(float3 dir : NORMAL) : SV_TARGET
 {
 #ifdef _SPHERICAL_MAP
     float2 uv = dirToSphericalCrd(dir);
-    return gTexture.Sample(gSampler, uv);
+    uv = float2(1.0 - uv.x, uv.y);
+    return gTexture.Sample(gSampler, uv) * gIntensity;
 #else
-    return gTexture.SampleLevel(gSampler, normalize(dir), 0);
+    return gTexture.SampleLevel(gSampler, normalize(dir), 0) * gIntensity;
 #endif
 }

@@ -68,7 +68,7 @@ class GBufferBase : public RenderPass {
     float2                          mInvFrameDim = {};
 
     // UI variables
-    SamplePattern                   mSamplePattern = SamplePattern::Center;     ///< Which camera jitter sample pattern to use.
+    SamplePattern                   mSamplePattern = SamplePattern::Stratified; ///< Which camera jitter sample pattern to use.
     uint32_t                        mSampleCount = 16;                          ///< Sample count for camera jitter.
     bool                            mDisableAlphaTest = false;                  ///< Disable alpha test.
     bool                            mOptionsChanged = false;

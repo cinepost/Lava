@@ -345,3 +345,25 @@ float rand_next(inout uint s)
     s = (LCG_A * s + LCG_C);
     return float(s & 0x00FFFFFF) / float(0x01000000);
 }
+
+/*******************************************************************
+    Color conversions
+*******************************************************************/
+
+#define _SRGB_ALPHA 0.055
+
+// Converts a single linear channel to srgb
+float linear_to_srgb(float channel) {
+    if(channel <= 0.0031308)
+        return 12.92 * channel;
+    else
+        return (1.0 + _SRGB_ALPHA) * pow(channel, 1.0/2.4) - _SRGB_ALPHA;
+}
+
+// Converts a single srgb channel to rgb
+float srgb_to_linear(float channel) {
+    if (channel <= 0.04045)
+        return channel / 12.92;
+    else
+        return pow((channel + _SRGB_ALPHA) / (1.0 + _SRGB_ALPHA), 2.4);
+}

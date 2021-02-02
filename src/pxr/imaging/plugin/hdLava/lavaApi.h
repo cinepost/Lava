@@ -32,7 +32,7 @@ limitations under the License.
 #include <vector>
 #include <string>
 
-#include "lava/lava.h"
+#include "lava_lib/lava.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 
