@@ -66,7 +66,8 @@ cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=${LAVA_3RDPARTY_INSTA
 
 cd $LAVA_3RDPARTY_SOURCE_DIR/slang
 git submodule update --init
-premake5 gmake --cc=clang --os=linux
+mkdir -p bin
+$LAVA_3RDPARTY_SOURCE_DIR/premake5 gmake --cc=clang --os=linux
 if [ "$LAVA_BUILD_TYPE" == "RELEASE" ]
 then
 	make config=release_x64 && make -j$CPU_CORES
