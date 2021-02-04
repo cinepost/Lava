@@ -40,7 +40,7 @@ install(
 )
 
 install(
-	FILES
+	PROGRAMS
 		bin/lava
 	DESTINATION 
 		${CMAKE_INSTALL_PREFIX}/bin/
@@ -50,7 +50,7 @@ set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
 configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
 
 install(
-    FILES
+    PROGRAMS
     	${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
     RENAME
     	lava_app_init.sh
