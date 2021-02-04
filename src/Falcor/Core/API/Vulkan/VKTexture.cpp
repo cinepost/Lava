@@ -393,6 +393,8 @@ namespace Falcor {
                 // @todo: proper comment
                 // @todo: store in mip tail and properly release
                 // @todo: Only one block for single mip tail
+
+                
                 if ((!mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < mMipLevels)) {
                     // Allocate memory for the mip tail
                     VkMemoryAllocateInfo memAllocInfo = {};
@@ -418,6 +420,7 @@ namespace Falcor {
                     mMipBases[sparseMemoryReq.imageMipTailFirstLod] = mSparsePagesCount;                    
                     //mSparsePagesCount += 1;
                 }
+
             } // end layers and mips
 
             std::cout << "Texture info:" << std::endl;

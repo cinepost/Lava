@@ -286,11 +286,16 @@ namespace Falcor {
 
         VkBufferImageCopy region{};
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
         region.imageSubresource.mipLevel = mipLevel;
+
+        region.bufferOffset = 0;
         region.imageOffset = { offset.x, offset.y, offset.z };
         region.imageExtent = { extent.x, extent.y, extent.z };
 
+        region.imageOffset = { 0,0,0 };
+        region.imageExtent = { 128,128,1 };
 
         Buffer::SharedPtr pStaging;
         auto const format = pTexture->getFormat();
@@ -303,7 +308,7 @@ namespace Falcor {
         }
 
         size_t dataSize = region.imageExtent.width * region.imageExtent.height * region.imageExtent.depth * (totalChannelsBits / 8);
-        
+        dataSize = 65536;
         pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
 
         // Execute the copy

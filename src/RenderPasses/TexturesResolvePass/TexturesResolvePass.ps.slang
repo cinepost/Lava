@@ -64,7 +64,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         if (!vtexData.empty) {
             float mipBias = -0.25; // TODO: use actual texture sampler bias
             mipBias = 0.0;
-            
+
             float fMipLevel = 0.0;
             if (anisotropicFilteringRequired) { 
                 fMipLevel = calculateAnisoMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);

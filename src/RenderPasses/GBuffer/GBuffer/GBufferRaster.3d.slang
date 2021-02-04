@@ -133,8 +133,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     // This is what we store in the hit info.
 
     // Store hit information.
-    if (isValid(gVBuffer))
-    {
+    if (isValid(gVBuffer)) {
         HitInfo hit;
         hit.meshInstanceID = vsOut.meshInstanceID;
         hit.primitiveIndex = triangleIndex;
@@ -146,19 +145,14 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
         gVBuffer[ipos] = hit.encode();
     }
     // Store surface spread angle for texture LOD using ray cones.
-    if (isValid(gSurfaceSpreadAngle))
-    {
+    if (isValid(gSurfaceSpreadAngle)) {
         gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N) * sign(dot(viewDir, sd.N));
     }
 
     // test
-    //Texture2D testTexture = gScene.materialResources[vsOut.materialID].baseColor;
-    //psOut.diffuseOpacity = testTexture.Sample(gSampler, v.texC);
-    //psOut.diffuseOpacity = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 2);
-    //psOut.diffuseOpacity = testTexture.Load(int3(v.texC.x * 2000, v.texC.y * 2000, 3));
-    
-    //psOut.diffuseOpacity = testTexture.Sample(gScene.materialResources[vsOut.materialID].samplerState, v.texC);
-    //psOut.diffuseOpacity.b = 1.0;
+    Texture2D testTexture = gScene.materialResources[vsOut.materialID].baseColor;
+    psOut.diffuseOpacity.a = 1.0;
+    psOut.diffuseOpacity.rgb = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 5).rgb;
     //
 
     return psOut;

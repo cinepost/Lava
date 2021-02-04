@@ -295,6 +295,7 @@ void SparseResourceManager::loadPages(const Texture::SharedPtr& pTexture, const 
         mPages[pageID]->allocate();
     }
     pTexture->updateSparseBindInfo();
+    fillMipTail(pTexture);
 
     // read data and fill pages
     auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
@@ -312,7 +313,7 @@ void SparseResourceManager::loadPages(const Texture::SharedPtr& pTexture, const 
 
     fclose(pFile);
 
-    fillMipTail(pTexture);
+    //fillMipTail(pTexture);
     pTexture->updateSparseBindInfo();
 }
 
@@ -359,7 +360,8 @@ void SparseResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
         std::vector<unsigned char> tmpPage(65536, 255);
 
         LOG_WARN("Fill mip tail level %u", mipLevel);
-        mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
+        //mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
+        mpCtx->updateSubresourceData(pTex, 0, tmpPage.data(), uint3(0), { width, height, depth });
     }
     mpCtx->flush(true);
 }

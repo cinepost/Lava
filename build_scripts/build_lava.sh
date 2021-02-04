@@ -19,7 +19,7 @@ LAVA_3RDPARTY_LIB_INSTALL_DIR=$LAVA_3RDPARTY_INSTALL_DIR/lib
 # Required ubuntu packages
 #------------------------------------
 
-sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers
+sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers vulkan-sdk
 
 #------------------------------------
 # Lava deps
