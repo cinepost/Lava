@@ -40,9 +40,23 @@ install(
 )
 
 install(
-	DIRECTORY bin
-	DESTINATION ${CMAKE_INSTALL_PREFIX}
+	FILES
+		bin/lava
+	DESTINATION 
+		${CMAKE_INSTALL_PREFIX}/bin/
   	USE_SOURCE_PERMISSIONS
+)
+
+set(LAVA_INST_DIR "${CMAKE_INSTALL_PREFIX}")
+configure_file(bin/lava_app_init.sh.in ${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install @ONLY)
+
+install(
+    FILES
+    	${CMAKE_CURRENT_BINARY_DIR}/lava_app_init.sh.install
+    RENAME
+    	lava_app_init.sh
+    DESTINATION
+    	${CMAKE_INSTALL_PREFIX}/bin/
 )
 
 install(DIRECTORY conf DESTINATION ${CMAKE_INSTALL_PREFIX})
