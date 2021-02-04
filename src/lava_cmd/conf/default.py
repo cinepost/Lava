@@ -96,9 +96,37 @@ def textureResolveDebugRenderGraph(device):
 
     return g
 
+def textureLoadingDebugRenderGraph(device):
+    import falcor
+    g = RenderGraph(device, "TextureResolveDebugGraph")
+
+    loadRenderPassLibrary("GBuffer")
+    loadRenderPassLibrary("TexturesResolvePass")
+
+    TexturesResolvePass = RenderPass(device, "TexturesResolve")
+    g.addPass(TexturesResolvePass, "TexturesResolve")
+
+
+    GBufferRaster = RenderPass(device, "GBufferRaster", {
+        'samplePattern': SamplePattern.Halton, 
+        'sampleCount': 16, 
+        'disableAlphaTest': False, 
+        'forceCullMode': False, 
+        'cull': CullMode.CullNone, 
+        'useBentShadingNormals': True
+    })
+    g.addPass(GBufferRaster, "GBufferRaster")
+    
+    g.addEdge("GBufferRaster.depth", "TexturesResolve.depth")
+
+    g.markOutput("GBufferRaster.diffuseOpacity")
+
+    return g
+
 rendering_device = renderer.getDevice()
-render_graph = defaultRenderGraph(rendering_device)
+#render_graph = defaultRenderGraph(rendering_device)
 #render_graph = textureResolveDebugRenderGraph(rendering_device)
+render_graph = textureLoadingDebugRenderGraph(rendering_device)
 
 try: renderer.addGraph(render_graph)
 except NameError: None
