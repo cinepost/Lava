@@ -18,7 +18,7 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 #ifdef NDEBUG
-#define LOG_DEBUG 0
+#define LOG_DEBUG 1
 #else
 #define LOG_DEBUG 1
 #endif
@@ -68,5 +68,13 @@ struct blk_exec_time_profiler {
 
 #define TIME_PROFILE_BLOCK(pbn) \
         do{ if (BLK_TIME_DEBUG) blk_exec_time_profiler _pfinstance(pbn); } while (0)
+
+// Record the execution time of some code, in milliseconds.
+#define DECLARE_TIMING(s)  int64_t timeStart_##s; double timeDiff_##s; double timeTally_##s = 0; int countTally_##s = 0
+#define START_TIMING(s)    timeStart_##s = cvGetTickCount()
+#define STOP_TIMING(s)     timeDiff_##s = (double)(cvGetTickCount() - timeStart_##s); timeTally_##s += timeDiff_##s; countTally_##s++
+#define GET_TIMING(s)      (double)(timeDiff_##s / (cvGetTickFrequency()*1000.0))
+#define GET_AVERAGE_TIMING(s)   (double)(countTally_##s ? timeTally_##s/ ((double)countTally_##s * cvGetTickFrequency()*1000.0) : 0)
+#define CLEAR_AVERAGE_TIMING(s) timeTally_##s = 0; countTally_##s = 0
 
 #endif // __FALCOR_UTILS_DEBUG_H__

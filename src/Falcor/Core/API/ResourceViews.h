@@ -35,6 +35,7 @@
 
 namespace Falcor {
 
+class Device;
 class Resource;
 class Texture;
 class Buffer;
@@ -82,11 +83,11 @@ class dlldecl ResourceView {
     static const uint32_t kMaxPossible = -1;
     virtual ~ResourceView();
 
-    ResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
-        : mApiHandle(handle), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
+    ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-    ResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : mApiHandle(handle), mpResource(pResource), mViewInfo(firstElement, elementCount) {}
+    ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
+        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(firstElement, elementCount) {}
 
     /** Get the raw API handle.
     */
@@ -102,8 +103,9 @@ class dlldecl ResourceView {
 
  protected:
     ApiHandle mApiHandle;
-    ResourceViewInfo mViewInfo;
+    std::shared_ptr<Device> mpDevice;
     ResourceWeakPtr mpResource;
+    ResourceViewInfo mViewInfo;
 };
 
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
@@ -111,19 +113,19 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     using SharedPtr = std::shared_ptr<ShaderResourceView>;
     using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
 
-    static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-    static SharedPtr getNullView();
-    static SharedPtr getNullBufferView();
-    static SharedPtr getNullTypedBufferView();
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
+    static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
+    static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
 
     // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
-    ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
-        : ResourceView(pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
+    ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
  private:
-    ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : ResourceView(pResource, handle, firstElement, elementCount) {}
+    ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
+        : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
 };
 
 class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
@@ -131,12 +133,12 @@ class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
     using SharedPtr = std::shared_ptr<DepthStencilView>;
     using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
 
-    static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr getNullView();
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
 
  private:
-    DepthStencilView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
+    DepthStencilView(std::shared_ptr<Device> pDevice,ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
 class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
@@ -144,42 +146,42 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     using SharedPtr = std::shared_ptr<UnorderedAccessView>;
     using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
 
-    static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-    static SharedPtr getNullView();
-    static SharedPtr getNullBufferView();
-    static SharedPtr getNullTypedBufferView();
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
+    static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
+    static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
 
  private:
-    UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
+    UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 
-    UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
-        : ResourceView(pResource, handle, firstElement, elementCount) {}
+    UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
+        : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
 };
 
 class dlldecl RenderTargetView : public ResourceView<RtvHandle> {
  public:
     using SharedPtr = std::shared_ptr<RenderTargetView>;
     using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
-    static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr getNullView();
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
     ~RenderTargetView();
 
  private:
-    RenderTargetView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
-        ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
+    RenderTargetView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 };
 
 class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
  public:
     using SharedPtr = std::shared_ptr<ConstantBufferView>;
     using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;
-    static SharedPtr create(ConstBufferSharedPtrRef pBuffer);
-    static SharedPtr getNullView();
+    static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
 
  private:
-    ConstantBufferView(ResourceWeakPtr pResource, ApiHandle handle) : ResourceView(pResource, handle, 0, 1, 0, 1) {}
+    ConstantBufferView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle) : ResourceView(pDevice, pResource, handle, 0, 1, 0, 1) {}
 };
 
 struct NullResourceViews {

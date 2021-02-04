@@ -213,22 +213,23 @@ ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) {
             return ResourceFormat::R8Int;
         case FORMAT_A8_UNORM:
             return ResourceFormat::Alpha8Unorm;
+
         case FORMAT_BC1_UNORM:
-            return ResourceFormat::BC1Unorm;
+            return ResourceFormat::BC1RGBAUnorm;
         case FORMAT_BC1_UNORM_SRGB:
-            return ResourceFormat::BC1UnormSrgb;
+            return ResourceFormat::BC1RGBASrgb;
         case FORMAT_BC4_UNORM:
             return ResourceFormat::BC4Unorm;
         case FORMAT_BC4_SNORM:
             return ResourceFormat::BC4Snorm;
         case FORMAT_BC2_UNORM:
-            return ResourceFormat::BC2Unorm;
+            return ResourceFormat::BC2RGBAUnorm;
         case FORMAT_BC2_UNORM_SRGB:
-            return ResourceFormat::BC2UnormSrgb;
+            return ResourceFormat::BC2RGBASrgb;
         case FORMAT_BC3_UNORM:
-            return ResourceFormat::BC3Unorm;
+            return ResourceFormat::BC3RGBAUnorm;
         case FORMAT_BC3_UNORM_SRGB:
-            return ResourceFormat::BC3UnormSrgb;
+            return ResourceFormat::BC3RGBASrgb;
         case FORMAT_BC5_UNORM:
             return ResourceFormat::BC5Unorm;
         case FORMAT_BC5_SNORM:
@@ -240,7 +241,7 @@ ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) {
         case FORMAT_BC7_UNORM:
             return ResourceFormat::BC7Unorm;
         case FORMAT_BC7_UNORM_SRGB:
-            return ResourceFormat::BC7UnormSrgb;
+            return ResourceFormat::BC7Srgb;
         default:
             return ResourceFormat::Unknown;
     }
@@ -528,7 +529,7 @@ static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat f
     return format;
 }
 
-Texture::SharedPtr createTextureFromDx10Dds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromDx10Dds(std::shared_ptr<Device> device, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
     format = convertBgrxFormatToBgra(ddsData, format);
 
     uint32_t arraySize = ddsData.dx10Header.arraySize;
@@ -536,18 +537,18 @@ Texture::SharedPtr createTextureFromDx10Dds(DdsData& ddsData, const std::string&
 
     switch(ddsData.dx10Header.resourceDimension) {
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE1D:
-            return Texture::create1D(ddsData.header.width, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+            return Texture::create1D(device, ddsData.header.width, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE2D:
             if(ddsData.dx10Header.miscFlag & DdsHeaderDX10::kCubeMapMask) {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 6 * arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels, true);
-                return Texture::createCube(ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+                return Texture::createCube(device, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
             } else {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-                return Texture::create2D(ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+                return Texture::create2D(device, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
             }
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE3D:
             flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-            return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
+            return Texture::create3D(device, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_BUFFER:
         case DXResourceDimension::RESOURCE_DIMENSION_UNKNOWN:
             logError("The resource dimension specified in " + filename + " is not supported by Falcor");
@@ -558,27 +559,27 @@ Texture::SharedPtr createTextureFromDx10Dds(DdsData& ddsData, const std::string&
     }
 }
 
-Texture::SharedPtr createTextureFromLegacyDds(DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromLegacyDds(std::shared_ptr<Device> device, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
     format = convertBgrxFormatToBgra(ddsData, format);
 
     // Load the volume or 3D texture
     if (ddsData.header.flags & DdsHeader::kDepthMask) {
         flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-        return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::create3D(device, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
     } else if (ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask) {
         // Load the cubemap texture
-        return Texture::createCube(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::createCube(device, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     } else {
         // This is a 2D Texture
         flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 1, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-        return Texture::create2D(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::create2D(device, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     }
 
     should_not_get_here();
     return nullptr;
 }
 
-Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromDDSFile(std::shared_ptr<Device> device, const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     DdsData ddsData;
     if (!loadDDSDataFromFile(filename, ddsData)) return nullptr;
 
@@ -600,13 +601,13 @@ Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool gen
     }
 
     if (ddsData.hasDX10Header) {
-        return createTextureFromDx10Dds(ddsData, filename, format, mipLevels, bindFlags);
+        return createTextureFromDx10Dds(device, ddsData, filename, format, mipLevels, bindFlags);
     } else {
-        return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
+        return createTextureFromLegacyDds(device, ddsData, filename, format, mipLevels, bindFlags);
     }
 }
 
-Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> device, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         logError("Error when loading image file. Can't find image file " + filename);
@@ -615,16 +616,16 @@ Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool gen
 
     Texture::SharedPtr pTex;
     if (hasSuffix(filename, ".dds")) {
-        pTex = createTextureFromDDSFile(fullpath, generateMipLevels, loadAsSrgb, bindFlags);
+        pTex = createTextureFromDDSFile(device, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
     } else {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullpath, kTopDown);
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(device, fullpath, kTopDown);
         if (pBitmap) {
             ResourceFormat texFormat = pBitmap->getFormat();
             if (loadAsSrgb) {
                 texFormat = linearToSrgbFormat(texFormat);
             }
 
-            pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+            pTex = Texture::create2D(device, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
         }
     }
 

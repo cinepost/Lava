@@ -37,465 +37,699 @@ namespace fs = boost::filesystem;
 #include "SceneBuilder.h"
 #include "../Externals/mikktspace/mikktspace.h"
 
-namespace Falcor
+namespace Falcor {
+    
+namespace {
+// Texture coordinates for textured emissive materials are quantized for performance reasons.
+// We'll log a warning if the maximum quantization error exceeds this value.
+const float kMaxTexelError = 0.5f;
+
+class MikkTSpaceWrapper
 {
-    namespace
+public:
+    static std::vector<float4> generateTangents(const SceneBuilder::Mesh& mesh)
     {
-        class MikkTSpaceWrapper
+        if (!mesh.normals.pData || !mesh.positions.pData || !mesh.texCrds.pData || !mesh.pIndices)
         {
-        public:
-            static std::vector<float3> generateBitangents(const float3* pPositions, const float3* pNormals, const float2* pTexCrd, const uint32_t* pIndices, size_t vertexCount, size_t indexCount)
-            {
-                if (!pNormals || !pPositions || !pTexCrd || !pIndices) {
+            logWarning("Can't generate tangent space. The mesh '" + std::string(mesh.name) + "' doesn't have positions/normals/texCrd/indices.");
+            return {};
+        }
 
-                    if (pNormals) logWarning("Can't generate tangent space. The mesh doesn't have normals");
-                    if (pPositions) logWarning("Can't generate tangent space. The mesh doesn't have positions");
-                    if (pTexCrd) logWarning("Can't generate tangent space. The mesh doesn't have texture coordinates");
-                    if (pIndices) logWarning("Can't generate tangent space. The mesh doesn't have indices");
-                    return std::vector<float3>(vertexCount, float3(0, 0, 0));
-                }
+        // Generate new tangent space.
+        SMikkTSpaceInterface mikktspace = {};
+        mikktspace.m_getNumFaces = [](const SMikkTSpaceContext* pContext) { return ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getFaceCount(); };
+        mikktspace.m_getNumVerticesOfFace = [](const SMikkTSpaceContext* pContext, int32_t face) { return 3; };
+        mikktspace.m_getPosition = [](const SMikkTSpaceContext* pContext, float position[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getPosition(position, face, vert); };
+        mikktspace.m_getNormal = [](const SMikkTSpaceContext* pContext, float normal[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getNormal(normal, face, vert); };
+        mikktspace.m_getTexCoord = [](const SMikkTSpaceContext* pContext, float texCrd[], int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getTexCrd(texCrd, face, vert); };
+        mikktspace.m_setTSpaceBasic = [](const SMikkTSpaceContext* pContext, const float tangent[], float sign, int32_t face, int32_t vert) { ((MikkTSpaceWrapper*)(pContext->m_pUserData))->setTangent(tangent, sign, face, vert); };
 
-                SMikkTSpaceInterface mikktspace = {};
-                mikktspace.m_getNumFaces = [](const SMikkTSpaceContext* pContext) {return ((MikkTSpaceWrapper*)(pContext->m_pUserData))->getFaceCount(); };
-                mikktspace.m_getNumVerticesOfFace = [](const SMikkTSpaceContext * pContext, int32_t face) {return 3; };
-                mikktspace.m_getPosition = [](const SMikkTSpaceContext * pContext, float position[], int32_t face, int32_t vert) {((MikkTSpaceWrapper*)(pContext->m_pUserData))->getPosition(position, face, vert); };
-                mikktspace.m_getNormal = [](const SMikkTSpaceContext * pContext, float normal[], int32_t face, int32_t vert) {((MikkTSpaceWrapper*)(pContext->m_pUserData))->getNormal(normal, face, vert); };
-                mikktspace.m_getTexCoord = [](const SMikkTSpaceContext * pContext, float texCrd[], int32_t face, int32_t vert) {((MikkTSpaceWrapper*)(pContext->m_pUserData))->getTexCrd(texCrd, face, vert); };
-                mikktspace.m_setTSpaceBasic = [](const SMikkTSpaceContext * pContext, const float tangent[], float sign, int32_t face, int32_t vert) {((MikkTSpaceWrapper*)(pContext->m_pUserData))->setTangent(tangent, sign, face, vert); };
+        MikkTSpaceWrapper wrapper(mesh);
+        SMikkTSpaceContext context = {};
+        context.m_pInterface = &mikktspace;
+        context.m_pUserData = &wrapper;
 
-                MikkTSpaceWrapper wrapper(pPositions, pNormals, pTexCrd, pIndices, vertexCount, indexCount);
-                SMikkTSpaceContext context = {};
-                context.m_pInterface = &mikktspace;
-                context.m_pUserData = &wrapper;
-
-                if (genTangSpaceDefault(&context) == false)
-                {
-                    logError("Failed to generate MikkTSpace tangents");
-                    return std::vector<float3>(vertexCount, float3(0, 0, 0));
-                }
-
-                return wrapper.mBitangents;
-            }
-
-        private:
-            MikkTSpaceWrapper(const float3* pPositions, const float3* pNormals, const float2* pTexCrd, const uint32_t* pIndices, size_t vertexCount, size_t indexCount) :
-                mpPositions(pPositions), mpNormals(pNormals), mpTexCrd(pTexCrd), mpIndices(pIndices), mFaceCount(indexCount / 3), mBitangents(vertexCount) {}
-            const float3* mpPositions;
-            const float3* mpNormals;
-            const float2* mpTexCrd;
-            const uint32_t* mpIndices;
-            size_t mFaceCount;
-            std::vector<float3> mBitangents;
-            int32_t getFaceCount() const { return (int32_t)mFaceCount; }
-            int32_t getIndex(int32_t face, int32_t vert) { return mpIndices[face * 3 + vert]; }
-            void getPosition(float position[], int32_t face, int32_t vert) { *(float3*)position = mpPositions[getIndex(face, vert)]; }
-            void getNormal(float normal[], int32_t face, int32_t vert) { *(float3*)normal = mpNormals[getIndex(face, vert)]; }
-            void getTexCrd(float texCrd[], int32_t face, int32_t vert) { *(float2*)texCrd = mpTexCrd[getIndex(face, vert)]; }
-
-            void setTangent(const float tangent[], float sign, int32_t face, int32_t vert)
-            {
-                int32_t index = getIndex(face, vert);
-                float3 T(*(float3*)tangent), N;
-                getNormal(&N[0], face, vert);
-                // bitangent = fSign * cross(vN, tangent);
-                mBitangents[index] = cross(N, T); // Not using fSign because... I don't know why. It flips the tangent space. Need to go read the paper
-            }
-        };
-
-        void validateTangentSpace(const float3 bitangents[], uint32_t vertexCount)
+        if (genTangSpaceDefault(&context) == false)
         {
-            auto isValid = [](const float3& bitangent)
-            {
-                if (glm::any(glm::isinf(bitangent) || glm::isnan(bitangent))) return false;
-                if (length(bitangent) < 1e-6f) return false;
-                return true;
-            };
+            logError("Failed to generate MikkTSpace tangents for the mesh '" + std::string(mesh.name) + "'.");
+            return {};
+        }
 
-            uint32_t numInvalid = 0;
-            for (uint32_t i = 0; i < vertexCount; i++)
-            {
-                if (!isValid(bitangents[i])) numInvalid++;
-            }
+        return wrapper.mTangents;
+    }
 
-            if (numInvalid > 0)
+private:
+    MikkTSpaceWrapper(const SceneBuilder::Mesh& mesh)
+        : mMesh(mesh)
+    {
+        assert(mesh.indexCount > 0);
+        mTangents.resize(mesh.indexCount, float4(0));
+    }
+    const SceneBuilder::Mesh& mMesh;
+    std::vector<float4> mTangents;
+    int32_t getFaceCount() const { return (int32_t)mMesh.faceCount; }
+    void getPosition(float position[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(position) = mMesh.getPosition(face, vert); }
+    void getNormal(float normal[], int32_t face, int32_t vert) { *reinterpret_cast<float3*>(normal) = mMesh.getNormal(face, vert); }
+    void getTexCrd(float texCrd[], int32_t face, int32_t vert) { *reinterpret_cast<float2*>(texCrd) = mMesh.getTexCrd(face, vert); }
+
+    void setTangent(const float tangent[], float sign, int32_t face, int32_t vert)
+    {
+        float3 T = *reinterpret_cast<const float3*>(tangent);
+        mTangents[face * 3 + vert] = float4(glm::normalize(T), sign);
+    }
+};
+
+void validateVertex(const SceneBuilder::Mesh::Vertex& v, size_t& invalidCount, size_t& zeroCount)
+{
+    auto isInvalid = [](const auto& x)
+    {
+        return glm::any(glm::isinf(x) || glm::isnan(x));
+    };
+    auto isZero = [](const auto& x)
+    {
+        return glm::length(x) < 1e-6f;
+    };
+
+    if (isInvalid(v.position) || isInvalid(v.normal) || isInvalid(v.tangent) || isInvalid(v.texCrd) || isInvalid(v.boneWeights)) invalidCount++;
+    if (isZero(v.normal) || isZero(v.tangent.xyz())) zeroCount++;
+}
+
+bool compareVertices(const SceneBuilder::Mesh::Vertex& lhs, const SceneBuilder::Mesh::Vertex& rhs, float threshold = 1e-6f)
+{
+    using namespace glm;
+    if (lhs.position != rhs.position) return false; // Position need to be exact to avoid cracks
+    if (lhs.tangent.w != rhs.tangent.w) return false;
+    if (lhs.boneIDs != rhs.boneIDs) return false;
+    if (any(greaterThan(abs(lhs.normal - rhs.normal), float3(threshold)))) return false;
+    if (any(greaterThan(abs(lhs.tangent.xyz - rhs.tangent.xyz), float3(threshold)))) return false;
+    if (any(greaterThan(abs(lhs.texCrd - rhs.texCrd), float2(threshold)))) return false;
+    if (any(greaterThan(abs(lhs.boneWeights - rhs.boneWeights), float4(threshold)))) return false;
+    return true;
+}
+
+}  // namespace anon
+
+SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {};
+
+SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags)
+{
+    return SharedPtr(new SceneBuilder(pDevice, flags));
+}
+
+SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, const std::string& filename, Flags buildFlags, const InstanceMatrices& instances)
+{
+    auto pBuilder = create(pDevice, buildFlags);
+    return pBuilder->import(filename, instances) ? pBuilder : nullptr;
+}
+
+bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances, const Dictionary& dict)
+{
+    bool success = Importer::import(filename, *this, instances, dict);
+    mFilename = filename;
+    return success;
+}
+
+uint32_t SceneBuilder::addNode(const Node& node)
+{
+    assert(node.parent == kInvalidNode || node.parent < mSceneGraph.size());
+
+    assert(mSceneGraph.size() <= std::numeric_limits<uint32_t>::max());
+    uint32_t newNodeID = (uint32_t)mSceneGraph.size();
+    mSceneGraph.push_back(InternalNode(node));
+    if(node.parent != kInvalidNode) mSceneGraph[node.parent].children.push_back(newNodeID);
+    mDirty = true;
+    return newNodeID;
+}
+
+bool SceneBuilder::isNodeAnimated(uint32_t nodeID) const
+{
+    assert(nodeID < mSceneGraph.size());
+
+    while (nodeID != kInvalidNode)
+    {
+        for (const auto& animation : mAnimations)
+        {
+            if (animation->getChannel(nodeID) != Animation::kInvalidChannel) return true;
+        }
+        nodeID = mSceneGraph[nodeID].parent;
+    }
+
+    return false;
+}
+
+void SceneBuilder::setNodeInterpolationMode(uint32_t nodeID, Animation::InterpolationMode interpolationMode, bool enableWarping)
+{
+    assert(nodeID < mSceneGraph.size());
+
+    while (nodeID != kInvalidNode)
+    {
+        for (const auto& animation : mAnimations)
+        {
+            if (uint32_t channelID = animation->getChannel(nodeID); channelID != Animation::kInvalidChannel)
             {
-                logWarning("Loaded tangent space is invalid at " + std::to_string(numInvalid) + " vertices. Please fix the asset.");
+                animation->setInterpolationMode(channelID, interpolationMode, enableWarping);
             }
         }
+        nodeID = mSceneGraph[nodeID].parent;
+    }
+}
+
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID)
+{
+    assert(meshID < mMeshes.size());
+    mSceneGraph.at(nodeID).meshes.push_back(meshID);
+
+    auto &mesh = mMeshes.at(meshID);
+    mesh.instances.push_back({});
+
+    MeshInstanceSpec &instance = mesh.instances.back();
+    instance.nodeId = nodeID;
+    instance.overrideMaterial = false;
+
+    //mMeshes.at(meshID).instances.push_back(instance);
+    mDirty = true;
+}
+
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial)
+{
+    assert(meshID < mMeshes.size());
+    mSceneGraph.at(nodeID).meshes.push_back(meshID);
+
+    auto &mesh = mMeshes.at(meshID);
+    mesh.instances.push_back({});
+
+    MeshInstanceSpec &instance = mesh.instances.back();
+    instance.nodeId = nodeID;
+    instance.materialId = addMaterial(pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));;
+    instance.overrideMaterial = true;
+
+    //mMeshes.at(meshID).instances.push_back(instance);
+    mDirty = true;
+}
+
+uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
+    logInfo("Adding mesh '" + meshDesc.name + "'");
+    TimeReport timeReport;
+
+    // Copy the mesh desc so we can update it. The caller retains the ownership of the data.
+    Mesh mesh = meshDesc;
+
+    // Error checking.
+    auto throw_on_missing_element = [&](const std::string& element) {
+        throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nThe mesh is missing " + element + ".");
+    };
+
+    auto missing_element_warning = [&](const std::string& element) {
+        logWarning("The mesh '" + mesh.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
+    };
+
+    if (mesh.topology != Vao::Topology::TriangleList) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nOnly triangle list topology is supported.");
+    if (mesh.pMaterial == nullptr) throw_on_missing_element("material");
+
+    if (mesh.faceCount == 0) throw_on_missing_element("faces");
+    if (mesh.vertexCount == 0) throw_on_missing_element("vertices");
+    if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
+    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
+
+    if (mesh.positions.pData == nullptr) throw_on_missing_element("positions");
+    if (mesh.normals.pData == nullptr) missing_element_warning("normals");
+    if (mesh.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
+
+    if (mesh.hasBones()) {
+        if (mesh.boneIDs.pData == nullptr) throw_on_missing_element("bone IDs");
+        if (mesh.boneWeights.pData == nullptr) throw_on_missing_element("bone weights");
     }
 
-    SceneBuilder::SceneBuilder(Flags flags) : mFlags(flags) {};
+    timeReport.measure("SceneBuilder::addMesh early checks");
 
-    SceneBuilder::SharedPtr SceneBuilder::create(Flags flags)
-    {
-        return SharedPtr(new SceneBuilder(flags));
-    }
-
-    SceneBuilder::SharedPtr SceneBuilder::create(const std::string& filename, Flags buildFlags, const InstanceMatrices& instances)
-    {
-        auto pBuilder = create(buildFlags);
-        return pBuilder->import(filename, instances) ? pBuilder : nullptr;
-    }
-
-    bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances)
-    {
-        bool success = false;
-        if (fs::path(filename).extension() == ".py") {
-            success = PythonImporter::import(filename, *this);
-        } else if (fs::path(filename).extension() == ".fscene") {
-            success = SceneImporter::import(filename, *this);
+    // Generate tangent space if that's required.
+#if 0
+    std::vector<float4> tangents;
+    if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
+        tangents = MikkTSpaceWrapper::generateTangents(mesh);
+        if (!tangents.empty()) {
+            assert(tangents.size() == mesh.indexCount);
+            mesh.tangents.pData = tangents.data();
+            mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
         } else {
-            success = AssimpImporter::import(filename, *this, instances);
+            mesh.tangents.pData = nullptr;
+            mesh.tangents.frequency = Mesh::AttributeFrequency::None;
         }
-        mFilename = filename;
-        return success;
+    }
+#endif
+
+    timeReport.measure("SceneBuilder::addMesh tangent space generation");
+
+    // Build new vertex/index buffers by merging identical vertices.
+    // The search is based on the topology defined by the original index buffer.
+    //
+    // A linked-list of vertices is built for each original vertex index.
+    // We iterate over all vertices and first check if a vertex is identical to any of the other vertices
+    // using the same original vertex index. If not, a new vertex is inserted and added to the list.
+    // The 'heads' array point to the first vertex in each list, and each vertex has an associated next-pointer.
+    // This ensures that adding to the linked lists do not require any dynamic memory allocation.
+    //
+    const uint32_t invalidIndex = 0xffffffff;
+    std::vector<std::pair<Mesh::Vertex, uint32_t>> vertices;
+    vertices.reserve(mesh.vertexCount);
+    std::vector<uint32_t> indices(mesh.indexCount);
+    std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
+
+    for (uint32_t face = 0; face < mesh.faceCount; face++) {
+        for (uint32_t vert = 0; vert < 3; vert++) {
+            const Mesh::Vertex v = mesh.getVertex(face, vert);
+            const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
+
+            // Iterate over vertex list to check if it already exists.
+            assert(origIndex < heads.size());
+            uint32_t index = heads[origIndex];
+            bool found = false;
+
+            while (index != invalidIndex) {
+                if (compareVertices(v, vertices[index].first)) {
+                    found = true;
+                    break;
+                }
+                index = vertices[index].second;
+            }
+
+            // Insert new vertex if we couldn't find it.
+            if (!found) {
+                assert(vertices.size() < std::numeric_limits<uint32_t>::max());
+                index = (uint32_t)vertices.size();
+                vertices.push_back({ v, heads[origIndex] });
+                heads[origIndex] = index;
+            }
+
+            // Store new vertex index.
+            indices[face * 3 + vert] = index;
+        }
     }
 
-    uint32_t SceneBuilder::addNode(const Node& node)
-    {
-        assert(node.parent == kInvalidNode || node.parent < mSceneGraph.size());
+    timeReport.measure("SceneBuilder::addMesh new vertex/index buffer generation");
 
-        assert(mSceneGraph.size() <= UINT32_MAX);
-        uint32_t newNodeID = (uint32_t)mSceneGraph.size();
-        mSceneGraph.push_back(InternalNode(node));
-        if(node.parent != kInvalidNode) mSceneGraph[node.parent].children.push_back(newNodeID);
-        mDirty = true;
-        return newNodeID;
+    assert(vertices.size() > 0);
+    assert(indices.size() == mesh.indexCount);
+    if (vertices.size() != mesh.vertexCount) {
+        logInfo("Mesh with name '" + mesh.name + "' had original vertex count " + std::to_string(mesh.vertexCount) + ", new vertex count " + std::to_string(vertices.size()));
     }
 
-    void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID)
-    {
-        assert(meshID < mMeshes.size());
-        mSceneGraph.at(nodeID).meshes.push_back(meshID);
-        mMeshes.at(meshID).instances.push_back(nodeID);
-        mDirty = true;
+    // Validate vertex data to check for invalid numbers and missing tangent frame.
+    size_t invalidCount = 0;
+    size_t zeroCount = 0;
+    for (const auto& v : vertices) {
+        validateVertex(v.first, invalidCount, zeroCount);
+    }
+    if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
+    if (zeroCount > 0) logWarning("The mesh '" + mesh.name + "' has zero-length normals/tangents at " + std::to_string(zeroCount) + " vertices. Please fix the asset.");
+
+    timeReport.measure("SceneBuilder::addMesh vertex data validation");
+
+    // Match texture coordinate quantization for textured emissives to match PackedEmissiveTriangle.
+    // This is to avoid mismatch when sampling and evaluating emissive triangles.
+    if (mesh.pMaterial->getEmissiveTexture() != nullptr) {
+        float2 minTexCrd = float2(std::numeric_limits<float>::infinity());
+        float2 maxTexCrd = float2(-std::numeric_limits<float>::infinity());
+        float2 maxError = float2(0);
+
+        for (auto& v : vertices) {
+            float2 texCrd = v.first.texCrd;
+            minTexCrd = min(minTexCrd, texCrd);
+            maxTexCrd = max(maxTexCrd, texCrd);
+            v.first.texCrd = f16tof32(f32tof16(texCrd));
+            maxError = max(maxError, abs(v.first.texCrd - texCrd));
+        }
+
+        // Issue warning if quantization errors are too large.
+        float2 maxAbsCrd = max(abs(minTexCrd), abs(maxTexCrd));
+        if (maxAbsCrd.x > HLF_MAX || maxAbsCrd.y > HLF_MAX) {
+            logWarning("Texture coordinates for emissive textured mesh '" + mesh.name + "' are outside the representable range, expect rendering errors.");
+        } else {
+            // Compute maximum quantization error in texels.
+            // The texcoords are used for all texture channels so taking the maximum dimensions.
+            uint2 maxTexDim = mesh.pMaterial->getMaxTextureDimensions();
+            maxError *= maxTexDim;
+            float maxTexelError = std::max(maxError.x, maxError.y);
+
+            if (maxTexelError > kMaxTexelError) {
+                std::ostringstream oss;
+                oss << "Texture coordinates for emissive textured mesh '" << mesh.name << "' have a large quantization error of " << maxTexelError << " texels. "
+                    << "The coordinate range is [" << minTexCrd.x << ", " << maxTexCrd.x << "] x [" << minTexCrd.y << ", " << maxTexCrd.y << "] for maximum texture dimensions ("
+                    << maxTexDim.x << ", " << maxTexDim.y << ").";
+                logWarning(oss.str());
+            }
+        }
     }
 
-    uint32_t SceneBuilder::addMesh(const Mesh& mesh)
-    {
-        const auto& prevMesh = mMeshes.size() ? mMeshes.back() : MeshSpec();
+    timeReport.measure("SceneBuilder::addMesh texture coordinates quantization");
 
-        // Create the new mesh spec
-        mMeshes.push_back({});
-        MeshSpec& spec = mMeshes.back();
-        assert(mBuffersData.staticData.size() <= UINT32_MAX && mBuffersData.dynamicData.size() <= UINT32_MAX && mBuffersData.indices.size() <= UINT32_MAX);
-        spec.staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
-        spec.dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
+    // Add the mesh to the scene.
+    // If the non-indexed vertices build flag is set, we will de-index the data below.
+    const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
+    const uint32_t outputVertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
+
+    mMeshes.push_back({});
+    MeshSpec& spec = mMeshes.back();
+    assert(mBuffersData.staticData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.dynamicData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.indices.size() <= std::numeric_limits<uint32_t>::max());
+    spec.staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
+    spec.dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
+
+    if (isIndexed) {
         spec.indexOffset = (uint32_t)mBuffersData.indices.size();
         spec.indexCount = mesh.indexCount;
-        spec.vertexCount = mesh.vertexCount;
-        spec.topology = mesh.topology;
-        spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
-
-        // Error checking
-        auto throw_on_missing_element = [&](const std::string& element)
-        {
-            throw std::runtime_error("Error when adding the mesh " + mesh.name + " to the scene.\nThe mesh is missing " + element);
-        };
-
-        auto missing_element_warning = [&](const std::string& element)
-        {
-            logWarning("The mesh " + mesh.name + " is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering");
-        };
-
-        // Initialize the static data
-        if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
-        mBuffersData.indices.insert(mBuffersData.indices.end(), mesh.pIndices, mesh.pIndices + mesh.indexCount);
-
-        if (mesh.vertexCount == 0) throw_on_missing_element("vertices");
-        if (mesh.pPositions == nullptr) throw_on_missing_element("positions");
-        if (mesh.pNormals == nullptr) missing_element_warning("normals");
-        if (mesh.pTexCrd == nullptr) missing_element_warning("texture coordinates");
-
-        // Initialize the dynamic data
-        if (mesh.pBoneWeights || mesh.pBoneIDs)
-        {
-            if (mesh.pBoneIDs == nullptr) throw_on_missing_element("bone IDs");
-            if (mesh.pBoneWeights == nullptr) throw_on_missing_element("bone weights");
-            spec.hasDynamicData = true;
-        }
-
-        // Generate tangent space if that's required
-        std::vector<float3> bitangents;
-        if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.pBitangents)
-        {
-            bitangents = MikkTSpaceWrapper::generateBitangents(mesh.pPositions, mesh.pNormals, mesh.pTexCrd, mesh.pIndices, mesh.vertexCount, mesh.indexCount);
-        }
-        else
-        {
-            validateTangentSpace(mesh.pBitangents, mesh.vertexCount);
-        }
-
-        for (uint32_t v = 0; v < mesh.vertexCount; v++)
-        {
-            StaticVertexData s;
-            s.position = mesh.pPositions[v];
-            s.normal = mesh.pNormals ? mesh.pNormals[v] : float3(0, 0, 0);
-            s.texCrd = mesh.pTexCrd ? mesh.pTexCrd[v] : float2(0, 0);
-            s.bitangent = bitangents.size() ? bitangents[v] : mesh.pBitangents[v];
-            mBuffersData.staticData.push_back(PackedStaticVertexData(s));
-
-            if (mesh.pBoneWeights)
-            {
-                DynamicVertexData d;
-                d.boneWeight = mesh.pBoneWeights[v];
-                d.boneID = mesh.pBoneIDs[v];
-                d.staticIndex = (uint32_t)mBuffersData.staticData.size() - 1;
-                mBuffersData.dynamicData.push_back(d);
-            }
-        }
-
-        mDirty = true;
-
-        assert(mMeshes.size() <= UINT32_MAX);
-        return (uint32_t)mMeshes.size() - 1;
     }
 
-    uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate)
-    {
-        assert(pMaterial);
+    spec.vertexCount = outputVertexCount;
+    spec.topology = mesh.topology;
+    spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
 
-        // Reuse previously added materials
-        if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
+    if (mesh.hasBones()) {
+        spec.hasDynamicData = true;
+    }
+
+    // Copy indices into global index array.
+    if (isIndexed) {
+        mBuffersData.indices.insert(mBuffersData.indices.end(), indices.begin(), indices.end());
+    }
+
+    // Copy vertices into global vertex arrays.
+    for (uint32_t i = 0; i < outputVertexCount; i++) {
+        uint32_t index = isIndexed ? i : indices[i];
+        assert(index < vertices.size());
+        const Mesh::Vertex& v = vertices[index].first;
+
+        StaticVertexData s;
+        s.position = v.position;
+        s.normal = v.normal;
+        s.texCrd = v.texCrd;
+        //s.tangent = v.tangent;
+        mBuffersData.staticData.push_back(PackedStaticVertexData(s));
+
+        if (mesh.hasBones()) {
+            DynamicVertexData d;
+            d.boneWeight = v.boneWeights;
+            d.boneID = v.boneIDs;
+            d.staticIndex = (uint32_t)mBuffersData.staticData.size() - 1;
+            d.globalMatrixID = 0; // This will be initialized in createMeshData()
+            mBuffersData.dynamicData.push_back(d);
+        }
+    }
+
+    mDirty = true;
+
+    assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
+
+    timeReport.measure("SceneBuilder::addMesh final steps");
+    timeReport.addTotal("SceneBuilder::addMesh done in");
+    timeReport.printToLog();
+
+    logInfo("Mesh '" + meshDesc.name + "' added.");
+    return (uint32_t)mMeshes.size() - 1;
+}
+
+uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate)
+{
+    assert(pMaterial);
+
+    // Reuse previously added materials
+    if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
+    {
+        return (uint32_t)std::distance(mMaterials.begin(), it);
+    }
+
+    // Try to find previously added material with equal properties (duplicate)
+    if (auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; }); it != mMaterials.end())
+    {
+        const auto& equalMaterial = *it;
+
+        // ASSIMP sometimes creates internal copies of a material: Always de-duplicate if name and properties are equal.
+        if (removeDuplicate || pMaterial->getName() == equalMaterial->getName())
         {
             return (uint32_t)std::distance(mMaterials.begin(), it);
         }
-
-        // Try to find previously added material with equal properties (duplicate)
-        if (auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; }); it != mMaterials.end())
+        else
         {
-            const auto& equalMaterial = *it;
-
-            // ASSIMP sometimes creates internal copies of a material: Always de-duplicate if name and properties are equal.
-            if (removeDuplicate || pMaterial->getName() == equalMaterial->getName())
-            {
-                return (uint32_t)std::distance(mMaterials.begin(), it);
-            }
-            else
-            {
-                logWarning("Material '" + pMaterial->getName() + "' is a duplicate (has equal properties) of material '" + equalMaterial->getName() + "'.");
-            }
+            logInfo("Material '" + pMaterial->getName() + "' is a duplicate (has equal properties) of material '" + equalMaterial->getName() + "'.");
         }
-
-        mDirty = true;
-        mMaterials.push_back(pMaterial);
-        assert(mMaterials.size() <= UINT32_MAX);
-        return (uint32_t)mMaterials.size() - 1;
     }
 
-    void SceneBuilder::setCamera(const Camera::SharedPtr& pCamera, uint32_t nodeID)
+    mDirty = true;
+    mMaterials.push_back(pMaterial);
+    assert(mMaterials.size() <= std::numeric_limits<uint32_t>::max());
+    return (uint32_t)mMaterials.size() - 1;
+}
+
+uint32_t SceneBuilder::addCamera(const Camera::SharedPtr& pCamera)
+{
+    assert(pCamera);
+    mCameras.push_back(pCamera);
+    mDirty = true;
+    assert(mCameras.size() <= std::numeric_limits<uint32_t>::max());
+    return (uint32_t)mCameras.size() - 1;
+}
+
+uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight)
+{
+    assert(pLight);
+    mLights.push_back(pLight);
+    mDirty = true;
+    assert(mLights.size() <= std::numeric_limits<uint32_t>::max());
+    return (uint32_t)mLights.size() - 1;
+}
+
+void SceneBuilder::setCamera(const std::string name)
+{
+    for (uint i = 0; i < mCameras.size(); i++)
     {
-        mCamera.nodeID = nodeID;
-        mCamera.pObject = pCamera;
-        mDirty = true;
+        if (mCameras[i]->getName() == name)
+        {
+            mSelectedCamera = i;
+            return;
+        }
     }
+}
 
-    uint32_t SceneBuilder::addLight(const Light::SharedPtr& pLight, uint32_t nodeID)
+Vao::SharedPtr SceneBuilder::createVao(uint16_t drawCount)
+{
+    for (auto& mesh : mMeshes) assert(mesh.topology == mMeshes[0].topology);
+    const size_t vertexCount = (uint32_t)mBuffersData.staticData.size();
+    size_t ibSize = sizeof(uint32_t) * mBuffersData.indices.size();
+    size_t staticVbSize = sizeof(PackedStaticVertexData) * vertexCount;
+    size_t prevVbSize = sizeof(PrevVertexData) * vertexCount;
+    assert(ibSize <= std::numeric_limits<uint32_t>::max() && staticVbSize <= std::numeric_limits<uint32_t>::max() && prevVbSize <= std::numeric_limits<uint32_t>::max());
+
+    // Create the index buffer
+    Buffer::SharedPtr pIB = nullptr;
+    if (ibSize > 0)
     {
-        Scene::AnimatedObject<Light> light;
-        light.pObject = pLight;
-        light.nodeID = nodeID;
-        mLights.push_back(light);
-        mDirty = true;
-        assert(mLights.size() <= UINT32_MAX);
-        return (uint32_t)mLights.size() - 1;
-    }
-
-    Vao::SharedPtr SceneBuilder::createVao(uint16_t drawCount)
-    {
-        for (auto& mesh : mMeshes) assert(mesh.topology == mMeshes[0].topology);
-        const size_t vertexCount = (uint32_t)mBuffersData.staticData.size();
-        size_t ibSize = sizeof(uint32_t) * mBuffersData.indices.size();
-        size_t staticVbSize = sizeof(PackedStaticVertexData) * vertexCount;
-        size_t prevVbSize = sizeof(PrevVertexData) * vertexCount;
-        assert(ibSize <= UINT32_MAX && staticVbSize <= UINT32_MAX && prevVbSize <= UINT32_MAX);
-
-        // Create the index buffer
         ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
-        Buffer::SharedPtr pIB = Buffer::create((uint32_t)ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indices.data());
-
-        // Create the vertex data as structured buffers
-        ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
-        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
-        Buffer::SharedPtr pPrevBuffer = Buffer::createStructured(sizeof(PrevVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
-
-        Vao::BufferVec pVBs(Scene::kVertexBufferCount);
-        pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
-        pVBs[Scene::kPrevVertexBufferIndex] = pPrevBuffer;
-        std::vector<uint16_t> drawIDs(drawCount);
-        for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
-        pVBs[Scene::kDrawIdBufferIndex] = Buffer::create(drawCount * sizeof(uint16_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
-
-        // The layout only initializes the vertex data and draw ID layout. The skinning data doesn't get passed into the vertex shader.
-        VertexLayout::SharedPtr pLayout = VertexLayout::create();
-
-        // Add the packed static vertex data layout
-        VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
-        pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-        pStaticLayout->addElement(VERTEX_PACKED_NORMAL_BITANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalBitangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_BITANGENT_LOC);
-        pStaticLayout->addElement(VERTEX_TEXCOORD_NAME, offsetof(PackedStaticVertexData, texCrd), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_LOC);
-        pLayout->addBufferLayout(Scene::kStaticDataBufferIndex, pStaticLayout);
-
-        // Add the previous vertex data layout
-        VertexBufferLayout::SharedPtr pPrevLayout = VertexBufferLayout::create();
-        pPrevLayout->addElement(VERTEX_PREV_POSITION_NAME, offsetof(PrevVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_PREV_POSITION_LOC);
-        pLayout->addBufferLayout(Scene::kPrevVertexBufferIndex, pPrevLayout);
-
-        // Add the draw ID layout
-        VertexBufferLayout::SharedPtr pInstLayout = VertexBufferLayout::create();
-        pInstLayout->addElement(INSTANCE_DRAW_ID_NAME, 0, ResourceFormat::R16Uint, 1, INSTANCE_DRAW_ID_LOC);
-        pInstLayout->setInputClass(VertexBufferLayout::InputClass::PerInstanceData, 1);
-        pLayout->addBufferLayout(Scene::kDrawIdBufferIndex, pInstLayout);
-
-        Vao::SharedPtr pVao = Vao::create(mMeshes[0].topology, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
-        return pVao;
+        pIB = Buffer::create(mpDevice, (uint32_t)ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indices.data());
     }
 
-    void SceneBuilder::createGlobalMatricesBuffer(Scene* pScene)
-    {
-        pScene->mSceneGraph.resize(mSceneGraph.size());
+    // Create the vertex data as structured buffers
+    ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
+    Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
+    Buffer::SharedPtr pPrevBuffer = Buffer::createStructured(mpDevice, sizeof(PrevVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
 
-        for (size_t i = 0; i < mSceneGraph.size(); i++)
+    Vao::BufferVec pVBs(Scene::kVertexBufferCount);
+    pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
+    pVBs[Scene::kPrevVertexBufferIndex] = pPrevBuffer;
+    std::vector<uint16_t> drawIDs(drawCount);
+    for (uint32_t i = 0; i < drawCount; i++) drawIDs[i] = i;
+    pVBs[Scene::kDrawIdBufferIndex] = Buffer::create(mpDevice, drawCount * sizeof(uint16_t), ResourceBindFlags::Vertex, Buffer::CpuAccess::None, drawIDs.data());
+
+    // The layout only initializes the vertex data and draw ID layout. The skinning data doesn't get passed into the vertex shader.
+    VertexLayout::SharedPtr pLayout = VertexLayout::create();
+
+    // Add the packed static vertex data layout
+    VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
+    pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
+    pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalTangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_LOC);
+    pStaticLayout->addElement(VERTEX_TEXCOORD_NAME, offsetof(PackedStaticVertexData, texCrd), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_LOC);
+    pLayout->addBufferLayout(Scene::kStaticDataBufferIndex, pStaticLayout);
+
+    // Add the previous vertex data layout
+    VertexBufferLayout::SharedPtr pPrevLayout = VertexBufferLayout::create();
+    pPrevLayout->addElement(VERTEX_PREV_POSITION_NAME, offsetof(PrevVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_PREV_POSITION_LOC);
+    pLayout->addBufferLayout(Scene::kPrevVertexBufferIndex, pPrevLayout);
+
+    // Add the draw ID layout
+    VertexBufferLayout::SharedPtr pInstLayout = VertexBufferLayout::create();
+    pInstLayout->addElement(INSTANCE_DRAW_ID_NAME, 0, ResourceFormat::R16Uint, 1, INSTANCE_DRAW_ID_LOC);
+    pInstLayout->setInputClass(VertexBufferLayout::InputClass::PerInstanceData, 1);
+    pLayout->addBufferLayout(Scene::kDrawIdBufferIndex, pInstLayout);
+
+    Vao::SharedPtr pVao = Vao::create(mMeshes[0].topology, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
+    return pVao;
+}
+
+void SceneBuilder::createGlobalMatricesBuffer(Scene* pScene)
+{
+    pScene->mSceneGraph.resize(mSceneGraph.size());
+
+    for (size_t i = 0; i < mSceneGraph.size(); i++)
+    {
+        assert(mSceneGraph[i].parent <= std::numeric_limits<uint32_t>::max());
+        pScene->mSceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].localToBindPose);
+    }
+}
+
+uint32_t SceneBuilder::createMeshData(Scene* pScene)
+{
+    auto& meshData = pScene->mMeshDesc;
+    auto& instanceData = pScene->mMeshInstanceData;
+    meshData.resize(mMeshes.size());
+    pScene->mMeshHasDynamicData.resize(mMeshes.size());
+
+    size_t drawCount = 0;
+    for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++)
+    {
+        // Mesh data
+        const auto& mesh = mMeshes[meshID];
+        meshData[meshID].materialID = mesh.materialId;
+        meshData[meshID].vbOffset = mesh.staticVertexOffset;
+        meshData[meshID].ibOffset = mesh.indexOffset;
+        meshData[meshID].vertexCount = mesh.vertexCount;
+        meshData[meshID].indexCount = mesh.indexCount;
+
+        drawCount += mesh.instances.size();
+
+        // Mesh instance data
+        for (const auto& instance : mesh.instances)
         {
-            assert(mSceneGraph[i].parent <= UINT32_MAX);
-            pScene->mSceneGraph[i] = Scene::Node(mSceneGraph[i].name, (uint32_t)mSceneGraph[i].parent, mSceneGraph[i].transform, mSceneGraph[i].localToBindPose);
+            instanceData.push_back({});
+            auto& meshInstance = instanceData.back();
+            meshInstance.globalMatrixID = instance.nodeId;
+            meshInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
+            meshInstance.meshID = meshID;
+            meshInstance.vbOffset = mesh.staticVertexOffset;
+            meshInstance.ibOffset = mesh.indexOffset;
         }
-    }
 
-    uint32_t SceneBuilder::createMeshData(Scene* pScene)
-    {
-        auto& meshData = pScene->mMeshDesc;
-        auto& instanceData = pScene->mMeshInstanceData;
-        meshData.resize(mMeshes.size());
-        pScene->mMeshHasDynamicData.resize(mMeshes.size());
-
-        size_t drawCount = 0;
-        for (uint32_t meshID = 0; meshID < mMeshes.size(); meshID++)
+        if (mesh.hasDynamicData)
         {
-            // Mesh data
-            const auto& mesh = mMeshes[meshID];
-            meshData[meshID].materialID = mesh.materialId;
-            meshData[meshID].vbOffset = mesh.staticVertexOffset;
-            meshData[meshID].ibOffset = mesh.indexOffset;
-            meshData[meshID].vertexCount = mesh.vertexCount;
-            meshData[meshID].indexCount = mesh.indexCount;
+            assert(mesh.instances.size() == 1);
+            pScene->mMeshHasDynamicData[meshID] = true;
 
-            drawCount += mesh.instances.size();
-
-            // Mesh instance data
-            for (const auto& instance : mesh.instances)
+            for (uint32_t i = 0; i < mesh.vertexCount; i++)
             {
-                instanceData.push_back({});
-                auto& meshInstance = instanceData.back();
-                meshInstance.globalMatrixID = instance;
-                meshInstance.materialID = mesh.materialId;
-                meshInstance.meshID = meshID;
-                meshInstance.vbOffset = mesh.staticVertexOffset;
-                meshInstance.ibOffset = mesh.indexOffset;
-            }
-
-            if (mesh.hasDynamicData)
-            {
-                assert(mesh.instances.size() == 1);
-                pScene->mMeshHasDynamicData[meshID] = true;
-
-                for (uint32_t i = 0; i < mesh.vertexCount; i++)
-                {
-                    mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0];
-                }
+                mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0].nodeId;
             }
         }
-        assert(drawCount <= UINT32_MAX);
-        return (uint32_t)drawCount;
     }
+    assert(drawCount <= std::numeric_limits<uint32_t>::max());
+    return (uint32_t)drawCount;
+}
 
-    Scene::SharedPtr SceneBuilder::getScene()
+Scene::SharedPtr SceneBuilder::getScene()
+{
+    // We cache the scene because creating it is not cheap.
+    // With the PythonImporter, the scene is fetched twice, once for running
+    // the scene script and another time when the scene has finished loading.
+    if (mpScene && !mDirty)
     {
-        // We cache the scene because creating it is not cheap.
-        // With the PythonImporter, the scene is fetched twice, once for running
-        // the scene script and another time when the scene has finished loading.
-        if (mpScene && !mDirty) return mpScene;
-
-        if (mMeshes.size() == 0)
-        {
-            logError("Can't build scene. No meshes were loaded");
-            return nullptr;
-        }
-        mpScene = Scene::create();
-        if (mCamera.pObject == nullptr) mCamera.pObject = Camera::create();
-        mpScene->mCamera = mCamera;
-        mpScene->mCameraSpeed = mCameraSpeed;
-        mpScene->mLights = mLights;
-        mpScene->mMaterials = mMaterials;
-        mpScene->mpLightProbe = mpLightProbe;
-        mpScene->mpEnvMap = mpEnvMap;
+        // PythonImporter sets the filename after loading the nested scene,
+        // so we need to set it to the correct value here.
         mpScene->mFilename = mFilename;
-
-        createGlobalMatricesBuffer(mpScene.get());
-        uint32_t drawCount = createMeshData(mpScene.get());
-        assert(drawCount <= UINT16_MAX);
-        mpScene->mpVao = createVao(drawCount);
-        calculateMeshBoundingBoxes(mpScene.get());
-        createAnimationController(mpScene.get());
-        mpScene->finalize();
-        mDirty = false;
-
         return mpScene;
     }
 
-    void SceneBuilder::calculateMeshBoundingBoxes(Scene* pScene)
+    if (mMeshes.size() == 0)
     {
-        // Calculate mesh bounding boxes
-        pScene->mMeshBBs.resize(mMeshes.size());
-        for (size_t i = 0; i < mMeshes.size(); i++)
+        logError("Can't build scene. No meshes were loaded");
+        return nullptr;
+    }
+
+    TimeReport timeReport;
+    LOG_DBG("getScene timeReport");
+
+    mpScene = Scene::create(mpDevice);
+    timeReport.measure("getScene Scene::create");
+    
+    mpScene->mCameras = mCameras;
+    mpScene->mSelectedCamera = mSelectedCamera;
+    mpScene->mCameraSpeed = mCameraSpeed;
+    mpScene->mLights = mLights;
+    mpScene->mMaterials = mMaterials;
+    mpScene->mpLightProbe = mpLightProbe;
+    mpScene->mpEnvMap = mpEnvMap;
+    mpScene->mFilename = mFilename;
+
+    createGlobalMatricesBuffer(mpScene.get());
+    timeReport.measure("getScene createGlobalMatricesBuffer");
+
+    uint32_t drawCount = createMeshData(mpScene.get());
+    timeReport.measure("getScene createMeshData");
+
+    assert(drawCount <= std::numeric_limits<uint16_t>::max());
+    mpScene->mpVao = createVao(drawCount);
+    timeReport.measure("getScene createVao");
+
+    calculateMeshBoundingBoxes(mpScene.get());
+    timeReport.measure("getScene calculateMeshBoundingBoxes");
+
+    createAnimationController(mpScene.get());
+    timeReport.measure("getScene createAnimationController");
+
+    mpScene->finalize();
+    timeReport.measure("getScene finalize mpScene");
+    mDirty = false;
+
+    timeReport.addTotal("getScene done in");
+    timeReport.printToLog();
+
+    return mpScene;
+}
+
+void SceneBuilder::calculateMeshBoundingBoxes(Scene* pScene)
+{
+    // Calculate mesh bounding boxes
+    pScene->mMeshBBs.resize(mMeshes.size());
+    for (size_t i = 0; i < mMeshes.size(); i++)
+    {
+        const auto& mesh = mMeshes[i];
+        float3 boxMin(FLT_MAX);
+        float3 boxMax(-FLT_MAX);
+
+        const auto* staticData = &mBuffersData.staticData[mesh.staticVertexOffset];
+        for (uint32_t v = 0; v < mesh.vertexCount; v++)
         {
-            const auto& mesh = mMeshes[i];
-            float3 boxMin(FLT_MAX);
-            float3 boxMax(-FLT_MAX);
-
-            const auto* staticData = &mBuffersData.staticData[mesh.staticVertexOffset];
-            for (uint32_t v = 0; v < mesh.vertexCount; v++)
-            {
-                boxMin = glm::min(boxMin, staticData[v].position);
-                boxMax = glm::max(boxMax, staticData[v].position);
-            }
-
-            pScene->mMeshBBs[i] = BoundingBox::fromMinMax(boxMin, boxMax);
+            boxMin = glm::min(boxMin, staticData[v].position);
+            boxMax = glm::max(boxMax, staticData[v].position);
         }
-    }
 
-    uint32_t SceneBuilder::addAnimation(uint32_t meshID, Animation::ConstSharedPtrRef pAnimation)
-    {
-        assert(meshID < mMeshes.size());
-        mMeshes[meshID].animations.push_back(pAnimation);
-        mDirty = true;
-        assert(mMeshes[meshID].animations.size() <= UINT32_MAX);
-        return (uint32_t)mMeshes[meshID].animations.size() - 1;
-    }
-
-    void SceneBuilder::createAnimationController(Scene* pScene)
-    {
-        pScene->mpAnimationController = AnimationController::create(pScene, mBuffersData.staticData, mBuffersData.dynamicData);
-        for (uint32_t i = 0; i < mMeshes.size(); i++)
-        {
-            for (const auto& pAnim : mMeshes[i].animations)
-            {
-                pScene->mpAnimationController->addAnimation(i, pAnim);
-            }
-        }
-    }
-
-    SCRIPT_BINDING(SceneBuilder)
-    {
-        auto buildFlags = m.enum_<SceneBuilder::Flags>("SceneBuilderFlags");
-        buildFlags.regEnumVal(SceneBuilder::Flags::None);
-        buildFlags.regEnumVal(SceneBuilder::Flags::RemoveDuplicateMaterials);
-        buildFlags.regEnumVal(SceneBuilder::Flags::UseOriginalTangentSpace);
-        buildFlags.regEnumVal(SceneBuilder::Flags::AssumeLinearSpaceTextures);
-        buildFlags.regEnumVal(SceneBuilder::Flags::DontMergeMeshes);
-        buildFlags.regEnumVal(SceneBuilder::Flags::BuffersAsShaderResource);
-        buildFlags.regEnumVal(SceneBuilder::Flags::UseSpecGlossMaterials);
-        buildFlags.regEnumVal(SceneBuilder::Flags::UseMetalRoughMaterials);
-        buildFlags.addBinaryOperators();
+        pScene->mMeshBBs[i] = BoundingBox::fromMinMax(boxMin, boxMax);
     }
 }
+
+void SceneBuilder::addAnimation(const Animation::SharedPtr& pAnimation)
+{
+    mAnimations.push_back(pAnimation);
+    mDirty = true;
+}
+
+void SceneBuilder::createAnimationController(Scene* pScene)
+{
+    pScene->mpAnimationController = AnimationController::create(pScene, mBuffersData.staticData, mBuffersData.dynamicData);
+    for (const auto& pAnim : mAnimations)
+    {
+        pScene->mpAnimationController->addAnimation(pAnim);
+    }
+}
+
+SCRIPT_BINDING(SceneBuilder)
+{
+    pybind11::enum_<SceneBuilder::Flags> flags(m, "SceneBuilderFlags");
+    flags.value("Default", SceneBuilder::Flags::Default);
+    flags.value("RemoveDuplicateMaterials", SceneBuilder::Flags::RemoveDuplicateMaterials);
+    flags.value("UseOriginalTangentSpace", SceneBuilder::Flags::UseOriginalTangentSpace);
+    flags.value("AssumeLinearSpaceTextures", SceneBuilder::Flags::AssumeLinearSpaceTextures);
+    flags.value("DontMergeMeshes", SceneBuilder::Flags::DontMergeMeshes);
+    flags.value("BuffersAsShaderResource", SceneBuilder::Flags::BuffersAsShaderResource);
+    flags.value("UseSpecGlossMaterials", SceneBuilder::Flags::UseSpecGlossMaterials);
+    flags.value("UseMetalRoughMaterials", SceneBuilder::Flags::UseMetalRoughMaterials);
+    flags.value("NonIndexedVertices", SceneBuilder::Flags::NonIndexedVertices);
+    ScriptBindings::addEnumBinaryOperators(flags);
+}
+
+}  // namespace Falcor

@@ -25,130 +25,136 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_LIGHTS_LIGHTPROBE_H_
+#define SRC_FALCOR_SCENE_LIGHTS_LIGHTPROBE_H_
+
 #include "LightProbeData.slang"
-#include "Core/API/Texture.h"
-#include "Core/API/Sampler.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
 
-namespace Falcor
-{
-    class RenderContext;
-    class Gui;
-    class ProgramVars;
-    class ParameterBlock;
+namespace Falcor {
 
-    class dlldecl LightProbe
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LightProbe>;
-        using SharedConstPtr = std::shared_ptr<const LightProbe>;
-        using ConstSharedPtrRef = const SharedPtr&;
+class Device;
+class RenderContext;
+class Gui;
+class ProgramVars;
+class ParameterBlock;
 
-        static const uint32_t kDataSize = sizeof(LightProbeData) - sizeof(LightProbeResources);
-        static const uint32_t kDefaultDiffSamples = 4096;
-        static const uint32_t kDefaultSpecSamples = 1024;
-        static const uint32_t kDefaultDiffSize = 128;
-        static const uint32_t kDefaultSpecSize = 1024;
+class dlldecl LightProbe {
+ public:
+    using SharedPtr = std::shared_ptr<LightProbe>;
+    using SharedConstPtr = std::shared_ptr<const LightProbe>;
+    using ConstSharedPtrRef = const SharedPtr&;
 
-        /** Create a light-probe from a file
-            \param[in] pContext The current render context to be used for pre-integration.
-            \param[in] filename Texture filename
-            \param[in] loadAsSrgb Indicates whether the source texture is in sRGB or linear color space
-            \param[in] overrideFormat Override the format of the original texture. ResourceFormat::Unknown means keep the original format. Useful in cases where generateMips is true, but the original format doesn't support automatic mip generation
-            \param[in] diffSampleCount How many times to sample when generating diffuse texture.
-            \param[in] specSampleCount How many times to sample when generating specular texture.
-            \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
-            \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
-            \param[in] preFilteredFormat The format of the pre-filtered texture
-        */
-        static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+    static const uint32_t kDataSize = sizeof(LightProbeData) - sizeof(LightProbeResources);
+    static const uint32_t kDefaultDiffSamples = 4096;
+    static const uint32_t kDefaultSpecSamples = 1024;
+    static const uint32_t kDefaultDiffSize = 128;
+    static const uint32_t kDefaultSpecSize = 1024;
 
-        /** Create a light-probe from a texture
-            \param[in] pContext The current render context to be used for pre-integration.
-            \param[in] pTexture The source texture
-            \param[in] diffSampleCount How many times to sample when generating diffuse texture.
-            \param[in] specSampleCount How many times to sample when generating specular texture.
-            \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
-            \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
-            \param[in] preFilteredFormat The format of the pre-filtered texture
-        */
-        static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+    /** Create a light-probe from a file
+        \param[in] pContext The current render context to be used for pre-integration.
+        \param[in] filename Texture filename
+        \param[in] loadAsSrgb Indicates whether the source texture is in sRGB or linear color space
+        \param[in] overrideFormat Override the format of the original texture. ResourceFormat::Unknown means keep the original format. Useful in cases where generateMips is true, but the original format doesn't support automatic mip generation
+        \param[in] diffSampleCount How many times to sample when generating diffuse texture.
+        \param[in] specSampleCount How many times to sample when generating specular texture.
+        \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
+        \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
+        \param[in] preFilteredFormat The format of the pre-filtered texture
+    */
+    static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
-        ~LightProbe();
+    /** Create a light-probe from a texture
+        \param[in] pContext The current render context to be used for pre-integration.
+        \param[in] pTexture The source texture
+        \param[in] diffSampleCount How many times to sample when generating diffuse texture.
+        \param[in] specSampleCount How many times to sample when generating specular texture.
+        \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
+        \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
+        \param[in] preFilteredFormat The format of the pre-filtered texture
+    */
+    static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
-        /** Render UI elements for this light.
-            \param[in] pGui The GUI to create the elements with
-            \param[in] group Optional. If specified, creates a UI group to display elements within
-        */
-        void renderUI(Gui* pGui, const char* group = nullptr);
+    ~LightProbe();
 
-        /** Set the light probe's world-space position
-        */
-        void setPosW(const float3& posW) { mData.posW = posW; }
+    /** Render UI elements for this light.
+        \param[in] pGui The GUI to create the elements with
+        \param[in] group Optional. If specified, creates a UI group to display elements within
+    */
+    void renderUI(Gui* pGui, const char* group = nullptr);
 
-        /** Get the light probe's world-space position
-        */
-        const float3& getPosW() const { return mData.posW; }
+    /** Set the light probe's world-space position
+    */
+    void setPosW(const float3& posW) { mData.posW = posW; }
 
-        /** Set the spherical radius the light probe encompasses. Set radius to negative to sample as an infinite-distance global light probe.
-        */
-        void setRadius(float radius) { mData.radius = radius; }
+    /** Get the light probe's world-space position
+    */
+    const float3& getPosW() const { return mData.posW; }
 
-        /** Get the light probe's radius.
-        */
-        float getRadius() const { return mData.radius; }
+    /** Set the spherical radius the light probe encompasses. Set radius to negative to sample as an infinite-distance global light probe.
+    */
+    void setRadius(float radius) { mData.radius = radius; }
 
-        /** Get the sample count used to generate the diffuse texture.
-        */
-        uint32_t getDiffSampleCount() const { return mDiffSampleCount; }
+    /** Get the light probe's radius.
+    */
+    float getRadius() const { return mData.radius; }
 
-        /** Get the sample count used to generate the specular texture.
-        */
-        uint32_t getSpecSampleCount() const { return mSpecSampleCount; }
+    /** Get the sample count used to generate the diffuse texture.
+    */
+    uint32_t getDiffSampleCount() const { return mDiffSampleCount; }
 
-        /** Set the light probe's light intensity
-        */
-        void setIntensity(const float3& intensity) { mData.intensity = intensity; }
+    /** Get the sample count used to generate the specular texture.
+    */
+    uint32_t getSpecSampleCount() const { return mSpecSampleCount; }
 
-        /** Get the light probe's light intensity
-        */
-        const float3& getIntensity() const { return mData.intensity; }
+    /** Set the light probe's light intensity
+    */
+    void setIntensity(const float3& intensity) { mData.intensity = intensity; }
 
-        /** Attach a sampler to the light probe
-        */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.sampler = pSampler; }
+    /** Get the light probe's light intensity
+    */
+    const float3& getIntensity() const { return mData.intensity; }
 
-        /** Get the sampler state
-        */
-        const Sampler::SharedPtr& getSampler() const { return mData.resources.sampler; }
+    /** Attach a sampler to the light probe
+    */
+    void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.sampler = pSampler; }
 
-        /** Get the light probe's source texture.
-        */
-        const Texture::SharedPtr& getOrigTexture() const { return mData.resources.origTexture; }
+    /** Get the sampler state
+    */
+    const Sampler::SharedPtr& getSampler() const { return mData.resources.sampler; }
 
-        /** Get the light probe's diffuse texture.
-        */
-        const Texture::SharedPtr& getDiffuseTexture() const { return mData.resources.diffuseTexture; }
+    /** Get the light probe's source texture.
+    */
+    const Texture::SharedPtr& getOrigTexture() const { return mData.resources.origTexture; }
 
-        /** Get the light probe's specular texture.
-        */
-        const Texture::SharedPtr& getSpecularTexture() const { return mData.resources.specularTexture; }
+    /** Get the light probe's diffuse texture.
+    */
+    const Texture::SharedPtr& getDiffuseTexture() const { return mData.resources.diffuseTexture; }
 
-        /** Get the texture storing the pre-integrated DFG term shared by all light probes.
-        */
-        static const Texture::SharedPtr& getDfgTexture() { return sSharedResources.dfgTexture; }
+    /** Get the light probe's specular texture.
+    */
+    const Texture::SharedPtr& getSpecularTexture() const { return mData.resources.specularTexture; }
 
-        /** Bind the light data into a shader var
-        */
-        void setShaderData(const ShaderVar& var);
+    /** Get the texture storing the pre-integrated DFG term shared by all light probes.
+    */
+    static const Texture::SharedPtr& getDfgTexture() { return sSharedResources.dfgTexture; }
 
-    private:
-        static uint32_t sLightProbeCount;
-        static LightProbeSharedResources sSharedResources;
+    /** Bind the light data into a shader var
+    */
+    void setShaderData(const ShaderVar& var);
 
-        LightProbeData mData;
-        uint32_t mDiffSampleCount;
-        uint32_t mSpecSampleCount;
-        LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat);
-    };
-}
+ private:
+    static uint32_t sLightProbeCount;
+    static LightProbeSharedResources sSharedResources;
+
+    LightProbeData mData;
+    uint32_t mDiffSampleCount;
+    uint32_t mSpecSampleCount;
+
+    LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_LIGHTS_LIGHTPROBE_H_

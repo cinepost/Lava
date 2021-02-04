@@ -42,4 +42,6 @@
 #define FALCOR_VK
 #endif
 
+#define FALCOR_MAX_DEVICES 32
+
 #endif  // FALCOR_CORE_FALCORCONFIG_H_

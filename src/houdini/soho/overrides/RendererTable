@@ -1,0 +1,9 @@
+#include "$HH/soho/overrides/RendererTable"
+
+// Lava
+{
+    override.name   Lava
+    shopstyle       [ "Lava" ]
+    soho_script     [ "LSD.py" ]
+    soho_pipecmd    [ "lava" ]
+}

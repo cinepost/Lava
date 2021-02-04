@@ -25,15 +25,19 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+#define SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+
 #include "Core/Program/ProgramReflection.h"
 #include "Core/API/Shader.h"
 #include "Core/API/RootSignature.h"
 
 #include <slang/slang.h>
 
-namespace Falcor
-{
+namespace Falcor {
+
+    class Device;
+
     class dlldecl Program;
     class dlldecl ProgramVars;
     class dlldecl ProgramVersion;
@@ -64,16 +68,14 @@ namespace Falcor
 
     /** A collection of one or more entry points in a program kernels object.
     */
-    class dlldecl EntryPointGroupKernels
-    {
-    public:
+    class dlldecl EntryPointGroupKernels {
+     public:
         using SharedPtr = std::shared_ptr<EntryPointGroupKernels>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupKernels>;
 
         /** Types of entry point groups.
         */
-        enum class Type
-        {
+        enum class Type {
             Compute,            ///< A group consisting of a single compute kernel
             Rasterization,      ///< A group consisting of rasterization shaders to be used together as a pipeline.
             RtSingleShader,     ///< A group consisting of a single ray tracing shader
@@ -136,9 +138,8 @@ namespace Falcor
     /** Low-level program object
         This class abstracts the API's program creation and management
     */
-    class dlldecl ProgramKernels : public std::enable_shared_from_this<ProgramKernels>
-    {
-    public:
+    class dlldecl ProgramKernels : public std::enable_shared_from_this<ProgramKernels> {
+     public:
         using SharedPtr = std::shared_ptr<ProgramKernels>;
         using SharedConstPtr = std::shared_ptr<const ProgramKernels>;
 
@@ -156,6 +157,7 @@ namespace Falcor
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
+            std::shared_ptr<Device> pDevice, 
             const ProgramVersion* pVersion,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
@@ -186,6 +188,7 @@ namespace Falcor
 
     protected:
         ProgramKernels(
+            std::shared_ptr<Device> device, 
             const ProgramVersion* pVersion,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
@@ -201,11 +204,12 @@ namespace Falcor
 
         ProgramVersion const* mpVersion = nullptr;
         RootSignature::SharedPtr mpRootSignature;
+
+        std::shared_ptr<Device> mpDevice; 
     };
 
-    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion>
-    {
-    public:
+    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
+     public:
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
         using DefineList = Shader::DefineList;
@@ -235,7 +239,7 @@ namespace Falcor
         slang::IComponentType* getSlangGlobalScope() const;
         slang::IComponentType* getSlangEntryPoint(uint32_t index) const;
 
-    protected:
+     protected:
         friend class Program;
         friend class RtProgram;
 
@@ -259,4 +263,7 @@ namespace Falcor
         // Cached version of compiled kernels for this program version
         mutable std::unordered_map<std::string, ProgramKernels::SharedPtr> mpKernels;
     };
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_

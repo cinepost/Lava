@@ -28,7 +28,10 @@
 #include "stdafx.h"
 #include "ShaderLibrary.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
+ShaderLibrary::SharedPtr ShaderLibrary::create(const std::string& filename) {
+    return SharedPtr(new ShaderLibrary(filename));
+}
 
 }

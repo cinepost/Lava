@@ -37,14 +37,17 @@ struct DescriptorPoolApiData {
 };
 
 struct DescriptorSetApiData {
-    DescriptorSetApiData(VkDescriptorSetLayout l, VkDescriptorPool p, VkDescriptorSet s) : layout(l), set(s), pool(p) {}
+    DescriptorSetApiData(Device::SharedPtr device, VkDescriptorSetLayout l, VkDescriptorPool p, VkDescriptorSet s) : layout(l), set(s), pool(p), mpDevice(device) {}
+    
     VkDescriptorSetLayout layout;
     VkDescriptorPool pool;
     VkDescriptorSet set;
 
+    Device::SharedPtr mpDevice;
+
     ~DescriptorSetApiData() {
-        vkFreeDescriptorSets(gpDevice->getApiHandle(), pool, 1, &set);
-        vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), layout, nullptr);
+        vkFreeDescriptorSets(mpDevice->getApiHandle(), pool, 1, &set);
+        vkDestroyDescriptorSetLayout(mpDevice->getApiHandle(), layout, nullptr);
     }
 };
 

@@ -31,8 +31,10 @@
 #include "Core/State/ComputeState.h"
 #include "Utils/Math/Vector.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
+class Device;
+
     /** Class that performs parallel reduction over all pixels in a texture.
 
         The reduction is done on recursively on blocks of n = 1024 elements.
@@ -42,22 +44,20 @@ namespace Falcor
         The numerical error for the summation operation lies between pairwise
         summation (blocks of size n = 2) and naive running summation.
     */
-    class dlldecl ComputeParallelReduction : public std::enable_shared_from_this<ComputeParallelReduction>
-    {
-    public:
+    class dlldecl ComputeParallelReduction : public std::enable_shared_from_this<ComputeParallelReduction> {
+     public:
         using SharedPtr = std::shared_ptr<ComputeParallelReduction>;
         using SharedConstPtr = std::shared_ptr<const ComputeParallelReduction>;
         virtual ~ComputeParallelReduction() = default;
 
-        enum class Type
-        {
+        enum class Type {
             Sum,
         };
 
         /** Create parallel reduction helper.
             \return Created object, or an exception is thrown on failure.
         */
-        static SharedPtr create();
+        static SharedPtr create(std::shared_ptr<Device> pDevice);
 
         /** Perform parallel reduction.
             The computations are performed in type T, which must be compatible with the texture format:
@@ -80,7 +80,7 @@ namespace Falcor
         bool execute(RenderContext* pRenderContext, const Texture::SharedPtr& pInput, Type operation, T* pResult = nullptr, Buffer::SharedPtr pResultBuffer = nullptr, uint64_t resultOffset = 0);
 
     private:
-        ComputeParallelReduction();
+        ComputeParallelReduction(std::shared_ptr<Device> pDevice);
         void allocate(uint32_t elementCount);
 
         ComputeState::SharedPtr             mpState;
@@ -89,5 +89,6 @@ namespace Falcor
         ComputeVars::SharedPtr              mpVars;
 
         Buffer::SharedPtr                   mpBuffers[2];       ///< Intermediate buffers for reduction iterations.
+        std::shared_ptr<Device>             mpDevice;
     };
 }

@@ -299,12 +299,9 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
 //     }
 
     std::vector<std::string> graphOutputString{ mGraphOutputEditString };
-    if (settingsWindow.multiTextbox("Add Output", { "GraphOutput" }, graphOutputString))
-    {
-        if (mCurrentGraphOutput != mGraphOutputEditString)
-        {
-            if (mCurrentGraphOutput.size())
-            {
+    if (settingsWindow.multiTextbox("Add Output", { "GraphOutput" }, graphOutputString)) {
+        if (mCurrentGraphOutput != mGraphOutputEditString) {
+            if (mCurrentGraphOutput.size()) {
                 mpGraphs[mCurrentGraphIndex]->unmarkOutput(mCurrentGraphOutput);
             }
 
@@ -315,12 +312,10 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
     mGraphOutputEditString = graphOutputString[0];
 
     mRenderGraphUIs[mCurrentGraphIndex].setRecordUpdates(mViewerRunning);
-    if (!mViewerRunning && settingsWindow.button("Open in Mogwai"))
-    {
+    if (!mViewerRunning && settingsWindow.button("Open in Mogwai")) {
         std::string log;
         bool openViewer = true;
-        try
-        {
+        try {
             std::string s;
             mpGraphs[mCurrentGraphIndex]->compile(pRenderContext, s);
         }
@@ -329,8 +324,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
             openViewer = msgBox(std::string("Graph is invalid :\n ") + e.what() + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
 
-        if (openViewer)
-        {
+        if (openViewer) {
             mUpdateFilePath = getTempFilename();
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mUpdateFilePath);
 
@@ -344,11 +338,9 @@ void RenderGraphEditor::onGuiRender(Gui* pGui) {
 
     settingsWindow.release();
 
-    if (mShowDebugWindow)
-    {
+    if (mShowDebugWindow) {
         Gui::Window debugWindow(pGui, "output", { screenWidth / 4, screenHeight / 4 - 20 }, { screenWidth * 3 / 4, screenHeight * 3 / 4 + 20 });
-        if (mResetGuiWindows)
-        {
+        if (mResetGuiWindows) {
             debugWindow.windowSize(screenWidth / 4, screenHeight / 4 - 20);
             debugWindow.windowPos(screenWidth * 3 / 4, screenHeight * 3 / 4 + 20);
         }
@@ -404,59 +396,46 @@ void RenderGraphEditor::loadAllPassLibraries() {
     }
 }
 
-void RenderGraphEditor::renderLogWindow(Gui::Widgets& widget)
-{
+void RenderGraphEditor::renderLogWindow(Gui::Widgets& widget) {
     // window for displaying log from render graph validation
     widget.text(mCurrentLog.c_str());
 }
 
-void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
-{
+void RenderGraphEditor::serializeRenderGraph(const std::string& fileName) {
     RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], fileName);
 }
 
-void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
-{
+void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName) {
     mpGraphs[mCurrentGraphIndex] = RenderGraphImporter::import(fileName);
-    if (mRenderGraphUIs.size() < mCurrentGraphIndex)
-    {
+    if (mRenderGraphUIs.size() < mCurrentGraphIndex) {
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
 }
 
-void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const std::string& graphName)
-{
+void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const std::string& graphName) {
     assert(fileName.size());
 
     // behavior is load each graph defined within the file as a separate editor ui
     std::vector <RenderGraph::SharedPtr> newGraphs;
-    if (graphName.size())
-    {
+    if (graphName.size()) {
         auto pGraph = RenderGraphImporter::import(graphName, fileName);
         if (pGraph) newGraphs.push_back(pGraph);
-    }
-    else
-    {
+    } else {
         newGraphs = RenderGraphImporter::importAllGraphs(fileName);
     }
 
-    for (const auto& pGraph : newGraphs)
-    {
+    for (const auto& pGraph : newGraphs) {
         const std::string& name = pGraph->getName();
         auto nameToIndexIt = mGraphNamesToIndex.find(name);
-        if (nameToIndexIt != mGraphNamesToIndex.end())
-        {
+        if (nameToIndexIt != mGraphNamesToIndex.end()) {
             MsgBoxButton button = msgBox("Warning! Graph is already open. Update graph from file?", MsgBoxType::YesNo);
-            if (button == MsgBoxButton::Yes)
-            {
+            if (button == MsgBoxButton::Yes) {
                 mCurrentGraphIndex = nameToIndexIt->second;
                 mpGraphs[mCurrentGraphIndex]->update(pGraph);
                 mRenderGraphUIs[mCurrentGraphIndex].reset();
                 continue;
             }
-        }
-        else
-        {
+        } else {
             mCurrentGraphIndex = mpGraphs.size();
             mpGraphs.push_back(pGraph);
             mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[mCurrentGraphIndex], name));
@@ -470,15 +449,13 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
     }
 }
 
-void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
-{
+void RenderGraphEditor::createNewGraph(const std::string& renderGraphName) {
     std::string graphName = renderGraphName;
     auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
     RenderGraph::SharedPtr newGraph = RenderGraph::create();
 
     std::string tempGraphName = graphName;
-    while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end())
-    {
+    while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end()) {
         tempGraphName.append("_");
     }
     // Matt TODO can we put the GUI dropdown code in a shared function shared with 'loadFromFile'?
@@ -495,15 +472,13 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     mOpenGraphNames.push_back(nextGraphID);
 }
 
-void RenderGraphEditor::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-{
+void RenderGraphEditor::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
     const float4 clearColor(0.25, 0.25, 0.25 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mRenderGraphUIs[mCurrentGraphIndex].updateGraph(pRenderContext);
 }
 
-void RenderGraphEditor::onResizeSwapChain(uint32_t width, uint32_t height)
-{
+void RenderGraphEditor::onResizeSwapChain(uint32_t width, uint32_t height) {
     for(auto pG : mpGraphs) pG->onResize(gpFramework->getTargetFbo().get());
     mWindowSize = {width, height};
     mResetGuiWindows = true;

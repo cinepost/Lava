@@ -31,58 +31,61 @@
 #include "Falcor/Core/API/FBO.h"
 
 namespace Falcor {
-    class RenderContext;
 
-    /** Class that renders text into the screen.
-    */
-    class dlldecl TextRenderer {
-     public:
+class Device;
+class RenderContext;
 
-        enum class Flags {
-            None     = 0x0,
-            Shadowed = 0x1
-        };
+/** Class that renders text into the screen.
+*/
+class dlldecl TextRenderer {
+ public:
 
-        /** Initialize the text-renderer
-            This class is not thread-safe!
-        */
-        static void start();
-
-        /** End batching. This will cause the render queue to flush and display the message to the screen.
-        */
-        static void shutdown();
-
-        /** Render text
-            \param[in] pRenderContext A render-context which will be used to dispatch the draw
-            \param[in] text The text to draw. It can include newlines, tabs, carriage returns and regular ASCII characters.
-            \param[in] pDstFbo The target FBO
-            \param[in] pos Text position
-        */
-        static void render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos);
-
-        /** Returns the color of the text being rendered
-            \return current color The text color
-        */
-        static const float3& getColor();
-
-        /** Set the color of the text being rendered
-            \param[in] color The text color
-        */
-        static void setColor(const float3& color);
-
-        /** Get the active flags
-        */
-        static Flags getFlags();
-
-        /** Set the flags
-        */
-        static void setFlags(Flags f);
-    
-     private:
-        TextRenderer() = default;
+    enum class Flags {
+        None     = 0x0,
+        Shadowed = 0x1
     };
 
-    enum_class_operators(TextRenderer::Flags);
+    /** Initialize the text-renderer
+        This class is not thread-safe!
+    */
+    static void start(std::shared_ptr<Device> pDevice);
+
+    /** End batching. This will cause the render queue to flush and display the message to the screen.
+    */
+    static void shutdown();
+
+    /** Render text
+        \param[in] pRenderContext A render-context which will be used to dispatch the draw
+        \param[in] text The text to draw. It can include newlines, tabs, carriage returns and regular ASCII characters.
+        \param[in] pDstFbo The target FBO
+        \param[in] pos Text position
+    */
+    static void render(RenderContext* pRenderContext, const std::string& text, const Fbo::SharedPtr& pDstFbo, float2 pos);
+
+    /** Returns the color of the text being rendered
+        \return current color The text color
+    */
+    static const float3& getColor();
+
+    /** Set the color of the text being rendered
+        \param[in] color The text color
+    */
+    static void setColor(const float3& color);
+
+    /** Get the active flags
+    */
+    static Flags getFlags();
+
+    /** Set the flags
+    */
+    static void setFlags(Flags f);
+
+ private:
+    TextRenderer() = default;
+
+};
+
+enum_class_operators(TextRenderer::Flags);
 
 }  // namespace Falcor
 

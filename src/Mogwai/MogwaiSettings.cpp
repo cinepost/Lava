@@ -131,7 +131,7 @@ void MogwaiSettings::windowSettings(Gui* pGui) {
 void MogwaiSettings::timeSettings(Gui* pGui) {
     Gui::Window w(pGui, "Time", mShowTime, { 0, 0 }, { 350, 25 }, Gui::WindowFlags::AllowMove | Gui::WindowFlags::AutoResize | Gui::WindowFlags::ShowTitleBar | Gui::WindowFlags::CloseButton);
 
-    Clock& clock = gpFramework->getGlobalClock();
+    Clock& clock = gpFramework->getClock();
     clock.renderUI(w);
     w.separator(2);
 
@@ -192,7 +192,10 @@ void MogwaiSettings::mainMenu(Gui* pGui) {
         if (file.item("Load Scene", "Ctrl+Shift+O")) mpRenderer->loadSceneDialog();
         // if (file.item("Reset Scene")) mpRenderer->setScene(nullptr);
         file.separator();
-        if (file.item("Reload Render-Passes", "F5")) RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+        if (file.item("Reload Render-Passes", "F5")) {
+            RenderPassLibrary::instance(mpRenderer->device()).reloadLibraries(gpFramework->getRenderContext());
+        }
+
         file.separator();
 
         {

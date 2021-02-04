@@ -1,0 +1,38 @@
+#pragma once
+
+#define MAX_VTEX_PER_MATERIAL_COUNT 16
+
+// TODO: find a better less memory hungry method !
+// MAX_REISDENT_PAGES_PER_VTEX is the maximum possible pages in vtex
+//#define MAX_REISDENT_PAGES_PER_VTEX 524288
+#define MAX_REISDENT_PAGES_PER_VTEX 128
+
+// Basic virtual texture data needed
+struct VirtualTextureData {
+    uint32_t textureID;
+    uint32_t width;
+    uint32_t height;
+    uint32_t mipLevelsCount;
+
+    uint32_t pageSizeW;
+    uint32_t pageSizeH;    
+    uint32_t pageSizeD;
+    uint32_t uvSetID;
+
+    uint32_t mipBases[16];
+
+    uint32_t empty = true;
+    uint32_t textureResolveID;
+    uint32_t pagesStartOffset; // pages starts at this index in output pages buffer
+    uint32_t mipTailStart;
+};
+
+// Array of material virtual textures that needs to be resolved
+struct MaterialResolveData {
+    VirtualTextureData virtualTextures[MAX_VTEX_PER_MATERIAL_COUNT];     // max virtual textures allowed to be resolved in one pass
+
+    uint32_t virtualTexturesCount = 0;
+    uint32_t _pad0;
+    uint32_t _pad1;
+    uint32_t _pad2;
+};

@@ -77,6 +77,10 @@ class dlldecl Scripting {
             T getObject(const std::string& name) const {
                 return mLocals[name.c_str()].cast<T>();
             }
+
+            bool containsObject(const std::string& name) const {
+                    return mLocals.contains(name.c_str());
+            }
         private:
             friend class Scripting;
             pybind11::dict mLocals;
@@ -87,6 +91,7 @@ class dlldecl Scripting {
         static std::string runScript(const std::string& script);
         static std::string runScript(const std::string& script, Context& context);
         static std::string runScriptFromFile(const std::string& filename, Context& context);
+        static std::string interpretScript(const std::string& script);
         static Context getGlobalContext();
         static bool isRunning() { return sRunning; }
 
@@ -96,9 +101,7 @@ class dlldecl Scripting {
 
         template<typename T>
         static std::string getArgString(const T& arg) {
-            std::string a;
-            if (std::is_enum_v<T>) a += getEnumTypeName(arg) + ".";
-            return a + to_string(arg);
+            return ScriptBindings::repr(arg);
         }
 
         template<typename Arg, typename...Args>

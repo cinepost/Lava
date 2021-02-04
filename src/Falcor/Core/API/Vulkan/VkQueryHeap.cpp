@@ -25,37 +25,35 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/Device.h"
-#include "API/QueryHeap.h"
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/QueryHeap.h"
 
-namespace Falcor
-{
-    static VkQueryType getVkPoolType(QueryHeap::Type t)
-    {
-        switch (t)
-        {
-        case QueryHeap::Type::Timestamp:
-            return VK_QUERY_TYPE_TIMESTAMP;
-        case QueryHeap::Type::Occlusion:
-            return VK_QUERY_TYPE_OCCLUSION;
-        case QueryHeap::Type::PipelineStats:
-            return VK_QUERY_TYPE_PIPELINE_STATISTICS;
-        default:
-            should_not_get_here();
-            return VK_QUERY_TYPE_MAX_ENUM;
-        }
-    }
+namespace Falcor {
 
-    QueryHeap::QueryHeap(Type type, uint32_t count) : mType(type), mCount(count)
-    {
-        VkQueryPoolCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-        info.queryCount = count;
-        info.queryType = getVkPoolType(type);
-        info.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
-        VkQueryPool pool;
-        vk_call(vkCreateQueryPool(gpDevice->getApiHandle(), &info, nullptr, &pool));
-        mApiHandle = ApiHandle::create(pool);
+static VkQueryType getVkPoolType(QueryHeap::Type t) {
+    switch (t) {
+    case QueryHeap::Type::Timestamp:
+        return VK_QUERY_TYPE_TIMESTAMP;
+    case QueryHeap::Type::Occlusion:
+        return VK_QUERY_TYPE_OCCLUSION;
+    case QueryHeap::Type::PipelineStats:
+        return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+    default:
+        should_not_get_here();
+        return VK_QUERY_TYPE_MAX_ENUM;
     }
 }
+
+QueryHeap::QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count) : mType(type), mCount(count) {
+    VkQueryPoolCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    info.queryCount = count;
+    info.queryType = getVkPoolType(type);
+    info.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
+    VkQueryPool pool;
+    vk_call(vkCreateQueryPool(pDevice->getApiHandle(), &info, nullptr, &pool));
+    mApiHandle = ApiHandle::create(pDevice, pool);
+}
+
+}  // namespace Falcor

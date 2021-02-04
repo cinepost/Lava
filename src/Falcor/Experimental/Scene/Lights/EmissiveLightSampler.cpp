@@ -37,8 +37,8 @@ namespace Falcor
 
     SCRIPT_BINDING(EmissiveLightSampler)
     {
-        auto e = m.enum_<EmissiveLightSamplerType>("EmissiveLightSamplerType");
-        e.regEnumVal(EmissiveLightSamplerType::Uniform);
-        e.regEnumVal(EmissiveLightSamplerType::LightBVH);
+        pybind11::enum_<EmissiveLightSamplerType> type(m, "EmissiveLightSamplerType");
+        type.value("Uniform", EmissiveLightSamplerType::Uniform);
+        type.value("LightBVH", EmissiveLightSamplerType::LightBVH);
     }
 }

@@ -39,19 +39,19 @@ namespace Falcor {
 
 std::weak_ptr<QueryHeap> GpuTimer::spHeap;
 
-GpuTimer::SharedPtr GpuTimer::create() {
-    return SharedPtr(new GpuTimer());
+GpuTimer::SharedPtr GpuTimer::create(std::shared_ptr<Device> device) {
+    return SharedPtr(new GpuTimer(device));
 }
 
-GpuTimer::GpuTimer() {
-    assert(gpDevice);
+GpuTimer::GpuTimer(std::shared_ptr<Device> device): mpDevice(device) {
+    assert(device);
 #ifdef FALCOR_D3D12
-    mpResolveBuffer = Buffer::create(sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpResolveBuffer = Buffer::create(device, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 #endif
     // Create timestamp query heap upon first use.
     // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
     if (spHeap.expired()) {
-        spHeap = gpDevice->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
+        spHeap = device->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
     }
     auto pHeap = spHeap.lock();
     assert(pHeap);
@@ -61,7 +61,7 @@ GpuTimer::GpuTimer() {
         throw std::runtime_error("Can't create GPU timer, no available timestamp queries.");
     }
     assert(mEnd == (mStart + 1));
-    mpLowLevelData = gpDevice->getRenderContext()->getLowLevelData();
+    mpLowLevelData = device->getRenderContext()->getLowLevelData();
 }
 
 GpuTimer::~GpuTimer() {
@@ -105,7 +105,7 @@ double GpuTimer::getElapsedTime() {
         double start = (double)result[0];
         double end = (double)result[1];
         double range = end - start;
-        mElapsedTime = range * gpDevice->getGpuTimestampFrequency();
+        mElapsedTime = range * mpDevice->getGpuTimestampFrequency();
         mStatus = Status::Idle;
     }
     assert(mStatus == Status::Idle);
@@ -113,7 +113,7 @@ double GpuTimer::getElapsedTime() {
 }
 
 SCRIPT_BINDING(GpuTimer) {
-    m.regClass(GpuTimer);
+    pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");
 }
 
 }  // namespace Falcor

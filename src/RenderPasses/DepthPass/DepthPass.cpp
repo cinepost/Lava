@@ -46,13 +46,10 @@ namespace {
 }  // namespace
 
 void DepthPass::parseDictionary(const Dictionary& dict) {
-    for (const auto& v : dict) {
-        if (v.key() == kDepthFormat) {
-            ResourceFormat f = (ResourceFormat)v.val();
-            setDepthBufferFormat(f);
-        } else {
-            logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
-        }
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kDepthFormat) setDepthBufferFormat(value);
+        else logWarning("Unknown field '" + key + "' in a DepthPass dictionary");
     }
 }
 
@@ -63,16 +60,16 @@ Dictionary DepthPass::getScriptingDictionary() {
 }
 
 DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new DepthPass(dict));
+    return SharedPtr(new DepthPass(pRenderContext->device(), dict));
 }
 
-DepthPass::DepthPass(const Dictionary& dict) {
+DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).psEntry("main");
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(desc);
-    mpState = GraphicsState::create();
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(pDevice, desc);
+    mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
-    mpFbo = Fbo::create();
+    mpFbo = Fbo::create(pDevice);
 
     parseDictionary(dict);
 }
@@ -86,7 +83,7 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
-    mpVars = GraphicsVars::create(mpState->getProgram()->getReflector());
+    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
 void DepthPass::execute(RenderContext* pContext, const RenderData& renderData) {
@@ -111,6 +108,12 @@ DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {
 
 DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {
     mpState->setDepthStencilState(pDsState);
+    return *this;
+}
+
+DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState) {
+    mpRsState = pRsState;
+    mpState->setRasterizerState(mpRsState);
     return *this;
 }
 

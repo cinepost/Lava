@@ -31,9 +31,12 @@
 namespace Falcor {
 
 SCRIPT_BINDING(RasterizerState) {
-    m.regClass(RasterizerState)
-    auto rasterizerStateBinding = m.enum_<RasterizerState::CullMode>("CullMode");
-    rasterizerStateBinding.regEnumVal(RasterizerState::CullMode::Back).regEnumVal(RasterizerState::CullMode::Front).regEnumVal(RasterizerState::CullMode::None);
+    pybind11::class_<RasterizerState, RasterizerState::SharedPtr>(m, "RasterizerState");
+
+    pybind11::enum_<RasterizerState::CullMode> cullMode(m, "CullMode");
+    cullMode.value("CullBack", RasterizerState::CullMode::Back);
+    cullMode.value("CullFront", RasterizerState::CullMode::Front);
+    cullMode.value("CullNone", RasterizerState::CullMode::None);
 }
 
 RasterizerState::SharedPtr RasterizerState::create(const Desc& desc) {

@@ -33,8 +33,10 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/GpuFence.h"
 
+
 namespace Falcor {
 
+class Device;
 class DescriptorSet;
 
 struct DescriptorPoolApiData;
@@ -93,7 +95,9 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
         \param[in] pFence Fence object for synchronization.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Desc& desc, const GpuFence::SharedPtr& pFence);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr& pFence);
+
+    std::shared_ptr<Device> device() { return mpDevice; }
 
     uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
     uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
@@ -104,12 +108,13 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
 
  private:
     friend DescriptorSet;
-    DescriptorPool(const Desc& desc, const GpuFence::SharedPtr & pFence);
+    DescriptorPool(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr & pFence);
     void apiInit();
     void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
     Desc mDesc;
     std::shared_ptr<ApiData> mpApiData;
     GpuFence::SharedPtr mpFence;
+    std::shared_ptr<Device> mpDevice;
 
     struct DeferredRelease {
         std::shared_ptr<DescriptorSetApiData> pData;

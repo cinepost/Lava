@@ -25,16 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_TONEMAPPER_TONEMAPPER_H_
+#define SRC_FALCOR_RENDERPASSES_TONEMAPPER_TONEMAPPER_H_
+
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "ToneMapperParams.slang"
 
 using namespace Falcor;
 
-class ToneMapper : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapper>
-{
-public:
+class ToneMapper : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapper> {
+ public:
     using SharedPtr = std::shared_ptr<ToneMapper>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
@@ -74,12 +75,12 @@ public:
     float getWhiteMaxLuminance() const { return mWhiteMaxLuminance; }
     float getWhiteScale() const { return mWhiteScale; }
 
-private:
-    ToneMapper(Operator op, ResourceFormat outputFormat);
+ private:
+    ToneMapper(Device::SharedPtr pDevice, Operator op, ResourceFormat outputFormat);
 
-    void createToneMapPass();
-    void createLuminancePass();
-    void createLuminanceFbo(const Texture::SharedPtr& pSrc);
+    void createToneMapPass(std::shared_ptr<Device> pDevice);
+    void createLuminancePass(std::shared_ptr<Device> pDevice);
+    void createLuminanceFbo(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pSrc);
 
     void updateWhiteBalanceTransform();
     void updateColorTransform();
@@ -114,3 +115,5 @@ private:
     bool mRecreateToneMapPass = true;
     bool mUpdateToneMapPass = true;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_TONEMAPPER_TONEMAPPER_H_

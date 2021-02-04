@@ -25,130 +25,131 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMVARS_H_
+#define SRC_FALCOR_CORE_PROGRAM_PROGRAMVARS_H_
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/RootSignature.h"
 #include "ShaderVar.h"
 
-namespace Falcor
-{
+namespace Falcor {
 
-    class GraphicsProgram;
-    class ComputeProgram;
-    class ComputeContext;
+class Device;
+class GraphicsProgram;
+class ComputeProgram;
+class ComputeContext;
 
-    class dlldecl EntryPointGroupVars  : public ParameterBlock
-    {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<EntryPointGroupVars>;
-        using SharedConstPtr = std::shared_ptr<const EntryPointGroupVars>;
+class dlldecl EntryPointGroupVars  : public ParameterBlock {
+ public:
+    using SharedPtr = ParameterBlockSharedPtr<EntryPointGroupVars>;
+    using SharedConstPtr = std::shared_ptr<const EntryPointGroupVars>;
 
-        /** Create a new entry point group vars object.
-            \param[in] pReflector The reflection object.
-            \param[in] groupIndexInProgram Group index.
-            \return New object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
-        {
-            assert(pReflector);
-            return SharedPtr(new EntryPointGroupVars(pReflector, groupIndexInProgram));
-        }
-
-        uint32_t getGroupIndexInProgram() const { return mGroupIndexInProgram; }
-
-    protected:
-        EntryPointGroupVars(const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
-            : ParameterBlock(pReflector->getProgramVersion(), pReflector)
-            , mGroupIndexInProgram(groupIndexInProgram)
-        {
-            assert(pReflector);
-        }
-
-    private:
-        uint32_t mGroupIndexInProgram;
-    };
-
-    /** This class manages a program's reflection and variable assignment.
-        It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
+    /** Create a new entry point group vars object.
+        \param[in] pReflector The reflection object.
+        \param[in] groupIndexInProgram Group index.
+        \return New object, or throws an exception if creation failed.
     */
-    class dlldecl ProgramVars : public ParameterBlock
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram) {
+        assert(pReflector);
+        return SharedPtr(new EntryPointGroupVars(pDevice, pReflector, groupIndexInProgram));
+    }
+
+    uint32_t getGroupIndexInProgram() const { return mGroupIndexInProgram; }
+
+ protected:
+    EntryPointGroupVars(std::shared_ptr<Device> pDevice, const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
+        : ParameterBlock(pDevice, pReflector->getProgramVersion(), pReflector)
+        , mGroupIndexInProgram(groupIndexInProgram)
     {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<ProgramVars>;
-        using SharedConstPtr = std::shared_ptr<const ProgramVars>;
+        assert(pReflector);
+    }
 
-        /** Get the program reflection interface
-        */
-        const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
+ private:
+    uint32_t mGroupIndexInProgram;
 
-        virtual bool updateSpecializationImpl() const override;
+};
 
-        uint32_t getEntryPointGroupCount() const { return uint32_t(mpEntryPointGroupVars.size()); }
-        EntryPointGroupVars* getEntryPointGroupVars(uint32_t index) const
-        {
-            return mpEntryPointGroupVars[index].get();
-        }
+/** This class manages a program's reflection and variable assignment.
+    It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
+*/
+class dlldecl ProgramVars : public ParameterBlock {
+ public:
+    using SharedPtr = ParameterBlockSharedPtr<ProgramVars>;
+    using SharedConstPtr = std::shared_ptr<const ProgramVars>;
 
-    protected:
-        ProgramVars(const ProgramReflection::SharedConstPtr& pReflector);
+    /** Get the program reflection interface
+    */
+    const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
-        ProgramReflection::SharedConstPtr mpReflector;
+    virtual bool updateSpecializationImpl() const override;
 
-        void addSimpleEntryPointGroups();
-
-        std::vector<EntryPointGroupVars::SharedPtr> mpEntryPointGroupVars;
-    };
-
-    class dlldecl GraphicsVars : public ProgramVars
+    uint32_t getEntryPointGroupCount() const { return uint32_t(mpEntryPointGroupVars.size()); }
+    EntryPointGroupVars* getEntryPointGroupVars(uint32_t index) const
     {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<GraphicsVars>;
-        using SharedConstPtr = std::shared_ptr<const GraphicsVars>;
-        using ConstSharedPtrRef = const SharedPtr&;
+        return mpEntryPointGroupVars[index].get();
+    }
 
-        /** Create a new graphics vars object.
-            \param[in] pReflector A program reflection object containing the requested declarations.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector);
+ protected:
+    ProgramVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-        /** Create a new graphics vars object.
-            \param[in] pProg A program containing the requested declarations. The active version of the program is used.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const GraphicsProgram* pProg);
+    ProgramReflection::SharedConstPtr mpReflector;
 
-        virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+    void addSimpleEntryPointGroups();
 
-    protected:
-        GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector);
-    };
+    std::vector<EntryPointGroupVars::SharedPtr> mpEntryPointGroupVars;
+};
 
-    template<bool forGraphics>
-    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+class dlldecl GraphicsVars : public ProgramVars {
+ public:
+    using SharedPtr = ParameterBlockSharedPtr<GraphicsVars>;
+    using SharedConstPtr = std::shared_ptr<const GraphicsVars>;
+    using ConstSharedPtrRef = const SharedPtr&;
 
-    class dlldecl ComputeVars : public ProgramVars
-    {
-    public:
-        using SharedPtr = ParameterBlockSharedPtr<ComputeVars>;
-        using SharedConstPtr = std::shared_ptr<const ComputeVars>;
-        using ConstSharedPtrRef = const SharedPtr&;
+    /** Create a new graphics vars object.
+        \param[in] pReflector A program reflection object containing the requested declarations.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
 
-        /** Create a new compute vars object.
-            \param[in] pReflector A program reflection object containing the requested declarations.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector);
+    /** Create a new graphics vars object.
+        \param[in] pProg A program containing the requested declarations. The active version of the program is used.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const GraphicsProgram* pProg);
 
-        /** Create a new compute vars object.
-            \param[in] pProg A program containing the requested declarations. The active version of the program is used.
-            \return A new object, or an exception is thrown if creation failed.
-        */
-        static SharedPtr create(const ComputeProgram* pProg);
+    virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 
-        virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+ protected:
+    GraphicsVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+};
 
-    protected:
-        ComputeVars(const ProgramReflection::SharedConstPtr& pReflector);
-    };
-}
+template<bool forGraphics>
+bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+
+class dlldecl ComputeVars : public ProgramVars {
+ public:
+    using SharedPtr = ParameterBlockSharedPtr<ComputeVars>;
+    using SharedConstPtr = std::shared_ptr<const ComputeVars>;
+    using ConstSharedPtrRef = const SharedPtr&;
+
+    /** Create a new compute vars object.
+        \param[in] pReflector A program reflection object containing the requested declarations.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+
+    /** Create a new compute vars object.
+        \param[in] pProg A program containing the requested declarations. The active version of the program is used.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const ComputeProgram* pProg);
+
+    virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+
+ protected:
+    ComputeVars(std::shared_ptr<Device> pDevice, const ProgramReflection::SharedConstPtr& pReflector);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVARS_H_

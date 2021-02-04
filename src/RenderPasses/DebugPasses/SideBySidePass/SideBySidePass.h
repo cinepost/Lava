@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SIDEBYSIDEPASS_SIDEBYSIDEPASS_H_
+#define SRC_FALCOR_RENDERPASSES_SIDEBYSIDEPASS_SIDEBYSIDEPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "../ComparisonPass.h"
 
 using namespace Falcor;
 
-class SideBySidePass : public ComparisonPass
-{
-public:
+class SideBySidePass : public ComparisonPass {
+ public:
     using SharedPtr = std::shared_ptr<SideBySidePass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -42,8 +42,10 @@ public:
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-private:
-    SideBySidePass();
+ private:
+    SideBySidePass(Device::SharedPtr pDevice);
     virtual void createProgram() override;
     uint32_t mImageLeftBound = 0; ///< Location of output left side in original input image in pixels
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_SIDEBYSIDEPASS_SIDEBYSIDEPASS_H_

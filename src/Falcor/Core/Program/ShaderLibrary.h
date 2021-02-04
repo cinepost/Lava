@@ -25,22 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_PROGRAM_SHADERLIBRARY_H_
+#define SRC_FALCOR_CORE_PROGRAM_SHADERLIBRARY_H_
 
-namespace Falcor
-{
-    class dlldecl ShaderLibrary
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ShaderLibrary>;
-        static SharedPtr create(const std::string& filename)
-        {
-            return SharedPtr(new ShaderLibrary(filename));
-        }
+#include "Falcor/Core/Framework.h"
 
-        const std::string& getFilename() const { return mFilename; }
-    private:
-        ShaderLibrary(const std::string& filename) : mFilename(filename) {}
-        std::string mFilename;
-    };
-}
+namespace Falcor {
+
+class dlldecl ShaderLibrary {
+  public:
+    using SharedPtr = std::shared_ptr<ShaderLibrary>;
+
+    static SharedPtr create(const std::string& filename);
+    const std::string& getFilename() const { return mFilename; }
+
+  private:
+    ShaderLibrary(const std::string& filename) : mFilename(filename) {}
+    std::string mFilename;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_PROGRAM_SHADERLIBRARY_H_

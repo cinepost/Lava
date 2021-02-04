@@ -36,6 +36,8 @@
 
 namespace Falcor {
 
+    class Device;
+
     class dlldecl ParticleSystem {
     public:
         static const char* kVertexShader;           ///< Filename for the vertex shader
@@ -217,7 +219,7 @@ namespace Falcor {
         Buffer::SharedPtr mpIndirectArgs;
 
         //Data for sorted systems
-        void initSortResources();
+        void initSortResources(std::shared_ptr<Device> pDevice);
         bool mShouldSort;
         std::vector<SortData> mSortDataReset;
         struct SortResources

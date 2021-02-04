@@ -46,7 +46,7 @@ namespace Falcor
         This class wraps a LightCollection object, which holds the set of lights to sample.
         Internally, the class build a BVH over the light sources.
     */
-    class dlldecl LightBVHSampler : public EmissiveLightSampler, public inherit_shared_from_this<EmissiveLightSampler, LightBVHSampler>
+    class dlldecl LightBVHSampler : public EmissiveLightSampler
     {
     public:
         using SharedPtr = std::shared_ptr<LightBVHSampler>;
@@ -55,7 +55,7 @@ namespace Falcor
         /** LightBVHSampler configuration.
             Note if you change options, please update SCRIPT_BINDING in LightBVHSampler.cpp
         */
-        struct Options : Falcor::ScriptBindings::enable_to_string
+        struct Options
         {
             Options() noexcept {};
             // Build options

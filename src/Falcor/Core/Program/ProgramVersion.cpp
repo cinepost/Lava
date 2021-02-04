@@ -25,13 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <chrono>
+
 #include "stdafx.h"
 #include "ProgramVersion.h"
 
 #include <slang/slang.h>
 
-namespace Falcor
-{
+namespace Falcor {
     //
     // EntryPointGroupKernels
     //
@@ -48,10 +49,8 @@ namespace Falcor
         , mShaders(shaders)
     {}
 
-    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
-    {
-        for( auto& pShader : mShaders )
-        {
+    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const {
+        for( auto& pShader : mShaders ) {
             if(pShader->getType() == type)
                 return pShader.get();
         }
@@ -88,6 +87,7 @@ namespace Falcor
     //
 
     ProgramKernels::ProgramKernels(
+        std::shared_ptr<Device> device, 
         const ProgramVersion* pVersion,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
@@ -96,18 +96,20 @@ namespace Falcor
         , mpReflector(pReflector)
         , mpVersion(pVersion)
         , mUniqueEntryPointGroups(uniqueEntryPointGroups)
+        , mpDevice(device)
     {
-        mpRootSignature = RootSignature::create(pReflector.get());
+        mpRootSignature = RootSignature::create(device, pReflector.get());
     }
 
     ProgramKernels::SharedPtr ProgramKernels::create(
+        std::shared_ptr<Device> pDevice, 
         const ProgramVersion* pVersion,
         const ProgramReflection::SharedPtr& pReflector,
         const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
         const std::string& name)
     {
-        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pDevice, pVersion, pReflector, uniqueEntryPointGroups, name));
         return pProgram;
     }
 
@@ -116,10 +118,8 @@ namespace Falcor
         return mpVersion->shared_from_this();
     }
 
-    const Shader* ProgramKernels::getShader(ShaderType type) const
-    {
-        for( auto& pEntryPointGroup : mUniqueEntryPointGroups )
-        {
+    const Shader* ProgramKernels::getShader(ShaderType type) const {
+        for( auto& pEntryPointGroup : mUniqueEntryPointGroups ) {
             if(auto pShader = pEntryPointGroup->getShader(type))
                 return pShader;
         }
@@ -147,13 +147,12 @@ namespace Falcor
         mpSlangEntryPoints = pSlangEntryPoints;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope)
-    {
+    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope) {
         return SharedPtr(new ProgramVersion(pProgram, pSlangGlobalScope));
     }
 
-    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
-    {
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const {
+        assert(pVars);
         // We need are going to look up or create specialized kernels
         // based on how parameters are bound in `pVars`.
         //
@@ -167,39 +166,39 @@ namespace Falcor
         pVars->collectSpecializationArgs(specializationArgs);
 
         bool first = true;
-        for( auto specializationArg : specializationArgs )
-        {
+        for( auto specializationArg : specializationArgs ) {
             if(!first) specializationKey += ",";
             specializationKey += std::string(specializationArg.type->getName());
             first = false;
         }
 
+        //LOG_DBG("ProgramVersion::getKernels specialization key: %s", specializationKey.c_str());
+        auto start = std::chrono::high_resolution_clock::now();
+
         auto foundKernels = mpKernels.find(specializationKey);
-        if( foundKernels != mpKernels.end() )
-        {
+        if( foundKernels != mpKernels.end() ) {
             return foundKernels->second;
         }
 
         // Loop so that user can trigger recompilation on error
-        for(;;)
-        {
+        for(;;) {
             std::string log;
             auto pKernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
-            if( pKernels )
-            {
+            if( pKernels ) {
                 // Success
 
-                if (!log.empty())
-                {
+                if (!log.empty()) {
                     std::string warn = "Warnings in program:\n" + getName() + "\n" + log;
                     logWarning(warn);
                 }
 
                 mpKernels[specializationKey] = pKernels;
+
+                auto end = std::chrono::high_resolution_clock::now();
+                LOG_DBG("Program version getKernels time is: %zu ms", std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+
                 return pKernels;
-            }
-            else
-            {
+            } else {
                 // Failure
 
                 std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
@@ -208,21 +207,27 @@ namespace Falcor
 
                 // Continue loop to keep trying...
             }
+        
+            char choice;
+            std::cout << "Would you like to try again ? (Y/N)" << std::endl;
+            std::cin >> choice;
+            if ( choice =='N' || choice =='n' ){
+                break;
+            }
+
         }
+        return nullptr;
     }
 
-    slang::ISession* ProgramVersion::getSlangSession() const
-    {
+    slang::ISession* ProgramVersion::getSlangSession() const {
         return getSlangGlobalScope()->getSession();
     }
 
-    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const
-    {
+    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const {
         return mpSlangGlobalScope;
     }
 
-    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const
-    {
+    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const {
         return mpSlangEntryPoints[index];
     }
 }

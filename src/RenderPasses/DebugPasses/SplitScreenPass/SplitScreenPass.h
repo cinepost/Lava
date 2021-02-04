@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_
+#define SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "../ComparisonPass.h"
 
 using namespace Falcor;
 
-class SplitScreenPass : public ComparisonPass
-{
-public:
+class SplitScreenPass : public ComparisonPass {
+ public:
     using SharedPtr = std::shared_ptr<SplitScreenPass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -43,8 +43,8 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-private:
-    SplitScreenPass();
+ private:
+    SplitScreenPass(Device::SharedPtr pDevice);
     virtual void createProgram() override;
     Texture::SharedPtr mpArrowTex; // A texture storing a 16x16 grayscale arrow
 
@@ -59,3 +59,5 @@ private:
     Clock mClock; ///< Global clock used to track click times
     double mTimeOfLastClick = 0; ///< Time since mouse was last clicked
 };
+
+#endif  // #ifndef SRC_FALCOR_RENDERPASSES_SPLITSCREENPASS_SPLITSCREENPASS_H_

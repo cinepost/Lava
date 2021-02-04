@@ -39,6 +39,7 @@ namespace Falcor {
 
 extern dlldecl bool gProfileEnabled;
 
+class Device;
 class GpuTimer;
 
 /** Container class for CPU/GPU profiling.
@@ -47,11 +48,20 @@ class GpuTimer;
     ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
 */
 class dlldecl Profiler {
-public:
+ public:
 
 #if _PROFILING_LOG == 1
     static void flushLog();
 #endif
+
+    typedef std::pair<uint8_t, std::string> DeviceEventKey;
+
+    struct device_event_key_hash    {
+        template <class T1, class T2>
+        std::size_t operator() (const std::pair<T1, T2> &pair) const {
+            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+        }
+    };
 
     enum class Flags {
         None = 0x0,
@@ -92,12 +102,12 @@ public:
     /** Start profiling a new event and update the events hierarchies.
         \param[in] name The event name.
     */
-    static void startEvent(const std::string& name, Flags flags = Flags::Default, bool showInMsg = true);
+    static void startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags = Flags::Default, bool showInMsg = true);
 
     /** Finish profiling a new event and update the events hierarchies.
         \param[in] name The event name.
     */
-    static void endEvent(const std::string& name, Flags flags = Flags::Default);
+    static void endEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags = Flags::Default);
 
     /** Finish profiling for the entire frame.
         Due to the double-buffering nature of the profiler, the results returned are for the previous frame.
@@ -112,45 +122,45 @@ public:
     /** Create a new event and register and initialize it using \ref initNewEvent.
         \param[in] name The event name.
     */
-    static EventData* createNewEvent(const std::string& name);
+    static EventData* createNewEvent(std::shared_ptr<Device> pDevice, const std::string& name);
     
     /** Initialize a previously generated event.
         Used to do the default initialization without creating the actual event instance, to support derived event types. See \ref Cuda::Profiler::EventData.
         \param[out] pEvent Event to initialize
         \param[in] name New event name
     */
-    static void initNewEvent(EventData *pEvent, const std::string& name);
+    static void initNewEvent(std::shared_ptr<Device> pDevice, EventData *pEvent, const std::string& name);
 
     /** Get the event, or create a new one if the event does not yet exist.
         This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
     */
-    static EventData* getEvent(const std::string& name);
+    static EventData* getEvent(std::shared_ptr<Device> pDevice, const std::string& name);
 
     /** Get the event, or create a new one if the event does not yet exist.
     This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
     */
-    static double getEventCpuTime(const std::string& name);
+    static double getEventCpuTime(std::shared_ptr<Device> pDevice, const std::string& name);
 
     /** Get the event, or create a new one if the event does not yet exist.
     This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
     */
-    static double getEventGpuTime(const std::string& name);
+    static double getEventGpuTime(std::shared_ptr<Device> pDevice, const std::string& name);
 
     /** Returns the event or \c nullptr if the event is not known.
         Can be used as a predicate.
     */
-    static EventData* isEventRegistered(const std::string& name);
+    static EventData* isEventRegistered(std::shared_ptr<Device> pDevice, const std::string& name);
 
     /** Clears all the events. 
         Useful if you want to start profiling a different technique with different events.
     */
     static void clearEvents();
 
-private:
+ private:
     static double getGpuTime(const EventData* pData);
     static double getCpuTime(const EventData* pData);
 
-    static std::unordered_map<std::string, EventData*> sProfilerEvents;
+    static std::unordered_map<DeviceEventKey, EventData*, device_event_key_hash> sProfilerEvents;
     static std::vector<EventData*> sRegisteredEvents;
     static uint32_t sCurrentLevel;
     static uint32_t sGpuTimerIndex;
@@ -160,29 +170,31 @@ private:
     The class C'tor and D'tor call Profiler#StartEvent() and Profiler#EndEvent(). This class can be used with scoping to simplify event creation.\n
     The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled, and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
 */
-class ProfilerEvent
-{
-public:
+class ProfilerEvent {
+ public:
     /** C'tor
     */
-    ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags) { Profiler::startEvent(name, flags); }
+    ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags), mpDevice(pDevice) { Profiler::startEvent(mpDevice, name, flags); }
     /** D'tor
     */
-    ~ProfilerEvent() { Profiler::endEvent(mName, mFlags); }
+    ~ProfilerEvent() { Profiler::endEvent(mpDevice, mName, mFlags); }
 
-private:
-    const std::string mName;
-    Profiler::Flags mFlags;
+ private:
+    const std::string       mName;
+    Profiler::Flags         mFlags;
+    std::shared_ptr<Device> mpDevice;
 };
 
 #if _PROFILING_ENABLED
-#define PROFILE_ALL_FLAGS(_name) Falcor::ProfilerEvent _profileEvent##__LINE__(_name)
-#define PROFILE_SOME_FLAGS(_name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_name, _flags)
+// Profiling enabled
+#define PROFILE_ALL_FLAGS(_device, _name) Falcor::ProfilerEvent _profileEvent##__LINE__(_device, _name)
+#define PROFILE_SOME_FLAGS(_device, _name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_device, _name, _flags)
 
-#define GET_PROFILE(_1, _2, NAME, ...) NAME
+#define GET_PROFILE(_1, _2, _3, NAME, ...) NAME
 #define PROFILE(...) GET_PROFILE(__VA_ARGS__, PROFILE_SOME_FLAGS, PROFILE_ALL_FLAGS)(__VA_ARGS__)
 #else
-#define PROFILE(_name)
+// Profiling disabled
+#define PROFILE(_device, _name)
 #endif
 
 enum_class_operators(Profiler::Flags);

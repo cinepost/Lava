@@ -1,13 +1,7 @@
 cmake_minimum_required( VERSION 3.5 )
 
-#set(CMAKE_C_COMPILER gcc)
-#set(CMAKE_CXX_COMPILER g++)
-
 set(CMAKE_C_COMPILER gcc-7)
 set(CMAKE_CXX_COMPILER g++-7)
-
-#set(CMAKE_C_COMPILER clang)
-#set(CMAKE_CXX_COMPILER clang++)
 
 set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
@@ -21,12 +15,23 @@ set( PROJECT_VERSION_PATCH 001 )
 set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} )
 project( Falcor VERSION ${PROJECT_VERSION} )
 
+# Set up houdini hdk and installation paths
+set(HOUDINI_HOME "/opt/houdini18.5")
+set(HOUDINI_USER "$ENV{HOME}/houdini18.5")
+
+list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
+
+
 # Add folder where are supportive functions
 set( CMAKE_MODULE_PATH 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/defaults
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src/cmake
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -38,6 +43,8 @@ set( COMPANY "Parovoz" )
 set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
+# Set python virtualenv for USD
+set( PYTHON_EXECUTABLE "python")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -49,7 +56,7 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set( CMAKE_INSTALL_PREFIX "/Applications/Falcor/Falcor" )
 elseif(UNIX)
-  set( CMAKE_INSTALL_PREFIX "/opt/falcor" )
+  set( CMAKE_INSTALL_PREFIX "/opt/lava/" )
 endif()
 
 # Handle build mode
@@ -69,6 +76,7 @@ set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/bin )
 
+add_definitions(-DLAVA_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
 
 if (WIN32 OR APPLE)
   if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -79,13 +87,15 @@ endif(WIN32 OR APPLE)
 
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+  add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
+
 
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -g3) #-Wno-reorder -pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -g3) # -fPIC -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
@@ -98,21 +108,41 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Externals
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/Imath/src/Imath
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/src
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
 )
 
+# use, i.e. don't skip the full RPATH for the build tree
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+#------------------------------------------
 # Documentation
+#------------------------------------------
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # Now setup targets
 
 # thirt party libs
-# TODO: build necessary third party libs
+#add_subdirectory( third_party )
 
-message("Build dir: ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}")
-#add_subdirectory( third_party/assimp )
+# Our stuff
 add_subdirectory( src )
+#add_subdirectory( contrib )
+
 
 #install(
 #    DIRECTORY

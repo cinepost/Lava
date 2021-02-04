@@ -29,17 +29,17 @@
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include <sstream>
 
-namespace Falcor
-{
-    std::string FrameRate::getMsg(bool vsyncOn) const
-    {
-        float msPerFrame = (float)getAverageFrameTime();
-        std::stringstream strstr;
-        std::string msStr = std::to_string(msPerFrame);
-        std::string s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
-        if (vsyncOn) s += std::string(", VSync");
-        return s;
-    }
+namespace Falcor {
+
+std::string FrameRate::getMsg(bool vsyncOn) const {
+    float msPerFrame = (float)getAverageFrameTime();
+    std::stringstream strstr;
+    std::string msStr = std::to_string(msPerFrame);
+    std::string s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
+    if (vsyncOn) s += std::string(", VSync");
+    return s;
 }
 
- const uint64_t Falcor::FrameRate::sFrameWindow = 60;
+}  // namespace Falcor
+
+const uint64_t Falcor::FrameRate::sFrameWindow = 60;

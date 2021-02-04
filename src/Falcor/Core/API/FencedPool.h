@@ -35,12 +35,14 @@
 
 namespace Falcor {
 
+class Device;
+
 template<typename ObjectType>
 class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>> {
  public:
     using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
     using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
-    using NewObjectFuncType = ObjectType(*)(void*);
+    using NewObjectFuncType = ObjectType(*)(std::shared_ptr<Device>, void*);
 
     /** Create a new fenced pool.
         \param[in] pFence GPU fence to use for synchronization.
@@ -48,8 +50,8 @@ class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<Object
         \param[in] pUserData Optional ptr to user data passed to the object creation function.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) {
-        return SharedPtr(new FencedPool(pFence, newFunc, pUserData));
+    static SharedPtr create(std::shared_ptr<Device> device, GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) {
+        return SharedPtr(new FencedPool(device, pFence, newFunc, pUserData));
     }
 
     /** Return an object.
@@ -75,17 +77,19 @@ class dlldecl FencedPool : public std::enable_shared_from_this<FencedPool<Object
     }
 
 private:
-    FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
+    FencedPool(std::shared_ptr<Device> device, GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData)
         : mpUserData(pUserData)
         , mpFence(pFence)
         , mNewObjFunc(newFunc)
+        , mpDevice(device)
     {
+        assert(device);
         assert(pFence && newFunc);
         mActiveObject = createObject();
     }
 
     ObjectType createObject() {
-        ObjectType pObj = mNewObjFunc(mpUserData);
+        ObjectType pObj = mNewObjFunc(mpDevice, mpUserData);
         if (pObj == nullptr) {
             throw std::runtime_error("Failed to create new object in fenced pool");
         }
@@ -102,6 +106,7 @@ private:
     std::queue<Data> mQueue;
     GpuFence::SharedConstPtr mpFence;
     void* mpUserData;
+    std::shared_ptr<Device> mpDevice;
 };
 
 }  // namespace Falcor

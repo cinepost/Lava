@@ -58,8 +58,15 @@ struct LightProbeSharedResources
 struct LightProbeData
 {
     float3 posW         = float3(0);
+    float  _pad1;
+
     float radius        = -1.0f;
+    float _pad2;
+    float _pad3;
+    float _pad4;
+
     float3 intensity    = float3(1.0f);
+    float  _pad5;
 
     LightProbeResources resources;
     LightProbeSharedResources sharedResources;

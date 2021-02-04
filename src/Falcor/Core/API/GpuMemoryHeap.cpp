@@ -29,42 +29,36 @@
 #include "GpuMemoryHeap.h"
 #include "GpuFence.h"
 
-namespace Falcor
-{
-    GpuMemoryHeap::~GpuMemoryHeap()
-    {
+namespace Falcor {
+
+    GpuMemoryHeap::~GpuMemoryHeap() {
         mDeferredReleases = decltype(mDeferredReleases)();
     }
 
-    GpuMemoryHeap::GpuMemoryHeap(Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
+    GpuMemoryHeap::GpuMemoryHeap(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
         : mType(type)
         , mPageSize(pageSize)
         , mpFence(pFence)
+        , mpDevice(device)
     {
         allocateNewPage();
     }
 
-    GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(Type type, size_t pageSize, const GpuFence::SharedPtr& pFence)
-    {
-        return SharedPtr(new GpuMemoryHeap(type, pageSize, pFence));
+    GpuMemoryHeap::SharedPtr GpuMemoryHeap::create(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence) {
+        return SharedPtr(new GpuMemoryHeap(device, type, pageSize, pFence));
     }
 
-    void GpuMemoryHeap::allocateNewPage()
-    {
-        if (mpActivePage)
-        {
+    void GpuMemoryHeap::allocateNewPage() {
+        if (mpActivePage) {
             mUsedPages[mCurrentPageId] = std::move(mpActivePage);
         }
 
-        if (mAvailablePages.size())
-        {
+        if (mAvailablePages.size()) {
             mpActivePage = std::move(mAvailablePages.front());
             mAvailablePages.pop();
             mpActivePage->allocationsCount = 0;
             mpActivePage->currentOffset = 0;
-        }
-        else
-        {
+        } else {
             mpActivePage = std::make_unique<PageData>();
             initBasePageData((*mpActivePage), mPageSize);
         }
@@ -73,20 +67,15 @@ namespace Falcor
         mCurrentPageId++;
     }
 
-    GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment)
-    {
+    GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment) {
         Allocation data;
-        if (size > mPageSize)
-        {
+        if (size > mPageSize) {
             data.pageID = GpuMemoryHeap::Allocation::kMegaPageId;
             initBasePageData(data, size);
-        }
-        else
-        {
+        } else {
             // Calculate the start
             size_t currentOffset = align_to(alignment, mpActivePage->currentOffset);
-            if (currentOffset + size > mPageSize)
-            {
+            if (currentOffset + size > mPageSize) {
                 currentOffset = 0;
                 allocateNewPage();
             }
@@ -103,34 +92,26 @@ namespace Falcor
         return data;
     }
 
-    void GpuMemoryHeap::release(Allocation& data)
-    {
+    void GpuMemoryHeap::release(Allocation& data) {
         assert(data.pResourceHandle);
         mDeferredReleases.push(data);
     }
 
-    void GpuMemoryHeap::executeDeferredReleases()
-    {
+    void GpuMemoryHeap::executeDeferredReleases() {
         uint64_t gpuVal = mpFence->getGpuValue();
-        while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal)
-        {
+        while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal) {
             const Allocation& data = mDeferredReleases.top();
-            if (data.pageID == mCurrentPageId)
-            {
+            
+            if (data.pageID == mCurrentPageId) {
                 mpActivePage->allocationsCount--;
-                if (mpActivePage->allocationsCount == 0)
-                {
+                if (mpActivePage->allocationsCount == 0) {
                     mpActivePage->currentOffset = 0;
                 }
-            }
-            else
-            {
-                if (data.pageID != Allocation::kMegaPageId)
-                {
+            } else {
+                if (data.pageID != Allocation::kMegaPageId) {
                     auto& pData = mUsedPages[data.pageID];
                     pData->allocationsCount--;
-                    if (pData->allocationsCount == 0)
-                    {
+                    if (pData->allocationsCount == 0) {
                         mAvailablePages.push(std::move(pData));
                         mUsedPages.erase(data.pageID);
                     }

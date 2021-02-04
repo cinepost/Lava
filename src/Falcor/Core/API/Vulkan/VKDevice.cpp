@@ -29,13 +29,17 @@
 
 #include "Falcor/stdafx.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuFence.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
+#include "VKDevice.h"
+
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
+
 
 namespace Falcor {
 
@@ -51,37 +55,29 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     void*                       pUserData) {
     std::string type = "FalcorVK ";
     type += ((flags | VK_DEBUG_REPORT_ERROR_BIT_EXT) ? "Error: " : "Warning: ");
-    //printToDebugWindow(type + std::string(pMessage) + "\n");
-    LOG_WARN("%s %s", type.c_str(), pMessage);
-    //if(flags | VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-    //    throw std::runtime_error("VK my abort!");
-    // }
-    return VK_FALSE;
+    
+    if(flags | VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+        LOG_ERR("%s", pMessage);
+        //throw std::runtime_error("VK my abort!");
+    } else if ((flags | VK_DEBUG_REPORT_WARNING_BIT_EXT) || (flags | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)) {
+        LOG_WARN("%s", pMessage);
+    } else if (flags | VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+        LOG_INFO("%s", pMessage);
+    } else if (flags | VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+        LOG_DBG("%s", pMessage);
+    } else {
+        return VK_FALSE;
+    }
+    
+    return VK_SUCCESS;
 }
 #endif
 
-uint32_t getMaxViewportCount() {
-    assert(gpDevice);
-    return gpDevice->getPhysicalDeviceLimits().maxViewports;
+uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
+    assert(device);
+    return device->getPhysicalDeviceLimits().maxViewports;
 }
 
-struct DeviceApiData {
-    VkSwapchainKHR swapchain;
-    VkPhysicalDeviceProperties properties;
-    uint32_t falcorToVulkanQueueType[Device::kQueueTypeCount];
-    uint32_t vkMemoryTypeBits[(uint32_t)Device::MemoryType::Count];
-    VkPhysicalDeviceLimits deviceLimits;
-    std::vector<VkExtensionProperties> deviceExtensions;
-
-    struct {
-        std::vector<VkFence> f;
-        uint32_t cur = 0;
-    } presentFences;
-
-    #ifdef DEFAULT_ENABLE_DEBUG_LAYER
-    VkDebugReportCallbackEXT debugReportCallbackHandle;
-    #endif
-};
 
 static uint32_t getMemoryBits(VkPhysicalDevice physicalDevice, VkMemoryPropertyFlagBits memFlagBits) {
     VkPhysicalDeviceMemoryProperties memProperties;
@@ -124,9 +120,49 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 }
 
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
+    // https://github.com/SaschaWillems/Vulkan/blob/master/examples/offscreen/offscreen.cpp
+
     VkImage image;
+
+    VkImageCreateInfo imageInfo = {};
+
+    imageInfo.arrayLayers = 1;
+    imageInfo.extent.depth = 1;
+    imageInfo.extent.height = height;
+    imageInfo.extent.width = width;
+    imageInfo.format = getVkFormat(colorFormat);
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
     
-    apiHandle = ResourceHandle::create(image, nullptr);
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.mipLevels = 1;
+    imageInfo.pQueueFamilyIndices = nullptr;
+    imageInfo.queueFamilyIndexCount = 0;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+    auto result = vkCreateImage(mApiHandle, &imageInfo, nullptr, &image);
+    if (VK_FAILED(result)) {
+        throw std::runtime_error("Failed to create FBO texture.");
+    }
+
+    // Allocate the GPU memory
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(mApiHandle, image, &memRequirements);
+
+    VkDeviceMemory deviceMem;
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = getVkMemoryType(Device::MemoryType::Default, memRequirements.memoryTypeBits);
+
+    vk_call(vkAllocateMemory(mApiHandle, &allocInfo, nullptr, &deviceMem));
+
+    vkBindImageMemory(mApiHandle, image, deviceMem, 0);
+    
+    apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
     return true;
 }
 
@@ -139,7 +175,7 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     std::vector<VkImage> swapchainImages(imageCount);
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
     for (size_t i = 0; i < swapchainImages.size(); i++) {
-        apiHandles[i] = ResourceHandle::create(swapchainImages[i], nullptr);
+        apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], nullptr);
     }
 
     // Get the back-buffer
@@ -153,7 +189,10 @@ void Device::destroyApiObjects() {
     if(DestroyDebugReportCallback) {
         DestroyDebugReportCallback(mApiHandle, mpApiData->debugReportCallbackHandle, nullptr);
     }
-    vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
+
+    if(!headless) 
+        vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
+
     for (auto& f : mpApiData->presentFences.f) {
         vkDestroyFence(mApiHandle, f, nullptr);
     }
@@ -184,6 +223,7 @@ void enableLayerIfPresent(const char* layerName, const std::vector<VkLayerProper
     if (isLayerSupported(layerName, supportedLayers)) {
         requiredLayers.push_back(layerName);
     } else {
+        LOG_WARN("Can't enable requested Vulkan layer %s", layerName);
         logWarning("Can't enable requested Vulkan layer " + std::string(layerName) + ". Something bad might happen. Or not, depends on the layer.");
     }
 }
@@ -232,12 +272,13 @@ static bool isExtensionSupported(const std::string& str, const std::vector<VkExt
     return false;
 }
 
-VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
+VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
     // Initialize the layers
     const auto layerProperties = enumarateInstanceLayersProperties();
     std::vector<const char*> requiredLayers;
 
-    if (desc.enableDebugLayer) {
+    if (enableDebugLayer) {
+        enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
         enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
@@ -254,7 +295,7 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
 #endif
     };
 
-    if (desc.enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
+    if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
 
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -270,7 +311,7 @@ VkInstance createInstance(DeviceApiData* pData, const Device::Desc& desc) {
     }
 
     // Hook up callbacks for VK_EXT_debug_report
-    if (desc.enableDebugLayer) {
+    if (enableDebugLayer) {
         initDebugCallback(instance, &pData->debugReportCallbackHandle);
     }
 
@@ -282,7 +323,7 @@ void Device::toggleFullScreen(bool fullscreen){}
 /** Select best physical device based on memory
 */
 VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devices) {
-    LOG_DBG("selecting physical Vulkan device...");
+    LOG_DBG("Selecting physical Vulkan device...");
     VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
     uint64_t bestMemory = 0;
 
@@ -309,23 +350,20 @@ VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devic
     VkPhysicalDeviceProperties pProperties;
     vkGetPhysicalDeviceProperties(bestDevice, &pProperties);
 
-    LOG_DBG("selected Vulkan physical device: %s", pProperties.deviceName);
+    LOG_DBG("Selected Vulkan physical device: %s", pProperties.deviceName);
     return bestDevice;
 }
 
-VkPhysicalDevice initPhysicalDevice(VkInstance instance, DeviceApiData* pData, const Device::Desc& desc) {
-    // Enumerate devices
-    uint32_t count = 0;
-    vkEnumeratePhysicalDevices(instance, &count, nullptr);
-    assert(count > 0);
-
-    std::vector<VkPhysicalDevice> devices(count);
-    vkEnumeratePhysicalDevices(instance, &count, devices.data());
-
+VkPhysicalDevice initPhysicalDevice(VkInstance instance, uint8_t gpuId, DeviceApiData* pData, const Device::Desc& desc) {
     // Pick a device
-    VkPhysicalDevice physicalDevice = selectPhysicalDevice(devices);
+    VkPhysicalDevice physicalDevice = DeviceManager::instance().physicalDevices()[gpuId];
+
+    // Get device physical properties
     vkGetPhysicalDeviceProperties(physicalDevice, &pData->properties);
     pData->deviceLimits = pData->properties.limits;
+
+    // Get device memory properties
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &pData->memoryProperties);
 
     // Check that the device/driver supports the requested API version
     uint32_t vkApiVersion = VK_MAKE_VERSION(desc.apiMajorVersion, desc.apiMinorVersion, 0);
@@ -339,6 +377,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, DeviceApiData* pData, c
     // Get queue families and match them to what type they are
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    LOG_WARN("Vulkan physical device queue family count is: %u", queueFamilyCount);
 
     std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
@@ -352,7 +391,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, DeviceApiData* pData, c
     uint32_t& graphicsQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Direct];
     uint32_t& computeQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Compute];
     uint32_t& transferQueue = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Copy];
-
+    
     for (uint32_t i = 0; i < (uint32_t)queueFamilyProperties.size(); i++) {
         VkQueueFlags flags = queueFamilyProperties[i].queueFlags;
 
@@ -389,10 +428,9 @@ static void initDeviceQueuesInfo(const Device::Desc& desc, const DeviceApiData *
     }
 }
 
-VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount]) {
+VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount], VkPhysicalDeviceFeatures &deviceFeatures) {
     // Features
-    VkPhysicalDeviceFeatures requiredFeatures;
-    vkGetPhysicalDeviceFeatures(physicalDevice, &requiredFeatures);
+    vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
     // Queues
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -427,7 +465,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
     deviceInfo.pQueueCreateInfos = queueInfos.data();
     deviceInfo.enabledExtensionCount = (uint32_t)extensionNames.size();
     deviceInfo.ppEnabledExtensionNames = extensionNames.data();
-    deviceInfo.pEnabledFeatures = &requiredFeatures;
+    deviceInfo.pEnabledFeatures = &deviceFeatures;
 
     VkDevice device;
     if (VK_FAILED(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device))) {
@@ -591,24 +629,34 @@ void Device::apiPresent() {
 }
 
 /**
- * Initialize swapchain enabled vulkan device
+ * Initialize vulkan device
  */
 bool Device::apiInit() {
     const Desc desc;
 
     mpApiData = new DeviceApiData;
-    VkInstance instance = createInstance(mpApiData, desc);
+    VkInstance instance = createInstance(mpApiData, desc.enableDebugLayer);
     if (!instance) return false;
-    VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData, desc);
+
+    VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mGpuId, mpApiData, desc);
     if (!physicalDevice) return false;
-    VkSurfaceKHR surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
-    if (!surface) return false;
-    VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues);
+    
+    VkSurfaceKHR surface;
+    if(!headless) {
+        surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
+        if (!surface) return false;
+    } else {
+        surface = VK_NULL_HANDLE;
+    }
+
+    VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, deviceFeatures);
     if (!device) return false;
+    
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
-    mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
+    mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
+    mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
 
     if(!headless) {
         if (createSwapChain(desc.colorFormat) == false) {
@@ -655,6 +703,16 @@ bool Device::isExtensionSupported(const std::string& name) const
 }
 */
 
+CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const {
+    auto& queue = mCmdQueues[(uint32_t)type];
+
+    if(index >= queue.size()) {
+        throw std::runtime_error("No queue index " + to_string(index) + " for queue type " + to_string(type));
+    }
+
+    return queue[index];
+}
+
 ApiCommandQueueType Device::getApiCommandQueueType(LowLevelContextData::CommandQueueType type) const {
     return mpApiData->falcorToVulkanQueueType[(uint32_t)type];
 }
@@ -663,6 +721,30 @@ uint32_t Device::getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memory
     uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
     assert(mask != 0);
     return bitScanForward(mask);
+}
+
+
+uint32_t Device::getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const {
+    auto& deviceMemoryProperties = apiData()->memoryProperties;
+
+    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+        if ((typeBits & 1) == 1) {
+            if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                if (memTypeFound) {
+                    *memTypeFound = true;
+                }
+                return i;
+            }
+        }
+        typeBits >>= 1;
+    }
+
+    if (memTypeFound) {
+        *memTypeFound = false;
+        return 0;
+    } else {
+        throw std::runtime_error("Could not find a matching Vulkan memory type !!!");
+    }
 }
 
 const VkPhysicalDeviceLimits& Device::getPhysicalDeviceLimits() const {

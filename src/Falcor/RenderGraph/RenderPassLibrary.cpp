@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <fstream>
 #include <vector>
+#include <map>
 
 #ifdef _MSC_VER
 #include <filesystem>
@@ -41,6 +42,7 @@ namespace fs = boost::filesystem;
 #include "RenderPasses/ResolvePass.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/Platform/OS.h"
 #include "RenderGraph.h"
 
 namespace Falcor {
@@ -56,16 +58,45 @@ namespace Falcor {
     static const std::string kPassTempLibSuffix = ".falcor";
 
     RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
+    std::map<Device*, RenderPassLibrary*> RenderPassLibrary::spInstances = {};
 
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(RenderContext* pRenderContext, const Dictionary&);
 
 #define addClass(c, desc) registerClass(#c, desc, (PassFunc<c>)c::create)
 
-    RenderPassLibrary& RenderPassLibrary::instance() {
-        if (!spInstance) spInstance = new RenderPassLibrary;
+    static bool addBuiltinPasses(std::shared_ptr<Device> pDevice) {
+        auto& lib = RenderPassLibrary::instance(pDevice);
+
+        lib.addClass(ResolvePass, ResolvePass::kDesc);
+
+        return true;
+    };
+
+    // static const bool b = addBuiltinPasses();
+
+    RenderPassLibrary& RenderPassLibrary::instance(std::shared_ptr<Device> pDevice) {
+        //if (!spInstance) spInstance = new RenderPassLibrary;
+        
+        auto it = spInstances.find(pDevice.get());
+        if(it != spInstances.end()) {
+            // found device bound pass library
+            return *it->second;
+        } else {
+            // create pass library for a new device
+            auto ret = spInstances.insert(std::pair<Device*, RenderPassLibrary*>(pDevice.get(), new RenderPassLibrary(pDevice)));
+            if (ret.second == false) {
+                logError("RenderPassLibrary for device " + pDevice->getPhysicalDeviceName() + " already created !!!");
+            } else {
+                // add built-in passes for provided device
+                addBuiltinPasses(pDevice);
+            }
+            return *ret.first->second;
+        }
         return *spInstance;
     }
+
+    RenderPassLibrary::RenderPassLibrary(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {}
 
     RenderPassLibrary::~RenderPassLibrary() {
         mPasses.clear();
@@ -75,17 +106,6 @@ namespace Falcor {
     void RenderPassLibrary::shutdown() {
         safe_delete(spInstance);
     }
-
-    static bool addBuiltinPasses() {
-        auto& lib = RenderPassLibrary::instance();
-
-        lib.addClass(ResolvePass, ResolvePass::kDesc);
-
-        return true;
-    };
-
-    static const bool b = addBuiltinPasses();
-
 
     RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func) {
         registerInternal(className, desc, func, nullptr);
@@ -141,6 +161,8 @@ namespace Falcor {
         std::ifstream src(fullpath, std::ios::binary);
         std::ofstream dst(fullpath + kPassTempLibSuffix, std::ios::binary);
         dst << src.rdbuf();
+        dst.flush();
+        dst.close();
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename) {
@@ -149,10 +171,11 @@ namespace Falcor {
         // render-pass name was privided without an extension and that's fine
         if (filePath.extension() != kPassLibExt) filePath += kPassLibExt;
 
-        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filePath.string());
-
-        if (doesFileExist(fullpath) == false) {
-            logWarning("Can't load render-pass library `" + fullpath + "`. File not found");
+        //std::string fullpath = getExecutableDirectory() + "/render_passes/" + getFilenameFromPath(filePath.string());
+        std::string fullpath;
+        
+        if (!findFileInRenderPassDirectories(filePath.string(), fullpath)) {
+            logWarning("Can't load render-pass library `" + filePath.string() + "`. File not found");
             return;
         }
 
@@ -168,6 +191,10 @@ namespace Falcor {
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
+        if(!func) {
+            LOG_ERR("RenderPass library getPasses proc address is NULL !!!");
+        }
+
         // Add the DLL project directory to the search paths
         if (isDevelopmentMode()) {
             auto libProjPath = (const char*(*)(void))getDllProcAddress(l, "getProjDir");
@@ -177,8 +204,14 @@ namespace Falcor {
             }
         }
 
-        RenderPassLibrary lib;
-        func(lib);
+        RenderPassLibrary lib(mpDevice);
+
+        try {
+            func(lib);
+        } catch (...) {
+            logError("Can't get passes from library " + fullpath);
+            throw;
+        }
 
         for (auto& p : lib.mPasses) {
             registerInternal(p.second.className, p.second.desc, p.second.func, l);
@@ -186,7 +219,10 @@ namespace Falcor {
     }
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename) {
-        std::string fullpath = getExecutableDirectory() + "/Passes/" + getFilenameFromPath(filename);
+        std::string fullpath;// = getExecutableDirectory() + "/render_passes/" + getFilenameFromPath(filename);
+        if(!findFileInRenderPassDirectories(filename, fullpath)) {
+            should_not_get_here();
+        }
 
         auto libIt = mLibs.find(fullpath);
         if (libIt == mLibs.end()) {
@@ -194,7 +230,7 @@ namespace Falcor {
             return;
         }
 
-        gpDevice->flushAndSync();
+        mpDevice->flushAndSync();
 
         // Delete all the classes that were owned by the module
         DllHandle module = libIt->second.module;

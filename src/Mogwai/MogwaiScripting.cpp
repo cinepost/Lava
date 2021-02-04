@@ -104,7 +104,7 @@ void Renderer::dumpConfig(std::string filename) const {
     s += windowConfig() + "\n";
 
     s += "# Time Settings\n";
-    s += gpFramework->getGlobalClock().getScript(kTimeVar) + "\n";
+    s += gpFramework->getClock().getScript(kTimeVar) + "\n";
 
     for (auto& pe : mpExtensions) {
         auto eStr = pe->getScript();
@@ -137,7 +137,7 @@ void Renderer::registerScriptBindings(ScriptBindings::Module& m) {
 
     Extension::Bindings b(m, c);
     b.addGlobalObject(kRendererVar, this, "The engine");
-    b.addGlobalObject(kTimeVar, &gpFramework->getGlobalClock(), "Time Utilities");
+    b.addGlobalObject(kTimeVar, &gpFramework->getClock(), "Time Utilities");
     for (auto& pe : mpExtensions) pe->scriptBindings(b);
     mGlobalHelpMessage = prepareHelpMessage(b.mGlobalObjects);
 

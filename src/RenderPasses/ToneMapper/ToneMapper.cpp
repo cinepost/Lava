@@ -28,10 +28,9 @@
 #include "ToneMapper.h"
 #include "Utils/Color/ColorUtils.h"
 
-namespace
-{
-    const Gui::DropdownList kOperatorList =
-    {
+namespace {
+
+    const Gui::DropdownList kOperatorList = {
         { (uint32_t)ToneMapper::Operator::Linear, "Linear" },
         { (uint32_t)ToneMapper::Operator::Reinhard, "Reinhard" },
         { (uint32_t)ToneMapper::Operator::ReinhardModified, "Modified Reinhard" },
@@ -76,13 +75,11 @@ namespace
 }
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-static void regToneMapper(ScriptBindings::Module& m)
-{
+static void regToneMapper(ScriptBindings::Module& m) {
     auto c = m.regClass(ToneMapper);
     c.property(kExposureCompensation, &ToneMapper::getExposureCompensation, &ToneMapper::setExposureCompensation);
     c.property(kAutoExposure, &ToneMapper::getAutoExposure, &ToneMapper::setAutoExposure);
@@ -104,40 +101,35 @@ static void regToneMapper(ScriptBindings::Module& m)
     op.regEnumVal(ToneMapper::Operator::Aces);
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("ToneMapper", "Tone-map a color-buffer", ToneMapper::create);
     ScriptBindings::registerBinding(regToneMapper);
 }
 
 const char* ToneMapper::kDesc = "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation";
 
-ToneMapper::ToneMapper(ToneMapper::Operator op, ResourceFormat outputFormat) : mOperator(op), mOutputFormat(outputFormat)
-{
-    createLuminancePass();
-    createToneMapPass();
+ToneMapper::ToneMapper(Device::SharedPtr pDevice, ToneMapper::Operator op, ResourceFormat outputFormat) : RenderPass(pDevice), mOperator(op), mOutputFormat(outputFormat) {
+    createLuminancePass(pDevice);
+    createToneMapPass(pDevice);
 
     updateWhiteBalanceTransform();
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    mpPointSampler = Sampler::create(samplerDesc);
+    mpPointSampler = Sampler::create(pDevice, samplerDesc);
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    mpLinearSampler = Sampler::create(samplerDesc);
+    mpLinearSampler = Sampler::create(pDevice, samplerDesc);
 }
 
-ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Dictionary& dict) {
     // outputFormat can only be set on construction
     ResourceFormat outputFormat = ResourceFormat::Unknown;
     if (dict.keyExists(kOutputFormat)) outputFormat = dict[kOutputFormat];
 
-    ToneMapper* pTM = new ToneMapper(Operator::Aces, outputFormat);
+    ToneMapper* pTM = new ToneMapper(pRenderContext->device(), Operator::Aces, outputFormat);
 
-    try
-    {
-        for (const auto& v : dict)
-        {
+    try {
+        for (const auto& v : dict) {
             if (v.key() == kExposureCompensation) pTM->setExposureCompensation(v.val());
             else if (v.key() == kAutoExposure) pTM->setAutoExposure(v.val());
             else if (v.key() == kExposureValue) pTM->setExposureValue(v.val());
@@ -150,17 +142,14 @@ ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Di
             else if (v.key() == kWhiteScale) pTM->setWhiteScale(v.val());
             else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");
         }
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception& e) {
         logWarning("Unable to convert dictionary to expected type: " + std::string(e.what()));
     }
 
     return ToneMapper::SharedPtr(pTM);
 }
 
-Dictionary ToneMapper::getScriptingDictionary()
-{
+Dictionary ToneMapper::getScriptingDictionary() {
     Dictionary d;
     if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
     d[kExposureCompensation] = mExposureCompensation;
@@ -176,8 +165,7 @@ Dictionary ToneMapper::getScriptingDictionary()
     return d;
 }
 
-RenderPassReflection ToneMapper::reflect(const CompileData& compileData)
-{
+RenderPassReflection ToneMapper::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kSrc, "Source texture");
     auto& output = reflector.addOutput(kDst, "Tone-mapped output texture");
@@ -189,17 +177,16 @@ RenderPassReflection ToneMapper::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    auto pDevice = pRenderContext->device();
     auto pSrc = renderData[kSrc]->asTexture();
     auto pDst = renderData[kDst]->asTexture();
-    Fbo::SharedPtr pFbo = Fbo::create();
+    Fbo::SharedPtr pFbo = Fbo::create(pDevice);
     pFbo->attachColorTarget(pDst, 0);
 
     // Run luminance pass if auto exposure is enabled
-    if (mAutoExposure)
-    {
-        createLuminanceFbo(pSrc);
+    if (mAutoExposure) {
+        createLuminanceFbo(pDevice, pSrc);
 
         mpLuminancePass["gColorTex"] = pSrc;
         mpLuminancePass["gColorSampler"] = mpLinearSampler;
@@ -209,15 +196,13 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
     }
 
     // Run main pass
-    if (mRecreateToneMapPass)
-    {
-        createToneMapPass();
+    if (mRecreateToneMapPass) {
+        createToneMapPass(pDevice);
         mUpdateToneMapPass = true;
         mRecreateToneMapPass = false;
     }
 
-    if (mUpdateToneMapPass)
-    {
+    if (mUpdateToneMapPass) {
         updateWhiteBalanceTransform();
         updateColorTransform();
 
@@ -232,8 +217,7 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
     mpToneMapPass["gColorTex"] = pSrc;
     mpToneMapPass["gColorSampler"] = mpPointSampler;
 
-    if (mAutoExposure)
-    {
+    if (mAutoExposure) {
         mpToneMapPass["gLuminanceTexSampler"] = mpLinearSampler;
         mpToneMapPass["gLuminanceTex"] = mpLuminanceFbo->getColorTexture(0);
     }
@@ -241,8 +225,8 @@ void ToneMapper::execute(RenderContext* pRenderContext, const RenderData& render
     mpToneMapPass->execute(pRenderContext, pFbo);
 }
 
-void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
-{
+void ToneMapper::createLuminanceFbo(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pSrc) {
+
     bool createFbo = mpLuminanceFbo == nullptr;
     ResourceFormat srcFormat = pSrc->getFormat();
     uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
@@ -252,32 +236,27 @@ void ToneMapper::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
     uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
 
-    if (createFbo == false)
-    {
+    if (createFbo == false) {
         createFbo = (requiredWidth != mpLuminanceFbo->getWidth()) ||
             (requiredHeight != mpLuminanceFbo->getHeight()) ||
             (luminanceFormat != mpLuminanceFbo->getColorTexture(0)->getFormat());
     }
 
-    if (createFbo)
-    {
-        Fbo::Desc desc;
+    if (createFbo) {
+        Fbo::Desc desc(pDevice);
         desc.setColorTarget(0, luminanceFormat);
-        mpLuminanceFbo = Fbo::create2D(requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
+        mpLuminanceFbo = Fbo::create2D(pDevice, requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
     }
 }
 
-void ToneMapper::renderUI(Gui::Widgets& widget)
-{
+void ToneMapper::renderUI(Gui::Widgets& widget) {
     auto exposureGroup = Gui::Group(widget, "Exposure", true);
-    if (exposureGroup.open())
-    {
+    if (exposureGroup.open()) {
         mUpdateToneMapPass |= exposureGroup.var("Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f");
 
         mRecreateToneMapPass |= exposureGroup.checkbox("Auto Exposure", mAutoExposure);
 
-        if (!mAutoExposure)
-        {
+        if (!mAutoExposure) {
             mUpdateToneMapPass |= exposureGroup.var("Exposure Value (EV)", mExposureValue, kExposureValueMin, kExposureValueMax, 0.1f, false, "%.1f");
             mUpdateToneMapPass |= exposureGroup.var("Film Speed (ISO)", mFilmSpeed, kFilmSpeedMin, kFilmSpeedMax, 0.1f, false, "%.1f");
         }
@@ -286,14 +265,11 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
     }
 
     auto colorgradingGroup = Gui::Group(widget, "Color Grading", true);
-    if (colorgradingGroup.open())
-    {
+    if (colorgradingGroup.open()) {
         mUpdateToneMapPass |= colorgradingGroup.checkbox("White Balance", mWhiteBalance);
 
-        if (mWhiteBalance)
-        {
-            if (colorgradingGroup.var("White Point (K)", mWhitePoint, kWhitePointMin, kWhitePointMax, 5.f, false, "%.0f"))
-            {
+        if (mWhiteBalance) {
+            if (colorgradingGroup.var("White Point (K)", mWhitePoint, kWhitePointMin, kWhitePointMax, 5.f, false, "%.0f")) {
                 updateWhiteBalanceTransform();
                 mUpdateToneMapPass = true;
             }
@@ -309,20 +285,15 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
     }
 
     auto tonemappingGroup = Gui::Group(widget, "Tonemapping", true);
-    if (tonemappingGroup.open())
-    {
+    if (tonemappingGroup.open()) {
         uint32_t opIndex = static_cast<uint32_t>(mOperator);
-        if (tonemappingGroup.dropdown("Operator", kOperatorList, opIndex))
-        {
+        if (tonemappingGroup.dropdown("Operator", kOperatorList, opIndex)) {
             setOperator(Operator(opIndex));
         }
 
-        if (mOperator == Operator::ReinhardModified)
-        {
+        if (mOperator == Operator::ReinhardModified) {
             mUpdateToneMapPass |= tonemappingGroup.var("White Luminance", mWhiteMaxLuminance, 0.1f, FLT_MAX, 0.2f);
-        }
-        else if (mOperator == Operator::HableUc2)
-        {
+        } else if (mOperator == Operator::HableUc2) {
             mUpdateToneMapPass |= tonemappingGroup.var("Linear White", mWhiteScale, 0.f, 100.f, 0.01f);
         }
 
@@ -332,97 +303,81 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
     }
 }
 
-void ToneMapper::setExposureCompensation(float exposureCompensation)
-{
+void ToneMapper::setExposureCompensation(float exposureCompensation) {
     mExposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setAutoExposure(bool autoExposure)
-{
+void ToneMapper::setAutoExposure(bool autoExposure) {
     mAutoExposure = autoExposure;
     mRecreateToneMapPass = true;
 }
 
-void ToneMapper::setExposureValue(float exposureValue)
-{
+void ToneMapper::setExposureValue(float exposureValue) {
     mExposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setFilmSpeed(float filmSpeed)
-{
+void ToneMapper::setFilmSpeed(float filmSpeed) {
     mFilmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setWhiteBalance(bool whiteBalance)
-{
+void ToneMapper::setWhiteBalance(bool whiteBalance) {
     mWhiteBalance = whiteBalance;
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setWhitePoint(float whitePoint)
-{
+void ToneMapper::setWhitePoint(float whitePoint) {
     mWhitePoint = glm::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setOperator(Operator op)
-{
-    if (op != mOperator)
-    {
+void ToneMapper::setOperator(Operator op) {
+    if (op != mOperator) {
         mOperator = op;
         mRecreateToneMapPass = true;
     }
 }
 
-void ToneMapper::setClamp(bool clamp)
-{
-    if (clamp != mClamp)
-    {
+void ToneMapper::setClamp(bool clamp) {
+    if (clamp != mClamp) {
         mClamp = clamp;
         mRecreateToneMapPass = true;
     }
 }
 
-void ToneMapper::setWhiteMaxLuminance(float maxLuminance)
-{
+void ToneMapper::setWhiteMaxLuminance(float maxLuminance) {
     mWhiteMaxLuminance = maxLuminance;
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::setWhiteScale(float whiteScale)
-{
+void ToneMapper::setWhiteScale(float whiteScale) {
     mWhiteScale = std::max(0.001f, whiteScale);
     mUpdateToneMapPass = true;
 }
 
-void ToneMapper::createLuminancePass()
-{
-    mpLuminancePass = FullScreenPass::create(kLuminanceFile);
+void ToneMapper::createLuminancePass(std::shared_ptr<Device> pDevice) {
+    mpLuminancePass = FullScreenPass::create(pDevice, kLuminanceFile);
 }
 
-void ToneMapper::createToneMapPass()
-{
+void ToneMapper::createToneMapPass(std::shared_ptr<Device> pDevice) {
     Program::DefineList defines;
     defines.add("_TONE_MAPPER_OPERATOR", std::to_string(static_cast<uint32_t>(mOperator)));
     if (mAutoExposure) defines.add("_TONE_MAPPER_AUTO_EXPOSURE");
     if (mClamp) defines.add("_TONE_MAPPER_CLAMP");
 
-    mpToneMapPass = FullScreenPass::create(kToneMappingFile, defines);
+    mpToneMapPass = FullScreenPass::create(pDevice, kToneMappingFile, defines);
 }
 
-void ToneMapper::updateWhiteBalanceTransform()
-{
+void ToneMapper::updateWhiteBalanceTransform() {
     // Calculate color transform for the current white point.
     mWhiteBalanceTransform = mWhiteBalance ? calculateWhiteBalanceTransformRGB_Rec709(mWhitePoint) : glm::identity<float3x3>();
     // Calculate source illuminant, i.e. the color that transforms to a pure white (1, 1, 1) output at the current color settings.
     mSourceWhite = inverse(mWhiteBalanceTransform) * float3(1, 1, 1);
 }
 
-void ToneMapper::updateColorTransform()
-{
+void ToneMapper::updateColorTransform() {
     // Exposure scale due to exposure compensation.
     float exposureScale = pow(2.f, mExposureCompensation);
     // Exposure scale due to manual exposure (only if auto exposure is disabled).

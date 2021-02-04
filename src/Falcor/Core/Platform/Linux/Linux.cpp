@@ -30,9 +30,13 @@
 #include "Falcor/Core/Platform/OS.h"
 // #include "Utils/Logger.h"
 //
-// #include <sys/types.h>
-// #include <sys/stat.h>
-// #include <sys/ptrace.h>
+
+#ifdef _DEBUG
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/ptrace.h>
+#endif
+
 #include <gtk/gtk.h>
 // #include <fstream>
 #include <fcntl.h>
@@ -41,8 +45,11 @@
 // #include <algorithm>
 #include <dlfcn.h>
 
+#include "Falcor/Utils/Debug/debug.h"
+
 #include "boost/filesystem.hpp"
 namespace fs = boost::filesystem;
+
 
 namespace Falcor {
 
@@ -460,7 +467,14 @@ uint32_t popcount(uint32_t a) {
 }
 
 DllHandle loadDll(const std::string& libPath) {
-    return dlopen(libPath.c_str(), RTLD_LAZY);
+    void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
+
+    if (!handle) {
+        LOG_ERR("Cannot open library: %s", + dlerror());
+        return nullptr;
+    }
+    
+    return handle;
 }
 
 void releaseDll(DllHandle dll) {

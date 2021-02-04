@@ -51,21 +51,21 @@ static void clampToEdge(float2& pix, uint32_t width, uint32_t height, uint32_t o
     }
 }
 
-PixelZoom::PixelZoom(const Fbo* pBackbuffer) {
+PixelZoom::PixelZoom(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer): mpDevice(pDevice) {
     onResizeSwapChain(pBackbuffer);
 }
 
-PixelZoom::SharedPtr PixelZoom::create(const Fbo* pBackbuffer) {
-    return SharedPtr(new PixelZoom(pBackbuffer));
+PixelZoom::SharedPtr PixelZoom::create(std::shared_ptr<Device> pDevice, const Fbo* pBackbuffer) {
+    return SharedPtr(new PixelZoom(pDevice, pBackbuffer));
 }
 
 void PixelZoom::onResizeSwapChain(const Fbo* pBackbuffer) {
     assert(pBackbuffer);
     const Fbo::Desc& desc = pBackbuffer->getDesc();
-    mpSrcBlitFbo = Fbo::create2D(pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
+    mpSrcBlitFbo = Fbo::create2D(mpDevice, pBackbuffer->getWidth(), pBackbuffer->getHeight(), desc);
     
     if (mpDstBlitFbo == nullptr) {
-        mpDstBlitFbo = Fbo::create2D(mDstZoomSize, mDstZoomSize, desc);
+        mpDstBlitFbo = Fbo::create2D(mpDevice, mDstZoomSize, mDstZoomSize, desc);
     }
 }
 

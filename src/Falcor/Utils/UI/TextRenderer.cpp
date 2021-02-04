@@ -130,22 +130,26 @@ void renderText(RenderContext* pRenderContext, const std::string& text, const Fb
     
 }  // namespace
 
+
 const float3& TextRenderer::getColor() { return gTextData.color; }
+
 void TextRenderer::setColor(const float3& color) { gTextData.color = color; }
+
 TextRenderer::Flags TextRenderer::getFlags() { return gTextData.flags; }
+
 void TextRenderer::setFlags(Flags f) { gTextData.flags = f; }
 
-void TextRenderer::start() {
+void TextRenderer::start(std::shared_ptr<Device> pDevice) {
     if (gTextData.init) return;
 
     static const std::string kShaderFile("Utils/UI/TextRenderer.slang");
 
     // Create a vertex buffer
     const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxCharCount*arraysize(kVertexPos));
-    gTextData.pVb = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+    gTextData.pVb = Buffer::create(pDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
 
     // Create the RenderState
-    gTextData.pPass = RasterPass::create(kShaderFile, "vs", "ps");
+    gTextData.pPass = RasterPass::create(pDevice, kShaderFile, "vs", "ps");
     auto& pState = gTextData.pPass->getState();
     pState->setVao(createVAO(gTextData.pVb));
 
@@ -160,7 +164,7 @@ void TextRenderer::start() {
     pState->setRasterizerState(RasterizerState::create(rsState));
 
     // Blend state
-    BlendState::Desc blendDesc;
+    BlendState::Desc blendDesc(pDevice);
     blendDesc.setRtBlend(0, true).setRtParams(0, BlendState::BlendOp::Add,
         BlendState::BlendOp::Add,
         BlendState::BlendFunc::SrcAlpha,
@@ -168,7 +172,7 @@ void TextRenderer::start() {
         BlendState::BlendFunc::One,
         BlendState::BlendFunc::One);
     pState->setBlendState(BlendState::create(blendDesc));
-    gTextData.pFont = Font::create();
+    gTextData.pFont = Font::create(pDevice);
 
     // Initialize the buffer
     gTextData.pPass["gFontTex"] = gTextData.pFont->getTexture();

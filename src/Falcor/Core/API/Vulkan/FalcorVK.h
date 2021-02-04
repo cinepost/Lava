@@ -125,7 +125,9 @@ static const uint32_t kDefaultSwapChainBuffers = 5;
 
 using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 
-uint32_t getMaxViewportCount();
+class Device;
+
+uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
 
 }  // namespace Falcor
 

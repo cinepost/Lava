@@ -86,6 +86,6 @@ namespace Falcor
 
     SCRIPT_BINDING(DepthStencilState)
     {
-        m.regClass(DepthStencilState);
+        pybind11::class_<DepthStencilState, DepthStencilState::SharedPtr>(m, "DepthStencilState");
     }
 }

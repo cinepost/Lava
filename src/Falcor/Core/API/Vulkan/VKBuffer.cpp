@@ -35,20 +35,20 @@
 
 namespace Falcor {
     
-VkDeviceMemory allocateDeviceMemory(GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
+VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = size;
-    allocInfo.memoryTypeIndex = gpDevice->getVkMemoryType(memType, memoryTypeBits);
+    allocInfo.memoryTypeIndex = pDevice->getVkMemoryType(memType, memoryTypeBits);
 
     VkDeviceMemory deviceMem;
-    vk_call(vkAllocateMemory(gpDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
+    vk_call(vkAllocateMemory(pDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
     return deviceMem;
 }
 
-void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
+void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size) {
     void* pData;
-    vk_call(vkMapMemory(gpDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
+    vk_call(vkMapMemory(pDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
     return pData;
 }
 
@@ -65,14 +65,9 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
     setBit(Buffer::BindFlags::Vertex,           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     setBit(Buffer::BindFlags::Index,            VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-    //setBit(Buffer::BindFlags::UnorderedAccess,  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     setBit(Buffer::BindFlags::UnorderedAccess,  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     
-    //setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
-    //setBit(Buffer::BindFlags::ShaderResource,  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    setBit(Buffer::BindFlags::ShaderResource,   VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    
-
     setBit(Buffer::BindFlags::IndirectArg,      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
     setBit(Buffer::BindFlags::Constant,         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
@@ -81,11 +76,12 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
 
 size_t getBufferDataAlignment(const Buffer* pBuffer) {
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(gpDevice->getApiHandle(), pBuffer->getApiHandle(), &reqs);
+    vkGetBufferMemoryRequirements(pBuffer->device()->getApiHandle(), pBuffer->getApiHandle(), &reqs);
     return reqs.alignment;
 }
 
-Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
+Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
+
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
@@ -96,28 +92,28 @@ Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, GpuMemo
     bufferInfo.pQueueFamilyIndices = nullptr;
     
     VkBuffer buffer;
-    vk_call(vkCreateBuffer(gpDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
+    vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
 
     // Get the required buffer size
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(gpDevice->getApiHandle(), buffer, &reqs);
+    vkGetBufferMemoryRequirements(pDevice->getApiHandle(), buffer, &reqs);
 
-    VkDeviceMemory mem = allocateDeviceMemory(memType, reqs.memoryTypeBits, reqs.size);
-    vk_call(vkBindBufferMemory(gpDevice->getApiHandle(), buffer, mem, 0));
-    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(buffer, mem);
+    VkDeviceMemory mem = allocateDeviceMemory(pDevice, memType, reqs.memoryTypeBits, reqs.size);
+    vk_call(vkBindBufferMemory(pDevice->getApiHandle(), buffer, mem, 0));
+    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, mem);
 
     return apiHandle;
 }
 
 void Buffer::apiInit(bool hasInitData) {
     if (mCpuAccess == CpuAccess::Write) {
-        mDynamicData = gpDevice->getUploadHeap()->allocate(mSize);
+        mDynamicData = mpDevice->getUploadHeap()->allocate(mSize);
         mApiHandle = mDynamicData.pResourceHandle;
     } else {
         if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None) {
-            mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Readback);
+            mApiHandle = createBuffer(mpDevice, mSize, mBindFlags, Device::MemoryType::Readback);
         } else {
-            mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Default);
+            mApiHandle = createBuffer(mpDevice, mSize, mBindFlags, Device::MemoryType::Default);
         }
     }
 }
@@ -134,7 +130,7 @@ void Buffer::unmap() {
     } else if (mDynamicData.pData == nullptr && mBindFlags == BindFlags::None) {
         // We only unmap staging buffers
         assert(mCpuAccess == CpuAccess::Read);
-        vkUnmapMemory(gpDevice->getApiHandle(), mApiHandle);
+        vkUnmapMemory(mpDevice->getApiHandle(), mApiHandle);
     }
 }
 

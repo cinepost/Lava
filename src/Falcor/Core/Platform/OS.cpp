@@ -36,11 +36,16 @@ namespace fs = boost::filesystem;
 #include <fstream>
 
 #include "stdafx.h"
-#include "Utils/StringUtils.h"
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Debug/debug.h"
 #include "OS.h"
 
 #ifndef PROJECT_DIR
-#define PROJECT_DIR "/home/max/dev/Falcor"
+#define PROJECT_DIR "/home/max/dev/Falcor/"
+#endif
+
+#ifndef LAVA_INSTALL_DIR
+#define LAVA_INSTALL_DIR "/opt/lava/"
 #endif
 
 namespace Falcor {
@@ -59,30 +64,54 @@ uint32_t getLowerPowerOf2(uint32_t a) {
 inline std::vector<std::string> getInitialShaderDirectories() {
     std::vector<std::string> developmentDirectories = {
         // First we search in source folders.
-        std::string(PROJECT_DIR),
-        std::string(PROJECT_DIR) + "../",
-        std::string(PROJECT_DIR) + "../Tools/FalcorTest/",
-        // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
-        getExecutableDirectory() + "/Shaders",
+        //std::string(PROJECT_DIR),
+        //std::string(PROJECT_DIR) + "../",
+        //std::string(PROJECT_DIR) + "../Tools/FalcorTest/",
+        
+        // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
+        std::string(LAVA_INSTALL_DIR) + "shaders",
+        //getExecutableDirectory() + "../shaders",
     };
 
     std::vector<std::string> deploymentDirectories = {
-        getExecutableDirectory() + "/Shaders"
+        std::string(LAVA_INSTALL_DIR) + "shaders",
+        //getExecutableDirectory() + "../shaders"
+    };
+
+    std::cout << "mode: " << (isDevelopmentMode() ? "development" : "production") << "\n";
+    //std::cout << "exec dir: " << getExecutableDirectory() << "\n";
+
+    return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+}
+
+inline std::vector<std::string> getInitialRenderPassDirectories() {
+    std::vector<std::string> developmentDirectories = {
+        // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
+        std::string(LAVA_INSTALL_DIR) + "render_passes",
+        getExecutableDirectory() + "../render_passes",
+    };
+
+    std::vector<std::string> deploymentDirectories = {
+        std::string(LAVA_INSTALL_DIR) + "render_passes",
+        getExecutableDirectory() + "../render_passes"
     };
 
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 
 static std::vector<std::string> gShaderDirectories = getInitialShaderDirectories();
+static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDirectories();
 
 inline std::vector<std::string> getInitialDataDirectories() {
     std::vector<std::string> developmentDirectories = {
-        std::string(PROJECT_DIR) + "/Data",
-        getExecutableDirectory() + "/Data",
+        //std::string(PROJECT_DIR) + "/Data",
+        std::string(LAVA_INSTALL_DIR) + "data",
+        getExecutableDirectory() + "../data",
     };
 
     std::vector<std::string> deploymentDirectories = {
-        getExecutableDirectory() + "/Data"
+        std::string(LAVA_INSTALL_DIR) + "data",
+        getExecutableDirectory() + "../data"
     };
 
     std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
@@ -170,6 +199,18 @@ bool findFileInShaderDirectories(const std::string& filename, std::string& fullP
     for (const auto& dir : gShaderDirectories) {
         fullPath = canonicalizeFilename(dir + '/' + filename);
         if (doesFileExist(fullPath)) {
+            LOG_DBG("Shader: %s found as: %s", filename.c_str(), fullPath.c_str());
+            return true;
+        }
+    }
+    return false;
+}
+
+bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath) {
+    for (const auto& dir : gRenderPassDirectories) {
+        fullPath = canonicalizeFilename(dir + '/' + filename);
+        if (doesFileExist(fullPath)) {
+            LOG_DBG("RenderPass library: %s found as: %s", filename.c_str(), fullPath.c_str());
             return true;
         }
     }

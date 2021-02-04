@@ -30,27 +30,27 @@
 
 namespace Falcor {
 
-BaseGraphicsPass::BaseGraphicsPass(const Program::Desc& progDesc, const Program::DefineList& programDefines) {
-    auto pProg = GraphicsProgram::create(progDesc, programDefines);
+BaseGraphicsPass::BaseGraphicsPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): mpDevice(pDevice) {
+    auto pProg = GraphicsProgram::create(pDevice, progDesc, programDefines);
 
-    mpState = GraphicsState::create();
+    mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProg);
 
-    mpVars = GraphicsVars::create(pProg.get());
+    mpVars = GraphicsVars::create(pDevice, pProg.get());
 }
 
 void BaseGraphicsPass::addDefine(const std::string& name, const std::string& value, bool updateVars) {
     mpState->getProgram()->addDefine(name, value);
-    if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+    if (updateVars) mpVars = GraphicsVars::create(mpDevice, mpState->getProgram().get());
 }
 
 void BaseGraphicsPass::removeDefine(const std::string& name, bool updateVars) {
     mpState->getProgram()->removeDefine(name);
-    if (updateVars) mpVars = GraphicsVars::create(mpState->getProgram().get());
+    if (updateVars) mpVars = GraphicsVars::create(mpDevice, mpState->getProgram().get());
 }
 
 void BaseGraphicsPass::setVars(const GraphicsVars::SharedPtr& pVars) {
-    mpVars = pVars ? pVars : GraphicsVars::create(mpState->getProgram().get());
+    mpVars = pVars ? pVars : GraphicsVars::create(mpDevice, mpState->getProgram().get());
 }
 
 }  // namespace Falcor

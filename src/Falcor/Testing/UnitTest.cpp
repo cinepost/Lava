@@ -179,16 +179,16 @@ std::vector<Test>* testRegistry;
 
     ///////////////////////////////////////////////////////////////////////////
 
-    void GPUUnitTestContext::createProgram(const std::string& path,
-                                           const std::string& entry,
-                                           const Program::DefineList& programDefines,
-                                           Shader::CompilerFlags flags,
-                                           const std::string& shaderModel,
-                                           bool createShaderVars)
+    void GPUUnitTestContext::createProgram( const std::string& path,
+                                            const std::string& entry,
+                                            const Program::DefineList& programDefines,
+                                            Shader::CompilerFlags flags,
+                                            const std::string& shaderModel,
+                                            bool createShaderVars)
     {
         // Create program.
-        mpProgram = ComputeProgram::createFromFile(path, entry, programDefines, flags, shaderModel);
-        mpState = ComputeState::create();
+        mpProgram = ComputeProgram::createFromFile(mpDevice, path, entry, programDefines, flags, shaderModel);
+        mpState = ComputeState::create(mpDevice);
         mpState->setProgram(mpProgram);
         
         // Create vars unless it should be deferred.
@@ -198,7 +198,7 @@ std::vector<Test>* testRegistry;
     void GPUUnitTestContext::createVars() {
         // Create shader variables.
         ProgramReflection::SharedConstPtr pReflection = mpProgram->getReflector();
-        mpVars = ComputeVars::create(pReflection);
+        mpVars = ComputeVars::create(mpDevice, pReflection);
         assert(mpVars);
 
         // Try to use shader reflection to query thread group size.
@@ -209,7 +209,7 @@ std::vector<Test>* testRegistry;
 
     void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize) {
         assert(mpVars);
-        mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
+        mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpDevice, mpProgram.get(), name, nElements);
         assert(mStructuredBuffers[name].pBuffer);
         if (pInitData) {
             size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
@@ -259,8 +259,7 @@ std::vector<Test>* testRegistry;
 
     /** Simple tests of the testing framework. How meta.
     */
-    CPU_TEST(TestCPUTest)
-    {
+    CPU_TEST(TestCPUTest) {
         EXPECT_EQ(1, 1);
         EXPECT(1 == 1);
         EXPECT_NE(1, 2);
@@ -270,8 +269,7 @@ std::vector<Test>* testRegistry;
         EXPECT_GE(3, 2);
     }
 
-    CPU_TEST(TestSingleEval)
-    {
+    CPU_TEST(TestSingleEval) {
         // Make sure that arguments to test macros are only evaluated once.
         int i = 0;
         EXPECT_EQ(++i, 1);
@@ -290,8 +288,7 @@ std::vector<Test>* testRegistry;
         EXPECT_EQ(i, 7);
     }
 
-    GPU_TEST(TestGPUTest)
-    {
+    GPU_TEST(TestGPUTest) {
         ctx.createProgram("Testing/UnitTest.cs.slang");
         ctx.allocateStructuredBuffer("result", 10);
         ctx["TestCB"]["nValues"] = 10;

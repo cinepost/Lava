@@ -62,7 +62,7 @@ RootSignature::Desc& RootSignature::Desc::addRootConstants(uint32_t regIndex, ui
     return *this;
 }
 
-RootSignature::RootSignature(const Desc& desc): mDesc(desc) {
+RootSignature::RootSignature(std::shared_ptr<Device> device, const Desc& desc): mDesc(desc), mpDevice(device) {
     sObjCount++;
     apiInit();
 }
@@ -75,18 +75,18 @@ RootSignature::~RootSignature() {
     }
 }
 
-RootSignature::SharedPtr RootSignature::getEmpty() {
+RootSignature::SharedPtr RootSignature::getEmpty(std::shared_ptr<Device> device) {
     if (spEmptySig) return spEmptySig;
-    return create(Desc());
+    return create(device, Desc());
 }
 
-RootSignature::SharedPtr RootSignature::create(const Desc& desc) {
+RootSignature::SharedPtr RootSignature::create(std::shared_ptr<Device> device, const Desc& desc) {
     bool empty = desc.mSets.empty() && desc.mRootDescriptors.empty() && desc.mRootConstants.empty();
     if (empty && spEmptySig) {
         return spEmptySig;
     }
 
-    SharedPtr pSig = SharedPtr(new RootSignature(desc));
+    SharedPtr pSig = SharedPtr(new RootSignature(device, desc));
     if (empty) spEmptySig = pSig;
 
     return pSig;
@@ -171,15 +171,15 @@ static void addRootDescriptors(const ParameterBlockReflection* pBlock, RootSigna
     }
 }
 
-RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector) {
+RootSignature::SharedPtr RootSignature::create(std::shared_ptr<Device> device, const ProgramReflection* pReflector) {
     assert(pReflector);
     RootSignature::Desc d;
     addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
     addRootDescriptors(pReflector->getDefaultParameterBlock().get(), d);
-    return RootSignature::create(d);
+    return RootSignature::create(device, d);
 }
 
-RootSignature::SharedPtr RootSignature::createLocal(const EntryPointBaseReflection* pReflector) {
+RootSignature::SharedPtr RootSignature::createLocal(std::shared_ptr<Device> device, const EntryPointBaseReflection* pReflector) {
     assert(pReflector);
     RootSignature::Desc d;
     addParamBlockSets(pReflector, d);
@@ -192,7 +192,7 @@ RootSignature::SharedPtr RootSignature::createLocal(const EntryPointBaseReflecti
     throw std::runtime_error("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
 #endif
 
-    return RootSignature::create(d);
+    return RootSignature::create(device, d);
 }
 
 }  // namespace Falcor

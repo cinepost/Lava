@@ -28,11 +28,16 @@
 #ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAM_H_
 #define SRC_FALCOR_CORE_PROGRAM_PROGRAM_H_
 
+#include <string>
+
 #include "Falcor/Core/API/Shader.h"
 #include "Falcor/Core/Program/ShaderLibrary.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 
+
 namespace Falcor {
+
+class Device;
 
 /** High-level abstraction of a program class.
     This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
@@ -239,7 +244,7 @@ class dlldecl Program : public std::enable_shared_from_this<Program> {
 
     Program() = default;
 
-    void init(Desc const& desc, DefineList const& programDefines);
+    void init(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& programDefines);
 
     bool link() const;
 
@@ -280,6 +285,8 @@ class dlldecl Program : public std::enable_shared_from_this<Program> {
 
     using string_time_map = std::unordered_map<std::string, time_t>;
     mutable string_time_map mFileTimeMap;
+
+    std::shared_ptr<Device> mpDevice;
 
     bool checkIfFilesChanged();
     void reset();

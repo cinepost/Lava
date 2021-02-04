@@ -33,15 +33,16 @@
 #include "RenderContext.h"
 #include "Falcor/Utils/Threading.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor {
 
-// namespace {
-Texture::BindFlags updateBindFlags(Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
+Texture::BindFlags Texture::updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
     if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
         flags |= Texture::BindFlags::RenderTarget;
     }
 
-    Texture::BindFlags supported = getFormatBindFlags(format);
+    Texture::BindFlags supported = getFormatBindFlags(pDevice, format);
     supported |= ResourceBindFlags::Shared;
     if ((flags & supported) != flags) {
         logError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
@@ -52,9 +53,9 @@ Texture::BindFlags updateBindFlags(Texture::BindFlags flags, bool hasInitData, u
 
     return flags;
 }
-// }
 
-Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags) {
+
+Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags) {
     assert(handle);
     switch (type) {
         case Resource::Type::Texture1D:
@@ -77,50 +78,53 @@ Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uin
             break;
     }
 
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
     pTexture->mApiHandle = handle;
     pTexture->mState.global = initState;
     pTexture->mState.isGlobal = true;
     return pTexture;
 }
 
-Texture::SharedPtr Texture::create1D(uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
-    bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags));
+Texture::SharedPtr Texture::create1D(std::shared_ptr<Device> device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
+    bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags));
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
 
-Texture::SharedPtr Texture::create2D(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
-    bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags));
+Texture::SharedPtr Texture::create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
+    bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags));
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
 
-Texture::SharedPtr Texture::create3D(uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool isSparse) {
-    bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
+Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool sparse) {
+    bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
 
-Texture::SharedPtr Texture::createCube(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
-    bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags));
+Texture::SharedPtr Texture::createCube(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
+    bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags));
     pTexture->apiInit(pData, (mipLevels == kMaxPossible));
     return pTexture;
 }
 
-Texture::SharedPtr Texture::create2DMS(uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, BindFlags bindFlags) {
-    bindFlags = updateBindFlags(bindFlags, false, 1, format, "Texture2DMultisample");
-    Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
+Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, BindFlags bindFlags) {
+    bindFlags = updateBindFlags(device, bindFlags, false, 1, format, "Texture2DMultisample");
+    Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
     pTexture->apiInit(nullptr, false);
     return pTexture;
 }
 
-Texture::Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
-    : Resource(type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
+Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
+    : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
+    
+    LOG_DBG("Create texture %zu width %u height %u format %s bindFlags %s", id(), width, height, to_string(format).c_str(),to_string(bindFlags).c_str());
+
     assert(width > 0 && height > 0 && depth > 0);
     assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
     assert(format != ResourceFormat::Unknown);
@@ -177,7 +181,7 @@ typename ViewClass::SharedPtr findViewCommon(Texture* pTexture, uint32_t mostDet
 
 DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return DepthStencilView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        return DepthStencilView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
@@ -185,7 +189,7 @@ DepthStencilView::SharedPtr Texture::getDSV(uint32_t mipLevel, uint32_t firstArr
 
 UnorderedAccessView::SharedPtr Texture::getUAV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return UnorderedAccessView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        return UnorderedAccessView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
@@ -201,7 +205,8 @@ UnorderedAccessView::SharedPtr Texture::getUAV() {
 
 RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return RenderTargetView::create(pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
+        assert(pTexture->device());
+        return RenderTargetView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
     };
 
     auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
@@ -214,30 +219,21 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 
 ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
     auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
-        return ShaderResourceView::create(pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
+        return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
     };
+
+    if(mIsSparse)
+        updateSparseBindInfo();
 
     return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
 
 void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) {
-    assert(mType == Type::Texture2D);
-    RenderContext* pContext = gpDevice->getRenderContext();
-    // Handle the special case where we have an HDR texture with less then 3 channels
-    FormatType type = getFormatType(mFormat);
-    uint32_t channels = getFormatChannelCount(mFormat);
+    uint32_t channels;
+    ResourceFormat resourceFormat;
     std::vector<uint8_t> textureData;
-    ResourceFormat resourceFormat = mFormat;
 
-    if (type == FormatType::Float && channels < 3) {
-        Texture::SharedPtr pOther = Texture::create2D(getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
-        pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
-        textureData = pContext->readTextureSubresource(pOther.get(), 0);
-        resourceFormat = ResourceFormat::RGBA32Float;
-    } else {
-        uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
-        textureData = pContext->readTextureSubresource(this, subresource);
-    }
+    readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
 
     auto func = [=]() {
         Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
@@ -246,11 +242,40 @@ void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::s
     Threading::dispatchTask(func);
 }
 
+void Texture::captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) {
+    uint32_t channels;
+    ResourceFormat resourceFormat;
+    std::vector<uint8_t> textureData;
+
+    readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
+    Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
+}
+
+void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
+    assert(mType == Type::Texture2D);
+    RenderContext* pContext = mpDevice->getRenderContext();
+
+    // Handle the special case where we have an HDR texture with less then 3 channels
+    FormatType type = getFormatType(mFormat);
+    channels = getFormatChannelCount(mFormat);
+    resourceFormat = mFormat;
+
+    if (type == FormatType::Float && channels < 3) {
+        Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
+        pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
+        textureData = pContext->readTextureSubresource(pOther.get(), 0);
+        resourceFormat = ResourceFormat::RGBA32Float;
+    } else {
+        uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
+        textureData = pContext->readTextureSubresource(this, subresource);
+    }
+}
+
 void Texture::uploadInitData(const void* pData, bool autoGenMips) {
-    assert(gpDevice);
-    auto pRenderContext = gpDevice->getRenderContext();
+    assert(mpDevice);
+    auto pRenderContext = mpDevice->getRenderContext();
     if (!pRenderContext) {
-        throw std::runtime_error("Cannon get gpDevice rendering context !!!");
+        throw std::runtime_error("Can't get device rendering context !!!");
     }
     if (autoGenMips) {
         // Upload just the first mip-level
@@ -268,7 +293,7 @@ void Texture::uploadInitData(const void* pData, bool autoGenMips) {
     }
 
     if (autoGenMips) {
-        generateMips(gpDevice->getRenderContext());
+        generateMips(mpDevice->getRenderContext());
         invalidateViews();
     }
 }
@@ -277,6 +302,12 @@ void Texture::generateMips(RenderContext* pContext) {
     if (mType != Type::Texture2D) {
         logWarning("Texture::generateMips() was only tested with Texture2Ds");
     }
+
+    if (mIsSparse) {
+        logWarning("Texture::generateMips() does not work with sparse textures !!!");
+        return;
+    }
+
     // #OPTME: should blit support arrays?
     for (uint32_t m = 0; m < mMipLevels - 1; m++) {
         for (uint32_t a = 0 ; a < mArraySize ; a++) {
@@ -294,9 +325,25 @@ void Texture::generateMips(RenderContext* pContext) {
         mReleaseRtvsAfterGenMips = false;
     }
 }
+
+uint32_t Texture::getMipTailStart() const { 
+    assert(mIsSparse);
+    return mMipTailStart; 
+}
+
+// static
+uint8_t Texture::getMaxMipCount(const uint3& size) {
+    return 1 + uint8_t(glm::log2(static_cast<float>(glm::max(glm::max(size[0], size[1]), size[2]))));
+}
+
+const std::vector<VirtualTexturePage::SharedPtr>& Texture::pages() {
+    return mPages;
+}
+
+
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {
-    ID3D12DevicePtr pDevicePtr = gpDevice->getApiHandle();
+    ID3D12DevicePtr pDevicePtr = mpDevice->getApiHandle();
     ID3D12ResourcePtr pTexResource = this->getApiHandle();
 
     D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
@@ -312,19 +359,20 @@ uint32_t Texture::getTextureSizeInBytes() {
 #endif
 
 SCRIPT_BINDING(Texture) {
-    auto c = m.regClass(Texture);
-    c.roProperty("width", &Texture::getWidth);
-    c.roProperty("height", &Texture::getHeight);
-    c.roProperty("depth", &Texture::getDepth);
-    c.roProperty("mipCount", &Texture::getMipCount);
-    c.roProperty("arraySize", &Texture::getArraySize);
-    c.roProperty("samples", &Texture::getSampleCount);
-    c.roProperty("format", &Texture::getFormat);
+    pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
+    texture.def_property_readonly("width", &Texture::getWidth);
+    texture.def_property_readonly("height", &Texture::getHeight);
+    texture.def_property_readonly("depth", &Texture::getDepth);
+    texture.def_property_readonly("mipCount", &Texture::getMipCount);
+    texture.def_property_readonly("arraySize", &Texture::getArraySize);
+    texture.def_property_readonly("samples", &Texture::getSampleCount);
+    texture.def_property_readonly("format", &Texture::getFormat);
 
-    auto data = [](Texture* pTexture, uint32_t subresource) {
-        return gpDevice->getRenderContext()->readTextureSubresource(pTexture, subresource);
+    auto data = [](Texture* pTexture, uint32_t subresource)
+    {
+        return pTexture->device()->getRenderContext()->readTextureSubresource(pTexture, subresource);
     };
-    c.func_("data", data, "subresource"_a);
+    texture.def("data", data, "subresource"_a);
 }
 
 }  // namespace Falcor

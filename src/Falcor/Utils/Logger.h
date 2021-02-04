@@ -29,6 +29,7 @@
 #define SRC_FALCOR_UTILS_LOGGER_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
     /** Container class for logging messages.
@@ -101,10 +102,37 @@ namespace Falcor {
         Logger() = delete;
     };
 
-    inline void logInfo(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Info, msg, mbox); }
-    inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Warning, msg, mbox); }
-    inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Error, msg, mbox); }
-    inline void logFatal(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { Logger::log(Logger::Level::Fatal, msg, mbox); }
+    inline void logInfo(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { 
+        #ifdef DEBUG
+        LOG_DBG("%s", msg.c_str());
+        #else 
+        Logger::log(Logger::Level::Info, msg, mbox); 
+        #endif
+    }
+    
+    inline void logWarning(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { 
+        #ifdef DEBUG
+        LOG_WARN("%s", msg.c_str());
+        #else 
+        Logger::log(Logger::Level::Warning, msg, mbox); 
+        #endif
+    }
+    
+    inline void logError(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { 
+        #ifdef DEBUG
+        LOG_ERR("%s", msg.c_str());
+        #else 
+        Logger::log(Logger::Level::Error, msg, mbox); 
+        #endif
+    }
+    
+    inline void logFatal(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { 
+        #ifdef DEBUG
+        LOG_FTL("%s", msg.c_str());
+        #else 
+        Logger::log(Logger::Level::Fatal, msg, mbox); 
+        #endif
+    }
 
 }  // namespace Falcor
 

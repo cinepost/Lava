@@ -38,35 +38,15 @@
 
 namespace Falcor {
 
-    ComputeContext::ComputeContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) : CopyContext(type, queue) {
+    ComputeContext::ComputeContext(std::shared_ptr<Device> device, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue) : CopyContext(device, type, queue) {
         assert(queue);
     }
 
     ComputeContext::~ComputeContext() = default;
 
-    /*
-    bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars)
-    {
-        assert(pState);
-
-        auto pCSO = pState->getCSO(pVars);
-
-        // Apply the vars. Must be first because applyComputeVars() might cause a flush
-        if (pVars)
-        {
-            if (applyComputeVars(pVars, pCSO->getDesc().getProgramKernels()->getRootSignature().get()) == false) return false;
-        }
-        else mpLowLevelData->getCommandList()->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle());
-
-        mpLastBoundComputeVars = pVars;
-        mpLowLevelData->getCommandList()->SetPipelineState(pCSO->getApiHandle());
-        mCommandsPending = true;
-        return true;
-    }
-    */
-
     bool ComputeContext::prepareForDispatch(ComputeState* pState, ComputeVars* pVars) {
         assert(pState);
+        assert(pVars);
 
         ComputeStateObject::SharedPtr pCSO = pState->getCSO(pVars);
 
@@ -77,15 +57,11 @@ namespace Falcor {
             }
         } 
 
-        //LOG_DBG("get command list");
-        //auto cmd_list = mpLowLevelData->getCommandList();
-
-        //LOG_DBG("get pCSO api handle");
-        //auto cso_api_handle = pCSO->getApiHandle();
+        auto cmd_list = mpLowLevelData->getCommandList();
+        auto cso_api_handle = pCSO->getApiHandle();
         
-        //LOG_DBG("vkCmdBindPipeline");
-        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
-        //vkCmdBindPipeline(cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, cso_api_handle);
+        //vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCSO->getApiHandle());
+        vkCmdBindPipeline(cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, cso_api_handle);
 
         mpLastBoundComputeVars = pVars;
         mCommandsPending = true;
@@ -93,10 +69,8 @@ namespace Falcor {
     }
 
     template<typename ViewType, typename ClearType>
-    void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal)
-    {
-        if(pView->getApiHandle().getType() != VkResourceType::Image)
-        {
+    void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal) {
+        if(pView->getApiHandle().getType() != VkResourceType::Image) {
             logWarning("Looks like you are trying to clear a buffer. Vulkan only supports clearing Buffers with a single uint value. Please use the uint version of clearUav(). Call is ignored");
             should_not_get_here();
             return;
@@ -118,34 +92,26 @@ namespace Falcor {
 
     template void clearColorImageCommon(CopyContext* pCtx, const RenderTargetView* pView, const float4& clearVal);
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
-    {
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value) {
         clearColorImageCommon(this, pUav, value);
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
-    {
-        if(pUav->getApiHandle().getType() == VkResourceType::Buffer)
-        {
-            if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w)))
-            {
+    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
+        if(pUav->getApiHandle().getType() == VkResourceType::Buffer) {
+            if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w))) {
                 logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'");
             }
             const Buffer* pBuffer = dynamic_cast<const Buffer*>(pUav->getResource());
             vkCmdFillBuffer(getLowLevelData()->getCommandList(), pBuffer->getApiHandle(), pBuffer->getGpuAddressOffset(), pBuffer->getSize(), value.x);
-        }
-        else
-        {
+        } else {
             clearColorImageCommon(this, pUav, value);
         }
         mCommandsPending = true;
     }
 
-    void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value)
-    {
-        if (pBuffer->getUAVCounter())
-        {
+    void ComputeContext::clearUAVCounter(Buffer::ConstSharedPtrRef pBuffer, uint32_t value) {
+        if (pBuffer->getUAVCounter()) {
             clearUAV(pBuffer->getUAVCounter()->getUAV().get(), uint4(value));
         }
     }
@@ -157,25 +123,31 @@ namespace Falcor {
     }
     */
 
-    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
-    {
+    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
+        assert(pState);
+        assert(pVars);
         // Check dispatch dimensions. TODO: Should be moved into Falcor.
         if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION) {
-            logError("ComputePass::execute() - Dispatch dimension exceeds maximum. Skipping.");
+            logError("ComputeContext::dispatch(...) - Dispatch dimension exceeds maximum. Skipping.");
             return;
         }
 
         if (prepareForDispatch(pState, pVars) == false) {
+            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
             return;
         }
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
     }
 
-    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
-    {
+    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+        assert(pState);
+        assert(pVars);
+        assert(pArgBuffer);
+
         if (prepareForDispatch(pState, pVars) == false) {
+            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
             return;
         }
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);

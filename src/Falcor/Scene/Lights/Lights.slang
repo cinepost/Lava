@@ -41,6 +41,7 @@ struct LightSample
     float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
     float3 L;         // The direction from the surface to the light source
     float3 posW;      // The world-space position of the light
+    
     float NdotH;      // Unclamped, can be negative
     float NdotL;      // Unclamped, can be negative
     float LdotH;      // Unclamped, can be negative
@@ -68,8 +69,9 @@ LightSample evalDirectionalLight(in LightData light, in float3 surfacePosW)
     LightSample ls;
     ls.diffuse = light.intensity;
     ls.specular = light.intensity;
+
     ls.L = -normalize(light.dirW);
-    float dist = length(surfacePosW - light.posW);
+    float dist = 1.0; //length(surfacePosW - light.posW);
     ls.posW = surfacePosW - light.dirW * dist;
     return ls;
 }
@@ -115,8 +117,11 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
 LightSample evalLight(LightData light, ShadingData sd)
 {
     LightSample ls;
-    if (light.type == uint(LightType::Directional)) ls = evalDirectionalLight(light, sd.posW);
-    else if (light.type == uint(LightType::Point)) ls = evalPointLight(light, sd.posW);
+    if (light.type == uint(LightType::Directional) || light.type == uint(LightType::Distant)) {
+      ls = evalDirectionalLight(light, sd.posW);
+    } else if (light.type == uint(LightType::Point)) {
+      ls = evalPointLight(light, sd.posW);
+    }
     calcCommonLightProperties(sd, ls);
     return ls;
 };

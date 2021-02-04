@@ -30,8 +30,8 @@
 #include "RenderGraph.h"
 #include "Utils/StringUtils.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     const char* RenderGraphIR::kAddPass = "addPass";
     const char* RenderGraphIR::kRemovePass = "removePass";
     const char* RenderGraphIR::kAddEdge = "addEdge";
@@ -44,48 +44,40 @@ namespace Falcor
     const char* RenderGraphIR::kRenderPass = "RenderPass";
     const char* RenderGraphIR::kRenderGraph = "RenderGraph";
 
-    std::string addQuotes(const std::string& s)
-    {
+    std::string addQuotes(const std::string& s) {
         return '"' + s + '"';
     }
 
-    std::string getArgsString()
-    {
+    std::string getArgsString() {
         return "";
     }
 
     template <class T>
-    std::string getArgsString(const T& arg)
-    {
+    std::string getArgsString(const T& arg) {
         return arg;
     }
 
     template <class T, class... Ts>
-    std::string getArgsString(const T& first, const Ts&... args) 
-    {
+    std::string getArgsString(const T& first, const Ts&... args)  {
         std::string s = first + ", ";
         s += getArgsString(args...);
         return s;
     }
 
     template<typename... Ts>
-    std::string funcCall(const std::string& funcName, const Ts&... args)
-    {
+    std::string funcCall(const std::string& funcName, const Ts&... args) {
         std::string call = funcName + '(';
         call += getArgsString(args...);
         call += ")\n";
         return call;
     }
 
-    std::string RenderGraphIR::getFuncName(const std::string& graphName)
-    {
+    std::string RenderGraphIR::getFuncName(const std::string& graphName) {
         return "render_graph_" + graphName;
     }
 
-    RenderGraphIR::RenderGraphIR(const std::string& name, bool newGraph) : mName(name)
-    {
-        if(newGraph)
-        {
+    RenderGraphIR::RenderGraphIR(const std::string& name, bool newGraph) : mName(name) {
+        if(newGraph) {
             mIR += "from falcor import *\n\n";
             mIR += "def " + getFuncName(mName) + "():\n";
             mIndentation = "    ";
@@ -95,63 +87,51 @@ namespace Falcor
         mGraphPrefix += "g.";
     };
 
-    RenderGraphIR::SharedPtr RenderGraphIR::create(const std::string& name, bool newGraph)
-    {
+    RenderGraphIR::SharedPtr RenderGraphIR::create(const std::string& name, bool newGraph) {
         return SharedPtr(new RenderGraphIR(name, newGraph));
     }
 
-    void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary)
-    {
+    void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary) {
         mIR += mIndentation + passName + " = ";
-        if(dictionary.size())
-        {
+        if(dictionary.size()) {
             std::string dictionaryStr = dictionary.toString();
             mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass), dictionaryStr);
-        }
-        else
-        {
+        } else {
             mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass));
         }
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kAddPass, passName, addQuotes(passName));
     }
 
-    void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary)
-    {
+    void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kUpdatePass, addQuotes(passName), dictionary.toString());
     }
 
-    void RenderGraphIR::removePass(const std::string& passName)
-    {
+    void RenderGraphIR::removePass(const std::string& passName) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kRemovePass, addQuotes(passName));
     }
 
-    void RenderGraphIR::addEdge(const std::string& src, const std::string& dst)
-    {
+    void RenderGraphIR::addEdge(const std::string& src, const std::string& dst) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kAddEdge, addQuotes(src), addQuotes(dst));
     }
 
-    void RenderGraphIR::removeEdge(const std::string& src, const std::string& dst)
-    {
+    void RenderGraphIR::removeEdge(const std::string& src, const std::string& dst) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kRemoveEdge, addQuotes(src), addQuotes(dst));
     }
 
-    void RenderGraphIR::markOutput(const std::string& name)
-    {
+    void RenderGraphIR::markOutput(const std::string& name) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kMarkOutput, addQuotes(name));
     }
 
-    void RenderGraphIR::unmarkOutput(const std::string& name)
-    {
+    void RenderGraphIR::unmarkOutput(const std::string& name) {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kUnmarkOutput, addQuotes(name));
     }
 
-    void RenderGraphIR::loadPassLibrary(const std::string& name)
-    {
+    void RenderGraphIR::loadPassLibrary(const std::string& name) {
         mIR += mIndentation + funcCall(RenderGraphIR::kLoadPassLibrary, addQuotes(name));
     }
 
-    void RenderGraphIR::autoGenEdges()
-    {
+    void RenderGraphIR::autoGenEdges() {
         mIR += mGraphPrefix + funcCall(RenderGraphIR::kAutoGenEdges);
     }
-}
+
+}  // namespace Falcor

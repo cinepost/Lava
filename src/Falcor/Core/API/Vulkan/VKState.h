@@ -25,27 +25,26 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_VULKAN_VKSTATE_H_
+#define SRC_FALCOR_CORE_API_VULKAN_VKSTATE_H_
+
 #include "Falcor/Core/API/GraphicsStateObject.h"
 
-namespace Falcor
-{
-    struct ColorBlendStateCreateInfo
-    {
+namespace Falcor {
+
+    struct ColorBlendStateCreateInfo {
         std::vector<VkPipelineColorBlendAttachmentState> attachmentStates;
         uint32_t attachmentCount = 0;
         VkPipelineColorBlendStateCreateInfo info;
     };
 
-    struct VertexInputStateCreateInfo
-    {
+    struct VertexInputStateCreateInfo {
         std::vector<VkVertexInputBindingDescription> bindingDescs;
         std::vector<VkVertexInputAttributeDescription> attribDescs;
         VkPipelineVertexInputStateCreateInfo info;
     };
 
-    struct RenderPassCreateInfo
-    {
+    struct RenderPassCreateInfo {
         std::vector<VkAttachmentDescription> attachmentDescs;
         std::vector<VkAttachmentReference> attachmentRefs;
         std::vector<VkSubpassDescription> subpassDescs;
@@ -65,4 +64,7 @@ namespace Falcor
     void initVkRenderPassInfo(const Fbo::Desc& fboDesc, RenderPassCreateInfo& infoOut);
 
     VkFilter getVkFilter(Sampler::Filter filter);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_VULKAN_VKSTATE_H_

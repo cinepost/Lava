@@ -32,23 +32,19 @@
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
 
+namespace Falcor {
 
-namespace Falcor
-{
-    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false)
-    {
+    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false) {
         VkImageAspectFlags flags = 0;
         if (isDepthFormat(format))      flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (ignoreStencil == false)
-        {
+        if (ignoreStencil == false) {
             if (isStencilFormat(format))    flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
         if (isDepthStencilFormat(format) == false) flags |= VK_IMAGE_ASPECT_COLOR_BIT;
         return flags;
     }
 
-    static uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format)
-    {
+    uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
         uint32_t perW = getFormatWidthCompressionRatio(format);
         uint32_t bw = align_to(perW, w) / perW;
 
@@ -89,10 +85,8 @@ namespace Falcor
         }
     }
 
-    static VkAccessFlagBits getAccessMask(Resource::State state)
-    {
-        switch (state)
-        {
+    static VkAccessFlagBits getAccessMask(Resource::State state) {
+        switch (state) {
         case Resource::State::Undefined:
         case Resource::State::Present:
         case Resource::State::Common:
@@ -126,10 +120,8 @@ namespace Falcor
         }
     }
 
-    static VkPipelineStageFlags getShaderStageMask(Resource::State state, bool src)
-    {
-        switch (state)
-        {
+    static VkPipelineStageFlags getShaderStageMask(Resource::State state, bool src) {
+        switch (state) {
         case Resource::State::Undefined:
         case Resource::State::PreInitialized:
         case Resource::State::Common:
@@ -161,12 +153,9 @@ namespace Falcor
         }
     }
 
-    void CopyContext::bindDescriptorHeaps()
-    {
-    }
+    void CopyContext::bindDescriptorHeaps() { }
 
-    static void initTexAccessParams(const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize)
-    {
+    static void initTexAccessParams(std::shared_ptr<Device> pDevice, const Texture* pTexture, uint32_t subresourceIndex, VkBufferImageCopy& vkCopy, Buffer::SharedPtr& pStaging, const void* pSrcData, const uint3& offset, const uint3& size, size_t& dataSize) {
         assert(isDepthStencilFormat(pTexture->getFormat()) == false); // #VKTODO Nothing complicated here, just that Vulkan doesn't support writing to both depth and stencil, which may be confusing to the user
         uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresourceIndex);
 
@@ -185,16 +174,15 @@ namespace Falcor
         dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
 
         // Upload the data to a staging buffer
-        pStaging = Buffer::create(dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
+        pStaging = Buffer::create(pDevice, dataSize, Buffer::BindFlags::None, pSrcData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pSrcData);
         vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
     }
 
-    static void updateTextureSubresource(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex, const void* pData, const uint3& offset, const uint3& size)
-    {
+    static void updateTextureSubresource(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex, const void* pData, const uint3& offset, const uint3& size) {
         VkBufferImageCopy vkCopy;
         Buffer::SharedPtr pStaging;
         size_t dataSize;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pStaging, pData, offset, size, dataSize);
+        initTexAccessParams(pCtx->device(), pTexture, subresourceIndex, vkCopy, pStaging, pData, offset, size, dataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopyDest);
@@ -202,15 +190,13 @@ namespace Falcor
         vkCmdCopyBufferToImage(pCtx->getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     }
 
-    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
-    {
+    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size) {
         bool copyRegion = (offset != uint3(0)) || (size != uint3(-1));
         assert(subresourceCount == 1 || (copyRegion == false));
 
         mCommandsPending = true;
         const uint8_t* pSubResData = (uint8_t*)pData;
-        for (uint32_t i = 0; i < subresourceCount; i++)
-        {
+        for (uint32_t i = 0; i < subresourceCount; i++) {
             uint32_t subresource = i + firstSubresource;
             updateTextureSubresource(this, pTexture, subresource, pSubResData, offset, size);
             uint32_t mipLevel = pTexture->getSubresourceMipLevel(subresource);
@@ -219,13 +205,119 @@ namespace Falcor
         }
     }
 
-    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex)
-    {
+    void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+        assert(pPage);
+        assert(pData);
+
+        if(!pPage->isResident()) {
+            LOG_ERR("Unable to update non-resident texture page !!!");
+            return;
+        }
+
+        if(!pData) {
+            LOG_ERR("No pData provided for updateTexturePage(...) call !!!");
+            return;
+        }
+
+        VkBufferImageCopy vkCopy;
+        Buffer::SharedPtr pStaging;
+        
+        vkCopy = {};
+        vkCopy.bufferRowLength = 0;
+        vkCopy.bufferImageHeight = 0;
+        vkCopy.imageSubresource.baseArrayLayer = 0;
+        vkCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        vkCopy.imageSubresource.layerCount = 1;
+        vkCopy.imageSubresource.mipLevel = pPage->mipLevel();
+        vkCopy.imageOffset = pPage->offsetVK();
+        vkCopy.imageExtent = pPage->extentVK();
+
+        auto pTexture = pPage->texture().get();
+
+        size_t dataSize = getMipLevelPackedDataSize(pTexture, vkCopy.imageExtent.width, vkCopy.imageExtent.height, vkCopy.imageExtent.depth, pTexture->getFormat());
+
+        pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
+
+        vkCopy.bufferOffset = pStaging->getGpuAddressOffset();
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStaging.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
+    }
+
+    void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
+        assert(pPage);
+        if(!pPage->isResident()) {
+            LOG_ERR("Unable to update non-resident texture page !!!");
+            return;
+        }
+
+        if(!pStagingBuffer) {
+            LOG_ERR("No staging buffer provided for updateTexturePage(...) call !!!");
+            return;
+        }
+
+        VkBufferImageCopy vkCopy;
+
+        vkCopy = {};
+        vkCopy.bufferRowLength = 0;
+        vkCopy.bufferImageHeight = 0;
+        vkCopy.imageSubresource.baseArrayLayer = 0;
+        vkCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        vkCopy.imageSubresource.layerCount = 1;
+        vkCopy.imageSubresource.mipLevel = pPage->mipLevel();
+        vkCopy.imageOffset = pPage->offsetVK();
+        vkCopy.imageExtent = pPage->extentVK();
+
+        auto pTexture = pPage->texture().get();
+
+        vkCopy.bufferOffset = pStagingBuffer->getGpuAddressOffset();
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStagingBuffer.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStagingBuffer->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
+    }
+
+    void CopyContext::updateMipTailData(const Texture* pTexture, const int3& offset, const uint3& extent, uint8_t mipLevel, const void* pData) {
+        assert(pTexture);
+        assert(pData);
+
+        VkBufferImageCopy region{};
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.layerCount = 1;
+        region.imageSubresource.mipLevel = mipLevel;
+        region.imageOffset = { offset.x, offset.y, offset.z };
+        region.imageExtent = { extent.x, extent.y, extent.z };
+
+
+        Buffer::SharedPtr pStaging;
+        auto const format = pTexture->getFormat();
+
+        uint32_t numChannels = getFormatChannelCount(format);
+        uint32_t totalChannelsBits = 0;
+
+        for( uint32_t i = 0; i < numChannels; i++ ) {
+            totalChannelsBits += getNumChannelBits(format, i);
+        }
+
+        size_t dataSize = region.imageExtent.width * region.imageExtent.height * region.imageExtent.depth * (totalChannelsBits / 8);
+        
+        pStaging = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
+
+        // Execute the copy
+        resourceBarrier(pTexture, Resource::State::CopyDest);
+        resourceBarrier(pStaging.get(), Resource::State::CopySource);
+        vkCmdCopyBufferToImage(getLowLevelData()->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    }
+
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex) {
         SharedPtr pThis = SharedPtr(new ReadTextureTask);
         pThis->mpContext = pCtx;
 
         VkBufferImageCopy vkCopy;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uint3(-1, -1, -1), pThis->mDataSize);
+        initTexAccessParams(pCtx->device(), pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uint3(-1, -1, -1), pThis->mDataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
@@ -233,15 +325,14 @@ namespace Falcor
         vkCmdCopyImageToBuffer(pCtx->getLowLevelData()->getCommandList(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pThis->mpBuffer->getApiHandle(), 1, &vkCopy);
 
         // Create a fence and signal
-        pThis->mpFence = GpuFence::create();
+        pThis->mpFence = GpuFence::create(pCtx->device());
         pCtx->flush(false);
         pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
 
         return pThis;
     }
 
-    std::vector<uint8_t> CopyContext::ReadTextureTask::getData()
-    {
+    std::vector<uint8_t> CopyContext::ReadTextureTask::getData() {
         mpFence->syncCpu();
         // Map and read the results
         std::vector<uint8_t> result(mDataSize);
@@ -250,13 +341,11 @@ namespace Falcor
         return result;
     }
 
-    void CopyContext::uavBarrier(const Resource* pResource)
-    {
+    void CopyContext::uavBarrier(const Resource* pResource) {
         UNSUPPORTED_IN_VULKAN("uavBarrier");
     }
 
-    void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel)
-    {
+    void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel) {
         VkImageMemoryBarrier barrier = {};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.newLayout = getImageLayout(newState);
@@ -273,15 +362,13 @@ namespace Falcor
         vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(oldState, true), getShaderStageMask(newState, false), 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
 
-    bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState)
-    {
+    bool CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState) {
         assert(pTexture->getApiHandle().getType() == VkResourceType::Image);
 
         VkImageLayout srcLayout = getImageLayout(pTexture->getGlobalState());
         VkImageLayout dstLayout = getImageLayout(newState);
 
-        if (srcLayout != dstLayout)
-        {
+        if (srcLayout != dstLayout) {
             VkImageMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             barrier.oldLayout = srcLayout;
@@ -306,16 +393,14 @@ namespace Falcor
         return false;
     }
 
-    bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
-    {
+    bool CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState) {
         assert(pBuffer);
         assert(pBuffer->getApiHandle().getType() == VkResourceType::Buffer);
 
         VkPipelineStageFlags srcStageMask = getShaderStageMask(pBuffer->getGlobalState(), true);
         VkPipelineStageFlags dstStageMask = getShaderStageMask(newState, false);
 
-        if (srcStageMask != dstStageMask)
-        {
+        if (srcStageMask != dstStageMask) {
             VkBufferMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
             barrier.srcAccessMask = getAccessMask(pBuffer->getGlobalState());
@@ -333,17 +418,13 @@ namespace Falcor
         return false;
     }
 
-    void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc)
-    {
+    void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc) {
         const Buffer* pDstBuffer = dynamic_cast<const Buffer*>(pDst);
-        if (pDstBuffer)
-        {
+        if (pDstBuffer) {
             const Buffer* pSrcBuffer = dynamic_cast<const Buffer*>(pSrc);
             assert(pSrcBuffer && (pSrcBuffer->getSize() == pDstBuffer->getSize()));
             copyBufferRegion(pDstBuffer, 0, pSrcBuffer, 0, pSrcBuffer->getSize());
-        }
-        else
-        {
+        } else {
             const Texture* pSrcTex = dynamic_cast<const Texture*>(pSrc);
             const Texture* pDstTex = dynamic_cast<const Texture*>(pDst);
             assert(pSrcTex && pDstTex);
@@ -354,8 +435,7 @@ namespace Falcor
             VkImageAspectFlags srcAspect = getAspectFlagsFromFormat(pSrcTex->getFormat());
             VkImageAspectFlags dstAspect = getAspectFlagsFromFormat(pDstTex->getFormat());
             uint32_t arraySize = pSrcTex->getArraySize();
-            for (uint32_t i = 0; i < mipCount; i++)
-            {
+            for (uint32_t i = 0; i < mipCount; i++) {
                 regions[i] = {};
                 regions[i].srcSubresource.aspectMask = srcAspect;
                 regions[i].srcSubresource.baseArrayLayer = 0;
@@ -377,16 +457,14 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void initRegionSubresourceData(const Texture* pTex, uint32_t subresource, VkImageSubresourceLayers& data)
-    {
+    void initRegionSubresourceData(const Texture* pTex, uint32_t subresource, VkImageSubresourceLayers& data) {
         data.aspectMask = getAspectFlagsFromFormat(pTex->getFormat());
         data.baseArrayLayer = pTex->getSubresourceArraySlice(subresource);
         data.layerCount = 1;
         data.mipLevel = pTex->getSubresourceMipLevel(subresource);
     }
 
-    void CopyContext::copySubresource(const Texture* pDst, uint32_t dstSubresourceIdx, const Texture* pSrc, uint32_t srcSubresourceIdx)
-    {
+    void CopyContext::copySubresource(const Texture* pDst, uint32_t dstSubresourceIdx, const Texture* pSrc, uint32_t srcSubresourceIdx) {
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);
         VkImageCopy region = {};
@@ -402,8 +480,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void CopyContext::copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes)
-    {
+    void CopyContext::copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes) {
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);
         VkBufferCopy region;
@@ -415,8 +492,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uint3& dstOffset, const uint3& srcOffset, const uint3& size)
-    {
+    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uint3& dstOffset, const uint3& srcOffset, const uint3& size) {
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);
 

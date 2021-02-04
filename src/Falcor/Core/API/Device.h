@@ -33,6 +33,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include <atomic>
 
 #include "Falcor/Core/Window.h"
 //#include "Falcor/Core/API/Texture.h"
@@ -45,26 +46,31 @@
 
 namespace Falcor {
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
     #define DEFAULT_ENABLE_DEBUG_LAYER true
-#else
-    #define DEFAULT_ENABLE_DEBUG_LAYER false
-#endif
+//#else
+//    #define DEFAULT_ENABLE_DEBUG_LAYER false
+//#endif
 
 struct DeviceApiData;
 
-class Engine;
+class DeviceManager;
+class SparseResourceManager;
 
-class dlldecl Device {
+class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
     using SharedPtr = std::shared_ptr<Device>;
     using SharedConstPtr = std::shared_ptr<const Device>;
     using ApiHandle = DeviceHandle;
+    using DeviceLocalUID = uint32_t;
+    
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
+
+    ~Device();
 
     /** Device configuration
     */
-    struct Desc : ScriptBindings::enable_to_string {
+    struct Desc {
         ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
         ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
         uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
@@ -97,12 +103,9 @@ class dlldecl Device {
 
     using MemoryType = GpuMemoryHeap::Type;
 
-    /** Create a new device.
-        \param[in] pWindow a previously-created window object
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
+    /** Device unique id.
     */
-    static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
+    uint8_t uid() { return _uid; }
 
     /** Acts as the destructor for Device. Some resources use gpDevice in their cleanup.
         Cleaning up the SharedPtr directly would clear gpDevice before calling destructors.
@@ -114,6 +117,11 @@ class dlldecl Device {
     void toggleVSync(bool enable);
 
     bool isHeadless() { return headless; };
+
+    /** Get physical device name
+    */
+    std::string& getPhysicalDeviceName();
+
 
     /** Check if the window is occluded
     */
@@ -190,9 +198,24 @@ class dlldecl Device {
     bool isFeatureSupported(SupportedFeatures flags) const;
 #ifdef FALCOR_VK
     uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
+
+    /** Get the index of a memory type that has all the requested property bits set
+        *
+        * @param typeBits Bitmask with bits set for each memory type supported by the resource to request for (from VkMemoryRequirements)
+        * @param properties Bitmask of properties for the memory type to request
+        * @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
+        * 
+        * @return Index of the requested memory type
+        *
+        * @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
+        */
+    uint32_t getVkMemoryTypeNative(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) const;
+    
     const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
     uint32_t  getDeviceVendorID() const;
 #endif
+
+    DeviceApiData* apiData() const { return mpApiData; };
 
  private:
     static constexpr uint32_t kSwapChainBuffersCount = 5;
@@ -208,6 +231,8 @@ class dlldecl Device {
     Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffersCount];
     Fbo::SharedPtr mpOffscreenFbo;
 
+    Device(const Desc& desc);
+    Device(uint32_t gpuId, const Desc& desc);
     Device(Window::SharedPtr pWindow, const Desc& desc);
 
     void executeDeferredReleases();
@@ -253,13 +278,38 @@ class dlldecl Device {
     void toggleFullScreen(bool fullscreen);
 
  protected:
+    /** Create a new rendering(headless) device.
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(const Desc& desc);
+
+    /** Create a new rendering(headless) device.
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(uint32_t deviceId, const Desc& desc);
+
+    /** Create a new device.
+        \param[in] pWindow a previously-created window object
+        \param[in] desc Device configuration descriptor.
+        \return nullptr if the function failed, otherwise a new device object
+    */
+    static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
+
+    friend class DeviceManager;
+    friend class SparseResourceManager;
+    
     bool init();
 
-    friend class Engine;
-};
+    std::string mPhysicalDeviceName;
+    uint8_t mGpuId = 0;
 
-dlldecl extern Device::SharedPtr gpDevice;
-dlldecl extern Device::SharedPtr gpDeviceHeadless;
+    uint8_t _uid;
+    static std::atomic<std::uint8_t> UID;
+
+    VkPhysicalDeviceFeatures deviceFeatures;
+};
 
 enum_class_operators(Device::SupportedFeatures);
 

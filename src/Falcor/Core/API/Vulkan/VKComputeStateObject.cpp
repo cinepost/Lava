@@ -52,10 +52,10 @@ void ComputeStateObject::apiInit() {
 
 
     VkPipeline pipeline;
-    if (VK_FAILED(vkCreateComputePipelines(gpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))) {
+    if (VK_FAILED(vkCreateComputePipelines(mpDevice->getApiHandle(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))) {
         throw std::runtime_error("Could not create compute pipeline.");
     }
-    mApiHandle = ApiHandle::create(pipeline);
+    mApiHandle = ApiHandle::create(mpDevice, pipeline);
 }
 
 }  // namespace Falcor

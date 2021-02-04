@@ -28,30 +28,50 @@
 #include "stdafx.h"
 #include "RenderGraphExe.h"
 
-namespace Falcor
-{
-    void RenderGraphExe::execute(const Context& ctx)
-    {
-        PROFILE("RenderGraphExe::execute()");
+namespace Falcor {
 
-        for (const auto& pass : mExecutionList)
-        {
-            PROFILE(pass.name);
+    void RenderGraphExe::execute(const Context& ctx) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::execute()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
 
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }
     }
 
-    void RenderGraphExe::renderUI(Gui::Widgets& widget)
-    {
-        for (const auto& p : mExecutionList)
-        {
+    void RenderGraphExe::resolvePerFrameSparseResources(const Context& ctx) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::resolvePerFrameSparseResources()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            pass.pPass->resolvePerFrameSparseResources(ctx.pRenderContext, renderData);
+        }
+    }
+
+    void RenderGraphExe::resolvePerSampleSparseResources(const Context& ctx) {
+        auto pDevice = ctx.pRenderContext->device();
+        PROFILE(pDevice, "RenderGraphExe::resolvePerSampleSparseResources()");
+
+        for (const auto& pass : mExecutionList) {
+            PROFILE(pDevice, pass.name);
+
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            pass.pPass->resolvePerSampleSparseResources(ctx.pRenderContext, renderData);
+        }
+    }
+
+    void RenderGraphExe::renderUI(Gui::Widgets& widget) {
+        for (const auto& p : mExecutionList) {
             const auto& pPass = p.pPass;
 
             auto passGroup = Gui::Group(widget, p.name);
-            if (passGroup.open())
-            {
+            if (passGroup.open()) {
                 // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
                 const auto& desc = pPass->getDesc();
                 if (desc.size()) passGroup.tooltip(desc.c_str());
@@ -62,50 +82,41 @@ namespace Falcor
         }
     }
 
-    bool RenderGraphExe::onMouseEvent(const MouseEvent& mouseEvent)
-    {
+    bool RenderGraphExe::onMouseEvent(const MouseEvent& mouseEvent) {
         bool b = false;
-        for (const auto& p : mExecutionList)
-        {
+        for (const auto& p : mExecutionList) {
             const auto& pPass = p.pPass;
             b = b || pPass->onMouseEvent(mouseEvent);
         }
         return b;
     }
 
-    bool RenderGraphExe::onKeyEvent(const KeyboardEvent& keyEvent)
-    {
+    bool RenderGraphExe::onKeyEvent(const KeyboardEvent& keyEvent) {
         bool b = false;
-        for (const auto& p : mExecutionList)
-        {
+        for (const auto& p : mExecutionList) {
             const auto& pPass = p.pPass;
             b = b || pPass->onKeyEvent(keyEvent);
         }
         return b;
     }
 
-    void RenderGraphExe::onHotReload(HotReloadFlags reloaded)
-    {
-        for (const auto& p : mExecutionList)
-        {
+    void RenderGraphExe::onHotReload(HotReloadFlags reloaded) {
+        for (const auto& p : mExecutionList) {
             const auto& pPass = p.pPass;
             pPass->onHotReload(reloaded);
         }
     }
 
-    void RenderGraphExe::insertPass(const std::string& name, const RenderPass::SharedPtr& pPass)
-    {
+    void RenderGraphExe::insertPass(const std::string& name, const RenderPass::SharedPtr& pPass) {
         mExecutionList.push_back(Pass(name, pPass));
     }
 
-    Resource::SharedPtr RenderGraphExe::getResource(const std::string& name) const
-    {
+    Resource::SharedPtr RenderGraphExe::getResource(const std::string& name) const {
         assert(mpResourceCache);
         return mpResourceCache->getResource(name);
     }
 
-    void RenderGraphExe::setInput(const std::string& name, const Resource::SharedPtr& pResource)
-    {
+    void RenderGraphExe::setInput(const std::string& name, const Resource::SharedPtr& pResource) {
         mpResourceCache->registerExternalResource(name, pResource);
     }
 }

@@ -65,9 +65,7 @@ VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
         
 // Structured buffer
 
-        case DescriptorPool::Type::StructuredBufferSrv:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        
+        case DescriptorPool::Type::StructuredBufferSrv:        
         case DescriptorPool::Type::StructuredBufferUav:
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
@@ -75,8 +73,6 @@ VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             
         case DescriptorPool::Type::Dsv:
-            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
         case DescriptorPool::Type::Rtv:
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         
@@ -91,6 +87,7 @@ VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
 }
 
 void DescriptorPool::apiInit() {
+    //LOG_DBG("DescriptorPool apiInit");
     mpApiData = std::make_shared<DescriptorPool::ApiData>();
     uint32_t totalDescCount = 0;
     VkDescriptorPoolSize poolSizeForType[kTypeCount];
@@ -113,10 +110,11 @@ void DescriptorPool::apiInit() {
     info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
     VkDescriptorPool pool;
-    if (VK_FAILED(vkCreateDescriptorPool(gpDevice->getApiHandle(), &info, nullptr, &pool))) {
+    if (VK_FAILED(vkCreateDescriptorPool(mpDevice->getApiHandle(), &info, nullptr, &pool))) {
         throw std::runtime_error("Error creating descriptor pool!");
     }
-    mpApiData->descriptorPool = ApiHandle::create(pool);
+    mpApiData->descriptorPool = ApiHandle::create(mpDevice, pool);
+    //LOG_DBG("DescriptorPool apiInit done");
 }
 
 const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const {

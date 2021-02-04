@@ -49,23 +49,23 @@ namespace Falcor
     ParticleSystem::ParticleSystem(RenderContext* pCtx, uint32_t maxParticles, uint32_t maxEmitPerFrame,
         std::string drawPixelShader, std::string simulateComputeShader, bool sorted)
     {
+
+        std::shared_ptr<Device> device = pCtx->device();
+
         mShouldSort = sorted;
         mMaxEmitPerFrame = maxEmitPerFrame;
 
         //Data that is different if system is sorted
         Program::DefineList defineList;
-        if (mShouldSort)
-        {
+        if (mShouldSort) {
             mMaxParticles = (uint32_t)pow(2, (std::ceil(log2((float)maxParticles))));
-            initSortResources();
+            initSortResources(device);
             defineList.add("_SORT");
-        }
-        else
-        {
+        } else {
             mMaxParticles = maxParticles;
         }
         //compute cs
-        ComputeProgram::SharedPtr pSimulateCs = ComputeProgram::createFromFile(simulateComputeShader, "main", defineList);
+        ComputeProgram::SharedPtr pSimulateCs = ComputeProgram::createFromFile(device, simulateComputeShader, "main", defineList);
 
         //get num sim threads, required as a define for emit cs
         uint3 simThreads;
@@ -76,21 +76,21 @@ namespace Falcor
         //Emit cs
         Program::DefineList emitDefines;
         emitDefines.add("_SIMULATE_THREADS", std::to_string(mSimulateThreads));
-        ComputeProgram::SharedPtr pEmitCs = ComputeProgram::createFromFile(kEmitShader, "main", emitDefines);
+        ComputeProgram::SharedPtr pEmitCs = ComputeProgram::createFromFile(device, kEmitShader, "main", emitDefines);
 
         //draw shader
         GraphicsProgram::Desc d(kVertexShader);
         d.vsEntry("main").addShaderLibrary(drawPixelShader).psEntry("main");
-        GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::create(d, defineList);
+        GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::create(device, d, defineList);
 
         //ParticlePool
-        mpParticlePool = Buffer::createStructured(pEmitCs.get(), "particlePool", mMaxParticles);
+        mpParticlePool = Buffer::createStructured(device, pEmitCs.get(), "particlePool", mMaxParticles);
 
         //emitList
-        mpEmitList = Buffer::createStructured(pEmitCs.get(), "emitList", mMaxEmitPerFrame);
+        mpEmitList = Buffer::createStructured(device, pEmitCs.get(), "emitList", mMaxEmitPerFrame);
 
         //Dead List
-        mpDeadList = Buffer::createStructured(pEmitCs.get(), "deadList", mMaxParticles);
+        mpDeadList = Buffer::createStructured(device, pEmitCs.get(), "deadList", mMaxParticles);
 
         // Init data in dead list buffer
         mpDeadList->getUAVCounter()->setBlob(&mMaxParticles, 0, sizeof(uint32_t));
@@ -101,11 +101,11 @@ namespace Falcor
         mpDeadList->setBlob(indices.data(), 0, indices.size() * sizeof(uint32_t));
 
         // Alive list
-        mpAliveList = Buffer::createStructured(pSimulateCs.get(), "aliveList", mMaxParticles);
+        mpAliveList = Buffer::createStructured(device, pSimulateCs.get(), "aliveList", mMaxParticles);
 
         // Indirect args
         Resource::BindFlags indirectBindFlags = Resource::BindFlags::IndirectArg | Resource::BindFlags::UnorderedAccess;
-        mpIndirectArgs = Buffer::createStructured(pSimulateCs.get(), "drawArgs", 1, indirectBindFlags);
+        mpIndirectArgs = Buffer::createStructured(device, pSimulateCs.get(), "drawArgs", 1, indirectBindFlags);
 
         //initialize the first member of the args, vert count per instance, to be 4 for particle billboards
         uint32_t vertexCountPerInstance = 4;
@@ -113,20 +113,20 @@ namespace Falcor
 
         //Vars
         //emit
-        mEmitResources.pVars = ComputeVars::create(pEmitCs->getReflector());
+        mEmitResources.pVars = ComputeVars::create(device, pEmitCs->getReflector());
         mEmitResources.pVars->setBuffer("deadList", mpDeadList);
         mEmitResources.pVars->setBuffer("particlePool", mpParticlePool);
         mEmitResources.pVars->setBuffer("emitList", mpEmitList);
         mEmitResources.pVars->setBuffer("numAlive", mpAliveList->getUAVCounter());
         //simulate
-        mSimulateResources.pVars = ComputeVars::create(pSimulateCs->getReflector());
+        mSimulateResources.pVars = ComputeVars::create(device, pSimulateCs->getReflector());
         mSimulateResources.pVars->setBuffer("deadList", mpDeadList);
         mSimulateResources.pVars->setBuffer("particlePool", mpParticlePool);
         mSimulateResources.pVars->setBuffer("drawArgs", mpIndirectArgs);
         mSimulateResources.pVars->setBuffer("aliveList", mpAliveList);
         mSimulateResources.pVars->setBuffer("numDead", mpDeadList->getUAVCounter());
-        if (mShouldSort)
-        {
+        
+        if (mShouldSort) {
             mSimulateResources.pVars->setBuffer("sortIterationCounter", mSortResources.pSortIterationCounter);
             //sort
             mSortResources.pVars->setBuffer("sortList", mpAliveList);
@@ -134,16 +134,16 @@ namespace Falcor
         }
 
         //draw
-        mDrawResources.pVars = GraphicsVars::create(pDrawProgram->getReflector());
+        mDrawResources.pVars = GraphicsVars::create(device, pDrawProgram->getReflector());
         mDrawResources.pVars->setBuffer("aliveList", mpAliveList);
         mDrawResources.pVars->setBuffer("particlePool", mpParticlePool);
 
         //State
-        mEmitResources.pState = ComputeState::create();
+        mEmitResources.pState = ComputeState::create(device);
         mEmitResources.pState->setProgram(pEmitCs);
-        mSimulateResources.pState = ComputeState::create();
+        mSimulateResources.pState = ComputeState::create(device);
         mSimulateResources.pState->setProgram(pSimulateCs);
-        mDrawResources.pState = GraphicsState::create();
+        mDrawResources.pState = GraphicsState::create(device);
         mDrawResources.pState->setProgram(pDrawProgram);
 
         //Create empty vbo for draw
@@ -158,12 +158,10 @@ namespace Falcor
         mBindLocations.emitCB = pEmitCs->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerEmit");
     }
 
-    void ParticleSystem::emit(RenderContext* pCtx, uint32_t num)
-    {
+    void ParticleSystem::emit(RenderContext* pCtx, uint32_t num) {
         std::vector<Particle> emittedParticles;
         emittedParticles.resize(num);
-        for (uint32_t i = 0; i < num; ++i)
-        {
+        for (uint32_t i = 0; i < num; ++i) {
             Particle p;
             p.pos = mEmitter.spawnPos + glm::linearRand(-mEmitter.spawnPosOffset, mEmitter.spawnPosOffset);
             p.vel = mEmitter.vel + glm::linearRand(-mEmitter.velOffset, mEmitter.velOffset);
@@ -189,28 +187,23 @@ namespace Falcor
         pCtx->dispatch(mEmitResources.pState.get(), mEmitResources.pVars.get(), {1, numGroups, 1});
     }
 
-    void ParticleSystem::update(RenderContext* pCtx, float dt, glm::mat4 view)
-    {
+    void ParticleSystem::update(RenderContext* pCtx, float dt, glm::mat4 view) {
         //emit
         mEmitTimer += dt;
-        if (mEmitTimer >= mEmitter.emitFrequency)
-        {
+        if (mEmitTimer >= mEmitter.emitFrequency) {
             mEmitTimer -= mEmitter.emitFrequency;
             emit(pCtx, std::max(mEmitter.emitCount + glm::linearRand(-mEmitter.emitCountOffset, mEmitter.emitCountOffset), 0));
         }
 
         //Simulate
-        if (mShouldSort)
-        {
+        if (mShouldSort) {
             SimulateWithSortPerFrame perFrame;
             perFrame.view = view;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
             mSimulateResources.pVars->getParameterBlock(mBindLocations.simulateCB)->setBlob(&perFrame, 0u, sizeof(SimulateWithSortPerFrame));
             mpAliveList->setBlob(mSortDataReset.data(), 0, sizeof(SortData) * mMaxParticles);
-        }
-        else
-        {
+        } else {
             SimulatePerFrame perFrame;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
@@ -223,8 +216,7 @@ namespace Falcor
         pCtx->dispatch(mSimulateResources.pState.get(), mSimulateResources.pVars.get(), {std::max(mMaxParticles / mSimulateThreads, 1u), 1, 1});
     }
 
-    void ParticleSystem::render(RenderContext* pCtx, const Fbo::SharedPtr& pDst, glm::mat4 view, glm::mat4 proj)
-    {
+    void ParticleSystem::render(RenderContext* pCtx, const Fbo::SharedPtr& pDst, glm::mat4 view, glm::mat4 proj) {
         //sorting
         if (mShouldSort) pCtx->dispatch(mSortResources.pState.get(), mSortResources.pVars.get(), {1, 1, 1});
 
@@ -239,11 +231,9 @@ namespace Falcor
         pCtx->drawIndirect(mDrawResources.pState.get(), mDrawResources.pVars.get(), 1, mpIndirectArgs.get(), 0, nullptr, 0);
     }
 
-    void ParticleSystem::renderUi(Gui::Widgets& widget)
-    {
+    void ParticleSystem::renderUi(Gui::Widgets& widget) {
         auto g = Gui::Group(widget, "Particle System Settings");
-        if (g.open())
-        {
+        if (g.open()) {
             float floatMax = std::numeric_limits<float>::max();
             g.var("Duration", mEmitter.duration, 0.f);
             g.var("DurationOffset", mEmitter.durationOffset, 0.f);
@@ -271,13 +261,12 @@ namespace Falcor
         }
     }
 
-    void ParticleSystem::initSortResources()
-    {
+    void ParticleSystem::initSortResources(std::shared_ptr<Device> pDevice) {
         //Shader
-        ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(kSortShader, "main");
+        ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(pDevice, kSortShader, "main");
 
         //iteration counter buffer
-        mSortResources.pSortIterationCounter = Buffer::createStructured(pSortCs.get(), "iterationCounter", 2);
+        mSortResources.pSortIterationCounter = Buffer::createStructured(pDevice, pSortCs.get(), "iterationCounter", 2);
 
         //Sort data reset buffer
         SortData resetData;
@@ -286,68 +275,58 @@ namespace Falcor
         mSortDataReset.resize(mMaxParticles, resetData);
 
         //Vars and state
-        mSortResources.pVars = ComputeVars::create(pSortCs->getReflector());
-        mSortResources.pState = ComputeState::create();
+        mSortResources.pVars = ComputeVars::create(pDevice, pSortCs->getReflector());
+        mSortResources.pState = ComputeState::create(pDevice);
         mSortResources.pState->setProgram(pSortCs);
     }
 
-    void ParticleSystem::setParticleDuration(float dur, float offset)
-    {
+    void ParticleSystem::setParticleDuration(float dur, float offset) {
         mEmitter.duration = dur;
         mEmitter.durationOffset = offset;
     }
 
-    void ParticleSystem::setEmitData(uint32_t emitCount, uint32_t emitCountOffset, float emitFrequency)
-    {
+    void ParticleSystem::setEmitData(uint32_t emitCount, uint32_t emitCountOffset, float emitFrequency) {
         mEmitter.emitCount = (int32_t)emitCount;
         mEmitter.emitCountOffset = (int32_t)emitCountOffset;
         mEmitter.emitFrequency = emitFrequency;
     }
 
-    void ParticleSystem::setSpawnPos(float3 spawnPos, float3 offset)
-    {
+    void ParticleSystem::setSpawnPos(float3 spawnPos, float3 offset) {
         mEmitter.spawnPos = spawnPos;
         mEmitter.spawnPosOffset = offset;
     }
 
-    void ParticleSystem::setVelocity(float3 velocity, float3 offset)
-    {
+    void ParticleSystem::setVelocity(float3 velocity, float3 offset) {
         mEmitter.vel = velocity;
         mEmitter.velOffset = offset;
     }
 
-    void ParticleSystem::setAcceleration(float3 accel, float3 offset)
-    {
+    void ParticleSystem::setAcceleration(float3 accel, float3 offset) {
         mEmitter.accel = accel;
         mEmitter.accelOffset = offset;
     }
 
-    void ParticleSystem::setScale(float scale, float offset)
-    {
+    void ParticleSystem::setScale(float scale, float offset) {
         mEmitter.scale = scale;
         mEmitter.scaleOffset = offset;
     }
 
-    void ParticleSystem::setGrowth(float growth, float offset)
-    {
+    void ParticleSystem::setGrowth(float growth, float offset) {
         mEmitter.growth = growth;
         mEmitter.growthOffset = offset;
     }
 
-    void ParticleSystem::setBillboardRotation(float rot, float offset)
-    {
+    void ParticleSystem::setBillboardRotation(float rot, float offset) {
         mEmitter.billboardRotation = rot;
         mEmitter.billboardRotationOffset = offset;
     }
 
-    void ParticleSystem::setBillboardRotationVelocity(float rotVel, float offset)
-    {
+    void ParticleSystem::setBillboardRotationVelocity(float rotVel, float offset) {
         mEmitter.billboardRotationVel = rotVel;
         mEmitter.billboardRotationVelOffset = offset;
     }
 
-    std::shared_ptr<ComputeProgram> ParticleSystem::getSimulateProgram() const
-    {
+    std::shared_ptr<ComputeProgram> ParticleSystem::getSimulateProgram() const {
         return mSimulateResources.pState->getProgram();
     }
 }

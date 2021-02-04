@@ -25,40 +25,26 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
-#include "API/GpuTimer.h"
-#include "API/Device.h"
+#include "Falcor/stdafx.h"
+#include "Falcor/Core/API/GpuTimer.h"
+#include "Falcor/Core/API/Device.h"
 
-namespace Falcor
-{
-    /*
-    void GpuTimer::apiBegin()
-    {
-        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mStart);
-    }
+namespace Falcor {
 
-    void GpuTimer::apiEnd()
-    {
-        mpLowLevelData->getCommandList()->EndQuery(spHeap.lock()->getApiHandle(), D3D12_QUERY_TYPE_TIMESTAMP, mEnd);
-    }
-    */
-
-    void GpuTimer::apiBegin()
-   {
+    void GpuTimer::apiBegin() {
         auto mpHeap = spHeap.lock()->getApiHandle();
         vkCmdResetQueryPool(mpLowLevelData->getCommandList(), mpHeap, mStart, 2);
         vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mStart);
-   }
+    }
 
-    void GpuTimer::apiEnd()
-    {
+    void GpuTimer::apiEnd() {
         auto mpHeap = spHeap.lock()->getApiHandle();
         vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mEnd);
     }
 
-    void GpuTimer::apiResolve(uint64_t result[2])
-    {
+    void GpuTimer::apiResolve(uint64_t result[2]) {
         auto mpHeap = spHeap.lock()->getApiHandle();
-        vk_call(vkGetQueryPoolResults(gpDevice->getApiHandle(), mpHeap, mStart, 2, sizeof(uint64_t) * 2, result, sizeof(result[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+        vk_call(vkGetQueryPoolResults(mpDevice->getApiHandle(), mpHeap, mStart, 2, sizeof(uint64_t) * 2, result, sizeof(result[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
     }
-}
+
+}  // namespace Falcor

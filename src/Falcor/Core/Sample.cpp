@@ -31,6 +31,7 @@
 #include "imgui/imgui.h"
 
 #include "Falcor/stdafx.h"
+#include "Falcor/Core/API/DeviceManager.h"
 #include "Sample.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Core/Platform/ProgressBar.h"
@@ -38,7 +39,7 @@
 #include "Falcor/Utils/Threading.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-namespace Falcor {
+namespace Falcor { 
 
 IFramework* gpFramework = nullptr;
 
@@ -46,6 +47,11 @@ namespace {
 
 std::string kMonospaceFont = "monospace";
 
+}
+
+Sample::Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)), mpDevice(nullptr) {
+    mClock = nullptr;
+    mFrameRate = nullptr;
 }
 
 void Sample::handleWindowSizeChange() {
@@ -60,7 +66,7 @@ void Sample::handleWindowSizeChange() {
 
         // Recreate target fbo
         auto pCurrentFbo = mpTargetFBO;
-        mpTargetFBO = Fbo::create2D(width, height, pBackBufferFBO->getDesc());
+        mpTargetFBO = Fbo::create2D(mpDevice, width, height, pBackBufferFBO->getDesc());
         mpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
 
         // Tell the GUI the swap-chain size changed
@@ -118,8 +124,8 @@ void Sample::handleWindowSizeChange() {
                     case KeyboardEvent::Key::V:
                         mVsyncOn = !mVsyncOn;
                         mpDevice->toggleVSync(mVsyncOn);
-                        mFrameRate.reset();
-                        mClock.setTime(0);
+                        mFrameRate->reset();
+                        mClock->setTime(0);
                         break;
                     case KeyboardEvent::Key::F2:
                         toggleUI(!mShowUI);
@@ -140,7 +146,7 @@ void Sample::handleWindowSizeChange() {
                         break;
                     case KeyboardEvent::Key::Pause:
                     case KeyboardEvent::Key::Space:
-                        mClock.isPaused() ? mClock.play() : mClock.pause();
+                        mClock->isPaused() ? mClock->play() : mClock->pause();
                         break;
                 }
             }
@@ -163,10 +169,13 @@ void Sample::handleWindowSizeChange() {
         mpRenderer.reset();
         if (mVideoCapture.pVideoCapture) endVideoCapture();
 
-        Clock::shutdown();
+        //Clock::shutdown();
+        delete mClock;
+        delete mFrameRate;
+
         Threading::shutdown();
         Scripting::shutdown();
-        RenderPassLibrary::instance().shutdown();
+        RenderPassLibrary::instance(mpDevice).shutdown();
         TextRenderer::shutdown();
         mpGui.reset();
         mpTargetFBO.reset();
@@ -178,6 +187,7 @@ void Sample::handleWindowSizeChange() {
 
     void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
         Sample s(pRenderer);
+
         try {
             s.runInternal(config, argc, argv);
         } catch (const std::exception & e) {
@@ -188,6 +198,7 @@ void Sample::handleWindowSizeChange() {
 
     void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv) {
         Sample s(pRenderer);
+        
         try {
             auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
 
@@ -225,27 +236,38 @@ void Sample::handleWindowSizeChange() {
         Threading::start();
         mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
-        mClock.setTimeScale(config.timeScale);
-        if (config.pauseTime) mClock.pause();
+        
         mVsyncOn = config.deviceDesc.enableVsync;
+
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
         if (mpWindow == nullptr) {
             logError("Failed to create device and window");
             return;
         }
+        
+        // Create device 
+        //mpDevice = Device::create(mpWindow, config.deviceDesc);
+        mpDevice = DeviceManager::instance().createDisplayDevice(0, mpWindow, config.deviceDesc);
+
+        mClock = new Clock(mpDevice);
+        mClock->setTimeScale(config.timeScale);
+        if (config.pauseTime) mClock->pause();
+
+        mFrameRate = new FrameRate(mpDevice);
+
         // Show the progress bar (unless window is minimized)
         ProgressBar::SharedPtr pBar;
         if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
         Device::Desc d = config.deviceDesc;
-
-        mpDevice = Device::create(mpWindow, config.deviceDesc);
         
         if (mpDevice == nullptr) {
-            logError("Failed to create device");
+            logError("Failed to create display device");
             return;
         }
-        Clock::start();
+
+        //Clock::start();
+        mClock->start();
 
         // Get the default objects before calling onLoad()
         auto pBackBufferFBO = mpDevice->getSwapChainFbo();
@@ -253,11 +275,12 @@ void Sample::handleWindowSizeChange() {
             logError("Unable to get swap chain FBO!!!");
         }
 
-        mpTargetFBO = Fbo::create2D(pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
+        mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
         // Init the UI
+        LOG_DBG("call Sample::initUI");
         initUI();
-        mpPixelZoom = PixelZoom::create(mpTargetFBO.get());
+        mpPixelZoom = PixelZoom::create(mpDevice, mpTargetFBO.get());
 
 #ifdef _WIN32
         // Set the icon
@@ -273,10 +296,11 @@ void Sample::handleWindowSizeChange() {
         }
 
         // Load and run
-        mpRenderer->onLoad(getRenderContext());
+        //mpRenderer->onLoad(getRenderContext());
+        mpRenderer->onLoad(mpRenderer->device()->getRenderContext());
         pBar = nullptr;
 
-        mFrameRate.reset();
+        mFrameRate->reset();
         mpWindow->msgLoop();
 
         mpRenderer->onShutdown();
@@ -352,15 +376,15 @@ void Sample::handleWindowSizeChange() {
 
         auto controlsGroup = Gui::Group(pGui, "Global Controls");
         if (controlsGroup.open()) {
-            float t = (float)mClock.getTime();
-            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.setTime(double(t));
-            if (controlsGroup.button("Reset")) mClock.setTime(0.0);
-            bool timePaused = mClock.isPaused();
-            if (controlsGroup.button(timePaused ? "Play" : "Pause", true)) timePaused ? mClock.pause() : mClock.play();
-            if (controlsGroup.button("Stop", true)) mClock.stop();
+            float t = (float)mClock->getTime();
+            if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock->setTime(double(t));
+            if (controlsGroup.button("Reset")) mClock->setTime(0.0);
+            bool timePaused = mClock->isPaused();
+            if (controlsGroup.button(timePaused ? "Play" : "Pause", true)) timePaused ? mClock->pause() : mClock->play();
+            if (controlsGroup.button("Stop", true)) mClock->stop();
 
-            float scale = (float)mClock.getTimeScale();
-            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock.setTimeScale(scale);
+            float scale = (float)mClock->getTimeScale();
+            if (controlsGroup.var("Scale", scale, 0.f, FLT_MAX)) mClock->setTimeScale(scale);
             controlsGroup.separator();
 
             if (controlsGroup.button(mRendererPaused ? "Resume Rendering" : "Pause Rendering")) mRendererPaused = !mRendererPaused;
@@ -379,9 +403,10 @@ void Sample::handleWindowSizeChange() {
     }
 
     void Sample::renderUI() {
-        PROFILE("renderUI");
+        PROFILE(mpDevice, "renderUI");
 
         if (mShowUI || gProfileEnabled) {
+            std::cout << "renderUI beginFrame\n";
             mpGui->beginFrame();
 
             if (mShowUI) mpRenderer->onGuiRender(mpGui.get());
@@ -396,36 +421,45 @@ void Sample::handleWindowSizeChange() {
                 mpGui->setActiveFont(kMonospaceFont);
 
                 Gui::Window profilerWindow(mpGui.get(), "Profiler", gProfileEnabled, { 800, 350 }, { 10, y });
-                Profiler::endEvent("renderUI");  // Stop the timer
+                Profiler::endEvent(mpDevice, "renderUI");  // Stop the timer
 
                 if (gProfileEnabled) {
                     profilerWindow.text(Profiler::getEventsString().c_str());
-                    Profiler::startEvent("renderUI");
+                    Profiler::startEvent(mpDevice, "renderUI");
                     profilerWindow.release();
                 }
                 mpGui->setActiveFont("");
             }
 
-            mpGui->render(getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate.getLastFrameTime());
+            std::cout << "renderUI render\n";
+            mpGui->render(mpDevice->getRenderContext(), mpDevice->getSwapChainFbo(), (float)mFrameRate->getLastFrameTime());
+
+            std::cout << "renderUI done\n";
         }
     }
 
     void Sample::renderFrame() {
         if (mpDevice && mpDevice->isWindowOccluded()) return;
 
-        // Check clock exit condition
-        if (mClock.shouldExit()) postQuitMessage(0);
+        // Clear viewer frame buffer.
+        const float4 clearColor(0.1f, 0.38f, 0.52f, 1);
+        mpDevice->getRenderContext()->clearFbo(mpTargetFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-        mClock.tick();
-        mFrameRate.newFrame();
-        if (mVideoCapture.fixedTimeDelta) { mClock.setTime(mVideoCapture.currentTime); }
+        // Check clock exit condition
+        if (mClock->shouldExit()) postQuitMessage(0);
+
+        mClock->tick();
+        mFrameRate->newFrame();
+        if (mVideoCapture.fixedTimeDelta) { mClock->setTime(mVideoCapture.currentTime); }
 
         {
-            PROFILE("onFrameRender");
+            PROFILE(mpDevice, "onFrameRender");
 
             // The swap-chain FBO might have changed between frames, so get it
             if (!mRendererPaused) {
-                RenderContext* pRenderContext = mpDevice ? mpDevice->getRenderContext() : nullptr;
+                //RenderContext* pRenderContext = mpDevice ? mpDevice->getRenderContext() : nullptr;
+                //mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
+                auto pRenderContext = mpRenderer->device()->getRenderContext();
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }
@@ -452,12 +486,12 @@ void Sample::handleWindowSizeChange() {
             if (mCaptureScreen) captureScreen();
 
             {
-                PROFILE("present", Profiler::Flags::Internal);
+                PROFILE(mpDevice, "present", Profiler::Flags::Internal);
                 mpDevice->present();
             }
         }
 
-        Console::flush();
+        Console::instance().flush();
     }
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory) {
@@ -480,11 +514,16 @@ void Sample::handleWindowSizeChange() {
     }
 
     void Sample::initUI() {
+        std::cout << "UI";
+        LOG_DBG("Sample::initUI");
         float scaling = getDisplayScaleFactor();
         const auto& pSwapChainFbo = mpDevice->getSwapChainFbo();
-        mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
+        mpGui = Gui::create(mpDevice, uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
         mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
-        TextRenderer::start();
+        TextRenderer::start(mpDevice);
+
+        LOG_DBG("Sample::initUI done!");
+        std::cout << "UI done";
     }
 
     void Sample::resizeSwapChain(uint32_t width, uint32_t height) {
@@ -561,8 +600,8 @@ void Sample::handleWindowSizeChange() {
         c.deviceDesc = mpDevice->getDesc();
         c.windowDesc = mpWindow->getDesc();
         c.showMessageBoxOnError = Logger::isBoxShownOnError();
-        c.timeScale = (float)mClock.getTimeScale();
-        c.pauseTime = mClock.isPaused();
+        c.timeScale = (float)mClock->getTimeScale();
+        c.pauseTime = mClock->isPaused();
         c.showUI = mShowUI;
         return c;
     }
@@ -571,34 +610,38 @@ void Sample::handleWindowSizeChange() {
         std::string filename;
         if (saveFileDialog(Scripting::kFileExtensionFilters, filename)) {
             SampleConfig c = getConfig();
-            std::string s = "sampleConfig = " + ScriptBindings::to_string(c) + "\n";
+            std::string s = "sampleConfig = " + ScriptBindings::repr(c) + "\n";
             std::ofstream(filename) << s;
         }
     }
 
     void Sample::startScripting() {
         Scripting::start();
-        auto bindFunc = [this](ScriptBindings::Module& m) { this->registerScriptBindings(m); };
+        auto bindFunc = [this](pybind11::module& m) { this->registerScriptBindings(m); };
         ScriptBindings::registerBinding(bindFunc);
     }
 
-    void Sample::registerScriptBindings(ScriptBindings::Module& m) {
-        auto sampleDesc = m.regClass(SampleConfig);
-#define field(f_) rwField(#f_, &SampleConfig::f_)
-        sampleDesc.field(windowDesc).field(deviceDesc).field(showMessageBoxOnError).field(timeScale);
-        sampleDesc.field(pauseTime).field(showUI);
+    void Sample::registerScriptBindings(pybind11::module& m) {
+ScriptBindings::SerializableStruct<SampleConfig> sampleConfig(m, "SampleConfig");
+#define field(f_) field(#f_, &SampleConfig::f_)
+        sampleConfig.field(windowDesc);
+        sampleConfig.field(deviceDesc);
+        sampleConfig.field(showMessageBoxOnError);
+        sampleConfig.field(timeScale);
+        sampleConfig.field(pauseTime);
+        sampleConfig.field(showUI);
 #undef field
         auto exit = [](int32_t errorCode) { postQuitMessage(errorCode); };
-        m.func_("exit", exit, "errorCode"_a = 0);
+        m.def("exit", exit, "errorCode"_a = 0);
 
         auto renderFrame = [this]() {ProgressBar::close(); this->renderFrame(); };
-        m.func_("renderFrame", renderFrame);
+        m.def("renderFrame", renderFrame);
 
         auto setWindowPos = [this](int32_t x, int32_t y) {getWindow()->setWindowPos(x, y); };
-        m.func_("setWindowPos", setWindowPos, "x"_a, "y"_a);
+        m.def("setWindowPos", setWindowPos, "x"_a, "y"_a);
 
         auto resize = [this](uint32_t width, uint32_t height) {resizeSwapChain(width, height); };
-        m.func_("resizeSwapChain", resize, "width"_a, "height"_a);
+        m.def("resizeSwapChain", resize, "width"_a, "height"_a);
     }
 
 }  // namespace Falcor

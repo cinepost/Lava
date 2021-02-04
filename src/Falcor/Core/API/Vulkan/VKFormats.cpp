@@ -45,6 +45,8 @@ namespace Falcor
         { ResourceFormat::RGB16Snorm,                    VK_FORMAT_R16G16B16_SNORM },
         { ResourceFormat::R24UnormX8,                    VK_FORMAT_UNDEFINED },
         { ResourceFormat::RGB5A1Unorm,                   VK_FORMAT_B5G5R5A1_UNORM_PACK16 }, // VK different component order?
+        { ResourceFormat::RGB8Unorm,                     VK_FORMAT_R8G8B8_UNORM },
+        { ResourceFormat::RGB8Snorm,                     VK_FORMAT_R8G8B8_SNORM },
         { ResourceFormat::RGBA8Unorm,                    VK_FORMAT_R8G8B8A8_UNORM },
         { ResourceFormat::RGBA8Snorm,                    VK_FORMAT_R8G8B8A8_SNORM },
         { ResourceFormat::RGB10A2Unorm,                  VK_FORMAT_A2R10G10B10_UNORM_PACK32 }, // VK different component order?
@@ -95,26 +97,34 @@ namespace Falcor
         { ResourceFormat::D16Unorm,                      VK_FORMAT_D16_UNORM },
         { ResourceFormat::D32FloatS8X24,                 VK_FORMAT_D32_SFLOAT_S8_UINT },
         { ResourceFormat::D24UnormS8,                    VK_FORMAT_D24_UNORM_S8_UINT },
-        { ResourceFormat::BC1Unorm,                      VK_FORMAT_BC1_RGB_UNORM_BLOCK },
-        { ResourceFormat::BC1UnormSrgb,                  VK_FORMAT_BC1_RGB_SRGB_BLOCK },
-        { ResourceFormat::BC2Unorm,                      VK_FORMAT_BC2_UNORM_BLOCK },
-        { ResourceFormat::BC2UnormSrgb,                  VK_FORMAT_BC2_SRGB_BLOCK },
-        { ResourceFormat::BC3Unorm,                      VK_FORMAT_BC3_UNORM_BLOCK },
-        { ResourceFormat::BC3UnormSrgb,                  VK_FORMAT_BC3_SRGB_BLOCK },
+        // Compressed formats
+        { ResourceFormat::BC1RGBUnorm,                   VK_FORMAT_BC1_RGB_UNORM_BLOCK },
+        { ResourceFormat::BC1RGBSrgb,                    VK_FORMAT_BC1_RGB_SRGB_BLOCK },
+        { ResourceFormat::BC1RGBAUnorm,                  VK_FORMAT_BC1_RGBA_UNORM_BLOCK },
+        { ResourceFormat::BC1RGBASrgb,                   VK_FORMAT_BC1_RGBA_SRGB_BLOCK },
+
+        { ResourceFormat::BC2RGBAUnorm,                  VK_FORMAT_BC2_UNORM_BLOCK },
+        { ResourceFormat::BC2RGBASrgb,                   VK_FORMAT_BC2_SRGB_BLOCK },
+        
+        { ResourceFormat::BC3RGBAUnorm,                  VK_FORMAT_BC3_UNORM_BLOCK },
+        { ResourceFormat::BC3RGBASrgb,                   VK_FORMAT_BC3_SRGB_BLOCK },
+        
         { ResourceFormat::BC4Unorm,                      VK_FORMAT_BC4_UNORM_BLOCK },
         { ResourceFormat::BC4Snorm,                      VK_FORMAT_BC4_SNORM_BLOCK },
+        
         { ResourceFormat::BC5Unorm,                      VK_FORMAT_BC5_UNORM_BLOCK },
         { ResourceFormat::BC5Snorm,                      VK_FORMAT_BC5_SNORM_BLOCK },
+        
         { ResourceFormat::BC6HS16,                       VK_FORMAT_BC6H_SFLOAT_BLOCK },
         { ResourceFormat::BC6HU16,                       VK_FORMAT_BC6H_UFLOAT_BLOCK },
+        
         { ResourceFormat::BC7Unorm,                      VK_FORMAT_BC7_UNORM_BLOCK },
-        { ResourceFormat::BC7UnormSrgb,                  VK_FORMAT_BC7_SRGB_BLOCK },
+        { ResourceFormat::BC7Srgb,                       VK_FORMAT_BC7_SRGB_BLOCK },
     };
 
-    ResourceBindFlags getFormatBindFlags(ResourceFormat format)
-    {
+    ResourceBindFlags getFormatBindFlags(Device::SharedPtr device, ResourceFormat format) {
         VkFormatProperties p;
-        vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), getVkFormat(format), &p);
+        vkGetPhysicalDeviceFormatProperties(device->getApiHandle(), getVkFormat(format), &p);
 
         auto convertFlags = [](VkFormatFeatureFlags vk) -> ResourceBindFlags
         {
@@ -140,11 +150,10 @@ namespace Falcor
         flags |= convertFlags(p.optimalTilingFeatures);
 
 
-        switch (format)
-        {
-        case ResourceFormat::R16Uint:
-        case ResourceFormat::R32Uint:
-            flags |= ResourceBindFlags::Index;
+        switch (format) {
+            case ResourceFormat::R16Uint:
+            case ResourceFormat::R32Uint:
+                flags |= ResourceBindFlags::Index;
         }
 
         return flags;

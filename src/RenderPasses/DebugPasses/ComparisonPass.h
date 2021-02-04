@@ -25,14 +25,15 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_
+#define SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_
+
 #include "Falcor.h"
 
 using namespace Falcor;
 
-class ComparisonPass : public RenderPass
-{
-public:
+class ComparisonPass : public RenderPass {
+ public:
     using SharedPtr = std::shared_ptr<ComparisonPass>;
 
     virtual Dictionary getScriptingDictionary() override;
@@ -40,8 +41,8 @@ public:
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-protected:
-    ComparisonPass() = default;
+ protected:
+    ComparisonPass(Device::SharedPtr pDevice);
     virtual void createProgram() = 0;
     bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
 
@@ -62,3 +63,5 @@ protected:
     std::string mLeftLabel = "Left side"; // Left label.  Set in Python script with "leftLabel"
     std::string mRightLabel = "Right side"; // Right label.  Set in Python script with "rightLabel"
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_DEBUGPASSES_COMPARSIONPASS_H_

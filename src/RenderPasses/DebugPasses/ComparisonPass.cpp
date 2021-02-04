@@ -28,8 +28,7 @@
 #pragma once
 #include "ComparisonPass.h"
 
-namespace
-{
+namespace {
     const std::string kSplitLocation = "splitLocation";
     const std::string kShowTextLabels = "showTextLabels";
     const std::string kLeftLabel = "leftLabel";
@@ -40,10 +39,8 @@ namespace
     const std::string kOutput = "output";
 }
 
-bool ComparisonPass::parseKeyValuePair(const std::string key, const Dictionary::Value val)
-{
-    if (key == kSplitLocation)
-    {
+bool ComparisonPass::parseKeyValuePair(const std::string key, const Dictionary::Value val) {
+    if (key == kSplitLocation) {
         mSplitLoc = val;
         return true;
     }
@@ -67,8 +64,7 @@ bool ComparisonPass::parseKeyValuePair(const std::string key, const Dictionary::
     else return false;
 }
 
-Dictionary ComparisonPass::getScriptingDictionary()
-{
+Dictionary ComparisonPass::getScriptingDictionary() {
     Dictionary dict;
     dict[kSplitLocation] = mSplitLoc;
     dict[kShowTextLabels] = mShowLabels;
@@ -77,8 +73,7 @@ Dictionary ComparisonPass::getScriptingDictionary()
     return dict;
 }
 
-RenderPassReflection ComparisonPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection ComparisonPass::reflect(const CompileData& compileData) {
     RenderPassReflection r;
     r.addInput(kLeftInput, "Left side image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
     r.addInput(kRightInput, "Right side image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
@@ -86,12 +81,13 @@ RenderPassReflection ComparisonPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderData)
-{
+ComparisonPass::ComparisonPass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+
+void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderData) {
     // Get references to our input, output, and temporary accumulation texture
     pLeftSrcTex = renderData[kLeftInput]->asTexture();
     pRightSrcTex = renderData[kRightInput]->asTexture();
-    pDstFbo = Fbo::create({ renderData[kOutput]->asTexture() });
+    pDstFbo = Fbo::create(pContext->device(), { renderData[kOutput]->asTexture() });
 
     // If we haven't initialized the split location, split the screen in half by default
     if (mSplitLoc < 0) mSplitLoc = 0.5f;
@@ -106,8 +102,7 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
     mpSplitShader->execute(pContext, pDstFbo);
 
     // Render some labels
-    if (mShowLabels)
-    {
+    if (mShowLabels) {
         int32_t screenLoc = int32_t(mSplitLoc * renderData.getDefaultTextureDims().x);
 
         // Draw text labeling the right side image
@@ -121,8 +116,7 @@ void ComparisonPass::execute(RenderContext* pContext, const RenderData& renderDa
     }
 }
 
-void ComparisonPass::renderUI(Gui::Widgets& widget)
-{
+void ComparisonPass::renderUI(Gui::Widgets& widget) {
     widget.checkbox("Swap Sides", mSwapSides);
     widget.checkbox("Show Labels", mShowLabels);
 }

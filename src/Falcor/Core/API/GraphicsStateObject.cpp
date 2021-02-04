@@ -29,66 +29,71 @@
 #include "GraphicsStateObject.h"
 #include "Core/API/Device.h"
 
-namespace Falcor
-{
-    BlendState::SharedPtr GraphicsStateObject::spDefaultBlendState;
-    RasterizerState::SharedPtr GraphicsStateObject::spDefaultRasterizerState;
-    DepthStencilState::SharedPtr GraphicsStateObject::spDefaultDepthStencilState;
+namespace Falcor {
 
-    bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& other) const
-    {
-        bool b = true;
-        b = b && (mpLayout                  == other.mpLayout);
-        b = b && (mFboDesc                  == other.mFboDesc);
-        b = b && (mpProgram                 == other.mpProgram);
-        b = b && (mSampleMask               == other.mSampleMask);
-        b = b && (mpRootSignature           == other.mpRootSignature);
-        b = b && (mPrimType                 == other.mPrimType);
+BlendState::SharedPtr GraphicsStateObject::spDefaultBlendState;
+RasterizerState::SharedPtr GraphicsStateObject::spDefaultRasterizerState;
+DepthStencilState::SharedPtr GraphicsStateObject::spDefaultDepthStencilState;
 
-        if (mpRasterizerState) {
-            b = b && (mpRasterizerState == other.mpRasterizerState);
-        } else {
-            b = b && (other.mpRasterizerState == nullptr || other.mpRasterizerState == spDefaultRasterizerState);
-        }
+bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& other) const {
+    bool b = true;
+    b = b && (mpLayout         == other.mpLayout);
+    b = b && (mFboDesc         == other.mFboDesc);
+    b = b && (mpProgram        == other.mpProgram);
+    b = b && (mSampleMask      == other.mSampleMask);
+    b = b && (mpRootSignature  == other.mpRootSignature);
+    b = b && (mPrimType        == other.mPrimType);
 
-        if (mpBlendState) {
-            b = b && (mpBlendState == other.mpBlendState);
-        } else {
-            b = b && (other.mpBlendState == nullptr || other.mpBlendState == spDefaultBlendState);
-        }
-
-        if (mpDepthStencilState) {
-            b = b && (mpDepthStencilState == other.mpDepthStencilState);
-        } else {
-            b = b && (other.mpDepthStencilState == nullptr || other.mpDepthStencilState == spDefaultDepthStencilState);
-        }
-
-        return b;
+    if (mpRasterizerState) {
+        b = b && (mpRasterizerState == other.mpRasterizerState);
+    } else {
+        b = b && (other.mpRasterizerState == nullptr || other.mpRasterizerState == spDefaultRasterizerState);
     }
 
-    GraphicsStateObject::~GraphicsStateObject()
-    {
-        gpDevice->releaseResource(mApiHandle);
+    if (mpBlendState) {
+        b = b && (mpBlendState == other.mpBlendState);
+    } else {
+        b = b && (other.mpBlendState == nullptr || other.mpBlendState == spDefaultBlendState);
     }
 
-    GraphicsStateObject::GraphicsStateObject(const Desc& desc) : mDesc(desc) {
-        if (spDefaultBlendState == nullptr) {
-            // Create default objects
-            spDefaultBlendState = BlendState::create(BlendState::Desc());
-            spDefaultDepthStencilState = DepthStencilState::create(DepthStencilState::Desc());
-            spDefaultRasterizerState = RasterizerState::create(RasterizerState::Desc());
-        }
-
-        // Initialize default objects
-        if (!mDesc.mpBlendState) mDesc.mpBlendState = spDefaultBlendState;
-        if (!mDesc.mpRasterizerState) mDesc.mpRasterizerState = spDefaultRasterizerState;
-        if (!mDesc.mpDepthStencilState) mDesc.mpDepthStencilState = spDefaultDepthStencilState;
-
-        apiInit();
+    if (mpDepthStencilState) {
+        b = b && (mpDepthStencilState == other.mpDepthStencilState);
+    } else {
+        b = b && (other.mpDepthStencilState == nullptr || other.mpDepthStencilState == spDefaultDepthStencilState);
     }
 
-    GraphicsStateObject::SharedPtr GraphicsStateObject::create(const Desc& desc)
-    {
-        return SharedPtr(new GraphicsStateObject(desc));
-    }
+    return b;
 }
+
+GraphicsStateObject::~GraphicsStateObject() {
+    mpDevice->releaseResource(mApiHandle);
+}
+
+GraphicsStateObject::GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
+    assert(mpDevice);
+    if (spDefaultBlendState == nullptr) {
+        // Create default objects
+        spDefaultBlendState = BlendState::create(BlendState::Desc(mpDevice));
+        spDefaultDepthStencilState = DepthStencilState::create(DepthStencilState::Desc());
+        spDefaultRasterizerState = RasterizerState::create(RasterizerState::Desc());
+    }
+
+    // Initialize default objects
+    if (!mDesc.mpBlendState) mDesc.mpBlendState = spDefaultBlendState;
+    if (!mDesc.mpRasterizerState) mDesc.mpRasterizerState = spDefaultRasterizerState;
+    if (!mDesc.mpDepthStencilState) mDesc.mpDepthStencilState = spDefaultDepthStencilState;
+
+    apiInit();
+}
+
+GraphicsStateObject::SharedPtr GraphicsStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+    assert(pDevice);
+    return SharedPtr(new GraphicsStateObject(pDevice, desc));
+}
+
+GraphicsStateObject::Desc::Desc (std::shared_ptr<Device> pDevice): mFboDesc(pDevice) {
+
+}
+
+
+}  // namespace Falcor

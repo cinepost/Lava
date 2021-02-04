@@ -28,8 +28,11 @@
 import Scene.Raster;
 import RenderPasses.CSM.CascadedShadowMap;
 
+
 layout(binding = 0) SamplerState alphaSampler : register(s0);
+
 layout(binding = 1) texture2D alphaMap : register(t0);
+
 
 layout(binding = 2) cbuffer AlphaMapCB : register(b1)
 {

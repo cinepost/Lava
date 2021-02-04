@@ -25,16 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_
+#define SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_
+
 #include "Falcor.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
-class Composite : public RenderPass, public inherit_shared_from_this<RenderPass, Composite>
-{
-public:
+class Composite : public RenderPass {
+ public:
     using SharedPtr = std::shared_ptr<Composite>;
-    using inherit_shared_from_this::shared_from_this;
+
+    /** Composite modes.
+    */
+    enum class Mode
+    {
+        Add,
+        Multiply,
+    };
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
@@ -47,13 +56,18 @@ public:
 
     static const char* kDesc;
 
-private:
-    Composite(const Dictionary& dict);
-    bool parseDictionary(const Dictionary& dict);
+    static void registerBindings(pybind11::module& m);
 
+ private:
+    Composite(Device::SharedPtr pDevice, const Dictionary& dict);
+    
     uint2                       mFrameDim = { 0, 0 };
+    Mode                        mMode = Mode::Add;
     float                       mScaleA = 1.f;
     float                       mScaleB = 1.f;
 
     ComputePass::SharedPtr      mCompositePass;
+
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_UTILS_COMPOSITE_COMPOSITE_H_

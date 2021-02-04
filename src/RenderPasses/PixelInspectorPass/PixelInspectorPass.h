@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_PIXELINSPECTORPASS_PIXELINSPECTORPASS_H_
+#define SRC_FALCOR_RENDERPASSES_PIXELINSPECTORPASS_PIXELINSPECTORPASS_H_
 
 #include "Falcor/Falcor.h"
 
@@ -33,9 +34,8 @@ using namespace Falcor;
 
 /** Pass extracting material information for the currently selected pixel.
 */
-class PixelInspectorPass : public RenderPass, public inherit_shared_from_this<RenderPass, PixelInspectorPass>
-{
-public:
+class PixelInspectorPass : public RenderPass, public inherit_shared_from_this<RenderPass, PixelInspectorPass> {
+ public:
     using SharedPtr = std::shared_ptr<PixelInspectorPass>;
 
     /** Create a new object
@@ -49,8 +49,8 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
-private:
-    PixelInspectorPass();
+ private:
+    PixelInspectorPass(Device::SharedPtr pDevice);
 
     // Internal state
     Scene::SharedPtr                      mpScene;
@@ -70,3 +70,5 @@ private:
     bool                                  mScaleInputsToWindow = false;
     bool                                  mUseContinuousPicking = false;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_PIXELINSPECTORPASS_PIXELINSPECTORPASS_H_

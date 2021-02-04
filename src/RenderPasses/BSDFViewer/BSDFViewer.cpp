@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFViewer.h"
-#include "Falcor/Experimental/Scene/Material/BxDFConfig.slangh"
+#include "Experimental/Scene/Material/BxDFConfig.slangh"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir()
@@ -48,12 +48,15 @@ namespace
 const char* BSDFViewer::sDesc = "BSDF Viewer";
 
 BSDFViewer::SharedPtr BSDFViewer::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new BSDFViewer(dict));
+{ 
+    return SharedPtr(new BSDFViewer(pRenderContext->device(), dict));
 }
 
-BSDFViewer::BSDFViewer(const Dictionary& dict)
+BSDFViewer::BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice)
 {
+    // Create a high-quality pseudorandom number generator.
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+
     // Defines to disable discard and gradient operations in Falcor's material system.
     Program::DefineList defines =
     {
@@ -62,18 +65,15 @@ BSDFViewer::BSDFViewer(const Dictionary& dict)
         {"MATERIAL_COUNT", "1"},
     };
 
-    // Create programs.
-    mpViewerPass = ComputePass::create(kFileViewerPass, "main", defines, false);
+    defines.add(mpSampleGenerator->getDefines());
 
-    // Create a high-quality pseudorandom number generator.
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
-    mpSampleGenerator->prepareProgram(mpViewerPass->getProgram().get());
-    mpViewerPass->setVars(nullptr); // Trigger vars creation
+    // Create programs.
+    mpViewerPass = ComputePass::create(pDevice, kFileViewerPass, "main", defines);
 
     // Create readback buffer.
-    mPixelDataBuffer = Buffer::createStructured(mpViewerPass->getProgram().get(), "gPixelData", 1u, ResourceBindFlags::UnorderedAccess);
+    mPixelDataBuffer = Buffer::createStructured(pDevice, mpViewerPass->getProgram().get(), "gPixelData", 1u, ResourceBindFlags::UnorderedAccess);
 
-    mpPixelDebug = PixelDebug::create();
+    mpPixelDebug = PixelDebug::create(pDevice);
 }
 
 Dictionary BSDFViewer::getScriptingDictionary()
@@ -104,8 +104,7 @@ void BSDFViewer::compile(RenderContext* pContext, const CompileData& compileData
 void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     mpScene = pScene;
-    mpEnvProbe = nullptr;
-    mEnvProbeFilename = "";
+    mpEnvMap = nullptr;
     mMaterialList.clear();
     mParams.materialID = 0;
 
@@ -124,13 +123,8 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
         mpViewerPass["gScene"] = mpScene->getParameterBlock();
 
         // Load and bind environment map.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
-        {
-            std::string filename = pEnvMap->getSourceFilename();
-            loadEnvMap(pRenderContext, filename);
-        }
-        if (!mpEnvProbe) mParams.useEnvMap = false;
+        if (const auto &pEnvMap = mpScene->getEnvMap()) loadEnvMap(pEnvMap->getFilename());
+        mParams.useEnvMap = mpEnvMap != nullptr;
 
         // Prepare UI list of materials.
         mMaterialList.reserve(mpScene->getMaterialCount());
@@ -149,9 +143,9 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     // Update refresh flag if options that affect the output have changed.
     if (mOptionsChanged)
     {
-        Dictionary& dict = renderData.getDictionary();
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
+        auto& dict = renderData.getDictionary();
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
@@ -167,14 +161,7 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
     mParams.cameraViewportScale = std::tan(glm::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
 
     // Set resources.
-    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) {
-        #ifdef _WIN32
-        throw std::exception("Failed to bind sample generator");
-        #else
-        throw std::runtime_error("Failed to bind sample generator");
-        #endif
-    }
-
+    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) throw std::runtime_error("Failed to bind sample generator");
     mpViewerPass["gOutput"] = renderData[kOutput]->asTexture();
     mpViewerPass["gPixelData"] = mPixelDataBuffer;
     mpViewerPass["PerFrameCB"]["gParams"].setBlob(mParams);
@@ -224,8 +211,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
                     " ");
     }
 
-    auto mtlGroup = Gui::Group(widget, "Material", true);
-    if (mtlGroup.open())
+    if (auto mtlGroup = widget.group("Material", true))
     {
         bool prevMode = mParams.useSceneMaterial;
         mtlGroup.checkbox("Use scene material", mParams.useSceneMaterial);
@@ -251,14 +237,14 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             dirty |= mtlGroup.var("Metallic", mParams.metallic, 0.f, 1.f, 1e-2f);
             dirty |= mtlGroup.var("IoR", mParams.IoR, 1.f, std::numeric_limits<float>::max(), 1e-2f);
         }
-
-        mtlGroup.release();
     }
 
-    auto bsdfGroup = Gui::Group(widget, "BSDF", true);
-    if (bsdfGroup.open())
+    if (auto bsdfGroup = widget.group("BSDF", true))
     {
         dirty |= bsdfGroup.checkbox("Use legacy BSDF code", mParams.useLegacyBSDF);
+
+        dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
+        dirty |= bsdfGroup.checkbox("Enable specular", mParams.enableSpecular, true);
 
         dirty |= bsdfGroup.checkbox("Use Disney' diffuse BRDF", mParams.useDisneyDiffuse);
         bsdfGroup.tooltip("When enabled uses the original Disney diffuse BRDF, otherwise use Falcor's default (Frostbite's version).", true);
@@ -275,18 +261,12 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             bsdfGroup.dummy("#space1", float2(1, 8));
             bsdfGroup.text("Slice viewer settings:");
 
-            dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
-            dirty |= bsdfGroup.checkbox("Enable specular", mParams.enableSpecular, true);
-
             dirty |= bsdfGroup.checkbox("Multiply BSDF slice by NdotL", mParams.applyNdotL);
             bsdfGroup.tooltip("Note: This setting Only affects the BSDF slice viewer. NdotL is always enabled in lighting mode.", true);
         }
-
-        bsdfGroup.release();
     }
 
-    auto lightGroup = Gui::Group(widget, "Light", true);
-    if (lightGroup.open())
+    if (auto lightGroup = widget.group("Light", true))
     {
         dirty |= lightGroup.var("Light intensity", mParams.lightIntensity, 0.f, std::numeric_limits<float>::max(), 0.01f, false, "%.4f");
         dirty |= lightGroup.rgbColor("Light color", mParams.lightColor);
@@ -306,9 +286,9 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         }
 
         // Envmap lighting
-        if (mpEnvProbe)
+        if (mpEnvMap)
         {
-            dirty |= lightGroup.checkbox(("Envmap: " + mEnvProbeFilename).c_str(), mParams.useEnvMap);
+            dirty |= lightGroup.checkbox(("Environment map: " + mpEnvMap->getFilename()).c_str(), mParams.useEnvMap);
             lightGroup.tooltip("When enabled the specified environment map is used as light source. Enabling this option turns off directional lighting.", true);
 
             if (mParams.useEnvMap)
@@ -318,10 +298,10 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         }
         else
         {
-            lightGroup.text("Envmap: N/A");
+            lightGroup.text("Environment map: N/A");
         }
 
-        if (lightGroup.button("Load envmap"))
+        if (lightGroup.button("Load environment map"))
         {
             // Get file dialog filters.
             auto filters = Bitmap::getFileDialogFilters();
@@ -331,8 +311,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             if (openFileDialog(filters, filename))
             {
                 // TODO: RenderContext* should maybe be a parameter to renderUI()?
-                auto pRenderContext = gpFramework->getRenderContext();
-                if (loadEnvMap(pRenderContext, filename))
+                if (loadEnvMap(filename))
                 {
                     mParams.useDirectionalLight = false;
                     mParams.useEnvMap = true;
@@ -340,12 +319,9 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
                 }
             }
         }
-
-        lightGroup.release();
     }
 
-    auto cameraGroup = Gui::Group(widget, "Camera", true);
-    if (cameraGroup.open())
+    if (auto cameraGroup = widget.group("Camera", true))
     {
         dirty |= cameraGroup.checkbox("Orthographic camera", mParams.orthographicCamera);
 
@@ -357,16 +333,14 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             dirty |= cameraGroup.var("Vertical FOV (degrees)", mParams.cameraFovY, 1.f, 179.f, 1.f, false, "%.2f");
             cameraGroup.tooltip("The allowed range is [1,179] degrees to avoid numerical issues.", true);
         }
-
-        cameraGroup.release();
     }
 
-    auto pixelGroup = Gui::Group(widget, "Pixel data", true);
-    bool readTexCoords = mParams.useSceneMaterial && !mParams.useFixedTexCoords;
-    mParams.readback = readTexCoords || pixelGroup.open(); // Configure if readback is necessary
+    mParams.readback = false;
 
-    if (pixelGroup.open())
+    if (auto pixelGroup = widget.group("Pixel data", true))
     {
+        mParams.readback = mParams.useSceneMaterial && !mParams.useFixedTexCoords; // Enable readback if necessary
+
         pixelGroup.var("Pixel", mParams.selectedPixel);
 
         if (mPixelDataValid)
@@ -389,16 +363,11 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         {
             pixelGroup.text("No data available");
         }
-
-        pixelGroup.release();
     }
 
-    auto loggingGroup = Gui::Group(widget, "Logging", false);
-    if (loggingGroup.open())
+    if (auto loggingGroup = widget.group("Logging", false))
     {
         mpPixelDebug->renderUI(widget);
-
-        loggingGroup.release();
     }
 
     //widget.dummy("#space3", float2(1, 16));
@@ -439,27 +408,17 @@ bool BSDFViewer::onKeyEvent(const KeyboardEvent& keyEvent)
     return false;
 }
 
-bool BSDFViewer::loadEnvMap(RenderContext* pRenderContext, const std::string& filename)
+bool BSDFViewer::loadEnvMap(const std::string& filename)
 {
-    auto pEnvProbe = EnvProbe::create(pRenderContext, filename);
-    if (!pEnvProbe)
+    mpEnvMap = EnvMap::create(mpDevice, filename);
+    if (!mpEnvMap)
     {
         logWarning("Failed to load environment map from " + filename);
         return false;
     }
 
-    mpEnvProbe = pEnvProbe;
-    mEnvProbeFilename = getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename());
-
     auto pVars = mpViewerPass->getVars();
-    if (!mpEnvProbe->setShaderData(pVars["PerFrameCB"]["gEnvProbe"]))
-    {
-        #ifdef _WIN32
-        throw std::exception("Failed to bind EnvProbe to program");
-        #else
-        throw std::runtime_error("Failed to bind EnvProbe to program");
-        #endif
-    }
+    mpEnvMap->setShaderData(pVars["PerFrameCB"]["gEnvMap"]);
 
     return true;
 }

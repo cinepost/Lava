@@ -36,18 +36,18 @@
 
 namespace Falcor {
 
-    VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout);
+    VkDescriptorSetLayout createDescriptorSetLayout(std::shared_ptr<Device> pDevice, const DescriptorSet::Layout& layout);
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
 
     void DescriptorSet::apiInit() {
-        auto layout = createDescriptorSetLayout(mLayout);
+        auto layout = createDescriptorSetLayout(mpDevice, mLayout);
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = mpPool->getApiHandle(0);
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &layout;
-        vk_call(vkAllocateDescriptorSets(gpDevice->getApiHandle(), &allocInfo, &mApiHandle));
-        mpApiData = std::make_shared<DescriptorSetApiData>(layout, mpPool->getApiHandle(0), mApiHandle);
+        vk_call(vkAllocateDescriptorSets(mpPool->device()->getApiHandle(), &allocInfo, &mApiHandle));
+        mpApiData = std::make_shared<DescriptorSetApiData>(mpPool->device(), layout, mpPool->getApiHandle(0), mApiHandle);
     }
 
     DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const {
@@ -61,7 +61,8 @@ namespace Falcor {
     }
 
     template<bool isUav, typename ViewType>
-    static void setSrvUavCommon(VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
+    static void setSrvUavCommon(Device::SharedPtr device, VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
+        //LOG_DBG("setSrvUavCommon descriptor type %s", to_string(type).c_str());
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
@@ -70,15 +71,21 @@ namespace Falcor {
 
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
+
+            //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
+
             if (pBuffer->isTyped()) {
                 texelBufferView = pBuffer->getUAV()->getApiHandle();
                 write.pTexelBufferView = &texelBufferView;
+                write.pBufferInfo = nullptr;
             } else {
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();
                 write.pBufferInfo = &buffer;
+                write.pTexelBufferView = nullptr;
             }
+            write.pImageInfo = nullptr;
         } else {
             assert(handle.getType() == VkResourceType::Image);
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -94,15 +101,16 @@ namespace Falcor {
         write.dstArrayElement = arrayIndex;
         write.descriptorCount = 1;
 
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+        //LOG_DBG("vkUpdateDescriptorSets 1");
+        vkUpdateDescriptorSets(device->getApiHandle(), 1, &write, 0, nullptr);
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
-        setSrvUavCommon<false>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
+        setSrvUavCommon<false>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
-        setSrvUavCommon<true>(mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
+        setSrvUavCommon<true>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler) {
@@ -120,10 +128,13 @@ namespace Falcor {
         write.descriptorCount = 1;
         write.pImageInfo = &info;
 
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+        //LOG_DBG("vkUpdateDescriptorSets 2");
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
+        //LOG_DBG("vkUpdateDescriptorSets 2 done");
     }
 
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
+        //LOG_DBG("setCbv rangeIndex %u, descIndex %u, range type %s", rangeIndex, descIndex, to_string((DescriptorPool::Type)mLayout.getRange(rangeIndex).type).c_str());
         VkDescriptorBufferInfo info;
 
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
@@ -140,7 +151,11 @@ namespace Falcor {
         write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         write.descriptorCount = 1;
         write.pBufferInfo = &info;
-        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+
+        //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
+        //LOG_DBG("vkUpdateDescriptorSets 3");
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
+        //LOG_DBG("vkUpdateDescriptorSets 3 done");
     }
 
     template<bool forGraphics>

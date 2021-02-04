@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,38 +25,46 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_
+
 #include "GBuffer.h"
+#include "../RenderPasses/DepthPass/DepthPass.h"
+#include "../RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 
 using namespace Falcor;
 
 /** Raster G-buffer pass.
     This pass renders a fixed set of G-buffer channels using rasterization.
 */
-class GBufferRaster : public GBuffer, public inherit_shared_from_this<GBuffer, GBufferRaster>
-{
-public:
+class GBufferRaster : public GBuffer {
+ public:
     using SharedPtr = std::shared_ptr<GBufferRaster>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
+    void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     std::string getDesc(void) override { return kDesc; }
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 
-private:
-    GBufferRaster(const Dictionary& dict);
+ private:
+    GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
     void setCullMode(RasterizerState::CullMode mode) override;
 
     // Internal state
+    DepthPass::SharedPtr            mpDepthPrePass;
+    TexturesResolvePass::SharedPtr  mpTexturesResolvePass;
+    
+    RenderGraph::SharedPtr          mpTexturesResolvePassGraph;
     RenderGraph::SharedPtr          mpDepthPrePassGraph;
     Fbo::SharedPtr                  mpFbo;
 
     // Rasterization resources
-    struct
-    {
+    struct {
+        RasterizerState::SharedPtr pRsState;
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;
@@ -65,3 +73,6 @@ private:
     static const char* kDesc;
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFERRASTER_H_
+

@@ -51,6 +51,7 @@ struct VsOut
     float4 pos : SV_POSITION;
 };
 
+[shader("vertex")]
 VsOut vs(VsIn vIn)
 {
     VsOut vOut;
@@ -61,6 +62,7 @@ VsOut vs(VsIn vIn)
     return vOut;
 }
 
+[shader("fragment")]
 float4 ps(VsOut vOut) : SV_TARGET
 {
     float fontMask = gFont.Sample(gSampler, vOut.texC).r;

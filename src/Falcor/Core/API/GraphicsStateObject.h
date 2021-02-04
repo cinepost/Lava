@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GRAPHICSSTATEOBJECT_H_
+#define SRC_FALCOR_CORE_API_GRAPHICSSTATEOBJECT_H_
 
 #include "Falcor/Core/API/VertexLayout.h"
 #include "Falcor/Core/API/FBO.h"
@@ -36,7 +37,11 @@
 #include "Falcor/Core/API/RootSignature.h"
 #include "Falcor/Core/API/VAO.h"
 
+
 namespace Falcor {
+
+class Device;
+class GraphicsState;
 
 class dlldecl GraphicsStateObject {
  public:
@@ -83,6 +88,10 @@ class dlldecl GraphicsStateObject {
 
      private:
         friend class GraphicsStateObject;
+        friend class GraphicsState;
+
+        Desc(std::shared_ptr<Device> pDevice);
+
         Fbo::Desc mFboDesc;
         VertexLayout::SharedConstPtr mpLayout;
         ProgramKernels::SharedConstPtr mpProgram;
@@ -111,18 +120,20 @@ class dlldecl GraphicsStateObject {
         \param[in] desc State object description.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     const ApiHandle& getApiHandle() { return mApiHandle; }
 
     const Desc& getDesc() const { return mDesc; }
 
  private:
-    GraphicsStateObject(const Desc& desc);
+    GraphicsStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
     void apiInit();
 
     Desc mDesc;
     ApiHandle mApiHandle;
+
+    std::shared_ptr<Device> mpDevice;
 
     // Default state objects
     static BlendState::SharedPtr spDefaultBlendState;
@@ -131,3 +142,5 @@ class dlldecl GraphicsStateObject {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GRAPHICSSTATEOBJECT_H_

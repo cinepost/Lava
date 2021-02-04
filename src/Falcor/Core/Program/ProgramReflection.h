@@ -904,6 +904,7 @@ public:
         Uint2,
         Uint3,
         Uint4,
+        Uint_8,
         Uint64,
         Uint64_2,
         Uint64_3,
@@ -912,6 +913,7 @@ public:
         Int2,
         Int3,
         Int4,
+        Int_8,
         Int64,
         Int64_2,
         Int64_3,
@@ -1411,9 +1413,8 @@ typedef EntryPointGroupReflection EntryPointBaseReflection;
 
 /** Reflection object for an entire program. Essentially, it's a collection of ParameterBlocks
 */
-class dlldecl ProgramReflection
-{
-public:
+class dlldecl ProgramReflection {
+ public:
     using SharedPtr = std::shared_ptr<ProgramReflection>;
     using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
     using ConstSharedPtrRef = const SharedPtr&;
@@ -1421,8 +1422,7 @@ public:
 
     /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
     */
-    struct ShaderVariable
-    {
+    struct ShaderVariable {
         uint32_t bindLocation = 0;      ///> The bind-location of the variable
         std::string semanticName;       ///> The semantic name of the variable
         ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown; ///> The type of the variable

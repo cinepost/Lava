@@ -35,7 +35,6 @@
 
 #include "ResourceViews.h"
 
-
 namespace Falcor {
 
 class Device;
@@ -97,6 +96,13 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     static const uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
 
     virtual ~Resource() = 0;
+
+    std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
+
+    size_t id() { return mID; }
+    size_t id() const { return mID; }
+
 
     /** Get the bind flags
     */
@@ -171,12 +177,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     }
 
  private:
-    std::shared_ptr<Device> mpDevice;
+    static std::atomic<size_t> newResourceID;
 
  protected:
     friend class CopyContext;
 
-    Resource(Device device, Type type, BindFlags bindFlags, uint64_t size) : mpDevice = device, mType(type), mBindFlags(bindFlags), mSize(size) {}
+    Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
     Type mType;
     BindFlags mBindFlags;
@@ -195,6 +201,9 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     size_t mSize = 0;
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
+
+    std::shared_ptr<Device> mpDevice;
+    size_t mID;
 
     mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
     mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

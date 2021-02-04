@@ -32,13 +32,22 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
+//#include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
+
+class Device;
 
 class VkBaseApiHandle : public std::enable_shared_from_this<VkBaseApiHandle> {
  public:
     using SharedPtr = std::shared_ptr<VkBaseApiHandle>;
     virtual ~VkBaseApiHandle() = default;
+
+ protected:
+    VkBaseApiHandle(std::shared_ptr<Device> device) { mpDevice = device; }
+
+ protected:
+    std::shared_ptr<Device> mpDevice;
 };
 
 template<typename ApiHandle>
@@ -48,8 +57,9 @@ class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseA
      public:
         SharedPtr() = default;
         explicit SharedPtr(VkHandle<ApiHandle>* pHandle) : std::shared_ptr<VkHandle<ApiHandle>>(pHandle) {}
-        static SharedPtr create(ApiHandle handle) { return SharedPtr(new VkHandle(handle)); }
+        static SharedPtr create(std::shared_ptr<Device> device, ApiHandle handle) { return SharedPtr(new VkHandle(device, handle)); }
         operator ApiHandle() const { return get()->mApiHandle; }
+
      private:
         VkHandle<ApiHandle>* get() const { return std::shared_ptr< VkHandle<ApiHandle>>::get(); }
     };
@@ -61,7 +71,7 @@ class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseA
     }
  private:
     friend class SharedPtr;
-    explicit VkHandle(const ApiHandle& apiHandle) : mApiHandle(apiHandle) {}
+    explicit VkHandle(std::shared_ptr<Device> device, const ApiHandle& apiHandle) : VkBaseApiHandle(device), mApiHandle(apiHandle) {}
     ApiHandle mApiHandle;
 };
 
@@ -71,7 +81,7 @@ class VkRootSignature : public VkBaseApiHandle, public inherit_shared_from_this<
      public:
         SharedPtr() = default;
         explicit SharedPtr(VkRootSignature* pHandle) : std::shared_ptr<VkRootSignature>(pHandle) {}
-        static SharedPtr create(VkPipelineLayout layout, const std::vector<VkDescriptorSetLayout>& sets) { return SharedPtr(new VkRootSignature(layout, sets)); }
+        static SharedPtr create(std::shared_ptr<Device> device, VkPipelineLayout layout, const std::vector<VkDescriptorSetLayout>& sets) { return SharedPtr(new VkRootSignature(device ,layout, sets)); }
         operator VkPipelineLayout() const { return get()->mApiHandle; }
 
      private:
@@ -82,7 +92,7 @@ class VkRootSignature : public VkBaseApiHandle, public inherit_shared_from_this<
 
  private:
     friend class SharedPtr;
-    VkRootSignature(VkPipelineLayout layout, const std::vector<VkDescriptorSetLayout>& sets) : mApiHandle(layout), mSets(sets) {}
+    VkRootSignature(std::shared_ptr<Device> device, VkPipelineLayout layout, const std::vector<VkDescriptorSetLayout>& sets) : VkBaseApiHandle(device), mApiHandle(layout), mSets(sets) {}
     VkPipelineLayout mApiHandle;
     std::vector<VkDescriptorSetLayout> mSets;
 };
@@ -93,8 +103,8 @@ class VkDeviceData : public VkBaseApiHandle, public inherit_shared_from_this<VkB
      public:
         SharedPtr() = default;
         explicit SharedPtr(VkDeviceData* pData) : std::shared_ptr<VkDeviceData>(pData) {}
-        static SharedPtr create(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface) {
-            return SharedPtr(new VkDeviceData(instance, physicalDevice, device, surface));
+        static SharedPtr create(std::shared_ptr<Device> device, VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice vkdevice, VkSurfaceKHR surface) {
+            return SharedPtr(new VkDeviceData(device, instance, physicalDevice, vkdevice, surface));
         }
 
         operator VkInstance() const { return get()->mInstance; }
@@ -110,8 +120,8 @@ class VkDeviceData : public VkBaseApiHandle, public inherit_shared_from_this<VkB
 
  private:
     friend SharedPtr;
-    VkDeviceData(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface) :
-        mInstance(instance), mPhysicalDevice(physicalDevice), mLogicalDevice(device), mSurface(surface) {}
+    VkDeviceData(std::shared_ptr<Device> device, VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice vkdevice, VkSurfaceKHR surface) :
+        VkBaseApiHandle(device), mInstance(instance), mPhysicalDevice(physicalDevice), mLogicalDevice(vkdevice), mSurface(surface) {}
     VkInstance          mInstance;
     VkPhysicalDevice    mPhysicalDevice;
     VkDevice            mLogicalDevice;
@@ -132,12 +142,12 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         SharedPtr() = default;
         explicit SharedPtr(VkResource<ImageType, BufferType>* pRes) : std::shared_ptr<VkResource<ImageType, BufferType>>(pRes) {}
 
-        static SharedPtr create(ImageType image, VkDeviceMemory mem) {
-            return SharedPtr(new VkResource<ImageType, BufferType>(image, mem));
+        static SharedPtr create(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, image, mem));
         }
 
-        static SharedPtr create(BufferType buffer, VkDeviceMemory mem) {
-            return SharedPtr(new VkResource<ImageType, BufferType>(buffer, mem));
+        static SharedPtr create(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, buffer, mem));
         }
 
         VkResourceType getType() const { return get()->mType; }
@@ -160,13 +170,9 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
 
  private:
     friend SharedPtr;
-    VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { 
-        // LOG_INFO("VkResource create image");
-    }
+    VkResource(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { }
     
-    VkResource(BufferType buffer, VkDeviceMemory mem) : mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { 
-        // LOG_INFO("VkResource create buffer");
-    }
+    VkResource(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { }
 
     VkResourceType mType = VkResourceType::None;
     ImageType mImage = VK_NULL_HANDLE;
@@ -180,7 +186,7 @@ class VkFbo : public VkBaseApiHandle {
      public:
         SharedPtr() = default;
         explicit SharedPtr(VkFbo* pFbo) : std::shared_ptr<VkFbo>(pFbo) {}
-        static SharedPtr create(VkRenderPass renderPass, VkFramebuffer fbo) { return SharedPtr(new VkFbo(renderPass, fbo)); }
+        static SharedPtr create(std::shared_ptr<Device> device, VkRenderPass renderPass, VkFramebuffer fbo) { return SharedPtr(new VkFbo(device, renderPass, fbo)); }
 
         operator VkFramebuffer() const { return get()->mVkFbo; }
         operator VkRenderPass() const { return get()->mVkRenderPass; }
@@ -195,7 +201,7 @@ class VkFbo : public VkBaseApiHandle {
 
  private:
     friend SharedPtr;
-    VkFbo(VkRenderPass renderPass, VkFramebuffer fbo) : mVkRenderPass(renderPass), mVkFbo(fbo) {}
+    VkFbo(std::shared_ptr<Device> device, VkRenderPass renderPass, VkFramebuffer fbo) : VkBaseApiHandle(device), mVkRenderPass(renderPass), mVkFbo(fbo) {}
     VkRenderPass mVkRenderPass = VK_NULL_HANDLE;
     VkFramebuffer mVkFbo = VK_NULL_HANDLE;
 };

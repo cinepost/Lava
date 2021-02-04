@@ -32,6 +32,7 @@
 #include <memory>
 
 #include "VertexLayout.h"
+#include "Buffer.h"
 
 namespace Falcor {
 

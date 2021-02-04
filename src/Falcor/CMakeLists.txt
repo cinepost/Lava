@@ -17,11 +17,11 @@ file( GLOB SOURCES
     ./Scene/Importers/*.cpp
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
-    ./Scene/ParticleSystem/*.cpp
+    #./Scene/ParticleSystem/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
-    ./Utils/Image/Bitmap.cpp
+    ./Utils/Image/*.cpp
     ./Utils/Perception/*.cpp
     ./Utils/SampleGenerators/*.cpp
     ./Utils/Sampling/*.cpp
@@ -31,7 +31,7 @@ file( GLOB SOURCES
     ./Utils/UI/*.cpp
     ./Utils/Video/*.cpp
     ./Experimental/Scene/Lights/*.cpp
-    ./Testing/*.cpp
+    #./Testing/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
@@ -42,31 +42,58 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )
 
+add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+
+# PyBind11
+find_package(pybind11 REQUIRED CONFIG)
+
+# Python
+find_package( Python3 COMPONENTS Development )
+include_directories( ${Python3_INCLUDE_DIRS} )
+
+# ZLIB
+find_package( ZLIB REQUIRED )
+if(ZLIB_FOUND)
+    set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
+endif()
+
+if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+  if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    set( ZLIB_LIBRARY ${ZLIB_LIBRARY_DBG} )
+  else()
+    set( ZLIB_LIBRARY ${ZLIB_LIBRARY_RELEASE} )
+  endif()
+
+  add_library(ZLIB::ZLIB INTERFACE IMPORTED)
+  set_target_properties(ZLIB::ZLIB PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES "${ZLIB_LIBRARY}"
+  )
+endif()
+
+# Imath
+find_package( Imath REQUIRED CONFIG )
+
+# OpenEXR
+find_package( OpenEXR REQUIRED CONFIG )
+
+# OpenImageIO
+find_package( OpenImageIO REQUIRED CONFIG )
+if (OpenImageIO_FOUND)
+    message( "OpenImageIO found: ${OpenImageIO_FOUND}" ) 
+    message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
+    message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
+    message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
+endif()
+include_directories( ${OPENIMAGEIO_INCLUDES} )
+
 # ImGui
-include_directories(${PROJECT_SOURCE_DIR}/third_party/imgui)
-
-# Assimp (built within project)
-#set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${CMAKE_BINARY_DIR}/third_party/assimp)# ASSIMP search path
-#find_package(assimp CONFIG REQUIRED)
-#include_directories(${assimp_INCLUDE_DIRS})
-#if (assimp_FOUND)
-#    message("Assimp inc: ${ASSIMP_INCLUDE_DIR}" )
-#endif()
-
-# set any variables you might need to set for your app and assimp
-set(BUILD_ASSIMP_TOOLS  ON)
-set(ASSIMP_BUILD_STATIC_LIB ON)
-
-# add assimp source dir as a subdirectory, effectively making 
-# assimp's CMakeLists.txt part of your build
-add_subdirectory( ${PROJECT_SOURCE_DIR}/third_party/assimp ${CMAKE_BINARY_DIR}/assimp)
-
+include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
 
 # GLFW 
 find_package(glfw3 CONFIG REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 link_libraries(${GLFW_LIBRARIES})
-
 
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
@@ -88,23 +115,23 @@ PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
 # Setup CMake to use GTK+, tell the compiler where to look for headers
 # and to the linker where to look for libraries
-INCLUDE_DIRECTORIES(${GTK3_INCLUDE_DIRS})
-LINK_DIRECTORIES(${GTK3_LIBRARY_DIRS})
+include_directories( ${GTK3_INCLUDE_DIRS} )
+link_directories( ${GTK3_LIBRARY_DIRS} )
 
 # Add other flags to the compiler
-ADD_DEFINITIONS(${GTK3_CFLAGS_OTHER})
-
-
-# Python
-find_package( PythonLibs 3.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
+add_definitions(${GTK3_CFLAGS_OTHER})
 
 # FreeImage
-find_package(FreeImage REQUIRED)
+find_package( FreeImage REQUIRED )
 include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
+
+# TIFF (required by FreeImage )
+find_package( TIFF REQUIRED )
+include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
 find_package( Boost COMPONENTS system filesystem REQUIRED )
+message( "Boost include dirs: " ${Boost_INCLUDE_DIRS} )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # We use Boost static libs
@@ -123,11 +150,11 @@ set( SLANG_LIBRARY
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
-add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
-#add_dependencies( falcor_lib assimp )
+add_definitions(-DFALCOR_DLL)
 
 target_link_libraries(
     falcor_lib
+    
     assimp
     glfw
     avutil
@@ -137,10 +164,13 @@ target_link_libraries(
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${PYTHON_LIBRARIES}
+    ${Python3_LIBRARIES}
     ${Vulkan_LIBRARY}
     ${GTK3_LIBRARIES}
     ${FREEIMAGE_LIBRARIES}
+    ${TIFF_LIBRARIES}
+    ${ZLIB_LIBRARY}
+    OpenImageIO::OpenImageIO
 )
 
 # Copy/install all needed shaders
@@ -149,8 +179,7 @@ file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
 file(
     COPY Utils Scene Experimental RenderGraph Testing
     DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
-    FILES_MATCHING
-        PATTERN "*.slang*"
+    FILES_MATCHING PATTERN "*.slan*"
 )
 
 # Copy/install falcor data
@@ -159,17 +188,22 @@ file(
     DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
 )
 
-if(APPLE)
-    if( COPPER_BUILD_LIBS_AS_FRAMEWORKS )
-	#falcor_config_framework( falcor_lib )
+if(UNIX)
+    install( 
+        TARGETS falcor_lib
+        DESTINATION lib 
+    )
 
-    # Framework is called 'Falcor'
-    set_target_properties( falcor_lib PROPERTIES OUTPUT_NAME "Falcor" )
-    install( TARGETS falcor_lib DESTINATION "Frameworks" )
-  else()
-    install( TARGETS falcor_lib DESTINATION "lib" )
-  endif()
+    # Install all needed shaders
+    install(
+        DIRECTORY Core Experimental Raytracing RenderGraph RenderPasses Scene Testing Utils
+        DESTINATION shaders
+        FILES_MATCHING PATTERN "*.slan*"
+    )
 
-elseif(UNIX)
-    install( TARGETS falcor_lib DESTINATION "lib" )
+    # Install falcor data
+    install(
+        DIRECTORY Data/Framework Data/LightProbes Data/NVIDIA
+        DESTINATION data
+    )
 endif()

@@ -292,10 +292,8 @@ namespace Falcor
         }
     }
 
-    static ReflectionResourceType::Dimensions getResourceDimensions(SlangResourceShape shape)
-    {
-        switch (shape)
-        {
+    static ReflectionResourceType::Dimensions getResourceDimensions(SlangResourceShape shape) {
+        switch (shape) {
         case SLANG_TEXTURE_1D:
             return ReflectionResourceType::Dimensions::Texture1D;
         case SLANG_TEXTURE_1D_ARRAY:
@@ -325,10 +323,8 @@ namespace Falcor
         }
     }
 
-    ReflectionBasicType::Type getVariableType(TypeReflection::ScalarType slangScalarType, uint32_t rows, uint32_t columns)
-    {
-        switch (slangScalarType)
-        {
+    ReflectionBasicType::Type getVariableType(TypeReflection::ScalarType slangScalarType, uint32_t rows, uint32_t columns) {
+        switch (slangScalarType) {
         case TypeReflection::ScalarType::Bool:
             assert(rows == 1);
             switch (columns)
@@ -341,6 +337,13 @@ namespace Falcor
                 return ReflectionBasicType::Type::Bool3;
             case 4:
                 return ReflectionBasicType::Type::Bool4;
+            }
+        case TypeReflection::ScalarType::UInt8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionBasicType::Type::Uint_8;
             }
         case TypeReflection::ScalarType::UInt32:
             assert(rows == 1);
@@ -380,6 +383,13 @@ namespace Falcor
                 return ReflectionBasicType::Type::Int3;
             case 4:
                 return ReflectionBasicType::Type::Int4;
+            }
+        case TypeReflection::ScalarType::Int8:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionBasicType::Type::Int_8;
             }
         case TypeReflection::ScalarType::Int64:
             assert(rows == 1);
@@ -450,8 +460,7 @@ namespace Falcor
         return ReflectionBasicType::Type::Unknown;
     }
 
-    static ReflectionResourceType::StructuredType getStructuredBufferType(TypeReflection* pSlangType)
-    {
+    static ReflectionResourceType::StructuredType getStructuredBufferType(TypeReflection* pSlangType) {
         auto invalid = ReflectionResourceType::StructuredType::Invalid;
 
         if (pSlangType->getKind() != TypeReflection::Kind::Resource)
@@ -493,11 +502,9 @@ namespace Falcor
         ProgramVersion const*       pProgramVersion);
 
         // Determine if a Slang type layout consumes any storage/resources of the given kind
-    static bool hasUsage(slang::TypeLayoutReflection* pSlangTypeLayout, SlangParameterCategory resourceKind)
-    {
+    static bool hasUsage(slang::TypeLayoutReflection* pSlangTypeLayout, SlangParameterCategory resourceKind) {
         auto kindCount = pSlangTypeLayout->getCategoryCount();
-        for(unsigned int ii = 0; ii < kindCount; ++ii)
-        {
+        for(unsigned int ii = 0; ii < kindCount; ++ii) {
             if(pSlangTypeLayout->getCategoryByIndex(ii) == resourceKind)
                 return true;
         }
@@ -507,13 +514,10 @@ namespace Falcor
         // Given a "breadcrumb trail" (reflection path), determine
         // the actual register/binding that will be used by a leaf
         // parameter for the given resource kind.
-    static size_t getRegisterIndexFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category)
-    {
+    static size_t getRegisterIndexFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category) {
         uint32_t offset = 0;
-        for (auto pp = pPath; pp; pp = pp->pParent)
-        {
-            if (pp->pVar)
-            {
+        for (auto pp = pPath; pp; pp = pp->pParent) {
+            if (pp->pVar) {
                 // We are in the process of walking up from a leaf
                 // shader variable to the root (some global shader
                 // parameter).
@@ -548,13 +552,10 @@ namespace Falcor
         return offset;
     }
 
-    static uint32_t getRegisterSpaceFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category)
-    {
+    static uint32_t getRegisterSpaceFromPath(const ReflectionPathLink* pPath, SlangParameterCategory category) {
         uint32_t offset = 0;
-        for (auto pp = pPath; pp; pp = pp->pParent)
-        {
-            if (pp->pVar)
-            {
+        for (auto pp = pPath; pp; pp = pp->pParent) {
+            if (pp->pVar) {
                 // Similar to the case above in `getRegisterIndexFromPath`,
                 // if we are walking from a member in a parameter block
                 // up to the block itself, then the space for our parameter
@@ -566,8 +567,7 @@ namespace Falcor
                 // too subtle, and Slang should be providing a service
                 // to compute this.
                 //
-                if(pp->pVar->getTypeLayout()->getKind() == slang::TypeReflection::Kind::ParameterBlock)
-                {
+                if(pp->pVar->getTypeLayout()->getKind() == slang::TypeReflection::Kind::ParameterBlock) {
                     return offset + (uint32_t) getRegisterIndexFromPath(pp, SLANG_PARAMETER_CATEGORY_REGISTER_SPACE);
                 }
                 offset += (uint32_t)pp->pVar->getBindingSpace(category);
@@ -692,9 +692,7 @@ namespace Falcor
                     if (pSlangType->getKind() == slang::TypeReflection::Kind::ParameterBlock)
                     {
                         bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock;
-                    }
-                    else
-                    {
+                    } else {
                         bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer;
                     }
                     bindingInfo.pSubObjectReflector = pSubBlock;
@@ -732,8 +730,7 @@ namespace Falcor
 
         ReflectionStructType::BuildState buildState;
 
-        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
-        {
+        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++) {
             auto pSlangField = pSlangType->getFieldByIndex(i);
             ExtendedReflectionPath fieldPath(pPath, pSlangField);
 
@@ -748,8 +745,7 @@ namespace Falcor
         return pType;
     }
 
-    static ReflectionType::ByteSize getByteSize(TypeLayoutReflection* pSlangType)
-    {
+    static ReflectionType::ByteSize getByteSize(TypeLayoutReflection* pSlangType) {
         return pSlangType->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM);
     }
 
@@ -774,8 +770,7 @@ namespace Falcor
         return pArrayType;
     }
 
-    ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType)
-    {
+    ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType) {
         const bool isRowMajor = pSlangType->getMatrixLayoutMode() == SLANG_MATRIX_LAYOUT_ROW_MAJOR;
         ReflectionBasicType::Type type = getVariableType(pSlangType->getScalarType(), pSlangType->getRowCount(), pSlangType->getColumnCount());
         ReflectionType::SharedPtr pType = ReflectionBasicType::create(type, isRowMajor, pSlangType->getSize(), pSlangType);
@@ -797,8 +792,7 @@ namespace Falcor
 
         bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface;
 
-        if(auto pSlangPendingTypeLayout = pSlangType->getPendingDataTypeLayout())
-        {
+        if(auto pSlangPendingTypeLayout = pSlangType->getPendingDataTypeLayout()) {
             ReflectionPath subPath;
             subPath.pPrimary = pPath->pDeferred;
             subPath.pDeferred = nullptr;
@@ -809,6 +803,7 @@ namespace Falcor
                 pPendingBlock.get(),
                 &subPath,
                 pProgramVersion);
+            
             pPendingBlock->setElementType(pPendingType);
 
             // TODO: What to do if `pPendingType->getByteSize()` is non-zero?
@@ -824,8 +819,7 @@ namespace Falcor
             bindingInfo.regSpace = getRegisterSpaceFromPath(pPath->pPrimary, category);
         }
 
-        if(pBlock)
-        {
+        if(pBlock) {
             pBlock->addResourceRange(bindingInfo);
         }
 
@@ -897,25 +891,21 @@ namespace Falcor
         return nullptr;
     }
 
-    static ParameterCategory getParameterCategory(TypeLayoutReflection* pTypeLayout)
-    {
+    static ParameterCategory getParameterCategory(TypeLayoutReflection* pTypeLayout) {
         ParameterCategory category = pTypeLayout->getParameterCategory();
-        if (category == ParameterCategory::Mixed)
-        {
-            switch (pTypeLayout->getKind())
-            {
-            case TypeReflection::Kind::ConstantBuffer:
-            case TypeReflection::Kind::ParameterBlock:
-            case TypeReflection::Kind::None:
-                category = ParameterCategory::ConstantBuffer;
-                break;
+        if (category == ParameterCategory::Mixed) {
+            switch (pTypeLayout->getKind()) {
+                case TypeReflection::Kind::ConstantBuffer:
+                case TypeReflection::Kind::ParameterBlock:
+                case TypeReflection::Kind::None:
+                    category = ParameterCategory::ConstantBuffer;
+                    break;
             }
         }
         return category;
     }
 
-    static ParameterCategory getParameterCategory(VariableLayoutReflection* pVarLayout)
-    {
+    static ParameterCategory getParameterCategory(VariableLayoutReflection* pVarLayout) {
         return getParameterCategory(pVarLayout->getTypeLayout());
     }
 
@@ -957,8 +947,7 @@ namespace Falcor
         return reflectVariable(pSlangLayout, rangeIndex, pBlock, &path, pProgramVersion);
     }
 
-    static void storeShaderVariable(const ReflectionPath& path, SlangParameterCategory category, const std::string& name, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic, uint32_t count, uint32_t stride)
-    {
+    static void storeShaderVariable(const ReflectionPath& path, SlangParameterCategory category, const std::string& name, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic, uint32_t count, uint32_t stride) {
         auto pVar = path.pPrimary->pVar;
 
         ProgramReflection::ShaderVariable var;
@@ -966,24 +955,20 @@ namespace Falcor
         var.type = getVariableType(pTypeLayout->getScalarType(), pTypeLayout->getRowCount(), pTypeLayout->getColumnCount());
 
         uint32_t baseIndex = (uint32_t)getRegisterIndexFromPath(path.pPrimary, category);
-        for(uint32_t i = 0 ; i < std::max(count, 1u) ; i++)
-        {
+        for(uint32_t i = 0 ; i < std::max(count, 1u) ; i++) {
             var.bindLocation = baseIndex + (i*stride);
             var.semanticName = pVar->getSemanticName();
-            if (count)
-            {
+            if (count) {
                 var.semanticName += '[' + std::to_string(i) + ']';
             }
             varMap[name] = var;
-            if (pVarMapBySemantic)
-            {
+            if (pVarMapBySemantic) {
                 (*pVarMapBySemantic)[var.semanticName] = var;
             }
         }
     }
 
-    static void reflectVaryingParameter(const ReflectionPath& path, const std::string& name, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
-    {
+    static void reflectVaryingParameter(const ReflectionPath& path, const std::string& name, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr) {
         auto pVar = path.pPrimary->pVar;
         TypeLayoutReflection* pTypeLayout = pVar->getTypeLayout();
         // Skip parameters that don't consume space in the given category
@@ -991,39 +976,29 @@ namespace Falcor
 
         TypeReflection::Kind kind = pTypeLayout->getKind();
         // If this is a leaf node, store it
-        if ((kind == TypeReflection::Kind::Matrix) || (kind == TypeReflection::Kind::Vector) || (kind == TypeReflection::Kind::Scalar))
-        {
+        if ((kind == TypeReflection::Kind::Matrix) || (kind == TypeReflection::Kind::Vector) || (kind == TypeReflection::Kind::Scalar)) {
             storeShaderVariable(path, category, name, varMap, pVarMapBySemantic, 0, 0);
-        }
-        else if (kind == TypeReflection::Kind::Array)
-        {
+        } else if (kind == TypeReflection::Kind::Array) {
             auto arrayKind = pTypeLayout->getElementTypeLayout()->getKind();
             assert((arrayKind == TypeReflection::Kind::Matrix) || (arrayKind == TypeReflection::Kind::Vector) || (arrayKind == TypeReflection::Kind::Scalar));
             uint32_t arraySize = (uint32_t)pTypeLayout->getTotalArrayElementCount();
             uint32_t arrayStride = (uint32_t)pTypeLayout->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
             storeShaderVariable(path, category, name, varMap, pVarMapBySemantic, arraySize, arrayStride);
-        }
-        else if (kind == TypeReflection::Kind::Struct)
-        {
-            for (uint32_t f = 0; f < pTypeLayout->getFieldCount(); f++)
-            {
+        } else if (kind == TypeReflection::Kind::Struct) {
+            for (uint32_t f = 0; f < pTypeLayout->getFieldCount(); f++) {
                 auto pField = pTypeLayout->getFieldByIndex(f);
                 ExtendedReflectionPath newPath(&path, pField);
                 std::string memberName = name + '.' + pField->getName();
                 reflectVaryingParameter(newPath, memberName, category, varMap, pVarMapBySemantic);
             }
-        }
-        else
-        {
+        } else {
             should_not_get_here();
         }
     }
 
-    static void reflectShaderIO(slang::EntryPointReflection* pEntryPoint, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
-    {
+    static void reflectShaderIO(slang::EntryPointReflection* pEntryPoint, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr) {
         uint32_t entryPointParamCount = pEntryPoint->getParameterCount();
-        for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
-        {
+        for (uint32_t pp = 0; pp < entryPointParamCount; ++pp) {
             auto pVar = pEntryPoint->getParameterByIndex(pp);
 
             ExtendedReflectionPath path(nullptr, pVar);
@@ -1040,24 +1015,19 @@ namespace Falcor
         return SharedPtr(new ProgramReflection(pProgramVersion, pSlangReflector, pSlangEntryPointReflectors, log));
     }
 
-    ProgramReflection::SharedPtr ProgramReflection::createEmpty()
-    {
+    ProgramReflection::SharedPtr ProgramReflection::createEmpty() {
         return SharedPtr(new ProgramReflection(nullptr));
     }
 
-    std::shared_ptr<const ProgramVersion> ParameterBlockReflection::getProgramVersion() const
-    {
+    std::shared_ptr<const ProgramVersion> ParameterBlockReflection::getProgramVersion() const {
         return mpProgramVersion->shared_from_this();
     }
 
-    void ProgramReflection::finalize()
-    {
+    void ProgramReflection::finalize() {
         mpDefaultBlock->finalize();
     }
 
-    ProgramReflection::ProgramReflection(ProgramVersion const* pProgramVersion)
-        : mpProgramVersion(pProgramVersion)
-    {
+    ProgramReflection::ProgramReflection(ProgramVersion const* pProgramVersion): mpProgramVersion(pProgramVersion) {
         ReflectionStructType::SharedPtr pGlobalStruct = ReflectionStructType::create(0, "", nullptr);
 
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
@@ -1070,21 +1040,18 @@ namespace Falcor
         : ParameterBlockReflection(pProgramVersion)
     {}
 
-    static bool isVaryingParameter(slang::VariableLayoutReflection* pSlangParam)
-    {
+    static bool isVaryingParameter(slang::VariableLayoutReflection* pSlangParam) {
         unsigned int categoryCount = pSlangParam->getCategoryCount();
-        for( unsigned int ii = 0; ii < categoryCount; ++ii )
-        {
-            switch(pSlangParam->getCategoryByIndex(ii))
-            {
-            case slang::ParameterCategory::VaryingInput:
-            case slang::ParameterCategory::VaryingOutput:
-            case slang::ParameterCategory::RayPayload:
-            case slang::ParameterCategory::HitAttributes:
-                return true;
+        for( unsigned int ii = 0; ii < categoryCount; ++ii ) {
+            switch(pSlangParam->getCategoryByIndex(ii)) {
+                case slang::ParameterCategory::VaryingInput:
+                case slang::ParameterCategory::VaryingOutput:
+                case slang::ParameterCategory::RayPayload:
+                case slang::ParameterCategory::HitAttributes:
+                    return true;
 
-            default:
-                return false;
+                default:
+                    return false;
             }
         }
         return false;
@@ -1296,8 +1263,7 @@ namespace Falcor
         }
     }
 
-    void ProgramReflection::setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock)
-    {
+    void ProgramReflection::setDefaultParameterBlock(const ParameterBlockReflection::SharedPtr& pBlock) {
         mpDefaultBlock = pBlock;
     }
 
@@ -1310,12 +1276,10 @@ namespace Falcor
 
         auto pFieldType = pVar->getType();
         auto fieldRangeCount = pFieldType->getResourceRangeCount();
-        for (uint32_t rr = 0; rr < fieldRangeCount; ++rr)
-        {
+        for (uint32_t rr = 0; rr < fieldRangeCount; ++rr) {
             auto fieldRange = pFieldType->getResourceRange(rr);
 
-            switch (fieldRange.descriptorType)
-            {
+            switch (fieldRange.descriptorType) {
             case DescriptorSet::Type::Cbv:
                 fieldRange.baseIndex = ioBuildState.cbCount;
                 ioBuildState.cbCount += fieldRange.count;
@@ -1593,7 +1557,10 @@ namespace Falcor
             uint32_t                regSpace,
             DescriptorSet::Type     descriptorType)
         {
+            //LOG_DBG("computeDescriptorSetIndex space %u type %s", regSpace, to_string(descriptorType).c_str());
+            
             SetIndex origIndex(regSpace, descriptorType);
+            
             uint32_t setIndex;
             if (newSetIndices.find(origIndex) == newSetIndices.end())
             {
@@ -1601,10 +1568,10 @@ namespace Falcor
                 setIndex = (uint32_t) pPrimaryReflector->mDescriptorSets.size();
                 newSetIndices[origIndex] = setIndex;
                 pPrimaryReflector->mDescriptorSets.push_back({});
-            }
-            else
-            {
+                //LOG_DBG("new setIndex %u", setIndex);
+            } else {
                 setIndex = newSetIndices[origIndex];
+                //LOG_DBG("setIndex %u", setIndex);
             }
             return setIndex;
         }
@@ -1654,6 +1621,7 @@ namespace Falcor
                     }
 
                     auto subRange = subSet.layout.getRange(r);
+                    //LOG_DBG("adding %s subRange %u", to_string(subRange.type).c_str(), subRange.baseRegIndex);
                     setInfo.layout.addRange(
                         subRange.type,
                         subRange.baseRegIndex,
@@ -1663,12 +1631,13 @@ namespace Falcor
             }
         }
 
-        void finalize(ParameterBlockReflection* pReflector)
-        {
+        void finalize(ParameterBlockReflection* pReflector) {
+            //LOG_DBG("finalize");
+
             pPrimaryReflector = pReflector;
 
-            if (pReflector->hasDefaultConstantBuffer())
-            {
+            if (pReflector->hasDefaultConstantBuffer()) {
+                //LOG_DBG("has default constant buffer");
                 auto descriptorType = DescriptorSet::Type::Cbv;
                 auto& bindingInfo = pReflector->mDefaultConstantBufferBindingInfo;
 
@@ -1679,12 +1648,16 @@ namespace Falcor
                     bindingInfo.descriptorSetIndex = setIndex;
                     auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
+                    //LOG_DBG("adding Cbv range %u", bindingInfo.regIndex);
                     setInfo.layout.addRange(
                         descriptorType,
-                        bindingInfo.regIndex,
+                        // FIXME: Why the hell do we get non zero indexes here !??
+                        0,//bindingInfo.regIndex,
                         1,
-                        bindingInfo.regSpace);
+                        bindingInfo.regSpace
+                    );
                 }
+
             }
 
             // Iterate over descriptors
@@ -1702,11 +1675,13 @@ namespace Falcor
                         rangeBindingInfo.descriptorSetIndex = setIndex;
                         auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
+                        //LOG_DBG("adding simple %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
                         setInfo.layout.addRange(
                             range.descriptorType,
                             rangeBindingInfo.regIndex,
                             range.count,
-                            rangeBindingInfo.regSpace);
+                            rangeBindingInfo.regSpace
+                        );
 
                         setInfo.resourceRangeIndices.push_back(rangeIndex);
                     }
@@ -1724,11 +1699,13 @@ namespace Falcor
                         rangeBindingInfo.descriptorSetIndex = setIndex;
                         auto& setInfo = pReflector->mDescriptorSets[setIndex];
 
+                        //LOG_DBG("adding root descriptor %s range %u", to_string(range.descriptorType).c_str(), rangeBindingInfo.regIndex);
                         setInfo.layout.addRange(
                             range.descriptorType,
                             rangeBindingInfo.regIndex,
                             range.count,
-                            rangeBindingInfo.regSpace);
+                            rangeBindingInfo.regSpace
+                        );
 
                         setInfo.resourceRangeIndices.push_back(rangeIndex);
                     }
@@ -1782,6 +1759,8 @@ namespace Falcor
             }
 
             // TODO: Do we need to handle interface sub-object slots here?
+        
+            //LOG_DBG("finalize done");
         }
     };
 
@@ -1814,8 +1793,7 @@ namespace Falcor
         return mpProgramVersion ? mpProgramVersion->shared_from_this() : ProgramVersion::SharedPtr();
     }
 
-    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(const std::string& name) const
-    {
+    ParameterBlockReflection::SharedConstPtr ProgramReflection::getParameterBlock(const std::string& name) const {
         if(name == "")
             return mpDefaultBlock;
 
@@ -2014,73 +1992,62 @@ namespace Falcor
         : ReflectionType(ReflectionType::Kind::Struct, size, pSlangTypeLayout)
         , mName(name) {}
 
-    ParameterBlockReflection::BindLocation ParameterBlockReflection::getResourceBinding(const std::string& name) const
-    {
+    ParameterBlockReflection::BindLocation ParameterBlockReflection::getResourceBinding(const std::string& name) const {
         return getElementType()->getMemberOffset(name);
     }
 
-    const ReflectionVar::SharedConstPtr ProgramReflection::getResource(const std::string& name) const
-    {
+    const ReflectionVar::SharedConstPtr ProgramReflection::getResource(const std::string& name) const {
         return mpDefaultBlock->getResource(name);
     }
 
-    bool ReflectionArrayType::operator==(const ReflectionType& other) const
-    {
+    bool ReflectionArrayType::operator==(const ReflectionType& other) const {
         const ReflectionArrayType* pOther = other.asArrayType();
         if (!pOther) return false;
         return (*this == *pOther);
     }
 
-    bool ReflectionResourceType::operator==(const ReflectionType& other) const
-    {
+    bool ReflectionResourceType::operator==(const ReflectionType& other) const {
         const ReflectionResourceType* pOther = other.asResourceType();
         if (!pOther) return false;
         return (*this == *pOther);
     }
 
-    bool ReflectionStructType::operator==(const ReflectionType& other) const
-    {
+    bool ReflectionStructType::operator==(const ReflectionType& other) const {
         const ReflectionStructType* pOther = other.asStructType();
         if (!pOther) return false;
         return (*this == *pOther);
     }
 
-    bool ReflectionBasicType::operator==(const ReflectionType& other) const
-    {
+    bool ReflectionBasicType::operator==(const ReflectionType& other) const {
         const ReflectionBasicType* pOther = other.asBasicType();
         if (!pOther) return false;
         return (*this == *pOther);
     }
 
-    bool ReflectionArrayType::operator==(const ReflectionArrayType& other) const
-    {
+    bool ReflectionArrayType::operator==(const ReflectionArrayType& other) const {
         if (mElementCount != other.mElementCount) return false;
         if (mElementByteStride != other.mElementByteStride) return false;
         if (*mpElementType != *other.mpElementType) return false;
         return true;
     }
 
-    bool ReflectionStructType::operator==(const ReflectionStructType& other) const
-    {
+    bool ReflectionStructType::operator==(const ReflectionStructType& other) const {
         // We only care about the struct layout. Checking the members should be enough
         if (mMembers.size() != other.mMembers.size()) return false;
-        for (size_t i = 0; i < mMembers.size(); i++)
-        {
+        for (size_t i = 0; i < mMembers.size(); i++) {
             // Theoretically, the order of the struct members should match
             if (*mMembers[i] != *other.mMembers[i]) return false;
         }
         return true;
     }
 
-    bool ReflectionBasicType::operator==(const ReflectionBasicType& other) const
-    {
+    bool ReflectionBasicType::operator==(const ReflectionBasicType& other) const {
         if (mType != other.mType) return false;
         if (mIsRowMajor != other.mIsRowMajor) return false;
         return true;
     }
 
-    bool ReflectionResourceType::operator==(const ReflectionResourceType& other) const
-    {
+    bool ReflectionResourceType::operator==(const ReflectionResourceType& other) const {
         if (mDimensions != other.mDimensions) return false;
         if (mStructuredType != other.mStructuredType) return false;
         if (mReturnType != other.mReturnType) return false;
@@ -2094,8 +2061,7 @@ namespace Falcor
         return true;
     }
 
-    bool ReflectionVar::operator==(const ReflectionVar& other) const
-    {
+    bool ReflectionVar::operator==(const ReflectionVar& other) const {
         if (*mpType != *other.mpType) return false;
         if (mBindLocation != other.mBindLocation) return false;
         if (mName != other.mName) return false;
@@ -2103,29 +2069,24 @@ namespace Falcor
         return true;
     }
 
-    const ProgramReflection::ShaderVariable* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
-    {
+    const ProgramReflection::ShaderVariable* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName) {
         const auto& it = varMap.find(name);
         return (it == varMap.end()) ? nullptr : &(it->second);
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
-    {
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const {
         return getShaderAttribute(semantic, mVertAttrBySemantic, "getVertexAttributeBySemantic()");
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttribute(const std::string& name) const
-    {
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttribute(const std::string& name) const {
         return getShaderAttribute(name, mVertAttr, "getVertexAttribute()");
     }
 
-    const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const
-    {
+    const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const {
         return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
     }
 
-    ReflectionType::SharedPtr ProgramReflection::findType(const std::string& name) const
-    {
+    ReflectionType::SharedPtr ProgramReflection::findType(const std::string& name) const {
         auto iter = mMapNameToType.find(name);
         if( iter != mMapNameToType.end() )
             return iter->second;
@@ -2142,14 +2103,11 @@ namespace Falcor
         return pFalcorTypeLayout;
     }
 
-    ReflectionVar::SharedConstPtr ProgramReflection::findMember(const std::string& name) const
-    {
+    ReflectionVar::SharedConstPtr ProgramReflection::findMember(const std::string& name) const {
         return mpDefaultBlock->findMember(name);
     }
 
-    ReflectionInterfaceType::SharedPtr ReflectionInterfaceType::create(
-        slang::TypeLayoutReflection*    pSlangTypeLayout)
-    {
+    ReflectionInterfaceType::SharedPtr ReflectionInterfaceType::create(slang::TypeLayoutReflection*    pSlangTypeLayout) {
         return SharedPtr(new ReflectionInterfaceType(pSlangTypeLayout));
     }
 
@@ -2166,17 +2124,15 @@ namespace Falcor
         mResourceRanges.push_back(range);
     }
 
-    bool ReflectionInterfaceType::operator==(const ReflectionInterfaceType& other) const
-    {
+    bool ReflectionInterfaceType::operator==(const ReflectionInterfaceType& other) const {
         // TODO: properly double-check this
         return true;
     }
 
-    bool ReflectionInterfaceType::operator==(const ReflectionType& other) const
-    {
+    bool ReflectionInterfaceType::operator==(const ReflectionType& other) const {
         auto pOtherInterface = other.asInterfaceType();
         if (!pOtherInterface) return false;
         return (*this == *pOtherInterface);
     }
 
-}
+}  // namespace Falcor

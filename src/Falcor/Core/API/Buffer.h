@@ -83,7 +83,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr create(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         size_t size,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
@@ -98,7 +98,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createTyped(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         ResourceFormat format,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -114,13 +114,13 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     */
     template<typename T>
     static SharedPtr createTyped(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         uint32_t elementCount,
         Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
         CpuAccess cpuAccess = Buffer::CpuAccess::None,
         const T* pInitData = nullptr)
     {
-        return createTyped(FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
+        return createTyped(pDevice, FormatForElementType<T>::kFormat, elementCount, bindFlags, cpuAccess, pInitData);
     }
 
     /** Create a new structured buffer.
@@ -133,7 +133,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         uint32_t structSize,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -152,7 +152,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         const Program* pProgram,
         const std::string& name,
         uint32_t elementCount,
@@ -171,7 +171,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createStructured(
-        Device device,
+        std::shared_ptr<Device> pDevice,
         const ShaderVar& shaderVar,
         uint32_t elementCount,
         ResourceBindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
@@ -179,7 +179,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         const void* pInitData = nullptr,
         bool createCounter = true);
 
-    static SharedPtr aliasResource(Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags);
+    static SharedPtr aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags);
 
     /** Create a new buffer from an existing API handle.
         \param[in] handle Handle of already allocated resource.
@@ -188,7 +188,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \param[in] cpuAccess Flags indicating how the buffer can be updated. Flags must match those of the heap the original resource is allocated on.
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
-    static SharedPtr createFromApiHandle(ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
+    static SharedPtr createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
 
     /** Get a shader-resource view.
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float
@@ -297,7 +297,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     }
 
 protected:
-    Buffer(size_t size, BindFlags bindFlags, CpuAccess cpuAccess);
+    Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess);
     void apiInit(bool hasInitData);
 
     CpuAccess mCpuAccess;

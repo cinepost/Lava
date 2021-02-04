@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -38,13 +38,14 @@ BEGIN_NAMESPACE_FALCOR
 
 /** This is a host/device structure that describes material resources.
 */
-struct MaterialResources
-{
+struct MaterialResources {
     // See Material.h for channel layout
     Texture2D baseColor;
     Texture2D specular;
+    Texture2D roughness;
     Texture2D emissive;
     Texture2D normalMap;
+    Texture2D specularTransmission;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
@@ -54,20 +55,26 @@ struct MaterialResources
 
 /** This is a host/device structure that describes a material.
 */
-struct MaterialData
-{
-    float4   baseColor              = float4(1);        ///< Material base color (RGB) and opacity (A).
+struct MaterialData {
+    float4   baseColor              = float4(0);        ///< Material base color (RGB) and opacity (A).
+    
     float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
+    
     float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
-    float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
+    float    roughness              = 0.0;
+    
+    float    metalness              = 0.0;
+    float    anisotropic;
+    float    sheen;
+    float    subsurface;
 
+    float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
     float    IoR                    = 1.5f;             ///< Index of refraction.
     float    specularTransmission   = 0.f;              ///< Specular transmission.
-    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
 
     float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
-    float    _pad0                  = 0.f;
+    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
 
     uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
 };

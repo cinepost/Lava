@@ -25,16 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
+#define SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
+#include "Falcor/Core/API/Device.h"
 
 using namespace Falcor;
 
-class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, SkyBox>
-{
-public:
+class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, SkyBox> {
+ public:
     using SharedPtr = std::shared_ptr<SkyBox>;
     using inherit_shared_from_this::shared_from_this;
     static const char* kDesc;
@@ -48,16 +49,19 @@ public:
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
+    void setIntensity(float intensity) { mIntensity = intensity; }
+    float getIntensity() const { return mIntensity; }
     void setScale(float scale) { mScale = scale; }
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
 
-private:
-    SkyBox();
+ private:
+    SkyBox(Device::SharedPtr pDevice);
     void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
+    float mIntensity = 1.0;
     float mScale = 1;
     bool mLoadSrgb = true;
     Sampler::Filter mFilter = Sampler::Filter::Linear;
@@ -72,3 +76,5 @@ private:
     Scene::SharedPtr mpScene;
     Sampler::SharedPtr mpSampler;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_SKYBOX_SKYBOX_H_

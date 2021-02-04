@@ -32,9 +32,11 @@
 
 namespace Falcor {
 
+class Device;
+
     class dlldecl RenderPassLibrary {
      public:
-        RenderPassLibrary() = default;
+        RenderPassLibrary(std::shared_ptr<Device> pDevice);// = default;
         RenderPassLibrary(RenderPassLibrary&) = delete;
         ~RenderPassLibrary();
         using CreateFunc = std::function<RenderPass::SharedPtr(RenderContext*, const Dictionary&)>;
@@ -52,7 +54,7 @@ namespace Falcor {
 
         /** Get an instance of the library. It's a singleton, you'll always get the same object
         */
-        static RenderPassLibrary& instance();
+        static RenderPassLibrary& instance(std::shared_ptr<Device> pDevice);
 
         /** Call this before the app is shutting down to release all the libraries
         */
@@ -102,6 +104,7 @@ namespace Falcor {
 
     private:
         static RenderPassLibrary* spInstance;
+        static std::map<Device*, RenderPassLibrary*> spInstances;
 
         struct ExtendedDesc : RenderPassDesc {
             ExtendedDesc() = default;
@@ -118,6 +121,8 @@ namespace Falcor {
         };
         std::unordered_map<std::string, LibDesc> mLibs;
         std::unordered_map<std::string, ExtendedDesc> mPasses;
+
+        std::shared_ptr<Device> mpDevice;
 
         void reloadLibrary(RenderContext* pRenderContext, std::string name);
     };

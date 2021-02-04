@@ -25,16 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_
+#define SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Utils/Algorithm/ComputeParallelReduction.h"
 
 using namespace Falcor;
 
-class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<RenderPass, ErrorMeasurePass>
-{
-public:
+class ErrorMeasurePass : public RenderPass, public inherit_shared_from_this<RenderPass, ErrorMeasurePass> {
+ public:
     using SharedPtr = std::shared_ptr<ErrorMeasurePass>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -46,8 +46,8 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
-private:
-    ErrorMeasurePass(const Dictionary& dict);
+ private:
+    ErrorMeasurePass(Device::SharedPtr pDevice,  const Dictionary& dict);
 
     bool init(RenderContext* pRenderContext, const Dictionary& dict);
 
@@ -62,8 +62,7 @@ private:
     ComputePass::SharedPtr mpErrorMeasurerPass;
     ComputeParallelReduction::SharedPtr mpParallelReduction;
 
-    struct
-    {
+    struct {
         float3 error;           ///< Error (either L1 or MSE) in RGB.
         float  avgError;        ///< Error averaged over color components.
         bool   valid = false;
@@ -88,8 +87,7 @@ private:
     bool                    mReportRunningError = true;
     float                   mRunningErrorSigma = 0.995f;
 
-    enum OutputId
-    {
+    enum OutputId {
         source = 0,
         reference,
         difference,
@@ -101,3 +99,5 @@ private:
     static const Gui::RadioButtonGroup sOutputSelectionButtons;
     static const Gui::RadioButtonGroup sOutputSelectionButtonsSourceOnly;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_ERRORMEASUREPASS_ERRORMEASUREPASS_H_

@@ -33,15 +33,12 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
 
-namespace Falcor
-{
+namespace Falcor {
+    
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
     VkImageLayout getImageLayout(Resource::State state);
 
-    RenderContext::RenderContext(CommandQueueHandle queue)
-        : ComputeContext(LowLevelContextData::CommandQueueType::Direct, queue)
-    {
-    }
+    RenderContext::RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) : ComputeContext(pDevice, LowLevelContextData::CommandQueueType::Direct, queue) {}
 
     RenderContext::~RenderContext() = default;
 
@@ -151,7 +148,7 @@ namespace Falcor
 
     static void transitionFboResources(RenderContext* pCtx, const Fbo* pFbo) {
         // We are setting the entire RTV array to make sure everything that was previously bound is detached
-        uint32_t colorTargets = Fbo::getMaxColorTargetCount();
+        uint32_t colorTargets = Fbo::getMaxColorTargetCount(pCtx->device());
 
         if (pFbo) {
             for (uint32_t i = 0; i < colorTargets; i++) {
@@ -169,20 +166,12 @@ namespace Falcor
         vkCmdEndRenderPass(cmdList);
     }
 
-    //static void endVkDraw(VkCommandBuffer cmdBuffer) {
-    //    LOG_ERR("end vk draw 2");
-    //    vkCmdEndRenderPass(cmdBuffer);
-    //}
-
-    //bool RenderContext::prepareForDraw()
     bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars) {
-        // LOG_DBG("prepare for draw");
         assert(pState);
         // Vao must be valid so at least primitive topology is known
         assert(pState->getVao().get());
 
         auto pGSO = pState->getGSO(pVars);
-
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags)) {
             if (pVars) {
@@ -191,40 +180,32 @@ namespace Falcor
                 }
             }
         }
-
         if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags)) {
             vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
         }
-        
         if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags)) {
             transitionFboResources(this, pState->getFbo().get());
         }
-
         if (is_set(StateBindFlags::SamplePositions, mBindFlags)) {
             if (pState->getFbo() && pState->getFbo()->getSamplePositions().size()) {
                 logWarning("The Vulkan backend doesn't support programmable sample positions");
             }
         }
-
         if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags)) {
             setViewports(mpLowLevelData->getCommandList(), pState->getViewports());
         }
-        
         if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags)) {
             setScissors(mpLowLevelData->getCommandList(), pState->getScissors());
         }
-
         if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags)) {
             setVao(this, pState->getVao().get());
         }
-
         beginRenderPass(mpLowLevelData->getCommandList(), pState->getFbo().get());
-
         return true;
     }
 
     void RenderContext::drawInstanced(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation) {
-        //if (vertexCount == 0) return;  // early termination
+        if (vertexCount == 0) return;  // early termination
 
         if (prepareForDraw(pState, pVars) == false) return;
         vkCmdDraw(mpLowLevelData->getCommandList(), vertexCount, instanceCount, startVertexLocation, startInstanceLocation);

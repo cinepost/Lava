@@ -35,16 +35,16 @@
 
 namespace Falcor {
 
-    template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkCommandPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyCommandPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkSemaphore>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySemaphore(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkSampler>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE && gpDevice) vkDestroySampler(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkDescriptorSetLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkPipeline>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipeline(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkShaderModule>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyShaderModule(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkPipelineLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipelineLayout(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkDescriptorPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
-    template<> VkHandle<VkQueryPool>::~VkHandle() { if (mApiHandle != VK_NULL_HANDLE && gpDevice) vkDestroyQueryPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkCommandPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyCommandPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkSemaphore>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySemaphore(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkSampler>::~VkHandle() { if((mApiHandle != VK_NULL_HANDLE) && mpDevice) vkDestroySampler(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkDescriptorSetLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkPipeline>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipeline(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkShaderModule>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyShaderModule(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkPipelineLayout>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyPipelineLayout(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkDescriptorPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyDescriptorPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
+    template<> VkHandle<VkQueryPool>::~VkHandle() { if ((mApiHandle != VK_NULL_HANDLE) && mpDevice) vkDestroyQueryPool(mpDevice->getApiHandle(), mApiHandle, nullptr); }
 
     VkDeviceData::~VkDeviceData() {
         if (mInstance != VK_NULL_HANDLE && mLogicalDevice != VK_NULL_HANDLE && mInstance != VK_NULL_HANDLE) {
@@ -56,7 +56,7 @@ namespace Falcor {
 
     template<>
     VkResource<VkImage, VkBuffer>::~VkResource() {
-        if (!gpDevice) {
+        if (!mpDevice) {
             // #VKTODO This is here because of the black texture in VkResourceViews.cpp
             return;
         }
@@ -65,47 +65,36 @@ namespace Falcor {
             switch (mType) {
                 case VkResourceType::Image:
                     if (mImage) {
-                        vkDestroyImage(gpDevice->getApiHandle(), mImage, nullptr);
-                    } else {
-                        //LOG_WARN("mImage is NULL");
+                        vkDestroyImage(mpDevice->getApiHandle(), mImage, nullptr);
                     }
                     break;
                 case VkResourceType::Buffer:
                     if (mBuffer) {
-                        vkDestroyBuffer(gpDevice->getApiHandle(), mBuffer, nullptr);
-                    } else {
-                        //LOG_WARN("mBuffer is NULL");
+                        vkDestroyBuffer(mpDevice->getApiHandle(), mBuffer, nullptr);
                     }
                     break;
                 default:
                     should_not_get_here();
             }
-            vkFreeMemory(gpDevice->getApiHandle(), mDeviceMem, nullptr);
-            //fprintf(stderr, "_dbg_i %u\n", _dbg_i++);
-            //std::cout << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << std::endl;
-            //LOG_DBG("memory freed");
+            vkFreeMemory(mpDevice->getApiHandle(), mDeviceMem, nullptr);
         }
     }
 
     template<>
     VkResource<VkImageView, VkBufferView>::~VkResource() {
-        if (!gpDevice) {
+        if (!mpDevice) {
             // #VKTODO This is here because of the black texture in VkResourceViews.cpp
             return;
         }
         switch (mType) {
             case VkResourceType::Image:
                 if (mImage) {
-                    vkDestroyImageView(gpDevice->getApiHandle(), mImage, nullptr);
-                } else {
-                    //LOG_WARN("mImage is NULL");
+                    vkDestroyImageView(mpDevice->getApiHandle(), mImage, nullptr);
                 }
                 break;
             case VkResourceType::Buffer:
                 if (mBuffer) {
-                    vkDestroyBufferView(gpDevice->getApiHandle(), mBuffer, nullptr);
-                } else {
-                    //LOG_WARN("mBuffer is NULL");
+                    vkDestroyBufferView(mpDevice->getApiHandle(), mBuffer, nullptr);
                 }
                 break;
             default:
@@ -114,14 +103,16 @@ namespace Falcor {
     }
 
     VkFbo::~VkFbo() {
-        vkDestroyRenderPass(gpDevice->getApiHandle(), mVkRenderPass, nullptr);
-        vkDestroyFramebuffer(gpDevice->getApiHandle(), mVkFbo, nullptr);
+        if (mpDevice) {
+            vkDestroyRenderPass(mpDevice->getApiHandle(), mVkRenderPass, nullptr);
+            vkDestroyFramebuffer(mpDevice->getApiHandle(), mVkFbo, nullptr);
+        }
     }
 
     VkRootSignature::~VkRootSignature() {
-        vkDestroyPipelineLayout(gpDevice->getApiHandle(), mApiHandle, nullptr);
+        vkDestroyPipelineLayout(mpDevice->getApiHandle(), mApiHandle, nullptr);
         for (auto& s : mSets) {
-            vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), s, nullptr);
+            vkDestroyDescriptorSetLayout(mpDevice->getApiHandle(), s, nullptr);
         }
     }
 

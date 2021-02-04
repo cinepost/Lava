@@ -36,7 +36,7 @@ struct SamplerData {
 };
 SamplerData gSamplerData;
 
-Sampler::Sampler(const Desc& desc) : mDesc(desc) {
+Sampler::Sampler(std::shared_ptr<Device> device, const Desc& desc) : mDesc(desc), mpDevice(device) {
     gSamplerData.objectCount++;
 }
 
@@ -81,22 +81,30 @@ Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
     return *this;
 }
 
-Sampler::SharedPtr Sampler::getDefault() {
+Sampler::SharedPtr Sampler::getDefault(std::shared_ptr<Device> device) {
     if (gSamplerData.pDefaultSampler == nullptr) {
-        gSamplerData.pDefaultSampler = create(Desc());
+        Sampler::Desc desc;
+        desc.setMaxAnisotropy(8);
+        desc.setLodParams(0.0f, 16.0f, 0.0f);
+        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        gSamplerData.pDefaultSampler = create(device, desc);
     }
     return gSamplerData.pDefaultSampler;
 }
 
 SCRIPT_BINDING(Sampler) {
-    m.regClass(Sampler);
+    pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
 
-    auto filter = m.enum_<Sampler::Filter>("SamplerFilter");
-    filter.regEnumVal(Sampler::Filter::Linear).regEnumVal(Sampler::Filter::Point);
+        pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
+        filter.value("Linear", Sampler::Filter::Linear);
+        filter.value("Point", Sampler::Filter::Point);
 
-    auto addressing = m.enum_<Sampler::AddressMode>("AddressMode");
-    addressing.regEnumVal(Sampler::AddressMode::Wrap).regEnumVal(Sampler::AddressMode::Mirror).regEnumVal(Sampler::AddressMode::Clamp);
-    addressing.regEnumVal(Sampler::AddressMode::Border).regEnumVal(Sampler::AddressMode::MirrorOnce);
+        pybind11::enum_<Sampler::AddressMode> addressMode(m, "AddressMode");
+        addressMode.value("Wrap", Sampler::AddressMode::Wrap);
+        addressMode.value("Mirror", Sampler::AddressMode::Mirror);
+        addressMode.value("Clamp", Sampler::AddressMode::Clamp);
+        addressMode.value("Border", Sampler::AddressMode::Border);
+        addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
 }
 
 }  // namespace Falcor

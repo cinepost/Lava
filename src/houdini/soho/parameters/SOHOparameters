@@ -1,0 +1,13 @@
+#ifndef __LAVA_LSD_PARAMETERS__
+#define __LAVA_LSD_PARAMETERS__
+
+
+#define HOUDINI_SOHO_DEVELOPER
+#define _SOHO_USER_IPR_MODE
+
+// Include the factory settings
+#include "$HFS/houdini/soho/parameters/SOHOparameters"
+
+#include "lava.ds"
+
+#endif // __LAVA_LSD_PARAMETERS__

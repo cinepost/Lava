@@ -39,6 +39,7 @@
 #include "Renderer.h"
 #include "Falcor/Utils/ArgList.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/UI/Gui.h"
 #include "Falcor/Utils/UI/TextRenderer.h"
 #include "Falcor/Utils/UI/PixelZoom.h"
@@ -76,11 +77,15 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     /************************************************************************/
     /* Callback inherited from ICallbacks                                   */
     /************************************************************************/
-    RenderContext* getRenderContext() override { return gpDevice ? gpDevice->getRenderContext() : nullptr; }
+    RenderContext* getRenderContext() override { return mpDevice ? mpDevice->getRenderContext() : nullptr; }
     Fbo::SharedPtr getTargetFbo() override { return mpTargetFBO; }
     Window* getWindow() override { return mpWindow.get(); }
-    Clock& getGlobalClock() override { return mClock; }
-    FrameRate& getFrameRate() override { return mFrameRate; }
+    
+    //Clock& getGlobalClock() override { return mClock; }
+
+    Clock& getClock() override { return *mClock; }
+    FrameRate& getFrameRate() override { return *mFrameRate; }
+
     void resizeSwapChain(uint32_t width, uint32_t height) override;
     bool isKeyPressed(const KeyboardEvent::Key& key) override;
     void toggleUI(bool showUI) override { mShowUI = showUI; }
@@ -124,14 +129,15 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
     void startScripting();
-    void registerScriptBindings(ScriptBindings::Module& m);
+    void registerScriptBindings(pybind11::module& m);
 
     bool mSuppressInput = false;
     bool mVsyncOn = false;
     bool mShowUI = false;
     bool mCaptureScreen = false;
-    FrameRate mFrameRate;
-    Clock mClock;
+
+    FrameRate *mFrameRate;
+    Clock *mClock;
 
     IRenderer::UniquePtr mpRenderer;
 
@@ -147,7 +153,7 @@ class dlldecl Sample : public Window::ICallbacks, public IFramework {
     std::set<KeyboardEvent::Key> mPressedKeys;
     PixelZoom::SharedPtr mpPixelZoom;
 
-    Sample(IRenderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+    Sample(IRenderer::UniquePtr& pRenderer);
     Sample(const Sample&) = delete;
     Sample& operator=(const Sample&) = delete;
 

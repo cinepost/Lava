@@ -37,52 +37,48 @@
 #include "CaptureTrigger.h"
 
 
-namespace Mogwai
-{
-    namespace
-    {
-        const std::string kReset = "reset";
-        const std::string kRemoveGraph = "removeGraph";
-        const std::string kOutputDir = "outputDir";
-        const std::string kBaseFilename = "baseFilename";
+namespace Mogwai {
 
-        void throwIfOverlapping(uint64_t xStart, uint64_t xCount, uint64_t yStart, uint64_t yCount) {
-            uint64_t xEnd = xStart + xCount - 1;
-            uint64_t yEnd = yStart + yCount - 1;
-            if (xStart <= yEnd && yStart <= xEnd) {
-                throw std::runtime_error("This range overlaps an existing range!");
-            }
-        }
+namespace {
 
-        template<typename T>
-        std::optional<typename T::value_type> findRange(const T& frames, uint64_t startFrame) {
-            for (auto r : frames) {
-                if (r.first == startFrame) return r;
-            }
-            return std::nullopt;
-        }
+const std::string kReset = "reset";
+const std::string kRemoveGraph = "removeGraph";
+const std::string kOutputDir = "outputDir";
+const std::string kBaseFilename = "baseFilename";
+
+void throwIfOverlapping(uint64_t xStart, uint64_t xCount, uint64_t yStart, uint64_t yCount) {
+    uint64_t xEnd = xStart + xCount - 1;
+    uint64_t yEnd = yStart + yCount - 1;
+    if (xStart <= yEnd && yStart <= xEnd) {
+        throw std::runtime_error("This range overlaps an existing range!");
     }
+}
+
+template<typename T>
+std::optional<typename T::value_type> findRange(const T& frames, uint64_t startFrame) {
+    for (auto r : frames) {
+        if (r.first == startFrame) return r;
+    }
+    return std::nullopt;
+}
+
+}
 
     CaptureTrigger::CaptureTrigger(Renderer* pRenderer) : mpRenderer(pRenderer) {}
 
-    void CaptureTrigger::addRange(const RenderGraph* pGraph, uint64_t startFrame, uint64_t count)
-    {
+    void CaptureTrigger::addRange(const RenderGraph* pGraph, uint64_t startFrame, uint64_t count) {
         auto& ranges = mGraphRanges[pGraph];
 
-        if (count == 0)
-        {
-            for (auto r = ranges.begin(); r != ranges.end(); r++)
-            {
-                if (r->first == startFrame)
-                {
+        if (count == 0) {
+            for (auto r = ranges.begin(); r != ranges.end(); r++) {
+                if (r->first == startFrame) {
                     ranges.erase(r);
                     return;
                 }
             }
         }
 
-        for (auto& range : ranges)
-        {
+        for (auto& range : ranges) {
             if (startFrame == range.first && count == range.second) continue; // Silently ignore existing ranges
             throwIfOverlapping(startFrame, count, range.first, range.second);
         }
@@ -90,31 +86,26 @@ namespace Mogwai
         ranges.push_back({ startFrame, count });
     }
 
-    void CaptureTrigger::reset(const RenderGraph* pGraph)
-    {
+    void CaptureTrigger::reset(const RenderGraph* pGraph) {
         if (pGraph) mGraphRanges.erase(pGraph);
         else        mGraphRanges.clear();
     }
 
-    void CaptureTrigger::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-    {
+    void CaptureTrigger::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
         RenderGraph* pGraph = mpRenderer->getActiveGraph();
         if (!pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = gpFramework->getClock().getFrame();
         if (mGraphRanges.find(pGraph) == mGraphRanges.end()) return;
         const auto& ranges = mGraphRanges.at(pGraph);
 
-        if (mCurrent.pGraph)
-        {
+        if (mCurrent.pGraph) {
             assert(pGraph == mCurrent.pGraph);
             return;
         }
 
         // Check if we need to start a range
-        for (auto& r : ranges)
-        {
-            if (r.first == frameId)
-            {
+        for (auto& r : ranges) {
+            if (r.first == frameId) {
                 mCurrent.pGraph = pGraph;
                 mCurrent.range = r;
                 beginRange(pGraph, r);
@@ -123,33 +114,28 @@ namespace Mogwai
         }
     }
 
-    void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
-    {
+    void CaptureTrigger::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) {
         if (!mCurrent.pGraph) return;
-        uint64_t frameId = gpFramework->getGlobalClock().getFrame();
+        uint64_t frameId = gpFramework->getClock().getFrame();
         const auto& ranges = mGraphRanges.at(mCurrent.pGraph);
 
         triggerFrame(pRenderContext, mCurrent.pGraph, frameId);
 
         uint64_t end = mCurrent.range.first + mCurrent.range.second;
-        if (frameId + 1 == end)
-        {
+        if (frameId + 1 == end) {
             endRange(mCurrent.pGraph, mCurrent.range);
             mCurrent = {};
         }
     }
 
-    void CaptureTrigger::activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph)
-    {
-        if (mCurrent.pGraph)
-        {
+    void CaptureTrigger::activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {
+        if (mCurrent.pGraph) {
             endRange(mCurrent.pGraph, mCurrent.range);
             mCurrent = {};
         }
     }
 
-    void CaptureTrigger::renderUI(Gui::Window& w)
-    {
+    void CaptureTrigger::renderUI(Gui::Window& w) {
         w.textbox("Base Filename", mBaseFilename);
         w.text("Output Directory\n" + mOutputDir);
         std::string folder;
@@ -162,21 +148,18 @@ namespace Mogwai
         w.tooltip("If checked, will use an absolute path. Otherwise, the path will be relative to the executable directory");
     }
 
-    void CaptureTrigger::setOutputDirectory(const std::string& outDir)
-    {
+    void CaptureTrigger::setOutputDirectory(const std::string& outDir) {
         bool absolute = fs::path(outDir).is_absolute();
         if (absolute && !mAbsolutePath) mOutputDir = fs::relative(outDir, getExecutableDirectory()).string();
         else if (!absolute && mAbsolutePath) mOutputDir = fs::absolute(getExecutableDirectory() + "/" + outDir).string();
         else mOutputDir = outDir;
     }
 
-    void CaptureTrigger::setBaseFilename(const std::string& baseFilename)
-    {
+    void CaptureTrigger::setBaseFilename(const std::string& baseFilename) {
         mBaseFilename = baseFilename;
     }
 
-    void CaptureTrigger::scriptBindings(Bindings& bindings)
-    {
+    void CaptureTrigger::scriptBindings(Bindings& bindings) {
         auto& m = bindings.getModule();
         if (m.classExists<CaptureTrigger>()) return;
         auto ct = m.class_<CaptureTrigger>("CaptureTrigger");
@@ -189,16 +172,14 @@ namespace Mogwai
         ct.property(kBaseFilename.c_str(), &CaptureTrigger::getBaseFilename, &CaptureTrigger::setBaseFilename);
     }
 
-    std::string CaptureTrigger::getScript(const std::string& var)
-    {
+    std::string CaptureTrigger::getScript(const std::string& var) {
         std::string s;
         s += Scripting::makeSetProperty(var, kOutputDir, Scripting::getFilenameString(mOutputDir, false));
         s += Scripting::makeSetProperty(var, kBaseFilename, mBaseFilename);
         return s;
     }
 
-    std::string CaptureTrigger::getOutputNamePrefix(const std::string& output) const
-    {
+    std::string CaptureTrigger::getOutputNamePrefix(const std::string& output) const {
         auto outDir = fs::path(mOutputDir);
         if (outDir.is_absolute() == false) outDir = fs::absolute(getExecutableDirectory() + "/" + outDir.string());
         std::string absPath = outDir.string();

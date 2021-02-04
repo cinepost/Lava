@@ -32,41 +32,68 @@
 
 namespace Falcor {
     
-void createNullViews();
-void releaseNullViews();
-void createNullBufferViews();
-void releaseNullBufferViews();
-void createNullTypedBufferViews();
-void releaseNullTypedBufferViews();
+void createNullViews(Device::SharedPtr pDevice);
+void releaseNullViews(Device::SharedPtr pDevice);
+void createNullBufferViews(Device::SharedPtr pDevice);
+void releaseNullBufferViews(Device::SharedPtr pDevice);
+void createNullTypedBufferViews(Device::SharedPtr pDevice);
+void releaseNullTypedBufferViews(Device::SharedPtr pDevice);
+void releaseStaticResources(Device::SharedPtr pDevice);
 
-Device::SharedPtr gpDevice;
-Device::SharedPtr gpDeviceHeadless;
+std::atomic<std::uint8_t> Device::UID = 0;
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc) {
-    if (!pWindow) headless = true;
+Device::Device(const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+    headless = true;
+    LOG_DBG("GPU device id: %u type headless", mGpuId);
+}
+
+Device::Device(uint32_t gpuId, const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(gpuId), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+    headless = true;
+    LOG_DBG("GPU device id: %u type headless", mGpuId);
+}
+
+Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
+    _uid = UID++;
+    if (!pWindow){
+        headless = true;
+        LOG_DBG("GPU device id: %u type headless", mGpuId);
+    } else {
+        headless = false;
+        LOG_DBG("GPU device id: %u", mGpuId);
+    }
+}
+
+Device::~Device() {}
+
+Device::SharedPtr Device::create(const Device::Desc& desc) {
+    auto pDevice = SharedPtr(new Device(desc));
+    if (pDevice->init() == false)
+        return nullptr;
+
+    return pDevice;
+}
+
+Device::SharedPtr Device::create(uint32_t deviceId, const Device::Desc& desc) {
+    auto pDevice = SharedPtr(new Device(deviceId, desc));  // headless device
+    if (pDevice->init() == false)
+        return nullptr;
+
+    return pDevice;
 }
 
 Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
-        // Swapchain enabled device
-        if (gpDevice) {
-            logError("Falcor only supports a single device");
-            return nullptr;
-        }
 
-        gpDevice = SharedPtr(new Device(pWindow, desc));
-        if (gpDevice->init() == false) { gpDevice = nullptr;}
-        return gpDevice;
+        auto pDevice = SharedPtr(new Device(pWindow, desc));
+        if (pDevice->init() == false)
+            return nullptr;
+
+        return pDevice;
     } else {
         // Headless device
-        if (gpDeviceHeadless) {
-            logError("Falcor only supports a single headless device");
-            return nullptr;
-        }
-
-        gpDeviceHeadless = SharedPtr(new Device(nullptr, desc));  // headless device
-        if (gpDeviceHeadless->init() == false) { gpDeviceHeadless = nullptr;}
-        return gpDeviceHeadless;
+        return create(desc);
     }
 }
 
@@ -93,25 +120,41 @@ bool Device::init() {
         .setDescCount(DescriptorPool::Type::RawBufferSrv, 2 * 1024)
         .setDescCount(DescriptorPool::Type::RawBufferUav, 2 * 1024);
 #endif
-    mpFrameFence = GpuFence::create();
-    mpGpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
+    mpFrameFence = GpuFence::create(shared_from_this());
+    mpGpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
     poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
-    mpCpuDescPool = DescriptorPool::create(poolDesc, mpFrameFence);
-    mpUploadHeap = GpuMemoryHeap::create(GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
-    mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-    createNullViews();
-    createNullBufferViews();
-    createNullTypedBufferViews();
-    mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    mpCpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
+    mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
+    mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+
+    //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+    
     assert(mpRenderContext);
+
+    createNullViews(shared_from_this());
+    createNullBufferViews(shared_from_this());
+    createNullTypedBufferViews(shared_from_this());
+    
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 
-    // Update the FBOs
-    if (updateDefaultFBO(mpWindow->getClientAreaSize().x, mpWindow->getClientAreaSize().y, mDesc.colorFormat, mDesc.depthFormat) == false) {
-        return false;
+    // Update the FBOs or offscreen buffer
+    if (!headless) {
+        // Update FBOs
+        if (updateDefaultFBO(mpWindow->getClientAreaSize().x, mpWindow->getClientAreaSize().y, mDesc.colorFormat, mDesc.depthFormat) == false) {
+            return false;
+        }
+    } else {
+        // Update offscreen buffer
+        if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
+            return false;
+        }
     }
     return true;
+}
+
+std::string& Device::getPhysicalDeviceName() {
+    return mPhysicalDeviceName;
 }
 
 void Device::releaseFboData() {
@@ -136,18 +179,22 @@ void Device::release() {
     decltype(mDeferredReleases)().swap(mDeferredReleases);  
 }
 
+
 bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
+    ResourceHandle apiHandle;
+    getApiFboData(width, height, colorFormat, depthFormat, apiHandle);
+
     // Create a texture object
-    auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
-    //pColorTex->mApiHandle = apiHandles[i];
+    auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+    pColorTex->mApiHandle = apiHandle;
     
     // Create the FBO if it's required
-    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create();
+    if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
     mpOffscreenFbo->attachColorTarget(pColorTex, 0);
 
     // Create a depth texture
     if (depthFormat != ResourceFormat::Unknown) {
-        auto pDepth = Texture::create2D(width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+        auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
         mpOffscreenFbo->attachDepthStencilTarget(pDepth);
     }
 
@@ -155,20 +202,24 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
+    if(headless){
+        return updateOffscreenFBO(width, height, colorFormat, depthFormat);
+    }
+
     ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
     getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
-        auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
+        auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
         pColorTex->mApiHandle = apiHandles[i];
         // Create the FBO if it's required
-        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create();
+        if (mpSwapChainFbos[i] == nullptr) mpSwapChainFbos[i] = Fbo::create(shared_from_this());
         mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
 
         // Create a depth texture
         if (depthFormat != ResourceFormat::Unknown) {
-            auto pDepth = Texture::create2D(width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
+            auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
             mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
         }
     }
@@ -181,12 +232,16 @@ Fbo::SharedPtr Device::getSwapChainFbo() const {
 }
 
 Fbo::SharedPtr Device::getOffscreenFbo() const {
+    if(!mpOffscreenFbo) {
+        LOG_ERR("No mpOffscreenFbo!!!");
+    }
     assert(headless);
+    assert(mpOffscreenFbo);
     return mpOffscreenFbo;
 }
 
 std::weak_ptr<QueryHeap> Device::createQueryHeap(QueryHeap::Type type, uint32_t count) {
-    QueryHeap::SharedPtr pHeap = QueryHeap::create(type, count);
+    QueryHeap::SharedPtr pHeap = QueryHeap::create(shared_from_this(), type, count);
     mTimestampQueryHeaps.push_back(pHeap);
     return pHeap;
 }
@@ -223,22 +278,35 @@ void Device::toggleVSync(bool enable) {
 void Device::cleanup() {
     toggleFullScreen(false);
     mpRenderContext->flush(true);
+    
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+
+    if(headless) {
+        mpOffscreenFbo.reset();
+    } else {
+        for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
+    }
+
     mDeferredReleases = decltype(mDeferredReleases)();
-    releaseNullViews();
-    releaseNullBufferViews();
-    releaseNullTypedBufferViews();
+    
+    releaseNullViews(shared_from_this());
+    releaseNullBufferViews(shared_from_this());
+    releaseNullTypedBufferViews(shared_from_this());
+    releaseStaticResources(shared_from_this());
+
     mpRenderContext.reset();
     mpUploadHeap.reset();
     mpCpuDescPool.reset();
     mpGpuDescPool.reset();
     mpFrameFence.reset();
+
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
     destroyApiObjects();
-    mpWindow.reset();
+    
+    if(!headless)
+        mpWindow.reset();
 }
 
 void Device::present() {
@@ -264,6 +332,25 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
     assert(width > 0 && height > 0);
 
     mpRenderContext->flush(true);
+
+    // resize offscreen fbo
+    if(headless) {
+        LOG_DBG("Device::resizeSwapChain headless");
+        // Store the FBO parameters
+        ResourceFormat colorFormat = mpOffscreenFbo->getColorTexture(0)->getFormat();
+        const auto& pDepth = mpOffscreenFbo->getDepthStencilTexture();
+        ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
+
+        assert(mpOffscreenFbo->getSampleCount() == 1);
+
+        // Delete all the FBOs
+        releaseFboData();
+        apiResizeOffscreenFBO(width, height, colorFormat);
+        updateOffscreenFBO(width, height, colorFormat, depthFormat);
+
+        LOG_DBG("Device::resizeSwapChain headless done");
+        return getOffscreenFbo();
+    }
 
     // Store the FBO parameters
     ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
@@ -319,11 +406,22 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
 }
 
 SCRIPT_BINDING(Device) {
-    auto deviceDesc = m.class_<Device::Desc>("DeviceDesc");
-#define desc_field(f_) rwField(#f_, &Device::Desc::f_)
-    deviceDesc.desc_field(colorFormat).desc_field(depthFormat).desc_field(apiMajorVersion).desc_field(apiMinorVersion);
-    deviceDesc.desc_field(enableVsync).desc_field(enableDebugLayer).desc_field(cmdQueues);
-#undef desc_field
+    ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
+#define field(f_) field(#f_, &Device::Desc::f_)
+    deviceDesc.field(colorFormat);
+    deviceDesc.field(depthFormat);
+    deviceDesc.field(apiMajorVersion);
+    deviceDesc.field(apiMinorVersion);
+    deviceDesc.field(enableVsync);
+    deviceDesc.field(enableDebugLayer);
+    deviceDesc.field(cmdQueues);
+#undef field
+
+    // Device
+    //Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
+    pybind11::class_<Device, Device::SharedPtr> device(m, "Device");
+    //device.def_static("create", &create_headless);
+
 }
 
 }  // namespace Falcor

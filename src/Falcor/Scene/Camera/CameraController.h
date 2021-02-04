@@ -25,9 +25,13 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
+#define SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_
+
 #include <bitset>
 #include "Camera.h"
+
+#include "Falcor/Utils/Timing/CpuTimer.h"
 
 namespace Falcor
 {
@@ -61,7 +65,7 @@ namespace Falcor
         void setCameraSpeed(float speed) { mSpeed = speed; }
 
     protected:
-        CameraController(Camera::ConstSharedPtrRef pCamera) : mpCamera(pCamera) {}
+        CameraController(const Camera::SharedPtr& pCamera) : mpCamera(pCamera) {}
         Camera::SharedPtr mpCamera = nullptr;
         float mSpeed = 1;
     };
@@ -75,12 +79,11 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<OrbiterCameraController>;
-        using ConstSharedPtrRef = const SharedPtr&;
-        OrbiterCameraController(Camera::ConstSharedPtrRef pCamera) : CameraController(pCamera) {}
+        OrbiterCameraController(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {}
 
         /** Create a new object
         */
-        static SharedPtr create(Camera::ConstSharedPtrRef pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
+        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
 
         /** Handle mouse events
         */
@@ -124,13 +127,12 @@ namespace Falcor
     class dlldecl FirstPersonCameraControllerCommon : public CameraController
     {
     public:
-        FirstPersonCameraControllerCommon(Camera::ConstSharedPtrRef pCamera);
+        FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera);
         using SharedPtr = std::shared_ptr<FirstPersonCameraControllerCommon>;
-        using ConstSharedPtrRef = const SharedPtr&;
 
         /** Create a new object
         */
-        static SharedPtr create(Camera::ConstSharedPtrRef pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
+        static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
 
         /** Handle mouse events
         */
@@ -174,3 +176,5 @@ namespace Falcor
     using FirstPersonCameraController = FirstPersonCameraControllerCommon<false>;
     using SixDoFCameraController = FirstPersonCameraControllerCommon<true>;
 }
+
+#endif  // SRC_FALCOR_SCENE_CMERA_CAMERACONTROLLER_H_

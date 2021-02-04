@@ -43,8 +43,10 @@ cbuffer PerFrameCB : register(b0)
     float4x4 gViewMat;
     float4x4 gProjMat;
     float gScale;
+    float gIntensity;
 };
 
+[shader("vertex")]
 void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
 {
     dir = posL.xyz;
@@ -54,13 +56,14 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
     posH.z = posH.w;
 }
 
+[shader("fragment")]
 float4 ps(float3 dir : NORMAL) : SV_TARGET
 {
 #ifdef _SPHERICAL_MAP
     float2 uv = dirToSphericalCrd(dir);
-float4 color = gTexture.Sample(gSampler, uv);
-return color;
+    uv = float2(1.0 - uv.x, uv.y);
+    return gTexture.Sample(gSampler, uv) * gIntensity;
 #else
-    return gTexture.SampleLevel(gSampler, normalize(dir), 0);
+    return gTexture.SampleLevel(gSampler, normalize(dir), 0) * gIntensity;
 #endif
 }

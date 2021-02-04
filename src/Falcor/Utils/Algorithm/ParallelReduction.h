@@ -25,51 +25,55 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Core/API/CopyContext.h"
-#include "RenderGraph/BasePasses/FullScreenPass.h"
+#ifndef SRC_FALCOR_UTILS_ALGORITHM_PARALLELREDUCTION_H_
+#define SRC_FALCOR_UTILS_ALGORITHM_PARALLELREDUCTION_H_
 
-namespace Falcor
-{
-    class dlldecl ParallelReduction
-    {
-    public:
-        using UniquePtr = std::unique_ptr<ParallelReduction>;
+#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/RenderGraph/BasePasses/FullScreenPass.h"
 
-        enum class Type
-        {
-            MinMax
-        };
+namespace Falcor {
 
-        /** Create a new parallel reduction object.
-            \param[in] reductionType The reduction operator.
-            \param[in] readbackLatency The result is returned after this many calls to reduce().
-            \param[in] width Width in pixels of the texture that will be used.
-            \param[in] height Height in pixels of the texture that will be used.
-            \param[in] sampleCount Multi-sample count for the texture that will be used.
-            \return New object, or throws an exception if creation failed.
-        */
-        static UniquePtr create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount = 1);
+class dlldecl ParallelReduction {
+ public:
+    using UniquePtr = std::unique_ptr<ParallelReduction>;
 
-        float4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
-
-    private:
-        ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount);
-        FullScreenPass::SharedPtr mpFirstIterProg;
-        FullScreenPass::SharedPtr mpRestIterProg;
-
-        struct ResultData
-        {
-            CopyContext::ReadTextureTask::SharedPtr pReadTask;
-            Fbo::SharedPtr pFbo;
-        };
-        std::vector<ResultData> mResultData;
-
-        uint32_t mCurFbo = 0;
-        Type mReductionType;
-        Sampler::SharedPtr mpPointSampler;
-
-        std::vector<Fbo::SharedPtr> mpTmpResultFbo;
-        static const uint32_t kTileSize = 16;
+    enum class Type {
+        MinMax
     };
-}
+
+    /** Create a new parallel reduction object.
+        \param[in] reductionType The reduction operator.
+        \param[in] readbackLatency The result is returned after this many calls to reduce().
+        \param[in] width Width in pixels of the texture that will be used.
+        \param[in] height Height in pixels of the texture that will be used.
+        \param[in] sampleCount Multi-sample count for the texture that will be used.
+        \return New object, or throws an exception if creation failed.
+    */
+    static UniquePtr create(std::shared_ptr<Device> pDevice, Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount = 1);
+
+    float4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
+
+private:
+    ParallelReduction(std::shared_ptr<Device> pDevice, Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount);
+    FullScreenPass::SharedPtr mpFirstIterProg;
+    FullScreenPass::SharedPtr mpRestIterProg;
+
+    struct ResultData {
+        CopyContext::ReadTextureTask::SharedPtr pReadTask;
+        Fbo::SharedPtr pFbo;
+    };
+    std::vector<ResultData> mResultData;
+
+    uint32_t mCurFbo = 0;
+    Type mReductionType;
+    Sampler::SharedPtr mpPointSampler;
+
+    std::vector<Fbo::SharedPtr> mpTmpResultFbo;
+    static const uint32_t kTileSize = 16;
+
+    std::shared_ptr<Device> mpDevice;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_ALGORITHM_PARALLELREDUCTION_H_

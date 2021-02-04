@@ -25,13 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
+#define SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
+
 #include "StateGraph.h"
 #include "Falcor/Core/API/ComputeStateObject.h"
 #include "Falcor/Core/Program/ComputeProgram.h"
 
 namespace Falcor {
 
+class Device;
 class ComputeVars;
 
 /** Compute state.
@@ -47,7 +50,7 @@ class dlldecl ComputeState {
     /** Create a new state object.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create() { return SharedPtr(new ComputeState()); }
+    static SharedPtr create(std::shared_ptr<Device> device) { return SharedPtr(new ComputeState(device)); }
 
     /** Copy constructor. Useful if you need to make minor changes to an already existing object
     */
@@ -66,15 +69,17 @@ class dlldecl ComputeState {
     ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
     
  private:
-    ComputeState();
+    ComputeState(std::shared_ptr<Device> device);
+
+    std::shared_ptr<Device> mpDevice;
     ComputeProgram::SharedPtr mpProgram;
     ComputeStateObject::Desc mDesc;
 
-    struct CachedData
-    {
+    struct CachedData {
         const ProgramKernels* pProgramKernels = nullptr;
         const RootSignature* pRootSig = nullptr;
     };
+    
     CachedData mCachedData;
 
     using _StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
@@ -82,3 +87,5 @@ class dlldecl ComputeState {
 };
 
 }  // namespace Flacor
+
+#endif  // SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_

@@ -33,10 +33,15 @@
 #include "Resource.h"
 #include "Buffer.h"
 #include "LowLevelContextData.h"
+#include "VirtualTexturePage.h"
 
 namespace Falcor {
 
+class Device;
 class Texture;
+class TextureManager;
+
+uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format);
 
 class dlldecl CopyContext {
  public:
@@ -66,11 +71,13 @@ class dlldecl CopyContext {
 
     virtual ~CopyContext();
 
+    std::shared_ptr<Device> device() { return mpDevice; };
+
     /** Create a copy context.
         \param[in] queue Command queue handle.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     /** Flush the command list. This doesn't reset the command allocator, just submits the commands
         \param[in] wait If true, will block execution until the GPU finished processing the commands
@@ -122,6 +129,18 @@ class dlldecl CopyContext {
     */
     void updateTextureData(const Texture* pTexture, const void* pData);
 
+    /** Update texture page data
+    */
+    void updateTexturePage(const VirtualTexturePage* pPage, const void* pData);
+
+    /** Update texture page data
+    */
+    void updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer);
+
+    /** Uodate texture image data (used to fill mip tail data)
+    */
+    void updateMipTailData(const Texture* pTexture, const int3& offset, const uint3& extent, uint8_t mipLevel, const void* pData);
+    
     /** Update a buffer
     */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
@@ -147,7 +166,7 @@ class dlldecl CopyContext {
     void bindDescriptorHeaps();
 
  protected:
-    CopyContext(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
+    CopyContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
 
     bool textureBarrier(const Texture* pTexture, Resource::State newState);
     bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);
@@ -157,6 +176,12 @@ class dlldecl CopyContext {
 
     bool mCommandsPending = false;
     LowLevelContextData::SharedPtr mpLowLevelData;
+
+ //private:
+    std::shared_ptr<Device> mpDevice;
+
+    friend class Texture;
+    friend class TextureManager;
 };
 
 }  // namespace Falcor

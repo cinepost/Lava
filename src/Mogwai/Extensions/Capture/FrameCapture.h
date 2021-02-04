@@ -25,27 +25,31 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_MOGWAI_EXTENSIONS_CAPTURE_FRAMECAPTURE_H_
+#define SRC_MOGWAI_EXTENSIONS_CAPTURE_FRAMECAPTURE_H_
+
 #include "../../Mogwai.h"
 #include "CaptureTrigger.h"
 
-namespace Mogwai
-{
-    class FrameCapture : public CaptureTrigger
-    {
-    public:
-        static UniquePtr create(Renderer* pRenderer);
-        virtual void renderUI(Gui* pGui) override;
-        virtual void scriptBindings(Bindings& bindings) override;
-        virtual std::string getScript() override;
-        virtual void triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID);
-        void capture();
-    private:
-        FrameCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer) {}
-        bool mShowUI = false;
-        using uint64_vec = std::vector<uint64_t>;
-        void addFrames(const RenderGraph* pGraph, const uint64_vec& frames);
-        void addFrames(const std::string& graphName, const uint64_vec& frames);
-        std::string graphFramesStr(const RenderGraph* pGraph);
-    };
-}
+namespace Mogwai {
+
+class FrameCapture : public CaptureTrigger {
+ public:
+    static UniquePtr create(Renderer* pRenderer);
+    virtual void renderUI(Gui* pGui) override;
+    virtual void scriptBindings(Bindings& bindings) override;
+    virtual std::string getScript() override;
+    virtual void triggerFrame(RenderContext* pCtx, RenderGraph* pGraph, uint64_t frameID);
+    void capture();
+ private:
+    FrameCapture(Renderer* pRenderer) : CaptureTrigger(pRenderer) {}
+    bool mShowUI = false;
+    using uint64_vec = std::vector<uint64_t>;
+    void addFrames(const RenderGraph* pGraph, const uint64_vec& frames);
+    void addFrames(const std::string& graphName, const uint64_vec& frames);
+    std::string graphFramesStr(const RenderGraph* pGraph);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_MOGWAI_EXTENSIONS_CAPTURE_FRAMECAPTURE_H_

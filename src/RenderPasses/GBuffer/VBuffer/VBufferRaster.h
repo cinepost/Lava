@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_
+
 #include "../GBufferBase.h"
 
 using namespace Falcor;
@@ -36,9 +38,8 @@ using namespace Falcor;
     The visibility buffer encodes the mesh instance ID and primitive index,
     as well as the barycentrics at the hit point.
 */
-class VBufferRaster : public GBufferBase, public inherit_shared_from_this<GBufferBase, VBufferRaster>
-{
-public:
+class VBufferRaster : public GBufferBase {
+ public:
     using SharedPtr = std::shared_ptr<VBufferRaster>;
 
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
@@ -48,8 +49,8 @@ public:
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     std::string getDesc(void) override { return kDesc; }
 
-private:
-    VBufferRaster(const Dictionary& dict);
+ private:
+    VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
 
     // Internal state
     Fbo::SharedPtr                  mpFbo;
@@ -64,3 +65,5 @@ private:
     static const char* kDesc;
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_

@@ -36,6 +36,7 @@
 
 namespace Falcor {
 
+class Device;
 class ShaderResourceView;
 class UnorderedAccessView;
 class ConstantBufferView;
@@ -92,7 +93,7 @@ class dlldecl DescriptorSet {
         \param[in] layout The layout.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(const DescriptorPool::SharedPtr& pPool, const Layout& layout);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const DescriptorPool::SharedPtr& pPool, const Layout& layout);
 
     size_t getRangeCount() const { return mLayout.getRangeCount(); }
     const Layout::Range& getRange(uint32_t range) const { return mLayout.getRange(range); }
@@ -112,32 +113,31 @@ class dlldecl DescriptorSet {
     void bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
 
  private:
-    DescriptorSet(DescriptorPool::SharedPtr pPool, const Layout& layout);
+    DescriptorSet(std::shared_ptr<Device> pDevice, DescriptorPool::SharedPtr pPool, const Layout& layout);
     void apiInit();
 
     Layout mLayout;
     std::shared_ptr<ApiData> mpApiData;
     DescriptorPool::SharedPtr mpPool;
     ApiHandle mApiHandle = {};
+
+    std::shared_ptr<Device> mpDevice;
 };
 
-inline const std::string to_string(ShaderVisibility visibility)
-{
+inline const std::string to_string(ShaderVisibility visibility) {
 #define type_2_string(a) case ShaderVisibility::a: return #a;
-    switch (visibility)
-    {
-    type_2_string(None);
-    type_2_string(Vertex);
-    type_2_string(Pixel);
-    type_2_string(Hull);
-    type_2_string(Domain);
-    type_2_string(Geometry);
-    type_2_string(Compute);
-    type_2_string(All);
-
-    default:
-        should_not_get_here();
-        return "";
+    switch (visibility) {
+        type_2_string(None);
+        type_2_string(Vertex);
+        type_2_string(Pixel);
+        type_2_string(Hull);
+        type_2_string(Domain);
+        type_2_string(Geometry);
+        type_2_string(Compute);
+        type_2_string(All);
+        default:
+            should_not_get_here();
+            return "";
     }
 #undef type_2_string
 }

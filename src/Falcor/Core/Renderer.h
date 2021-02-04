@@ -30,15 +30,18 @@
 
 #include "Falcor/Utils/UI/UserInput.h"
 #include "Falcor/Utils/ArgList.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Core/API/RenderContext.h"
 
 namespace Falcor {
 
+class Device;
 class Clock;
 class FrameRate;
 
 /** Sample configuration
 */
-struct SampleConfig : ScriptBindings::enable_to_string {
+struct SampleConfig {
     Window::Desc windowDesc;                 ///< Controls window creation
     Device::Desc deviceDesc;                 ///< Controls device creation
     bool suppressInput = false;              ///< Suppress all keyboard and mouse input (other than escape to terminate)
@@ -61,7 +64,7 @@ class IFramework {
 
     /** Get the global Clock object
     */
-    virtual Clock& getGlobalClock() = 0;
+    virtual Clock& getClock() = 0;
 
     /** Get the global FrameRate object
     */
@@ -124,16 +127,28 @@ dlldecl extern IFramework* gpFramework;
 class IRenderer {
  public:
     using UniquePtr = std::unique_ptr<IRenderer>;
-    IRenderer() = default;
+    IRenderer(std::shared_ptr<Device> pDevice) { mpDevice = pDevice; }
     virtual ~IRenderer() {};
+
+
+    std::shared_ptr<Device> device() { return mpDevice; }
+    std::shared_ptr<Device> device() const { return mpDevice; }
 
     /** Called once right after context creation.
     */
     virtual void onLoad(RenderContext* pRenderContext) {}
 
+    /** Called once right after context creation.
+    */
+    //virtual void onLoad() {}
+
     /** Called on each frame render.
     */
     virtual void onFrameRender(RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
+
+    /** Called on each frame render.
+    */
+    virtual void onFrameRender(const std::shared_ptr<Fbo>& pTargetFbo) {}
 
     /** Called right before the context is destroyed.
     */
@@ -173,6 +188,11 @@ class IRenderer {
     // Deleted copy operators (copy a pointer type!)
     IRenderer(const IRenderer&) = delete;
     IRenderer& operator=(const IRenderer &) = delete;
+
+ protected:
+    std::shared_ptr<Device> mpDevice;
+    Fbo::SharedPtr mpTargetFBO;
+
 };
 
 }  // namespace Falcor

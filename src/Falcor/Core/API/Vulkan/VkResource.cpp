@@ -26,12 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "API/Resource.h"
+#include "Falcor/Core/API/Resource.h"
 
-namespace Falcor
-{
-    void Resource::apiSetName()
-    {
+namespace Falcor {
+
+    void Resource::apiSetName() {
         // Vulkan doesn't support resource naming
     }
+
 }

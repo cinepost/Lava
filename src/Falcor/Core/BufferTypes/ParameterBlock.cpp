@@ -229,29 +229,31 @@ bool isCbvType(const ReflectionType::SharedConstPtr& pType) {
 
 ParameterBlock::~ParameterBlock() = default;
 
-ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
     if (!pElementType) {
         throw std::runtime_error("Can't create a parameter block without type information");
     }
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
-    return create(pReflection);
+    return create(pDevice, pReflection);
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
     assert(pReflection);
-    return SharedPtr(new ParameterBlock(pReflection->getProgramVersion(), pReflection));
+    return SharedPtr(new ParameterBlock(pDevice, pReflection->getProgramVersion(), pReflection));
 }
 
-ParameterBlock::SharedPtr ParameterBlock::create(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
+ParameterBlock::SharedPtr ParameterBlock::create(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
     assert(pProgramVersion);
-    return ParameterBlock::create(pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
+    return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
 }
 
-ParameterBlock::ParameterBlock(const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
-    : mpReflector(pReflection)
+ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ParameterBlockReflection::SharedConstPtr& pReflection)
+    : mpDevice(pDevice)
+    , mpReflector(pReflection)
     , mpProgramVersion(pProgramVersion)
-    , mData(pReflection->getElementType()->getByteSize(), 0) {
+    , mData(pReflection->getElementType()->getByteSize(), 0)  {
 
+    assert(pDevice);
     ReflectionStructType::BuildState state;
     auto pElementType = getElementType();
     assert(pElementType);
@@ -313,7 +315,9 @@ void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
                 auto pResourceType = pType->asResourceType();
                 switch (pResourceType->getType()) {
                     case ReflectionResourceType::Type::ConstantBuffer: {
-                            auto pCB = ParameterBlock::create(pResourceType->getParameterBlockReflector());
+                            assert(mpDevice);
+
+                            auto pCB = ParameterBlock::create(mpDevice, pResourceType->getParameterBlockReflector());
                             var.setParameterBlock(pCB);
                         }
                         break;
@@ -547,9 +551,10 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
     size_t flatIndex = getFlatIndex(bindLoc);
 
     if (isUavType(bindLoc.getType())) {
-        auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView();
+        auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView(mpDevice);
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) {
+            //if(pResource) LOG_ERR("isUavType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
         
@@ -559,9 +564,10 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         assignedUAV.pView = pUAV;
         assignedUAV.pResource = pResource;
     } else if (isSrvType(bindLoc.getType())) {
-        auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView();
+        auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView(mpDevice);
         
         if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
+            //if(pResource) LOG_ERR("isSrvType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
 
@@ -571,6 +577,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
         assignedSRV.pResource = pResource;
     } else {
         logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
+        //if(pResource) LOG_ERR("Error trying to bind resource to non SRV/UAV variable. Ignoring call. resource id: %zu", pResource->id());
         return false;
     }
 
@@ -650,7 +657,7 @@ bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler:
 
     if (pBoundSampler == pSampler) return true;
 
-    pBoundSampler = pSampler ? pSampler : Sampler::getDefault();
+    pBoundSampler = pSampler ? pSampler : Sampler::getDefault(mpDevice);
     markDescriptorSetDirty(bindLocation);
     return true;
 }
@@ -723,7 +730,7 @@ bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResour
     size_t flatIndex = getFlatIndex(bindLocation);
     auto& assignedSRV = mSRVs[flatIndex];
 
-    const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView();
+    const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView(mpDevice);
     if (assignedSRV.pView == pView) return true;
 
     assignedSRV.pView = pView;
@@ -739,7 +746,7 @@ bool ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAcc
     size_t flatIndex = getFlatIndex(bindLocation);
     auto& assignedUAV = mUAVs[flatIndex];
 
-    UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView();
+    UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView(mpDevice);
 
     if (assignedUAV.pView == pView) return true;
 
@@ -781,7 +788,7 @@ Buffer::ConstSharedPtrRef ParameterBlock::getUnderlyingConstantBuffer() const {
     }
 
     if( !mUnderlyingConstantBuffer.pBuffer || mUnderlyingConstantBuffer.pBuffer->getSize() < requiredSize ) {
-        mUnderlyingConstantBuffer.pBuffer = Buffer::create(requiredSize, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write);
+        mUnderlyingConstantBuffer.pBuffer = Buffer::create(mpDevice, requiredSize, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write);
     }
 
     return mUnderlyingConstantBuffer.pBuffer;
@@ -789,7 +796,7 @@ Buffer::ConstSharedPtrRef ParameterBlock::getUnderlyingConstantBuffer() const {
 
 ConstantBufferView::SharedPtr ParameterBlock::getUnderlyingConstantBufferView() {
     if (mUnderlyingConstantBuffer.pCBV == nullptr) {
-        mUnderlyingConstantBuffer.pCBV = ConstantBufferView::create(getUnderlyingConstantBuffer());
+        mUnderlyingConstantBuffer.pCBV = ConstantBufferView::create(mpDevice, getUnderlyingConstantBuffer());
     }
     return mUnderlyingConstantBuffer.pCBV;
 }
@@ -1227,7 +1234,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::Sampler:
                         {
                             auto pSampler = mSamplers[flatIndex];
-                            if(!pSampler) pSampler = Sampler::getDefault();
+                            if(!pSampler) pSampler = Sampler::getDefault(mpDevice);
                             pDescSet->setSampler(destRangeIndex, descriptorIndex, pSampler.get());
                         }
                         break;
@@ -1236,7 +1243,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mSRVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
                             //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
-                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullView();
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1246,7 +1253,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mSRVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
                             //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
-                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullTypedBufferView();
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullTypedBufferView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1256,7 +1263,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mSRVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
                             //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
-                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView();
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1265,7 +1272,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mUAVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
                             //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
-                            if(!pView) pView = UnorderedAccessView::getNullView();
+                            if(!pView) pView = UnorderedAccessView::getNullView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1274,7 +1281,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mUAVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
                             //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
-                            if(!pView) pView = UnorderedAccessView::getNullTypedBufferView();
+                            if(!pView) pView = UnorderedAccessView::getNullTypedBufferView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1284,7 +1291,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             auto pView = mUAVs[flatIndex].pView;
                             //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
                             //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
-                            if(!pView) pView = UnorderedAccessView::getNullBufferView();
+                            if(!pView) pView = UnorderedAccessView::getNullBufferView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
@@ -1554,7 +1561,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
             auto pSetLayout = pReflector->getDescriptorSetLayout(setIndex);
 
             //LOG_DBG("create descriptor set");
-            pSet = DescriptorSet::create(gpDevice->getGpuDescriptorPool(), pSetLayout);
+            pSet = DescriptorSet::create(mpDevice, mpDevice->getGpuDescriptorPool(), pSetLayout);
 
             uint32_t destRangeIndex = 0;
             //LOG_DBG("bind into descriptor set");

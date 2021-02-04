@@ -30,85 +30,75 @@
 #include "RenderGraph/RenderPassHelpers.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerClass("PixelInspectorPass", "Per pixel surface attributes inspector", PixelInspectorPass::create);
 }
 
-namespace
-{
-    const char kShaderFile[] = "RenderPasses/PixelInspectorPass/PixelInspector.cs.slang";
+namespace {
 
-    const ChannelList kInputChannels =
-    {
-        { "posW",           "gWorldPosition",               "world space position",         true /* optional */ },
-        { "normW",          "gWorldShadingNormal",          "world space normal",           true /* optional */ },
-        { "bitangentW",     "gWorldBitangent",              "world space bitangent",        true /* optional */ },
-        { "faceNormalW",    "gWorldFaceNormal",             "face normal in world space",   true /* optional */ },
-        { "texC",           "gTextureCoordinate",           "texture coordinates",          true /* optional */ },
-        { "diffuseOpacity", "gMaterialDiffuseOpacity",      "diffuse color and opacity",    true /* optional */ },
-        { "specRough",      "gMaterialSpecularRoughness",   "specular color and roughness", true /* optional */ },
-        { "emissive",       "gMaterialEmissive",            "emissive color",               true /* optional */ },
-        { "matlExtra",      "gMaterialExtraParams",         "additional material data",     true /* optional */ },
-        { "linColor",       "gLinearColor",                 "color pre tone-mapping",       true /* optional */ },
-        { "outColor",       "gOutputColor",                 "color post tone-mapping",      true /* optional */ },
-        { "visBuffer",      "gVisBuffer",                   "Visibility buffer",            true /* optional */, ResourceFormat::RGBA32Uint },
-    };
-    const char kOutputChannel[] = "gPixelDataBuffer";
+const char kShaderFile[] = "RenderPasses/PixelInspectorPass/PixelInspector.cs.slang";
+
+const ChannelList kInputChannels = {
+    { "posW",           "gWorldPosition",               "world space position",         true /* optional */ },
+    { "normW",          "gWorldShadingNormal",          "world space normal",           true /* optional */ },
+    { "bitangentW",     "gWorldBitangent",              "world space bitangent",        true /* optional */ },
+    { "faceNormalW",    "gWorldFaceNormal",             "face normal in world space",   true /* optional */ },
+    { "texC",           "gTextureCoordinate",           "texture coordinates",          true /* optional */ },
+    { "diffuseOpacity", "gMaterialDiffuseOpacity",      "diffuse color and opacity",    true /* optional */ },
+    { "specRough",      "gMaterialSpecularRoughness",   "specular color and roughness", true /* optional */ },
+    { "emissive",       "gMaterialEmissive",            "emissive color",               true /* optional */ },
+    { "matlExtra",      "gMaterialExtraParams",         "additional material data",     true /* optional */ },
+    { "linColor",       "gLinearColor",                 "color pre tone-mapping",       true /* optional */ },
+    { "outColor",       "gOutputColor",                 "color post tone-mapping",      true /* optional */ },
+    { "visBuffer",      "gVisBuffer",                   "Visibility buffer",            true /* optional */, ResourceFormat::RGBA32Uint },
+};
+const char kOutputChannel[] = "gPixelDataBuffer";
+
 }
 
-PixelInspectorPass::SharedPtr PixelInspectorPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
-    return SharedPtr(new PixelInspectorPass);
+PixelInspectorPass::SharedPtr PixelInspectorPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    return SharedPtr(new PixelInspectorPass(pRenderContext->device()));
 }
 
-PixelInspectorPass::PixelInspectorPass()
-{
-    for (auto it : kInputChannels)
-    {
+PixelInspectorPass::PixelInspectorPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    for (auto it : kInputChannels) {
         mAvailableInputs[it.name] = false;
     }
 
-    mpProgram = ComputeProgram::createFromFile(kShaderFile, "main", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
+    mpProgram = ComputeProgram::createFromFile(pDevice, kShaderFile, "main", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     assert(mpProgram);
 
-    mpVars = ComputeVars::create(mpProgram->getReflector());
-    mpState = ComputeState::create();
+    mpVars = ComputeVars::create(pDevice, mpProgram->getReflector());
+    mpState = ComputeState::create(pDevice);
     mpState->setProgram(mpProgram);
     assert(mpVars && mpState);
 
-    mpPixelDataBuffer = Buffer::createStructured(mpProgram.get(), kOutputChannel, 1);
+    mpPixelDataBuffer = Buffer::createStructured(pDevice, mpProgram.get(), kOutputChannel, 1);
 }
 
-std::string PixelInspectorPass::getDesc()
-{
+std::string PixelInspectorPass::getDesc() {
     return
         "Inspect geometric and material properties at a given pixel.\n"
         "\n"
         "Left-mouse click on a pixel to select it\n";
 }
 
-RenderPassReflection PixelInspectorPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection PixelInspectorPass::reflect(const CompileData& compileData) {
     // Define the required resources here
     RenderPassReflection reflector;
-    for (auto it : kInputChannels)
-    {
+    for (auto it : kInputChannels) {
         auto& f = reflector.addInput(it.name, it.desc).format(it.format);
         if (it.optional) f.flags(RenderPassReflection::Field::Flags::Optional);
     }
     return reflector;
 }
 
-void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    for (auto it : kInputChannels)
-    {
+void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    for (auto it : kInputChannels) {
         mAvailableInputs[it.name] = renderData[it.name] != nullptr;
     }
 
@@ -118,8 +108,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     Camera::ConstSharedPtrRef pCamera = mpScene->getCamera();
     pCamera->setShaderData(mpVars["PerFrameCB"]["gCamera"]);
 
-    if (pCamera->getApertureRadius() > 0.f)
-    {
+    if (pCamera->getApertureRadius() > 0.f) {
         // TODO: Take view dir as optional input. For now issue warning if DOF is enabled.
         logWarning("Depth-of-field is enabled, but PixelInspectorPass assumes a pinhole camera. Expect the view vector to be inaccurate.");
     }
@@ -133,10 +122,8 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     mpVars["PerFrameCB"]["gSelectedPixel"] = mSelectedPixel;
 
     // Bind all input buffers.
-    for (auto it : kInputChannels)
-    {
-        if (mAvailableInputs[it.name])
-        {
+    for (auto it : kInputChannels) {
+        if (mAvailableInputs[it.name]) {
             Texture::SharedPtr pSrc = renderData[it.name]->asTexture();
             mpVars[it.texname] = pSrc;
 
@@ -147,9 +134,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
             mpVars["PerFrameCB"][std::string(it.texname) + "Coord"] = needsScaling ? scaledCoord : mSelectedPixel;
 
             mIsInputInBounds[it.name] = glm::all(glm::lessThanEqual(mSelectedPixel, srcResolution));
-        }
-        else
-        {
+        } else {
             mpVars->setTexture(it.texname, nullptr);
         }
     }
@@ -161,8 +146,7 @@ void PixelInspectorPass::execute(RenderContext* pRenderContext, const RenderData
     pRenderContext->dispatch(mpState.get(), mpVars.get(), { 1u, 1u, 1u });
 }
 
-void PixelInspectorPass::renderUI(Gui::Widgets& widget)
-{
+void PixelInspectorPass::renderUI(Gui::Widgets& widget) {
     PixelData pixelData = *reinterpret_cast<const PixelData*>(mpPixelDataBuffer->map(Buffer::MapType::Read));
     mpPixelDataBuffer->unmap();
 
@@ -174,24 +158,18 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     widget.tooltip("If continuously inspecting pixels, you will always see the data for the pixel currently under your mouse.\n"
         "Otherwise, left-mouse click on a pixel to select it.", true);
 
-    const auto displayValues = [&pixelData, &widget, this](const std::vector<std::string>& inputNames, const std::vector<std::string>& values, const std::function<void(PixelData&)>& displayValues)
-    {
+    const auto displayValues = [&pixelData, &widget, this](const std::vector<std::string>& inputNames, const std::vector<std::string>& values, const std::function<void(PixelData&)>& displayValues) {
         bool areAllInputsAvailable = true;
         for (const std::string& inputName : inputNames) areAllInputsAvailable = areAllInputsAvailable && mAvailableInputs[inputName];
 
-        if (areAllInputsAvailable)
-        {
+        if (areAllInputsAvailable) {
             bool areAllInputsInBounds = true;
             for (const std::string& inputName : inputNames) areAllInputsInBounds = areAllInputsInBounds && mIsInputInBounds[inputName];
 
-            if (areAllInputsInBounds)
-            {
+            if (areAllInputsInBounds) {
                 displayValues(pixelData);
-            }
-            else
-            {
-                for (const std::string& value : values)
-                {
+            } else {
+                for (const std::string& value : values) {
                     const std::string text = value + ": out of bounds";
                     widget.text(text.c_str());
                 }
@@ -203,8 +181,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 
     // Display output data.
     auto outputGroup = Gui::Group(widget, "Output data", true);
-    if (outputGroup.open())
-    {
+    if (outputGroup.open()) {
         bool displayedData = displayValues({ "linColor" }, { "Linear color", "Luminance (cd/m2)" }, [&outputGroup](PixelData& pixelData) {
             outputGroup.var("Linear color", pixelData.linearColor, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
             outputGroup.var("Luminance (cd/m2)", pixelData.luminance, 0.f, std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
@@ -220,8 +197,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     }
 
     auto geometryGroup = Gui::Group(widget, "Geometry data", true);
-    if (geometryGroup.open())
-    {
+    if (geometryGroup.open()) {
         // Display geometry data
         displayValues({ "posW" }, { "World position" }, [&geometryGroup](PixelData& pixelData) {
             geometryGroup.var("World position", pixelData.posW, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), 0.001f, false, "%.6f");
@@ -258,8 +234,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     }
 
     auto materialGroup = Gui::Group(widget, "Material data", true);
-    if (materialGroup.open())
-    {
+    if (materialGroup.open()) {
         // Display material data
         bool displayedData = displayValues({ "diffuseOpacity" }, { "Diffuse color", "Opacity" }, [&materialGroup](PixelData& pixelData) {
             materialGroup.var("Diffuse color", pixelData.diffuse, 0.f, 1.f, 0.001f, false, "%.6f");
@@ -288,16 +263,13 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
 
     // Display visibility data
     auto visGroup = Gui::Group(widget, "Visibility data", true);
-    if (visGroup.open())
-    {
-        if (mAvailableInputs["visBuffer"])
-        {
+    if (visGroup.open()) {
+        if (mAvailableInputs["visBuffer"]) {
             visGroup.var("MeshInstanceID", pixelData.meshInstanceID);
             visGroup.var("TriangleIndex", pixelData.triangleIndex);
             visGroup.var("Barycentrics", pixelData.barycentrics);
 
-            if (mpScene && pixelData.meshInstanceID != kInvalidIndex)
-            {
+            if (mpScene && pixelData.meshInstanceID != kInvalidIndex) {
                 auto instanceData = mpScene->getMeshInstance(pixelData.meshInstanceID);
                 uint32_t matrixID = instanceData.globalMatrixID;
                 glm::mat4 M = mpScene->getAnimationController()->getGlobalMatrices()[matrixID];
@@ -311,9 +283,7 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
                 bool flipped = (instanceData.flags & MeshInstanceFlags::Flipped) != MeshInstanceFlags::None;
                 visGroup.checkbox("Flipped winding", flipped);
             }
-        }
-        else
-        {
+        } else {
             visGroup.text("No visibility data available");
         }
 
@@ -321,15 +291,12 @@ void PixelInspectorPass::renderUI(Gui::Widgets& widget)
     }
 }
 
-void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void PixelInspectorPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
 }
 
-bool PixelInspectorPass::onMouseEvent(const MouseEvent& mouseEvent)
-{
-    if (mouseEvent.type == MouseEvent::Type::Move)
-    {
+bool PixelInspectorPass::onMouseEvent(const MouseEvent& mouseEvent) {
+    if (mouseEvent.type == MouseEvent::Type::Move) {
         mCursorPosition = mouseEvent.pos;
     }
     else if (mouseEvent.type == MouseEvent::Type::LeftButtonDown)

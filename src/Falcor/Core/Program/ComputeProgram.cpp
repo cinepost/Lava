@@ -25,29 +25,27 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "stdafx.h"
+#include "Falcor/stdafx.h"
 #include "ComputeProgram.h"
 
-namespace Falcor
-{
-    ComputeProgram::SharedPtr ComputeProgram::createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel)
-    {
+namespace Falcor {
+
+    ComputeProgram::SharedPtr ComputeProgram::createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel) {
         Desc d(filename);
         if (!shaderModel.empty()) d.setShaderModel(shaderModel);
         d.setCompilerFlags(flags);
         d.csEntry(csEntry);
-        return create(d, programDefines);
+        return create(device, d, programDefines);
     }
 
-    ComputeProgram::SharedPtr ComputeProgram::create(const Program::Desc& desc, const DefineList& programDefines)
-    {
+    ComputeProgram::SharedPtr ComputeProgram::create(std::shared_ptr<Device> device, const Program::Desc& desc, const DefineList& programDefines) {
         SharedPtr pProg = SharedPtr(new ComputeProgram);
-        pProg->init(desc, programDefines);
+        pProg->init(device, desc, programDefines);
         return pProg;
     }
 
-    SCRIPT_BINDING(ComputeProgram)
-    {
-        m.regClass(ComputeProgram);
+    SCRIPT_BINDING(ComputeProgram) {
+        pybind11::class_<ComputeProgram, ComputeProgram::SharedPtr>(m, "ComputeProgram");
     }
-}
+
+}  // namespace Falcor

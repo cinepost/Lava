@@ -28,14 +28,15 @@
 #pragma once
 #include "Core/API/Texture.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
+class Device;
+
     /** This class holds data and texture used to render text.
         It represents a mono-spaced font.
     */
-    class Font
-    {
-    public:
+    class Font {
+     public:
         using UniquePtr = std::unique_ptr<Font>;
         using UniqueConstPtr = std::unique_ptr<const Font>;
 
@@ -44,12 +45,11 @@ namespace Falcor
         /** Create a font object.
             \return New object, or throws an exception if creation failed.
         */
-        static UniquePtr create();
+        static UniquePtr create(std::shared_ptr<Device> pDevice);
 
         /** The structs contains information on the location of the character in the texture
         */
-        struct CharTexCrdDesc
-        {
+        struct CharTexCrdDesc {
             float2 topLeft; ///< Non-normalized origin of the character in the texture
             float2 size;    ///< Size in pixels of the character. This should be used to initialize the texture-coordinate when rendering.
         };
@@ -60,8 +60,7 @@ namespace Falcor
 
         /** Get the character descriptor
         */
-        const CharTexCrdDesc& getCharDesc(char c) const
-        {
+        const CharTexCrdDesc& getCharDesc(char c) const {
             assert(c >= mFirstChar && c <= mLastChar);
             return mCharDesc[c - mFirstChar];
         }
@@ -79,7 +78,7 @@ namespace Falcor
         float getLettersSpacing() const { return mLetterSpacing; }
 
     private:
-        Font();
+        Font(std::shared_ptr<Device> pDevice);
         Font(const Font&) = delete;
         Font& operator=(const Font&) = delete;
 
@@ -95,5 +94,7 @@ namespace Falcor
         float mFontHeight;
         float mTabWidth;
         float mLetterSpacing;
+
+        std::shared_ptr<Device> mpDevice;
     };
 }

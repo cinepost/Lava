@@ -25,24 +25,26 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_
+#define SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "BSDFViewerParams.slang"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#include "Experimental/Scene/Lights/EnvMap.h"
 
 using namespace Falcor;
 
-class BSDFViewer : public RenderPass, public inherit_shared_from_this<RenderPass, BSDFViewer>
+class BSDFViewer : public RenderPass
 {
 public:
     using SharedPtr = std::shared_ptr<BSDFViewer>;
 
     /** Create a new object
     */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict = {});
 
     virtual std::string getDesc() override { return sDesc; }
     virtual Dictionary getScriptingDictionary() override;
@@ -57,13 +59,12 @@ public:
     static const char* sDesc;
 
 private:
-    BSDFViewer(const Dictionary& dict);
-    bool loadEnvMap(RenderContext* pRenderContext, const std::string& filename);
+    BSDFViewer(Device::SharedPtr pDevice, const Dictionary& dict);
+    bool loadEnvMap(const std::string& filename);
 
     // Internal state
     Scene::SharedPtr                mpScene;                ///< Loaded scene if any, nullptr otherwise.
-    EnvProbe::SharedPtr             mpEnvProbe;             ///< Environment map if loaded, nullptr otherwise.
-    std::string                     mEnvProbeFilename;      ///< Filename of loaded environment map, or empty string otherwise.
+    EnvMap::SharedPtr               mpEnvMap;               ///< Environment map if loaded, nullptr otherwise.
 
     BSDFViewerParams                mParams;                ///< Parameters shared with the shaders.
     SampleGenerator::SharedPtr      mpSampleGenerator;      ///< Random number generator for the integrator.
@@ -80,3 +81,5 @@ private:
     // UI variables
     Gui::DropdownList               mMaterialList;
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_

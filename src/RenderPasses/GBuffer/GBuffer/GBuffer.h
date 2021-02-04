@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_
+#define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_
+
 #include "../GBufferBase.h"
 #include "GBufferParams.slang"
 #include "RenderGraph/RenderPassHelpers.h"
@@ -34,16 +36,16 @@ using namespace Falcor;
 
 /** Base class for the different G-buffer passes.
 */
-class GBuffer : public GBufferBase, public inherit_shared_from_this<GBufferBase, GBuffer>
-{
-public:
+class GBuffer : public GBufferBase {
+ public:
     virtual void renderUI(Gui::Widgets& widget) override;
+    virtual void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
-protected:
-    GBuffer();
+ protected:
+    GBuffer(Device::SharedPtr pDevice);
     virtual void parseDictionary(const Dictionary& dict) override;
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
 
@@ -56,5 +58,6 @@ protected:
     // UI variables
     bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
     RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
-    bool                            mUseBentShadingNormals = true;                  ///< Use bent shading normals.
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFER_GBUFFER_H_

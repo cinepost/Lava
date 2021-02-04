@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -157,7 +157,6 @@ float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, floa
 }
 
 // TODO: this function is broken an may return negative values.
-// Issue #780
 float getMetallic(float3 diffuse, float3 spec)
 {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
@@ -321,7 +320,7 @@ bool evalAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 }
 
 /*******************************************************************
-   	Random numbers based on Mersenne Twister
+    Random numbers based on Mersenne Twister
 *******************************************************************/
 uint rand_init(uint val0, uint val1, uint backoff = 16)
 {
@@ -345,4 +344,26 @@ float rand_next(inout uint s)
     uint LCG_C = 1013904223u;
     s = (LCG_A * s + LCG_C);
     return float(s & 0x00FFFFFF) / float(0x01000000);
+}
+
+/*******************************************************************
+    Color conversions
+*******************************************************************/
+
+#define _SRGB_ALPHA 0.055
+
+// Converts a single linear channel to srgb
+float linear_to_srgb(float channel) {
+    if(channel <= 0.0031308)
+        return 12.92 * channel;
+    else
+        return (1.0 + _SRGB_ALPHA) * pow(channel, 1.0/2.4) - _SRGB_ALPHA;
+}
+
+// Converts a single srgb channel to rgb
+float srgb_to_linear(float channel) {
+    if (channel <= 0.04045)
+        return channel / 12.92;
+    else
+        return pow((channel + _SRGB_ALPHA) / (1.0 + _SRGB_ALPHA), 2.4);
 }

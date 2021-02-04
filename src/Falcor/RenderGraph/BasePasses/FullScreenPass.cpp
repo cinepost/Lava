@@ -69,10 +69,10 @@ const Vertex kVertices[] = {
 };
 #undef ADJUST_Y
 
-void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
+void initFullScreenData(std::shared_ptr<Device> device, Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
     // First time we got here. create VB and VAO
     const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*arraysize(kVertices));
-    pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
+    pVB = Buffer::create(device, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
     assert(pVB);
 
     // Create VAO
@@ -89,7 +89,9 @@ void initFullScreenData(Buffer::SharedPtr& pVB, Vao::SharedPtr& pVao) {
 
 }  // namespace
 
-FullScreenPass::FullScreenPass(const Program::Desc& progDesc, const Program::DefineList& programDefines): BaseGraphicsPass(progDesc, programDefines) {
+FullScreenPass::FullScreenPass(std::shared_ptr<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines): 
+    BaseGraphicsPass(pDevice, progDesc, programDefines) 
+{
     gFullScreenData.objectCount++;
 
     // Create depth stencil state
@@ -98,7 +100,7 @@ FullScreenPass::FullScreenPass(const Program::Desc& progDesc, const Program::Def
     mpState->setDepthStencilState(pDsState);
 
     if (gFullScreenData.pVertexBuffer == nullptr) {
-        initFullScreenData(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
+        initFullScreenData(pDevice, gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
     }
     assert(gFullScreenData.pVao);
     mpState->setVao(gFullScreenData.pVao);
@@ -115,7 +117,8 @@ FullScreenPass::~FullScreenPass() {
     }
 }
 
-FullScreenPass::SharedPtr FullScreenPass::create(const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, uint32_t viewportMask) {
+    assert(pDevice);
     Program::Desc d = desc;
     Program::DefineList defs = defines;
     std::string gs;
@@ -131,13 +134,13 @@ FullScreenPass::SharedPtr FullScreenPass::create(const Program::Desc& desc, cons
     }
     if (!d.hasEntryPoint(ShaderType::Vertex)) d.addShaderLibrary("RenderGraph/BasePasses/FullScreenPass.vs.slang").vsEntry("main");
 
-    return SharedPtr(new FullScreenPass(d, defs));
+    return SharedPtr(new FullScreenPass(pDevice, d, defs));
 }
 
-FullScreenPass::SharedPtr FullScreenPass::create(const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
+FullScreenPass::SharedPtr FullScreenPass::create(std::shared_ptr<Device> device, const std::string& filename, const Program::DefineList& defines, uint32_t viewportMask) {
     Program::Desc d;
     d.addShaderLibrary(filename).psEntry("main");
-    return create(d, defines, viewportMask);
+    return create(device, d, defines, viewportMask);
 }
 
 void FullScreenPass::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pFbo, bool autoSetVpSc) const {

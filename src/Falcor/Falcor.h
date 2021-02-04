@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_SRC_FALCOR_FALCOR_H_
+#define FALCOR_SRC_FALCOR_FALCOR_H_
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -110,7 +111,7 @@
 
 // Scene
 #include "Falcor/Scene/Scene.h"
-#include "Falcor/Scene/Importers/SceneImporter.h"
+#include "Falcor/Scene/Importer.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Camera/CameraController.h"
 #include "Falcor/Scene/Lights/Light.h"
@@ -118,13 +119,10 @@
 #include "Falcor/Scene/Material/Material.h"
 #include "Falcor/Scene/Animation/Animation.h"
 #include "Falcor/Scene/Animation/AnimationController.h"
-#include "Falcor/Scene/Importers/AssimpImporter.h"
-#include "Falcor/Scene/Importers/PythonImporter.h"
 #include "Falcor/Scene/ParticleSystem/ParticleSystem.h"
 
 // Utils
 #include "Falcor/Utils/Math/AABB.h"
-#include "Falcor/Utils/ArgList.h"
 #include "Falcor/Utils/BinaryFileStream.h"
 #include "Falcor/Utils/Logger.h"
 #include "Falcor/Utils/StringUtils.h"
@@ -149,6 +147,7 @@
 #include "Falcor/Utils/Timing/Clock.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include "Falcor/Utils/Timing/Profiler.h"
+#include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Utils/UI/Font.h"
 #include "Falcor/Utils/UI/Gui.h"
 #include "Falcor/Utils/UI/DebugDrawer.h"
@@ -169,3 +168,5 @@
 #define FALCOR_MAJOR_VERSION 4
 #define FALCOR_REVISION 1
 #define FALCOR_VERSION_STRING "4.1"
+
+#endif  // FALCOR_SRC_FALCOR_FALCOR_H_
