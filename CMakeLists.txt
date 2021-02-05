@@ -29,7 +29,7 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/defaults
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/assimp/cmake-modules
+  ${CMAKE_INSTALL_PREFIX}/3rdparty/lib/cmake/assimp-5.0
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src/cmake
 )
@@ -44,7 +44,7 @@ set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
 # Set python virtualenv for USD
-set( PYTHON_EXECUTABLE "python")
+set( PYTHON_EXECUTABLE "python3.7")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -107,10 +107,9 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Falcor/Core
   ${FALCOR_INCLUDE_ROOT}/Externals
 
+  ${CMAKE_INSTALL_PREFIX}/3rdparty/include
+
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/Imath/src/Imath
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/src
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
 )

@@ -19,7 +19,12 @@ LAVA_3RDPARTY_LIB_INSTALL_DIR=$LAVA_3RDPARTY_INSTALL_DIR/lib
 # Required ubuntu packages
 #------------------------------------
 
-sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers vulkan-sdk
+sudo snap install cmake --classic
+sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers vulkan-sdk clang \
+    libminizip-dev g++-multilib libzzip-dev libtiff-dev libgif-dev libopencolorio-dev libraw-dev libwebp-dev python3.7-dev libpython3.7-dev rapidjson-dev
+
+export PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.7/
+
 
 #------------------------------------
 # Lava deps
@@ -55,6 +60,10 @@ cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=${LAVA_3RDPARTY_INSTA
 cd $LAVA_3RDPARTY_SOURCE_DIR/pybind11
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=${LAVA_3RDPARTY_INSTALL_DIR} && make -j$CPU_CORES install
+
+cd $LAVA_3RDPARTY_SOURCE_DIR/OpenCV
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=${LAVA_3RDPARTY_INSTALL_DIR} -DCMAKE_PREFIX_PATH=${LAVA_3RDPARTY_INSTALL_DIR} && make -j$CPU_CORES install
 
 cd $LAVA_3RDPARTY_SOURCE_DIR/OpenImageIO
 mkdir -p build && cd build

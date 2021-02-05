@@ -51,6 +51,14 @@ find_package(pybind11 REQUIRED CONFIG)
 find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
+# Assimp
+find_package(assimp REQUIRED)
+if(assimp_FOUND)
+    set(ASSIMP_LIBRARY "assimp")
+    add_library(${ASSIMP_LIBRARY} SHARED IMPORTED)
+    set_target_properties(${ASSIMP_LIBRARY} PROPERTIES IMPORTED_LOCATION "${ASSIMP_LIBRARY_DIRS}/libassimp.so")
+endif(assimp_FOUND)
+
 # ZLIB
 find_package( ZLIB REQUIRED )
 if(ZLIB_FOUND)
@@ -154,13 +162,13 @@ add_definitions(-DFALCOR_DLL)
 
 target_link_libraries(
     falcor_lib
-    
-    assimp
+
     glfw
     avutil
     avformat
     swscale
     stdc++fs
+    ${ASSIMP_LIBRARY}
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
