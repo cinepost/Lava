@@ -36,8 +36,9 @@ file( GLOB SOURCES
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
     ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_glfw.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/examples/imgui_impl_vulkan.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_glfw.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_vulkan.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )

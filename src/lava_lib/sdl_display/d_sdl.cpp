@@ -192,6 +192,9 @@ PtDspyError processEvents() {
   PtDspyError ret = PkDspyErrorNone;
 
   while (window->pollEvent(event)) {
+    // Forward to Imgui
+    ImGui_ImplSDL2_ProcessEvent(&event);
+
     switch (event.type) {
       case SDL_QUIT :
         ret = PkDspyErrorCancel;
@@ -200,6 +203,9 @@ PtDspyError processEvents() {
         if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           window->resizeWindow(event.window.data1, event.window.data2);
         }
+        break;
+      // keyup event
+      case SDL_KEYUP:
         break;
       // now we look for a keydown event
       case SDL_KEYDOWN:
@@ -242,13 +248,29 @@ PtDspyError processEvents() {
           case SDLK_4 : window->setRenderMode(SDLOpenGLWindow::RenderMode::BLUE); break;
           case SDLK_5 : window->setRenderMode(SDLOpenGLWindow::RenderMode::ALPHA); break;
           case SDLK_6 : window->setRenderMode(SDLOpenGLWindow::RenderMode::GREY); break;
-          case SDLK_LEFTBRACKET : window->setGamma(window->gamma()-0.1f); break;
-          case SDLK_RIGHTBRACKET : window->setGamma(window->gamma()+0.1f); break;
-          case SDLK_0 : window->setExposure(window->exposure()+0.1f); break;
-          case SDLK_9 : window->setExposure(window->exposure()-0.1f); break;
+          case SDLK_LEFTBRACKET : 
+            window->setGamma(window->gamma()-0.1f); 
+            break;
+          case SDLK_RIGHTBRACKET : 
+            window->setGamma(window->gamma()+0.1f);
+            break;
+          case SDLK_0 : 
+            window->setExposure(window->exposure()+0.1f);
+            break;
+          case SDLK_9 : 
+            window->setExposure(window->exposure()-0.1f);
+            break;
           case SDLK_r :
+            window->reset();
+            window->setRenderMode(SDLOpenGLWindow::RenderMode::ALL);
             window->setGamma(1.0f);
             window->setExposure(0.0f);
+            break;
+          case SDLK_h :
+            window->showHelp();
+            break;
+          case SDLK_d :
+            window->showHUD();
             break;
           default : 
             break;
@@ -287,10 +309,10 @@ PtDspyError processEvents() {
       break;
       case SDL_MOUSEWHEEL :
       {
-        auto delta=event.motion.x;
-        if(delta>1)
+        //auto delta=event.motion.x;
+        if (event.wheel.y > 0)
           window->setScale(window->scale()+scaleStep);
-        else if(delta<1)
+        else if (event.wheel.y < 0)
           window->setScale(window->scale()-scaleStep);
 
       break;

@@ -342,11 +342,13 @@ void SparseResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
 
     VkSparseImageMemoryBind mipTailimageMemoryBind{};
 
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.allocationSize = pTex->mSparseImageMemoryRequirements.imageMipTailSize;
-    allocInfo.memoryTypeIndex = pTex->mMemoryTypeIndex;
+    VkMemoryAllocateInfo memAllocInfo = {};
+    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memAllocInfo.pNext = NULL;
+    memAllocInfo.allocationSize = pTex->mSparseImageMemoryRequirements.imageMipTailSize;
+    memAllocInfo.memoryTypeIndex = pTex->mMemoryTypeIndex;
     
-    if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &allocInfo, nullptr, &mipTailimageMemoryBind.memory)) ) {
+    if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mipTailimageMemoryBind.memory)) ) {
         LOG_ERR("Could not allocate memory !!!");
         return;
     }
@@ -360,8 +362,8 @@ void SparseResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
         std::vector<unsigned char> tmpPage(65536, 255);
 
         LOG_WARN("Fill mip tail level %u", mipLevel);
-        //mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
-        mpCtx->updateSubresourceData(pTex, 0, tmpPage.data(), uint3(0), { width, height, depth });
+        mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
+        //mpCtx->updateSubresourceData(pTex, 0, tmpPage.data(), uint3(0), { width, height, depth });
     }
     mpCtx->flush(true);
 }

@@ -50,17 +50,18 @@ float calculateBaseMipMapLevel2D(float2 texCoord, float2 texDims, float mipBias)
 float calculateAnisoMipMapLevel2D(float2 texCoord, float2 texDims, float mipBias) {
     float2 dx_vtc = ddx_fine(texCoord) * texDims.x;
     float2 dy_vtc = ddy_fine(texCoord) * texDims.y;
-    //float p_x = sqrt(dot(dx_vtc, dx_vtc));
-    //float p_y = sqrt(dot(dy_vtc, dy_vtc));
+    float p_x = sqrt(dot(dx_vtc, dx_vtc));
+    float p_y = sqrt(dot(dy_vtc, dy_vtc));
 
-    float p_x = sqrt(dx_vtc.x * dx_vtc.x + dx_vtc.y * dx_vtc.y);
-    float p_y = sqrt(dy_vtc.x * dy_vtc.x + dy_vtc.y * dy_vtc.y);
+    //float p_x = sqrt(dx_vtc.x * dx_vtc.x + dx_vtc.y * dx_vtc.y);
+    //float p_y = sqrt(dy_vtc.x * dy_vtc.x + dy_vtc.y * dy_vtc.y);
 
     float p_min = min(p_x, p_y);
     float p_max = max(p_x, p_y);
 
     float max_anisotropy = 8;
-    float n = min(ceil(p_max/p_min), max_anisotropy);
+    //float n = min(ceil(p_max/p_min), max_anisotropy);
+    float n = min(p_max/p_min, max_anisotropy);
 
     float p = p_max / n;
 
@@ -72,7 +73,8 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
 
     // all mip levels greater or equal to mipTailStart stored in last page block
     if( mipLevel >= vtexData.mipTailStart) {
-        return vtexData.mipBases[vtexData.mipTailStart] + (mipLevel - vtexData.mipTailStart);
+        return 0; // safety measure
+        //return vtexData.mipBases[vtexData.mipTailStart] + (mipLevel - vtexData.mipTailStart);
     }
 
     float currentMipTextureWidth = vtexData.width / pow(2, mipLevel);

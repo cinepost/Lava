@@ -294,8 +294,8 @@ namespace Falcor {
         region.imageOffset = { offset.x, offset.y, offset.z };
         region.imageExtent = { extent.x, extent.y, extent.z };
 
-        region.imageOffset = { 0,0,0 };
-        region.imageExtent = { 128,128,1 };
+        //region.imageOffset = { 0,0,0 };
+        //region.imageExtent = { 128 >> (int)mipLevel, 128 >> (int)mipLevel,1 };
 
         Buffer::SharedPtr pStaging;
         auto const format = pTexture->getFormat();

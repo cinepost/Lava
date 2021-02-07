@@ -151,8 +151,8 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
 
     // test
     Texture2D testTexture = gScene.materialResources[vsOut.materialID].baseColor;
-    psOut.diffuseOpacity.a = 1.0;
-    psOut.diffuseOpacity.rgb = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 5).rgb;
+    //psOut.diffuseOpacity.a = 1.0;
+    //psOut.diffuseOpacity.rgb = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 3).rgb;
     //
 
     return psOut;

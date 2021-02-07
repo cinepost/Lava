@@ -788,11 +788,11 @@ namespace Falcor
         bool isPopupOpen = false;
         bool first = false;
 
-        if (!(isPopupOpen = ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu"))))
-        {
-            ImGui::OpenPopup("PinMenu");
-            first = true;
-        }
+        //if (!(isPopupOpen = ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu"))))
+        //{
+        //    ImGui::OpenPopup("PinMenu");
+        //    first = true;
+        //}
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
         if (ImGui::BeginPopup("PinMenu"))
@@ -950,10 +950,10 @@ namespace Falcor
         }
         else
         {
-            if (ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu")))
-            {
-                ImGui::CloseCurrentPopup();
-            }
+           // if (ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID("PinMenu")))
+           // {
+           //     ImGui::CloseCurrentPopup();
+           // }
         }
 
         if (!mpNodeGraphEditor->isInited())

@@ -176,6 +176,7 @@ namespace Falcor {
         mBindSparseInfo.pImageBinds = &mImageMemoryBindInfo;
 
         // Opaque image memory binds for the mip tail
+        LOG_WARN("Texture mOpaqueMemoryBinds.size() %zu", mOpaqueMemoryBinds.size());
         mOpaqueMemoryBindInfo.image = mImage;
         mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(mOpaqueMemoryBinds.size());
         mOpaqueMemoryBindInfo.pBinds = mOpaqueMemoryBinds.data();
@@ -396,7 +397,8 @@ namespace Falcor {
 
                 
                 if ((!mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < mMipLevels)) {
-                    // Allocate memory for the mip tail
+                    std::cout << "Layer " << layer << "single mip tail" << std::endl;
+                    // Allocate memory for the layer mip tail
                     VkMemoryAllocateInfo memAllocInfo = {};
                     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
                     memAllocInfo.pNext = NULL;
@@ -423,19 +425,13 @@ namespace Falcor {
 
             } // end layers and mips
 
-            std::cout << "Texture info:" << std::endl;
-            std::cout << "\tDim: " << mWidth << " x " << mHeight << std::endl;
-            std::cout << "\tVirtual pages: " << mPages.size() << std::endl;
-            std::cout << "\tSingle mip tail: " << (mMipTailInfo.singleMipTail ? "Yes" : "No") << std::endl;
-            std::cout << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod << std::endl;
-            std::cout << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize << std::endl;
-
             // Check if format has one mip tail for all layers
             if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < mMipLevels)) {
-                 std::cout << "\tOne mip tail for all mip layers " << std::endl;
+                std::cout << "One mip tail for all mip layers " << std::endl;
                 // Allocate memory for the mip tail
                 VkMemoryAllocateInfo memAllocInfo = {};
                 memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                memAllocInfo.pNext = NULL;
                 memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
                 memAllocInfo.memoryTypeIndex = mMemoryTypeIndex;
 
@@ -453,6 +449,13 @@ namespace Falcor {
 
                 mOpaqueMemoryBinds.push_back(sparseMemoryBind);
             }
+
+            std::cout << "Texture info:" << std::endl;
+            std::cout << "\tDim: " << mWidth << " x " << mHeight << std::endl;
+            std::cout << "\tVirtual pages: " << mPages.size() << std::endl;
+            std::cout << "\tSingle mip tail: " << (mMipTailInfo.singleMipTail ? "Yes" : "No") << std::endl;
+            std::cout << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod << std::endl;
+            std::cout << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize << std::endl;
 
             // Create signal semaphore for sparse binding
             VkSemaphoreCreateInfo semaphoreCreateInfo = {};

@@ -11,9 +11,22 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_sdl.h"
+#include "imgui/backends/imgui_impl_opengl3.h"
 
 class SDLOpenGLWindow {
-  public :
+  public:
+    enum class RenderMode : int {
+        ALL = 0, 
+        RED, 
+        GREEN, 
+        BLUE, 
+        ALPHA, 
+        GREY
+    };
+
+  public:
     SDLOpenGLWindow(const std::string &_name, int _x, int _y, int _width, int _height, int _ppp);
     ~SDLOpenGLWindow();
 
@@ -33,8 +46,9 @@ class SDLOpenGLWindow {
     void setExposure(float _e);
     void reset();
     void setPosition(float _x, float _y);
-    enum class RenderMode : int {ALL=0, RED, GREEN, BLUE, ALPHA, GREY};
     void setRenderMode(RenderMode _m);
+    void showHelp() { mShowHelp = !mShowHelp; }
+    void showHUD() { mShowHUD = !mShowHUD; }
 
   private :
     int m_width;
@@ -59,6 +73,8 @@ class SDLOpenGLWindow {
     void createGLContext();
 
     void ErrorExit(const std::string &_msg) const;
+    void ImGuiSetup();
+    void ImGuiCleanup() const;
 
     SDL_Window *m_window;
     GLenum m_pixelFormat, m_texFormat;
@@ -67,7 +83,11 @@ class SDLOpenGLWindow {
     float m_yPos=0.0f;
     float m_gamma=1.0f;
     float m_exposure=0.0f;
+    RenderMode mRenderMode = RenderMode::ALL;
 
+  private:
+    bool  mShowHelp = false;
+    bool  mShowHUD = true;
 };
 
 #endif // SDL_OPENGL_WINDOW_H

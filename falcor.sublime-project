@@ -70,6 +70,7 @@
               "${folder}/src",
               "${folder}/include",
               "/usr/local/include",
+              "${project_path}/third_party/",
           ],
           "excludes": [],
       },

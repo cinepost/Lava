@@ -26,6 +26,31 @@ include_directories( ${SDL2_INCLUDE_DIRS} )
 # OpenGL
 find_library(OpenGL_LIBRARY OpenGL )
 
+# ImGui
+add_library(imgui STATIC
+    # Main Imgui files
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
+    # SDL2+OpenGL-specific files
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_sdl.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_opengl3.cpp
+)
+
+# Make SDL2 available to Imgui
+target_include_directories(imgui PUBLIC ${SDL2_INCLUDE_DIRS})
+# imgui/backends/ contains the SDL implementation
+target_include_directories(imgui PUBLIC 
+	${CMAKE_SOURCE_DIR}/third_party/imgui/ 
+	${CMAKE_SOURCE_DIR}/third_party/imgui/backends/
+)
+# Configure Imgui to use OpengGL through SDL2
+target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_CUSTOM=<SDL_opengl.h>  GL_GLEXT_PROTOTYPES=1)
+
+
+
+include_directories( "${CMAKE_SOURCE_DIR}/third_party/imgui" )
+
 # Threads
 find_package( Threads )
 
@@ -50,7 +75,8 @@ add_library (
 )
 
 target_link_libraries( 
-	sdl_display 
+	sdl_display
+	imgui 
 	Boost::log Threads::Threads 
 	${OpenGL_LIBRARY} 
 	${SDL2_LIBRARIES}
@@ -67,7 +93,8 @@ set_target_properties( sdl_display PROPERTIES
 )
 
 
-install(TARGETS sdl_display
+install(
+	TARGETS sdl_display
 	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
 )
 
