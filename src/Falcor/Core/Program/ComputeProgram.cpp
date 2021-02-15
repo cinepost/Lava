@@ -44,8 +44,10 @@ namespace Falcor {
         return pProg;
     }
 
+#ifdef SCRIPTING
     SCRIPT_BINDING(ComputeProgram) {
         pybind11::class_<ComputeProgram, ComputeProgram::SharedPtr>(m, "ComputeProgram");
     }
+#endif
 
 }  // namespace Falcor

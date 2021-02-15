@@ -97,6 +97,10 @@ namespace Falcor {
             return it != mContainer.end() ? it->second : defaultValue;
         }
 
+        std::string toString() const {
+            return "";
+        }
+
     private:
         Container mContainer;
     };

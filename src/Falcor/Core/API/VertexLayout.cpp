@@ -29,7 +29,11 @@
 #include "VertexLayout.h"
 
 namespace Falcor {
-    SCRIPT_BINDING(VertexLayout) {
-        pybind11::class_<VertexLayout, VertexLayout::SharedPtr>(m, "VertexLayout");
-    }
+
+#ifdef SCRIPTING
+SCRIPT_BINDING(VertexLayout) {
+    pybind11::class_<VertexLayout, VertexLayout::SharedPtr>(m, "VertexLayout");
+}
+#endif
+
 }

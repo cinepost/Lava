@@ -44,134 +44,136 @@ const Gui::DropdownList kSolidAngleBoundList = {
 
 }  // namespace
 
-    LightBVHSampler::SharedPtr LightBVHSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options) {
-        return SharedPtr(new LightBVHSampler(pRenderContext, pScene, options));
+LightBVHSampler::SharedPtr LightBVHSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options) {
+    return SharedPtr(new LightBVHSampler(pRenderContext, pScene, options));
+}
+
+bool LightBVHSampler::update(RenderContext* pRenderContext) {
+    PROFILE(pRenderContext->device(), "LightBVHSampler::update");
+
+    bool samplerChanged = false;
+    bool needsRefit = false;
+
+    // Check if light collection has changed.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged)) {
+        if (mOptions.buildOptions.allowRefitting && !mNeedsRebuild) needsRefit = true;
+        else mNeedsRebuild = true;
     }
 
-    bool LightBVHSampler::update(RenderContext* pRenderContext) {
-        PROFILE(pRenderContext->device(), "LightBVHSampler::update");
+    // Rebuild BVH if it's marked as dirty.
+    if (mNeedsRebuild) {
+        mpBVHBuilder->build(*mpBVH);
+        mNeedsRebuild = false;
+        samplerChanged = true;
+    }
+    else if (needsRefit)
+    {
+        mpBVH->refit(pRenderContext);
+        samplerChanged = true;
+    }
 
-        bool samplerChanged = false;
-        bool needsRefit = false;
+    return samplerChanged;
+}
 
-        // Check if light collection has changed.
-        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged)) {
-            if (mOptions.buildOptions.allowRefitting && !mNeedsRebuild) needsRefit = true;
-            else mNeedsRebuild = true;
-        }
+bool LightBVHSampler::prepareProgram(Program* pProgram) const {
+    // Call the base class first.
+    bool varsChanged = EmissiveLightSampler::prepareProgram(pProgram);
 
-        // Rebuild BVH if it's marked as dirty.
-        if (mNeedsRebuild) {
-            mpBVHBuilder->build(*mpBVH);
-            mNeedsRebuild = false;
-            samplerChanged = true;
-        }
-        else if (needsRefit)
+    // Add our defines. None of these change the program vars.
+    pProgram->addDefine("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
+    pProgram->addDefine("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
+    pProgram->addDefine("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
+    pProgram->addDefine("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
+    pProgram->addDefine("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
+    pProgram->addDefine("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
+
+    return varsChanged;
+}
+
+bool LightBVHSampler::setShaderData(const ShaderVar& var) const {
+    assert(var.isValid());
+    assert(mpBVH);
+    mpBVH->setShaderData(var["_lightBVH"]);
+    return true;
+}
+
+bool LightBVHSampler::renderUI(Gui::Widgets& widgets) {
+    bool optionsChanged = false;
+
+    if (auto buildGroup = widgets.group("BVH building options"))
+    {
+        if (mpBVHBuilder->renderUI(buildGroup))
         {
-            mpBVH->refit(pRenderContext);
-            samplerChanged = true;
+            mOptions.buildOptions = mpBVHBuilder->getOptions();
+            mNeedsRebuild = optionsChanged = true;
         }
-
-        return samplerChanged;
     }
 
-    bool LightBVHSampler::prepareProgram(Program* pProgram) const {
-        // Call the base class first.
-        bool varsChanged = EmissiveLightSampler::prepareProgram(pProgram);
-
-        // Add our defines. None of these change the program vars.
-        pProgram->addDefine("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
-        pProgram->addDefine("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
-        pProgram->addDefine("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
-        pProgram->addDefine("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
-        pProgram->addDefine("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
-        pProgram->addDefine("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
-
-        return varsChanged;
-    }
-
-    bool LightBVHSampler::setShaderData(const ShaderVar& var) const {
-        assert(var.isValid());
-        assert(mpBVH);
-        mpBVH->setShaderData(var["_lightBVH"]);
-        return true;
-    }
-
-    bool LightBVHSampler::renderUI(Gui::Widgets& widgets) {
-        bool optionsChanged = false;
-
-        if (auto buildGroup = widgets.group("BVH building options"))
+    if (auto traversalGroup = widgets.group("BVH traversal options"))
+    {
+        optionsChanged |= traversalGroup.checkbox("Use bounding cone (NdotL)", mOptions.useBoundingCone);
+        if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone))
         {
-            if (mpBVHBuilder->renderUI(buildGroup))
-            {
-                mOptions.buildOptions = mpBVHBuilder->getOptions();
-                mNeedsRebuild = optionsChanged = true;
-            }
+            mNeedsRebuild = optionsChanged = true;
         }
+        optionsChanged |= traversalGroup.checkbox("Disable node flux", mOptions.disableNodeFlux);
+        optionsChanged |= traversalGroup.checkbox("Use triangle uniform sampling", mOptions.useUniformTriangleSampling);
 
-        if (auto traversalGroup = widgets.group("BVH traversal options"))
+        if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod))
         {
-            optionsChanged |= traversalGroup.checkbox("Use bounding cone (NdotL)", mOptions.useBoundingCone);
-            if (traversalGroup.checkbox("Use lighting cone", mOptions.useLightingCone))
-            {
-                mNeedsRebuild = optionsChanged = true;
-            }
-            optionsChanged |= traversalGroup.checkbox("Disable node flux", mOptions.disableNodeFlux);
-            optionsChanged |= traversalGroup.checkbox("Use triangle uniform sampling", mOptions.useUniformTriangleSampling);
-
-            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod))
-            {
-                mNeedsRebuild = optionsChanged = true;
-            }
-            traversalGroup.tooltip("Selects the bounding method for the dot(N,L) term:\n\n"
-                "Sphere - Use a bounding sphere around the AABB. This is the fastest, but least conservative method.\n"
-                "Cone around center dir - Compute a bounding cone around the direction to the center of the AABB. This is more expensive, but gives tighter bounds.\n"
-                "Cone around average dir - Computes a bounding cone to the average direction of all AABB corners. This is the most expensive, but gives the tightest bounds.");
+            mNeedsRebuild = optionsChanged = true;
         }
-
-
-        if (auto statGroup = widgets.group("BVH statistics"))
-        {
-            mpBVH->renderUI(statGroup);
-        }
-
-        return optionsChanged;
+        traversalGroup.tooltip("Selects the bounding method for the dot(N,L) term:\n\n"
+            "Sphere - Use a bounding sphere around the AABB. This is the fastest, but least conservative method.\n"
+            "Cone around center dir - Compute a bounding cone around the direction to the center of the AABB. This is more expensive, but gives tighter bounds.\n"
+            "Cone around average dir - Computes a bounding cone to the average direction of all AABB corners. This is the most expensive, but gives the tightest bounds.");
     }
 
-    LightBVH::SharedConstPtr LightBVHSampler::getBVH() const {
-        return mpBVH->isValid() ? mpBVH : nullptr;
+
+    if (auto statGroup = widgets.group("BVH statistics"))
+    {
+        mpBVH->renderUI(statGroup);
     }
 
-    LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
-        : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
-        , mOptions(options) {
-        // Create the BVH and builder.
-        mpBVHBuilder = LightBVHBuilder::create(mOptions.buildOptions);
-        if (!mpBVHBuilder) {
-            throw std::runtime_error("Failed to create BVH builder");
-        }
-        mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
-        if (!mpBVH) {
-            throw std::runtime_error("Failed to create BVH");
-        }
+    return optionsChanged;
+}
+
+LightBVH::SharedConstPtr LightBVHSampler::getBVH() const {
+    return mpBVH->isValid() ? mpBVH : nullptr;
+}
+
+LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
+    : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
+    , mOptions(options) {
+    // Create the BVH and builder.
+    mpBVHBuilder = LightBVHBuilder::create(mOptions.buildOptions);
+    if (!mpBVHBuilder) {
+        throw std::runtime_error("Failed to create BVH builder");
     }
+    mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
+    if (!mpBVH) {
+        throw std::runtime_error("Failed to create BVH");
+    }
+}
 
-    SCRIPT_BINDING(LightBVHSampler) {
-        pybind11::enum_<SolidAngleBoundMethod> solidAngleBoundMethod(m, "SolidAngleBoundMethod");
-        solidAngleBoundMethod.value("BoxToAverage", SolidAngleBoundMethod::BoxToAverage);
-        solidAngleBoundMethod.value("BoxToCenter", SolidAngleBoundMethod::BoxToCenter);
-        solidAngleBoundMethod.value("Sphere", SolidAngleBoundMethod::Sphere);
+#ifdef SCRIPTING
+SCRIPT_BINDING(LightBVHSampler) {
+    pybind11::enum_<SolidAngleBoundMethod> solidAngleBoundMethod(m, "SolidAngleBoundMethod");
+    solidAngleBoundMethod.value("BoxToAverage", SolidAngleBoundMethod::BoxToAverage);
+    solidAngleBoundMethod.value("BoxToCenter", SolidAngleBoundMethod::BoxToCenter);
+    solidAngleBoundMethod.value("Sphere", SolidAngleBoundMethod::Sphere);
 
-        // TODO use a nested class in the bindings when supported.
-        ScriptBindings::SerializableStruct<LightBVHSampler::Options> options(m, "LightBVHSamplerOptions");
+    // TODO use a nested class in the bindings when supported.
+    ScriptBindings::SerializableStruct<LightBVHSampler::Options> options(m, "LightBVHSamplerOptions");
 #define field(f_) field(#f_, &LightBVHSampler::Options::f_)
-        options.field(buildOptions);
-        options.field(useBoundingCone);
-        options.field(useLightingCone);
-        options.field(disableNodeFlux);
-        options.field(useUniformTriangleSampling);
-        options.field(solidAngleBoundMethod);
+    options.field(buildOptions);
+    options.field(useBoundingCone);
+    options.field(useLightingCone);
+    options.field(disableNodeFlux);
+    options.field(useUniformTriangleSampling);
+    options.field(solidAngleBoundMethod);
 #undef field
-    }
+}
+#endif
 
 }  // namespace Falcor

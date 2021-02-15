@@ -59,9 +59,24 @@ void VirtualTexturePage::allocate() {
     memAllocInfo.allocationSize = mDevMemSize;
     memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
     
-    if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
-        throw std::runtime_error("Error allocating memory for virtual texture page !!!");
-    }
+    //if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
+    //    throw std::runtime_error("Error allocating memory for virtual texture page !!!");
+    //}
+
+    VkMemoryRequirements memRequirements = {};
+    memRequirements.size = mDevMemSize;
+    memRequirements.alignment = mDevMemSize;
+    memRequirements.memoryTypeBits = mMemoryTypeBits;
+
+    VmaAllocationCreateInfo vmaMemAllocInfo = {};
+    vmaMemAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    VmaAllocationInfo vmaAllocInfo = {};
+
+    vmaAllocateMemory(mpDevice->allocator(), &memRequirements, &vmaMemAllocInfo, &mAllocation, &vmaAllocInfo);   
+
+    mImageMemoryBind.memory = vmaAllocInfo.deviceMemory;
+    mImageMemoryBind.memoryOffset = vmaAllocInfo.offset;
 
     mpTexture->mSparseResidentMemSize += mDevMemSize;
 }
@@ -73,7 +88,8 @@ void VirtualTexturePage::release() {
         return;
     }
 
-    vkFreeMemory(mpDevice->getApiHandle(), mImageMemoryBind.memory, nullptr);
+    //vkFreeMemory(mpDevice->getApiHandle(), mImageMemoryBind.memory, nullptr);
+    vmaFreeMemory(mpDevice->allocator(), mAllocation);
 
     mpTexture->mSparseResidentMemSize -= mDevMemSize;
     mImageMemoryBind.memory = VK_NULL_HANDLE;

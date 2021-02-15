@@ -189,10 +189,11 @@ int Console::inputTextCallback(ImGuiInputTextCallbackData* data)
     return 0;
 }
 
-SCRIPT_BINDING(Console)
-{
+#ifdef SCRIPTING
+SCRIPT_BINDING(Console) {
     auto cls = []() { Console::instance().clear(); };
     m.def("cls", cls);
 }
+#endif
 
 }  // namespace Falcor

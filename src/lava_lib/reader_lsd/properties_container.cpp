@@ -199,10 +199,15 @@ bool PropertiesContainer::declareProperty(ast::Style style, Property::Type type,
 
 bool PropertiesContainer::setProperty(ast::Style style, const std::string& name, const Property::Value& value) {
     auto propKey = PropertyKey(style, name);
-    const PropertiesMap::iterator it = mPropertiesMap.find(propKey);
+    PropertiesMap::iterator it = mPropertiesMap.find(propKey);
     if (it == mPropertiesMap.end()) {
-        LLOG_ERR << "Property \"" << to_string(propKey) << "\" does not exist!!!";
-        return false;
+        // property does not exist. declare it here as a user property
+        if(!declareProperty(style, valueType(value), name, value, Property::Owner::USER)) {
+            LLOG_WRN << "Error declaring user property \"" << to_string(propKey) << "\" !!!";
+            return false;
+        }
+
+        it = mPropertiesMap.find(propKey);
     }
 
     if (!it->second.set(value)) {

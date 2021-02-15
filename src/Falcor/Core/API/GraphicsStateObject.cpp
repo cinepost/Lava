@@ -66,6 +66,7 @@ bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& othe
 }
 
 GraphicsStateObject::~GraphicsStateObject() {
+    assert(mpDevice);
     mpDevice->releaseResource(mApiHandle);
 }
 

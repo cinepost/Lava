@@ -7,11 +7,13 @@
 
 #include "Falcor/Core/Framework.h"
 
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
 class Device;
 class Texture;
-class SparseResourceManager;
+class ResourceManager;
 
 // Virtual texture page as a part of the partially resident texture
 // Contains memory bindings, offsets and status information
@@ -63,9 +65,12 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
     uint32_t mLayer;                                                    // Array layer that this page belongs to
     uint32_t mIndex;  // texture page index 
     uint32_t mID;       // global page id
+    uint32_t mMemoryTypeBits;
+
+    VmaAllocation mAllocation;
 
     friend class Texture;
-    friend class SparseResourceManager;
+    friend class ResourceManager;
 };
 
 }  // namespace Falcor

@@ -131,9 +131,11 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {
     pybind11::class_<Resource, Resource::SharedPtr>(m, "Resource");
 }
+#endif
 
 std::atomic<size_t> Resource::newResourceID = 0;
 

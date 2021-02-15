@@ -106,8 +106,8 @@ class Geo: public ScopeBase {
     const std::string& detailName() { return mName; };
     bool isInline() { return mIsInline; };
 
-    ika::bgeo::Bgeo& bgeo() { return mBgeo; }
-    const ika::bgeo::Bgeo& bgeo() const { return mBgeo; }
+    ika::bgeo::Bgeo::SharedPtr bgeo();
+    ika::bgeo::Bgeo::SharedConstPtr bgeo() const { return mpBgeo; }
 
  private:
     Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent), mFileName(""), mIsInline(false) {};
@@ -115,7 +115,7 @@ class Geo: public ScopeBase {
  private:
     std::string     mName = "";
     std::string     mFileName = "";
-    ika::bgeo::Bgeo mBgeo;
+    ika::bgeo::Bgeo::SharedPtr mpBgeo = nullptr; // lazy initialized bgeo
     bool            mIsInline = false;
 };
 

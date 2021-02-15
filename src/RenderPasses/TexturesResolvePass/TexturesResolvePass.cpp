@@ -3,7 +3,7 @@
 #include "TexturesResolvePass.h"
 
 #include "Falcor/Utils/Debug/debug.h"
-#include "Falcor/Core/API/SparseResourceManager.h"
+#include "Falcor/Core/API/ResourceManager.h"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -260,7 +260,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
             if (pOutPagesData[i + pagesStartOffset] != 0)
                 pageIDs.push_back(i + pagesStartOffset);
         }
-        SparseResourceManager::instance().loadPages(pTexture, pageIDs); 
+        mpDevice->resourceManager()->loadPages(pTexture, pageIDs); 
 
         pagesStartOffset += texturePagesCount;
     }

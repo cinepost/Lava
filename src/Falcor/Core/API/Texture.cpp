@@ -358,6 +358,7 @@ uint32_t Texture::getTextureSizeInBytes() {
 }
 #endif
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Texture) {
     pybind11::class_<Texture, Texture::SharedPtr> texture(m, "Texture");
     texture.def_property_readonly("width", &Texture::getWidth);
@@ -374,5 +375,6 @@ SCRIPT_BINDING(Texture) {
     };
     texture.def("data", data, "subresource"_a);
 }
+#endif
 
 }  // namespace Falcor

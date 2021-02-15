@@ -13,7 +13,7 @@ namespace lava {
 
 namespace lsd {
 
-bool readInlineBGEO(std::istream* pParserStream, ika::bgeo::Bgeo& bgeo) {
+bool readInlineBGEO(std::istream* pParserStream, ika::bgeo::Bgeo::SharedPtr pBgeo) {
     auto t1 = std::chrono::high_resolution_clock::now();
     
     uint lines = 0;
@@ -57,7 +57,7 @@ bool readInlineBGEO(std::istream* pParserStream, ika::bgeo::Bgeo& bgeo) {
     LLOG_DBG << "Inline BGEO string size: " << bgeo_str.size() << " bytes.";
 
     t1 = std::chrono::high_resolution_clock::now();
-    bgeo.readInlineGeo(bgeo_str, false);
+    pBgeo->readInlineGeo(bgeo_str, false);
     t2 = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
     LLOG_DBG << "BGEO object parsed in: " << duration << " milsecs.";
@@ -124,19 +124,17 @@ void Visitor::operator()(ast::cmd_detail const& c) {
         throw std::runtime_error("Unable to process cmd_detail out of Geo scope !!!");
     }
 
-    auto& bgeo = pGeo->bgeo();
+    ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
     if(c.filename == "stdin") {
-        bool result = readInlineBGEO(mpParserStream, bgeo);
+        bool result = readInlineBGEO(mpParserStream, pBgeo);
         if (!result) {
             LLOG_ERR << "Error reading inline bgeo !!!";
             return;
         }
-        bgeo.preCachePrimitives();
-        //mpSession->pushBgeo(c.name, bgeo);
+        pBgeo->preCachePrimitives();
     } else {
-        bgeo.readGeoFromFile(mpSession->getExpandedString(c.filename).c_str(), false); // FIXME: don't check version for now
-        bgeo.preCachePrimitives();
-        //mpSession->pushBgeo(c.name, c.filename);
+        pBgeo->readGeoFromFile(mpSession->getExpandedString(c.filename).c_str(), false); // FIXME: don't check version for now
+        pBgeo->preCachePrimitives();
     }
 }
 
@@ -154,6 +152,10 @@ void Visitor::operator()(ast::cmd_defaults const& c) const {
 
 void Visitor::operator()(ast::cmd_transform const& c) const {
     mpSession->cmdTransform(c.m);
+}
+
+void Visitor::operator()(ast::cmd_iprmode const& c) const {
+    mpSession->cmdIPRmode(c.mode);
 }
 
 void Visitor::operator()(ast::cmd_mtransform const& c) const {

@@ -69,8 +69,8 @@ Light::Changes Light::beginFrame()
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position & Changes::Direction);
 
-    assert(mPrevData.tangent == mData.tangent);
-    assert(mPrevData.bitangent == mData.bitangent);
+    //assert(mPrevData.tangent == mData.tangent);
+    //assert(mPrevData.bitangent == mData.bitangent);
 
     mPrevData = mData;
     mActiveChanged = false;
@@ -359,9 +359,7 @@ AnalyticAreaLight::SharedPtr AnalyticAreaLight::create(LightType type)
     return SharedPtr(pLight);
 }
 
-AnalyticAreaLight::AnalyticAreaLight(LightType type)
-    : Light(type)
-{
+AnalyticAreaLight::AnalyticAreaLight(LightType type): Light(type) {
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
     mData.surfaceArea = 4.0f;
@@ -372,52 +370,49 @@ AnalyticAreaLight::AnalyticAreaLight(LightType type)
 
 AnalyticAreaLight::~AnalyticAreaLight() = default;
 
-float AnalyticAreaLight::getPower() const
-{
+float AnalyticAreaLight::getPower() const {
     return luminance(mData.intensity) * (float)M_PI * mData.surfaceArea;
 }
 
-void AnalyticAreaLight::update()
-{
+void AnalyticAreaLight::update() {
     // Update matrix
     mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
 
-    switch ((LightType)mData.type)
-    {
+    switch ((LightType)mData.type) {
+        case LightType::Rect:
+            {
+                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+                mData.surfaceArea = 4.0f * rx * ry;
+            }
+            break;
 
-    case LightType::Rect:
-    {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        mData.surfaceArea = 4.0f * rx * ry;
-    }
-    break;
+        case LightType::Sphere:
+            {
+                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+                float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
 
-    case LightType::Sphere:
-    {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+                mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
+            }
+            break;
 
-        mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
-    }
-    break;
+        case LightType::Disc:
+            {
+                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
 
-    case LightType::Disc:
-    {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+                mData.surfaceArea = (float)M_PI * rx * ry;
+            }
+            break;
 
-        mData.surfaceArea = (float)M_PI * rx * ry;
-    }
-    break;
-
-    default:
-        break;
+        default:
+            break;
     }
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Light)
 {
     pybind11::class_<Light, Animatable, Light::SharedPtr> light(m, "Light");
@@ -442,5 +437,6 @@ SCRIPT_BINDING(Light)
 
     pybind11::class_<AnalyticAreaLight, Light, AnalyticAreaLight::SharedPtr> analyticLight(m, "AnalyticAreaLight");
 }
+#endif
 
 }  // namespace Falcor

@@ -79,8 +79,10 @@ Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const {
     return desc;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Vao) {
     pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
 }
+#endif
 
 }  // namespace Falcor

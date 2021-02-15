@@ -109,6 +109,13 @@ namespace {
     const std::string kSdsmReadbackLatency = "kSdsmReadbackLatency";
 }
 
+static void createShadowMatrix(const DistantLight* pLight, const float3& center, float radius, glm::mat4& shadowVP) {
+    glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
+    glm::mat4 proj = glm::ortho(-radius, radius, -radius, radius, -radius, radius);
+
+    shadowVP = proj * view;
+}
+
 static void createShadowMatrix(const DirectionalLight* pLight, const float3& center, float radius, glm::mat4& shadowVP) {
     glm::mat4 view = glm::lookAt(center, center + pLight->getWorldDirection(), float3(0, 1, 0));
     glm::mat4 proj = glm::ortho(-radius, radius, -radius, radius, -radius, radius);
@@ -138,6 +145,8 @@ static void createShadowMatrix(const PointLight* pLight, const float3& center, f
 static void createShadowMatrix(const Light* pLight, const float3& center, float radius, float fboAspectRatio, glm::mat4& shadowVP) {
     switch (pLight->getType()) {
         case LightType::Directional:
+            return createShadowMatrix((DistantLight*)pLight, center, radius, shadowVP);
+        case LightType::Distant:
             return createShadowMatrix((DirectionalLight*)pLight, center, radius, shadowVP);
         case LightType::Point:
             return createShadowMatrix((PointLight*)pLight, center, radius, fboAspectRatio, shadowVP);
@@ -641,7 +650,7 @@ void CSM::execute(RenderContext* pContext, const RenderData& renderData) {
 
 void CSM::setLight(const Light::SharedConstPtr& pLight) {
     mpLight = pLight;
-    if (mpLight && (mpLight->getType() != LightType::Directional || mpLight->getType() != LightType::Distant)) {
+    if (mpLight && (mpLight->getType() != LightType::Directional && mpLight->getType() != LightType::Distant)) {
         setCascadeCount(1);
     }
 }

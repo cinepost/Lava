@@ -29,6 +29,7 @@
 #include "LightProbe.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 #include "Utils/UI/Gui.h"
+#include "Core/API/ResourceManager.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
 
@@ -150,21 +151,25 @@ namespace Falcor {
     }
 
     LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat) {
-        std::shared_ptr<Device> device = pContext->device();
-        
-        assert(device);
+        std::shared_ptr<Device> pDevice = pContext->device();
+        auto pResourceManager = pDevice->resourceManager();
+
+        assert(pDevice);
+        assert(pResourceManager);
         
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown) {
-            Texture::SharedPtr pOrigTex = Texture::createFromFile(device, filename, false, loadAsSrgb);
+            //Texture::SharedPtr pOrigTex = Texture::createFromFile(pDevice, filename, false, loadAsSrgb);
+            Texture::SharedPtr pOrigTex = pResourceManager->createTextureFromFile(filename, false, loadAsSrgb);
             if (pOrigTex) {
-                pTexture = Texture::create2D(device, pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2D(pDevice, pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
                 pTexture->setSourceFilename(pOrigTex->getSourceFilename());
-                device->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
-                pTexture->generateMips(device->getRenderContext());
+                pContext->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
+                pTexture->generateMips(pContext);
             }
         } else {
-            pTexture = Texture::createFromFile(device, filename, true, loadAsSrgb);
+            //pTexture = Texture::createFromFile(pDevice, filename, true, loadAsSrgb);
+            pTexture = pResourceManager->createTextureFromFile(filename, true, loadAsSrgb);
         }
 
         if (!pTexture) {

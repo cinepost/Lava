@@ -4,7 +4,6 @@
 ip                             "mplay (interactive)"
 md                             "mplay (non interactive)"
 sdl                            "SDL framebuffer"
-idisplay                       "I-DIsplay"
 $HIP/$HIPNAME:r.$OS.$F4.exr    "Sequence of .exr files"
 $HIP/$HIPNAME:r.$OS.$F4.tif    "Sequence of .tif files"
 $HIP/$HIPNAME:r.$OS.$F4.png    "Sequence of .png files"

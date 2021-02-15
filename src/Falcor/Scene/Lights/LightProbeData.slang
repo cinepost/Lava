@@ -32,7 +32,7 @@ BEGIN_NAMESPACE_FALCOR
 
 #ifdef HOST_CODE
 #define SamplerState std::shared_ptr<Sampler>
-#define Texture2D std::shared_ptr<Texture>
+#define Texture2D std::shared_ptr<Falcor::Texture>
 #endif
 
 /** This is a host/device structure that describes light probe resources.

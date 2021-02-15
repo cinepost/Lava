@@ -190,6 +190,16 @@ void SkyBox::loadImage() {
     }
 }
 
+void SkyBox::setTexture(const std::string& texName, bool loadAsSrgb) {
+    std::shared_ptr<Texture> pTexture;
+    if (texName.size() != 0) {
+        mTexName = texName;
+        pTexture = Texture::createFromFile(mpDevice, mTexName, false, loadAsSrgb);
+        if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
+        setTexture(pTexture);
+    }
+}
+
 void SkyBox::setTexture(const Texture::SharedPtr& pTexture) {
     mpTexture = pTexture;
     if (mpTexture) {

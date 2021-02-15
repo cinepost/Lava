@@ -112,8 +112,10 @@ double GpuTimer::getElapsedTime() {
     return mElapsedTime;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(GpuTimer) {
     pybind11::class_<GpuTimer, GpuTimer::SharedPtr>(m, "GpuTimer");
 }
+#endif
 
 }  // namespace Falcor

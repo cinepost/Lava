@@ -215,6 +215,7 @@ void Clock::renderUI(Gui::Window& w) {
     }
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Clock) {
     pybind11::class_<Clock> clock(m, "Clock");
 
@@ -232,6 +233,7 @@ SCRIPT_BINDING(Clock) {
     clock.def(kStop, &Clock::stop);
     clock.def(kStep, &Clock::step, "frames"_a = 1);
 }
+#endif
 
 void Clock::start() {
     auto loadTexture = [](std::shared_ptr<Device> pDevice, const std::string& tex) {

@@ -28,17 +28,18 @@
 #include "stdafx.h"
 #include "EmissiveLightSampler.h"
 
-namespace Falcor
-{
-    bool EmissiveLightSampler::prepareProgram(Program* pProgram) const
-    {
-        return pProgram->addDefine("_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType));
-    }
+namespace Falcor {
 
-    SCRIPT_BINDING(EmissiveLightSampler)
-    {
-        pybind11::enum_<EmissiveLightSamplerType> type(m, "EmissiveLightSamplerType");
-        type.value("Uniform", EmissiveLightSamplerType::Uniform);
-        type.value("LightBVH", EmissiveLightSamplerType::LightBVH);
-    }
+bool EmissiveLightSampler::prepareProgram(Program* pProgram) const {
+    return pProgram->addDefine("_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType));
 }
+
+#ifdef SCRIPTING
+SCRIPT_BINDING(EmissiveLightSampler) {
+    pybind11::enum_<EmissiveLightSamplerType> type(m, "EmissiveLightSamplerType");
+    type.value("Uniform", EmissiveLightSamplerType::Uniform);
+    type.value("LightBVH", EmissiveLightSamplerType::LightBVH);
+}
+#endif
+
+}  // namespace Falcor

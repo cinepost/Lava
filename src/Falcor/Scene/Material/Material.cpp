@@ -28,7 +28,7 @@
 #include "stdafx.h"
 #include "Material.h"
 
-#include "Falcor/Core/API/SparseResourceManager.h"
+#include "Falcor/Core/API/ResourceManager.h"
 #include "Core/Program/GraphicsProgram.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Color/ColorHelpers.slang"
@@ -273,9 +273,10 @@ uint2 Material::getMaxTextureDimensions() const
 }
 
 void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb) {
+    assert(mpDevice);
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath)) {
-        auto pTexture = SparseResourceManager::instance().createSparseTextureFromFile(mpDevice, fullpath, true, useSrgb && isSrgbTextureRequired(slot));
+        auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fullpath, true, useSrgb && isSrgbTextureRequired(slot));
         if (pTexture) {
             setTexture(slot, pTexture);
             // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
@@ -550,6 +551,7 @@ void Material::updateOcclusionFlag()
     setFlags(PACK_OCCLUSION_MAP(mData.flags, shouldEnable ? 1 : 0));
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Material)
 {
     pybind11::enum_<Material::TextureSlot> textureSlot(m, "MaterialTextureSlot");
@@ -580,5 +582,6 @@ SCRIPT_BINDING(Material)
     material.def("loadTexture", &Material::loadTexture, "slot"_a, "filename"_a, "useSrgb"_a = true);
     material.def("clearTexture", &Material::clearTexture, "slot"_a);
 }
+#endif
 
 }  // namespace Falcor

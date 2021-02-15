@@ -16,6 +16,13 @@
 #include "Falcor/Core/Renderer.h"
 #include "Falcor/Scene/Camera/Camera.h"
 
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
+
+#include "RenderPasses/AccumulatePass/AccumulatePass.h"
+#include "RenderPasses/DepthPass/DepthPass.h"
+#include "RenderPasses/SkyBox/SkyBox.h"
+#include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
+
 #include "display.h"
 #include "renderer_iface.h"
 #include "scene_builder.h"
@@ -30,6 +37,13 @@ class Renderer: public Falcor::IFramework {
         std::vector<std::string> originalOutputs;
         std::unordered_map<std::string, uint32_t> graphOutputRefs;
 	};
+  public:
+    enum class SamplePattern : uint32_t {
+        Center,
+        DirectX,
+        Halton,
+        Stratified,
+    };
 
  public:
  	virtual ~Renderer();
@@ -145,6 +159,8 @@ class Renderer: public Falcor::IFramework {
     */
     void finalizeScene(const RendererIface::FrameData& frame_data);
 
+    void createRenderGraph(const RendererIface::FrameData& frame_data);
+
  private:
 	Renderer(int gpuId);
  	std::vector<std::string> 	mErrorMessages;
@@ -167,6 +183,17 @@ class Renderer: public Falcor::IFramework {
     Falcor::Sampler::SharedPtr      mpSampler;
     std::vector<GraphData>          mGraphs;
     uint32_t mActiveGraph = 0;
+
+    ///
+    float2 mInvFrameDim;
+    CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
+    Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
+
+    AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
+    DepthPass::SharedPtr            mpDepthPass = nullptr;
+    SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
+    ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
+    ///
 
     bool mInited = false;
 

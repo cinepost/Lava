@@ -28,28 +28,29 @@
 #include "stdafx.h"
 #include "EmissiveUniformSampler.h"
 
-namespace Falcor
-{
-    EmissiveUniformSampler::SharedPtr EmissiveUniformSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
-    {
-        return SharedPtr(new EmissiveUniformSampler(pRenderContext, pScene, options));
-    }
+namespace Falcor {
 
-    EmissiveUniformSampler::EmissiveUniformSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
-        : EmissiveLightSampler(EmissiveLightSamplerType::Uniform, pScene)
-        , mOptions(options)
-    {
-        // Make sure the light collection is created.
-        mpScene->getLightCollection(pRenderContext);
-    }
-
-    SCRIPT_BINDING(EmissiveUniformSampler)
-    {
-        // TODO use a nested class in the bindings when supported.
-        ScriptBindings::SerializableStruct<EmissiveUniformSampler::Options> options(m, "EmissiveUniformSamplerOptions");
-#define field(f_) field(#f_, &EmissiveUniformSampler::Options::f_)
-        // TODO
-        //options.field(usePreintegration);
-#undef field
-    }
+EmissiveUniformSampler::SharedPtr EmissiveUniformSampler::create(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options) {
+    return SharedPtr(new EmissiveUniformSampler(pRenderContext, pScene, options));
 }
+
+EmissiveUniformSampler::EmissiveUniformSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
+    : EmissiveLightSampler(EmissiveLightSamplerType::Uniform, pScene)
+    , mOptions(options)
+{
+    // Make sure the light collection is created.
+    mpScene->getLightCollection(pRenderContext);
+}
+
+#ifdef SCRIPTING
+SCRIPT_BINDING(EmissiveUniformSampler) {
+    // TODO use a nested class in the bindings when supported.
+    ScriptBindings::SerializableStruct<EmissiveUniformSampler::Options> options(m, "EmissiveUniformSamplerOptions");
+#define field(f_) field(#f_, &EmissiveUniformSampler::Options::f_)
+    // TODO
+    //options.field(usePreintegration);
+#undef field
+}
+#endif
+
+}  // namespace Falcor

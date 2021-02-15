@@ -1070,6 +1070,8 @@ H_Image::openPipe(void)
         cmd += img->getDisplayOptions();
     }
 
+    cmd = "imdisplay 640 480 4";
+
     log(0, "popen: '%s'\n", cmd.c_str());
 	
     IMDisplayPtr imp = IMDisplay::Singleton(cmd.c_str());

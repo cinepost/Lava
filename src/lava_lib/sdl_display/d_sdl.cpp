@@ -59,7 +59,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
       if( std::string(format[i].name)==chan[size_t(j)] && i!=j )
         std::swap(format[j],format[i]);
 
-  std::string name="SDL Display: ";
+  std::string name = "SDL Display: ";
   name+=filename;
 
   SDLOpenGLWindow *sdl_window = new SDLOpenGLWindow(name.c_str(), 0, 0, width, height, g_channels);

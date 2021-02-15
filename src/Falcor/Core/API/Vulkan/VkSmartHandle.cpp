@@ -33,6 +33,9 @@
 #include "Falcor/Core/API/Vulkan/VKSmartHandle.h"
 #include "Falcor/Core/API/Device.h"
 
+//#define VMA_IMPLEMENTATION
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
     template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(mpDevice->getApiHandle(), mApiHandle, nullptr); }
@@ -60,23 +63,35 @@ namespace Falcor {
             // #VKTODO This is here because of the black texture in VkResourceViews.cpp
             return;
         }
-        assert(mDeviceMem || mType == VkResourceType::Image);  // All of our resources are allocated with memory, except for the swap-chain backbuffers that we shouldn't release
-        if (mDeviceMem) {
+        //assert(mDeviceMem || mType == VkResourceType::Image);  // All of our resources are allocated with memory, except for the swap-chain backbuffers that we shouldn't release
+        
+        const auto& allocator = mpDevice->allocator();
+        VmaAllocationInfo info;
+        vmaGetAllocationInfo(allocator, mAllocation, &info);
+        
+        //if (mDeviceMem) {
+        if(info.deviceMemory != VK_NULL_HANDLE) {
+            if(info.pMappedData) {
+                vmaUnmapMemory(allocator, mAllocation);
+            }
+
             switch (mType) {
                 case VkResourceType::Image:
                     if (mImage) {
-                        vkDestroyImage(mpDevice->getApiHandle(), mImage, nullptr);
+                        vmaDestroyImage(allocator, mImage, mAllocation);
+                        //vkDestroyImage(mpDevice->getApiHandle(), mImage, nullptr);
                     }
                     break;
                 case VkResourceType::Buffer:
                     if (mBuffer) {
-                        vkDestroyBuffer(mpDevice->getApiHandle(), mBuffer, nullptr);
+                        vmaDestroyBuffer(allocator, mBuffer, mAllocation);
+                        //vkDestroyBuffer(mpDevice->getApiHandle(), mBuffer, nullptr);
                     }
                     break;
                 default:
                     should_not_get_here();
             }
-            vkFreeMemory(mpDevice->getApiHandle(), mDeviceMem, nullptr);
+        //    vkFreeMemory(mpDevice->getApiHandle(), mDeviceMem, nullptr);
         }
     }
 

@@ -35,6 +35,8 @@
 
 #include "ResourceViews.h"
 
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
 class Device;
@@ -203,6 +205,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     std::string mName;
 
     std::shared_ptr<Device> mpDevice;
+    VmaAllocation mAllocation;
     size_t mID;
 
     mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;

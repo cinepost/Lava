@@ -58,6 +58,8 @@ class AccumulatePass : public RenderPass {
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
+    void enableAccumulation(bool enable = true);
+
     // Scripting functions
     void reset() { mFrameCount = 0; }
 

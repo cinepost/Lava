@@ -31,9 +31,12 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Resource.h"
-#include "Falcor/Core/API/SparseResourceManager.h"
+#include "Falcor/Core/API/ResourceManager.h"
 
 #include "Falcor/Core/API/Vulkan/VKDevice.h"
+
+//#define VMA_IMPLEMENTATION
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
 
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
@@ -240,14 +243,24 @@ namespace Falcor {
 
         mState.global = (pData && !mIsSparse ) ? Resource::State::PreInitialized : Resource::State::Undefined;
 
-        auto result = vkCreateImage(mpDevice->getApiHandle(), &imageCreateInfo, nullptr, &mImage);
+        //auto result = vkCreateImage(mpDevice->getApiHandle(), &imageCreateInfo, nullptr, &mImage);
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        VmaAllocation allocation;
+        auto result = vmaCreateImage(mpDevice->allocator(), &imageCreateInfo, &allocInfo, &mImage, &allocation, nullptr);
+
         if (VK_FAILED(result)) {
             mImage = VK_NULL_HANDLE;
             throw std::runtime_error("Failed to create texture.");
         }
 
-        mApiHandle = ApiHandle::create(mpDevice, mImage, VK_NULL_HANDLE);
-        
+        if (mIsSparse) {
+            mApiHandle = ApiHandle::create(mpDevice, mImage, VK_NULL_HANDLE);
+        } else {
+            mApiHandle = ApiHandle::create(mpDevice, mImage, allocation);
+        }
+
         if (mIsSparse) {
             // transition layout
             auto pCtx = mpDevice->getRenderContext();
@@ -334,7 +347,7 @@ namespace Falcor {
             mMipTailInfo.singleMipTail = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
             mMipTailInfo.alignedMipSize = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
 
-            auto& sparseResourceManager = SparseResourceManager::instance();
+            auto pSparseResourceManager = mpDevice->resourceManager();
 
             uint32_t pageIndex = 0;
             // Sparse bindings for each mip level of all layers outside of the mip tail
@@ -376,7 +389,7 @@ namespace Falcor {
                                 extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
 
                                 // Add new virtual page
-                                VirtualTexturePage::SharedPtr pPage = sparseResourceManager.addTexturePage(shared_from_this(), pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mipLevel, layer);
+                                VirtualTexturePage::SharedPtr pPage = pSparseResourceManager->addTexturePage(shared_from_this(), pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, mMemRequirements.alignment, mMemRequirements.memoryTypeBits, mipLevel, layer);
                                 mPages.push_back(pPage);
 
                                 //LOG_DBG("Tile level %u size %u %u", mipLevel, extent.width, extent.height);
@@ -474,9 +487,11 @@ namespace Falcor {
 
         // Allocate the GPU memory        
         if (!mIsSparse) {
-            VkDeviceMemory deviceMem = VK_NULL_HANDLE;
-            deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, mMemRequirements.memoryTypeBits, mMemRequirements.size);
-            vkBindImageMemory(mpDevice->getApiHandle(), mImage, deviceMem, 0);
+            //vk_call(vmaCreateImage(mpDevice->allocator(), &depthImageInfo, &depthImageAllocCreateInfo, &mImage, &g_hDepthImageAlloc, nullptr) );)
+
+            //VkDeviceMemory deviceMem = VK_NULL_HANDLE;
+            //deviceMem = allocateDeviceMemory(mpDevice, Device::MemoryType::Default, mMemRequirements.memoryTypeBits, mMemRequirements.size);
+            //vkBindImageMemory(mpDevice->getApiHandle(), mImage, deviceMem, 0);
         }
         
         if (pData && !mIsSparse) {

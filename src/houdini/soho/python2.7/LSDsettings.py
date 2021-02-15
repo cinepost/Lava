@@ -681,6 +681,7 @@ def setMattePhantomOverrides(now, matte_objects, phantom_objects):
 def outputLight(wrangler, obj, now):
     if LSDhooks.call('pre_lightSettings', wrangler, obj, now):
         return
+
     plist = obj.wrangle(wrangler, _Settings.Light, now)
     if plist:
         cmd_propertyV('light', plist)

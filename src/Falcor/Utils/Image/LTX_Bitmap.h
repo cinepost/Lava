@@ -9,7 +9,7 @@ namespace Falcor {
 
 class Device;
 class Texture;
-class SparseResourceManager;
+class ResourceManager;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 5,6 used to store major,minor versions
 
@@ -131,7 +131,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
-    friend class SparseResourceManager;
+    friend class ResourceManager;
 
  private:
     LTX_Bitmap();

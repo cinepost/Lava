@@ -34,26 +34,19 @@
 #include "Volume.h"
 #include "Mesh.h"
 
-namespace ika
-{
-namespace bgeo
-{
-namespace factory
-{
+namespace ika {
+namespace bgeo {
+namespace factory {
 
-namespace
-{
+namespace {
 
-std::shared_ptr<Bgeo> findOrCreateEmbedded(const parser::PackedGeometry& packed,
-                                           EmbeddedGeoMap& embeddedGeoMap)
-{
+Bgeo::SharedPtr findOrCreateEmbedded(const parser::PackedGeometry& packed, EmbeddedGeoMap& embeddedGeoMap) {
     auto pos = embeddedGeoMap.find(packed.getEmbeddedKey());
-    if (pos != embeddedGeoMap.end())
-    {
+    if (pos != embeddedGeoMap.end()) {
         return pos->second;
     }
 
-    auto embedded = std::make_shared<Bgeo>(packed.getEmbeddedGeo());
+    auto embedded = Bgeo::create(packed.getEmbeddedGeo());
     embeddedGeoMap.insert(std::make_pair(packed.getEmbeddedKey(), embedded));
     return embedded;
 }

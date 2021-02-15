@@ -716,6 +716,7 @@ void RenderGraph::onHotReload(HotReloadFlags reloaded) {
     if (mpExe) mpExe->onHotReload(reloaded);
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(RenderGraph)
 {
     //RenderGraph::SharedPtr (&create_default)(const std::string&) = RenderGraph::create;
@@ -771,6 +772,7 @@ SCRIPT_BINDING(RenderGraph)
     };
     renderGraph.def(RenderGraphIR::kUpdatePass, updateRenderPass, "device"_a, "name"_a, "dict"_a);
 }
+#endif
 
 }  // namespace Falcor
 

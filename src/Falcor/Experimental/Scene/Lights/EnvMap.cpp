@@ -30,6 +30,8 @@
 #include "glm/gtc/integer.hpp"
 #include "glm/gtx/euler_angles.hpp"
 
+#include "Core/API/ResourceManager.h"
+
 namespace Falcor {
 
 EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -91,7 +93,14 @@ EnvMap::Changes EnvMap::beginFrame() {
 
 EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):mpDevice(pDevice) {
     // Load environment map from file. Set it to generate mips and use linear color.
-    mpEnvMap = Texture::createFromFile(pDevice, filename, true, false);
+    //mpEnvMap = Texture::createFromFile(pDevice, filename, true, false);
+    mpEnvMap = nullptr;
+    auto pResourceManager = pDevice->resourceManager();
+    if (pResourceManager) {
+        mpEnvMap = pResourceManager->createTextureFromFile(filename, true, false);
+    }
+
+    //mpEnvMap = Texture::createFromFile(pDevice, filename, true, false);
     if (!mpEnvMap) throw std::runtime_error("Failed to load environment map texture");
 
     // Create sampler.
@@ -102,6 +111,7 @@ EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):mpD
     mpEnvSampler = Sampler::create(pDevice, samplerDesc);
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(EnvMap) {
     pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");
     envMap.def_property_readonly("filename", &EnvMap::getFilename);
@@ -109,5 +119,6 @@ SCRIPT_BINDING(EnvMap) {
     envMap.def_property("intensity", &EnvMap::getIntensity, &EnvMap::setIntensity);
     envMap.def_property("tint", &EnvMap::getTint, &EnvMap::setTint);
 }
+#endif
 
 }  // namespace Falcor

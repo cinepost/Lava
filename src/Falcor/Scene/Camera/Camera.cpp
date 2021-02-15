@@ -364,6 +364,7 @@ std::string Camera::getScript(const std::string& cameraVar)
     return c;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Camera)
 {
     pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
@@ -382,5 +383,5 @@ SCRIPT_BINDING(Camera)
     camera.def_property(kTarget.c_str(), &Camera::getTarget, &Camera::setTarget);
     camera.def_property(kUp.c_str(), &Camera::getUpVector, &Camera::setUpVector);
 }
-
+#endif
 }  // namespace Falcor

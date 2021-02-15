@@ -42,6 +42,13 @@ class RendererIface {
         double      cameraFrameHeight = 1.0;
     };
 
+    struct EnvLightData {
+        bool        phantom = false;
+        glm::mat4   transform;
+        glm::vec3   intensity = {1, 1, 1};
+        std::string imageFileName = "";
+    };
+
  public:
     using UniquePtr = std::unique_ptr<RendererIface>;
 

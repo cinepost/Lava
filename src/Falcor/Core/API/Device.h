@@ -44,6 +44,8 @@
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
 
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
 //#ifdef _DEBUG
@@ -55,7 +57,7 @@ namespace Falcor {
 struct DeviceApiData;
 
 class DeviceManager;
-class SparseResourceManager;
+class ResourceManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:
@@ -112,6 +114,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     void cleanup();
 
+    std::shared_ptr<ResourceManager> resourceManager() const { return mpResourceManager; }
+
     /** Enable/disable vertical sync
     */
     void toggleVSync(bool enable);
@@ -122,6 +126,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     std::string& getPhysicalDeviceName();
 
+    /** VMA allocator
+    */
+    const VmaAllocator& allocator() const { return mAllocator; }
 
     /** Check if the window is occluded
     */
@@ -298,7 +305,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
     friend class DeviceManager;
-    friend class SparseResourceManager;
+    friend class ResourceManager;
     
     bool init();
 
@@ -309,6 +316,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static std::atomic<std::uint8_t> UID;
 
     VkPhysicalDeviceFeatures deviceFeatures;
+    VmaAllocator  mAllocator; 
+
+    std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 };
 
 enum_class_operators(Device::SupportedFeatures);

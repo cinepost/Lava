@@ -29,46 +29,48 @@
 #include "BlendState.h"
 #include "FBO.h"
 
-namespace Falcor
-{
-    BlendState::SharedPtr BlendState::create(const Desc& desc)
-    {
-        return SharedPtr(new BlendState(desc));
-    }
+namespace Falcor {
 
-    BlendState::Desc::Desc(std::shared_ptr<Device> device): mpDevice(device) {
-        mRtDesc.resize(Fbo::getMaxColorTargetCount(device));
-    }
-
-    BlendState::~BlendState() = default;
-
-    BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc) {
-        if(rtIndex >= mRtDesc.size()) {
-            logError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
-            return *this;
-        }
-        mRtDesc[rtIndex].rgbBlendOp = rgbOp;
-        mRtDesc[rtIndex].alphaBlendOp = alphaOp;
-        mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
-        mRtDesc[rtIndex].dstRgbFunc = dstRgbFunc;
-        mRtDesc[rtIndex].srcAlphaFunc = srcAlphaFunc;
-        mRtDesc[rtIndex].dstAlphaFunc = dstAlphaFunc;
-        return *this;
-    }
-
-    BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha) {
-        if(rtIndex >= mRtDesc.size()) {
-            logError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
-            return *this;
-        }
-        mRtDesc[rtIndex].writeMask.writeRed = writeRed;
-        mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
-        mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;
-        mRtDesc[rtIndex].writeMask.writeAlpha = writeAlpha;
-        return *this;
-    }
-
-    SCRIPT_BINDING(BlendState) {
-        pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
-    }
+BlendState::SharedPtr BlendState::create(const Desc& desc) {
+    return SharedPtr(new BlendState(desc));
 }
+
+BlendState::Desc::Desc(std::shared_ptr<Device> device): mpDevice(device) {
+    mRtDesc.resize(Fbo::getMaxColorTargetCount(device));
+}
+
+BlendState::~BlendState() = default;
+
+BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc) {
+    if(rtIndex >= mRtDesc.size()) {
+        logError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+        return *this;
+    }
+    mRtDesc[rtIndex].rgbBlendOp = rgbOp;
+    mRtDesc[rtIndex].alphaBlendOp = alphaOp;
+    mRtDesc[rtIndex].srcRgbFunc = srcRgbFunc;
+    mRtDesc[rtIndex].dstRgbFunc = dstRgbFunc;
+    mRtDesc[rtIndex].srcAlphaFunc = srcAlphaFunc;
+    mRtDesc[rtIndex].dstAlphaFunc = dstAlphaFunc;
+    return *this;
+}
+
+BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha) {
+    if(rtIndex >= mRtDesc.size()) {
+        logError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+        return *this;
+    }
+    mRtDesc[rtIndex].writeMask.writeRed = writeRed;
+    mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;
+    mRtDesc[rtIndex].writeMask.writeBlue = writeBlue;
+    mRtDesc[rtIndex].writeMask.writeAlpha = writeAlpha;
+    return *this;
+}
+
+#ifdef SCRIPTING
+SCRIPT_BINDING(BlendState) {
+    pybind11::class_<BlendState, BlendState::SharedPtr>(m, "BlendState");
+}
+#endif
+
+}   // namespace Falcor

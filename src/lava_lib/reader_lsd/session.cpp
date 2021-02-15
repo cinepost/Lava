@@ -1,5 +1,8 @@
 #include <utility>
+#include <mutex>
 
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Scene/Lights/LightProbe.h"
 #include "Falcor/Scene/Lights/Light.h"
 
 #include "session.h"
@@ -136,8 +139,8 @@ bool Session::prepareFrameData() {
 
 
 bool Session::cmdRaytrace() {
-	mpGlobal->printSummary(std::cout);
 	LLOG_DBG << "cmdRaytrace";
+	mpGlobal->printSummary(std::cout);
 	
 	// push frame independent data to the rendering interface
 	if(mFirstRun) {
@@ -165,14 +168,19 @@ bool Session::cmdRaytrace() {
 	return true;
 }
 
-void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo) {
+void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async) {
 	LLOG_DBG << "pushBgeo";
     //bgeo.printSummary(std::cout);
 
     auto pSceneBuilder = mpRendererIface->getSceneBuilder();
     if(pSceneBuilder) {
-    	uint32_t mesh_id = pSceneBuilder->addMesh(std::move(bgeo), name);
-    	mMeshMap[name] = mesh_id;
+    	if (async) {
+    		// async mesh add 
+    		mMeshMap[name] = pSceneBuilder->addGeometryAsync(pBgeo, name);
+    	} else {
+    		// immediate mesh add
+    		mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
+    	}
     } else {
     	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
     }
@@ -189,56 +197,82 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		return;
 	}
 
+	std::string light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
 	std::string light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
 	const auto& transform = pLightScope->getTransformList()[0];
 
-	std::string light_type = "point"; // default light type
 	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
 
-	//Falcor::float3 light_dir = (glm::vec4{0.0, 0.0, -1.0, 0.0} * transform).xyz; // light direction
-	//light_dir = glm::normalize(light_dir);
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
 
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	if(pShaderProp) {
 		auto pShaderProps = pShaderProp->subContainer();
-		light_type = pShaderProps->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
 		light_color *= Falcor::float3{6.285714286, 6.285714286, 6.285714286}; // just to match houdini intensity (10 times. gamma 2.2)
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
 
-	Falcor::Light::SharedPtr pLight;
+	Falcor::Light::SharedPtr pLight = nullptr;
 
 	if( light_type == "distant") {
 		auto pDistantLight = Falcor::DistantLight::create();
 		pDistantLight->setWorldDirection(light_dir);
 		
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
-	} else {
+	} else if( light_type == "point") {
 		auto pPointLight = Falcor::PointLight::create();
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
+	} else if( light_type == "grid" ) {
+		auto pAreaLight = Falcor::AnalyticAreaLight::create(Falcor::LightType::Rect);
+		if (!pAreaLight) {
+			LLOG_ERR << "Error creating AnalyticAreaLight !!! Skipping...";
+			return;
+		}
+		pAreaLight->setTransformMatrix(transform);
+
+		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
+	} else if( light_type == "env") {
+		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
+
+		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
+		if (texture_file_name.size() == 0) {
+			LLOG_WRN << "No areamap provided for environment light. Skipping...";
+			return;
+		}
+
+		auto pDevice = pSceneBuilder->device();
+		LightProbe::SharedPtr pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float);
+    	pLightProbe->setPosW({0.0f, 0.0f, 0.0f});
+    	pLightProbe->setIntensity({1.0f, 1.0f, 1.0f});
+    	pSceneBuilder->setLightProbe(pLightProbe);
+    	return;
+	} else { 
+		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
+		return;
 	}
 
-	LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
+	if(pLight) {
+		LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
 
-	pLight->setName(light_name);
-	pLight->setHasAnimation(false);
-	pLight->setIntensity(light_color);
-	uint32_t light_id = pSceneBuilder->addLight(pLight);
-	mLightsMap[light_name] = light_id;
+		pLight->setName(light_name);
+		pLight->setHasAnimation(false);
+		pLight->setIntensity(light_color);
+		uint32_t light_id = pSceneBuilder->addLight(pLight);
+		mLightsMap[light_name] = light_id;
+	}
 
 	unnamed += "_";
 }
 
 void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {
-	LLOG_DBG << "cmdProperty " << to_string(value);
+	LLOG_DBG << "cmdProperty " << token << " " << to_string(value);
 	if(!mpCurrentScope) {
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
@@ -313,6 +347,12 @@ scope::Geo::SharedPtr Session::getCurrentGeo() {
 	return pGeo;
 }
 
+void Session::cmdIPRmode(const std::string& mode) {
+	LLOG_DBG << "cmdIPRmode";
+	mIPRmode = true;
+	//mpRendererIface->setIPRMode(mIPRmode);
+}
+
 bool Session::cmdStart(lsd::ast::Style object_type) {
 	LLOG_DBG << "cmdStart";
 	auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
@@ -359,6 +399,7 @@ bool Session::cmdEnd() {
 		return false;
 	}
 
+	bool pushGeoAsync = true;
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -370,16 +411,20 @@ bool Session::cmdEnd() {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
 			if( pGeo->isInline()) {
-				pGeo->bgeo().printSummary(std::cout);
-				pushBgeo(pGeo->detailName(), pGeo->bgeo());
+				pGeo->bgeo()->printSummary(std::cout);
+				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			} else {
-				pGeo->bgeo().printSummary(std::cout);
-				pushBgeo(pGeo->detailName(), pGeo->bgeo());
+				pGeo->bgeo()->printSummary(std::cout);
+				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			}
 			break;
 		case ast::Style::OBJECT:
+			LLOG_FTL << "end object";
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
-			result = pushGeometryInstance(pObj);
+			if(!pushGeometryInstance(pObj)) {
+				LLOG_FTL << "FAK";
+				return false;
+			}
 			break;
 		case ast::Style::PLANE:
 			pPlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
@@ -401,6 +446,7 @@ bool Session::cmdEnd() {
 }
 
 bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
+	LLOG_DBG << "pushGeometryInstance";
 	auto it = mMeshMap.find(pObj->geometryName());
 	if(it == mMeshMap.end()) {
 		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
@@ -413,6 +459,8 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 		return false;
 	}
 
+	assert(pSceneBuilder->device());
+
 	Falcor::SceneBuilder::Node node = {
 		it->first,
 		pObj->getTransformList()[0],
@@ -420,10 +468,28 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
 	};
 
-	uint32_t mesh_id = it->second;
-	uint32_t node_id  = pSceneBuilder->addNode(node);
-
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
+
+	uint32_t mesh_id;
+	try {
+		LLOG_DBG << "getting sync mesh_id for obj_name " << obj_name;
+		mesh_id = std::get<uint32_t>(it->second);	
+	} catch (const std::bad_variant_access&) {
+		LLOG_DBG << "getting async mesh_id for obj_name " << obj_name;
+
+		std::shared_future<uint32_t>& f = std::get<std::shared_future<uint32_t>>(it->second);
+		try {
+			mesh_id = f.get();	
+		} catch(const std::exception& e) {
+        	std::cout << "Exception from the thread: " << e.what() << '\n';
+    	}
+	} catch (...) {
+		LLOG_ERR << "Unable to get mesh id for object " << obj_name;
+		return false;
+	}
+	LLOG_DBG << "mesh_id " << mesh_id;
+
+	uint32_t node_id = pSceneBuilder->addNode(node);
 
 	// TODO: this is naive test. Should make separate material manager with pulicate materials removal, etc
 	// fetch basic material data
@@ -446,7 +512,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
-    	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}));
+    	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
     	surface_base_color_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
     	surface_base_normal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
     	surface_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
@@ -459,7 +525,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
     	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
     	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
-    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.5);
+    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
@@ -470,6 +536,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
 
+    LLOG_DBG << "setting material textures";
     if(surface_base_color_texture != "" && surface_use_basecolor_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture);
 

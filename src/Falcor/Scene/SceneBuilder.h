@@ -61,6 +61,7 @@ class dlldecl SceneBuilder {
     /** Mesh description
     */
     struct Mesh {
+        //Mesh(const Mesh&) = delete;//{ std::cout << "A copy was made.\n"; }
         enum class AttributeFrequency {
             None,
             Constant,       ///< Constant value for mesh. The element count must be 1.
@@ -224,6 +225,10 @@ class dlldecl SceneBuilder {
     */
     void setLightProbe(const LightProbe::SharedPtr& pProbe) { mpLightProbe = pProbe; }
 
+    /** Get a light-probe
+    */
+    LightProbe::SharedPtr getLightProbe() const { return mpLightProbe; }
+
     /** Set an environment map.
         \param[in] pEnvMap Environment map. Can be nullptr.
     */
@@ -311,7 +316,7 @@ protected:
 
     std::vector<Camera::SharedPtr> mCameras;
     std::vector<Light::SharedPtr> mLights;
-    LightProbe::SharedPtr mpLightProbe;
+    LightProbe::SharedPtr mpLightProbe = nullptr;
     EnvMap::SharedPtr mpEnvMap;
     std::vector<Animation::SharedPtr> mAnimations;
     uint32_t mSelectedCamera = 0;

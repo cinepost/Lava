@@ -55,3 +55,9 @@
 [submodule "third_party/Imath"]
 	path = third_party/Imath
 	url = https://github.com/AcademySoftwareFoundation/Imath.git
+[submodule "third_party/VulkanMemoryAllocator"]
+	path = third_party/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "third_party/alembic"]
+	path = third_party/alembic
+	url = https://github.com/alembic/alembic.git

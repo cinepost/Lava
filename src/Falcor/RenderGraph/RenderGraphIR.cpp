@@ -94,7 +94,7 @@ namespace Falcor {
     void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary) {
         mIR += mIndentation + passName + " = ";
         if(dictionary.size()) {
-            std::string dictionaryStr = dictionary.toString();
+            std::string dictionaryStr = "";//dictionary.toString();
             mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass), dictionaryStr);
         } else {
             mIR += funcCall(RenderGraphIR::kRenderPass, addQuotes(passClass));
@@ -103,7 +103,7 @@ namespace Falcor {
     }
 
     void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary) {
-        mIR += mGraphPrefix + funcCall(RenderGraphIR::kUpdatePass, addQuotes(passName), dictionary.toString());
+        mIR += mGraphPrefix + funcCall(RenderGraphIR::kUpdatePass, addQuotes(passName), ""/*dictionary.toString()*/);
     }
 
     void RenderGraphIR::removePass(const std::string& passName) {

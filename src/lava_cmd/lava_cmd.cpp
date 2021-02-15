@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include <execinfo.h>
+#include <signal.h>
+
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
@@ -18,8 +21,8 @@
 #include <boost/algorithm/string/join.hpp>
 namespace po = boost::program_options;
 
+#include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Core/API/DeviceManager.h"
-#include "Falcor/Core/API/SparseResourceManager.h"
 
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
@@ -56,6 +59,23 @@ void signalHandler( int signum ){
     exit(signum);
 }
 
+void signalTraceHandler( int signum ){
+    LLOG_DBG << "Interrupt signal (" << signum << ") received !";
+
+    // cleanup and close up stuff here
+    // terminate program
+  void *array[30];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 30);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", signum);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
+
 void listGPUs() {
   std::cout << "Available devices:\n____________________________________________\n";
   const auto& deviceMap = Falcor::DeviceManager::instance().listDevices();
@@ -69,13 +89,20 @@ typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
 
 int main(int argc, char** argv){
     int gpuID = -1; // automatic gpu selection
-    boost::log::trivial::severity_level logSeverity = boost::log::trivial::warning;
+
+    boost::log::trivial::severity_level logSeverity;
+#ifdef DEBUG
+    boost::log::trivial::severity_level logSeverityDefault = boost::log::trivial::debug;
+#else
+    boost::log::trivial::severity_level logSeverityDefault = boost::log::trivial::warning;
+#endif
     bool echo_input = true;
     bool vtoff_flag = false; // virtual texturing enabled by default
     bool fconv_flag = false; // force virtual textures (re)conversion
 
     signal(SIGTERM, signalHandler);
-    signal(SIGABRT, signalHandler);
+    signal(SIGABRT, signalTraceHandler);
+    signal(SIGSEGV, signalTraceHandler);
 
 
     /// Program options
@@ -102,7 +129,7 @@ int main(int argc, char** argv){
 
     po::options_description logging("Logging");
     logging.add_options()
-      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity)->default_value(boost::log::trivial::warning),"log level to output")
+      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity)->default_value(logSeverityDefault),"log level to output")
       ;
 
     po::options_description input("Input");
@@ -161,6 +188,16 @@ int main(int argc, char** argv){
         notify(vm);
     }
 
+    auto& app_config = ConfigStore::instance();
+    if(vtoff_flag) {
+      app_config.set<bool>("vtoff", true);
+    }
+
+    if(fconv_flag) {
+      app_config.set<bool>("fconv", true);
+    }
+
+
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(
       ReaderLSD::myExtensions, 
@@ -170,12 +207,6 @@ int main(int argc, char** argv){
 
     Falcor::DeviceManager::instance().setDefaultRenderingDevice(gpuID);
     Renderer::UniquePtr pRenderer = Renderer::create(gpuID);
-
-    if(vtoff_flag)
-      SparseResourceManager::setVirtualTexturingEnabled(false);
-
-    if(fconv_flag)
-      SparseResourceManager::setForceTexturesConversion(true);
 
     if(!pRenderer->init()) {
       exit(EXIT_FAILURE);

@@ -138,8 +138,8 @@ uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
 { \
     auto r = a; \
     if (VK_FAILED(r)) { \
-        /* LOG_ERR("Vulkan call \"a\"failed!"); */ \
-        logError("Vulkan call failed.\n"#a); \
+        LOG_ERR("Vulkan call %s failed!", #a); \
+        /* logError("Vulkan call failed.\n"#a); */ \
     } \
 }
 #else

@@ -2,6 +2,8 @@
 #define SRC_LAVA_LIB_READER_LSD_SESSION_H_
 
 #include <memory>
+#include <variant>
+#include <future>
 #include <unordered_map>
 
 #include "grammar_lsd.h"
@@ -30,6 +32,7 @@ class Session {
  	bool cmdEnd();
  	void cmdSetEnv(const std::string& key, const std::string& value);
  	bool cmdRaytrace();
+    void cmdIPRmode(const std::string& mode);
     void cmdConfig(const std::string& file_name);
     void cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value);
     void cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values);
@@ -41,7 +44,7 @@ class Session {
     void cmdTime(double time);
 
     void pushLight(const scope::Light::SharedPtr pLight);
-    void pushBgeo(const std::string& name, ika::bgeo::Bgeo& bgeo);
+    void pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async = false);
     std::string getExpandedString(const std::string& str);
 
  private:
@@ -53,6 +56,7 @@ class Session {
  	bool pushGeometryInstance(const scope::Object::SharedPtr pObj);
 
  private:
+    bool                            mIPRmode = false;
  	bool 							mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
  	std::unique_ptr<RendererIface> 	mpRendererIface;
  	
@@ -62,7 +66,7 @@ class Session {
  	scope::ScopeBase::SharedPtr		mpCurrentScope;
  	scope::Global::SharedPtr		mpGlobal;
 
- 	std::map<std::string, uint32_t>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	
+ 	std::map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
     std::map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
 };
 

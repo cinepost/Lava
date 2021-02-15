@@ -31,6 +31,7 @@
 #include "LightProbeData.slang"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/Program/ShaderVar.h"
 
 namespace Falcor {
 

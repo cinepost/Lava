@@ -466,6 +466,7 @@ void Window::pollForEvents() {
     glfwPollEvents();
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Window) {
     pybind11::class_<Window, Window::SharedPtr> window(m, "Window");
     window.def("setWindowPos", &Window::setWindowPos);
@@ -484,5 +485,6 @@ SCRIPT_BINDING(Window) {
     windowDesc.field(resizableWindow);
 #undef field
 }
+#endif
 
 }  // namespace Falcor

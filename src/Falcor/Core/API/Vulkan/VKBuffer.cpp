@@ -33,22 +33,26 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+//#define VMA_IMPLEMENTATION
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
     
-VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = size;
-    allocInfo.memoryTypeIndex = pDevice->getVkMemoryType(memType, memoryTypeBits);
+//VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
+//    VkMemoryAllocateInfo allocInfo = {};
+//    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//    allocInfo.allocationSize = size;
+//    allocInfo.memoryTypeIndex = pDevice->getVkMemoryType(memType, memoryTypeBits);
 
-    VkDeviceMemory deviceMem;
-    vk_call(vkAllocateMemory(pDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
-    return deviceMem;
-}
+//    VkDeviceMemory deviceMem;
+//    vk_call(vkAllocateMemory(pDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
+//    return deviceMem;
+//}
 
 void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size) {
     void* pData;
-    vk_call(vkMapMemory(pDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
+    //vk_call(vkMapMemory(pDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
+    vk_call(vmaMapMemory(pDevice->allocator(), apiHandle.allocation(), &pData));
     return pData;
 }
 
@@ -82,6 +86,10 @@ size_t getBufferDataAlignment(const Buffer* pBuffer) {
 
 Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
 
+    std::cout << "createBuffer bindFlags " << to_string(bindFlags) << std::endl;
+    std::cout << "createBuffer memType " << to_string(memType) << std::endl;
+    std::cout << "createBuffer size " << size << std::endl;
+
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
@@ -92,16 +100,45 @@ Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::B
     bufferInfo.pQueueFamilyIndices = nullptr;
     
     VkBuffer buffer;
-    vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
+
+    VmaAllocationCreateInfo allocInfo = {};
+
+    switch(memType) {
+        case GpuMemoryHeap::Type::Readback:
+            allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+            break;
+        case GpuMemoryHeap::Type::Upload:
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+            break;
+        //case GpuMemoryHeap::Type::Default:
+        //    allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+        //    break;
+        default:
+            allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+            break;
+    }
+
+    VmaAllocation allocation;
+    vmaCreateBuffer(pDevice->allocator(), &bufferInfo, &allocInfo, &buffer, &allocation, nullptr);
+
+    VmaStats stats = {};
+    vmaCalculateStats(pDevice->allocator(), &stats);
+
+    std::cout << "VMA used byte: " << stats.total.usedBytes << std::endl;
+    std::cout << "VMA unused byte: " << stats.total.unusedBytes << std::endl;
+
+
+//
+    //vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
 
     // Get the required buffer size
-    VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(pDevice->getApiHandle(), buffer, &reqs);
+//    VkMemoryRequirements reqs;
+//    vkGetBufferMemoryRequirements(pDevice->getApiHandle(), buffer, &reqs);
 
-    VkDeviceMemory mem = allocateDeviceMemory(pDevice, memType, reqs.memoryTypeBits, reqs.size);
-    vk_call(vkBindBufferMemory(pDevice->getApiHandle(), buffer, mem, 0));
-    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, mem);
-
+//    VkDeviceMemory mem = allocateDeviceMemory(pDevice, memType, reqs.memoryTypeBits, reqs.size);
+//    vk_call(vkBindBufferMemory(pDevice->getApiHandle(), buffer, mem, 0));
+//    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, mem);
+    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, allocation);
     return apiHandle;
 }
 
@@ -130,7 +167,8 @@ void Buffer::unmap() {
     } else if (mDynamicData.pData == nullptr && mBindFlags == BindFlags::None) {
         // We only unmap staging buffers
         assert(mCpuAccess == CpuAccess::Read);
-        vkUnmapMemory(mpDevice->getApiHandle(), mApiHandle);
+        //vkUnmapMemory(mpDevice->getApiHandle(), mApiHandle);
+        vmaUnmapMemory(mpDevice->allocator(), mAllocation);
     }
 }
 

@@ -37,6 +37,11 @@ target_link_libraries(
     falcor_lib
     lava_utils_lib
     ${Boost_LIBRARIES}
+
+    AccumulatePass
+    DepthPass
+    ForwardLightingPass
+    SkyBox
 )
 
 if(UNIX)

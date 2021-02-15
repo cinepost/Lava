@@ -45,7 +45,7 @@ class Engine;
 class Sampler;
 class Device;
 class RenderContext;
-class SparseResourceManager;
+class ResourceManager;
 class VirtualTexturePage;
 
 /** Abstracts the API texture objects
@@ -341,7 +341,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     friend class Device;
     friend class Engine;
-    friend class SparseResourceManager;
+    friend class ResourceManager;
     friend class VirtualTexturePage;
 };
 

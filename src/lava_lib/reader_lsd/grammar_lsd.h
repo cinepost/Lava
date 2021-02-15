@@ -8,6 +8,9 @@
 #include <iostream>
 #include <variant>
 
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE 30
+
 #include "boost/array.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/range.hpp"
@@ -98,6 +101,7 @@ namespace ast {
     struct endif;
     struct setenv;
     struct cmd_time;
+    struct cmd_iprmode;
     struct cmd_version;
     struct cmd_config;
     struct cmd_defaults;
@@ -126,6 +130,7 @@ namespace ast {
         setenv,
         cmd_start,
         cmd_time,
+        cmd_iprmode,
         cmd_version,
         cmd_config,
         cmd_defaults,
@@ -161,6 +166,10 @@ namespace ast {
 
     struct cmd_time {
         double time;
+    };
+
+    struct cmd_iprmode {
+        std::string mode;
     };
 
     struct cmd_start {
@@ -360,6 +369,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, object_type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_mtransform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_iprmode, mode)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
@@ -527,7 +537,7 @@ namespace parser {
     auto const keyword
         = x3::rule<class keyword>{"keyword"}
         = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
-        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset");
+        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -703,6 +713,10 @@ namespace parser {
         = x3::rule<class cmd_config, ast::cmd_config>{"cmd_config"}
         = "cmd_config" >> any_filename >> eps;
 
+    auto const cmd_iprmode
+        = x3::rule<class cmd_iprmode, ast::cmd_iprmode>{"cmd_iprmode"}
+        = "cmd_iprmode" >> any_string >> eps;
+
     auto const cmd_defaults
         = x3::rule<class cmd_defaults, ast::cmd_defaults>{"cmd_defaults"}
         = "cmd_defaults" >> any_filename >> eps;
@@ -745,7 +759,7 @@ namespace parser {
         = x3::rule<class endif, ast::endif>{"endif"}
         = "endif" >> eps;
 
-    auto const cmd = setenv | cmd_image | cmd_time | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset |
+    auto const cmd = setenv | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset |
         cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption |
         ifthen | endif;
 

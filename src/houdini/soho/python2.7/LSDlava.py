@@ -279,6 +279,9 @@ def initializeFeatures(settings):
     # -- Light --
     Light("__nondiffuse", "bool", "lv_nondiffuse")
     Light("__nonspecular", "bool", "lv_nonspecular")
+    
+    Light("type", "string", "lv_light_type")
+    
     Light("activeradius", "float", "lv_activeradius")
     Light("areafullsphere", "bool", "lv_areafullsphere")
     Light("areamap", "string", "lv_areamap")

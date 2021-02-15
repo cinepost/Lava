@@ -55,6 +55,7 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
+    void setTexture(const std::string& texName, bool loadAsSrgb = true);
 
  private:
     SkyBox(Device::SharedPtr pDevice);

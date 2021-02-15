@@ -26,6 +26,7 @@ struct Visitor: public boost::static_visitor<> {
     virtual void operator()(ast::endif const& c);
     virtual void operator()(ast::setenv const& c) const;
     virtual void operator()(ast::cmd_image const& c) const;
+    virtual void operator()(ast::cmd_iprmode const& c) const;
     virtual void operator()(ast::cmd_end const& c) const;
     virtual void operator()(ast::cmd_quit const& c) const;
     virtual void operator()(ast::cmd_start const& c) const;
@@ -66,6 +67,7 @@ struct EchoVisitor: public Visitor {
     void operator()(ast::endif const& c) override;
     void operator()(ast::setenv const& c) const override;
     void operator()(ast::cmd_image const& c) const override;
+    void operator()(ast::cmd_iprmode const& c) const override;
     void operator()(ast::cmd_end const& c) const override;
     void operator()(ast::cmd_quit const& c) const override;
     void operator()(ast::cmd_start const& c) const override;

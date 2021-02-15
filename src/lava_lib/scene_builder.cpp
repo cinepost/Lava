@@ -26,6 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <array>
+#include <thread>
+
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Scene/Lights/LightProbe.h"
 
 #include "scene_builder.h"
 #include "lava_utils_lib/logging.h"
@@ -37,24 +41,18 @@
 
 namespace lava {    
 
-SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags) {
+SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags), mUniqueTrianglesCount(0) {
+    mpDefaultMaterial = Material::create(pDevice, "default");
+    mpDefaultMaterial->setBaseColor({0.2, 0.2, 0.2, 1.0});
+    mpDefaultMaterial->setRoughness(0.3);
+    mpDefaultMaterial->setIndexOfRefraction(1.5);
+    mpDefaultMaterial->setEmissiveFactor(0.0);
+}
 
-    //mCamera.pObject = Falcor::Camera::create();
-
-    mpDefaultMatreial = Material::create(pDevice, "default");
-    
-    mpDefaultMatreial->setBaseColor({0.5, 0.5, 0.5, 1.0});
-    mpDefaultMatreial->setRoughness(0.3);
-
-    mpDefaultMatreial->setIndexOfRefraction(1.5);
-
-    //mpDefaultMatreial->setEmissiveColor({1.0, 0.5, 0.0});
-    mpDefaultMatreial->setEmissiveFactor(0.0);
-    
-    //mpDefaultMatreial->setBaseColor({1.0, 1.0, 1.0, 1.0});
-    //mpDefaultMatreial->loadTexture(Falcor::Material::TextureSlot::BaseColor, "/mnt/work/stock/3d_models/Eagle/textures/pbr_set_3/eagle_01_DefaultMaterial_BaseColor.jpg");
-    //mpDefaultMatreial->loadTexture(Falcor::Material::TextureSlot::Specular, "/mnt/work/stock/3d_models/Eagle/textures/pbr_set_3/eagle_01_DefaultMaterial_RoughnessMetallic.jpg");
-    //mpDefaultMatreial->loadTexture(Falcor::Material::TextureSlot::Normal, "/mnt/work/stock/3d_models/Eagle/textures/pbr_set_3/eagle_01_DefaultMaterial_Normal.jpg");
+SceneBuilder::~SceneBuilder() {
+    std::cout << "SceneBuilder stats:" << std::endl;
+    std::cout << "\t Triangles count: " << std::to_string(mUniqueTrianglesCount);
+    std::cout << std::endl << std::endl;
 }
 
 SceneBuilder::SharedPtr SceneBuilder::create(Falcor::Device::SharedPtr pDevice, Flags buildFlags) {
@@ -65,72 +63,38 @@ Falcor::Scene::SharedPtr SceneBuilder::getScene() {
     return Falcor::SceneBuilder::getScene();
 }
 
-//  int64_t getPointCount() const;
-//  int64_t getTotalVertexCount() const;
-//  int64_t getPrimitiveCount() const;
+uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+    assert(pBgeo);
 
-/*
-    UnknownPrimType = 0,
-    PolyPrimType,
-    RunPrimType,
-    SpherePrimType,
-    VolumePrimType
-*/
-
-/*
-// SceneBuilder::Mesh description
-
-struct Mesh {
-    std::string name;                           // The mesh's name
-    uint32_t vertexCount = 0;                   // The number of vertices the mesh has
-    uint32_t indexCount = 0;                    // The number of indices the mesh has. Can't be zero - the scene doesn't support non-indexed meshes. If you'd like us to support non-indexed meshes, please open an issue
-    const uint32_t* pIndices = nullptr;         // Array of indices. The element count must match `indexCount`
-    const float3* pPositions = nullptr;         // Array of vertex positions. The element count must match `vertexCount`. This field is required
-    const float3* pNormals = nullptr;           // Array of vertex normals. The element count must match `vertexCount`.   This field is required
-    const float3* pBitangents = nullptr;        // Array of vertex bitangent. The element count must match `vertexCount`. Optional. If set to nullptr, or if BuildFlags::UseOriginalTangentSpace is not set, the tangents will be generated using MikkTSpace
-    const float2* pTexCrd = nullptr;            // Array of vertex texture coordinates. The element count must match `vertexCount`. This field is required
-    const uint4* pBoneIDs = nullptr;            // Array of bone IDs. The element count must match `vertexCount`. This field is optional. If it's set, that means that the mesh is animated, in which case pBoneWeights can't be nullptr
-    const float4*  pBoneWeights = nullptr;      // Array of bone weights. The element count must match `vertexCount`. This field is optional. If it's set, that means that the mesh is animated, in which case pBoneIDs can't be nullptr
-    Vao::Topology topology = Vao::Topology::Undefined; // The primitive topology of the mesh
-    Material::SharedPtr pMaterial;              // The mesh's material. Can't be nullptr
-};
-*/
-
-uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& name) {
-    LLOG_DBG << "adding mesh from bgeo";
-
-    Mesh mesh;
-    mesh.name = name;
-
-    const int64_t bgeo_point_count = bgeo.getPointCount();
-    const int64_t bgeo_vertex_count = bgeo.getTotalVertexCount();
+    const int64_t bgeo_point_count = pBgeo->getPointCount();
+    const int64_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
 
     LLOG_DBG << "bgeo point count: " << bgeo_point_count;
     LLOG_DBG << "bgeo total vertex count: " << bgeo_vertex_count;
-    LLOG_DBG << "bgeo prim count: " << bgeo.getPrimitiveCount();
+    LLOG_DBG << "bgeo prim count: " << pBgeo->getPrimitiveCount();
     LLOG_DBG << "------------------------------------------------";
 
     // get basic bgeo data P, N, UV
 
     std::vector<float> P;
-    bgeo.getP(P);
+    pBgeo->getP(P);
     assert(P.size() / 3 == bgeo_point_count && "P positions count not equal to the bgeo points count !!!");
     LLOG_DBG << "P<float> size: " << P.size();
 
     std::vector<float> N;
-    bgeo.getPointN(N);
+    pBgeo->getPointN(N);
     LLOG_DBG << "N<float> size: " << N.size();
     
     std::vector<float> UV;
-    bgeo.getPointUV(UV);
+    pBgeo->getPointUV(UV);
     LLOG_DBG << "UV<float> size: " << UV.size();
 
     std::vector<float> vN;
-    bgeo.getVertexN(vN);
+    pBgeo->getVertexN(vN);
     LLOG_DBG << "vN<float> size: " << vN.size();
     
     std::vector<float> vUV;
-    bgeo.getVertexUV(vUV);
+    pBgeo->getVertexUV(vUV);
     LLOG_DBG << "vUV<float> size: " << vUV.size();
 
     bool unique_points = false; // separate points only if we have any vertex data present
@@ -143,7 +107,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& n
     
     // build separated verices data
     if(unique_points) {
-        auto pDetail = bgeo.getDetail();
+        auto pDetail = pBgeo->getDetail();
         auto const& vt_map = pDetail->getVertexMap();
 
         assert(vt_map.vertexCount == bgeo_vertex_count && "Bgeo detail vertices count not equal to the number of bgeo vertices count !!!");
@@ -213,10 +177,10 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& n
     std::vector<int32_t> vtx_list;
     std::vector<int32_t> prim_start_indices;
 
-    for(uint32_t p_i=0; p_i < bgeo.getPrimitiveCount(); p_i++) {
+    for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); p_i++) {
         std::cout << "Processing primitive number " << p_i << "\n";
 
-        const auto& pPrim = bgeo.getPrimitive(p_i);
+        const auto& pPrim = pBgeo->getPrimitive(p_i);
         if(!pPrim) {
             LLOG_WRN << "Unable to get primitive number: " << p_i;
             continue;
@@ -340,7 +304,7 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& n
         }
     }
 
-    mesh.pMaterial = mpDefaultMatreial;
+    Mesh mesh;
     mesh.faceCount = face_count;
 
     mesh.positions.frequency = Mesh::AttributeFrequency::Vertex;
@@ -372,8 +336,26 @@ uint32_t SceneBuilder::addMesh(const ika::bgeo::Bgeo& bgeo, const std::string& n
     //mesh.pBoneIDs = nullptr;
     //mesh.pBoneWeights = nullptr;
     mesh.topology = Falcor::Vao::Topology::TriangleList;
+    mesh.name = name;
+    mesh.pMaterial = mpDefaultMaterial;
+
+    mUniqueTrianglesCount += face_count;
 
     return Falcor::SceneBuilder::addMesh(mesh);
+}
+
+std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
+    assert(pBgeo);
+
+    std::packaged_task<uint32_t(ika::bgeo::Bgeo::SharedConstPtr, const std::string&)> task([this](ika::bgeo::Bgeo::SharedConstPtr p, const std::string& n) {
+        return this->addGeometry(p, n); 
+    });
+
+    std::shared_future<uint32_t> result = task.get_future().share();
+
+    // Pass the packaged_task to thread to run asynchronously
+    std::thread(std::move(task), pBgeo, name).detach();
+    return result;
 }
 
 void SceneBuilder::finalize() {

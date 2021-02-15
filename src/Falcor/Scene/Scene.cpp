@@ -839,33 +839,32 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return mRenderSettings.useAnalyticLights && mLights.empty() == false;
     }
 
-    bool Scene::useEmissiveLights() const
-    {
+    bool Scene::useEmissiveLights() const {
         return mRenderSettings.useEmissiveLights && mpLightCollection != nullptr && mpLightCollection->getActiveLightCount() > 0;
     }
 
-    void Scene::setCamera(const Camera::SharedPtr& pCamera)
-    {
+    void Scene::setCamera(const Camera::SharedPtr& pCamera) {
         auto name = pCamera->getName();
-        for (uint index = 0; index < mCameras.size(); index++)
-        {
-            if (mCameras[index]->getName() == name)
-            {
+        for (uint index = 0; index < mCameras.size(); index++) {
+            if (mCameras[index]->getName() == name) {
                 selectCamera(index);
                 return;
             }
         }
         logWarning("Selected camera " + name + " does not exist.");
+        
+#ifdef SCRIPTING
         pybind11::print("Selected camera", name, "does not exist.");
+#endif
     }
 
-    void Scene::selectCamera(uint32_t index)
-    {
+    void Scene::selectCamera(uint32_t index) {
         if (index == mSelectedCamera) return;
-        if (index >= mCameras.size())
-        {
+        if (index >= mCameras.size()) {
             logWarning("Selected camera index " + std::to_string(index) + " is invalid.");
+#ifdef SCRIPTING
             pybind11::print("Selected camera index", index, "is invalid.");
+#endif
             return;
         }
 
@@ -1756,6 +1755,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return c;
     }
 
+#ifdef SCRIPTING
     SCRIPT_BINDING(Scene)
     {
         pybind11::class_<Scene, Scene::SharedPtr> scene(m, "Scene");
@@ -1800,5 +1800,6 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         renderSettings.field(useEmissiveLights);
 #undef field
     }
+#endif
 
 }  // namespace Falcor

@@ -1,11 +1,13 @@
 #include "renderer.h"
 
+#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Threading.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
+#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#include "Falcor/Core/API/SparseResourceManager.h"
+#include "Falcor/Experimental/Scene/Lights/EnvMap.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -28,6 +30,14 @@ Renderer::UniquePtr Renderer::create(int gpuId) {
 Renderer::Renderer(int gpuId): mGpuId(gpuId), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
     mpDisplay = nullptr;
+
+    Falcor::Device::Desc device_desc;
+    device_desc.width = 1280;
+    device_desc.height = 720;
+
+    LLOG_DBG << "Creating rendering device on GPU id " << to_string(mGpuId);
+    mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mGpuId, device_desc);
+    LLOG_DBG << "Rendering device " << to_string(mGpuId) << " created";
 }
 
 bool Renderer::init() {
@@ -37,29 +47,10 @@ bool Renderer::init() {
 
 	Falcor::OSServices::start();
 
-	Falcor::Scripting::start();
-    Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
+	//Falcor::Scripting::start();
+    //Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
 
     Falcor::Threading::start();
-
-	Falcor::Device::Desc device_desc;
-    device_desc.width = 1280;
-    device_desc.height = 720;
-
-    LLOG_DBG << "Creating rendering device on GPU id " << to_string(mGpuId);
-	mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mGpuId, device_desc);
-    LLOG_DBG << "Rendering device " << to_string(mGpuId) << " created";
-
-    // init texture manager
-    Falcor::SparseResourceManager::InitDesc initDesc;
-    initDesc.pDevice = mpDevice;
-    initDesc.cacheDir = "/home/max/lava/tex_cache";
-
-    if(!Falcor::SparseResourceManager::instance().init(initDesc)) {
-        LLOG_WRN << "Error initializing sparse resource manager !!!";
-        //return false;
-    }
-    //
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
     mpCamera = Falcor::Camera::create();
@@ -74,7 +65,7 @@ bool Renderer::init() {
     if (!pBackBufferFBO) {
         logError("Unable to get swap chain FBO!!!");
     }
-    mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
+    //mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
     mpFrameRate = new Falcor::FrameRate(mpDevice);
 
@@ -90,7 +81,7 @@ Renderer::~Renderer() {
 	if(!mInited)
 		return;
 
-    Falcor::SparseResourceManager::instance().printStats();
+    mpDevice->resourceManager()->printStats();
 
 	delete mpClock;
     delete mpFrameRate;
@@ -102,17 +93,19 @@ Renderer::~Renderer() {
     mpSampler = nullptr;
 	
     Falcor::Threading::shutdown();
-    Falcor::Scripting::shutdown();
-    Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
+    //Falcor::Scripting::shutdown();
+    //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
-    if(mpDisplay) mpDisplay->close();
+    if(mpDisplay)
+        mpDisplay->close();
 
     mpTargetFBO.reset();
 
-    Falcor::SparseResourceManager::instance().clear();
-
-    if(mpDevice) mpDevice->cleanup();
-	mpDevice.reset();
+    //if(mpDevice)
+    //    mpDevice->cleanup();
+	//
+    //mpDevice.reset();
+    
     Falcor::OSServices::stop();
     Falcor::gpFramework = nullptr;
 
@@ -159,7 +152,64 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str) 
     return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
 
+void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
+    assert(mpDevice);
+
+    auto pRenderContext = mpDevice->getRenderContext();
+    auto pScene = mpSceneBuilder->getScene();
+
+    assert(pScene);
+    ////
+
+    auto pLightProbe = mpSceneBuilder->getLightProbe();
+    if(pLightProbe) {
+        auto pTexture = pLightProbe->getOrigTexture();
+        if (pTexture) {
+            auto pEnvMap = Falcor::EnvMap::create(mpDevice, pTexture->getSourceFilename());
+            pScene->setEnvMap(pEnvMap);
+        }
+        //pScene->loadEnvMap("/home/max/Desktop/parking_lot.hdr");
+    }
+    ////
+
+    mpRenderGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, Falcor::ResourceFormat::RGBA32Float, "RenderGraph");
+
+    // Depth pass
+    mpDepthPass = DepthPass::create(pRenderContext);
+    mpDepthPass->setScene(pRenderContext, pScene);
+    auto pass1 = mpRenderGraph->addPass(mpDepthPass, "DepthPass");
+
+
+    // Forward lighting
+    mpLightingPass = ForwardLightingPass::create(pRenderContext);
+    mpLightingPass->setScene(pRenderContext, pScene);
+    auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
+
+
+    // SkyBox
+    mpSkyBoxPass = SkyBox::create(pRenderContext);
+    mpSkyBoxPass->setTexture("/home/max/env.exr", true);
+    mpSkyBoxPass->setIntensity(1.0f);
+    mpSkyBoxPass->setScene(pRenderContext, pScene);
+    auto pass3 = mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
+
+    // Accumulaion
+    mpAccumulatePass = AccumulatePass::create(pRenderContext);
+    mpAccumulatePass->enableAccumulation(true);
+    mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
+
+    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
+
+    mpRenderGraph->markOutput("AccumulatePass.output");
+
+}
+
 bool Renderer::loadScript(const std::string& file_name) {
+    return true;
+
 	try {
         LLOG_DBG << "Loading frame graph configuration: " << file_name;
         auto ctx = Falcor::Scripting::getGlobalContext();
@@ -232,6 +282,11 @@ void Renderer::resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContex
 }
 
 void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
+    if (mpRenderGraph)
+        mpRenderGraph->execute(pRenderContext);
+
+    return;
+
     if (mGraphs.empty()) return;
 
     auto& pGraph = mGraphs[mActiveGraph].pGraph;
@@ -243,17 +298,41 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
     pGraph->execute(pRenderContext);
 }
 
+static CPUSampleGenerator::SharedPtr createSamplePattern(Renderer::SamplePattern type, uint32_t sampleCount) {
+    switch (type) {
+        case Renderer::SamplePattern::Center:
+            return nullptr;
+        case Renderer::SamplePattern::DirectX:
+            return DxSamplePattern::create(sampleCount);
+        case Renderer::SamplePattern::Halton:
+            return HaltonSamplePattern::create(sampleCount);
+        case Renderer::SamplePattern::Stratified:
+            return StratifiedSamplePattern::create(sampleCount);
+        default:
+            should_not_get_here();
+            return nullptr;
+    }
+}
+
 void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
     // finalize camera
+    mInvFrameDim = 1.f / float2({frame_data.imageWidth, frame_data.imageHeight});
+    mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_data.imageSamples);
+    if (mpSampleGenerator) {
+        mpCamera->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+    }
+
     mpCamera->setAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
     mpCamera->setNearPlane(frame_data.cameraNearPlane);
     mpCamera->setFarPlane(frame_data.cameraFarPlane);
     mpCamera->setViewMatrix(frame_data.cameraTransform);
     mpCamera->setFocalLength(frame_data.cameraFocalLength);
     mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
+    //mpCamera->beginFrame(true); // Not sure we need it
 
     // finalize scene
-    auto pScene = mpSceneBuilder->getScene();;
+    auto pScene = mpSceneBuilder->getScene();
+
 
     if (pScene) {
         pScene->setCameraAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
@@ -272,16 +351,11 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
         pScene->bindSamplerToMaterials(mpSampler);
     }
 
-    // finalize rendering graphs
-    for (auto& g : mGraphs) {
-        g.pGraph->setScene(pScene);
-        auto dims = g.pGraph->dims();
-        if (dims.x != frame_data.imageWidth || dims.y != frame_data.imageHeight) {
-            g.pGraph->resize(frame_data.imageWidth, frame_data.imageHeight, Falcor::ResourceFormat::RGBA32Float);
-            //Falcor::Scene::SharedPtr graphScene = g.pGraph->getScene();
-            //if (graphScene) graphScene->setCameraAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
-        }
+    const auto& dims = mpRenderGraph->dims();
+    if (dims.x != frame_data.imageWidth || dims.y != frame_data.imageHeight) {
+        mpRenderGraph->resize(frame_data.imageWidth, frame_data.imageHeight, Falcor::ResourceFormat::RGBA32Float);
     }
+
     gpFramework->getClock().setTime(frame_data.time);
 }
 
@@ -308,7 +382,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
 
-    this->resizeSwapChain(frame_data.imageWidth, frame_data.imageHeight);
+    //this->resizeSwapChain(frame_data.imageWidth, frame_data.imageHeight);
+
+    if (!mpRenderGraph) 
+        createRenderGraph(frame_data);
 
     finalizeScene(frame_data);
 
@@ -316,10 +393,15 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    if (mGraphs.size()) {
+    //if (mGraphs.size()) {
+    if (mpRenderGraph) {    
         LLOG_DBG << "process render graphs";
         
         auto pScene = mpSceneBuilder->getScene();
+        if (!pScene) {
+            LLOG_ERR << "Unable to get scene from scene builder !!!";
+            return;
+        }
 
         // render image samples
         double shutter_length = 0.5;
@@ -327,7 +409,8 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         double time = frame_data.time;
         double sample_time_duration = (1.0 * shutter_length) / frame_data.imageSamples;
         
-        resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
+        //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
+        pScene->update(pRenderContext, time);
         executeActiveGraph(pRenderContext);
 
         if ( frame_data.imageSamples > 1 ) {
@@ -335,13 +418,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
                 LLOG_DBG << "Rendering sample no " << i << " of " << frame_data.imageSamples;
                 
                 // Update scene and camera.
-                if (pScene) {
-                    pScene->update(pRenderContext, time);
-                }
-
-                executeActiveGraph(pRenderContext);
-        
                 time += sample_time_duration;
+                pScene->update(pRenderContext, time);
+                
+                executeActiveGraph(pRenderContext);
             }
         }
 
@@ -349,11 +429,13 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         
 
         // capture graph(s) ouput(s).
-        if (mGraphs[mActiveGraph].mainOutput.size()) {
+        //if (mGraphs[mActiveGraph].mainOutput.size()) {
+        if (mpRenderGraph) {    
             LLOG_DBG << "Reading rendered image data...";
             auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
-            Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
+            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
+            Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
             assert(pOutTex);
 
             Falcor::Texture* pTex = pOutTex.get();

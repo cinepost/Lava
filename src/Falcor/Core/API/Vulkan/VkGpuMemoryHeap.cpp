@@ -30,6 +30,8 @@
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Device.h"
 
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
 Buffer::ApiHandle createBuffer(std::shared_ptr<Device> device, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType);
@@ -38,7 +40,12 @@ void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size) {
     // Create a buffer
     data.pResourceHandle = createBuffer(mpDevice, size, Buffer::BindFlags::Constant | Buffer::BindFlags::Vertex | Buffer::BindFlags::Index, mType);
     data.offset = 0;
-    vk_call(vkMapMemory(mpDevice->getApiHandle(), data.pResourceHandle, 0, VK_WHOLE_SIZE, 0, (void**)&data.pData));
+
+    //vk_call(vkMapMemory(mpDevice->getApiHandle(), data.pResourceHandle, 0, VK_WHOLE_SIZE, 0, (void**)&data.pData));
+
+    vk_call(vmaMapMemory(mpDevice->allocator(), data.pResourceHandle.allocation(), (void**)&data.pData));
+    //memcpy(data, vertices.data(), size);
+	//vmaUnmapMemory(mpDevice->allocator(), data.pResourceHandle.allocation());
 }
 
 }  // namespace Falcor

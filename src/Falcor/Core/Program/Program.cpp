@@ -971,8 +971,10 @@ void Program::removeGlobalDefines(const DefineList& defineList) {
     reloadAllPrograms(true);
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Program) {
     pybind11::class_<Program, Program::SharedPtr>(m, "Program");
 }
+#endif
 
 }  // namespace Falcor

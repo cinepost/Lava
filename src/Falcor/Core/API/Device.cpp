@@ -28,6 +28,7 @@
 #include "Falcor/stdafx.h"
 #include "Device.h"
 
+#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
@@ -64,8 +65,6 @@ Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(p
         LOG_DBG("GPU device id: %u", mGpuId);
     }
 }
-
-Device::~Device() {}
 
 Device::SharedPtr Device::create(const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(desc));
@@ -130,6 +129,9 @@ bool Device::init() {
     //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
     
     assert(mpRenderContext);
+
+    mpResourceManager = ResourceManager::create(shared_from_this());
+    assert(mpResourceManager);
 
     createNullViews(shared_from_this());
     createNullBufferViews(shared_from_this());
@@ -405,6 +407,7 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
     return getSwapChainFbo();
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Device) {
     ScriptBindings::SerializableStruct<Device::Desc> deviceDesc(m, "DeviceDesc");
 #define field(f_) field(#f_, &Device::Desc::f_)
@@ -418,10 +421,8 @@ SCRIPT_BINDING(Device) {
 #undef field
 
     // Device
-    //Device::SharedPtr (&create_headless)(const Device::Desc&) = Device::create;
     pybind11::class_<Device, Device::SharedPtr> device(m, "Device");
-    //device.def_static("create", &create_headless);
-
 }
+#endif
 
 }  // namespace Falcor

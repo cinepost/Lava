@@ -81,6 +81,54 @@ void
     detail->loadGeometry(parserLoader.parser());
 }
 
+// Bgeo class
+
+//static 
+//Bgeo::UniquePtr Bgeo::createUnique(std::istream& in, bool checkVersion) {
+//    return UniquePtr(new Bgeo(in, checkVersion));
+//}
+
+//static 
+Bgeo::UniquePtr Bgeo::createUnique(const std::string& bgeoString, bool checkVersion) {
+    return UniquePtr(new Bgeo(bgeoString, checkVersion));
+}
+
+//static 
+Bgeo::UniquePtr Bgeo::createUnique(const char* bgeoPath, bool checkVersion) {
+    return UniquePtr(new Bgeo(bgeoPath, checkVersion));
+}
+
+//static 
+Bgeo::UniquePtr Bgeo::createUnique(std::shared_ptr<parser::Detail> detail) {
+    if (!detail)
+        return nullptr;
+
+    return UniquePtr(new Bgeo(detail));
+}
+
+//static 
+Bgeo::SharedPtr Bgeo::create() {
+    return SharedPtr(new Bgeo());
+}
+//static 
+Bgeo::SharedPtr Bgeo::create(const std::string& bgeoString, bool checkVersion) {
+    return SharedPtr(new Bgeo(bgeoString, checkVersion));
+}
+
+//static 
+Bgeo::SharedPtr Bgeo::create(const char* bgeoPath, bool checkVersion) {
+    return SharedPtr(new Bgeo(bgeoPath, checkVersion));
+}
+
+//static 
+Bgeo::SharedPtr Bgeo::create(std::shared_ptr<parser::Detail> detail) {
+    if (!detail)
+        return nullptr;
+
+    return SharedPtr(new Bgeo(detail));
+}
+
+
 Bgeo::Bgeo() {}
 
 bool Bgeo::readInlineGeo(const std::string& bgeoString, bool checkVersion) {
@@ -96,6 +144,8 @@ Bgeo::Bgeo(const std::string& bgeoString, bool checkVersion): m_pimpl(new Impl(b
 Bgeo::Bgeo(const char* bgeoPath, bool checkVersion): m_pimpl(new Impl(bgeoPath, checkVersion)) {}
 
 Bgeo::Bgeo(std::shared_ptr<parser::Detail> detail): m_pimpl(new Impl(detail)) {}
+
+Bgeo::Bgeo(Bgeo&& b) noexcept : m_pimpl(std::move(b.m_pimpl)), m_primitiveCache(std::move(b.m_primitiveCache)) {}
 
 Bgeo::~Bgeo() = default;
 

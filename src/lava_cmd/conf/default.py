@@ -22,8 +22,8 @@ def defaultRenderGraph(device):
     g.addPass(RenderPass(device, "ForwardLightingPass"), "LightingPass")
     
     GBufferRaster = RenderPass(device, "GBufferRaster", {
-        'samplePattern': SamplePattern.Halton, 
-        'sampleCount': 16, 
+        'samplePattern': SamplePattern.Stratified, 
+        'sampleCount': 64, 
         'disableAlphaTest': True, 
         'forceCullMode': False, 
         'cull': CullMode.CullNone, 
@@ -35,19 +35,19 @@ def defaultRenderGraph(device):
         'texName': '/home/max/env.exr', 
         'loadAsSrgb': True, 
         'filter': SamplerFilter.Linear,
-        'intensity': 0.0
+        'intensity': 1.0
     })
     g.addPass(SkyBox, "SkyBox")
 
-    DepthPass = RenderPass(device, "DepthPass")
-    g.addPass(DepthPass, "DepthPass")
+    #DepthPass = RenderPass(device, "DepthPass")
+    #g.addPass(DepthPass, "DepthPass")
 
     #ShadowPass = RenderPass(device, "CSM", {
     #    'cascadeCount': 4, 
     #    'mapSize': uint2(2048, 2048),
     #    'visibilityBitCount': 16,
-    #    'minDistance': 0.01,
-    #    'maxDistance': 100.0
+    #    'minDistance': 0.1,
+    #    'maxDistance': 1000.0
     #})
     #g.addPass(ShadowPass, "ShadowPass")
 
@@ -59,12 +59,7 @@ def defaultRenderGraph(device):
     #g.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
     g.addEdge("SkyBox.target", "LightingPass.color")
     
-    #g.addEdge("GBufferRaster.normW", "BlitPass.src")
-    
-    #g.markOutput("SkyBox.target")
-    #g.addEdge("GBufferRaster.diffuseOpacity", "AccumulatePass.input")
     g.addEdge("LightingPass.color", "AccumulatePass.input")
-    #g.markOutput("LightingPass.color")
     g.markOutput("AccumulatePass.output")
 
     return g
@@ -124,9 +119,9 @@ def textureLoadingDebugRenderGraph(device):
     return g
 
 rendering_device = renderer.getDevice()
-#render_graph = defaultRenderGraph(rendering_device)
+render_graph = defaultRenderGraph(rendering_device)
 #render_graph = textureResolveDebugRenderGraph(rendering_device)
-render_graph = textureLoadingDebugRenderGraph(rendering_device)
+#render_graph = textureLoadingDebugRenderGraph(rendering_device)
 
 try: renderer.addGraph(render_graph)
 except NameError: None

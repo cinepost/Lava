@@ -529,31 +529,36 @@ def vm_setexrdatawindow(obj, now, value):
     value[0] = 0
     return True
 
+def lv_light_type(obj, now, value):
+    value[0] = obj.getDefaultedString('light_type', now, ['point'])[0]
+    return True
+
 # When evaluating an integer or real property, we want to
 parmMap = {
-    'vm_areasize'       :       areasize,
-    'vm_areafullsphere' :       areafullsphere,
-    'vm_areamap'        :       areamap,
-    'vm_phantom'        :       phantom,
-    'vm_activeradius'   :       activeradius,
+    'lv_light_type'     :       lv_light_type,
+    'lv_areasize'       :       areasize,
+    'lv_areafullsphere' :       areafullsphere,
+    'lv_areamap'        :       areamap,
+    'lv_phantom'        :       phantom,
+    'lv_activeradius'   :       activeradius,
     'res'               :       shadowmap_res,
-    'vm_samples'        :       shadowmap_samples,
+    'lv_samples'        :       shadowmap_samples,
     'focal'             :       focal,
     'aperture'          :       aperture,
     'orthowidth'        :       orthowidth,
-    'vm_areashape'      :       areashape,
+    'lv_areashape'      :       areashape,
     'projection'        :       projection,
     'render_shadowmap'  :       render_shadowmap,
     'render_pointcloud' :       render_pointcloud,
-    'vm_picture'        :       vm_picture,
-    'vm_deepresolver'   :       vm_deepresolver,
-    'vm_dsmfilename'    :       vm_dsmfilename,
-    'vm_setexrdatawindow' :     vm_setexrdatawindow,
+    'lv_picture'        :       vm_picture,
+    'lv_deepresolver'   :       vm_deepresolver,
+    'lv_dsmfilename'    :       vm_dsmfilename,
+    'lv_setexrdatawindow' :     vm_setexrdatawindow,
 
     # Settings for point cloud lights
-    'vm_renderengine'   :       vm_renderengine,
-    'vm_pbrshader'      :       vm_pbrshader,
-    'vm_hidden'         :       vm_hidden,
+    'lv_renderengine'   :       vm_renderengine,
+    'lv_pbrshader'      :       vm_pbrshader,
+    'lv_hidden'         :       vm_hidden,
 
     # Shaders
     'shop_lightpath'    :       light_shader,

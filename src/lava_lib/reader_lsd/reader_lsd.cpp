@@ -108,7 +108,9 @@ bool ReaderLSD::parseStream(std::istream& in) {
                     LLOG_FTL << "Runtime error: " << re.what();
                     return false;
                 } catch (...) {
-                    LLOG_FTL << "Unknown error occured !!!";
+                    LLOG_FTL << "Unknown error occured !!! __________________________";
+                    LLOG_FTL << str;
+                    LLOG_FTL << "____________________________________________________";
                     return false;
                 }
             }

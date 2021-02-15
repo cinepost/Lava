@@ -45,6 +45,23 @@ DeviceManager::DeviceManager() {
     }
 }
 
+DeviceManager::~DeviceManager() {
+    LOG_DBG("DeviceManager::~DeviceManager");
+    for( auto& [id, pDevice]: mRenderingDevices ) {
+        if (pDevice) {
+            pDevice->cleanup();
+            pDevice.reset();
+        }
+    }
+
+    for( auto& [id, pDevice]: mDisplayDevices ) {
+        if (pDevice) {
+            pDevice->cleanup();
+            pDevice.reset();
+        }
+    }
+}
+
 std::vector<Device::SharedPtr> DeviceManager::displayDevices() {
     std::vector<Device::SharedPtr> devices;
     for( auto& device: mDisplayDevices ) {
@@ -152,11 +169,13 @@ void DeviceManager::setDefaultRenderingDevice(uint8_t gpuId) {
         mDefaultRenderingDeviceID = gpuId;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(DeviceManager) {
     pybind11::class_<DeviceManager> deviceManagerClass(m, "DeviceManager");
     deviceManagerClass.def_static("instance", [](){ return std::unique_ptr<DeviceManager, py::nodelete>(&DeviceManager::instance()); });
     deviceManagerClass.def("listDevices", &DeviceManager::listDevices);
     deviceManagerClass.def("defaultRenderingDevice", &DeviceManager::defaultRenderingDevice);
 }
+#endif
 
 }  // namespace Falcor

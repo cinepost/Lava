@@ -34,6 +34,8 @@
 #include "Falcor/Core/Framework.h"
 //#include "Falcor/Core/API/Device.h"
 
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 namespace Falcor {
 
 class Device;
@@ -142,12 +144,28 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         SharedPtr() = default;
         explicit SharedPtr(VkResource<ImageType, BufferType>* pRes) : std::shared_ptr<VkResource<ImageType, BufferType>>(pRes) {}
 
-        static SharedPtr create(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) {
-            return SharedPtr(new VkResource<ImageType, BufferType>(device, image, mem));
+        //static SharedPtr create(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) {
+        //    return SharedPtr(new VkResource<ImageType, BufferType>(device, image, mem));
+        //}
+
+        static SharedPtr create(std::shared_ptr<Device> device, ImageType image) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, image));
         }
 
-        static SharedPtr create(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) {
-            return SharedPtr(new VkResource<ImageType, BufferType>(device, buffer, mem));
+        static SharedPtr create(std::shared_ptr<Device> device, ImageType image, VmaAllocation allocation) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, image, allocation));
+        }
+
+        //static SharedPtr create(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) {
+        //    return SharedPtr(new VkResource<ImageType, BufferType>(device, buffer, mem));
+        //}
+
+        static SharedPtr create(std::shared_ptr<Device> device, BufferType buffer) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, buffer));
+        }
+
+        static SharedPtr create(std::shared_ptr<Device> device, BufferType buffer, VmaAllocation allocation) {
+            return SharedPtr(new VkResource<ImageType, BufferType>(device, buffer, allocation));
         }
 
         VkResourceType getType() const { return get()->mType; }
@@ -157,6 +175,8 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         operator ImageType() const {assert(get()->mType == VkResourceType::Image); return get()->mImage; }
         operator BufferType() const { assert(get()->mType == VkResourceType::Buffer); return get()->mBuffer; }
         operator VkDeviceMemory() const { return get()->mDeviceMem; }
+
+        const VmaAllocation& allocation() const { return get()->mAllocation; }
 
      private:
         VkResource<ImageType, BufferType>* get() const { return std::shared_ptr<VkResource<ImageType, BufferType>>::get(); }
@@ -170,14 +190,23 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
 
  private:
     friend SharedPtr;
-    VkResource(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { }
+    //VkResource(std::shared_ptr<Device> device, ImageType image, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) { }
     
-    VkResource(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { }
+    //VkResource(std::shared_ptr<Device> device, BufferType buffer, VkDeviceMemory mem) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(mem) { }
+
+    VkResource(std::shared_ptr<Device> device, ImageType image) : VkBaseApiHandle(device), mType(VkResourceType::Image), mImage(image), mDeviceMem(VK_NULL_HANDLE) { }
+    
+    VkResource(std::shared_ptr<Device> device, BufferType buffer) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mDeviceMem(VK_NULL_HANDLE) { }
+
+    VkResource(std::shared_ptr<Device> device, ImageType image, VmaAllocation allocation) : VkBaseApiHandle(device), mType(VkResourceType::Image), mImage(image), mAllocation(allocation) { }
+    
+    VkResource(std::shared_ptr<Device> device, BufferType buffer, VmaAllocation allocation) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mAllocation(allocation) { }
 
     VkResourceType mType = VkResourceType::None;
     ImageType mImage = VK_NULL_HANDLE;
     BufferType mBuffer = VK_NULL_HANDLE;
     VkDeviceMemory mDeviceMem = VK_NULL_HANDLE;
+    VmaAllocation mAllocation = {};
 };
 
 class VkFbo : public VkBaseApiHandle {

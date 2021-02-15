@@ -137,6 +137,13 @@ std::shared_ptr<Geo> Global::addGeo() {
 
 /* Geo */
 
+ika::bgeo::Bgeo::SharedPtr Geo::bgeo() { 
+	if(!mpBgeo)
+		mpBgeo = ika::bgeo::Bgeo::create();
+
+	return mpBgeo;
+}
+
 Geo::SharedPtr Geo::create(ScopeBase::SharedPtr pParent) {
 	auto pSegment = Geo::SharedPtr(new Geo(pParent));
 	return std::move(pSegment);

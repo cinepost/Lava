@@ -53,6 +53,8 @@ class dlldecl DeviceManager {
         return instance;                    // Instantiated on first use.
     }
 
+    ~DeviceManager();
+
     const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
     std::vector<Device::SharedPtr> displayDevices();
     std::vector<Device::SharedPtr> renderingDevices();

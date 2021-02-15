@@ -36,6 +36,9 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
+#define VMA_IMPLEMENTATION
+#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+
 #include "VKDevice.h"
 
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
@@ -119,11 +122,16 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
     return true;
 }
 
+Device::~Device() {
+    LOG_DBG("Device::~Device");
+    vmaDestroyAllocator(mAllocator);
+}
+
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle &apiHandle) {
     // https://github.com/SaschaWillems/Vulkan/blob/master/examples/offscreen/offscreen.cpp
 
     VkImage image;
-
+    VmaAllocation allocation;
     VkImageCreateInfo imageInfo = {};
 
     imageInfo.arrayLayers = 1;
@@ -143,26 +151,32 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 
-    auto result = vkCreateImage(mApiHandle, &imageInfo, nullptr, &image);
+    //auto result = vkCreateImage(mApiHandle, &imageInfo, nullptr, &image);
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    
+    auto result = vmaCreateImage(mAllocator, &imageInfo, &allocInfo, &image, &allocation, nullptr );   
     if (VK_FAILED(result)) {
         throw std::runtime_error("Failed to create FBO texture.");
     }
 
-    // Allocate the GPU memory
-    VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(mApiHandle, image, &memRequirements);
+//    // Allocate the GPU memory
+//    VkMemoryRequirements memRequirements;
+//    vkGetImageMemoryRequirements(mApiHandle, image, &memRequirements);
 
-    VkDeviceMemory deviceMem;
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = getVkMemoryType(Device::MemoryType::Default, memRequirements.memoryTypeBits);
+//    VkDeviceMemory deviceMem;
+//    VkMemoryAllocateInfo allocInfo = {};
+//    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//    allocInfo.allocationSize = memRequirements.size;
+//    allocInfo.memoryTypeIndex = getVkMemoryType(Device::MemoryType::Default, memRequirements.memoryTypeBits);
 
-    vk_call(vkAllocateMemory(mApiHandle, &allocInfo, nullptr, &deviceMem));
+//    vk_call(vkAllocateMemory(mApiHandle, &allocInfo, nullptr, &deviceMem));
 
-    vkBindImageMemory(mApiHandle, image, deviceMem, 0);
+//    vkBindImageMemory(mApiHandle, image, deviceMem, 0);
     
-    apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
+//    apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
+    apiHandle = ResourceHandle::create(shared_from_this(), image, allocation);
     return true;
 }
 
@@ -175,7 +189,10 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     std::vector<VkImage> swapchainImages(imageCount);
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
     for (size_t i = 0; i < swapchainImages.size(); i++) {
-        apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], nullptr);
+        VmaAllocationCreateInfo imageAllocCreateInfo = {};
+        imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        //apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], nullptr);
     }
 
     // Get the back-buffer
@@ -196,6 +213,9 @@ void Device::destroyApiObjects() {
     for (auto& f : mpApiData->presentFences.f) {
         vkDestroyFence(mApiHandle, f, nullptr);
     }
+
+    //vmaDestroyAllocator(mAllocator);
+
     safe_delete(mpApiData);
 }
 
@@ -674,6 +694,16 @@ bool Device::apiInit() {
             return false;
         }
     }
+
+    VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
+    vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_0;
+    vmaAllocatorCreateInfo.physicalDevice =physicalDevice;
+    vmaAllocatorCreateInfo.device = device;
+    vmaAllocatorCreateInfo.instance = instance;
+    vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
+    vmaAllocatorCreateInfo.pRecordSettings = nullptr;
+ 
+    vk_call(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mAllocator));
 
     return true;
 }

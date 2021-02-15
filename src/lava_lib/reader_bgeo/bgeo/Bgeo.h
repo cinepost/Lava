@@ -24,13 +24,24 @@ namespace parser {
 class Detail;
 }
 
-class Bgeo {
+class Bgeo: public std::enable_shared_from_this<Bgeo> {
  public:
-    Bgeo();
-    explicit Bgeo(std::istream& in, bool checkVersion = false);
-    explicit Bgeo(const std::string& bgeoString, bool checkVersion = false);
-    explicit Bgeo(const char* bgeoPath, bool checkVersion = true);
-    explicit Bgeo(std::shared_ptr<parser::Detail> detail);
+    using SharedPtr = std::shared_ptr<Bgeo>;
+    using SharedConstPtr = std::shared_ptr<const Bgeo>;
+    using UniquePtr = std::unique_ptr<Bgeo>;
+    using UniqueConstPtr = std::unique_ptr<const Bgeo>;
+
+    //static UniquePtr createUnique(std::istream& in, bool checkVersion = false);
+    static UniquePtr createUnique(const std::string& bgeoString, bool checkVersion = false);
+    static UniquePtr createUnique(const char* bgeoPath, bool checkVersion = true);
+    static UniquePtr createUnique(std::shared_ptr<parser::Detail> detail);
+
+    //static SharedPtr create(std::istream& in, bool checkVersion = false);
+    static SharedPtr create();
+    static SharedPtr create(const std::string& bgeoString, bool checkVersion = false);
+    static SharedPtr create(const char* bgeoPath, bool checkVersion = true);
+    static SharedPtr create(std::shared_ptr<parser::Detail> detail);
+
     ~Bgeo(); // dtor required for unique_ptr
 
     bool readInlineGeo(const std::string& bgeoString, bool checkVersion = false);
@@ -89,10 +100,17 @@ class Bgeo {
     void getPrimitiveGroup(int64_t index, std::vector<int32_t>& indices) const;
 
  private:
+    Bgeo();
+    explicit Bgeo(std::istream& in, bool checkVersion = false);
+    explicit Bgeo(const std::string& bgeoString, bool checkVersion = false);
+    explicit Bgeo(const char* bgeoPath, bool checkVersion = true);
+    explicit Bgeo(std::shared_ptr<parser::Detail> detail);
+    explicit Bgeo(Bgeo&& b) noexcept;
+
     // use pimpl here to avoid include UT classes
     class Impl;
     std::unique_ptr<Impl> m_pimpl;
-
+    
     mutable std::vector<PrimitivePtr> m_primitiveCache;
 };
 

@@ -92,6 +92,7 @@ Sampler::SharedPtr Sampler::getDefault(std::shared_ptr<Device> device) {
     return gSamplerData.pDefaultSampler;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(Sampler) {
     pybind11::class_<Sampler, Sampler::SharedPtr>(m, "Sampler");
 
@@ -106,5 +107,6 @@ SCRIPT_BINDING(Sampler) {
         addressMode.value("Border", Sampler::AddressMode::Border);
         addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
 }
+#endif
 
 }  // namespace Falcor

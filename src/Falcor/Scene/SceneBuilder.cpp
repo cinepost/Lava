@@ -25,6 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <mutex>
+
 #ifdef _WIN32
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -36,6 +38,14 @@ namespace fs = boost::filesystem;
 #include "stdafx.h"
 #include "SceneBuilder.h"
 #include "../Externals/mikktspace/mikktspace.h"
+
+
+std::mutex g_meshes_mutex;
+std::mutex g_materials_mutex;
+std::mutex g_buffers_mutex;
+std::mutex g_buffers_indices_mutex;
+std::mutex g_buffers_static_data_mutex;
+std::mutex g_buffers_dynamic_data_mutex;
 
 namespace Falcor {
     
@@ -227,6 +237,245 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     mDirty = true;
 }
 
+/*uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
+    logInfo("Adding mesh '" + meshDesc.name + "'");
+    TimeReport timeReport;
+
+    // Copy the mesh desc so we can update it. The caller retains the ownership of the data.
+    Mesh mesh = meshDesc;
+
+    // Error checking.
+    auto throw_on_missing_element = [&](const std::string& element) {
+        throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nThe mesh is missing " + element + ".");
+    };
+
+    auto missing_element_warning = [&](const std::string& element) {
+        logWarning("The mesh '" + mesh.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
+    };
+
+    if (mesh.topology != Vao::Topology::TriangleList) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nOnly triangle list topology is supported.");
+    if (mesh.pMaterial == nullptr) throw_on_missing_element("material");
+
+    if (mesh.faceCount == 0) throw_on_missing_element("faces");
+    if (mesh.vertexCount == 0) throw_on_missing_element("vertices");
+    if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
+    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
+
+    if (mesh.positions.pData == nullptr) throw_on_missing_element("positions");
+    if (mesh.normals.pData == nullptr) missing_element_warning("normals");
+    if (mesh.texCrds.pData == nullptr) missing_element_warning("texture coordinates");
+
+    if (mesh.hasBones()) {
+        if (mesh.boneIDs.pData == nullptr) throw_on_missing_element("bone IDs");
+        if (mesh.boneWeights.pData == nullptr) throw_on_missing_element("bone weights");
+    }
+
+    timeReport.measure("SceneBuilder::addMesh early checks");
+
+    // Generate tangent space if that's required.
+#if 0
+    std::vector<float4> tangents;
+    if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
+        tangents = MikkTSpaceWrapper::generateTangents(mesh);
+        if (!tangents.empty()) {
+            assert(tangents.size() == mesh.indexCount);
+            mesh.tangents.pData = tangents.data();
+            mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
+        } else {
+            mesh.tangents.pData = nullptr;
+            mesh.tangents.frequency = Mesh::AttributeFrequency::None;
+        }
+    }
+#endif
+
+    timeReport.measure("SceneBuilder::addMesh tangent space generation");
+
+    // Build new vertex/index buffers by merging identical vertices.
+    // The search is based on the topology defined by the original index buffer.
+    //
+    // A linked-list of vertices is built for each original vertex index.
+    // We iterate over all vertices and first check if a vertex is identical to any of the other vertices
+    // using the same original vertex index. If not, a new vertex is inserted and added to the list.
+    // The 'heads' array point to the first vertex in each list, and each vertex has an associated next-pointer.
+    // This ensures that adding to the linked lists do not require any dynamic memory allocation.
+    //
+    const uint32_t invalidIndex = 0xffffffff;
+    std::vector<std::pair<Mesh::Vertex, uint32_t>> vertices;
+    vertices.reserve(mesh.vertexCount);
+    std::vector<uint32_t> indices(mesh.indexCount);
+    std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
+
+    for (uint32_t face = 0; face < mesh.faceCount; face++) {
+        for (uint32_t vert = 0; vert < 3; vert++) {
+            const Mesh::Vertex v = mesh.getVertex(face, vert);
+            const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
+
+            // Iterate over vertex list to check if it already exists.
+            assert(origIndex < heads.size());
+            uint32_t index = heads[origIndex];
+            bool found = false;
+
+            while (index != invalidIndex) {
+                if (compareVertices(v, vertices[index].first)) {
+                    found = true;
+                    break;
+                }
+                index = vertices[index].second;
+            }
+
+            // Insert new vertex if we couldn't find it.
+            if (!found) {
+                assert(vertices.size() < std::numeric_limits<uint32_t>::max());
+                index = (uint32_t)vertices.size();
+                vertices.push_back({ v, heads[origIndex] });
+                heads[origIndex] = index;
+            }
+
+            // Store new vertex index.
+            indices[face * 3 + vert] = index;
+        }
+    }
+
+    timeReport.measure("SceneBuilder::addMesh new vertex/index buffer generation");
+
+    assert(vertices.size() > 0);
+    assert(indices.size() == mesh.indexCount);
+    if (vertices.size() != mesh.vertexCount) {
+        logInfo("Mesh with name '" + mesh.name + "' had original vertex count " + std::to_string(mesh.vertexCount) + ", new vertex count " + std::to_string(vertices.size()));
+    }
+
+    // Validate vertex data to check for invalid numbers and missing tangent frame.
+    size_t invalidCount = 0;
+    size_t zeroCount = 0;
+    for (const auto& v : vertices) {
+        validateVertex(v.first, invalidCount, zeroCount);
+    }
+    if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
+    if (zeroCount > 0) logWarning("The mesh '" + mesh.name + "' has zero-length normals/tangents at " + std::to_string(zeroCount) + " vertices. Please fix the asset.");
+
+    timeReport.measure("SceneBuilder::addMesh vertex data validation");
+
+    // Match texture coordinate quantization for textured emissives to match PackedEmissiveTriangle.
+    // This is to avoid mismatch when sampling and evaluating emissive triangles.
+    if (mesh.pMaterial->getEmissiveTexture() != nullptr) {
+        float2 minTexCrd = float2(std::numeric_limits<float>::infinity());
+        float2 maxTexCrd = float2(-std::numeric_limits<float>::infinity());
+        float2 maxError = float2(0);
+
+        for (auto& v : vertices) {
+            float2 texCrd = v.first.texCrd;
+            minTexCrd = min(minTexCrd, texCrd);
+            maxTexCrd = max(maxTexCrd, texCrd);
+            v.first.texCrd = f16tof32(f32tof16(texCrd));
+            maxError = max(maxError, abs(v.first.texCrd - texCrd));
+        }
+
+        // Issue warning if quantization errors are too large.
+        float2 maxAbsCrd = max(abs(minTexCrd), abs(maxTexCrd));
+        if (maxAbsCrd.x > HLF_MAX || maxAbsCrd.y > HLF_MAX) {
+            logWarning("Texture coordinates for emissive textured mesh '" + mesh.name + "' are outside the representable range, expect rendering errors.");
+        } else {
+            // Compute maximum quantization error in texels.
+            // The texcoords are used for all texture channels so taking the maximum dimensions.
+            uint2 maxTexDim = mesh.pMaterial->getMaxTextureDimensions();
+            maxError *= maxTexDim;
+            float maxTexelError = std::max(maxError.x, maxError.y);
+
+            if (maxTexelError > kMaxTexelError) {
+                std::ostringstream oss;
+                oss << "Texture coordinates for emissive textured mesh '" << mesh.name << "' have a large quantization error of " << maxTexelError << " texels. "
+                    << "The coordinate range is [" << minTexCrd.x << ", " << maxTexCrd.x << "] x [" << minTexCrd.y << ", " << maxTexCrd.y << "] for maximum texture dimensions ("
+                    << maxTexDim.x << ", " << maxTexDim.y << ").";
+                logWarning(oss.str());
+            }
+        }
+    }
+
+    timeReport.measure("SceneBuilder::addMesh texture coordinates quantization");
+
+    // Add the mesh to the scene.
+    // If the non-indexed vertices build flag is set, we will de-index the data below.
+    const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
+    const uint32_t outputVertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
+
+    uint32_t ret = 0;
+    MeshSpec* spec;
+    {
+        const std::lock_guard<std::mutex> lock(g_meshes_mutex);
+        mMeshes.push_back({});
+        spec = &mMeshes.back();
+
+        assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
+        ret = (uint32_t)mMeshes.size() - 1;
+    }
+
+    {
+    const std::lock_guard<std::mutex> lock(g_buffers_mutex);
+    assert(mBuffersData.staticData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.dynamicData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.indices.size() <= std::numeric_limits<uint32_t>::max());
+    spec->staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
+    spec->dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
+    }
+
+    if (isIndexed) {
+        const std::lock_guard<std::mutex> lock(g_buffers_indices_mutex);
+        spec->indexOffset = (uint32_t)mBuffersData.indices.size();
+        spec->indexCount = mesh.indexCount;
+    }
+
+    spec->vertexCount = outputVertexCount;
+    spec->topology = mesh.topology;
+    spec->materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
+
+    if (mesh.hasBones()) {
+        spec->hasDynamicData = true;
+    }
+
+    // Copy indices into global index array.
+    if (isIndexed) {
+        const std::lock_guard<std::mutex> lock(g_buffers_indices_mutex);
+        mBuffersData.indices.insert(mBuffersData.indices.end(), indices.begin(), indices.end());
+    }
+
+    // Copy vertices into global vertex arrays.
+    {
+    const std::lock_guard<std::mutex> lock1(g_buffers_static_data_mutex);
+    const std::lock_guard<std::mutex> lock2(g_buffers_dynamic_data_mutex);
+
+    for (uint32_t i = 0; i < outputVertexCount; i++) {
+        uint32_t index = isIndexed ? i : indices[i];
+        assert(index < vertices.size());
+        const Mesh::Vertex& v = vertices[index].first;
+
+        StaticVertexData s;
+        s.position = v.position;
+        s.normal = v.normal;
+        s.texCrd = v.texCrd;
+        //s.tangent = v.tangent;
+
+        mBuffersData.staticData.push_back(PackedStaticVertexData(s));    
+
+        if (mesh.hasBones()) {
+            DynamicVertexData d;
+            d.boneWeight = v.boneWeights;
+            d.boneID = v.boneIDs;
+            d.staticIndex = (uint32_t)mBuffersData.staticData.size() - 1;
+            d.globalMatrixID = 0; // This will be initialized in createMeshData()
+            mBuffersData.dynamicData.push_back(d);
+        }
+    }
+
+    }
+
+    mDirty = true;
+
+    timeReport.measure("SceneBuilder::addMesh final steps");
+    timeReport.addTotal("SceneBuilder::addMesh done in");
+    timeReport.printToLog();
+
+    logInfo("Mesh '" + meshDesc.name + "' added.");
+    return ret;
+}*/
+
 uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     logInfo("Adding mesh '" + meshDesc.name + "'");
     TimeReport timeReport;
@@ -388,23 +637,33 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
     const uint32_t outputVertexCount = isIndexed ? (uint32_t)vertices.size() : mesh.indexCount;
 
-    mMeshes.push_back({});
-    MeshSpec& spec = mMeshes.back();
-    assert(mBuffersData.staticData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.dynamicData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.indices.size() <= std::numeric_limits<uint32_t>::max());
-    spec.staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
-    spec.dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
 
+    uint32_t ret = 0;
+    MeshSpec* spec;
+    
+    const std::lock_guard<std::mutex> lock(g_meshes_mutex);
+
+    mMeshes.push_back({});
+    spec = &mMeshes.back();
+
+    assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
+    ret = (uint32_t)mMeshes.size() - 1;
+    
+    assert(mBuffersData.staticData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.dynamicData.size() <= std::numeric_limits<uint32_t>::max() && mBuffersData.indices.size() <= std::numeric_limits<uint32_t>::max());
+    spec->staticVertexOffset = (uint32_t)mBuffersData.staticData.size();
+    spec->dynamicVertexOffset = (uint32_t)mBuffersData.dynamicData.size();
+    
     if (isIndexed) {
-        spec.indexOffset = (uint32_t)mBuffersData.indices.size();
-        spec.indexCount = mesh.indexCount;
+        spec->indexOffset = (uint32_t)mBuffersData.indices.size();
+        spec->indexCount = mesh.indexCount;
     }
 
-    spec.vertexCount = outputVertexCount;
-    spec.topology = mesh.topology;
-    spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
+    spec->vertexCount = outputVertexCount;
+    spec->topology = mesh.topology;
+    spec->materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
 
     if (mesh.hasBones()) {
-        spec.hasDynamicData = true;
+        spec->hasDynamicData = true;
     }
 
     // Copy indices into global index array.
@@ -413,6 +672,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     }
 
     // Copy vertices into global vertex arrays.
+    
     for (uint32_t i = 0; i < outputVertexCount; i++) {
         uint32_t index = isIndexed ? i : indices[i];
         assert(index < vertices.size());
@@ -423,7 +683,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         s.normal = v.normal;
         s.texCrd = v.texCrd;
         //s.tangent = v.tangent;
-        mBuffersData.staticData.push_back(PackedStaticVertexData(s));
+
+        mBuffersData.staticData.push_back(PackedStaticVertexData(s));    
 
         if (mesh.hasBones()) {
             DynamicVertexData d;
@@ -435,21 +696,22 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         }
     }
 
+    
     mDirty = true;
-
-    assert(mMeshes.size() <= std::numeric_limits<uint32_t>::max());
 
     timeReport.measure("SceneBuilder::addMesh final steps");
     timeReport.addTotal("SceneBuilder::addMesh done in");
     timeReport.printToLog();
 
     logInfo("Mesh '" + meshDesc.name + "' added.");
-    return (uint32_t)mMeshes.size() - 1;
+    return ret;
 }
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate)
 {
     assert(pMaterial);
+
+    const std::lock_guard<std::mutex> lock(g_materials_mutex);
 
     // Reuse previously added materials
     if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())

@@ -106,6 +106,20 @@ private:
     void initBasePageData(BaseData& data, size_t size);
 };
 
+inline const std::string to_string(GpuMemoryHeap::Type t) {
+        #define type_2_string(a) case GpuMemoryHeap::Type::a: return #a;
+        switch(t) {
+            type_2_string(Default);
+            type_2_string(Upload);
+            type_2_string(Readback);
+            type_2_string(Count);
+            default:
+                should_not_get_here();
+                return "";
+        }
+        #undef type_2_string
+    }
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_GPUMEMORYHEAP_H_

@@ -40,8 +40,8 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
-class PythonImporterImpl
-{
+#ifdef SCRIPTING
+class PythonImporterImpl {
 public:
     PythonImporterImpl(SceneBuilder& builder);
     bool load(const std::string& filename);
@@ -157,5 +157,6 @@ REGISTER_IMPORTER(
         "pyscene"
     })
 )
+#endif
 
 }  // namespace Falcor

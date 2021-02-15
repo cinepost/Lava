@@ -122,6 +122,11 @@ void AccumulatePass::compile(RenderContext* pContext, const CompileData& compile
     }
 }
 
+void AccumulatePass::enableAccumulation(bool enable) {
+    reset();
+    mEnableAccumulation = enable;
+}
+
 void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     if (mAutoReset) {
         if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.

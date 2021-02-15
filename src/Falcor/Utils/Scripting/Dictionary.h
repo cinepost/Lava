@@ -31,10 +31,17 @@
 #include <memory>
 #include <string>
 
+#ifdef SCRIPTING
 #include <pybind11/pybind11.h>
+#else
+#include "Falcor/Utils/InternalDictionary.h"
+#endif
+
+
 
 namespace Falcor {
 
+#ifdef SCRIPTING
 class __attribute__((visibility("default"))) Dictionary {
     public:
         using Container = pybind11::dict;
@@ -112,6 +119,12 @@ class __attribute__((visibility("default"))) Dictionary {
     private:
         Container mMap;
     };
+
+#endif  // scripting
+
+class Dictionary: public InternalDictionary {
+
+};
 
 }  // namespace Falcor
 

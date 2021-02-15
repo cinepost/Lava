@@ -39,6 +39,7 @@ bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other)
 }
 
 ComputeStateObject::~ComputeStateObject() {
+	assert(mpDevice);
     mpDevice->releaseResource(mApiHandle);
 }
 
