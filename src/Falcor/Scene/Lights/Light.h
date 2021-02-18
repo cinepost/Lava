@@ -142,7 +142,7 @@ protected:
     bool mActiveChanged = false;
 
     /* These two variables track mData values for consistent UI operation.*/
-    float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
+    float3 mUiLightIntensityColor = float3(1.0f, 1.0f, 1.0f);
     float mUiLightIntensityScale = 1.0f;
     LightData mData, mPrevData;
     Changes mChanges = Changes::None;

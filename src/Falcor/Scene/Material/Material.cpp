@@ -39,8 +39,8 @@ static_assert(sizeof(MaterialData) % 16 == 0, "Material::MaterialData size shoul
 
 Material::UpdateFlags Material::sGlobalUpdates = Material::UpdateFlags::None;
 
-Material::Material(std::shared_ptr<Device> pDevice, const std::string& name) : mpDevice(pDevice), mName(name)
-{
+Material::Material(std::shared_ptr<Device> pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
+    markUpdates(UpdateFlags::DataChanged);
 }
 
 Material::SharedPtr Material::create(std::shared_ptr<Device> pDevice, const std::string& name)
@@ -178,11 +178,16 @@ void Material::setAlphaThreshold(float alpha)
     }
 }
 
-void Material::setIndexOfRefraction(float IoR)
-{
-    if (mData.IoR != IoR)
-    {
+void Material::setIndexOfRefraction(float IoR) {
+    if (mData.IoR != IoR) {
         mData.IoR = IoR;
+        markUpdates(UpdateFlags::DataChanged);
+    }
+}
+
+void Material::setReflectivity(float reflectivity) {
+    if (mData.reflectivity != reflectivity) {
+        mData.reflectivity = reflectivity;
         markUpdates(UpdateFlags::DataChanged);
     }
 }

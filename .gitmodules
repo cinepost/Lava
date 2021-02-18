@@ -61,3 +61,6 @@
 [submodule "third_party/alembic"]
 	path = third_party/alembic
 	url = https://github.com/alembic/alembic.git
+[submodule "third_party/FidelityFX-CACAO"]
+	path = third_party/FidelityFX-CACAO
+	url = https://github.com/GPUOpen-Effects/FidelityFX-CACAO.git

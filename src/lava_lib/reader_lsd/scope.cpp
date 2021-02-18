@@ -33,6 +33,15 @@ const void ScopeBase::printSummary(std::ostream& os, uint indent) const {
 
 ScopeBase::ScopeBase(SharedPtr pParent): mpParent(pParent) { }
 
+EmbeddedData& ScopeBase::getEmbeddedData(const std::string& name) {
+	auto it = mEmbeddedDataMap.find(name);
+	if( it == mEmbeddedDataMap.end()) {
+		mEmbeddedDataMap.insert({name, EmbeddedData()});
+	}
+	
+	return mEmbeddedDataMap[name];
+}
+
 /* Transformable */
 
 Transformable::Transformable(ScopeBase::SharedPtr pParent):ScopeBase(pParent) {

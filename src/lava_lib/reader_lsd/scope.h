@@ -29,6 +29,8 @@ class Fog;
 class Geo;
 class Segment;
 
+using EmbeddedData = std::vector<unsigned char>;
+
 class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this<ScopeBase> {
  public:
     using SharedPtr = std::shared_ptr<ScopeBase>;
@@ -42,9 +44,12 @@ class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this
 
     virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
 
+    EmbeddedData& getEmbeddedData(const std::string& name);
+
  protected:
     SharedPtr mpParent;
     std::vector<SharedPtr> mChildren;
+    std::unordered_map<std::string, EmbeddedData> mEmbeddedDataMap;
 };
 
 class Transformable: public ScopeBase {

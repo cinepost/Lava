@@ -33,8 +33,7 @@ __exported import Utils.Color.ColorHelpers;
 /*******************************************************************
     Spherical map sampling
 *******************************************************************/
-float2 dirToSphericalCrd(float3 direction)
-{
+float2 dirToSphericalCrdOld(float3 direction) {
     float3 p = normalize(direction);
     float2 uv;
     uv.x = (1 + atan2(-p.z, p.x) / M_PI) * 0.5;
@@ -42,10 +41,33 @@ float2 dirToSphericalCrd(float3 direction)
     return uv;
 }
 
-float3 sphericalCrdToDir(float2 uv)
-{
+// mimics houdini/mantra
+float2 dirToSphericalCrd(float3 direction) {
+    float3 p = normalize(direction);
+    float2 uv;
+    uv.x = abs((1 + atan2(p.z, p.x) / M_PI) * 0.5 + 0.25);
+    uv.x = uv.x - floor(uv.x);
+    uv.y = acos(p.y) / M_PI;
+    return uv;
+}
+
+
+float3 sphericalCrdToDirOld(float2 uv) {
     float phi = M_PI * uv.y;
     float theta = M_2PI * uv.x - (M_PI / 2.0f);
+
+    float3 dir;
+    dir.x = sin(phi) * sin(theta);
+    dir.y = cos(phi);
+    dir.z = sin(phi) * cos(theta);
+
+    return normalize(dir);
+}
+
+// mimics houdini/mantra
+float3 sphericalCrdToDir(float2 uv) {
+    float phi = M_PI * uv.y;
+    float theta = M_2PI * (1.0 - (uv.x  - 0.25)) - (M_PI / 2.0f);
 
     float3 dir;
     dir.x = sin(phi) * sin(theta);

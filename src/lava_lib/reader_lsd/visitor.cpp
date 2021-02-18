@@ -3,6 +3,7 @@
 
 #include "visitor.h"
 #include "session.h"
+#include "uudecode.h"
 
 #include "properties_container.h"
 
@@ -12,6 +13,40 @@ namespace fs = boost::filesystem;
 namespace lava { 
 
 namespace lsd {
+
+bool readEmbeddedFileUU(std::istream* pParserStream, size_t size, std::vector<unsigned char>& decoded_data) {
+    LLOG_DBG << "Reading " << size << " bytes of embedded data";
+
+    bool result = true;
+    std::istream &in = *pParserStream;
+
+    std::vector<char> buff(size);
+ 
+    // read size amount of bytes from stream into buff
+    in.unsetf(std::ios::skipws);
+    in.read((char *)buff.data(), size);
+    in.setf(std::ios::skipws);
+
+    // decode data
+    FILE* inMemFile = fmemopen((void *)buff.data(), size, "rw");
+    
+    FILE* outTestFile = fopen("/home/max/Desktop/mistery_file_decoded", "w");
+
+    if(!uu::decodeUU(inMemFile, outTestFile)) {
+        LLOG_DBG << "Error decoding embedded data !!!";
+    }
+
+    fclose(inMemFile);
+    
+    if(outTestFile)
+        fclose(outTestFile);
+    // test write
+    //std::ofstream fout("/home/max/Desktop/mistery_file", std::ios::out | std::ios::binary);
+    //fout.write((char*)&buff[0], buff.size() * sizeof(unsigned char));
+    //fout.close();
+
+    return result;
+}
 
 bool readInlineBGEO(std::istream* pParserStream, ika::bgeo::Bgeo::SharedPtr pBgeo) {
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -206,6 +241,21 @@ void Visitor::operator()(ast::cmd_raytrace const& c) const {
 
 void Visitor::operator()(ast::cmd_reset const& c) const {
 
+}
+
+void Visitor::operator()(ast::ray_embeddedfile const& c) const {
+    auto pScope = mpSession->getCurrentScope();
+    if(!pScope)
+        return;
+
+    if(c.encoding == ast::EmbedDataEncoding::UUENCODED) {
+        if(readEmbeddedFileUU(mpParserStream, c.size, pScope->getEmbeddedData(c.name))) {
+            LLOG_DBG << "Read embedded data size: " << pScope->getEmbeddedData(c.name).size();
+        }
+    } else {
+        LLOG_WRN << "Unknown embedded data encoding !!!";
+        return;
+    }
 }
 
 }  // namespace lsd

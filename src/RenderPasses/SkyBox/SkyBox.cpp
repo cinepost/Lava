@@ -70,11 +70,12 @@ namespace {
 SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
     LOG_DBG("SkyBox::SkyBox");
 
-    mpCubeScene = Scene::create(pDevice, "cube.obj");
+    mpCubeScene = Scene::create(pDevice, "SkyBox/cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
     mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.slang", "vs", "ps");
     mpProgram->addDefines(mpCubeScene->getSceneDefines());
+    mpProgram->addDefine("_SKYBOX_SOLID_MODE");
     mpVars = GraphicsVars::create(pDevice, mpProgram->getReflector());
     mpFbo = Fbo::create(pDevice);
 
@@ -149,8 +150,9 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
 
     if (!mpScene) return;
 
-    auto skyRotation = glm::eulerAngleYXZ(0.0, -90.0, 0.0);
+    //auto skyRotation = glm::eulerAngleYXZ(0.0, -90.0, 0.0);
     glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());
+    world *= mTransformMatrix;
     mpVars["PerFrameCB"]["gWorld"] = world;
     mpVars["PerFrameCB"]["gScale"] = mScale;
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
@@ -203,8 +205,13 @@ void SkyBox::setTexture(const std::string& texName, bool loadAsSrgb) {
 void SkyBox::setTexture(const Texture::SharedPtr& pTexture) {
     mpTexture = pTexture;
     if (mpTexture) {
+        mSolidMode = false;
+        mpProgram->removeDefine("_SKYBOX_SOLID_MODE");
         assert(mpTexture->getType() == Texture::Type::TextureCube || mpTexture->getType() == Texture::Type::Texture2D);
         (mpTexture->getType() == Texture::Type::Texture2D) ? mpProgram->addDefine("_SPHERICAL_MAP") : mpProgram->removeDefine("_SPHERICAL_MAP");
+    } else {
+        mSolidMode = true;
+        mpProgram->addDefine("_SKYBOX_SOLID_MODE");
     }
     mpVars["gTexture"] = mpTexture;
 }

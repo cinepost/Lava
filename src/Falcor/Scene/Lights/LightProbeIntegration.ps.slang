@@ -111,7 +111,8 @@ float4 integrateDiffuseLD(float3 N)
             float2 uv = dirToSphericalCrd(L);
             float LdotH = saturate(dot(L, normalize(V + L)));
             float NdotV = saturate(dot(N, V));
-            float brdf = disneyDiffuseFresnel(NdotV, NdotL, LdotH, 0);
+            //float brdf = disneyDiffuseFresnel(NdotV, NdotL, LdotH, 0);
+            float brdf = evalDiffuseFresnel(NdotV, NdotL, LdotH, 0);
             accumulation += gInputTex.Sample(gSampler, uv).rgb * brdf;
             accBrdf += brdf;
         }
@@ -201,7 +202,8 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         {
             LdotH = saturate(dot(L, normalize(V + L)));
             NdotV = saturate(dot(N, V));
-            accumulation.b += disneyDiffuseFresnel(NdotV, NdotL, LdotH, sqrt(roughness));
+            //accumulation.b += disneyDiffuseFresnel(NdotV, NdotL, LdotH, sqrt(roughness));
+            accumulation.b += evalDiffuseFresnel(NdotV, NdotL, LdotH, sqrt(roughness));
         }
     }
 

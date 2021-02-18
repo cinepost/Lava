@@ -29,10 +29,15 @@
 #include "Bitmap.h"
 #include "BitmapUtils.h"
 
+#include <OpenImageIO/imageio.h>
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
+
 #include "FreeImage.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/StringUtils.h"
 
+namespace oiio = OpenImageIO_v2_3;
 
 namespace Falcor {
 
@@ -41,6 +46,96 @@ static void genError(const std::string& errMsg, const std::string& filename) {
     logError(err);
 }
 
+Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+    std::string fullpath;
+    if (findFileInDataDirectories(filename, fullpath) == false) {
+        logError("Error when loading image file. Can't find image file " + filename);
+        return nullptr;
+    }
+
+    auto in = oiio::ImageInput::open(fullpath);
+    if (!in) {
+        LOG_ERR("Error reading image file %s", fullpath.c_str());
+        return nullptr;
+    }
+    const oiio::ImageSpec &spec_tmp = in->spec(); // original image spec
+
+    // Create the bitmap
+    auto pBmp = new Bitmap;
+    pBmp->mHeight = spec_tmp.width;
+    pBmp->mWidth = spec_tmp.height;
+
+    if (pBmp->mHeight == 0 || pBmp->mWidth == 0) {
+        genError("Invalid image", filename);
+        return nullptr;
+    }
+
+    uint32_t bpp = spec_tmp.pixel_bytes() * 8;
+    switch(bpp) {
+        case 128:
+            pBmp->mFormat = ResourceFormat::RGBA32Float;    // 4xfloat32 HDR format
+            break;
+        case 96:
+            pBmp->mFormat = isRGB32fSupported(pDevice) ? ResourceFormat::RGB32Float : ResourceFormat::RGBA32Float;     // 3xfloat32 HDR format
+            break;
+        case 64:
+            pBmp->mFormat = ResourceFormat::RGBA16Float;    // 4xfloat16 HDR format
+            break;
+        case 48:
+            pBmp->mFormat = ResourceFormat::RGB16Float;     // 3xfloat16 HDR format
+            break;
+        case 32:
+            pBmp->mFormat = ResourceFormat::BGRA8Unorm;
+            break;
+        case 24:
+            pBmp->mFormat = ResourceFormat::BGRX8Unorm;
+            break;
+        case 16:
+            pBmp->mFormat = ResourceFormat::RG8Unorm;
+            break;
+        case 8:
+            pBmp->mFormat = ResourceFormat::R8Unorm;
+            break;
+        default:
+            genError("Unknown bits-per-pixel", filename);
+            return nullptr;
+    }
+
+    oiio::ImageBuf srcBuff;
+
+    // Convert the image to RGBX image
+    if(bpp == 24 || bpp == 96) {
+        int channelorder[] = { 0, 1, 2, -1 /*use a float value*/ };
+        float channelvalues[] = { 0 /*ignore*/, 0 /*ignore*/, 0 /*ignore*/, 1.0 };
+        std::string channelnames[] = { "", "", "", "A" };
+
+        oiio::ImageBuf tmpBuffRGB(fullpath);
+
+        if (bpp == 24) {
+            logWarning("Converting 24-bit texture to 32-bit");
+            bpp = 32;
+            srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
+        }
+        else if (bpp == 96 && (isRGB32fSupported(pDevice) == false))
+        {
+            logWarning("Converting 96-bit texture to 128-bit");
+            bpp = 128;
+            srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
+        }
+    } else {
+        srcBuff = oiio::ImageBuf(fullpath);
+    }
+
+    auto const& spec = srcBuff.spec(); // readed/converted image spec
+    uint32_t bytesPerPixel = spec.pixel_bytes();
+
+    pBmp->mpData = new uint8_t[pBmp->mHeight * pBmp->mWidth * bytesPerPixel];
+    
+    oiio::ROI roi(0, spec.width, 0, spec.height, 0, 1, /*chans:*/ 0, spec.nchannels);
+    srcBuff.get_pixels(roi, spec.format, pBmp->mpData, oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+
+    return UniqueConstPtr(pBmp);
+}
 
 Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;

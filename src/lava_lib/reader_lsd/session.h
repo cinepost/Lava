@@ -27,6 +27,7 @@ class Session {
 
  public:
  	scope::Geo::SharedPtr getCurrentGeo();
+    scope::ScopeBase::SharedPtr getCurrentScope();
 
  	bool cmdStart(lsd::ast::Style object_type);
  	bool cmdEnd();

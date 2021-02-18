@@ -177,7 +177,9 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
     probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
 
     float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.ggxAlpha);
+    
     float mipLevel = linearRoughnessToLod(sd.ggxAlpha, mipCount);
+    //float mipLevel = min(0, linearRoughnessToLod(sd.ggxAlpha, mipCount) - 1.0);
 
     float2 uv;
     if (probe.radius < 0.0f)
@@ -193,10 +195,16 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
 
     float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
 
-    float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).xy;
+    if(sd.metallic < 1.0) {
 
-    // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
-    return ld * (sd.specular * dfg.x + dfg.y);
+        float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).xy;
+        ld = lerp(ld * (sd.specular * dfg.x + dfg.y), ld * sd.specular, sd.metallic);
+    } else {
+        ld *= sd.specular;
+    }
+
+    //return ld * (sd.specular * dfg.x + dfg.y);
+    return ld;
 }
 
 /** Evaluate a 2D light-probe filtered using linear-filtering

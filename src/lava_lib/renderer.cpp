@@ -159,8 +159,9 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     auto pScene = mpSceneBuilder->getScene();
 
     assert(pScene);
-    ////
+    
 
+    //// create env map stuff
     auto pLightProbe = mpSceneBuilder->getLightProbe();
     if(pLightProbe) {
         auto pTexture = pLightProbe->getOrigTexture();
@@ -188,8 +189,11 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
 
     // SkyBox
     mpSkyBoxPass = SkyBox::create(pRenderContext);
-    mpSkyBoxPass->setTexture("/home/max/env.exr", true);
-    mpSkyBoxPass->setIntensity(1.0f);
+    
+    //mpSkyBoxPass->setTexture("/home/max/env.exr", true);
+    if(pLightProbe) {
+        mpSkyBoxPass->setIntensity(pLightProbe->getIntensity());
+    }
     mpSkyBoxPass->setScene(pRenderContext, pScene);
     auto pass3 = mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 

@@ -233,6 +233,11 @@ void EchoVisitor::operator()(ast::cmd_reset const& c) const {
     _os << "\x1b[0m\n";
 } 
 
+void EchoVisitor::operator()(ast::ray_embeddedfile const& c) const {
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> ray_embeddedfile: " << c.type << " " << c.name << " " << c.size <<"\x1b[0m\n";
+} 
+
 }  // namespace lsd
 
 }  // namespace lava

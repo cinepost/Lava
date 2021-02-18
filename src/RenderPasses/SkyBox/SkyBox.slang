@@ -37,19 +37,24 @@ TextureCube gTexture;
 SamplerState gSampler;
 
 [[vk::binding(0, 0)]]
-cbuffer PerFrameCB : register(b0)
-{
+cbuffer PerFrameCB : register(b0) {
     float4x4 gWorld;
     float4x4 gViewMat;
     float4x4 gProjMat;
     float gScale;
-    float gIntensity;
+    float3 gIntensity;
+    float3 gSolidColor;
 };
 
 [shader("vertex")]
-void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION)
-{
+void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION) {
+
+#ifdef _SKYBOX_SOLID_MODE
+    dir = float3(1.0, 0.0, 0.0);
+#else
     dir = posL.xyz;
+#endif
+
     float4 viewPos = mul(mul(posL, gWorld), gViewMat);
     posH = mul(viewPos, gProjMat);
     posH.xy *= gScale;
@@ -57,13 +62,16 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
 }
 
 [shader("fragment")]
-float4 ps(float3 dir : NORMAL) : SV_TARGET
-{
+float4 ps(float3 dir : NORMAL) : SV_TARGET {
+#ifdef _SKYBOX_SOLID_MODE
+    return float4(gIntensity, 1);
+#endif
+
 #ifdef _SPHERICAL_MAP
     float2 uv = dirToSphericalCrd(dir);
-    uv = float2(1.0 - uv.x, uv.y);
-    return gTexture.Sample(gSampler, uv) * gIntensity;
+    //uv = float2(1.0 - uv.x, uv.y);
+    return gTexture.Sample(gSampler, uv) * float4(gIntensity, 1);
 #else
-    return gTexture.SampleLevel(gSampler, normalize(dir), 0) * gIntensity;
+    return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(gIntensity, 1);
 #endif
 }

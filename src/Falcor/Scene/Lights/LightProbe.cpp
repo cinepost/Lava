@@ -33,6 +33,8 @@
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
 
+#include "Falcor/Utils/Debug/debug.h"
+
 namespace Falcor {
 
     uint32_t LightProbe::sLightProbeCount = 0;
@@ -127,6 +129,7 @@ namespace Falcor {
         : mDiffSampleCount(diffSamples)
         , mSpecSampleCount(specSamples)
     {
+        LOG_DBG("LightProbe construction started...");
         if (sIntegration.isInitialized() == false) {
             assert(sLightProbeCount == 0);
             sIntegration.init(pContext->device());
@@ -139,6 +142,7 @@ namespace Falcor {
         mData.resources.specularTexture = sIntegration.integrateSpecularLD(pContext, pTexture, specSize, preFilteredFormat, specSamples);
         mData.sharedResources = sSharedResources;
         sLightProbeCount++;
+        LOG_DBG("LightProbe construction done");
     }
 
     LightProbe::~LightProbe() {

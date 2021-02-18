@@ -56,25 +56,30 @@ struct MaterialResources {
 /** This is a host/device structure that describes a material.
 */
 struct MaterialData {
-    float4   baseColor              = float4(0);        ///< Material base color (RGB) and opacity (A).
+    float4   baseColor              = float4(0.2, 0.2, 0.2, 1.0);        ///< Material base color (RGB) and opacity (A).
     
     float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
     
     float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
-    float    roughness              = 0.0;
+    float    roughness              = 0.3;
     
     float    metalness              = 0.0;
     float    anisotropic;
     float    sheen;
     float    subsurface;
 
-    float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
+    float    emissiveFactor         = 0.f;              ///< Multiplication factor for the emissive color to control light intensity.
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
     float    IoR                    = 1.5f;             ///< Index of refraction.
     float    specularTransmission   = 0.f;              ///< Specular transmission.
 
     float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
     uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
+
+    float    reflectivity           = 1.0f;
+    float    _pad1;
+    float    _pad2;
+    float    _pad3;
 
     uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
 };

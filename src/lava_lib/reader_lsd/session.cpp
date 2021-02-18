@@ -211,7 +211,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	if(pShaderProp) {
 		auto pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-		light_color *= Falcor::float3{6.285714286, 6.285714286, 6.285714286}; // just to match houdini intensity (10 times. gamma 2.2)
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -241,6 +240,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	} else if( light_type == "env") {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
+		//envintensity
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
 		if (texture_file_name.size() == 0) {
 			LLOG_WRN << "No areamap provided for environment light. Skipping...";
@@ -249,8 +249,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		auto pDevice = pSceneBuilder->device();
 		LightProbe::SharedPtr pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float);
-    	pLightProbe->setPosW({0.0f, 0.0f, 0.0f});
-    	pLightProbe->setIntensity({1.0f, 1.0f, 1.0f});
+    	pLightProbe->setPosW(light_pos);
+
+    	//light_color /= Falcor::float3{6.28318530718, 6.28318530718, 6.28318530718}; // inv 2*PI
+    	pLightProbe->setIntensity(light_color);
     	pSceneBuilder->setLightProbe(pLightProbe);
     	return;
 	} else { 
@@ -263,6 +265,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		pLight->setName(light_name);
 		pLight->setHasAnimation(false);
+
+		light_color *= Falcor::float3{6.28318530718, 6.28318530718, 6.28318530718}; // just to match houdini intensity (2*PI)
 		pLight->setIntensity(light_color);
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
@@ -347,6 +351,10 @@ scope::Geo::SharedPtr Session::getCurrentGeo() {
 	return pGeo;
 }
 
+scope::ScopeBase::SharedPtr Session::getCurrentScope() {
+	return std::dynamic_pointer_cast<scope::ScopeBase>(mpCurrentScope);
+}
+
 void Session::cmdIPRmode(const std::string& mode) {
 	LLOG_DBG << "cmdIPRmode";
 	mIPRmode = true;
@@ -399,7 +407,7 @@ bool Session::cmdEnd() {
 		return false;
 	}
 
-	bool pushGeoAsync = true;
+	bool pushGeoAsync = false;
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -491,8 +499,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
 	uint32_t node_id = pSceneBuilder->addNode(node);
 
-	// TODO: this is naive test. Should make separate material manager with pulicate materials removal, etc
-	// fetch basic material data
+	// TODO: this is naive test. fetch basic material data
 	Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
     
     Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
@@ -509,6 +516,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     float 		 	surface_ior = 1.5;
     float 			surface_metallic = 0.0;
     float 			surface_roughness = 0.5;
+    float 			surface_reflectivity = 1.0;
 
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
@@ -526,6 +534,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
     	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
     	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
+    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
@@ -535,6 +544,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     pMaterial->setIndexOfRefraction(surface_ior);
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
+    pMaterial->setReflectivity(surface_reflectivity);
 
     LLOG_DBG << "setting material textures";
     if(surface_base_color_texture != "" && surface_use_basecolor_texture) 

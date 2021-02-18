@@ -231,6 +231,10 @@ dlldecl std::string getTempFilename();
 */
 dlldecl bool createDirectory(const std::string& path);
 
+/** Run simple shell command
+*/
+dlldecl std::string exec(const std::string& cmd);
+
 /** Given the app name and full command line arguments, begin the process
 */
 dlldecl size_t executeProcess(const std::string& appName, const std::string& commandLineArgs);

@@ -95,6 +95,9 @@ namespace ast {
 
     enum class Type { FLOAT, BOOL, INT, INT2, INT3, INT4, VECTOR2, VECTOR3, VECTOR4, MATRIX3, MATRIX4, STRING, UNKNOWN };
     enum class Style { GLOBAL, MATERIAL, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
+    enum class EmbedDataType { TEXTURE, UNKNOWN };
+    enum class EmbedDataEncoding { UUENCODED, UNKNOWN };
+
     typedef lava::Display::DisplayType DisplayType;
     
     struct ifthen;
@@ -118,6 +121,8 @@ namespace ast {
     struct cmd_declare;
     struct cmd_deviceoption;
     struct cmd_reset;
+    struct ray_embeddedfile;
+
 
     struct NoValue {
         bool operator==(NoValue const &) const { return true; }
@@ -145,7 +150,8 @@ namespace ast {
         cmd_image,
         cmd_declare,
         cmd_deviceoption,
-        cmd_reset
+        cmd_reset,
+        ray_embeddedfile
     > Command;
 
     // nullary commands
@@ -238,6 +244,13 @@ namespace ast {
         bool fogs = false;
     };
 
+    struct ray_embeddedfile {
+        EmbedDataType   type = EmbedDataType::UNKNOWN;
+        std::string     name;
+        EmbedDataEncoding encoding = EmbedDataEncoding::UNKNOWN;
+        size_t          size;
+    };
+
 }  // namespace ast
 
 static inline std::ostream& operator<<(std::ostream& os, const std::vector<std::string>& v) {
@@ -307,6 +320,14 @@ static inline std::ostream& operator<<(std::ostream& os, std::vector<PropValue> 
     return os;
 };
 
+using EmbedDataType = lava::lsd::ast::EmbedDataType;
+static inline std::string to_string(const lava::lsd::ast::EmbedDataType& t) {
+    switch(t) {
+        case EmbedDataType::TEXTURE: return "texture";
+        default: return "unknown";
+    }
+}
+
 using Type = lava::lsd::ast::Type;
 static inline std::string to_string(const lava::lsd::ast::Type& t) {
     switch(t) {
@@ -346,6 +367,10 @@ static inline std::string to_string(const lava::lsd::ast::Style& s) {
     }
 }
 
+static inline std::ostream& operator<<(std::ostream& os, EmbedDataType t) {
+    return os << to_string(t);
+};
+
 static inline std::ostream& operator<<(std::ostream& os, Type t) {
     return os << to_string(t);
 };
@@ -379,6 +404,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, array_size, style, type, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_reset)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::ray_embeddedfile, type, name, encoding, size)
 
 namespace lava { 
 
@@ -430,7 +456,8 @@ namespace parser {
         = lexeme[+graph];
 
     auto const string_char
-        = esc_char | alnum | char(':') | char_("$/_.:-+@!~?");
+        = esc_char | alnum | char_('-') | char_('"') | char_('$') | char_('/') | char_('_') | char_('.') | 
+         char_(':') | char_('+') | char_('@') | char_('!') | char_('~') | char_('?');
 
     x3::rule<class unquoted_string_, std::string> const unquoted_string = "unquoted_string";
     auto const unquoted_string_def = //lexeme[+(~char_(" \"\'"))];
@@ -465,7 +492,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(obj_name)
 
     x3::rule<class unquoted_filename_, std::string> const unquoted_filename = "unquoted_filename";
-    auto const unquoted_filename_def = lexeme[+string_char];
+    auto const unquoted_filename_def = lexeme[string_char >> *(string_char)];
     BOOST_SPIRIT_DEFINE(unquoted_filename)
 
     x3::rule<class quoted_filename_filename_, std::string> const quoted_filename = "quoted_filename";
@@ -537,7 +564,7 @@ namespace parser {
     auto const keyword
         = x3::rule<class keyword>{"keyword"}
         = x3::lit("setenv") | lit("cmd_time") | lit("cmd_property") | lit("cmd_image") | lit("cmd_transform") | lit("cmd_end") | lit("cmd_detail") | lit("cmd_deviceoption") | lit("cmd_start")
-        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode");
+        | lit("cmd_version") | lit("cmd_defaults") | lit("cmd_declare") | lit("cmd_config") | lit("cmd_mtransform") | lit("cmd_reset") | lit("cmd_iprmode") | lit("ray_embeddedfile");
 
     x3::rule<class prop_values_, std::vector<PropValue>> const prop_values = "prop_values";
     auto const prop_values_def = *(prop_value - keyword);
@@ -623,6 +650,18 @@ namespace parser {
                 ;
         }
     } const display_type;
+
+    struct EmbeddedDataTypeTable : x3::symbols<ast::EmbedDataType> {
+        EmbeddedDataTypeTable() {
+            add ("texture"   , ast::EmbedDataType::TEXTURE);
+        }
+    } const embedded_data_type;
+
+    struct EmbeddedDataEncodingTable : x3::symbols<ast::EmbedDataEncoding> {
+        EmbeddedDataEncodingTable() {
+            add ("binary-uu"   , ast::EmbedDataEncoding::UUENCODED);
+        }
+    } const embedded_data_encoding;
 
     //x3::rule<class object_, ast::Object> const object = "object";
     //auto const object_def = lexeme["global" | "geo" | "geometry"];
@@ -759,8 +798,12 @@ namespace parser {
         = x3::rule<class endif, ast::endif>{"endif"}
         = "endif" >> eps;
 
+    auto const ray_embeddedfile
+        = x3::rule<class ray_embeddedfile, ast::ray_embeddedfile>{"ray_embeddedfile"}
+        = "ray_embeddedfile" >> embedded_data_type >> any_string >> embedded_data_encoding >> int_;
+
     auto const cmd = setenv | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset |
-        cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption |
+        cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption | ray_embeddedfile |
         ifthen | endif;
 
     auto const input  = skip(skipper) [*cmd % eol];

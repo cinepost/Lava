@@ -98,12 +98,12 @@ function (makeRenderPassLib)
     )
 
     # Install render-pass data
-    set( PASS_DATA_DIR "${PROJECT_SOURCE_DIR}/src/RenderPasses/${ARGS_NAME}/data" )
+    set( PASS_DATA_DIR "${PROJECT_SOURCE_DIR}/src/RenderPasses/${ARGS_NAME}/data/" )
     IF( IS_DIRECTORY "${PASS_DATA_DIR}" )
         message("DATA DIR " ${PASS_DATA_DIR})
         INSTALL(
             DIRECTORY ${PASS_DATA_DIR}
-            DESTINATION data/
+            DESTINATION data/${ARGS_NAME}
         )
     ENDIF()
 

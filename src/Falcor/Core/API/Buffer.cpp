@@ -231,7 +231,7 @@ bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
 }
 // Buffer::MapType::Read
 void* Buffer::map(MapType type) {
-    LOG_WARN("map buffer %u", mID);
+    LOG_WARN("map buffer %zu", mID);
     if (type == MapType::Write) {
         if (mCpuAccess != CpuAccess::Write) {
             logError("Trying to map a buffer for write, but it wasn't created with the write permissions");

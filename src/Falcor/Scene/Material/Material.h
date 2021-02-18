@@ -323,6 +323,14 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     void setIndexOfRefraction(float IoR);
 
+    /** Set reflectivity
+    */
+    void setReflectivity(float reflectivity);
+
+    /** Get reflectivity
+    */
+    float getReflectivity() const { return mData.reflectivity; }
+
     /** Get the index of refraction
     */
     float getIndexOfRefraction() const { return mData.IoR; }

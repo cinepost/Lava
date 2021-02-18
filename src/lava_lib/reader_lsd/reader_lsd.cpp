@@ -102,17 +102,20 @@ bool ReaderLSD::parseStream(std::istream& in) {
 
         for (auto& cmd : commands) {
             if (!mpVisitor->ignoreCommands()) {
-                try {
+                //try {
                     boost::apply_visitor(*mpVisitor, cmd);
-                } catch (const std::runtime_error& re) {
-                    LLOG_FTL << "Runtime error: " << re.what();
-                    return false;
-                } catch (...) {
-                    LLOG_FTL << "Unknown error occured !!! __________________________";
-                    LLOG_FTL << str;
-                    LLOG_FTL << "____________________________________________________";
-                    return false;
-                }
+                //} catch (const std::runtime_error& re) {
+                //    LLOG_FTL << "Runtime error: " << re.what();
+                //    return false;
+                //} catch (const std::exception &exc) {
+                //    // catch anything thrown within try block that derives from std::exception
+                //    LLOG_FTL << exc.what();
+                //} catch (...) {
+                //    LLOG_FTL << "Unknown error occured !!! __________________________";
+                //    LLOG_FTL << str;
+                //    LLOG_FTL << "____________________________________________________";
+                //    return false;
+                //}
             }
         }
     }

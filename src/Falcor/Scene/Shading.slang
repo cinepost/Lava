@@ -328,12 +328,12 @@ ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
     sd.NdotV = saturate(sd.NdotV);
 
     // Calculate the diffuse term
-    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);// * 0.0;
+    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);
     sr.diffuse = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
     sr.color = sr.diffuse;
 
     // Calculate the specular term
-    sr.specularBrdf = evalSpecularBrdfMantra_(sd, ls);
+    sr.specularBrdf = evalSpecularBrdf(sd, ls);
     sr.specular = ls.specular * sr.specularBrdf * ls.NdotL;
     sr.color += sr.specular;
 

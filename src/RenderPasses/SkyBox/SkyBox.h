@@ -49,21 +49,24 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-    void setIntensity(float intensity) { mIntensity = intensity; }
-    float getIntensity() const { return mIntensity; }
+    void setIntensity(float3 intensity) { mIntensity = intensity; }
+    float3 getIntensity() const { return mIntensity; }
     void setScale(float scale) { mScale = scale; }
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
     uint32_t getFilter() { return (uint32_t)mFilter; }
     void setTexture(const std::string& texName, bool loadAsSrgb = true);
+    void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; /*update();*/  }
 
  private:
     SkyBox(Device::SharedPtr pDevice);
     void loadImage();
     void setTexture(const Texture::SharedPtr& pTexture);
 
-    float mIntensity = 1.0;
+    glm::mat4 mTransformMatrix;
+    float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
     float mScale = 1;
+    bool mSolidMode = true;
     bool mLoadSrgb = true;
     Sampler::Filter mFilter = Sampler::Filter::Linear;
     Texture::SharedPtr mpTexture;

@@ -64,6 +64,7 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
+    static UniqueConstPtr createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
     static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
 
     /** Store a memory buffer to a PNG file.

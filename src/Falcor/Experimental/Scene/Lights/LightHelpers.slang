@@ -93,6 +93,9 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
 */
 bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, inout SampleGenerator sg, out AnalyticLightSample ls)
 {
+    ls.Li = float3(0,0,10);
+    return true;
+
     // Pick a random sample on the quad.
     // The quad is from (-1,-1,0) to (1,1,0) in object space, but may be scaled by its transform matrix.
     float2 u = sampleNext2D(sg);
@@ -120,6 +123,10 @@ bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, inout 
 */
 bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, inout SampleGenerator sg, out AnalyticLightSample ls)
 {
+
+    ls.Li = float3(0,0,10);
+    return true;
+
     // Sample a random point on the sphere.
     // TODO: We should pick a random point on the hemisphere facing the shading point.
     float2 u = sampleNext2D(sg);
@@ -143,6 +150,10 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, inou
 */
 bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, inout SampleGenerator sg, out AnalyticLightSample ls)
 {
+
+    ls.Li = float3(0,0,10);
+    return true;
+
     // Sample a random point on the disk.
     // TODO: Fix spelling disagreement between disc vs disk.
     float2 u = sampleNext2D(sg);
@@ -242,6 +253,7 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
 
     return true;
 }
+
 
 /** Samples an analytic light source.
     This function calls the correct sampling function depending on the type of light.

@@ -48,8 +48,8 @@ class dlldecl LightProbe {
     using ConstSharedPtrRef = const SharedPtr&;
 
     static const uint32_t kDataSize = sizeof(LightProbeData) - sizeof(LightProbeResources);
-    static const uint32_t kDefaultDiffSamples = 4096;
-    static const uint32_t kDefaultSpecSamples = 1024;
+    static const uint32_t kDefaultDiffSamples = 8192; //4096;
+    static const uint32_t kDefaultSpecSamples = 8192; //4096; //2048;
     static const uint32_t kDefaultDiffSize = 128;
     static const uint32_t kDefaultSpecSize = 1024;
 

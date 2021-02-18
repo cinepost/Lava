@@ -1070,7 +1070,7 @@ H_Image::openPipe(void)
         cmd += img->getDisplayOptions();
     }
 
-    cmd = "imdisplay 640 480 4";
+    //cmd = "imdisplay 640 480 4";
 
     log(0, "popen: '%s'\n", cmd.c_str());
 	

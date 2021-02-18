@@ -762,6 +762,7 @@ ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string
     log += spGetDiagnosticOutput(pSlangRequest);
     
     if(SLANG_FAILED(slangResult)) {
+        LOG_ERR("Slang compilation failed: %s", log.c_str());
         spDestroyCompileRequest(pSlangRequest);
         return nullptr;
     }
