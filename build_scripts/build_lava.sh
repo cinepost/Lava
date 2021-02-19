@@ -5,7 +5,11 @@ set -e # exit on first error
 CPU_CORES=$(grep ^cpu\\scores /proc/cpuinfo | uniq |  awk '{print $4}')
 
 LAVA_HOME_DIR=/opt/lava
-LAVA_BUILD_TYPE=DEBUG
+
+if [[ -z "${LAVA_BUILD_TYPE}" ]]; then
+	LAVA_BUILD_TYPE=DEBUG
+fi
+
 LAVA_BUILD_DIR=$PWD/build
 LAVA_BUILD_DEPS_DIR=$PWD/deps
 LAVA_3RDPARTY_SOURCE_DIR=$PWD/third_party
