@@ -8,14 +8,14 @@
 
 namespace lava {
 
-RendererIface::RendererIface(Renderer *renderer): mpRenderer(renderer) {
+RendererIface::RendererIface(std::shared_ptr<Renderer> pRenderer): mpRenderer(pRenderer) {
 	// TODO: fill envmap with system wide variables
 	mEnvmap["LAVA_HOME"] = getenv("LAVA_HOME");
 }
 
 RendererIface::~RendererIface() {
 	LLOG_DBG << "RendererIface::~RendererIface";
-	if (mpRenderer) delete mpRenderer;
+	//if (mpRenderer) delete mpRenderer;
 	LLOG_DBG << "RendererIface::~RendererIface done";
 }
 

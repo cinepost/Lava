@@ -8,11 +8,11 @@
 
 namespace Falcor {
 
-VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer) {
+VirtualTexturePage::SharedPtr VirtualTexturePage::create(const Device::SharedPtr pDevice, const std::shared_ptr<Texture> pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer) {
     return SharedPtr(new VirtualTexturePage(pDevice, pTexture, offset, extent, mipLevel, layer));
 }
 
-VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr& pDevice, const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer): mpDevice(pDevice), mpTexture(pTexture), mMipLevel(mipLevel), mLayer(layer) {
+VirtualTexturePage::VirtualTexturePage(const Device::SharedPtr pDevice, const std::shared_ptr<Texture> pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer): mpDevice(pDevice), mpTexture(pTexture), mMipLevel(mipLevel), mLayer(layer) {
     mOffset = {offset[0], offset[1], offset[2]};
     mExtent = {extent[0], extent[1], extent[2]};
 

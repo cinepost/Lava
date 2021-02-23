@@ -8,6 +8,8 @@
 
 namespace lava { namespace ut { namespace log { 
 
+std::vector< std::function< void() > > g_log_stop_functions;
+
 BOOST_LOG_ATTRIBUTE_KEYWORD(line_id,    "LineID",       unsigned int)
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp,  "TimeStamp",    boost::posix_time::ptime)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity,   "Severity",     boost::log::trivial::severity_level)
@@ -36,6 +38,19 @@ void init_log() {
 
     // register sink
     boost::log::core::get()->add_sink(sink);
+
+    // add sink stop functions
+    g_log_stop_functions.emplace_back([sink]() {
+        sink->flush();
+        sink->stop();   
+    });
+}
+
+void shutdown_log() {
+    for (auto& stop : g_log_stop_functions)
+        stop();
+
+    boost::log::core::get()->remove_all_sinks();
 }
 
 // Initialize file logger
@@ -61,6 +76,12 @@ void init_file_log(const std::string& logfilename) {
 
     // register sink
     boost::log::core::get()->add_sink(sink);
+
+    // add sink stop functions
+    g_log_stop_functions.emplace_back([sink]() {
+        sink->flush();
+        sink->stop();       
+    });
 }
 
 }}} // namespace lava::ut::log

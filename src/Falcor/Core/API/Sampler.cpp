@@ -30,19 +30,11 @@
 
 namespace Falcor {
 
-struct SamplerData {
-    uint32_t objectCount = 0;
-    Sampler::SharedPtr pDefaultSampler;
-};
-SamplerData gSamplerData;
-
 Sampler::Sampler(std::shared_ptr<Device> device, const Desc& desc) : mDesc(desc), mpDevice(device) {
-    gSamplerData.objectCount++;
 }
 
 Sampler::~Sampler() {
-    gSamplerData.objectCount--;
-    if (gSamplerData.objectCount <= 1) gSamplerData.pDefaultSampler = nullptr;
+
 }
 
 Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter) {
@@ -79,17 +71,6 @@ Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode m
 Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
     mBorderColor = borderColor;
     return *this;
-}
-
-Sampler::SharedPtr Sampler::getDefault(std::shared_ptr<Device> device) {
-    if (gSamplerData.pDefaultSampler == nullptr) {
-        Sampler::Desc desc;
-        desc.setMaxAnisotropy(8);
-        desc.setLodParams(0.0f, 16.0f, 0.0f);
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        gSamplerData.pDefaultSampler = create(device, desc);
-    }
-    return gSamplerData.pDefaultSampler;
 }
 
 #ifdef SCRIPTING

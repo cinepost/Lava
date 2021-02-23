@@ -186,10 +186,6 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     */
     const Desc& getDesc() const { return mDesc; }
 
-    /** Get an object that represents a default sampler
-    */
-    static Sampler::SharedPtr getDefault(std::shared_ptr<Device> device);
-
 private:
     Sampler(std::shared_ptr<Device> device, const Desc& desc);
     Desc mDesc;

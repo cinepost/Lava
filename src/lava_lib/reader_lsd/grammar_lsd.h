@@ -643,10 +643,20 @@ namespace parser {
                 ("\"md\""       , ast::DisplayType::MD)
                 ("\"idisplay\"" , ast::DisplayType::IDISPLAY)
                 ("\"sdl\""      , ast::DisplayType::SDL)
+
+                ("\"jpeg\""     , ast::DisplayType::JPEG)
                 ("\"JPEG\""     , ast::DisplayType::JPEG)
+
+                ("\"png\""      , ast::DisplayType::PNG)
                 ("\"PNG\""      , ast::DisplayType::PNG)
+
+                ("\"exr\""      , ast::DisplayType::OPENEXR)
                 ("\"OpenEXR\""  , ast::DisplayType::OPENEXR)
+
+                ("\"tiff\""     , ast::DisplayType::TIFF)
                 ("\"TIFF\""     , ast::DisplayType::TIFF)
+
+                ("\"null\""     , ast::DisplayType::NUL)
                 ;
         }
     } const display_type;

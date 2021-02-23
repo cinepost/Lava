@@ -60,7 +60,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
         std::swap(format[j],format[i]);
 
   std::string name = "SDL Display: ";
-  name+=filename;
+  name += filename;
 
   SDLOpenGLWindow *sdl_window = new SDLOpenGLWindow(name.c_str(), 0, 0, width, height, g_channels);
   if(!sdl_window)
@@ -121,10 +121,8 @@ PtDspyError DspyImageQuery(PtDspyImageHandle,PtDspyQueryType querytype, int data
         ret = PkDspyErrorUnsupported;
         break;
     }
-  }
-  else
-  {
-   ret = PkDspyErrorBadParams;
+  } else {
+    ret = PkDspyErrorBadParams;
   }
   return ret;
 }

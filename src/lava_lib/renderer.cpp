@@ -19,25 +19,20 @@ IFramework* gpFramework = nullptr;
 
 namespace lava {
 
-Renderer::UniquePtr Renderer::create() {
-	return std::move(UniquePtr( new Renderer(0)));
+//Renderer::UniquePtr Renderer::create(Device::SharedPtr pDevice) {
+//    assert(pDevice);
+//	return std::move(UniquePtr( new Renderer(pDevice)));
+//}
+
+Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    return SharedPtr(new Renderer(pDevice));
 }
 
-Renderer::UniquePtr Renderer::create(int gpuId) {
-    return std::move(UniquePtr( new Renderer(gpuId)));
-}
 
-Renderer::Renderer(int gpuId): mGpuId(gpuId), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
+Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
     mpDisplay = nullptr;
-
-    Falcor::Device::Desc device_desc;
-    device_desc.width = 1280;
-    device_desc.height = 720;
-
-    LLOG_DBG << "Creating rendering device on GPU id " << to_string(mGpuId);
-    mpDevice = Falcor::DeviceManager::instance().createRenderingDevice(mGpuId, device_desc);
-    LLOG_DBG << "Rendering device " << to_string(mGpuId) << " created";
 }
 
 bool Renderer::init() {
@@ -69,21 +64,21 @@ bool Renderer::init() {
 
     mpFrameRate = new Falcor::FrameRate(mpDevice);
 
-    Falcor::gpFramework = this;
+    //Falcor::gpFramework = this;
 
     mInited = true;
     return true;
 }
 
 Renderer::~Renderer() {
-	LLOG_DBG << "Renderer::~Renderer";
+    LLOG_DBG << "Renderer::~Renderer";
 
-	if(!mInited)
-		return;
+    if(!mInited)
+        return;
 
     mpDevice->resourceManager()->printStats();
 
-	delete mpClock;
+    delete mpClock;
     delete mpFrameRate;
 
     mpDevice->flushAndSync();
@@ -91,7 +86,7 @@ Renderer::~Renderer() {
 
     mpSceneBuilder = nullptr;
     mpSampler = nullptr;
-	
+
     Falcor::Threading::shutdown();
     //Falcor::Scripting::shutdown();
     //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
@@ -103,18 +98,18 @@ Renderer::~Renderer() {
 
     //if(mpDevice)
     //    mpDevice->cleanup();
-	//
+
     //mpDevice.reset();
-    
+
     Falcor::OSServices::stop();
-    Falcor::gpFramework = nullptr;
+    //Falcor::gpFramework = nullptr;
 
     LLOG_DBG << "Renderer::~Renderer done";
 }
 
 std::unique_ptr<RendererIface> Renderer::aquireInterface() {
 	if (!mIfaceAquired) {
-		return std::move(std::make_unique<RendererIface>(this));
+		return std::move(std::make_unique<RendererIface>(shared_from_this()));
 	}
 	LLOG_ERR << "Сan't aquire renderer interface. Relase old first!";
 	return nullptr;
@@ -360,7 +355,7 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
         mpRenderGraph->resize(frame_data.imageWidth, frame_data.imageHeight, Falcor::ResourceFormat::RGBA32Float);
     }
 
-    gpFramework->getClock().setTime(frame_data.time);
+    //gpFramework->getClock().setTime(frame_data.time);
 }
 
 void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
@@ -479,42 +474,6 @@ void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::F
 
 void Renderer::endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
     //for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
-}
-
-// IFramework 
-Falcor::RenderContext* Renderer::getRenderContext() {
-	return mpDevice ? mpDevice->getRenderContext() : nullptr;
-}
-
-std::shared_ptr<Falcor::Fbo> Renderer::getTargetFbo() {
-	return mpTargetFBO;
-}
-
-Falcor::Clock& Renderer::getClock() {
-	return *mpClock;
-}
-
-Falcor::FrameRate& Renderer::getFrameRate() {
-	return *mpFrameRate;
-}
-
-void Renderer::resizeSwapChain(uint32_t width, uint32_t height) {
-    auto pBackBufferFBO = mpDevice->getOffscreenFbo();
-    if( (pBackBufferFBO->getWidth() != width) || (pBackBufferFBO->getHeight() != height) ) {
-        mpDevice->resizeSwapChain(width, height);
-        mpTargetFBO = Fbo::create2D(mpDevice, width, height, mpDevice->getOffscreenFbo()->getDesc());
-    }
-}
-
-Falcor::SampleConfig Renderer::getConfig() {
-    Falcor::SampleConfig c;
-    c.deviceDesc = mpDevice->getDesc();
-    //c.windowDesc = mpWindow->getDesc();
-    c.showMessageBoxOnError = false;//Logger::isBoxShownOnError();
-    c.timeScale = (float)mpClock->getTimeScale();
-    c.pauseTime = mpClock->isPaused();
-    c.showUI = false;
-    return c;
 }
 
 }  // namespace lava

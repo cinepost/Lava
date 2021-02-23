@@ -54,6 +54,8 @@ ResourceView<ApiHandleType>::~ResourceView() {
 }
 
 void releaseStaticResources(Device::SharedPtr pDevice) {
+    assert(pDevice);
+    
     auto uid = pDevice->uid();
     sBlackTextures[uid] = nullptr;
     sZeroBuffers[uid] = nullptr;
@@ -171,7 +173,6 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
     switch (pResource->getApiHandle().getType()) {
         case VkResourceType::Image: {
-            //LOG_DBG("createViewCommon image id %zu", pSharedPtr->id());
             VkImageViewCreateInfo info = initializeImageViewInfo((const Texture*)pResource, mostDetailedMip, mipCount, firstArraySlice, arraySize);
             VkImageView imageView;
             vk_call(vkCreateImageView(pResource->device()->getApiHandle(), &info, nullptr, &imageView));

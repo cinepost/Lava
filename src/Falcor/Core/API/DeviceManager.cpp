@@ -38,11 +38,7 @@ namespace py = pybind11;
 namespace Falcor {
     
 DeviceManager::DeviceManager() {
-    LOG_DBG("DeviceManager constructor called.");
-    mDeviceNames = {};
-    if(init()){
-        printEnumeratedDevices();
-    }
+
 }
 
 DeviceManager::~DeviceManager() {
@@ -60,9 +56,25 @@ DeviceManager::~DeviceManager() {
             pDevice.reset();
         }
     }
+    LOG_DBG("DeviceManager::~DeviceManager done");
 }
 
-std::vector<Device::SharedPtr> DeviceManager::displayDevices() {
+//static
+DeviceManager::SharedPtr DeviceManager::create() {
+    auto pDeviceManager = new DeviceManager();
+
+    if (!pDeviceManager->init()) {
+        delete pDeviceManager;
+        return nullptr;
+    }
+
+    pDeviceManager->printEnumeratedDevices();
+
+    return SharedPtr(pDeviceManager);
+
+}
+
+std::vector<Device::SharedPtr> DeviceManager::displayDevices() const {
     std::vector<Device::SharedPtr> devices;
     for( auto& device: mDisplayDevices ) {
         devices.push_back(device.second);
@@ -70,7 +82,7 @@ std::vector<Device::SharedPtr> DeviceManager::displayDevices() {
     return devices;
 }
 
-std::vector<Device::SharedPtr> DeviceManager::renderingDevices() {
+std::vector<Device::SharedPtr> DeviceManager::renderingDevices() const {
     std::vector<Device::SharedPtr> devices;
     for( auto& device: mRenderingDevices ) {
         devices.push_back(device.second);
@@ -78,7 +90,7 @@ std::vector<Device::SharedPtr> DeviceManager::renderingDevices() {
     return devices;
 }
 
-bool DeviceManager::deviceEnumerated(uint8_t gpuId) {
+bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
     if(mDeviceNames.find(gpuId) != mDeviceNames.end()) {
         return true;
     }
@@ -95,7 +107,7 @@ Device::SharedPtr DeviceManager::createDisplayDevice(uint8_t gpuId, Falcor::Wind
     Device::SharedPtr pDevice = displayDevice(gpuId);
     if(pDevice) return pDevice;
 
-    pDevice = Device::create(pWindow, desc);
+    pDevice = Device::create(shared_from_this(), pWindow, desc);
     if (!pDevice) logError("Unable to create display device!");
 
     mDisplayDevices[gpuId] = pDevice;
@@ -111,7 +123,7 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
     Device::SharedPtr pDevice = renderingDevice(gpuId);
     if(pDevice) return pDevice;
 
-    pDevice = Device::create(gpuId, desc);
+    pDevice = Device::create(shared_from_this(), gpuId, desc);
     if (!pDevice) logError("Unable to create rendering device!");
 
     mRenderingDevices[gpuId] = pDevice;
@@ -119,7 +131,7 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
 }
 
 
-Device::SharedPtr DeviceManager::displayDevice(uint8_t gpuId) {
+Device::SharedPtr DeviceManager::displayDevice(uint8_t gpuId) const {
     if (!deviceEnumerated(gpuId)) return nullptr;
 
     auto it = mDisplayDevices.find(gpuId);
@@ -132,7 +144,7 @@ Device::SharedPtr DeviceManager::displayDevice(uint8_t gpuId) {
     return  it->second;
 }
 
-Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) {
+Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
     if (!deviceEnumerated(gpuId)) return nullptr;
 
     auto it = mRenderingDevices.find(gpuId);
@@ -144,18 +156,18 @@ Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) {
     return it->second;
 }
 
-void DeviceManager::printEnumeratedDevices() {
+void DeviceManager::printEnumeratedDevices() const {
     printf("Enumerated Vulkan physical devices...\n");
     for( auto &it: mDeviceNames) {
         printf("Device local uid: %u, name: %s\n", it.first, it.second.c_str());
     }
 }
 
-Device::SharedPtr DeviceManager::defaultRenderingDevice() {
+Device::SharedPtr DeviceManager::defaultRenderingDevice() const {
     return renderingDevice(mDefaultRenderingDeviceID);
 }
 
-Device::SharedPtr DeviceManager::defaultDisplayDevice() {
+Device::SharedPtr DeviceManager::defaultDisplayDevice() const {
     return displayDevice(mDefaultDisplayDeviceID);
 }
 
@@ -171,8 +183,8 @@ void DeviceManager::setDefaultRenderingDevice(uint8_t gpuId) {
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(DeviceManager) {
-    pybind11::class_<DeviceManager> deviceManagerClass(m, "DeviceManager");
-    deviceManagerClass.def_static("instance", [](){ return std::unique_ptr<DeviceManager, py::nodelete>(&DeviceManager::instance()); });
+    pybind11::class_<DeviceManager, Device::SharedPtr> deviceManagerClass(m, "DeviceManager");
+    deviceManagerClass.def_static("create", [](){ return Device::SharedPtr<DeviceManager, py::nodelete>(&DeviceManager::create()); });
     deviceManagerClass.def("listDevices", &DeviceManager::listDevices);
     deviceManagerClass.def("defaultRenderingDevice", &DeviceManager::defaultRenderingDevice);
 }

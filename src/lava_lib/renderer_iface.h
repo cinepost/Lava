@@ -52,7 +52,7 @@ class RendererIface {
  public:
     using UniquePtr = std::unique_ptr<RendererIface>;
 
-    RendererIface(Renderer *renderer);
+    RendererIface(std::shared_ptr<Renderer> pRenderer);
     ~RendererIface();
 
     void setEnvVariable(const std::string& key, const std::string& value);
@@ -87,7 +87,7 @@ class RendererIface {
 
  private:
     std::map<std::string, std::string>  mEnvmap;
-    Renderer                            *mpRenderer;
+    std::shared_ptr<Renderer>           mpRenderer;
 
     std::vector<std::string>            mDeferredScriptFileNames;
 

@@ -374,9 +374,9 @@ VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devic
     return bestDevice;
 }
 
-VkPhysicalDevice initPhysicalDevice(VkInstance instance, uint8_t gpuId, DeviceApiData* pData, const Device::Desc& desc) {
+VkPhysicalDevice initPhysicalDevice(VkInstance instance, VkPhysicalDevice physicalDevice, DeviceApiData* pData, const Device::Desc& desc) {
     // Pick a device
-    VkPhysicalDevice physicalDevice = DeviceManager::instance().physicalDevices()[gpuId];
+    //VkPhysicalDevice physicalDevice = DeviceManager::instance().physicalDevices()[gpuId];
 
     // Get device physical properties
     vkGetPhysicalDeviceProperties(physicalDevice, &pData->properties);
@@ -651,14 +651,14 @@ void Device::apiPresent() {
 /**
  * Initialize vulkan device
  */
-bool Device::apiInit() {
+bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     const Desc desc;
 
     mpApiData = new DeviceApiData;
     VkInstance instance = createInstance(mpApiData, desc.enableDebugLayer);
     if (!instance) return false;
 
-    VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mGpuId, mpApiData, desc);
+    VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
     if (!physicalDevice) return false;
     
     VkSurfaceKHR surface;

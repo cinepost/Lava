@@ -161,7 +161,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpState->setFbo(mpFbo);
     LOG_DBG("SkyBox::execute render");
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
-    LOG_DBG("SkyBox::SkyBox done");
+    LOG_DBG("SkyBox::execute done");
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

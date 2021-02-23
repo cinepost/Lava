@@ -43,6 +43,7 @@
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
+#include "Falcor/Core/API/Sampler.h"
 
 #include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
 
@@ -187,6 +188,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     const Window::SharedPtr& getWindow() const { return mpWindow; }
 
+    /** Get default sampler object
+    */
+    const Sampler::SharedPtr& getDefaultSampler() const { return mpDefaultSampler; }
+
     /** Create a new query heap.
         \param[in] type Type of queries.
         \param[in] count Number of queries.
@@ -257,6 +262,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool mIsWindowOccluded = false;
     GpuFence::SharedPtr mpFrameFence;
 
+    Sampler::SharedPtr  mpDefaultSampler = nullptr;
+
     Window::SharedPtr mpWindow;
     DeviceApiData* mpApiData;
     RenderContext::SharedPtr mpRenderContext;
@@ -274,7 +281,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
     void destroyApiObjects();
     void apiPresent();
-    bool apiInit();
+    bool apiInit(std::shared_ptr<const DeviceManager> pDeviceManager);
 
     bool createSwapChain(ResourceFormat colorFormat);
     bool createOffscreenFBO(ResourceFormat colorFormat);
@@ -289,25 +296,25 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(const Desc& desc);
+    static SharedPtr create(std::shared_ptr<const DeviceManager> pDeviceManager, const Desc& desc);
 
     /** Create a new rendering(headless) device.
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(uint32_t deviceId, const Desc& desc);
+    static SharedPtr create(std::shared_ptr<const DeviceManager> pDeviceManager, uint32_t deviceId, const Desc& desc);
 
     /** Create a new device.
         \param[in] pWindow a previously-created window object
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
+    static SharedPtr create(std::shared_ptr<const DeviceManager> pDeviceManager, Window::SharedPtr& pWindow, const Desc& desc);
 
     friend class DeviceManager;
     friend class ResourceManager;
     
-    bool init();
+    bool init(std::shared_ptr<const DeviceManager> pDeviceManager);
 
     std::string mPhysicalDeviceName;
     uint8_t mGpuId = 0;
