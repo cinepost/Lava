@@ -46,48 +46,43 @@ namespace Falcor {
     #define DEFAULT_ENABLE_DEBUG_LAYER false
 #endif
 
-class dlldecl DeviceManager {
+class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> {
  public:
-    static DeviceManager& instance() {
-        static DeviceManager instance;      // Guaranteed to be destroyed.
-        return instance;                    // Instantiated on first use.
-    }
+    using SharedPtr = std::shared_ptr<DeviceManager>;
+    using SharedConstPtr = std::shared_ptr<const DeviceManager>;
 
     ~DeviceManager();
 
     const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
-    std::vector<Device::SharedPtr> displayDevices();
-    std::vector<Device::SharedPtr> renderingDevices();
+    std::vector<Device::SharedPtr> displayDevices() const;
+    std::vector<Device::SharedPtr> renderingDevices() const;
 
-    Device::SharedPtr displayDevice(uint8_t gpuId);
-    Device::SharedPtr renderingDevice(uint8_t gpuId);
+    Device::SharedPtr displayDevice(uint8_t gpuId) const;
+    Device::SharedPtr renderingDevice(uint8_t gpuId) const ;
 
     Device::SharedPtr createDisplayDevice(uint8_t gpuId, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc);
     Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
 
-    Device::SharedPtr defaultDisplayDevice();
-    Device::SharedPtr defaultRenderingDevice();
+    Device::SharedPtr defaultDisplayDevice() const;
+    Device::SharedPtr defaultRenderingDevice() const;
 
     void setDefaultDisplayDevice(uint8_t gpuId);
     void setDefaultRenderingDevice(uint8_t gpuId);
 
-    void printEnumeratedDevices();
+    void printEnumeratedDevices() const;
 
-    uint32_t physicalDevicesCount() { return mPhysicalDevicesCount; }
-    const std::vector<VkPhysicalDevice>& physicalDevices() { return mPhysicalDevices; }
+    uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
+    const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
 
- public:
-    DeviceManager(DeviceManager const&)     = delete;
-    void operator=(DeviceManager const&)    = delete;
+    static SharedPtr create();
 
  private:
     DeviceManager();
 
     bool init();
-    bool deviceEnumerated(uint8_t gpuId);
+    bool deviceEnumerated(uint8_t gpuId) const;
     void enumerateDevices();
 
-    bool initialized;
     std::unordered_map<uint8_t, std::string> mDeviceNames;
     std::unordered_map<uint8_t, Device::SharedPtr> mDisplayDevices;
     std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 

@@ -247,8 +247,7 @@ void Sample::handleWindowSizeChange() {
         }
         
         // Create device 
-        //mpDevice = Device::create(mpWindow, config.deviceDesc);
-        mpDevice = DeviceManager::instance().createDisplayDevice(0, mpWindow, config.deviceDesc);
+        //mpDevice = DeviceManager::instance().createDisplayDevice(0, mpWindow, config.deviceDesc);
 
         mClock = new Clock(mpDevice);
         mClock->setTimeScale(config.timeScale);

@@ -66,43 +66,43 @@ Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(p
     }
 }
 
-Device::SharedPtr Device::create(const Device::Desc& desc) {
+Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(desc));
-    if (pDevice->init() == false)
+    if (pDevice->init(pDeviceManager) == false)
         return nullptr;
 
     return pDevice;
 }
 
-Device::SharedPtr Device::create(uint32_t deviceId, const Device::Desc& desc) {
+Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, uint32_t deviceId, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(deviceId, desc));  // headless device
-    if (pDevice->init() == false)
+    if (pDevice->init(pDeviceManager) == false)
         return nullptr;
 
     return pDevice;
 }
 
-Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc) {
+Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, Window::SharedPtr& pWindow, const Device::Desc& desc) {
     if(pWindow) {
 
         auto pDevice = SharedPtr(new Device(pWindow, desc));
-        if (pDevice->init() == false)
+        if (pDevice->init(pDeviceManager) == false)
             return nullptr;
 
         return pDevice;
     } else {
         // Headless device
-        return create(desc);
+        return create(pDeviceManager, desc);
     }
 }
 
 /**
  * Initialize device
  */
-bool Device::init() {
+bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
     const uint32_t kDirectQueueIndex = (uint32_t)LowLevelContextData::CommandQueueType::Direct;
     assert(mDesc.cmdQueues[kDirectQueueIndex] > 0);
-    if (apiInit() == false) return false;
+    if (apiInit(pDeviceManager) == false) return false;
 
     // Create the descriptor pools
     DescriptorPool::Desc poolDesc;
@@ -133,9 +133,18 @@ bool Device::init() {
     mpResourceManager = ResourceManager::create(shared_from_this());
     assert(mpResourceManager);
 
+
+    // create static null views
     createNullViews(shared_from_this());
     createNullBufferViews(shared_from_this());
     createNullTypedBufferViews(shared_from_this());
+
+    // create default sampler
+    Sampler::Desc desc;
+    desc.setMaxAnisotropy(8);
+    desc.setLodParams(0.0f, 16.0f, 0.0f);
+    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    mpDefaultSampler = Sampler::create(shared_from_this(), desc);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
@@ -278,6 +287,7 @@ void Device::toggleVSync(bool enable) {
 }
 
 void Device::cleanup() {
+    std::cout << "Device cleanup \n";
     toggleFullScreen(false);
     mpRenderContext->flush(true);
 
@@ -291,6 +301,7 @@ void Device::cleanup() {
     }
 
     mDeferredReleases = decltype(mDeferredReleases)();
+
     releaseNullViews(shared_from_this());
     releaseNullBufferViews(shared_from_this());
     releaseNullTypedBufferViews(shared_from_this());
@@ -306,7 +317,7 @@ void Device::cleanup() {
 
     destroyApiObjects();
 
-    if(!headless)
+    if(!headless && mpWindow)
         mpWindow.reset();
 }
 

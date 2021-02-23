@@ -32,38 +32,17 @@ namespace po = boost::program_options;
 
 using namespace lava;
 
-void printUsage() {
-    std::cout << "Usage: lava [options] [lsd] [outputimage]\n" << std::endl;
-
-    std::cout << "Reads an scene from standard input and renders the image described.\n" << std::endl;
-
-    std::cout << "If the first argument after options ends in .lsd, .rib or ..." << std::endl;
-    std::cout << "will read the scene description from that file.  If the argument does not" << std::endl;
-    std::cout << "have an extension it will be used as the output image/device\n" << std::endl;
-
-    std::cout << "    Control Options:" << std::endl;
-    std::cout << "        -e echo stdin" << std::endl;
-    std::cout << "        -r file  Read render graph definition from file" << std::endl;
-    std::cout << "        -f file  Read scene file specified instead of reading from stdin" << std::endl;
-    std::cout << "        -v val  Set verbose level (i.e. -v 2)" << std::endl;
-    std::cout << "                    0-6  Output varying degrees of rendering statistics" << std::endl;
-    std::cout << "        -l logfile  Write log to file" << std::endl;
-    std::cout << "        -C      Enable stdin compatibility mode." << std::endl;
-}
-
 void signalHandler( int signum ){
-    LLOG_DBG << "Interrupt signal (" << signum << ") received !";
-
-    // cleanup and close up stuff here
-    // terminate program
-    exit(signum);
+  fprintf(stderr, "Error: signal %d:\n", signum);
+  // cleanup and close up stuff here
+  // terminate program
+  exit(signum);
 }
 
 void signalTraceHandler( int signum ){
-    LLOG_DBG << "Interrupt signal (" << signum << ") received !";
-
-    // cleanup and close up stuff here
-    // terminate program
+  fprintf(stderr, "Error: signal %d:\n", signum);
+  // cleanup and close up stuff here
+  // terminate program
   void *array[30];
   size_t size;
 
@@ -71,16 +50,21 @@ void signalTraceHandler( int signum ){
   size = backtrace(array, 30);
 
   // print out all the frames to stderr
-  fprintf(stderr, "Error: signal %d:\n", signum);
   backtrace_symbols_fd(array, size, STDERR_FILENO);
-  exit(1);
+  exit(signum);
+}
+
+void atexitHandler()  {
+  lava::ut::log::shutdown_log();
+  std::cout << "Exiting lava. Bye :)\n";
 }
 
 void listGPUs() {
-  std::cout << "Available devices:\n____________________________________________\n";
-  const auto& deviceMap = Falcor::DeviceManager::instance().listDevices();
+  auto pDeviceManager = DeviceManager::create();
+  std::cout << "Available rendering devices:\n";
+  const auto& deviceMap = pDeviceManager->listDevices();
   for( auto const& [gpu_id, name]: deviceMap ) {
-    std::cout << "[" << to_string(gpu_id) << "] : " << name << "\n";
+    std::cout << "\t[" << to_string(gpu_id) << "] : " << name << "\n";
   }
   std::cout << std::endl;
 }
@@ -100,10 +84,11 @@ int main(int argc, char** argv){
     bool vtoff_flag = false; // virtual texturing enabled by default
     bool fconv_flag = false; // force virtual textures (re)conversion
 
+    //std::atexit(atexitHandler);
+
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);
-
 
     /// Program options
     int opt;
@@ -113,15 +98,15 @@ int main(int argc, char** argv){
     namespace po = boost::program_options; 
     po::options_description generic("Options"); 
     generic.add_options() 
-      ("help,h", "Show helps") 
+      ("help,h", "Show help") 
       ("version,v", "Shout version information")
-      ("list-gpus,L", "List GPUs")
+      ("list-devices,L", "List rendering devices")
       ;
 
     // Declare a group of options that will be allowed both on command line and in config file
     po::options_description config("Configuration");
     config.add_options()
-      ("gpus,g", po::value<int>(&gpuID)->default_value(0), "Use specific gpu")
+      ("device,d", po::value<int>(&gpuID)->default_value(0), "Use specific device")
       ("vtoff", po::bool_switch(&vtoff_flag), "Turn off vitrual texturing")
       ("fconv", po::bool_switch(&fconv_flag), "Force textures (re)conversion")
       ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
@@ -149,11 +134,20 @@ int main(int argc, char** argv){
 
     po::positional_options_description p;
     p.add("input-file", -1);
- 
-    po::variables_map vm; 
-    po::store(po::command_line_parser(argc, argv).
-      options(visible).positional(p).run(), vm); // can throw 
-    po::notify(vm); // throws on error, so do after help in case there are any problems
+
+    po::variables_map vm;  
+
+    try {
+      po::store(po::command_line_parser(argc, argv).options(visible).positional(p).run(), vm); // can throw 
+      po::notify(vm); // throws on error, so do after help in case there are any problems
+    } catch ( po::error& e ) {
+      std::cout << e.what();
+      std::cout << generic << "\n";
+      std::cout << config << "\n";
+      std::cout << input << "\n";
+      std::cout << logging << "\n";
+      exit(EXIT_FAILURE);
+    } 
 
     /** --help option 
      */ 
@@ -205,8 +199,21 @@ int main(int argc, char** argv){
     );
 
 
-    Falcor::DeviceManager::instance().setDefaultRenderingDevice(gpuID);
-    Renderer::UniquePtr pRenderer = Renderer::create(gpuID);
+    auto pDeviceManager = DeviceManager::create();
+    if (!pDeviceManager)
+      exit(EXIT_FAILURE);
+
+    pDeviceManager->setDefaultRenderingDevice(gpuID);
+
+    Falcor::Device::Desc device_desc;
+    device_desc.width = 1280;
+    device_desc.height = 720;
+
+    LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
+    auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
+    LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
+
+    Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
     if(!pRenderer->init()) {
       exit(EXIT_FAILURE);
@@ -248,6 +255,7 @@ int main(int argc, char** argv){
       }
     }
 
-    LLOG_DBG << "Exiting lava. Bye :)";
+    pDeviceManager = nullptr;
+
     exit(EXIT_SUCCESS);
 }

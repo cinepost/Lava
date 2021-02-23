@@ -42,8 +42,8 @@ VkInstance gVulkanInstance = VK_NULL_HANDLE;
 
 
 bool DeviceManager::init() {
-    if (initialized)
-        return true;
+    //if (initialized)
+    //    return true;
 
     const Device::Desc desc;
 
@@ -55,14 +55,11 @@ bool DeviceManager::init() {
 
     enumerateDevices();
 
-    initialized = true;
-    return initialized;
+    //initialized = true;
+    return true;//initialized;
 }
 
 void DeviceManager::enumerateDevices() {
-    if (initialized)
-        return;
-
     // Enumerate devices
     vkEnumeratePhysicalDevices(gVulkanInstance, &mPhysicalDevicesCount, nullptr);
     assert(mPhysicalDevicesCount > 0);

@@ -657,7 +657,7 @@ bool ParameterBlock::setSampler(const BindLocation& bindLocation, const Sampler:
 
     if (pBoundSampler == pSampler) return true;
 
-    pBoundSampler = pSampler ? pSampler : Sampler::getDefault(mpDevice);
+    pBoundSampler = pSampler ? pSampler : mpDevice->getDefaultSampler();
     markDescriptorSetDirty(bindLocation);
     return true;
 }
@@ -1234,7 +1234,7 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::Sampler:
                         {
                             auto pSampler = mSamplers[flatIndex];
-                            if(!pSampler) pSampler = Sampler::getDefault(mpDevice);
+                            if(!pSampler) pSampler = mpDevice->getDefaultSampler();
                             pDescSet->setSampler(destRangeIndex, descriptorIndex, pSampler.get());
                         }
                         break;

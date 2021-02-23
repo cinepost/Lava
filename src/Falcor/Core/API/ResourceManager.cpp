@@ -38,14 +38,14 @@ ResourceManager::SharedPtr ResourceManager::create(std::shared_ptr<Device> pDevi
                 LOG_DBG("Created resources cache directory %s", mCacheDir.c_str());
             } else {
                 LOG_ERR("Unable to create texture cache directory %s", mCacheDir.c_str());
-                return nullptr;
+                //return nullptr; TODO: use in-memory file system if cache directory not available
             }
         }
     } catch (fs::filesystem_error & e) {
         LOG_ERR("Can't access texture cache directory !!!\n %s", e.what());
         logError(e.what());
 
-        return nullptr;
+        //return nullptr; TODO: use in-memory file system if cache directory not available
     }
 
     pMgr->mSparseTexturesEnabled = !config.get<bool>("vtoff", false);

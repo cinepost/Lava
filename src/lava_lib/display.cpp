@@ -51,6 +51,8 @@ std::string getDisplayDriverFileName(Display::DisplayType display_type) {
                 return "tiff";
             case Display::DisplayType::PNG:
                 return "png";
+            case Display::DisplayType::NUL:
+                return "null";
             default:
                 break;
         }

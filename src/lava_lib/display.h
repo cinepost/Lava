@@ -13,7 +13,7 @@ namespace lava {
 
 class Display {
  public:
-    enum class DisplayType { NONE, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
+    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
 
  public:
     using SharedPtr = std::shared_ptr<Display>;

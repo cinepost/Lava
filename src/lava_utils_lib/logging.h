@@ -13,6 +13,7 @@
 #include <boost/log/sources/severity_feature.hpp>
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/async_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/expressions/formatters/date_time.hpp>
 #include <boost/log/sources/severity_logger.hpp>
@@ -38,7 +39,7 @@ namespace ut { namespace log {
 typedef boost::log::sources::severity_channel_logger_mt<boost::log::trivial::severity_level, std::string> global_logger_type;
 
 // basic text based sink. TODO: asyncronous sink
-typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> text_sink;
+typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> text_sink;
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(global_logger, global_logger_type) {
 	global_logger_type logger = global_logger_type(boost::log::keywords::channel = "global_logger");
@@ -53,6 +54,7 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(global_logger, global_logger_type) {
 // Initialize/add file logger sink
 void init_log();
 void init_file_log(const std::string& logfilename);
+void shutdown_log();
 
 }}} // namespace lava::ut::log
 

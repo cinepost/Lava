@@ -54,18 +54,14 @@ const std::string kTimeVar = "t";
 
 }
 
+#ifdef SCRIPTING
 void Renderer::registerBindings(pybind11::module& m) {
     pybind11::class_<Renderer> renderer(m, "Renderer");
 
-    auto getDevice = [](Renderer* pRenderer) { return pRenderer->device(); };
+    auto getDevice = [](Renderer::SharedPrt pRenderer) { return pRenderer->device(); };
     renderer.def(kGetDevice.c_str(), getDevice);
 
     renderer.def(kAddGraph.c_str(), &Renderer::addGraph, "graph"_a);
-    auto getUI = [](Renderer* pRenderer) { return Falcor::gpFramework->isUiEnabled(); };
-    auto setUI = [](Renderer* pRenderer, bool show) { Falcor::gpFramework->toggleUI(show); };
-    renderer.def_property(kUI.c_str(), getUI, setUI);
-
-
 
     auto objectHelp = [](pybind11::object o) {
         auto b = pybind11::module::import("builtins");
@@ -78,5 +74,6 @@ void Renderer::registerBindings(pybind11::module& m) {
     //auto resize = [](Renderer* pRenderer, uint32_t width, uint32_t height) {gpFramework->resizeSwapChain(width, height); };
     //c.func_(kResizeSwapChain.c_str(), resize);
 }
+#endif
 
 }  // namespace lava
