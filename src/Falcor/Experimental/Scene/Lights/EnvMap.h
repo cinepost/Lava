@@ -31,7 +31,6 @@
 //#include "Falcor.h"
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Sampler.h"
-#include "Falcor/Utils/UI/Gui.h"
 #include "EnvMapData.slang"
 
 namespace Falcor {
@@ -51,10 +50,6 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
         \param[in] filename The environment map texture filename.
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
-
-    /** Render the GUI.
-    */
-    void renderUI(Gui::Widgets& widgets);
 
     /** Set rotation angles.
         Rotation is applied as rotation around X axis, followed by rotation around Y and Z axes.

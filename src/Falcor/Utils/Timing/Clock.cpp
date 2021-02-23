@@ -43,30 +43,6 @@ constexpr char kPlay[] = "play";
 constexpr char kStop[] = "stop";
 constexpr char kStep[] = "step";
 
-std::optional<uint32_t> fpsDropdown(Gui::Window& w, uint32_t curVal) {
-    static const uint32_t commonFps[] = { 0, 24, 25, 30, 48, 50, 60, 75, 90, 120, 144, 200, 240, 360, 480 };
-    static const uint32_t kCustom = uint32_t(-1);
-
-    static auto dropdown = []() {
-        Gui::DropdownList d;
-        for (auto f : commonFps) d.push_back({ f, f == 0 ? "Disabled" : to_string(f) });
-        d.push_back({ kCustom, "Custom" });
-        return d;
-    }();
-
-    uint32_t index = [curVal]() {
-        for (auto f : commonFps) if (f == curVal) return f;
-        return kCustom;
-    }();
-
-    bool changed = w.dropdown("FPS", dropdown, index);
-    if (index == kCustom) {
-        changed = w.var<uint32_t>("Custom##fps", curVal, 0u, UINT32_MAX, 1u, false, nullptr);
-    }
-    else curVal = index;
-
-    return changed ? std::optional(curVal) : std::nullopt;
-}
 
 constexpr uint64_t kTicksPerSecond = 14400 * (1 << 16); // 14400 is a common multiple of our supported frame-rates. 2^16 gives 64K intra-frame steps
 
@@ -183,37 +159,6 @@ Clock& Clock::step(int64_t frames) {
     return *this;
 }
 
-void Clock::renderUI(Gui::Window& w) {
-    float time = (float)getTime();
-    float scale = (float)getTimeScale();
-    if (w.var("Time##Cur", time, 0.f, FLT_MAX, 0.001f, false, "%.3f")) setTime(time);
-    if (!isSimulatingFps() && w.var("Scale", scale)) setTimeScale(scale);
-    bool showStep = mPaused && isSimulatingFps();
-
-    float indent = showStep ? 10.0f : 60.0f;
-    w.indent(indent);
-    static const uint2 iconSize = { 25, 25 };
-    if (w.imageButton("Rewind", mClockTextures.pRewind, iconSize)) setTime(0);
-    if (showStep && w.imageButton("PrevFrame", mClockTextures.pPrevFrame, iconSize, true, true)) step(-1);
-    if (w.imageButton("Stop", mClockTextures.pStop, iconSize, true, true)) stop();
-    auto pTex = mPaused ? mClockTextures.pPlay : mClockTextures.pPause;
-    if (w.imageButton("PlayPause", pTex, iconSize, true, true)) mPaused ? play() : pause();
-    if (showStep && w.imageButton("NextFrame", mClockTextures.pNextFrame, iconSize, true, true)) step();
-
-    w.indent(-indent);
-
-    w.separator(2);
-    w.text("Framerate Simulation");
-    w.tooltip("Simulate a constant frame rate. The time will advance by 1/FPS each frame, regardless of the actual frame rendering time");
-
-    auto fps = fpsDropdown(w, mFramerate);
-    if (fps) setFramerate(fps.value());
-
-    if (isSimulatingFps()) {
-        uint64_t curFrame = getFrame();
-        if (w.var("Frame ID", curFrame)) setFrame(curFrame);
-    }
-}
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Clock) {

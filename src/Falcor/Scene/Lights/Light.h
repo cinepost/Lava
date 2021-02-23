@@ -37,7 +37,6 @@
 
 #include "LightData.slang"
 #include "Falcor/Scene/Animation/Animatable.h"
-#include "Falcor/Utils/UI/Gui.h"
 
 namespace Falcor {
 
@@ -58,10 +57,6 @@ public:
     /** Set the light parameters into a shader variable. To use this you need to include/import 'ShaderCommon' inside your shader.
     */
     virtual void setShaderData(const ShaderVar& var);
-
-    /** Render UI elements for this light.
-    */
-    virtual void renderUI(Gui::Widgets& widget);
 
     /** Get total light power
     */
@@ -159,10 +154,6 @@ public:
     static DirectionalLight::SharedPtr create();
     ~DirectionalLight();
 
-    /** Render UI elements for this light.
-    */
-    void renderUI(Gui::Widgets& widget) override;
-
     /** Set the light's world-space direction.
         \param[in] dir Light direction. Does not have to be normalized.
     */
@@ -196,10 +187,6 @@ public:
 
     static SharedPtr create();
     ~PointLight();
-
-    /** Render UI elements for this light.
-    */
-    void renderUI(Gui::Widgets& widget) override;
 
     /** Get total light power (needed for light picking)
     */
@@ -304,10 +291,6 @@ public:
 
     static SharedPtr create();
     ~DistantLight();
-
-    /** Render UI elements for this light.
-    */
-    void renderUI(Gui::Widgets& widget) override;
 
     /** Set the half-angle subtended by the light
         \param[in] theta Light angle

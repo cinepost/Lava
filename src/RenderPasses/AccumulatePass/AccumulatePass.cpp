@@ -62,13 +62,6 @@ const char kAutoReset[] = "autoReset";
 const char kPrecisionMode[] = "precisionMode";
 const char kSubFrameCount[] = "subFrameCount";
 
-const Gui::DropdownList kModeSelectorList =
-{
-    { (uint32_t)AccumulatePass::Precision::Double, "Double precision" },
-    { (uint32_t)AccumulatePass::Precision::Single, "Single precision" },
-    { (uint32_t)AccumulatePass::Precision::SingleCompensated, "Single precision (compensated)" },
-};
-
 }
 
 AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -200,26 +193,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
 
-}
-
-void AccumulatePass::renderUI(Gui::Widgets& widget) {
-    if (widget.checkbox("Accumulate temporally", mEnableAccumulation))
-    {
-        // Reset accumulation when it is toggled.
-        mFrameCount = 0;
-    }
-
-    if (mEnableAccumulation)
-    {
-        if (widget.dropdown("Mode", kModeSelectorList, (uint32_t&)mPrecisionMode))
-        {
-            // Reset accumulation when mode changes.
-            mFrameCount = 0;
-        }
-
-        const std::string text = std::string("Frames accumulated ") + std::to_string(mFrameCount);
-        widget.text(text.c_str());
-    }
 }
 
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

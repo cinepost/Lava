@@ -27,7 +27,6 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "CameraController.h"
-#include "Utils/UI/UserInput.h"
 #include "Utils/Math/FalcorMath.h"
 #include "Camera.h"
 
@@ -47,42 +46,6 @@ void OrbiterCameraController::setModelParams(const float3& center, float radius,
     mCameraDistance = distanceInRadius;
     mRotation = glm::mat3();
     mbDirty = true;
-}
-
-bool OrbiterCameraController::onMouseEvent(const MouseEvent& mouseEvent) {
-    bool handled = false;
-    switch(mouseEvent.type) {
-        case MouseEvent::Type::Wheel:
-            mCameraDistance -= (mouseEvent.wheelDelta.y * 0.2f);
-            mbDirty = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::LeftButtonDown:
-            mLastVector = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
-            mIsLeftButtonDown = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::LeftButtonUp:
-            handled = mIsLeftButtonDown;
-            mIsLeftButtonDown = false;
-            break;
-        case MouseEvent::Type::Move:
-            if(mIsLeftButtonDown) {
-                float3 curVec = project2DCrdToUnitSphere(convertCamPosRange(mouseEvent.pos));
-                glm::quat q = createQuaternionFromVectors(mLastVector, curVec);
-                glm::mat3x3 rot = (glm::mat3x3)q;
-                mRotation = rot * mRotation;
-                mbDirty = true;
-                mLastVector = curVec;
-                handled = true;
-                mShouldRotate = true;
-            }
-            break;
-        default:
-            break;
-    }
-
-    return handled;
 }
 
 bool OrbiterCameraController::update() {
@@ -106,50 +69,6 @@ bool OrbiterCameraController::update() {
 template<bool b6DoF>
 FirstPersonCameraControllerCommon<b6DoF>::FirstPersonCameraControllerCommon(const Camera::SharedPtr& pCamera) : CameraController(pCamera) {
     mTimer.update();
-}
-
-template<bool b6DoF>
-bool FirstPersonCameraControllerCommon<b6DoF>::onKeyEvent(const KeyboardEvent& event) {
-    bool handled = false;
-
-    if (event.type == KeyboardEvent::Type::KeyPressed || event.type == KeyboardEvent::Type::KeyReleased) {
-        bool keyPressed = (event.type == KeyboardEvent::Type::KeyPressed);
-
-        switch(event.key) {
-            case KeyboardEvent::Key::W:
-                mMovement[Direction::Forward] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::S:
-                mMovement[Direction::Backward] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::A:
-                mMovement[Direction::Right] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::D:
-                mMovement[Direction::Left] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::Q:
-                mMovement[Direction::Down] = keyPressed;
-                handled = true;
-                break;
-            case KeyboardEvent::Key::E:
-                mMovement[Direction::Up] = keyPressed;
-                handled = true;
-                break;
-            default:
-                break;
-        }
-
-        mSpeedModifier = 50.0f;
-        if (event.mods.isCtrlDown) mSpeedModifier = 0.25f;
-        else if (event.mods.isShiftDown) mSpeedModifier = 10.0f;
-    }
-
-    return handled;
 }
 
 template<bool b6DoF>
@@ -227,44 +146,6 @@ bool FirstPersonCameraControllerCommon<b6DoF>::update() {
     }
 
     return dirty;
-}
-
-template<bool b6DoF>
-bool FirstPersonCameraControllerCommon<b6DoF>::onMouseEvent(const MouseEvent& event) {
-    bool handled = false;
-    switch(event.type) {
-        case MouseEvent::Type::LeftButtonDown:
-            mLastMousePos = event.pos;
-            mIsLeftButtonDown = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::LeftButtonUp:
-            handled = mIsLeftButtonDown;
-            mIsLeftButtonDown = false;
-            break;
-        case MouseEvent::Type::RightButtonDown:
-            mLastMousePos = event.pos;
-            mIsRightButtonDown = true;
-            handled = true;
-            break;
-        case MouseEvent::Type::RightButtonUp:
-            handled = mIsRightButtonDown;
-            mIsRightButtonDown = false;
-            break;
-        case MouseEvent::Type::Move:
-            if(mIsLeftButtonDown || mIsRightButtonDown)
-            {
-                mMouseDelta = event.pos - mLastMousePos;
-                mLastMousePos = event.pos;
-                mShouldRotate = true;
-                handled = true;
-            }
-            break;
-        default:
-            break;
-    }
-
-    return handled;
 }
 
 template class FirstPersonCameraControllerCommon < true > ;

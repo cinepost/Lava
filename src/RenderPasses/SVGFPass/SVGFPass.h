@@ -44,7 +44,6 @@ class SVGFPass : public RenderPass, public inherit_shared_from_this<RenderPass, 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
 
  private:
     SVGFPass(Device::SharedPtr pDevice, const Dictionary& dict);

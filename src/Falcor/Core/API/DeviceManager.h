@@ -54,19 +54,15 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     ~DeviceManager();
 
     const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
-    std::vector<Device::SharedPtr> displayDevices() const;
     std::vector<Device::SharedPtr> renderingDevices() const;
 
-    Device::SharedPtr displayDevice(uint8_t gpuId) const;
     Device::SharedPtr renderingDevice(uint8_t gpuId) const ;
 
-    Device::SharedPtr createDisplayDevice(uint8_t gpuId, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc);
     Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
 
     Device::SharedPtr defaultDisplayDevice() const;
     Device::SharedPtr defaultRenderingDevice() const;
 
-    void setDefaultDisplayDevice(uint8_t gpuId);
     void setDefaultRenderingDevice(uint8_t gpuId);
 
     void printEnumeratedDevices() const;
@@ -84,7 +80,6 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     void enumerateDevices();
 
     std::unordered_map<uint8_t, std::string> mDeviceNames;
-    std::unordered_map<uint8_t, Device::SharedPtr> mDisplayDevices;
     std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 
 
     uint8_t mDefaultDisplayDeviceID = 0;

@@ -231,36 +231,6 @@ namespace Falcor
         pCtx->drawIndirect(mDrawResources.pState.get(), mDrawResources.pVars.get(), 1, mpIndirectArgs.get(), 0, nullptr, 0);
     }
 
-    void ParticleSystem::renderUi(Gui::Widgets& widget) {
-        auto g = Gui::Group(widget, "Particle System Settings");
-        if (g.open()) {
-            float floatMax = std::numeric_limits<float>::max();
-            g.var("Duration", mEmitter.duration, 0.f);
-            g.var("DurationOffset", mEmitter.durationOffset, 0.f);
-            g.var("Frequency", mEmitter.emitFrequency, 0.01f);
-            int32_t emitCount = mEmitter.emitCount;
-            g.var("EmitCount", emitCount, 0, static_cast<int>(mMaxEmitPerFrame));
-            mEmitter.emitCount = emitCount;
-            g.var("EmitCountOffset", mEmitter.emitCountOffset, 0);
-            g.var("SpawnPos", mEmitter.spawnPos, -floatMax, floatMax);
-            g.var("SpawnPosOffset", mEmitter.spawnPosOffset, 0.f, floatMax);
-            g.var("Velocity", mEmitter.vel, -floatMax, floatMax);
-            g.var("VelOffset", mEmitter.velOffset, 0.f, floatMax);
-            g.var("Accel", mEmitter.accel, -floatMax, floatMax);
-            g.var("AccelOffset", mEmitter.accelOffset, 0.f, floatMax);
-            g.var("Scale", mEmitter.scale, 0.001f);
-            g.var("ScaleOffset", mEmitter.scaleOffset, 0.001f);
-            g.var("Growth", mEmitter.growth);
-            g.var("GrowthOffset", mEmitter.growthOffset, 0.001f);
-            g.var("BillboardRotation", mEmitter.billboardRotation);
-            g.var("BillboardRotationOffset", mEmitter.billboardRotationOffset);
-            g.var("BillboardRotationVel", mEmitter.billboardRotationVel);
-            g.var("BillboardRotationVelOffset", mEmitter.billboardRotationVelOffset);
-
-            g.release();
-        }
-    }
-
     void ParticleSystem::initSortResources(std::shared_ptr<Device> pDevice) {
         //Shader
         ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(pDevice, kSortShader, "main");

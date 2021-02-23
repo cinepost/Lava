@@ -39,7 +39,6 @@ namespace Falcor {
 
 struct BoundingBox;
 class ParameterBlock;
-class Gui;
 
 /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
 */
@@ -239,10 +238,6 @@ public:
     const CameraData& getData() const { calculateCameraParameters(); return  mData; }
 
     void updateFromAnimation(const glm::mat4& transform) override;
-
-    /** Render the UI
-    */
-    void renderUI(Gui::Widgets& widget);
 
     enum class Changes
     {

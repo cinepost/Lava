@@ -28,7 +28,6 @@
 #ifndef SRC_FALCOR_CORE_RENDERER_H_
 #define SRC_FALCOR_CORE_RENDERER_H_
 
-#include "Falcor/Utils/UI/UserInput.h"
 #include "Falcor/Utils/ArgList.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Core/API/RenderContext.h"
@@ -42,8 +41,6 @@ class FrameRate;
 /** Sample configuration
 */
 struct SampleConfig {
-    Window::Desc windowDesc;                 ///< Controls window creation
-    Device::Desc deviceDesc;                 ///< Controls device creation
     bool suppressInput = false;              ///< Suppress all keyboard and mouse input (other than escape to terminate)
     bool showMessageBoxOnError = true;       ///< Show message box on framework/API errors.
     float timeScale = 1.0f;                  ///< A scaling factor for the time elapsed between frames
@@ -73,9 +70,6 @@ class IFramework {
     /** Resize the swap-chain buffers*/
     virtual void resizeSwapChain(uint32_t width, uint32_t height) = 0;
 
-    /** Check if a key is pressed*/
-    virtual bool isKeyPressed(const KeyboardEvent::Key& key) = 0;
-
     /** Show/hide the UI */
     virtual void toggleUI(bool showUI) = 0;
 
@@ -104,10 +98,6 @@ class IFramework {
     /** Get the current configuration
     */
     virtual SampleConfig getConfig() = 0;
-
-    /** Render the global UI. You'll can open a GUI window yourself before calling it
-    */
-    virtual void renderGlobalUI(Gui* pGui) = 0;
 
     /** Get the global shortcuts message
     */
@@ -162,24 +152,6 @@ class IRenderer {
         \param[in] reloaded Resources that have been reloaded.
     */
     virtual void onHotReload(HotReloadFlags reloaded) {}
-
-    /** Called every time a key event occurred.
-    \param[in] keyEvent The keyboard event
-    \return true if the event was consumed by the callback, otherwise false
-    */
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
-
-    /** Called every time a mouse event occurred.
-    \param[in] mouseEvent The mouse event
-    \return true if the event was consumed by the callback, otherwise false
-    */
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
-
-    /** Called after onFrameRender().
-    It is highly recommended to use onGuiRender() exclusively for GUI handling. onGuiRender() will not be called when the GUI is hidden, which should help reduce CPU overhead.
-    You could also ignore this and render the GUI directly in your onFrameRender() function, but that is discouraged.
-    */
-    virtual void onGuiRender(Gui* pGui) {};
 
     /** Called when a file is dropped into the window
     */

@@ -201,12 +201,7 @@ float3 coneUnion(float3 aDir, float aCosTheta, float3 bDir, float bCosTheta, flo
     return dir;
 }
 
-const Gui::DropdownList kSplitHeuristicList =
-{
-    { (uint32_t)LightBVHBuilder::SplitHeuristic::Equal, "Equal" },
-    { (uint32_t)LightBVHBuilder::SplitHeuristic::BinnedSAH, "Binned SAH" },
-    { (uint32_t)LightBVHBuilder::SplitHeuristic::BinnedSAOH, "Binned SAOH" }
-};
+
 }
 
 namespace Falcor
@@ -300,50 +295,6 @@ void LightBVHBuilder::build(LightBVH& bvh)
 
     // Computate metadata.
     bvh.finalize();
-}
-
-bool LightBVHBuilder::renderUI(Gui::Widgets& widget)
-{
-    // Render the build options.
-    return renderOptions(widget, mOptions);
-}
-
-bool LightBVHBuilder::renderOptions(Gui::Widgets& widget, Options& options) const
-{
-    bool optionsChanged = false;
-
-    optionsChanged |= widget.checkbox("Allow refitting", options.allowRefitting);
-    optionsChanged |= widget.var("Max triangle count per leaf", options.maxTriangleCountPerLeaf, 1u, kMaxLeafTriangleCount);
-    optionsChanged |= widget.dropdown("Split heuristic", kSplitHeuristicList, (uint32_t&)options.splitHeuristicSelection);
-
-    Gui::Group splitGroup(widget, "Split Options", true);
-    if (splitGroup.open())
-    {
-        optionsChanged |= splitGroup.var("Bin count", options.binCount);
-        optionsChanged |= splitGroup.checkbox("Create leaves ASAP", options.createLeavesASAP);
-        if (!options.createLeavesASAP)
-        {
-            optionsChanged |= splitGroup.var("Bin count", options.binCount);
-        }
-        optionsChanged |= splitGroup.checkbox("Split along largest dimension", options.splitAlongLargest);
-        optionsChanged |= splitGroup.checkbox("Use volume instead of surface area", options.useVolumeOverSA);
-        if (options.useVolumeOverSA)
-        {
-            // TODO: Not sure we need volumeEpsilon as a configurable parameter. A small fixed epsilon should suffice.
-            optionsChanged |= splitGroup.var("Dimension epsilon for volume", options.volumeEpsilon, 0.0f, 1.0f);
-        }
-
-        if (options.splitHeuristicSelection == SplitHeuristic::BinnedSAOH)
-        {
-            optionsChanged |= splitGroup.checkbox("Use leaf creation cost", options.useLeafCreationCost);
-            optionsChanged |= splitGroup.checkbox("Use pre-integration", options.usePreintegration);
-            optionsChanged |= splitGroup.checkbox("Use lighting cones", options.useLightingCones);
-        }
-
-        splitGroup.release();
-    }
-
-    return optionsChanged;
 }
 
 LightBVHBuilder::LightBVHBuilder(const Options& options) : mOptions(options)

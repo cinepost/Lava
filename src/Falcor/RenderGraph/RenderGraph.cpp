@@ -37,26 +37,12 @@ namespace Falcor {
 std::vector<RenderGraph*> gRenderGraphs;
 const FileDialogFilterVec RenderGraph::kFileExtensionFilters = { { "py", "Render Graph Files"} };
 
-RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, const std::string& name) {
-    return SharedPtr(new RenderGraph(pDevice, name));
-}
-
 RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, pTargetFbo, name));
 }
 
 RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, frame_size, format, name));
-}
-
-RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, const std::string& name): mName(name), mpDevice(pDevice) {
-    if (gpFramework == nullptr) {
-        throw std::runtime_error("Can't construct RenderGraph - framework is not initialized");
-    }
-    mpGraph = DirectedGraph::create();
-    mpPassDictionary = InternalDictionary::create();
-    gRenderGraphs.push_back(this);
-    onResize(gpFramework->getTargetFbo().get());
 }
 
 RenderGraph::RenderGraph(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name): mName(name), mpDevice(pDevice) {
@@ -689,27 +675,6 @@ void RenderGraph::autoGenEdges(const std::vector<uint32_t>& executionOrder) {
             autoConnectPasses(nodeVec[src], passReflectionMap[nodeVec[src]->pPass.get()], nodeVec[dst], unsatisfiedInputs);
         }
     }
-}
-
-void RenderGraph::renderUI(Gui::Widgets& widget) {
-    if (mpScene) {
-        auto sceneGroup = Gui::Group(widget, "Scene Settings");
-        if (sceneGroup.open()) {
-            mpScene->renderUI(sceneGroup);
-            sceneGroup.release();
-        }
-        widget.separator();
-    }
-
-    if (mpExe) mpExe->renderUI(widget);
-}
-
-bool RenderGraph::onMouseEvent(const MouseEvent& mouseEvent) {
-    return mpExe ? mpExe->onMouseEvent(mouseEvent) : false;
-}
-
-bool RenderGraph::onKeyEvent(const KeyboardEvent& keyEvent) {
-    return mpExe ? mpExe->onKeyEvent(keyEvent) : false;
 }
 
 void RenderGraph::onHotReload(HotReloadFlags reloaded) {

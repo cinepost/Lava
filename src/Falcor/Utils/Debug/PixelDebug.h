@@ -78,9 +78,6 @@ class dlldecl PixelDebug {
 
     void prepareProgram(const Program::SharedPtr& pProgram, const ShaderVar& var);
 
-    void renderUI(Gui::Widgets& widget);
-    bool onMouseEvent(const MouseEvent& mouseEvent);
-
  protected:
     PixelDebug(std::shared_ptr<Device> pDevice, uint32_t logSize) : mLogSize(logSize), mpDevice(pDevice) {}
     void copyDataToCPU();

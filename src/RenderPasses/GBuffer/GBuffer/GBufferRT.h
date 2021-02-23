@@ -46,7 +46,6 @@ public:
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    void renderUI(Gui::Widgets& widget) override;
     Dictionary getScriptingDictionary() override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     std::string getDesc() override { return kDesc; }

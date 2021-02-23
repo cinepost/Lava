@@ -58,20 +58,6 @@ class dlldecl RenderGraphExe {
     */
     void resolvePerSampleSparseResources(const Context& ctx);
 
-    /** Render the UI
-    */
-    void renderUI(Gui::Widgets& widget);
-
-    /** Mouse event handler.
-        Returns true if the event was handled by the object, false otherwise
-    */
-    bool onMouseEvent(const MouseEvent& mouseEvent);
-
-    /** Keyboard event handler
-    Returns true if the event was handled by the object, false otherwise
-    */
-    bool onKeyEvent(const KeyboardEvent& keyEvent);
-
     /** Called upon hot reload (by pressing F5).
         \param[in] reloaded Resources that have been reloaded.
     */

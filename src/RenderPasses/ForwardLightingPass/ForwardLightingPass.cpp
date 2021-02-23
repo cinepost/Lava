@@ -165,19 +165,6 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     }
 }
 
-void ForwardLightingPass::renderUI(Gui::Widgets& widget) {
-    static const Gui::DropdownList kSampleCountList =
-    {
-        { 1, "1" },
-        { 2, "2" },
-        { 4, "4" },
-        { 8, "8" },
-    };
-
-    if (widget.dropdown("Sample Count", kSampleCountList, mSampleCount))              setSampleCount(mSampleCount);
-    if (mSampleCount > 1 && widget.checkbox("Super Sampling", mEnableSuperSampling))  setSuperSampling(mEnableSuperSampling);
-}
-
 ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) {
     mColorFormat = format;
     mPassChangedCB();

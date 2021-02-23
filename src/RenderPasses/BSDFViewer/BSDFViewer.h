@@ -51,10 +51,7 @@ public:
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
     static const char* sDesc;
 
@@ -77,9 +74,6 @@ private:
     PixelDebug::SharedPtr           mpPixelDebug;           ///< Utility class for pixel debugging (print in shaders).
 
     ComputePass::SharedPtr          mpViewerPass;
-
-    // UI variables
-    Gui::DropdownList               mMaterialList;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_BSDFVIEWER_BSDFVIEVWER_H_

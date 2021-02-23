@@ -83,13 +83,3 @@ void BlitPass::execute(RenderContext* pContext, const RenderData& renderData) {
         logWarning("BlitPass::execute() - missing an input or output resource");
     }
 }
-
-void BlitPass::renderUI(Gui::Widgets& widget) {
-    static const Gui::DropdownList kFilterList = {
-        { (uint32_t)Sampler::Filter::Linear, "Linear" },
-        { (uint32_t)Sampler::Filter::Point, "Point" },
-    };
-    uint32_t f = (uint32_t)mFilter;
-
-    if (widget.dropdown("Filter", kFilterList, f)) setFilter((Sampler::Filter)f);
-}

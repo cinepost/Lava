@@ -68,11 +68,6 @@ namespace Falcor {
         */
         void render(RenderContext* pCtx, const Fbo::SharedPtr& pDst, glm::mat4 view, glm::mat4 proj);
 
-        /** Render UI controls for this particle system.
-            \param[in] pGui GUI instance to render UI elements with
-        */
-        void renderUi(Gui::Widgets& widget);
-
         /** Gets the graphics vars for drawing.
         */
         GraphicsVars::SharedPtr getDrawVars() { return mDrawResources.pVars; }

@@ -54,7 +54,6 @@ class CSM : public RenderPass {
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
 
     void toggleMeshCulling(bool enabled);
 

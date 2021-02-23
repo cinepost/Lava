@@ -28,7 +28,6 @@
 #include "stdafx.h"
 #include "LightProbe.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
-#include "Utils/UI/Gui.h"
 #include "Core/API/ResourceManager.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
@@ -189,22 +188,6 @@ namespace Falcor {
         }
 
         return SharedPtr(new LightProbe(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat));
-    }
-
-    void LightProbe::renderUI(Gui* pGui, const char* group) {
-        Gui::Group g(pGui, group);
-        if (!group || g.open()) {
-            g.var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
-
-            float intensity = mData.intensity.r;
-            if (g.var("Intensity", intensity, 0.0f)) {
-                mData.intensity = float3(intensity);
-            }
-
-            g.var("Radius", mData.radius, -1.0f);
-
-            if (g.open()) g.release();
-        }
     }
 
     static bool checkOffset(UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {

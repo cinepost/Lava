@@ -60,7 +60,6 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual std::string getDesc() override { return kDesc; };
 

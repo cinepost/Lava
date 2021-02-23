@@ -43,28 +43,18 @@ void releaseStaticResources(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
-Device::Device(const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
+Device::Device(const Device::Desc& desc) : mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
     headless = true;
     LOG_DBG("GPU device id: %u type headless", mGpuId);
 }
 
-Device::Device(uint32_t gpuId, const Device::Desc& desc) : mpWindow(nullptr), mDesc(desc), mGpuId(gpuId), mPhysicalDeviceName("Unknown") {
+Device::Device(uint32_t gpuId, const Device::Desc& desc) : mDesc(desc), mGpuId(gpuId), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
     headless = true;
     LOG_DBG("GPU device id: %u type headless", mGpuId);
 }
 
-Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
-    _uid = UID++;
-    if (!pWindow){
-        headless = true;
-        LOG_DBG("GPU device id: %u type headless", mGpuId);
-    } else {
-        headless = false;
-        LOG_DBG("GPU device id: %u", mGpuId);
-    }
-}
 
 Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(desc));
@@ -80,20 +70,6 @@ Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceMan
         return nullptr;
 
     return pDevice;
-}
-
-Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, Window::SharedPtr& pWindow, const Device::Desc& desc) {
-    if(pWindow) {
-
-        auto pDevice = SharedPtr(new Device(pWindow, desc));
-        if (pDevice->init(pDeviceManager) == false)
-            return nullptr;
-
-        return pDevice;
-    } else {
-        // Headless device
-        return create(pDeviceManager, desc);
-    }
 }
 
 /**
@@ -151,10 +127,7 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     // Update the FBOs or offscreen buffer
     if (!headless) {
-        // Update FBOs
-        if (updateDefaultFBO(mpWindow->getClientAreaSize().x, mpWindow->getClientAreaSize().y, mDesc.colorFormat, mDesc.depthFormat) == false) {
-            return false;
-        }
+        return false;
     } else {
         // Update offscreen buffer
         if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
@@ -316,9 +289,6 @@ void Device::cleanup() {
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
     destroyApiObjects();
-
-    if(!headless && mpWindow)
-        mpWindow.reset();
 }
 
 void Device::present() {
@@ -338,83 +308,6 @@ void Device::flushAndSync() {
     mpRenderContext->flush(true);
     mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
     executeDeferredReleases();
-}
-
-Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
-    assert(width > 0 && height > 0);
-
-    mpRenderContext->flush(true);
-
-    // resize offscreen fbo
-    if(headless) {
-        LOG_DBG("Device::resizeSwapChain headless");
-        // Store the FBO parameters
-        ResourceFormat colorFormat = mpOffscreenFbo->getColorTexture(0)->getFormat();
-        const auto& pDepth = mpOffscreenFbo->getDepthStencilTexture();
-        ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
-
-        assert(mpOffscreenFbo->getSampleCount() == 1);
-
-        // Delete all the FBOs
-        releaseFboData();
-        apiResizeOffscreenFBO(width, height, colorFormat);
-        updateOffscreenFBO(width, height, colorFormat, depthFormat);
-
-        LOG_DBG("Device::resizeSwapChain headless done");
-        return getOffscreenFbo();
-    }
-
-    // Store the FBO parameters
-    ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
-    const auto& pDepth = mpSwapChainFbos[0]->getDepthStencilTexture();
-    ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
-
-    // updateDefaultFBO() attaches the resized swapchain to new Texture objects, with Undefined resource state.
-    // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
-    // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
-    // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
-
-#ifdef FALCOR_D3D12
-    // Save FBO resource states
-    std::array<Resource::State, kSwapChainBuffersCount> fboColorStates;
-    std::array<Resource::State, kSwapChainBuffersCount> fboDepthStates;
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
-        assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
-        fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getGlobalState();
-
-        const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
-        if (pSwapChainDepth != nullptr) {
-            assert(pSwapChainDepth->isStateGlobal());
-            fboDepthStates[i] = pSwapChainDepth->getGlobalState();
-        }
-    }
-#endif
-
-    assert(mpSwapChainFbos[0]->getSampleCount() == 1);
-
-    // Delete all the FBOs
-    releaseFboData();
-    apiResizeSwapChain(width, height, colorFormat);
-    updateDefaultFBO(width, height, colorFormat, depthFormat);
-
-#ifdef FALCOR_D3D12
-    // Restore FBO resource states
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
-        assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
-        mpSwapChainFbos[i]->getColorTexture(0)->setGlobalState(fboColorStates[i]);
-        const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
-        if (pSwapChainDepth != nullptr) {
-            assert(pSwapChainDepth->isStateGlobal());
-            pSwapChainDepth->setGlobalState(fboDepthStates[i]);
-        }
-    }
-#endif
-
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_VK)
-#error Verify state handling on swapchain resize for this API
-#endif
-
-    return getSwapChainFbo();
 }
 
 #ifdef SCRIPTING

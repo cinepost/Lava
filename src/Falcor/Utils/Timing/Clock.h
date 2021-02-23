@@ -29,7 +29,6 @@
 #define SRC_FALCOR_UTILS_TIMING_CLOCK_H_
 
 #include "CpuTimer.h"
-#include "Falcor/Utils/UI/Gui.h"
 
 namespace Falcor {
 
@@ -185,10 +184,6 @@ class dlldecl Clock {
 
     deprecate("4.0.1", "Use isSimulatingFps() instead.")
     bool simulatingFps() const { return isSimulatingFps(); }
-
-    /** Render the UI
-    */
-    void renderUI(Gui::Window& w);
 
     /** Get the script string
     */

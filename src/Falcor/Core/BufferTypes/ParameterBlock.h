@@ -35,7 +35,6 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Core/Program/ShaderVar.h"
-#include "Falcor/Utils/UI/Gui.h"
 
 #include <slang/slang.h>
 
@@ -314,7 +313,6 @@ class dlldecl ParameterBlock {
 
     std::pair<Resource::SharedPtr, bool> getRootDescriptor(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
-    void renderUI(Gui::Widgets& widget);
     ParameterBlock::ConstSharedPtrRef getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
     // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error

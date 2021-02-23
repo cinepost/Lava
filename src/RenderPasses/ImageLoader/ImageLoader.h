@@ -46,7 +46,6 @@ class ImageLoader : public RenderPass, public inherit_shared_from_this<RenderPas
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual std::string getDesc() override { return kDesc; }
 

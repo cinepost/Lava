@@ -55,8 +55,6 @@ class Device;
             \param[in] name Name of the render graph.
             \return New object, or throws an exception if creation failed.
         */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name = "");
-
         static SharedPtr create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name = "");
 
         static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name = "");
@@ -190,20 +188,6 @@ class Device;
         */
         void autoGenEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
 
-        /** Render the UI
-        */
-        void renderUI(Gui::Widgets& widget);
-
-        /** Mouse event handler.
-            Returns true if the event was handled by the object, false otherwise
-        */
-        bool onMouseEvent(const MouseEvent& mouseEvent);
-
-        /** Keyboard event handler
-        Returns true if the event was handled by the object, false otherwise
-        */
-        bool onKeyEvent(const KeyboardEvent& keyEvent);
-
         /** Called upon hot reload (by pressing F5).
             \param[in] reloaded Resources that have been reloaded.
         */
@@ -231,10 +215,6 @@ class Device;
         friend class RenderGraphExporter;
         friend class RenderPassLibrary;
         friend class RenderGraphCompiler;
-
-        /** Default consturctor for FBO rendering (relies on gpFramework )
-         */
-        RenderGraph(std::shared_ptr<Device> device, const std::string& name);
 
         /** Special consturctors for rendering without gpFramework
          */

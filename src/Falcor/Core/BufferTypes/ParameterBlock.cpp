@@ -1138,11 +1138,6 @@ size_t ParameterBlock::getElementSize() const {
     return getElementType()->getByteSize();
 }
 
-void ParameterBlock::renderUI(Gui::Widgets& widget) {
-    VariablesBufferUI variablesBufferUI(*this);
-    variablesBufferUI.renderUI(widget);
-}
-
 static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav) {
     if (!pResource) return;
 

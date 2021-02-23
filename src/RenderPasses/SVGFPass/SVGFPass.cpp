@@ -368,27 +368,3 @@ void SVGFPass::computeAtrousDecomposition(RenderContext* pRenderContext, Texture
         pRenderContext->blit(mpCurReprojFbo->getColorTexture(0)->getSRV(), mpFilteredPastFbo->getRenderTargetView(0));
     }
 }
-
-void SVGFPass::renderUI(Gui::Widgets& widget) {
-    int dirty = 0;
-    dirty |= (int)widget.checkbox(mFilterEnabled ? "SVGF enabled" : "SVGF disabled", mFilterEnabled);
-
-    widget.text("");
-    widget.text("Number of filter iterations.  Which");
-    widget.text("    iteration feeds into future frames?");
-    dirty |= (int)widget.var("Iterations", mFilterIterations, 2, 10, 1);
-    dirty |= (int)widget.var("Feedback", mFeedbackTap, -1, mFilterIterations - 2, 1);
-
-    widget.text("");
-    widget.text("Contol edge stopping on bilateral fitler");
-    dirty |= (int)widget.var("For Color", mPhiColor, 0.0f, 10000.0f, 0.01f);
-    dirty |= (int)widget.var("For Normal", mPhiNormal, 0.001f, 1000.0f, 0.2f);
-
-    widget.text("");
-    widget.text("How much history should be used?");
-    widget.text("    (alpha; 0 = full reuse; 1 = no reuse)");
-    dirty |= (int)widget.var("Alpha", mAlpha, 0.0f, 1.0f, 0.001f);
-    dirty |= (int)widget.var("Moments Alpha", mMomentsAlpha, 0.0f, 1.0f, 0.001f);
-
-    if (dirty) mBuffersNeedClear = true;
-}

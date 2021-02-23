@@ -27,7 +27,6 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Light.h"
-#include "Utils/UI/Gui.h"
 #include "Utils/Color/ColorHelpers.slang"
 
 namespace Falcor {
@@ -143,25 +142,6 @@ void Light::setIntensityFromUI(float intensity)
     setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
 }
 
-void Light::renderUI(Gui::Widgets& widget)
-{
-    bool active = isActive();
-    if (widget.checkbox("Active", active)) setActive(active);
-
-    if (mHasAnimation) widget.checkbox("Animated", mIsAnimated);
-
-    float3 color = getColorForUI();
-    if (widget.rgbColor("Color", color))
-    {
-        setColorFromUI(color);
-    }
-
-    float intensity = getIntensityForUI();
-    if (widget.var("Intensity", intensity))
-    {
-        setIntensityFromUI(intensity);
-    }
-}
 
 Light::Light(LightType type)
 {
@@ -181,16 +161,6 @@ DirectionalLight::SharedPtr DirectionalLight::create()
 }
 
 DirectionalLight::~DirectionalLight() = default;
-
-void DirectionalLight::renderUI(Gui::Widgets& widget)
-{
-    Light::renderUI(widget);
-
-    if (widget.direction("Direction", mData.dirW))
-    {
-        setWorldDirection(mData.dirW);
-    }
-}
 
 void DirectionalLight::setWorldDirection(const float3& dir)
 {
@@ -241,23 +211,6 @@ float PointLight::getPower() const
     return luminance(mData.intensity) * 4.f * (float)M_PI;
 }
 
-void PointLight::renderUI(Gui::Widgets& widget)
-{
-    Light::renderUI(widget);
-
-    widget.var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
-    widget.direction("Direction", mData.dirW);
-
-    if (widget.var("Opening Angle", mData.openingAngle, 0.f, (float)M_PI))
-    {
-        setOpeningAngle(mData.openingAngle);
-    }
-    if (widget.var("Penumbra Width", mData.penumbraAngle, 0.f, (float)M_PI))
-    {
-        setPenumbraAngle(mData.penumbraAngle);
-    }
-}
-
 void PointLight::setOpeningAngle(float openingAngle)
 {
     openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
@@ -298,22 +251,6 @@ DistantLight::DistantLight()
 }
 
 DistantLight::~DistantLight() = default;
-
-void DistantLight::renderUI(Gui::Widgets& widget)
-{
-    Light::renderUI(widget);
-
-    if (widget.direction("Direction", mData.dirW))
-    {
-        setWorldDirection(mData.dirW);
-    }
-
-    if (widget.var("Half-angle", mAngle, 0.f, (float)M_PI_2))
-    {
-        setAngle(mAngle);
-    }
-    widget.tooltip("Half-angle subtended by the light, in radians.");
-}
 
 void DistantLight::setAngle(float angle)
 {

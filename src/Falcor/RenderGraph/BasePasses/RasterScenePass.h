@@ -60,14 +60,6 @@ namespace Falcor {
         */
         void renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo);
 
-        /** Call whenever a keyboard event happens
-        */
-        bool onKeyEvent(const KeyboardEvent& keyEvent);
-
-        /** Call whenever a mouse event happened
-        */
-        bool onMouseEvent(const MouseEvent& mouseEvent);
-
         /** Get the scene
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }

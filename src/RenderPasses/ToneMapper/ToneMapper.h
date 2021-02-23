@@ -50,7 +50,6 @@ class ToneMapper : public RenderPass, public inherit_shared_from_this<RenderPass
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
 
     // Scripting functions
     void setExposureCompensation(float exposureCompensation);

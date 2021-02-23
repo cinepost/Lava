@@ -47,7 +47,6 @@ class ForwardLightingPass : public RenderPass {
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
     virtual Dictionary getScriptingDictionary() override;
 
     /** Set the color target format. This is always enabled

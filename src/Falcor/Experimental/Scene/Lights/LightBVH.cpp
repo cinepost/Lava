@@ -86,52 +86,6 @@ void LightBVH::refit(RenderContext* pRenderContext)
     mIsCpuDataValid = false;
 }
 
-void LightBVH::renderUI(Gui::Widgets& widget)
-{
-    // Render the BVH stats.
-    renderStats(widget, getStats());
-}
-
-void LightBVH::renderStats(Gui::Widgets& widget, const BVHStats& stats) const
-{
-    const std::string statsStr =
-        "  Tree height:         " + std::to_string(stats.treeHeight) + "\n" +
-        "  Min depth:           " + std::to_string(stats.minDepth) + "\n" +
-        "  Size:                " + std::to_string(stats.byteSize) + " bytes\n" +
-        "  Internal node count: " + std::to_string(stats.internalNodeCount) + "\n" +
-        "  Leaf node count:     " + std::to_string(stats.leafNodeCount) + "\n" +
-        "  Triangle count:      " + std::to_string(stats.triangleCount) + "\n";
-    widget.text(statsStr.c_str());
-
-    Gui::Group nodeGroup(widget.gui(), "Node count per level");
-    if (nodeGroup.open())
-    {
-        std::string countStr;
-        for (uint32_t level = 0; level < stats.nodeCountPerLevel.size(); ++level)
-        {
-            countStr += "  Node count at level " + std::to_string(level) + ": " + std::to_string(stats.nodeCountPerLevel[level]) + "\n";
-        }
-        if (!countStr.empty()) countStr.pop_back();
-        nodeGroup.text(countStr.c_str());
-
-        nodeGroup.release();
-    }
-
-    Gui::Group leafGroup(widget.gui(), "Leaf node count histogram for triangle counts");
-    if (leafGroup.open())
-    {
-        std::string countStr;
-        for (uint32_t triangleCount = 0; triangleCount < stats.leafCountPerTriangleCount.size(); ++triangleCount)
-        {
-            countStr += "  Leaf nodes with " + std::to_string(triangleCount) + " triangles: " + std::to_string(stats.leafCountPerTriangleCount[triangleCount]) + "\n";
-        }
-        if (!countStr.empty()) countStr.pop_back();
-        leafGroup.text(countStr.c_str());
-
-        leafGroup.release();
-    }
-}
-
 void LightBVH::clear()
 {
     // Reset all CPU data.

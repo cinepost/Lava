@@ -503,136 +503,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
     return device;
 }
 
-VkSurfaceKHR createSurface(VkInstance instance, VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Window* pWindow) {
-    VkSurfaceKHR surface;
-
-#ifdef _WIN32
-    VkWin32SurfaceCreateInfoKHR createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    createInfo.hwnd = pWindow->getApiHandle();
-    createInfo.hinstance = GetModuleHandle(nullptr);
-
-    VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
-#else
-    VkXlibSurfaceCreateInfoKHR createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    createInfo.dpy = pWindow->getApiHandle().pDisplay;
-    createInfo.window = pWindow->getApiHandle().window;
-
-    VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface);
-#endif
-
-    if (VK_FAILED(result)) {
-        logError("Could not create Vulkan surface.");
-        return nullptr;
-    }
-
-    VkBool32 supported = VK_FALSE;
-    vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, pData->falcorToVulkanQueueType[uint32_t(LowLevelContextData::CommandQueueType::Direct)], surface, &supported);
-    assert(supported);
-
-    return surface;
-}
-
 bool Device::createOffscreenFBO(ResourceFormat colorFormat) {
-    return true;
-}
-
-bool Device::createSwapChain(ResourceFormat colorFormat) {
-    // Select/Validate SwapChain creation settings
-    // Surface size
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mApiHandle, mApiHandle, &surfaceCapabilities);
-    assert(surfaceCapabilities.supportedUsageFlags & (VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT));
-
-    VkExtent2D swapchainExtent = {};
-    if (surfaceCapabilities.currentExtent.width == (uint32_t)-1) {
-        const uint2 windowSize = mpWindow->getClientAreaSize();
-        swapchainExtent.width = windowSize.x;
-        swapchainExtent.height = windowSize.y;
-    } else {
-        swapchainExtent = surfaceCapabilities.currentExtent;
-    }
-
-    // Validate Surface format
-    if (isSrgbFormat(colorFormat) == false) {
-        logError("Can't create a swap-chain with linear-space color format");
-        return false;
-    }
-
-    const VkFormat requestedFormat = getVkFormat(colorFormat);
-    const VkColorSpaceKHR requestedColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-
-    uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(mApiHandle, mApiHandle, &formatCount, nullptr);
-    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(mApiHandle, mApiHandle, &formatCount, surfaceFormats.data());
-
-    bool formatValid = false;
-    for (const VkSurfaceFormatKHR& format : surfaceFormats) {
-        if (format.format == requestedFormat && format.colorSpace == requestedColorSpace) {
-            formatValid = true;
-            break;
-        }
-    }
-
-    if (formatValid == false) {
-        logError("Requested Swapchain format is not available");
-        return false;
-    }
-
-    // Select present mode
-    uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(mApiHandle, mApiHandle, &presentModeCount, nullptr);
-    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(mApiHandle, mApiHandle, &presentModeCount, presentModes.data());
-
-    // Select present mode, FIFO for VSync, otherwise preferring IMMEDIATE -> MAILBOX -> FIFO
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-    bool mVsyncOn = false; // TODO: make this configurable
-
-    if (mVsyncOn == false) {
-        for (size_t i = 0; i < presentModeCount; i++) {
-            if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-                presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-            } else if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-                presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-                break;
-            }
-        }
-    }
-
-    // Swapchain Creation
-    VkSwapchainCreateInfoKHR info = {};
-    info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    info.surface = mApiHandle;
-    uint32_t maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
-    info.minImageCount = clamp(kSwapChainBuffersCount, surfaceCapabilities.minImageCount, maxImageCount);
-    info.imageFormat = requestedFormat;
-    info.imageColorSpace = requestedColorSpace;
-    info.imageExtent = { swapchainExtent.width, swapchainExtent.height };
-    info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    info.preTransform = surfaceCapabilities.currentTransform;
-    info.imageArrayLayers = 1;
-    info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    info.queueFamilyIndexCount = 0;     // Only needed if VK_SHARING_MODE_CONCURRENT
-    info.pQueueFamilyIndices = nullptr; // Only needed if VK_SHARING_MODE_CONCURRENT
-    info.presentMode = presentMode;
-    info.clipped = true;
-    info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    info.oldSwapchain = VK_NULL_HANDLE;
-
-    if (VK_FAILED(vkCreateSwapchainKHR(mApiHandle, &info, nullptr, &mpApiData->swapchain))) {
-        logError("Could not create swapchain.");
-        return false;
-    }
-
-    uint32_t swapChainCount = 0;
-    vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &swapChainCount, nullptr);
-    LOG_DBG("swapChainCount is %u", swapChainCount);
-    assert(swapChainCount == kSwapChainBuffersCount);
-
     return true;
 }
 
@@ -661,14 +532,8 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
     if (!physicalDevice) return false;
 
-    VkSurfaceKHR surface;
-    if(!headless) {
-        surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
-        if (!surface) return false;
-    } else {
-        surface = VK_NULL_HANDLE;
-    }
-
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, deviceFeatures);
     if (!device) return false;
 
@@ -678,21 +543,8 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
     mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
 
-    if(!headless) {
-        if (createSwapChain(desc.colorFormat) == false) {
-            return false;
-        }
-    
-        mpApiData->presentFences.f.resize(kSwapChainBuffersCount);
-        for (auto& f : mpApiData->presentFences.f) {
-            VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-            info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            vk_call(vkCreateFence(device, &info, nullptr, &f));
-        }
-    } else {
-        if (createOffscreenFBO(desc.colorFormat) == false) {
-            return false;
-        }
+    if (createOffscreenFBO(desc.colorFormat) == false) {
+        return false;
     }
 
     VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
@@ -706,12 +558,6 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     vk_call(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mAllocator));
 
     return true;
-}
-
-void Device::apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
-    assert(!headless);  // swapchain resize makes no sense in headless mode
-    vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
-    createSwapChain(colorFormat);
 }
 
 void Device::apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat) {

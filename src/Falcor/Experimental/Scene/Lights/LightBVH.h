@@ -32,7 +32,6 @@
 #include "LightBVHTypes.slang"
 #include "Utils/Math/BBox.h"
 #include "Utils/Math/Vector.h"
-#include "Utils/UI/Gui.h"
 
 #include <limits>
 #include <vector>
@@ -118,10 +117,6 @@ public:
     */
     virtual bool isValid() const { return mIsValid; }
 
-    /** Render the UI. This default implementation just shows the stats.
-    */
-    virtual void renderUI(Gui::Widgets& widget);
-
     /** Bind the light BVH into a shader variable.
         \param[in] var The shader variable to set the data into.
     */
@@ -136,7 +131,6 @@ protected:
     void finalize();
     void computeStats();
     void updateNodeIndices();
-    void renderStats(Gui::Widgets& widget, const BVHStats& stats) const;
 
     void uploadCPUBuffers(const std::vector<uint32_t>& triangleIndices, const std::vector<uint64_t>& triangleBitmasks);
     void syncDataToCPU() const;

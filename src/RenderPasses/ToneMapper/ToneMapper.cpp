@@ -249,60 +249,6 @@ void ToneMapper::createLuminanceFbo(std::shared_ptr<Device> pDevice, const Textu
     }
 }
 
-void ToneMapper::renderUI(Gui::Widgets& widget) {
-    auto exposureGroup = Gui::Group(widget, "Exposure", true);
-    if (exposureGroup.open()) {
-        mUpdateToneMapPass |= exposureGroup.var("Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f");
-
-        mRecreateToneMapPass |= exposureGroup.checkbox("Auto Exposure", mAutoExposure);
-
-        if (!mAutoExposure) {
-            mUpdateToneMapPass |= exposureGroup.var("Exposure Value (EV)", mExposureValue, kExposureValueMin, kExposureValueMax, 0.1f, false, "%.1f");
-            mUpdateToneMapPass |= exposureGroup.var("Film Speed (ISO)", mFilmSpeed, kFilmSpeedMin, kFilmSpeedMax, 0.1f, false, "%.1f");
-        }
-
-        exposureGroup.release();
-    }
-
-    auto colorgradingGroup = Gui::Group(widget, "Color Grading", true);
-    if (colorgradingGroup.open()) {
-        mUpdateToneMapPass |= colorgradingGroup.checkbox("White Balance", mWhiteBalance);
-
-        if (mWhiteBalance) {
-            if (colorgradingGroup.var("White Point (K)", mWhitePoint, kWhitePointMin, kWhitePointMax, 5.f, false, "%.0f")) {
-                updateWhiteBalanceTransform();
-                mUpdateToneMapPass = true;
-            }
-
-            // Display color widget for the currently chosen white point.
-            // We normalize the color so that max(RGB) = 1 for display purposes.
-            float3 w = mSourceWhite;
-            w = w / std::max(std::max(w.r, w.g), w.b);
-            colorgradingGroup.rgbColor("", w);
-        }
-
-        colorgradingGroup.release();
-    }
-
-    auto tonemappingGroup = Gui::Group(widget, "Tonemapping", true);
-    if (tonemappingGroup.open()) {
-        uint32_t opIndex = static_cast<uint32_t>(mOperator);
-        if (tonemappingGroup.dropdown("Operator", kOperatorList, opIndex)) {
-            setOperator(Operator(opIndex));
-        }
-
-        if (mOperator == Operator::ReinhardModified) {
-            mUpdateToneMapPass |= tonemappingGroup.var("White Luminance", mWhiteMaxLuminance, 0.1f, FLT_MAX, 0.2f);
-        } else if (mOperator == Operator::HableUc2) {
-            mUpdateToneMapPass |= tonemappingGroup.var("Linear White", mWhiteScale, 0.f, 100.f, 0.01f);
-        }
-
-        mRecreateToneMapPass |= tonemappingGroup.checkbox("Clamp Output", mClamp);
-
-        tonemappingGroup.release();
-    }
-}
-
 void ToneMapper::setExposureCompensation(float exposureCompensation) {
     mExposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
     mUpdateToneMapPass = true;

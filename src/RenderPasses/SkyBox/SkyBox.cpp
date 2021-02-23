@@ -51,11 +51,6 @@ const char* SkyBox::kDesc = "Render an environment-map. The map can be provided 
 
 namespace {
 
-    const Gui::DropdownList kFilterList = {
-        { (uint32_t)Sampler::Filter::Linear, "Linear" },
-        { (uint32_t)Sampler::Filter::Point, "Point" },
-    };
-
     const std::string kTarget = "target";
     const std::string kDepth = "depth";
 
@@ -171,16 +166,6 @@ void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pSc
         mpCubeScene->setCamera(mpScene->getCamera());
         if (mpScene->getEnvMap()) setTexture(mpScene->getEnvMap()->getEnvMap());
     }
-}
-
-void SkyBox::renderUI(Gui::Widgets& widget) {
-    float scale = mScale;
-    if (widget.var("Scale", scale, 0.f)) setScale(scale);
-
-    if (widget.button("Load Image")) { loadImage(); }
-
-    uint32_t filter = (uint32_t)mFilter;
-    if (widget.dropdown("Filter", kFilterList, filter)) setFilter(filter);
 }
 
 void SkyBox::loadImage() {

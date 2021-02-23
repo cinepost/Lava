@@ -116,16 +116,3 @@ DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsSt
     mpState->setRasterizerState(mpRsState);
     return *this;
 }
-
-static const Gui::DropdownList kDepthFormats = {
-    { (uint32_t)ResourceFormat::D16Unorm, "D16Unorm"},
-    { (uint32_t)ResourceFormat::D32Float, "D32Float" },
-    { (uint32_t)ResourceFormat::D24UnormS8, "D24UnormS8" },
-    { (uint32_t)ResourceFormat::D32FloatS8X24, "D32FloatS8X24" },
-};
-
-void DepthPass::renderUI(Gui::Widgets& widget) {
-    uint32_t depthFormat = (uint32_t)mDepthFormat;
-
-    if (widget.dropdown("Buffer Format", kDepthFormats, depthFormat)) setDepthBufferFormat(ResourceFormat(depthFormat));
-}

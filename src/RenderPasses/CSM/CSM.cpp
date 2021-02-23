@@ -68,30 +68,6 @@ const char* CSM::kDesc = "The pass generates a visibility-map using the CSM tech
 "It supports common filtering modes, including EVSM. It also supports PSSM and SDSM";
 
 namespace {
-    const Gui::DropdownList kFilterList = {
-    { (uint32_t)CsmFilter::Point, "Point" },
-    { (uint32_t)CsmFilter::HwPcf, "2x2 HW PCF" },
-    { (uint32_t)CsmFilter::FixedPcf, "Fixed-Size PCF" },
-    { (uint32_t)CsmFilter::Vsm, "VSM" },
-    { (uint32_t)CsmFilter::Evsm2, "EVSM2" },
-    { (uint32_t)CsmFilter::Evsm4, "EVSM4" },
-    { (uint32_t)CsmFilter::StochasticPcf, "Stochastic Poisson PCF" }
-    };
-
-    const Gui::DropdownList kPartitionList = {
-        { (uint32_t)CSM::PartitionMode::Linear, "Linear" },
-        { (uint32_t)CSM::PartitionMode::Logarithmic, "Logarithmic" },
-        { (uint32_t)CSM::PartitionMode::PSSM, "PSSM" }
-    };
-
-    const Gui::DropdownList kMaxAniso = {
-        { (uint32_t)1, "1" },
-        { (uint32_t)2, "2" },
-        { (uint32_t)4, "4" },
-        { (uint32_t)8, "8" },
-        { (uint32_t)16, "16" }
-    };
-
     const std::string kDepth = "depth";
     const std::string kVisibility = "visibility";
     const std::string kBlurPass = "GaussianBlur";
@@ -306,7 +282,7 @@ RenderPassReflection CSM::reflect(const CompileData& compileData) {
 }
 
 void CSM::compile(RenderContext* pContext, const CompileData& compileData) {
-    mpBlurGraph = RenderGraph::create(mpDevice, "Gaussian Blur");
+    mpBlurGraph = RenderGraph::create(mpDevice, mVisibilityPassData.screenDim, ResourceFormat::RGBA16Float, "Gaussian Blur");
     GaussianBlur::SharedPtr pBlurPass = GaussianBlur::create(pContext, mBlurDict);
     mpBlurGraph->addPass(pBlurPass, kBlurPass);
     mpBlurGraph->markOutput(kBlurPass + ".dst");
@@ -674,112 +650,6 @@ void CSM::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene
         mDepthPass.pVars = nullptr;
         mShadowPass.pVars = nullptr;
         mPerLightCbLoc = {};
-    }
-}
-
-void CSM::renderUI(Gui::Widgets& widget) {
-    if (mpLight && mpLight->getType() == LightType::Directional) {
-        if (widget.var("Cascade Count", (int32_t&)mCsmData.cascadeCount, 1, 8)) {
-            setCascadeCount(mCsmData.cascadeCount);
-        }
-    }
-
-    // Shadow-map size
-    int2 smDims = int2(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
-    if (widget.var("Shadow-Map Size", smDims, 0, 8192)) resizeShadowMap(smDims);
-
-    // Visibility buffer bits-per channel
-    static const Gui::DropdownList visBufferBits = {
-        {8, "8"},
-        {16, "16"},
-        {32, "32"}
-    };
-    if (widget.dropdown("Visibility Buffer Bits-Per-Channel", visBufferBits, mVisibilityPassData.mapBitsPerChannel)) setVisibilityBufferBitsPerChannel(mVisibilityPassData.mapBitsPerChannel);
-
-    // Mesh culling
-    if (widget.checkbox("Cull Meshes", mCullMeshes)) toggleMeshCulling(mCullMeshes);
-
-    //Filter mode
-    uint32_t filterIndex = static_cast<uint32_t>(mCsmData.filterMode);
-    if (widget.dropdown("Filter Mode", kFilterList, filterIndex)) {
-        setFilterMode(filterIndex);
-    }
-
-    //partition mode
-    uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
-
-    if (widget.dropdown("Partition Mode", kPartitionList, newPartitionMode)) {
-        setPartitionMode(newPartitionMode);
-    }
-
-    if (mControls.partitionMode == PartitionMode::PSSM) {
-        widget.var("PSSM Lambda", mControls.pssmLambda, 0.f, 1.0f);
-    }
-
-    if (mControls.useMinMaxSdsm == false) {
-        widget.var("Min Distance", mControls.distanceRange.x, 0.f, 1.f, 0.001f);
-        widget.var("Max Distance", mControls.distanceRange.y, 0.f, 1.f, 0.001f);
-    }
-
-    widget.var("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0.f, 1.0f, 0.001f);
-    widget.checkbox("Depth Clamp", mControls.depthClamp);
-
-    widget.var("Depth Bias", mCsmData.depthBias, 0.f, FLT_MAX, 0.0001f);
-    widget.checkbox("Stabilize Cascades", mControls.stabilizeCascades);
-
-    // SDSM data
-    auto sdsmGroup = Gui::Group(widget, "SDSM MinMax");
-    if (sdsmGroup.open()) {
-        sdsmGroup.checkbox("Enable", mControls.useMinMaxSdsm);
-        if (mControls.useMinMaxSdsm) {
-            int32_t latency = mSdsmData.readbackLatency;
-            if (sdsmGroup.var("Readback Latency", latency, 0)) {
-                setSdsmReadbackLatency(latency);
-            }
-            std::string range = "SDSM Range=[" + std::to_string(mSdsmData.sdsmResult.x) + ", " + std::to_string(mSdsmData.sdsmResult.y) + ']';
-            sdsmGroup.text(range.c_str());
-        }
-
-        sdsmGroup.release();
-    }
-
-
-    if ((CsmFilter)mCsmData.filterMode == CsmFilter::FixedPcf || (CsmFilter)mCsmData.filterMode == CsmFilter::StochasticPcf) {
-        int32_t kernelWidth = mCsmData.pcfKernelWidth;
-        if (widget.var("Kernel Width", kernelWidth, 1, 15, 2)) {
-            setPcfKernelWidth(kernelWidth);
-        }
-    }
-
-    //VSM/ESM
-    if ((CsmFilter)mCsmData.filterMode == CsmFilter::Vsm || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4) {
-        auto vsmGroup = Gui::Group(widget, "VSM/EVSM");
-        if (vsmGroup.open()) {
-            uint32_t newMaxAniso = mShadowPass.pVSMTrilinearSampler->getMaxAnisotropy();
-            vsmGroup.dropdown("Max Aniso", kMaxAniso, newMaxAniso);
-            {
-                createVsmSampleState(newMaxAniso);
-            }
-
-            vsmGroup.var("Light Bleed Reduction", mCsmData.lightBleedingReduction, 0.f, 1.0f, 0.01f);
-
-            if ((CsmFilter)mCsmData.filterMode == CsmFilter::Evsm2 || (CsmFilter)mCsmData.filterMode == CsmFilter::Evsm4) {
-                auto evsmExpGroup = Gui::Group(widget, "EVSM Exp");
-                if (evsmExpGroup.open()) {
-                    evsmExpGroup.var("Positive", mCsmData.evsmExponents.x, 0.0f, 5.54f, 0.01f);
-                    evsmExpGroup.var("Negative", mCsmData.evsmExponents.y, 0.0f, 5.54f, 0.01f);
-                    evsmExpGroup.release();
-                }
-            }
-
-            auto blurGroup = Gui::Group(widget, "Blur Settings");
-            if (blurGroup.open()) {
-                mpBlurGraph->getPass(kBlurPass)->renderUI(blurGroup);
-                blurGroup.release();
-            }
-
-            vsmGroup.release();
-        }
     }
 }
 

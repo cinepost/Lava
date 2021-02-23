@@ -35,8 +35,6 @@
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
 
-#include "Falcor/Utils/UI/Gui.h"
-
 #include <memory>
 
 namespace Falcor {
@@ -104,12 +102,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& name);
 
     ~Material();
-
-    /** Render the UI.
-        \return True if the material was modified.
-    */
-    bool renderUI(Gui::Widgets& widget);
-
+    
     /** Returns the updates since the last call to clearUpdates.
     */
     UpdateFlags getUpdates() const { return mUpdates; }

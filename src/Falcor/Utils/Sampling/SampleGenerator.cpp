@@ -31,7 +31,6 @@
 namespace Falcor {
 
     static std::map<uint32_t, std::function<SampleGenerator::SharedPtr()>> sFactory;
-    static Gui::DropdownList sGuiDropdownList;
 
     SampleGenerator::SharedPtr SampleGenerator::create(uint32_t type) {
         if (auto it = sFactory.find(type); it != sFactory.end()) {
@@ -47,12 +46,7 @@ namespace Falcor {
         return defines;
     }
 
-    const Gui::DropdownList& SampleGenerator::getGuiDropdownList() {
-        return sGuiDropdownList;
-    }
-
     void SampleGenerator::registerType(uint32_t type, const std::string& name, std::function<SharedPtr()> createFunc) {
-        sGuiDropdownList.push_back({ type, name });
         sFactory[type] = createFunc;
     }
 

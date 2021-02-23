@@ -28,18 +28,16 @@ file( GLOB SOURCES
     ./Utils/Sampling/Pseudorandom/*.cpp
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
-    ./Utils/UI/*.cpp
-    ./Utils/Video/*.cpp
     ./Experimental/Scene/Lights/*.cpp
     #./Testing/*.cpp
 
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_glfw.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_vulkan.cpp
-    ${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_glfw.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_vulkan.cpp
+    #${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
     ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
 )
 
@@ -97,12 +95,12 @@ endif()
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
 # ImGui
-include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
+#include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
 
 # GLFW 
-find_package(glfw3 CONFIG REQUIRED)
-include_directories(${GLFW_INCLUDE_DIRS})
-link_libraries(${GLFW_LIBRARIES})
+#find_package(glfw3 CONFIG REQUIRED)
+#include_directories(${GLFW_INCLUDE_DIRS})
+#link_libraries(${GLFW_LIBRARIES})
 
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
@@ -163,8 +161,6 @@ add_definitions(-DFALCOR_DLL)
 
 target_link_libraries(
     falcor_lib
-
-    glfw
     avutil
     avformat
     swscale

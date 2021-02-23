@@ -55,7 +55,6 @@ class SSAO : public RenderPass, public inherit_shared_from_this<RenderPass, SSAO
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override { mpScene = pScene; }
-    virtual void renderUI(Gui::Widgets& widget) override;
 
     void setSampleRadius(float radius);
     void setKernelSize(uint32_t kernelSize);

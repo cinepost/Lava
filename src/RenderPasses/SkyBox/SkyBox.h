@@ -47,7 +47,6 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
 
     void setIntensity(float3 intensity) { mIntensity = intensity; }
     float3 getIntensity() const { return mIntensity; }

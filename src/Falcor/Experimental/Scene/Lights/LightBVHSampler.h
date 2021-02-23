@@ -99,11 +99,6 @@ namespace Falcor
         */
         virtual bool setShaderData(const ShaderVar& var) const override;
 
-        /** Render the GUI.
-            \return True if setting the refresh flag is needed, false otherwise.
-        */
-        virtual bool renderUI(Gui::Widgets& widget) override;
-
         /** Returns the current configuration.
         */
         const Options& getOptions() const { return mOptions; }

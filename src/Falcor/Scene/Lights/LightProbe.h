@@ -79,12 +79,6 @@ class dlldecl LightProbe {
 
     ~LightProbe();
 
-    /** Render UI elements for this light.
-        \param[in] pGui The GUI to create the elements with
-        \param[in] group Optional. If specified, creates a UI group to display elements within
-    */
-    void renderUI(Gui* pGui, const char* group = nullptr);
-
     /** Set the light probe's world-space position
     */
     void setPosW(const float3& posW) { mData.posW = posW; }

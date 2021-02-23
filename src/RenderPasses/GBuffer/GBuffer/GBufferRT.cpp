@@ -213,18 +213,4 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     mGBufferParams.frameCount++;
 }
 
-void GBufferRT::renderUI(Gui::Widgets& widget)
-{
-    // Render the base class UI first.
-    GBuffer::renderUI(widget);
-
-    // Ray tracing specific options.
-    uint32_t lodMode = (uint32_t)mLODMode;
-    if (widget.dropdown("LOD Mode", kLODModeList, lodMode))
-    {
-        mLODMode = (LODMode)lodMode;
-        mOptionsChanged = true;
-    }
-}
-
 #endif  // FALCOR_D3D

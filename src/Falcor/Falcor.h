@@ -40,10 +40,6 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/Framework.h"
 
-// Core
-#include "Falcor/Core/Sample.h"
-#include "Falcor/Core/Window.h"
-
 // Core/API
 #include "Falcor/Core/API/BlendState.h"
 #include "Falcor/Core/API/Buffer.h"
@@ -75,7 +71,6 @@
 
 // Core/BufferTypes
 #include "Falcor/Core/BufferTypes/ParameterBlock.h"
-#include "Falcor/Core/BufferTypes/VariablesBufferUI.h"
 
 // Core/Platform
 #include "Falcor/Core/Platform/OS.h"
@@ -98,7 +93,6 @@
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderGraphImportExport.h"
 #include "Falcor/RenderGraph/RenderGraphIR.h"
-#include "Falcor/RenderGraph/RenderGraphUI.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassReflection.h"
@@ -142,20 +136,11 @@
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
-#include "Falcor/Utils/Scripting/Console.h"
 #include "Falcor/Utils/Timing/CpuTimer.h"
 #include "Falcor/Utils/Timing/Clock.h"
 #include "Falcor/Utils/Timing/FrameRate.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
-#include "Falcor/Utils/UI/Font.h"
-#include "Falcor/Utils/UI/Gui.h"
-#include "Falcor/Utils/UI/DebugDrawer.h"
-#include "Falcor/Utils/UI/PixelZoom.h"
-#include "Falcor/Utils/UI/TextRenderer.h"
-#include "Falcor/Utils/UI/UserInput.h"
-#include "Falcor/Utils/Video/VideoEncoder.h"
-#include "Falcor/Utils/Video/VideoEncoderUI.h"
 #include "Falcor/Utils/Debug/DebugConsole.h"
 #include "Falcor/Utils/Debug/PixelDebug.h"
 

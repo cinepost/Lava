@@ -199,26 +199,6 @@ Texture::SharedPtr SSAO::generateAOMap(RenderContext* pContext, const Camera* pC
     return mpAOFbo->getColorTexture(0);
 }
 
-void SSAO::renderUI(Gui::Widgets& widget) {
-    uint32_t distribution = (uint32_t)mHemisphereDistribution;
-    if (widget.dropdown("Kernel Distribution", kDistributionDropdown, distribution)) setDistribution(distribution);
-
-    uint32_t size = mData.kernelSize;
-    if (widget.var("Kernel Size", size, 1u, kMaxSamples)) setKernelSize(size);
-
-    float radius = mData.radius;
-    if (widget.var("Sample Radius", radius, 0.001f, FLT_MAX, 0.001f)) setSampleRadius(radius);
-
-    widget.checkbox("Apply Blur", mApplyBlur);
-    if (mApplyBlur) {
-        auto blurGroup = Gui::Group(widget, "Blur Settings");
-        if (blurGroup.open()) {
-            mpBlurGraph->getPass("GaussianBlur")->renderUI(blurGroup);
-            blurGroup.release();
-        }
-    }
-}
-
 void SSAO::setSampleRadius(float radius) {
     mData.radius = radius;
     mDirty = true;

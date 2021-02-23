@@ -91,7 +91,6 @@ int main(int argc, char** argv){
     signal(SIGSEGV, signalTraceHandler);
 
     /// Program options
-    int opt;
     std::string config_file;
 
     // Declare a group of options that will be allowed only on command line

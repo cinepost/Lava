@@ -35,8 +35,6 @@
 #include "ResourceCache.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Scene.h" 
-#include "Falcor/Utils/UI/Gui.h"
-#include "Falcor/Utils/UI/UserInput.h"
 #include "Falcor/Core/API/RenderContext.h" 
 #include "Falcor/Core/API/Device.h"
 
@@ -130,23 +128,9 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual std::string getDesc() = 0;
 
-    /** Render the pass's UI
-    */
-    virtual void renderUI(Gui::Widgets& widget) {}
-
     /** Set a scene into the render-pass
     */
     virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
-
-    /** Mouse event handler.
-        Returns true if the event was handled by the object, false otherwise
-    */
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
-
-    /** Keyboard event handler
-        Returns true if the event was handled by the object, false otherwise
-    */
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
 
     /** Called upon hot reload (by pressing F5).
         \param[in] reloaded Resources that have been reloaded.

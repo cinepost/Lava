@@ -31,7 +31,6 @@
 #include "Utils/AlignedAllocator.h"
 #include "Utils/Math/BBox.h"
 #include "Utils/Math/Vector.h"
-#include "Utils/UI/Gui.h"
 
 #include <limits>
 #include <vector>
@@ -84,8 +83,6 @@ public:
         \param[in,out] bvh The light BVH to build.
     */
     void build(LightBVH& bvh);
-
-    virtual bool renderUI(Gui::Widgets& widget);
 
     const Options& getOptions() const { return mOptions; }
 
@@ -142,11 +139,7 @@ protected:
     using SplitHeuristicFunction = std::function<SplitResult(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters)>;
 
     LightBVHBuilder(const Options& options);
-
-    /** Renders the UI with builder options.
-    */
-    bool renderOptions(Gui::Widgets& widget, Options& options) const;
-
+    
     /** Recursive BVH build.
         \param[in] splitHeuristic The splitting heuristic to be used.
         \param[in] bitmask Bit pattern retracing the tree traversal to reach the node to be built: 0=left child, 1=right child.

@@ -49,13 +49,7 @@ DeviceManager::~DeviceManager() {
             pDevice.reset();
         }
     }
-
-    for( auto& [id, pDevice]: mDisplayDevices ) {
-        if (pDevice) {
-            pDevice->cleanup();
-            pDevice.reset();
-        }
-    }
+    
     LOG_DBG("DeviceManager::~DeviceManager done");
 }
 
@@ -71,14 +65,6 @@ DeviceManager::SharedPtr DeviceManager::create() {
     pDeviceManager->printEnumeratedDevices();
 
     return SharedPtr(pDeviceManager);
-}
-
-std::vector<Device::SharedPtr> DeviceManager::displayDevices() const {
-    std::vector<Device::SharedPtr> devices;
-    for( auto& device: mDisplayDevices ) {
-        devices.push_back(device.second);
-    }
-    return devices;
 }
 
 std::vector<Device::SharedPtr> DeviceManager::renderingDevices() const {
@@ -97,22 +83,6 @@ bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
     return false;
 }
 
-Device::SharedPtr DeviceManager::createDisplayDevice(uint8_t gpuId, Falcor::Window::SharedPtr pWindow, const Device::Desc &desc) {
-    if (!deviceEnumerated(gpuId)) {
-        logError("Display device " + to_string(gpuId) + " not enumerated !!!");
-        return nullptr;
-    }
-
-    Device::SharedPtr pDevice = displayDevice(gpuId);
-    if(pDevice) return pDevice;
-
-    pDevice = Device::create(shared_from_this(), pWindow, desc);
-    if (!pDevice) logError("Unable to create display device!");
-
-    mDisplayDevices[gpuId] = pDevice;
-    return pDevice;
-}
-
 Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc) {
     if (!deviceEnumerated(gpuId)) {
         logError("Rendering device " + to_string(gpuId) + " not enumerated !!!");
@@ -127,20 +97,6 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
 
     mRenderingDevices[gpuId] = pDevice;
     return pDevice;
-}
-
-
-Device::SharedPtr DeviceManager::displayDevice(uint8_t gpuId) const {
-    if (!deviceEnumerated(gpuId)) return nullptr;
-
-    auto it = mDisplayDevices.find(gpuId);
-
-    if (it == mDisplayDevices.end()) {
-        // device not created yet ...
-        return nullptr;
-    }
-
-    return  it->second;
 }
 
 Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
@@ -164,15 +120,6 @@ void DeviceManager::printEnumeratedDevices() const {
 
 Device::SharedPtr DeviceManager::defaultRenderingDevice() const {
     return renderingDevice(mDefaultRenderingDeviceID);
-}
-
-Device::SharedPtr DeviceManager::defaultDisplayDevice() const {
-    return displayDevice(mDefaultDisplayDeviceID);
-}
-
-void DeviceManager::setDefaultDisplayDevice(uint8_t gpuId) {
-    if(gpuId < mDisplayDevices.size())
-        mDefaultDisplayDeviceID = gpuId;
 }
 
 void DeviceManager::setDefaultRenderingDevice(uint8_t gpuId) {

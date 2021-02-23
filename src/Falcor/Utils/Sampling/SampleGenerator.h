@@ -63,10 +63,6 @@ namespace Falcor {
         */
         virtual bool setShaderData(ShaderVar const& var) const { return true; }
 
-        /** Returns a GUI dropdown list of all available sample generators.
-        */
-        static const Gui::DropdownList& getGuiDropdownList();
-
         /** Register a sample generator type.
             \param[in] type The type of sample generator. See SampleGeneratorType.slangh.
             \param[in] name Descriptive name used in the UI.

@@ -370,10 +370,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
     #endif
 
-    /** Render the UI
-    */
-    void renderUI(Gui::Widgets& widget);
-
     /** Bind a sampler to the materials
     */
     void bindSamplerToMaterials(const Sampler::SharedPtr& pSampler);
@@ -391,14 +387,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] filename Texture filename.
     */
     void loadEnvMap(const std::string& filename);
-
-    /** Handle mouse events
-    */
-    bool onMouseEvent(const MouseEvent& mouseEvent);
-
-    /** Handle keyboard events
-    */
-    bool onKeyEvent(const KeyboardEvent& keyEvent);
 
     /** Get the filename that the scene was loaded from
     */
@@ -521,10 +509,6 @@ private:
     */
     void initializeCameras();
 
-    /** Prepare all UI-related objects that do not change over the course of execution.
-    */
-    void prepareUI();
-
     /** Update an animatable object.
     */
     bool updateAnimatable(Animatable& animatable, const AnimationController& controller, bool force = false);
@@ -623,8 +607,6 @@ private:
     uint32_t mSelectedCamera = 0;
     float mCameraSpeed = 1.0f;
     bool mCameraSwitched = false;
-
-    Gui::DropdownList mCameraList;
 
     // Saved Camera Viewpoints
     struct Viewpoint {

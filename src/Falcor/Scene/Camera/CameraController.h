@@ -46,14 +46,6 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<CameraController>;
         virtual ~CameraController() = default;
 
-        /** Handle mouse events
-        */
-        virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
-
-        /* Handle keyboard events
-        */
-        virtual bool onKeyEvent(const KeyboardEvent& keyboardEvent) { return false; }
-
         /** Update the camera position and orientation.
             \return Whether the camera was updated/changed
         */
@@ -84,10 +76,6 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new OrbiterCameraController(pCamera)); }
-
-        /** Handle mouse events
-        */
-        bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
         /** Set the model parameters
             \param[in] Center The model's center. This is the position in which the camera will orbit around.
@@ -133,14 +121,6 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create(const Camera::SharedPtr& pCamera) { return SharedPtr(new FirstPersonCameraControllerCommon(pCamera)); }
-
-        /** Handle mouse events
-        */
-        bool onMouseEvent(const MouseEvent& mouseEvent) override;
-
-        /** Handle keyboard events
-        */
-        bool onKeyEvent(const KeyboardEvent& keyboardEvent) override;
 
         /** Update the camera position and orientation.
             \return Whether the camera was updated/changed

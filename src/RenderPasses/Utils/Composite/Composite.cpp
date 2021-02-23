@@ -40,12 +40,6 @@ namespace {
     const std::string kMode = "mode";
     const std::string kScaleA = "scaleA";
     const std::string kScaleB = "scaleB";
-
-    const Gui::DropdownList kModeList =
-    {
-        { (uint32_t)Composite::Mode::Add, "Add" },
-        { (uint32_t)Composite::Mode::Multiply, "Multiply" },
-    };
 }
 
 Composite::SharedPtr Composite::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -111,13 +105,6 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
     mCompositePass["B"] = renderData[kInputB]->asTexture();
     mCompositePass["output"] = renderData[kOutput]->asTexture();
     mCompositePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
-}
-
-void Composite::renderUI(Gui::Widgets& widget) {
-    widget.text("This pass scales and composites inputs A and B together");
-    widget.dropdown("Mode", kModeList, reinterpret_cast<uint32_t&>(mMode));
-    widget.var("Scale A", mScaleA);
-    widget.var("Scale B", mScaleB);
 }
 
 void Composite::registerBindings(pybind11::module& m)

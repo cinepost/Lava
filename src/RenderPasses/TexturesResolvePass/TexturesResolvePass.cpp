@@ -281,7 +281,3 @@ TexturesResolvePass& TexturesResolvePass::setRasterizerState(const RasterizerSta
     mpState->setRasterizerState(mpRsState);
     return *this;
 }
-
-void TexturesResolvePass::renderUI(Gui::Widgets& widget) {
-
-}

@@ -124,7 +124,7 @@ makeRenderPassLib(NAME "AccumulatePass")
 #makeRenderPassLib(NAME "Antialiasing")
 #makeRenderPassLib(NAME "ErrorMeasurePass")
 #makeRenderPassLib(NAME "DebugPasses")
-makeRenderPassLib(NAME "BSDFViewer")
+#makeRenderPassLib(NAME "BSDFViewer")
 #makeRenderPassLib(NAME "SVGFPass")
 
 # Render passes with dependecies

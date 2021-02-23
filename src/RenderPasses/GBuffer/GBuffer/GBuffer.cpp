@@ -47,14 +47,6 @@ namespace
     // Scripting options.
     const char kForceCullMode[] = "forceCullMode";
     const char kCullMode[] = "cull";
-
-    // UI variables.
-    const Gui::DropdownList kCullModeList =
-    {
-        { (uint32_t)RasterizerState::CullMode::None, "None" },
-        { (uint32_t)RasterizerState::CullMode::Back, "Back" },
-        { (uint32_t)RasterizerState::CullMode::Front, "Front" },
-    };
 }
 
 GBuffer::GBuffer(Device::SharedPtr pDevice) : GBufferBase(pDevice), mGBufferParams{} {
@@ -77,24 +69,6 @@ Dictionary GBuffer::getScriptingDictionary()
     dict[kForceCullMode] = mForceCullMode;
     dict[kCullMode] = mCullMode;
     return dict;
-}
-
-void GBuffer::renderUI(Gui::Widgets& widget) {
-    // Render the base class UI first.
-    GBufferBase::renderUI(widget);
-
-    // Cull mode controls.
-    mOptionsChanged |= widget.checkbox("Force cull mode", mForceCullMode);
-    widget.tooltip("Enable this option to force the same cull mode for all geometry.\n\n"
-        "Otherwise the default for rasterization is to set the cull mode automatically based on triangle winding, and for ray tracing to disable culling.", true);
-
-    if (mForceCullMode) {
-        uint32_t cullMode = (uint32_t)mCullMode;
-        if (widget.dropdown("Cull mode", kCullModeList, cullMode)) {
-            setCullMode((RasterizerState::CullMode)cullMode);
-            mOptionsChanged = true;
-        }
-    }
 }
 
 void GBuffer::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {

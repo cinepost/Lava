@@ -38,13 +38,6 @@ EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, const std::str
     return SharedPtr(new EnvMap(pDevice, filename));
 }
 
-void EnvMap::renderUI(Gui::Widgets& widgets) {
-    auto rotation = getRotation();
-    if (widgets.var("Rotation XYZ", rotation, -360.f, 360.f, 0.5f)) setRotation(rotation);
-    widgets.var("Intensity", mData.intensity, 0.f, 1000000.f);
-    widgets.var("Color tint", mData.tint, 0.f, 1.f);
-}
-
 void EnvMap::setRotation(float3 degreesXYZ) {
     if (degreesXYZ != mRotation) {
         mRotation = degreesXYZ;

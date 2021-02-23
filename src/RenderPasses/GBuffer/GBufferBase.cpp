@@ -72,14 +72,6 @@ namespace {
     const char kSamplePattern[] = "samplePattern";
     const char kSampleCount[] = "sampleCount";
     const char kDisableAlphaTest[] = "disableAlphaTest";
-
-    // UI variables.
-    const Gui::DropdownList kSamplePatternList = {
-        { (uint32_t)GBufferBase::SamplePattern::Center, "Center" },
-        { (uint32_t)GBufferBase::SamplePattern::DirectX, "DirectX" },
-        { (uint32_t)GBufferBase::SamplePattern::Halton, "Halton" },
-        { (uint32_t)GBufferBase::SamplePattern::Stratified, "Stratified" },
-    };
 }
 
 void GBufferBase::parseDictionary(const Dictionary& dict) {
@@ -98,25 +90,6 @@ Dictionary GBufferBase::getScriptingDictionary()
     dict[kSampleCount] = mSampleCount;
     dict[kDisableAlphaTest] = mDisableAlphaTest;
     return dict;
-}
-
-void GBufferBase::renderUI(Gui::Widgets& widget) {
-    // Sample pattern controls.
-    bool updatePattern = widget.dropdown("Sample pattern", kSamplePatternList, (uint32_t&)mSamplePattern);
-    widget.tooltip("Selects sample pattern for anti-aliasing over multiple frames.\n\n"
-        "The camera jitter is set at the start of each frame based on the chosen pattern. All render passes should see the same jitter.\n"
-        "'Center' disables anti-aliasing by always sampling at the center of the pixel.", true);
-    if (mSamplePattern != SamplePattern::Center) {
-        updatePattern |= widget.var("Sample count", mSampleCount, 1u);
-        widget.tooltip("Number of samples in the anti-aliasing sample pattern.", true);
-    }
-
-    if (updatePattern) {
-        updateSamplePattern();
-        mOptionsChanged = true;
-    }
-
-    mOptionsChanged |=  widget.checkbox("Disable Alpha Test", mDisableAlphaTest);
 }
 
 void GBufferBase::compile(RenderContext* pContext, const CompileData& compileData) {

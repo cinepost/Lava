@@ -66,40 +66,6 @@ namespace Falcor {
         }
     }
 
-    void RenderGraphExe::renderUI(Gui::Widgets& widget) {
-        for (const auto& p : mExecutionList) {
-            const auto& pPass = p.pPass;
-
-            auto passGroup = Gui::Group(widget, p.name);
-            if (passGroup.open()) {
-                // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
-                const auto& desc = pPass->getDesc();
-                if (desc.size()) passGroup.tooltip(desc.c_str());
-                pPass->renderUI(passGroup);
-
-                passGroup.release();
-            }
-        }
-    }
-
-    bool RenderGraphExe::onMouseEvent(const MouseEvent& mouseEvent) {
-        bool b = false;
-        for (const auto& p : mExecutionList) {
-            const auto& pPass = p.pPass;
-            b = b || pPass->onMouseEvent(mouseEvent);
-        }
-        return b;
-    }
-
-    bool RenderGraphExe::onKeyEvent(const KeyboardEvent& keyEvent) {
-        bool b = false;
-        for (const auto& p : mExecutionList) {
-            const auto& pPass = p.pPass;
-            b = b || pPass->onKeyEvent(keyEvent);
-        }
-        return b;
-    }
-
     void RenderGraphExe::onHotReload(HotReloadFlags reloaded) {
         for (const auto& p : mExecutionList) {
             const auto& pPass = p.pPass;

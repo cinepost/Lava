@@ -96,24 +96,3 @@ void ImageLoader::execute(RenderContext* pContext, const RenderData& renderData)
     }
     pContext->blit(mpTex->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTex->getRTV());
 }
-
-void ImageLoader::renderUI(Gui::Widgets& widget) {
-    bool reloadImage = widget.textbox("Image File", mImageName);
-    reloadImage |= widget.checkbox("Load As SRGB", mLoadSRGB);
-    reloadImage |= widget.checkbox("Generate Mipmaps", mGenerateMips);
-    if (mGenerateMips) {
-        reloadImage |= widget.slider("Mip Level", mMipLevel, 0u, mpTex ? mpTex->getMipCount() : 0u);
-    }
-    reloadImage |= widget.slider("Array Slice", mArraySlice, 0u, mpTex ? mpTex->getArraySize() : 0u);
-
-    if (widget.button("Load File")) { reloadImage |= openFileDialog({}, mImageName); }
-
-    if (mpTex) {
-        widget.image(mImageName.c_str(), mpTex, { 320, 320 });
-    }
-
-    if (reloadImage && mImageName.size()) {
-        mImageName = stripDataDirectories(mImageName);
-        mpTex = Texture::createFromFile(widget.gui()->device(), mImageName, mGenerateMips, mLoadSRGB);
-    }
-}

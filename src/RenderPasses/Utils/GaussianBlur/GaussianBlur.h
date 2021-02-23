@@ -53,7 +53,6 @@ class dllpassdecl GaussianBlur : public RenderPass {
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
 
     void setKernelWidth(uint32_t kernelWidth);
     void setSigma(float sigma);

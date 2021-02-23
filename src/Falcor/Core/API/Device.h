@@ -35,7 +35,6 @@
 #include <vector>
 #include <atomic>
 
-#include "Falcor/Core/Window.h"
 //#include "Falcor/Core/API/Texture.h"
 //#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Core/API/RenderContext.h"
@@ -184,10 +183,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     const Desc& getDesc() const { return mDesc; }
 
-    /** Get window
-    */
-    const Window::SharedPtr& getWindow() const { return mpWindow; }
-
     /** Get default sampler object
     */
     const Sampler::SharedPtr& getDefaultSampler() const { return mpDefaultSampler; }
@@ -245,7 +240,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     Device(const Desc& desc);
     Device(uint32_t gpuId, const Desc& desc);
-    Device(Window::SharedPtr pWindow, const Desc& desc);
 
     void executeDeferredReleases();
     void releaseFboData();
@@ -264,7 +258,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     Sampler::SharedPtr  mpDefaultSampler = nullptr;
 
-    Window::SharedPtr mpWindow;
     DeviceApiData* mpApiData;
     RenderContext::SharedPtr mpRenderContext;
     size_t mFrameID = 0;
@@ -283,10 +276,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void apiPresent();
     bool apiInit(std::shared_ptr<const DeviceManager> pDeviceManager);
 
-    bool createSwapChain(ResourceFormat colorFormat);
     bool createOffscreenFBO(ResourceFormat colorFormat);
 
-    void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
     void apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat);
 
     void toggleFullScreen(bool fullscreen);
@@ -303,13 +294,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         \return nullptr if the function failed, otherwise a new device object
     */
     static SharedPtr create(std::shared_ptr<const DeviceManager> pDeviceManager, uint32_t deviceId, const Desc& desc);
-
-    /** Create a new device.
-        \param[in] pWindow a previously-created window object
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
-    */
-    static SharedPtr create(std::shared_ptr<const DeviceManager> pDeviceManager, Window::SharedPtr& pWindow, const Desc& desc);
 
     friend class DeviceManager;
     friend class ResourceManager;
