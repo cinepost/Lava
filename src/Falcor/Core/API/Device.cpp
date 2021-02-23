@@ -127,7 +127,7 @@ bool Device::init() {
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
     //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-    
+
     assert(mpRenderContext);
 
     mpResourceManager = ResourceManager::create(shared_from_this());
@@ -136,7 +136,7 @@ bool Device::init() {
     createNullViews(shared_from_this());
     createNullBufferViews(shared_from_this());
     createNullTypedBufferViews(shared_from_this());
-    
+
     mpRenderContext->flush();  // This will bind the descriptor heaps.
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 
@@ -189,7 +189,7 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
     // Create a texture object
     auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
     pColorTex->mApiHandle = apiHandle;
-    
+
     // Create the FBO if it's required
     if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
     mpOffscreenFbo->attachColorTarget(pColorTex, 0);
@@ -268,7 +268,7 @@ void Device::executeDeferredReleases() {
     while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
         mDeferredReleases.pop();
     }
-    
+
     mpCpuDescPool->executeDeferredReleases();
     mpGpuDescPool->executeDeferredReleases();
 }
@@ -280,7 +280,7 @@ void Device::toggleVSync(bool enable) {
 void Device::cleanup() {
     toggleFullScreen(false);
     mpRenderContext->flush(true);
-    
+
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
 
@@ -291,7 +291,6 @@ void Device::cleanup() {
     }
 
     mDeferredReleases = decltype(mDeferredReleases)();
-    
     releaseNullViews(shared_from_this());
     releaseNullBufferViews(shared_from_this());
     releaseNullTypedBufferViews(shared_from_this());
@@ -306,7 +305,7 @@ void Device::cleanup() {
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
 
     destroyApiObjects();
-    
+
     if(!headless)
         mpWindow.reset();
 }

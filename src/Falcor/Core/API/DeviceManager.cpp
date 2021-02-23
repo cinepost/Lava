@@ -60,6 +60,7 @@ DeviceManager::~DeviceManager() {
             pDevice.reset();
         }
     }
+    LOG_DBG("DeviceManager::~DeviceManager done");
 }
 
 std::vector<Device::SharedPtr> DeviceManager::displayDevices() {
