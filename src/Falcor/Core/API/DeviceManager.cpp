@@ -36,7 +36,7 @@
 namespace py = pybind11;
 
 namespace Falcor {
-    
+
 DeviceManager::DeviceManager() {
 
 }
@@ -71,14 +71,13 @@ DeviceManager::SharedPtr DeviceManager::create() {
     pDeviceManager->printEnumeratedDevices();
 
     return SharedPtr(pDeviceManager);
-
 }
 
 std::vector<Device::SharedPtr> DeviceManager::displayDevices() const {
     std::vector<Device::SharedPtr> devices;
     for( auto& device: mDisplayDevices ) {
         devices.push_back(device.second);
-    }   
+    }
     return devices;
 }
 
@@ -148,7 +147,7 @@ Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
     if (!deviceEnumerated(gpuId)) return nullptr;
 
     auto it = mRenderingDevices.find(gpuId);
-    
+
     if (it == mRenderingDevices.end()) {
         // device not created yet ...
         return nullptr;

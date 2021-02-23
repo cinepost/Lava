@@ -411,7 +411,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, VkPhysicalDevice physic
     uint32_t& graphicsQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Direct];
     uint32_t& computeQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Compute];
     uint32_t& transferQueue = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Copy];
-    
+
     for (uint32_t i = 0; i < (uint32_t)queueFamilyProperties.size(); i++) {
         VkQueueFlags flags = queueFamilyProperties[i].queueFlags;
 
@@ -589,9 +589,9 @@ bool Device::createSwapChain(ResourceFormat colorFormat) {
 
     // Select present mode, FIFO for VSync, otherwise preferring IMMEDIATE -> MAILBOX -> FIFO
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    
+
     bool mVsyncOn = false; // TODO: make this configurable
-    
+
     if (mVsyncOn == false) {
         for (size_t i = 0; i < presentModeCount; i++) {
             if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
@@ -660,7 +660,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
     if (!physicalDevice) return false;
-    
+
     VkSurfaceKHR surface;
     if(!headless) {
         surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
@@ -671,7 +671,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, deviceFeatures);
     if (!device) return false;
-    
+
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
     mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);

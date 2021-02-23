@@ -127,7 +127,7 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
     //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-    
+
     assert(mpRenderContext);
 
     mpResourceManager = ResourceManager::create(shared_from_this());
@@ -198,7 +198,7 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
     // Create a texture object
     auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
     pColorTex->mApiHandle = apiHandle;
-    
+
     // Create the FBO if it's required
     if (mpOffscreenFbo == nullptr) mpOffscreenFbo = Fbo::create(shared_from_this());
     mpOffscreenFbo->attachColorTarget(pColorTex, 0);
@@ -277,7 +277,7 @@ void Device::executeDeferredReleases() {
     while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
         mDeferredReleases.pop();
     }
-    
+
     mpCpuDescPool->executeDeferredReleases();
     mpGpuDescPool->executeDeferredReleases();
 }
