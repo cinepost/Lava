@@ -163,7 +163,7 @@ int main(int argc, char** argv){
     lava::ut::log::init_log();
     boost::log::core::get()->set_filter(  boost::log::trivial::severity >= logSeverity );
 
-    if ( vm.count("list-gpus")) {
+    if ( vm.count("list-devices")) {
       listGPUs();
       exit(EXIT_SUCCESS);
     }
