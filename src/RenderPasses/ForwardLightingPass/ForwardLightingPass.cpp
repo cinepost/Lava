@@ -161,7 +161,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
             mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
         
         mpState->setFbo(mpFbo);
-        mpScene->render(pContext, mpState.get(), mpVars.get());
+        mpScene->render(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
     }
 }
 
@@ -215,5 +215,11 @@ ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable
 
 ForwardLightingPass& ForwardLightingPass::setSampler(const Sampler::SharedPtr& pSampler) {
     mpVars->setSampler("gSampler", pSampler);
+    return *this;
+}
+
+ForwardLightingPass& ForwardLightingPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState) {
+    mpRsState = pRsState;
+    mpState->setRasterizerState(mpRsState);
     return *this;
 }

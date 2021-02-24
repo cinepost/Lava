@@ -62,9 +62,23 @@ def cmd_defaults(file):
     soho.indent()
     print 'cmd_defaults', repr(file)
 
-def cmd_config(file):
+def cmd_config(prop_name, prop_value):
     soho.indent()
-    print 'cmd_config', repr(file)
+
+    prop_type = 'unknown'
+    prop_value_repr = repr(prop_value)
+
+    if isinstance(prop_value, bool):
+        prop_type = 'bool'
+        prop_value_repr = int(prop_value)
+    elif isinstance(prop_value, int):
+        prop_type = 'int'
+    elif isinstance(prop_value, float):
+        prop_type = 'float'
+    elif isinstance(prop_value, str):
+        prop_type = 'string'
+
+    print 'cmd_config', prop_type, prop_name, prop_value_repr
 
 def cmd_loadotl(otls, from_text_block=False):
     cmd = 'cmd_loadotl '

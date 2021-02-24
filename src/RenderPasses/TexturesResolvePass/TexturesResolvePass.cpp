@@ -20,7 +20,7 @@ namespace {
     const std::string kProgramFile = "RenderPasses/TexturesResolvePass/TexturesResolvePass.ps.slang";
 
     const std::string kDepth = "depth";
-    const std::string kDebugColor = "debugColor";
+    const std::string kOutput = "output";
 
     const std::string kTexResolveData = "gTexResolveData";
     const std::string kParameterBlockName = "gResolveData";
@@ -64,7 +64,7 @@ TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictio
 RenderPassReflection TexturesResolvePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    reflector.addOutput(kDebugColor, "DebugColor-buffer").format(mTileDataDebugFormat).texture2D(0, 0, 0);
+    reflector.addOutput(kOutput, "DebugOutput-buffer").format(mTileDataDebugFormat).texture2D(0, 0, 0);
     auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }
@@ -97,7 +97,7 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
     initDepth(pContext, renderData);
 
-    const auto& pDebugData = renderData[kDebugColor]->asTexture();
+    const auto& pDebugData = renderData[kOutput]->asTexture();
     mpFbo->attachColorTarget(pDebugData, 0);
 
     mpState->setFbo(mpFbo);
@@ -226,7 +226,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
     LOG_WARN("%u textures needs to be resolved", resolvedTexturesCount);
 
-    mpScene->render(pContext, mpState.get(), mpVars.get());
+    mpScene->render(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
     pContext->flush(true);
 
     // Test resolved data

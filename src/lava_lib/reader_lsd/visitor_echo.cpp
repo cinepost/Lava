@@ -169,7 +169,9 @@ void EchoVisitor::operator()(ast::cmd_defaults const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_config const& c) const {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_config: filename: " << c.filename << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_config: type: " << to_string(c.prop_type) << " name:" << c.prop_name << " value: ";
+    EchoVisitor::operator()(c.prop_value);
+    _os << "\x1b[0m\n";
 }
 
 void EchoVisitor::operator()(ast::cmd_transform const& c) const {

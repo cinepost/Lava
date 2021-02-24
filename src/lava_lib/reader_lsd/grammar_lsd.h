@@ -73,7 +73,7 @@ namespace lsd {
     typedef static_vector<double, 4> Vector4; 
     typedef static_vector<double, 9> Matrix3;
     typedef static_vector<double, 16> Matrix4;
-    typedef x3::variant<int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
+    typedef x3::variant<bool, int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
 
     static inline Falcor::float2 to_float2(const Vector2& vec) {
         return {vec[0], vec[1]};
@@ -199,7 +199,9 @@ namespace ast {
     };
 
     struct cmd_config {
-        std::string filename;
+        Type prop_type;
+        std::string prop_name;
+        PropValue prop_value;
     };
 
     struct cmd_geometry {
@@ -396,7 +398,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_mtransform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_iprmode, mode)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, filename)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, prop_type, prop_name, prop_value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, temporary, name, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
@@ -760,7 +762,7 @@ namespace parser {
 
     auto const cmd_config
         = x3::rule<class cmd_config, ast::cmd_config>{"cmd_config"}
-        = "cmd_config" >> any_filename >> eps;
+        = "cmd_config" >> prop_type >> prop_name >> prop_value >> eps;
 
     auto const cmd_iprmode
         = x3::rule<class cmd_iprmode, ast::cmd_iprmode>{"cmd_iprmode"}

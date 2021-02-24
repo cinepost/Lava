@@ -57,8 +57,8 @@ struct PsOut
 #endif
 };
 
-PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID)
-{
+[earlydepthstencil]
+PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
 
     float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);

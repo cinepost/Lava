@@ -32,6 +32,8 @@ add_library(imgui STATIC
     ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui.cpp
     ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
     ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
+
     # SDL2+OpenGL-specific files
     ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_sdl.cpp
     ${CMAKE_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_opengl3.cpp

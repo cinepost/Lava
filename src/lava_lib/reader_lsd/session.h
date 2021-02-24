@@ -34,7 +34,7 @@ class Session {
  	void cmdSetEnv(const std::string& key, const std::string& value);
  	bool cmdRaytrace();
     void cmdIPRmode(const std::string& mode);
-    void cmdConfig(const std::string& file_name);
+    void cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value);
     void cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value);
     void cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values);
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);

@@ -6,7 +6,6 @@ add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
 add_subdirectory(houdini_display)
 add_subdirectory(sdl_display)
-add_subdirectory(null_display)
 
 include_directories( /home/max/dev/Falcor/src/Externals/GLM )
 
@@ -39,6 +38,7 @@ target_link_libraries(
     lava_utils_lib
     ${Boost_LIBRARIES}
 
+    TexturesResolvePass
     AccumulatePass
     DepthPass
     ForwardLightingPass

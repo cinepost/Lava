@@ -5,6 +5,7 @@
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "Falcor/Experimental/Scene/Lights/EnvMap.h"
@@ -60,11 +61,8 @@ bool Renderer::init() {
     if (!pBackBufferFBO) {
         logError("Unable to get swap chain FBO!!!");
     }
-    //mpTargetFBO = Fbo::create2D(mpDevice, pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
 
     mpFrameRate = new Falcor::FrameRate(mpDevice);
-
-    //Falcor::gpFramework = this;
 
     mInited = true;
     return true;
@@ -96,13 +94,12 @@ Renderer::~Renderer() {
 
     mpTargetFBO.reset();
 
-    //if(mpDevice)
-    //    mpDevice->cleanup();
+    if(mpDevice)
+        mpDevice->cleanup();
 
-    //mpDevice.reset();
+    mpDevice.reset();
 
     Falcor::OSServices::stop();
-    //Falcor::gpFramework = nullptr;
 
     LLOG_DBG << "Renderer::~Renderer done";
 }
@@ -155,6 +152,8 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
 
     assert(pScene);
     
+    auto const& confgStore = Falcor::ConfigStore::instance();
+    bool vtoff = confgStore.get<bool>("vtoff", true);
 
     //// create env map stuff
     auto pLightProbe = mpSceneBuilder->getLightProbe();
@@ -168,16 +167,50 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     }
     ////
 
+    // Rasterizer state
+    Falcor::RasterizerState::Desc rsDesc;
+    const std::string& cull_mode = confgStore.get<std::string>("cull_mode", "none");
+    if (cull_mode == "back") {
+        rsDesc.setCullMode(RasterizerState::CullMode::Back);
+    } else if (cull_mode == "front") {
+        rsDesc.setCullMode(RasterizerState::CullMode::Front);
+    } else {
+        rsDesc.setCullMode(RasterizerState::CullMode::None);
+    }
+    rsDesc.setFillMode(RasterizerState::FillMode::Solid);
+
+    // Depth pre pass
+    mpDepthPrePassGraph = RenderGraph::create(pRenderContext->device(), {frame_data.imageWidth, frame_data.imageHeight}, ResourceFormat::D32Float , "Depth Pre-Pass");
+    mpDepthPrePass = DepthPass::create(pRenderContext);
+    mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
+    mpDepthPrePass->setScene(pRenderContext, pScene);
+    mpDepthPrePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+    mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
+    mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
+
+    // Virtual textures stuff
+    if(!vtoff) {
+        mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, Falcor::ResourceFormat::RGBA8Unorm, "RenderGraph");
+
+        mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext);
+        mpTexturesResolvePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+        mpTexturesResolvePass->setScene(pRenderContext, pScene);
+
+        mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
+        mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.output");
+
+        //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    } else {
+        mpTexturesResolvePassGraph = nullptr;
+        mpTexturesResolvePass = nullptr;
+    }
+
+    // Main render graph
     mpRenderGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, Falcor::ResourceFormat::RGBA32Float, "RenderGraph");
-
-    // Depth pass
-    mpDepthPass = DepthPass::create(pRenderContext);
-    mpDepthPass->setScene(pRenderContext, pScene);
-    auto pass1 = mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-
 
     // Forward lighting
     mpLightingPass = ForwardLightingPass::create(pRenderContext);
+    mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
     mpLightingPass->setScene(pRenderContext, pScene);
     auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
 
@@ -185,7 +218,6 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     // SkyBox
     mpSkyBoxPass = SkyBox::create(pRenderContext);
     
-    //mpSkyBoxPass->setTexture("/home/max/env.exr", true);
     if(pLightProbe) {
         mpSkyBoxPass->setIntensity(pLightProbe->getIntensity());
     }
@@ -197,9 +229,9 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    //mpRenderGraph->setInput("SkyBoxPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    //mpRenderGraph->setInput("LightingPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
@@ -410,7 +442,18 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         
         //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
         pScene->update(pRenderContext, time);
-        executeActiveGraph(pRenderContext);
+
+        mpDepthPrePassGraph->execute(pRenderContext);
+        auto pDepth = mpDepthPrePassGraph->getOutput("DepthPrePass.depth");
+
+        if(mpTexturesResolvePassGraph) {
+            mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", pDepth);
+            mpTexturesResolvePassGraph->execute(pRenderContext);
+        }
+
+        mpRenderGraph->setInput("SkyBoxPass.depth", pDepth);
+        mpRenderGraph->setInput("LightingPass.depth", pDepth);
+        mpRenderGraph->execute(pRenderContext);
 
         if ( frame_data.imageSamples > 1 ) {
             for (uint i = 1; i < frame_data.imageSamples; i++) {
@@ -420,7 +463,8 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
                 time += sample_time_duration;
                 pScene->update(pRenderContext, time);
                 
-                executeActiveGraph(pRenderContext);
+                mpDepthPrePassGraph->execute(pRenderContext);
+                mpRenderGraph->execute(pRenderContext);
             }
         }
 

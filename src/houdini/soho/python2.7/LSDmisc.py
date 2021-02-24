@@ -57,6 +57,11 @@ headerParms = {
                                         ["9.0"], False, key="hver"),
     "lv_hippath"        : SohoParm("lv_hippath", "string", key="lv_hippath"),
     "lv_verbose"        : SohoParm("lv_verbose", "int"),
+
+    "lv_vtoff"          : SohoParm("lv_vtoff", "bool", key="lv_vtoff"),
+    "lv_fconv"          : SohoParm("lv_fconv", "bool", key="lv_vtoff"),
+    "lv_cull_mode"      : SohoParm("lv_cull_mode", "string", [''], False),
+
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
     "pipestream"        : SohoParm("soho:pipestream", "int", key="pipestream"),
@@ -146,8 +151,15 @@ def header(now, propdefs):
         # Output property defaults before we output any other settings
         cmd_defaults(propdefs)
 
-    # Renderer frame graph configuation
-    cmd_config("$LAVA_HOME/conf/default.py")
+    # Renderer configuation
+    vtoff = plist.get('lv_vtoff', True)
+    cmd_config('vtoff', vtoff)
+
+    fconv = plist.get('lv_fconv', False)
+    cmd_config('fconv', fconv)
+
+    cull_mode = plist['lv_cull_mode'].Value[0]
+    cmd_config('cull_mode', cull_mode)
 
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])

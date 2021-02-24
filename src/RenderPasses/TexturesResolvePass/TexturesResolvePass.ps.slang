@@ -31,7 +31,7 @@ VSOut vsMain(VSIn vIn) {
 
 // Pixel 
 struct PsOut {
-    float4 debugColor   : SV_TARGET0;
+    float4 output   : SV_TARGET0;
 };
 
 // set corresponding byte to 1
@@ -89,14 +89,10 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         }
     }
 
+    psOut.output = float4(0, 0, 0, 0);
 
-    // ---------------------------------
-    psOut.debugColor = float4(0, 0, 0, 0);
-
-    //float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    psOut.debugColor = randomColor(debugTileID);
-    psOut.debugColor = randomColor(floor(debug_mip_level));
-    // ---------------------------------
-
+    //psOut.output = randomColor(debugTileID);
+    //psOut.output = randomColor(floor(debug_mip_level));
+    
     return psOut;
 }

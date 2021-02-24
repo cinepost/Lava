@@ -48,8 +48,7 @@ ResourceManager::SharedPtr ResourceManager::create(std::shared_ptr<Device> pDevi
         //return nullptr; TODO: use in-memory file system if cache directory not available
     }
 
-    pMgr->mSparseTexturesEnabled = !config.get<bool>("vtoff", false);
-    pMgr->mForceTexturesConversion = config.get<bool>("fconv", false);
+    pMgr->mSparseTexturesEnabled = true; // TODO: should be dependent on device features !! 
     pMgr->deviceCacheMemSize = config.get<int>("deviceCacheMemSize", 536870912);  
     pMgr->hostCacheMemSize = config.get<int>("hostCacheMemSize", 1073741824); 
 
@@ -140,7 +139,9 @@ Texture::SharedPtr ResourceManager::createTextureFromFile(const std::string& fil
 }
 
 Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
-    if (!mSparseTexturesEnabled)
+    const auto& configStore = ConfigStore::instance();
+    bool vtoff = configStore.get<bool>("vtoff", true);
+    if (!mSparseTexturesEnabled || vtoff)
         return createTextureFromFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
 
     std::string fullpath;
@@ -171,10 +172,12 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     //    texFormat = compressedFormat(texFormat);
     //}
 
-    if(mForceTexturesConversion || !fs::exists(ltxFilename) ) {
-        LOG_DBG("Converting texture %s to LTX format ...",  fullpath.c_str());
-        LTX_Bitmap::convertToKtxFile(mpDevice, fullpath, ltxFilename, true);
-        LOG_DBG("Conversion done %s", ltxFilename.c_str());
+    if(!vtoff) {
+        if(configStore.get<bool>("fconv", true) || !fs::exists(ltxFilename)) {
+            LOG_DBG("Converting texture %s to LTX format ...",  fullpath.c_str());
+            LTX_Bitmap::convertToKtxFile(mpDevice, fullpath, ltxFilename, true);
+            LOG_DBG("Conversion done %s", ltxFilename.c_str());
+        }
     }
 
     auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxFilename, true);

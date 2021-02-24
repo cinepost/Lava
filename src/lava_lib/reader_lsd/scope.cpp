@@ -144,6 +144,23 @@ std::shared_ptr<Geo> Global::addGeo() {
 	return nullptr;
 }
 
+std::shared_ptr<Material> Global::addMaterial() {
+	auto pMat = Material::create(shared_from_this());
+	if (pMat) {
+		mChildren.push_back(pMat);
+		mMaterials.push_back(pMat);
+		return mMaterials.back();
+	}
+	return nullptr;
+}
+
+/* Material */
+Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
+	auto pMat = Material::SharedPtr(new Material(pParent));
+	return std::move(pMat);
+}
+
+
 /* Geo */
 
 ika::bgeo::Bgeo::SharedPtr Geo::bgeo() { 

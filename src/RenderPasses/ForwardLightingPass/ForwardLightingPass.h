@@ -81,6 +81,8 @@ class ForwardLightingPass : public RenderPass {
     */
     std::string getDesc() override { return kDesc; }
 
+    ForwardLightingPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+
  private:
     ForwardLightingPass(Device::SharedPtr pDevice);
     
@@ -92,6 +94,7 @@ class ForwardLightingPass : public RenderPass {
     DepthStencilState::SharedPtr mpDsNoDepthWrite;
     Scene::SharedPtr mpScene;
     GraphicsVars::SharedPtr mpVars;
+    RasterizerState::SharedPtr mpRsState;
 
     ResourceFormat mColorFormat = ResourceFormat::RGB32Float; //Unknown;
     ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;

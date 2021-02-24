@@ -139,6 +139,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
                     return ResourceFormat::RG8Unorm;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RG32Uint;
+                case BASETYPE::HALF:
+                    return ResourceFormat::RG16Float;
                 case BASETYPE::FLOAT:
                     return ResourceFormat::RG32Float;
                 default:
@@ -152,6 +154,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
                     return ResourceFormat::RGB8Unorm;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RGB32Uint;
+                case BASETYPE::HALF:
+                    return ResourceFormat::RGB16Float;
                 case BASETYPE::FLOAT:
                     return ResourceFormat::RGB32Float;
                 default:
@@ -166,6 +170,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
                     return ResourceFormat::RGBA8Unorm;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RGBA32Uint;
+                case BASETYPE::HALF:
+                    return ResourceFormat::RGBA16Float;
                 case BASETYPE::FLOAT:
                     return ResourceFormat::RGBA32Float;
                 default:
@@ -186,6 +192,8 @@ static ResourceFormat getDestFormat(const ResourceFormat &format) {
             return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
         case ResourceFormat::RGB32Uint:
             return ResourceFormat::RGBA32Uint;  // this should force 96bit to 128bit conversion
+        case ResourceFormat::RGB16Float:
+            return ResourceFormat::RGBA16Float; // this should force 48bit to 64bit conversion
         case ResourceFormat::RGB32Float:
             return ResourceFormat::RGBA32Float; // this should force 96bit to 128bit conversion
         default:

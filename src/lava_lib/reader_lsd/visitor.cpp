@@ -178,7 +178,7 @@ void Visitor::operator()(ast::cmd_version const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_config const& c) const {
-    mpSession->cmdConfig(c.filename);
+    mpSession->cmdConfig(c.prop_type, c.prop_name, c.prop_value);
 }
 
 void Visitor::operator()(ast::cmd_defaults const& c) const {

@@ -20,7 +20,7 @@ namespace lsd {
 namespace scope {
 
 class Instance;
-class Matreial;
+class Material;
 class Global;
 class Light;
 class Plane;
@@ -81,12 +81,14 @@ class Global: public Transformable {
     std::shared_ptr<Plane>      addPlane();
     std::shared_ptr<Light>      addLight();
     std::shared_ptr<Segment>    addSegment();
+    std::shared_ptr<Material>   addMaterial();
 
     const std::vector<std::shared_ptr<Object>>&     objects() { return mObjects; };
     const std::vector<std::shared_ptr<Plane>>&      planes() { return mPlanes; };
     const std::vector<std::shared_ptr<Light>>&      lights() { return mLights; };
     const std::vector<std::shared_ptr<Geo>>&        geos() { return mGeos; };
     const std::vector<std::shared_ptr<Segment>>&    segments() { return mSegments; };
+    const std::vector<std::shared_ptr<Material>>&   materials() { return mMaterials; };
 
  private:
     Global():Transformable(nullptr) {};
@@ -95,6 +97,7 @@ class Global: public Transformable {
     std::vector<std::shared_ptr<Object>>    mObjects;
     std::vector<std::shared_ptr<Light>>     mLights;
     std::vector<std::shared_ptr<Segment>>   mSegments;
+    std::vector<std::shared_ptr<Material>>  mMaterials;
 };
 
 class Geo: public ScopeBase {
@@ -124,6 +127,16 @@ class Geo: public ScopeBase {
     bool            mIsInline = false;
 };
 
+class Material: public ScopeBase {
+  public:
+    using SharedPtr = std::shared_ptr<Material>;
+    static SharedPtr create(ScopeBase::SharedPtr pParent);
+
+    ast::Style type() const override { return ast::Style::MATERIAL; };
+
+  private:
+    Material(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+};
 
 class Object: public Transformable {
  public:

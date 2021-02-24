@@ -22,6 +22,7 @@
 #include "RenderPasses/DepthPass/DepthPass.h"
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
+#include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 
 #include "display.h"
 #include "renderer_iface.h"
@@ -122,12 +123,16 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     ///
     float2 mInvFrameDim;
     CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
+    
+    Falcor::RenderGraph::SharedPtr  mpDepthPrePassGraph = nullptr;
     Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
+    Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
 
     AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
-    DepthPass::SharedPtr            mpDepthPass = nullptr;
+    DepthPass::SharedPtr            mpDepthPrePass = nullptr;
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
     ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
+    TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
 
     bool mInited = false;

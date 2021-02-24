@@ -60,7 +60,7 @@ size_t getBufferDataAlignment(const Buffer* pBuffer);
 void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size);
 
 Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess): Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess) {
-    LOG_DBG("Create buffer %zu bindFlags %s cpuAccess %s", id(), to_string(bindFlags).c_str(), to_string(cpuAccess).c_str());
+    //LOG_DBG("Create buffer %zu bindFlags %s cpuAccess %s", id(), to_string(bindFlags).c_str(), to_string(cpuAccess).c_str());
 }
 
 Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
@@ -231,7 +231,7 @@ bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
 }
 // Buffer::MapType::Read
 void* Buffer::map(MapType type) {
-    LOG_WARN("map buffer %zu", mID);
+    //LOG_WARN("map buffer %zu", mID);
     if (type == MapType::Write) {
         if (mCpuAccess != CpuAccess::Write) {
             logError("Trying to map a buffer for write, but it wasn't created with the write permissions");

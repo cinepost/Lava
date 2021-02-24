@@ -82,8 +82,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     GraphicsProgram::SharedPtr      mpProgram;
     DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
-    ResourceFormat mTileDataFormat = ResourceFormat::RGB16Int;
-    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA32Float;
+    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
 
     ParameterBlock::SharedPtr   mpDataBlock;
     Buffer::SharedPtr           mpTexResolveDataBuffer;

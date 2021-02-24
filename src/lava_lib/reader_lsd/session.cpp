@@ -4,6 +4,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/LightProbe.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Utils/ConfigStore.h"
 
 #include "session.h"
 
@@ -60,9 +61,24 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 	mpRendererIface->setEnvVariable(key, value);
 }
 
-void Session::cmdConfig(const std::string& file_name) {
-	// actual render graph configs loading postponed unitl renderer is initialized
-	mpRendererIface->loadDeferredScriptFile(file_name);
+void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
+	auto& configStore = Falcor::ConfigStore::instance();
+
+	switch(type) {
+		case ast::Type::BOOL:
+			LLOG_WRN << "setting ConfigStore property " << name << " with value " << ((boost::get<int>(value) == 0) ? "false" : "true") << "\n";
+			configStore.set<bool>(name, (boost::get<int>(value) == 0) ? false : true );
+			break;	
+		case ast::Type::STRING:
+			LLOG_WRN << "setting ConfigStore property " << name << " with value " << boost::get<std::string>(value) << "\n";
+			configStore.set<std::string>(name, boost::get<std::string>(value));
+			break;
+		default:
+			LLOG_WRN << "Unsupported config store property type: " << to_string(type);
+			break;
+	}
+
+	return;
 }
 
 std::string Session::getExpandedString(const std::string& str) {
@@ -385,8 +401,11 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 		case lsd::ast::Style::SEGMENT:
 			mpCurrentScope = pGlobal->addSegment();
 			break;
+		case lsd::ast::Style::MATERIAL: 
+			mpCurrentScope = pGlobal->addMaterial();
+			break;
 		default:
-			LLOG_FTL << "Objects creation allowed only inside global scope !!!";
+			LLOG_FTL << "Unsupported cmd_start style: " << to_string(object_type);
 			return false;
 	}
 
@@ -414,6 +433,7 @@ bool Session::cmdEnd() {
 	scope::Object::SharedPtr pObj;
 	scope::Plane::SharedPtr pPlane;
 	scope::Light::SharedPtr pLight;
+	scope::Material::SharedPtr pMaterial;
 
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
@@ -440,6 +460,9 @@ bool Session::cmdEnd() {
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
 			pushLight(pLight);
+			break;
+		case ast::Style::MATERIAL:
+			pMaterial = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
 			break;
 		case ast::Style::SEGMENT:
 		case ast::Style::GLOBAL:
