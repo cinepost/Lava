@@ -53,14 +53,15 @@ headerParms = {
                                         key="seqlength"),
 
     "soho_program"      : SohoParm("soho_program", "string"),
-    "hver"              : SohoParm("state:houdiniversion", "string",
-                                        ["9.0"], False, key="hver"),
+    "hver"              : SohoParm("state:houdiniversion", "string", ["9.0"], False, key="hver"),
     "lv_hippath"        : SohoParm("lv_hippath", "string", key="lv_hippath"),
     "lv_verbose"        : SohoParm("lv_verbose", "int"),
 
     "lv_vtoff"          : SohoParm("lv_vtoff", "bool", key="lv_vtoff"),
-    "lv_fconv"          : SohoParm("lv_fconv", "bool", key="lv_vtoff"),
+    "lv_fconv"          : SohoParm("lv_fconv", "bool", key="lv_fconv"),
+    "lv_sync_geo"       : SohoParm("lv_sync_geo", "bool", key="lv_sync_geo"),
     "lv_cull_mode"      : SohoParm("lv_cull_mode", "string", [''], False),
+    "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", [''], False),
 
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
@@ -152,14 +153,21 @@ def header(now, propdefs):
         cmd_defaults(propdefs)
 
     # Renderer configuation
+    cmd_comment("Renderer configuration")
     vtoff = plist.get('lv_vtoff', True)
     cmd_config('vtoff', vtoff)
 
     fconv = plist.get('lv_fconv', False)
     cmd_config('fconv', fconv)
 
+    async_geo = plist.get('lv_async_geo', True)
+    cmd_config('async_geo', async_geo)
+
     cull_mode = plist['lv_cull_mode'].Value[0]
     cmd_config('cull_mode', cull_mode)
+
+    vtex_conv_quality = plist['lv_vtex_conv_quality'].Value[0]
+    cmd_config('vtex_conv_quality', vtex_conv_quality)
 
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])

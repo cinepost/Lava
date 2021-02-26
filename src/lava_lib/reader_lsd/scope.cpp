@@ -31,7 +31,7 @@ const void ScopeBase::printSummary(std::ostream& os, uint indent) const {
 	indentStream(os, indent) << "}\n";
 }
 
-ScopeBase::ScopeBase(SharedPtr pParent): mpParent(pParent) { }
+ScopeBase::ScopeBase(SharedPtr pParent): PropertiesContainer::PropertiesContainer(pParent) { }
 
 EmbeddedData& ScopeBase::getEmbeddedData(const std::string& name) {
 	auto it = mEmbeddedDataMap.find(name);
@@ -95,7 +95,7 @@ Global::SharedPtr Global::create() {
 
 // TODO: get rid of mPlanes, mObjects ... etc. use std::move
 std::shared_ptr<Object> Global::addObject(){
-	auto pObject = Object::create(shared_from_this());
+	auto pObject = Object::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pObject) {
 		mChildren.push_back(pObject);
 		mObjects.push_back(pObject);
@@ -105,7 +105,7 @@ std::shared_ptr<Object> Global::addObject(){
 }
 
 std::shared_ptr<Plane> Global::addPlane() {
-	auto pPlane = Plane::create(shared_from_this());
+	auto pPlane = Plane::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pPlane) {
 		mChildren.push_back(pPlane);
 		mPlanes.push_back(pPlane);
@@ -115,7 +115,7 @@ std::shared_ptr<Plane> Global::addPlane() {
 }
 
 std::shared_ptr<Light> Global::addLight() {
-	auto pLight = Light::create(shared_from_this());
+	auto pLight = Light::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pLight) {
 		mChildren.push_back(pLight);
 		mLights.push_back(pLight);
@@ -125,7 +125,7 @@ std::shared_ptr<Light> Global::addLight() {
 }
 
 std::shared_ptr<Segment> Global::addSegment() {
-	auto pSegment = Segment::create(shared_from_this());
+	auto pSegment = Segment::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pSegment) {
 		mChildren.push_back(pSegment);
 		mSegments.push_back(pSegment);
@@ -135,7 +135,7 @@ std::shared_ptr<Segment> Global::addSegment() {
 }
 
 std::shared_ptr<Geo> Global::addGeo() {
-	auto pGeo = Geo::create(shared_from_this());
+	auto pGeo = Geo::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pGeo) {
 		mChildren.push_back(pGeo);
 		mGeos.push_back(pGeo);
@@ -145,7 +145,7 @@ std::shared_ptr<Geo> Global::addGeo() {
 }
 
 std::shared_ptr<Material> Global::addMaterial() {
-	auto pMat = Material::create(shared_from_this());
+	auto pMat = Material::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
 	if (pMat) {
 		mChildren.push_back(pMat);
 		mMaterials.push_back(pMat);

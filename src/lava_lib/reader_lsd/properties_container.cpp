@@ -221,6 +221,9 @@ bool PropertiesContainer::setProperty(ast::Style style, const std::string& name,
 Property* PropertiesContainer::getProperty(ast::Style style, const std::string& name) {
     auto it = mPropertiesMap.find(PropertyKey(style, name));
     if (it == mPropertiesMap.end()) {
+        if( mpParent ) {
+            return mpParent->getProperty(style, name);
+        }
         LLOG_ERR << "Property " << to_string(style) << " " <<  name << " does not exist !!!";
         return nullptr;
     }
@@ -230,6 +233,9 @@ Property* PropertiesContainer::getProperty(ast::Style style, const std::string& 
 const Property* PropertiesContainer::getProperty(ast::Style style, const std::string& name) const {
     auto it = mPropertiesMap.find(PropertyKey(style, name));
     if (it == mPropertiesMap.end()) {
+        if( mpParent ) {
+            return mpParent->getProperty(style, name);
+        }
         LLOG_ERR << "Property " << to_string(style) << " " <<  name << " does not exist !!!";
         return nullptr;
     }
@@ -238,6 +244,7 @@ const Property* PropertiesContainer::getProperty(ast::Style style, const std::st
 
 const Property::Value& PropertiesContainer::_getPropertyValue(ast::Style style, const std::string& name, const  Property::Value& default_value) const {
     auto pProperty = getProperty(style, name);
+    
     if(!pProperty)
         LLOG_WRN << "Can't find property " << to_string(PropertyKey(style, name)) << " ! Returning default value...";
         return default_value;

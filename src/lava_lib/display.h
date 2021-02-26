@@ -14,6 +14,12 @@ namespace lava {
 class Display {
  public:
     enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
+    enum class TypeFormat { FLOAT32, FLOAT16, UNSIGNED32, SIGNED32, UNSIGNED16, SIGNED16, UNSIGNED8, SIGNED8 };
+
+    struct Channel {
+        std::string name;
+        TypeFormat  format;
+    };
 
  public:
     using SharedPtr = std::shared_ptr<Display>;
@@ -22,7 +28,7 @@ class Display {
     static SharedPtr create(Display::DisplayType display_type);
 
 
-    bool open(const std::string& image_name, uint width, uint height);
+    bool open(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels);
     bool close();
 
     bool opened() { return mOpened; }

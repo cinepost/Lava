@@ -129,12 +129,28 @@ def clearLists():
     global      _Settings
     _Settings = Settings()
 
+def getLightWrangler(obj, now, style):
+    wrangler = getWrangler(obj, now, style)
+    if wrangler:
+        return wrangler
+
+    if style != 'light_wrangler':
+        return None
+            
+    wrangler = soho.LightWranglers.get('ArnoldLightToLava', None)
+    if not wrangler:
+        return None
+
+    return wrangler(obj, now, theVersion)
+
 def getWrangler(obj, now, style):
     wrangler = obj.getDefaultedString(style, now, [''])[0]
     if not wrangler:
         return None
+
     wname = wrangler
     wrangler = '%s-lava' % wrangler
+
     if style == 'light_wrangler':
         wrangler = soho.LightWranglers.get(wrangler, None)
     elif style == 'camera_wrangler':

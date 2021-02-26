@@ -111,8 +111,8 @@ float4 integrateDiffuseLD(float3 N)
             float2 uv = dirToSphericalCrd(L);
             float LdotH = saturate(dot(L, normalize(V + L)));
             float NdotV = saturate(dot(N, V));
-            //float brdf = disneyDiffuseFresnel(NdotV, NdotL, LdotH, 0);
-            float brdf = evalDiffuseFresnel(NdotV, NdotL, LdotH, 0);
+            //float brdf = evalDiffuseFresnel(NdotV, NdotL, LdotH, 0); // Removed for unified lighting calc
+            float brdf = 1.0f;
             accumulation += gInputTex.Sample(gSampler, uv).rgb * brdf;
             accBrdf += brdf;
         }

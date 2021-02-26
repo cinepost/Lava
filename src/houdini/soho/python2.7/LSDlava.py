@@ -145,6 +145,7 @@ def initializeFeatures(settings):
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
+    Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "saveoptions", "string", "lv_saveoptions")
     Image("image", "setexrdatawindow", "bool", "lv_setexrdatawindow")
     Image("image", "subpixel", "bool", "lv_subpixel")
@@ -351,7 +352,7 @@ def initializeFeatures(settings):
     IPlane("gamma", "float", "lv_gamma")
     IPlane("lightexport", "string", "lv_lightexport", mainimage=False)
     IPlane("pfilter", "string", "lv_pfilter")
-    IPlane("quantize", "string", "lv_quantize")
+    IPlane("quantize", "string", "lv_quantize", skipdefault=False)
     IPlane("sfilter", "string", "lv_sfilter")
     IPlane("whitepoint", "float", "lv_whitepoint")
 

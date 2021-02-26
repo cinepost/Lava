@@ -57,6 +57,7 @@ class Device;
         */
         static SharedPtr create(std::shared_ptr<Device> pDevice, Fbo::SharedPtr pTargetFbo, const std::string& name = "");
 
+        static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const std::string& name = "");
         static SharedPtr create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name = "");
 
         /** Set a scene
@@ -161,7 +162,7 @@ class Device;
 
         /** Force size for offscreen rendering
         */
-        void resize(uint width, uint height, const ResourceFormat& format);
+        void resize(uint width, uint height, const ResourceFormat& default_format = ResourceFormat::RGBA16Float);
 
         /** Get current render graph output dimensions
         */

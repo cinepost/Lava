@@ -50,6 +50,10 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
 
     void setIntensity(float3 intensity) { mIntensity = intensity; }
     float3 getIntensity() const { return mIntensity; }
+
+    void setTransparency(float transparency) { mTransparency = transparency; }
+    float getTransparency() const { return mTransparency; }
+
     void setScale(float scale) { mScale = scale; }
     void setFilter(uint32_t filter);
     float getScale() { return mScale; }
@@ -63,7 +67,10 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     void setTexture(const Texture::SharedPtr& pTexture);
 
     glm::mat4 mTransformMatrix;
+    
     float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
+    float  mTransparency = 1.0;
+    
     float mScale = 1;
     bool mSolidMode = true;
     bool mLoadSrgb = true;

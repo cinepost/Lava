@@ -35,8 +35,12 @@ std::string RendererIface::getExpandedString(const std::string& s) {
 
 std::shared_ptr<SceneBuilder> RendererIface::getSceneBuilder(){ return mpRenderer->mpSceneBuilder; }
 
-bool RendererIface::openDisplay(const std::string& image_name, uint width, uint height) {
-	return mpRenderer->openDisplay(getExpandedString(image_name), width, height);
+//bool RendererIface::openDisplay(const std::string& image_name, uint width, uint height) {
+//	return mpRenderer->openDisplay(getExpandedString(image_name), width, height);
+//}
+
+bool RendererIface::addPlane(const PlaneData& plane_data) {
+	return mpRenderer->addPlane(plane_data);
 }
 
 bool RendererIface::loadScriptFile(const std::string& file_name) {

@@ -52,6 +52,10 @@ namespace oiio = OpenImageIO_v2_3;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 
+static bool isPowerOfTwo(int x) {
+    return x > 0 && !(x & (x-1));
+}
+
 static struct {
     bool operator()(size_t a, size_t b) const {   
         return a < b;
@@ -238,9 +242,9 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
 
     // pre calculate image dimensions for each mip level (mipLevelDims)
     for( uint mipLevel = 0; mipLevel < info.mipLevelsCount; mipLevel++) {
-        info.mipLevelsDims[mipLevel].x = imgDims.x / pow(2, mipLevel);
-        info.mipLevelsDims[mipLevel].y = imgDims.y / pow(2, mipLevel);
-        info.mipLevelsDims[mipLevel].z = 1;//imgDims.z / pow(2, mipLevel);
+        info.mipLevelsDims[mipLevel].x = std::max(uint32_t(imgDims.x / pow(2, mipLevel)), 1u);
+        info.mipLevelsDims[mipLevel].y = std::max(uint32_t(imgDims.y / pow(2, mipLevel)), 1u);
+        info.mipLevelsDims[mipLevel].z = 1;//std::max(imgDims.z / pow(2, mipLevel), 1);
     }
 
     // find mip tail starting mip level
@@ -318,12 +322,20 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
 
     LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
 
-    if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile)) {
-    //if(ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile)) {
-        // re-write header as it might get modified ... 
-        // TODO: increment pagesCount ONLY upon successfull fwrite !
-        fseek(pFile, 0, SEEK_SET);
-        fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+    if( isPowerOfTwo(srcDims.x) && isPowerOfTwo(srcDims.y) ) {
+        if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile)) {
+            // re-write header as it might get modified ... 
+            // TODO: increment pagesCount ONLY upon successfull fwrite !
+            fseek(pFile, 0, SEEK_SET);
+            fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+        }
+    } else {
+        if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile)) {
+            // re-write header as it might get modified ... 
+            // TODO: increment pagesCount ONLY upon successfull fwrite !
+            fseek(pFile, 0, SEEK_SET);
+            fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+        }
     }
     fclose(pFile);
 }

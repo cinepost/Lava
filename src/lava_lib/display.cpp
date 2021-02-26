@@ -17,7 +17,7 @@ BOOST_STATIC_ASSERT(sizeof(PtDspySigned8) == 1);
 
 namespace lava {
 
-std::string getDspyErrorMessage(const PtDspyError& err) {
+static std::string getDspyErrorMessage(const PtDspyError& err) {
     switch (err) {
         case PkDspyErrorNoMemory:
             return "Out of memory";
@@ -33,7 +33,29 @@ std::string getDspyErrorMessage(const PtDspyError& err) {
     }
 }
 
-std::string getDisplayDriverFileName(Display::DisplayType display_type) {
+static unsigned getTypeFormat(Display::TypeFormat tformat) {
+    switch (tformat) {
+        case Display::TypeFormat::UNSIGNED32:
+            return PkDspyUnsigned32;
+        case Display::TypeFormat::SIGNED32:
+            return PkDspySigned32;
+        case Display::TypeFormat::UNSIGNED16:
+            return PkDspyUnsigned16;
+        case Display::TypeFormat::SIGNED16:
+            return PkDspySigned16;
+        case Display::TypeFormat::UNSIGNED8:
+            return PkDspyUnsigned8;
+        case Display::TypeFormat::SIGNED8:
+            return PkDspySigned8;
+        case Display::TypeFormat::FLOAT16:
+            return PkDspySigned16;
+        case Display::TypeFormat::FLOAT32:
+        default:
+            return PkDspyFloat32;
+    }
+}
+
+static std::string getDisplayDriverFileName(Display::DisplayType display_type) {
     if (display_type != Display::DisplayType::NONE) {
         switch(display_type) {
             case Display::DisplayType::IP:
@@ -51,8 +73,6 @@ std::string getDisplayDriverFileName(Display::DisplayType display_type) {
                 return "tiff";
             case Display::DisplayType::PNG:
                 return "png";
-            case Display::DisplayType::NUL:
-                return "null";
             default:
                 break;
         }
@@ -73,7 +93,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
 
     std::string display_driver_name = getDisplayDriverFileName(display_type);
     if (display_driver_name == "") {
-        LLOG_ERR << "Unable to get display driver name !!!";
+        LLOG_ERR << "No display driver name specified !!!";
         return nullptr;
     }
 
@@ -131,7 +151,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
     return SharedPtr(pDisplay);
 }
 
-bool Display::open(const std::string& image_name, uint width, uint height) {
+bool Display::open(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels) {
     if( width == 0 || height == 0) {
         printf("[%s] Wrong image dimensions !!!\n", __FILE__);
         return false;
@@ -142,15 +162,15 @@ bool Display::open(const std::string& image_name, uint width, uint height) {
     mImageHeight = height;
 
     //format can be rgb, rgba or rgbaz for now...
-    int formatCount = 4;
-    std::vector<std::string> channels {"r", "g", "b", "a", "z"};
+    //int formatCount = 4;
+    //std::vector<std::string> channels {"r", "g", "b", "a", "z"};
 
-    PtDspyDevFormat *outformat = new PtDspyDevFormat[formatCount]();
+    PtDspyDevFormat *outformat = new PtDspyDevFormat[channels.size()]();
     PtDspyDevFormat *f_ptr = &outformat[0];
-    for(int i=0; i<formatCount; i++){
-        f_ptr->type = PkDspyFloat32;
+    for(const auto& channel: channels){
+        f_ptr->type = getTypeFormat(channel.format);//PkDspyFloat32;
 
-        const std::string& channel_name = channels[i];
+        const std::string& channel_name = channel.name;
         char* pname = reinterpret_cast<char*>(malloc(channel_name.size()+1));
         strcpy(pname, channel_name.c_str());
         
@@ -158,7 +178,7 @@ bool Display::open(const std::string& image_name, uint width, uint height) {
         f_ptr++;
     }
 
-    PtDspyError err = mOpenFunc(&mImage, mDriverName.c_str(), mImageName.c_str(), mImageWidth, mImageHeight, mUserParameters.size(), mUserParameters.data(), formatCount, outformat, &mFlagstuff);
+    PtDspyError err = mOpenFunc(&mImage, mDriverName.c_str(), mImageName.c_str(), mImageWidth, mImageHeight, mUserParameters.size(), mUserParameters.data(), channels.size(), outformat, &mFlagstuff);
 
     // check for an error
     if(err != PkDspyErrorNone ) {

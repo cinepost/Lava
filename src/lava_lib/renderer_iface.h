@@ -17,6 +17,7 @@ class RendererIface {
  public:
     struct DisplayData {
         Display::DisplayType                                            displayType;
+        Display::TypeFormat                                             typeFormat;
         std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
         std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
         std::vector<std::pair<std::string, std::vector<float>>>         displayFloatParameters;
@@ -26,12 +27,19 @@ class RendererIface {
         double  fps = 25.0;
     };
 
+    enum class SamplePattern : uint32_t {
+        Center,
+        DirectX,
+        Halton,
+        Stratified,
+    };
+
     struct FrameData {
         std::string imageFileName = "";
         uint imageWidth = 0;
         uint imageHeight = 0;
         uint imageSamples = 0;
-
+        SamplePattern samplePattern = SamplePattern::Stratified;
         double time = 0.0;
 
         std::string cameraProjectionName = "perspective";
@@ -40,6 +48,19 @@ class RendererIface {
         glm::mat4   cameraTransform;
         double      cameraFocalLength = 1.0;
         double      cameraFrameHeight = 1.0;
+    };
+
+    struct PlaneData {
+        enum class Channel: uint32_t {
+            COLOR,       // RGB  channel
+            COLOR_ALPHA, // RGBA channel
+            NOMRAL,
+            DEPTH,       // Z channel
+            G_ALBEDO,    // GBuffer surface albedo
+        };
+        Channel             channel;
+        Display::TypeFormat format;
+        std::string         name;
     };
 
     struct EnvLightData {
@@ -63,11 +84,15 @@ class RendererIface {
 
     /**
     */
-    bool openDisplay(const std::string& image_name, uint width, uint height);
+    //bool openDisplay(const std::string& image_name, uint width, uint height);
 
     /**
     */
     bool setDisplay(const DisplayData& display_data);  
+
+    /**
+    */
+    bool addPlane(const PlaneData& plane_data);
 
     /** load and execute python script file
      */

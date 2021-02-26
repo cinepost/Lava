@@ -23,7 +23,6 @@ from __future__ import print_function
 # Here, we define methods for each of the properties on IFD light
 # sources.
 
-import math
 import soho
 from soho import SohoParm
 
@@ -40,15 +39,15 @@ def isdistantlighttype(ltype):
     return ltype in ['distant', 'sun']
 
 def isarealight(obj, now):
-    ltype = obj.getDefaultedString('light_type', now, ['point'])[0]
+    ltype = obj.getDefaultedString('ar_light_type', now, ['point'])[0]
     return isarealighttype(ltype)
 
 def isdistantlight(obj, now):
-    ltype = obj.getDefaultedString('light_type', now, ['point'])[0]
+    ltype = obj.getDefaultedString('ar_light_type', now, ['point'])[0]
     return isdistantlighttype(ltype)
 
 def isgeolight(obj, now):
-    ltype = obj.getDefaultedString('light_type', now, ['point'])[0]
+    ltype = obj.getDefaultedString('ar_light_type', now, ['point'])[0]
     return ltype == 'geo'
 
 def ispclight(obj, now):
@@ -56,7 +55,7 @@ def ispclight(obj, now):
     return enable
 
 def areashape(obj, now, value):
-    obj.evalString('light_type', now, value)
+    obj.evalString('ar_light_type', now, value)
     if not isarealighttype(value[0]):
         return False
     return True
@@ -79,7 +78,7 @@ def areafullsphere(obj, now, value):
 def areamap(obj, now, value):
     if not isarealight(obj, now):
         return False
-    return obj.evalString('areamap', now, value)
+    return obj.evalString('ar_light_color_texture', now, value)
 
 def phantom(obj, now, value):
     if soho.getOutputDriver().getData('pcrender'):
@@ -156,8 +155,8 @@ def attenString(obj, now, ltype):
     if attenrampenable:
         parmlist = [ SohoParm('object:instancename', 'string', ['']) ]
         obj.evaluate(parmlist, 0)
-        hlight = hou.node(parmlist[0].Value[0])
-        if hlight:
+        alight = hou.node(parmlist[0].Value[0])
+        if alight:
             attenramp = hlight.parmTuple('attenramp')
             if attenramp:
                 rampParms = shopclerks.ifdclerk.IfdParmEval(None, soho.Precision, None).getRampParms(attenramp, hou.timeToFrame(now))
@@ -169,66 +168,55 @@ def attenString(obj, now, ltype):
     return atten
 
 def envString(plist):
-    areamap     = plist['areamap'].Value[0]
-    areamapspace= plist['areamapspace'].Value[0]
-    areamapnull = plist['areamapnull'].Value[0]
-    areamapblur = plist['areamapblur'].Value[0]
-    areamapscale= plist['areamapscale'].Value[0]
+    areamap     = plist['ar_light_color_texture'].Value[0]
 
     env = ''
     if areamap != '':
         env += ' envmap "%s"' % areamap
-        if areamapspace == '':
-            areamapspace = areamapnull
-        if areamapspace != '':
-            env += ' envnull "%s"' % areamapspace
-        if areamapblur != 0:
-            env += ' envblurangle %f' % areamapblur
-        if areamapscale != 1:
-            env += ' envscale %f' % areamapscale
+
     return env
 
 def get_color(plist):
-    color = plist['light_color'].Value
+    color = plist['ar_color'].Value
     if len(color) == 1:
         color.append(color[0])
     if len(color) == 2:
         color.append(color[1])
 
-    intensity = plist['light_intensity'].Value[0]
-    exposure = plist['light_exposure'].Value[0]
+    intensity = plist['ar_intensity'].Value[0]
+    exposure = plist['ar_exposure'].Value[0]
     brightness = intensity * pow(2, exposure)
-    color[0] *= brightness * math.pi * 2
-    color[1] *= brightness * math.pi * 2
-    color[2] *= brightness * math.pi * 2
+    color[0] *= brightness
+    color[1] *= brightness
+    color[2] *= brightness
     return color
 
 # Properties in the HoudiniLight object which get mapped to the
 # light shader.
 lshaderParms = {
-    'light_type': SohoParm('light_type',        'string', ['point'], False),
-    'light_color': SohoParm('light_color',      'real', [1,1,1], False),
-    'light_intensity' : SohoParm('light_intensity',     'real', [1], False),
-    'light_exposure' : SohoParm('light_exposure',       'real', [0], False),
+    'ar_light_type': SohoParm('ar_light_type',        'string', ['point'], False),
+    'ar_color': SohoParm('ar_color',      'real', [1,1,1], False),
+    'ar_intensity' : SohoParm('ar_intensity',     'real', [1], False),
+    'ar_exposure' : SohoParm('ar_exposure',       'real', [0], False),
     'light_enable' : SohoParm('light_enable',   'int', [1], False),
-    'coneenable': SohoParm('coneenable',        'int', [0], False),
-    'coneangle' : SohoParm('coneangle',         'real', [45], False),
-    'conedelta' : SohoParm('conedelta',         'real', [10], False),
-    'coneroll'  : SohoParm('coneroll',          'real', [1], False),
-    'areamap'   : SohoParm('areamap',           'string', [''], False),
-    'areamapspace': SohoParm('areamapspace',    'string', ['space:object'], False),
-    'areamapnull': SohoParm('areamapnull',      'string', [''], False),
-    'areamapblur': SohoParm('areamapblur',      'real', [0], False),
-    'areamapscale': SohoParm('areamapscale',    'real', [1], False),
-    'light_texture' : SohoParm('light_texture', 'string', [''], False),
-    'singlesided' : SohoParm('singlesided',     'int', [0], False),
-    'reverse'   : SohoParm('reverse',           'int', [0], False),
-    'normalizearea': SohoParm('normalizearea',  'int', [1], False),
-    'projmap'   : SohoParm('projmap',           'string', [''], False),
-    'edgeenable': SohoParm('edgeenable',        'int', [0], False),
-    'edgewidth' : SohoParm('edgewidth',         'real', [0.1], False),
-    'edgerolloff': SohoParm('edgerolloff',      'real', [1], False),
-    'sharpspot' : SohoParm('sharpspot',         'int', [0], False),
+#    'coneenable': SohoParm('coneenable',        'int', [0], False),
+    'ar_cone_angle' : SohoParm('ar_cone_angle',         'real', [45], False),
+    'ar_penumbra_delta' : SohoParm('ar_penumbra_delta',         'real', [10], False),
+#    'coneroll'  : SohoParm('coneroll',          'real', [1], False),
+    'ar_light_color_texture'   : SohoParm('ar_light_color_texture',           'string', [''], False),
+#    'areamapspace': SohoParm('areamapspace',    'string', ['space:object'], False),
+#    'areamapnull': SohoParm('areamapnull',      'string', [''], False),
+#    'areamapblur': SohoParm('areamapblur',      'real', [0], False),
+#    'areamapscale': SohoParm('areamapscale',    'real', [1], False),
+#    'light_texture' : SohoParm('light_texture', 'string', [''], False),
+#    'singlesided' : SohoParm('singlesided',     'int', [0], False),
+#    'reverse'   : SohoParm('reverse',           'int', [0], False),
+#    'normalizearea': SohoParm('normalizearea',  'int', [1], False),
+#    'projmap'   : SohoParm('projmap',           'string', [''], False),
+#    'edgeenable': SohoParm('edgeenable',        'int', [0], False),
+#    'edgewidth' : SohoParm('edgewidth',         'real', [0.1], False),
+#    'edgerolloff': SohoParm('edgerolloff',      'real', [1], False),
+#    'sharpspot' : SohoParm('sharpspot',         'int', [0], False),
 }
 
 def light_shader(obj, now, value):
@@ -237,13 +225,10 @@ def light_shader(obj, now, value):
             return True
 
     plist = obj.evaluate(lshaderParms, now)
-    ltype = plist['light_type'].Value[0]
-    docone      = plist['coneenable'].Value[0]
-    coneangle   = plist['coneangle'].Value[0]
-    conedelta   = plist['conedelta'].Value[0]
-    coneroll    = plist['coneroll'].Value[0]
-    projmap     = plist['projmap'].Value[0]
-    sharpspot   = plist['sharpspot'].Value[0]
+    ltype = plist['ar_light_type'].Value[0]
+    coneangle   = plist['ar_cone_angle'].Value[0]
+    conedelta   = plist['ar_penumbra_delta'].Value[0]
+    projmap     = False#plist['projmap'].Value[0]
 
     uvrender = obj.getDefaultedInt('vm_isuvrendering', now, [0])[0]
     light_path = obj.getDefaultedString('vm_uvlightpaths', now, ['-diffuse & -volume'])[0]
@@ -260,12 +245,9 @@ def light_shader(obj, now, value):
 
     shader += ' type %s' % ltype
 
-    if docone == 1:
-        shader += ' docone 1 coneangle %g conedelta %g conerolloff %g' % \
-                    ( coneangle, conedelta, coneroll )
-
-    if sharpspot:
-        shader += ' sharpspot 1'
+    if ltype == 'spot':
+        shader += ' coneangle %g conedelta %g' % \
+                    ( coneangle, conedelta )
 
     shader += attenString(obj, now, ltype)
     shader += envString(plist)
@@ -289,100 +271,14 @@ lshadowParms = {
     'shadow_blur'           : SohoParm('shadow_blur', 'real', [0], False),
     'shadow_transparent'    : SohoParm('shadow_transparent', 'int', [1], False),
     'shadowmap_file'        : SohoParm('shadowmap_file', 'string', [''], False),
-    'shadowmap_time_zero'   : SohoParm('shadowmap_time_zero', 'int',
-                                        [1], False),
-    'vm_iprraytraceshadows' : SohoParm('vm_iprraytraceshadows', 'int',
-                                        [1], False),
+    'shadowmap_time_zero'   : SohoParm('shadowmap_time_zero', 'int', [1], False),
+    'vm_iprraytraceshadows' : SohoParm('vm_iprraytraceshadows', 'int', [1], False),
 }
 
 def shadow_shader(obj, now, value):
-    if obj.evalShader('shop_shadowpath', now, value):
-        if value[0]:
-            return True
-
-    plist = obj.evaluate(lshadowParms, now)
-    stype = plist['shadow_type'].Value[0]
-    bias = plist['shadow_bias'].Value[0]
-    intensity = plist['shadow_intensity'].Value[0]
-    clr = plist['shadow_color'].Value
-    softness = plist['shadow_softness'].Value[0]
-    blur = plist['shadow_blur'].Value[0]
-    transparent = plist['shadow_transparent'].Value[0]
-    quality = plist['shadow_quality'].Value[0]
-    map = plist['shadowmap_file'].Value[0]
-    map_time_zero = plist['shadowmap_time_zero'].Value[0]
-    forceraytrace = plist['vm_iprraytraceshadows'].Value[0]
-
-    if stype == 'off':
-        return False
-
-    if stype == 'raytrace' or (forceraytrace and isPreviewMode()):
-        shader = 'opdef:/Shop/v_rayshadow'
-        if transparent:
-            shader += ' shadowtype filter'
-        else:
-            shader += ' shadowtype fast'
-    else:
-        if not map:
-            return False
-        if transparent:
-            style = 'deep'
-        else:
-            style = 'zdepth'
-        shader = 'opdef:/Shop/v_rayshadow shadowtype %s' % style
-        shader += ' map "%s"' % map.replace('"', '\\"')
-        shader += ' spread %g' % softness
-        shader += ' blur %g' % blur
-        shader += ' map_time_zero %d' % map_time_zero
-    shader += ' bias %g' % bias
-    shader += ' quality %g' % quality
-    shader += ' shadowI %g' % intensity
-    shader += ' shadow_color %g %g %g' % (clr[0], clr[1], clr[2])
-    value[:] = [shader]
     return True
 
 def surface_shader(obj, now, value):
-    if obj.evalShader('shop_surfacepath', now, value):
-        if value[0]:
-            return True
-
-    plist = obj.evaluate(lshaderParms, now)
-    ltype       = plist['light_type'].Value[0]
-    light_texture = plist['light_texture'].Value[0]
-    singlesided = plist['singlesided'].Value[0]
-    reverse     = plist['reverse'].Value[0]
-    normalizearea = plist['normalizearea'].Value[0]
-    edgeenable  = plist['edgeenable'].Value[0]
-    edgewidth   = plist['edgewidth'].Value[0]
-    edgerolloff = plist['edgerolloff'].Value[0]
-
-    if not isarealighttype(ltype):
-        value[:] = ['opdef:/Shop/v_constant']
-        return True
-
-    light_color = get_color(plist)
-
-    shader = 'opdef:/Shop/v_arealight'
-
-    # Only output the light color for if it's not a point cloud render
-    if not soho.getOutputDriver().getData('pcrender'):
-        shader += ' lightcolor %g %g %g' % \
-                    ( light_color[0], light_color[1], light_color[2] )
-        shader += envString(plist)
-
-    shader += ' normalizearea %d' % normalizearea
-
-    if light_texture != '':
-        shader += ' texmap "%s"' % light_texture
-
-    if singlesided:
-        shader += ' singlesided 1 reverse %d' % reverse
-
-    if edgeenable:
-        shader += ' doedge 1 edgewidth %g edgerolloff %g' % \
-                    (edgewidth, edgerolloff)
-
-    value[:] = [shader]
     return True
 
 samplerParms = {
@@ -393,49 +289,14 @@ samplerParms = {
 }
 
 def sampler_shader(obj, now, value):
-    if not isgeolight(obj, now):
-        return False
-
-    plist = obj.evaluate(samplerParms, now)
-
-    if ispclight(obj, now):
-        shader = 'opdef:/Shop/v_sampler_pclight'
-        shader += ' pcfile %s' % plist['pc_file'].Value[0]
-        shader += ' pcsamples %g' % plist['pc_samples'].Value[0]
-    else:
-        shader = 'opdef:/Shop/v_sampler_geometry'
-
-    shader += ' selfshadow %d' % plist['selfshadow'].Value[0]
-
-    value[:] = [shader]
-    return True
+    return True 
 
 def tracer_shader(obj, now, value):
-    if not ispclight(obj, now):
-        return False
-
-    plist = obj.evaluate(samplerParms, now)
-
-    shader = 'opdef:/Shop/v_tracer_pclight'
-    shader += ' pcfile %s' % plist['pc_file'].Value[0]
-    shader += ' pcsamples %g' % plist['pc_samples'].Value[0]
-
-    value[:] = [shader]
-    return True
+    return True 
 
 def illum_shader(obj, now, value):
-    if obj.evalShader('vm_illumshader', now, value):
-        if value[0]:
-            return True
-
-    misbias = 1
-    if isarealight(obj, now):
-        plist = obj.evaluate(samplerParms, now)
-        misbias = plist['vm_misbias'].Value[0]
-    shader = 'mislighting misbias %f' % misbias
-
-    value[:] = [shader]
     return True
+
 
 # Shadow map generation
 def render_shadowmap(obj, now, value):
@@ -531,8 +392,11 @@ def vm_setexrdatawindow(obj, now, value):
     return True
 
 def lv_light_type(obj, now, value):
-    value[0] = obj.getDefaultedString('light_type', now, ['point'])[0]
+    value[0] = obj.getDefaultedString('ar_light_type', now, ['point'])[0]
     return True
+
+def pre_outputLight(obj):
+    return False
 
 # When evaluating an integer or real property, we want to
 parmMap = {
@@ -557,25 +421,25 @@ parmMap = {
     'lv_setexrdatawindow' :     vm_setexrdatawindow,
 
     # Settings for point cloud lights
-    'lv_renderengine'   :       vm_renderengine,
-    'lv_pbrshader'      :       vm_pbrshader,
-    'lv_hidden'         :       vm_hidden,
+    #'lv_renderengine'   :       vm_renderengine,
+    #'lv_pbrshader'      :       vm_pbrshader,
+    #'lv_hidden'         :       vm_hidden,
 
     # Shaders
-    'shop_lightpath'    :       light_shader,
-    'shop_shadowpath'   :       shadow_shader,
-    'shop_surfacepath'  :       surface_shader,
-    'vm_samplershader'  :       sampler_shader,
-    'vm_tracershader'   :       tracer_shader,
-    'vm_illumshader'    :       illum_shader,
+    'shop_lightpath'    :        light_shader,
+    #'shop_shadowpath'   :       shadow_shader,
+    #'shop_surfacepath'  :       surface_shader,
+    #'vm_samplershader'  :       sampler_shader,
+    #'vm_tracershader'   :       tracer_shader,
+    #'vm_illumshader'    :       illum_shader,
 
     # All other properties can be added by the user as spare
     # properties if they want.
 }
 
-class hlightLSD:
+class alightLSD:
     def __init__(self, obj, now, version):
-        self.Label = 'Houdini Light LSD'
+        self.Label = 'Arnold Light LSD'
         self.Version = version
 
     def evalParm(self, obj, parm, now):
@@ -585,6 +449,6 @@ class hlightLSD:
         return obj.evalParm(parm, now)
 
 def registerLight(list):
-    key = 'HoudiniLight-lava'
+    key = 'ArnoldLightToLava'
     if key not in list:
-        list[key] = hlightLSD
+        list[key] = alightLSD

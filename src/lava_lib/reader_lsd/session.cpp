@@ -22,7 +22,7 @@ namespace lsd {
 
 using DisplayType = Display::DisplayType;
 
-DisplayType resolveDisplayTypeByFileName(const std::string& file_name) {
+static DisplayType resolveDisplayTypeByFileName(const std::string& file_name) {
 	std::string ext = ut::fsys::getFileExtension(file_name);
 
     if( ext == ".exr" ) return DisplayType::OPENEXR;
@@ -31,7 +31,44 @@ DisplayType resolveDisplayTypeByFileName(const std::string& file_name) {
     if( ext == ".png" ) return DisplayType::PNG;
     if( ext == ".tif" ) return DisplayType::TIFF;
     if( ext == ".tiff" ) return DisplayType::TIFF;
+
     return DisplayType::OPENEXR;
+}
+
+static Display::TypeFormat resolveDisplayTypeFormat(const std::string& fname) {
+	if( fname == "int8") return Display::TypeFormat::UNSIGNED8;
+	if( fname == "int16") return Display::TypeFormat::UNSIGNED16;
+	if( fname == "float16") return Display::TypeFormat::FLOAT16;	
+	if( fname == "float32") return Display::TypeFormat::FLOAT32;
+
+	return Display::TypeFormat::FLOAT32;
+}
+
+static RendererIface::SamplePattern samplePattern(const std::string& sample_pattern_name) {
+	if( sample_pattern_name == "stratified" ) return RendererIface::SamplePattern::Stratified;
+	if( sample_pattern_name == "halton" )  return RendererIface::SamplePattern::Halton;
+	return RendererIface::SamplePattern::Center;	
+}
+
+static RendererIface::PlaneData renderingPlaneFromLSD(scope::Plane::SharedPtr pPlane) {
+	RendererIface::PlaneData planeData;
+
+	std::string channel_name = pPlane->getPropertyValue(ast::Style::PLANE, "channel", std::string());
+	if(channel_name.size() == 0) {
+		LLOG_ERR << "No channel name specified for plane !!!";
+	}
+
+	std::string plane_variable = pPlane->getPropertyValue(ast::Style::PLANE, "variable", std::string());
+	if(plane_variable.size() == 0) {
+		LLOG_ERR << "No plane variable specified for plane !!!";
+	}
+
+	std::string quantize = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
+
+	planeData.name = channel_name;
+	planeData.format = resolveDisplayTypeFormat(quantize);
+
+	return planeData;
 }
 
 Session::UniquePtr Session::create(std::unique_ptr<RendererIface> pRendererIface) {
@@ -88,7 +125,12 @@ std::string Session::getExpandedString(const std::string& str) {
 void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
 	LLOG_DBG << "cmdImage";
 	mFrameData.imageFileName = filename;
-    mDisplayData.displayType = display_type;
+
+	if (display_type == lsd::ast::DisplayType::NONE ) {
+		mDisplayData.displayType = resolveDisplayTypeByFileName(filename);
+	} else {
+    	mDisplayData.displayType = display_type;
+    }
 }
 
 // initialize frame independet render data
@@ -117,6 +159,10 @@ bool Session::prepareDisplayData() {
 				break;
 		}
 	}
+
+	// quantization parameters
+	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float32"));
+	mDisplayData.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 
 	return true;
 }
@@ -148,7 +194,11 @@ bool Session::prepareFrameData() {
 		mFrameData.cameraFrameHeight = height_k * 50.0;
 	}
 
+	// set up image sampling
 	mFrameData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+
+	std::string samplePatternName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samplingpattern", std::string("stratified"));
+	mFrameData.samplePattern = samplePattern(samplePatternName);
 
 	return true;
 }
@@ -256,18 +306,20 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	} else if( light_type == "env") {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
-		//envintensity
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
-		if (texture_file_name.size() == 0) {
-			LLOG_WRN << "No areamap provided for environment light. Skipping...";
-			return;
-		}
 
 		auto pDevice = pSceneBuilder->device();
-		LightProbe::SharedPtr pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float);
+		LightProbe::SharedPtr pLightProbe;
+		if (texture_file_name.size() == 0) {
+			// solid color lightprobe
+			pLightProbe = LightProbe::create(pDevice->getRenderContext());
+    	} else {
+    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float);
+    	}
+    	assert(pLightProbe);
+
     	pLightProbe->setPosW(light_pos);
 
-    	//light_color /= Falcor::float3{6.28318530718, 6.28318530718, 6.28318530718}; // inv 2*PI
     	pLightProbe->setIntensity(light_color);
     	pSceneBuilder->setLightProbe(pLightProbe);
     	return;
@@ -282,7 +334,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pLight->setName(light_name);
 		pLight->setHasAnimation(false);
 
-		light_color *= Falcor::float3{6.28318530718, 6.28318530718, 6.28318530718}; // just to match houdini intensity (2*PI)
 		pLight->setIntensity(light_color);
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
@@ -426,7 +477,9 @@ bool Session::cmdEnd() {
 		return false;
 	}
 
-	bool pushGeoAsync = false;
+	const auto& configStore = Falcor::ConfigStore::instance();
+
+	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -447,15 +500,14 @@ bool Session::cmdEnd() {
 			}
 			break;
 		case ast::Style::OBJECT:
-			LLOG_FTL << "end object";
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
 			if(!pushGeometryInstance(pObj)) {
-				LLOG_FTL << "FAK";
 				return false;
 			}
 			break;
 		case ast::Style::PLANE:
 			pPlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
+			mpRendererIface->addPlane(renderingPlaneFromLSD(pPlane));
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);

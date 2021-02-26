@@ -96,7 +96,7 @@ class ForwardLightingPass : public RenderPass {
     GraphicsVars::SharedPtr mpVars;
     RasterizerState::SharedPtr mpRsState;
 
-    ResourceFormat mColorFormat = ResourceFormat::RGB32Float; //Unknown;
+    ResourceFormat mColorFormat = ResourceFormat::RGBA32Float; //Unknown;
     ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
     ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
     uint32_t mSampleCount = 0;

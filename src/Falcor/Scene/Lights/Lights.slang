@@ -30,8 +30,12 @@
     It should be merged/replaced with the BSDF code for ray tracing.
 */
 
+#include "Utils/Math/MathConstants.slangh"
+
 import Utils.Helpers;
 import Scene.ShadingData;
+
+//import Scene.Material.BRDFCommon;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightProbeData;
 
@@ -141,8 +145,11 @@ float3 getSpecularDominantDir(float3 N, float3 R, float ggxAlpha)
     return normalize(lerp(N, R, factor));
 }
 
-float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
-{
+float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd) {
+    if(probe.doSolidColor) {
+        return float3(1);
+    }
+    
     float3 N = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
 
     // Interpret negative radius as global light probe with infinite distance
@@ -163,13 +170,72 @@ float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
     probe.resources.diffuseTexture.GetDimensions(0, width, height, mipCount);
 
     float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
+    return diffuseLighting; 
+}
+
+float3 evalLightProbeDiffuseOld(LightProbeData probe, ShadingData sd) {
+    float3 N = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
+
+    // Interpret negative radius as global light probe with infinite distance
+    // Otherwise simulate the light probe as covering a finite spherical area
+    float2 uv;
+    if(probe.radius < 0.0f)
+    {
+        uv = dirToSphericalCrd(N);
+    } else {
+        float3 intersectPosW;
+        intersectRaySphere(sd.posW, N, probe.posW, probe.radius, intersectPosW);
+        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
+    }
+
+    float width, height, mipCount;
+    probe.resources.diffuseTexture.GetDimensions(0, width, height, mipCount);
+
+    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
     float preintegratedDisneyBRDF = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).z;
 
     return diffuseLighting * preintegratedDisneyBRDF * sd.diffuse.rgb;
 }
 
-float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
-{
+
+float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L) {
+    if(probe.doSolidColor) {
+        return float3(1);
+    }
+
+    float dfgWidth, dfgHeight;
+    probe.sharedResources.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
+
+    float width, height, mipCount;
+    probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
+
+    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.ggxAlpha);
+    
+    float ggxAlpha = sd.ggxAlpha;
+    float mipLevel = linearRoughnessToLod(ggxAlpha, mipCount);
+
+    float2 uv;
+    if (probe.radius < 0.0f)
+    {
+        uv = dirToSphericalCrd(dominantDir);
+    } else {
+        float3 intersectPosW;
+        intersectRaySphere(sd.posW, dominantDir, probe.posW, probe.radius, intersectPosW);
+        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
+    }
+
+    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
+
+    if(sd.metallic < 1.0) {
+
+        //float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, ggxAlpha), 0).xy;
+        //ld = lerp(ld * (dfg.x + dfg.y), ld, sd.metallic);
+    }
+
+    return ld;
+}
+
+float3 evalLightProbeSpecularOld(LightProbeData probe, ShadingData sd, float3 L) {
     float dfgWidth, dfgHeight;
     probe.sharedResources.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
 
@@ -179,7 +245,6 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
     float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.ggxAlpha);
     
     float mipLevel = linearRoughnessToLod(sd.ggxAlpha, mipCount);
-    //float mipLevel = min(0, linearRoughnessToLod(sd.ggxAlpha, mipCount) - 1.0);
 
     float2 uv;
     if (probe.radius < 0.0f)
@@ -203,7 +268,6 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
         ld *= sd.specular;
     }
 
-    //return ld * (sd.specular * dfg.x + dfg.y);
     return ld;
 }
 
@@ -215,7 +279,7 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
 
     // Calculate the reflection vector
     ls.L = reflect(-sd.V, sd.N);
-
+    
     // Evaluate diffuse component
     ls.diffuse = evalLightProbeDiffuse(probe, sd);
 
@@ -231,9 +295,70 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     return ls;
 }
 
+LightSample evalLightProbeLinear2DOld(LightProbeData probe, ShadingData sd) {
+    LightSample ls;
+
+    // Calculate the reflection vector
+    ls.L = reflect(-sd.V, sd.N);
+
+    // Evaluate diffuse component
+    ls.diffuse = evalLightProbeDiffuseOld(probe, sd);
+
+    // Get the specular component
+    ls.specular = evalLightProbeSpecularOld(probe, sd, ls.L);
+
+    ls.diffuse *= probe.intensity;
+    ls.specular *= probe.intensity;
+    ls.posW = probe.posW;
+    ls.distance = length(probe.posW - sd.posW);
+    calcCommonLightProperties(sd, ls);
+
+    return ls;
+}
+
 /** Evaluate the properties of a light-probe
 */
-LightSample evalLightProbe(LightProbeData probe, ShadingData sd)
-{
-    return evalLightProbeLinear2D(probe, sd);
+LightSample evalLightProbeSampleDiffuse(LightProbeData probe, ShadingData sd) {
+    LightSample ls;
+
+    // Calculate dominant diffuse vector
+    ls.L = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
+
+    // Evaluate diffuse component
+    ls.diffuse = evalLightProbeDiffuse(probe, sd);
+
+    // Get the specular component
+    ls.specular = 0.0f;
+
+    ls.diffuse *= probe.intensity;
+    ls.posW = probe.posW;
+    ls.distance = length(probe.posW - sd.posW);
+    calcCommonLightProperties(sd, ls);
+
+    return ls;
+}
+
+LightSample evalLightProbeSampleSpecular(LightProbeData probe, ShadingData sd) {
+    LightSample ls;
+
+    // Calculate the reflection vector
+    float3 R = reflect(-sd.V, sd.N);
+    ls.L = R;//getSpecularDominantDir(sd.N, R, sd.ggxAlpha);
+
+    // Evaluate diffuse component
+    ls.diffuse = 0.0f;
+
+    // Get the specular component
+    ls.specular = evalLightProbeSpecular(probe, sd, ls.L);
+
+    ls.specular *= probe.intensity;
+    ls.posW = probe.posW;
+    ls.distance = length(probe.posW - sd.posW);
+    calcCommonLightProperties(sd, ls);
+
+    return ls;
+}
+
+LightSample evalLightProbeOld(LightProbeData probe, ShadingData sd) {
+    return evalLightProbeLinear2DOld(probe, sd);
 }

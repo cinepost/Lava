@@ -77,6 +77,10 @@ class dlldecl LightProbe {
     */
     static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
+    /** Create a light-probe from solid color
+    */
+    static SharedPtr create(RenderContext* pContext);
+
     ~LightProbe();
 
     /** Set the light probe's world-space position
@@ -148,6 +152,7 @@ class dlldecl LightProbe {
     uint32_t mSpecSampleCount;
 
     LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat);
+    LightProbe(RenderContext* pContext);
 };
 
 }  // namespace Falcor

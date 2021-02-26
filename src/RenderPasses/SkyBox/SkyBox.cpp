@@ -63,8 +63,6 @@ namespace {
 }
 
 SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
-    LOG_DBG("SkyBox::SkyBox");
-
     mpCubeScene = Scene::create(pDevice, "SkyBox/cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
@@ -97,7 +95,6 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
     assert(mpDevice);
     setFilter((uint32_t)mFilter);
-    LOG_DBG("SkyBox::SkyBox done");
 }
 
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -131,7 +128,7 @@ Dictionary SkyBox::getScriptingDictionary() {
 
 RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
-    reflector.addOutput(kTarget, "Color buffer").format(ResourceFormat::RGBA32Float);
+    reflector.addOutput(kTarget, "Color buffer");//.format(ResourceFormat::RGBA32Float);
     auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }
@@ -153,6 +150,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
+    mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
     mpState->setFbo(mpFbo);
     LOG_DBG("SkyBox::execute render");
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scene/Material/MaterialDefines.slangh"
+#include "Utils/Math/MathConstants.slangh"
 
 __exported import Scene.ShadingData;
 import Scene.SceneTypes;
@@ -346,7 +347,43 @@ ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
 ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
 {
     ShadingResult sr = {};
-    LightSample ls = evalLightProbe(probe, sd);
+    LightSample lsd = evalLightProbeSampleDiffuse(probe, sd);
+    LightSample lss = evalLightProbeSampleSpecular(probe, sd);
+
+    sd.NdotV = saturate(sd.NdotV);
+
+    //float kt = evalTransmissionFresnel(sd, ls);
+    //float kr = 1.0f - kt;
+
+    // Calculate the diffuse term
+    // If the light doesn't hit the surface or we are viewing the surface from the back, return
+    if (lsd.NdotL <= 0) {
+        sr.diffuseBrdf = 0.0f;
+    } else {
+        sr.diffuseBrdf = evalDiffuseBrdf(sd, lsd) * M_PI;
+    }
+        sr.diffuse = lsd.diffuse * sr.diffuseBrdf;
+        sr.color = sr.diffuse;
+        
+    // Calculate the specular term
+    if (lsd.NdotL <= 0) {
+        sr.specularBrdf = 0.0f;
+    } else {
+        sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
+    }
+    sr.specular = lss.specular * sr.specularBrdf;
+    sr.color += sr.specular;
+
+    // Apply the occlusion factor
+    //sr.color *= occlusionFactor;
+
+    return sr;
+}
+
+ShadingResult evalMaterialOld(ShadingData sd, LightProbeData probe)
+{
+    ShadingResult sr = {};
+    LightSample ls = evalLightProbeOld(probe, sd);
 
     sr.diffuse = ls.diffuse;
     sr.color = sr.diffuse;

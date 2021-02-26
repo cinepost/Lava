@@ -41,16 +41,20 @@ import Scene.Lights.Lights;
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
 */
 
-float disneyDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness) {
-    float fd90 = 0.5 + 2 * LdotH * LdotH * linearRoughness;
+float disneyDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness, float minReflection) {
+    float fd90 = 0.0 + 2 * LdotH * LdotH * linearRoughness;
+    float fd90L = 1.0 + 1 * LdotH * LdotH * linearRoughness;
+    fd90L = 1.0;
     float fd0 = 1;
-    float lightScatter = fresnelSchlick(fd0, fd90, NdotL).r;
-    float viewScatter = fresnelSchlick(fd0, fd90, NdotV).r;
-    return lightScatter * viewScatter;
+
+    float energyFactor = lerp(1, 1.0 / 1.51, linearRoughness);
+    float lightScatter = fresnelSchlick(fd0, fd90L, NdotL).r;
+    float viewScatter = fresnelSchlick(fd0 - minReflection, fd90, NdotV).r;
+    return lightScatter * viewScatter * energyFactor;
 }
 
 float3 evalDiffuseDisneyBrdf(ShadingData sd, LightSample ls) {
-    return disneyDiffuseFresnel(sd.NdotV, ls.NdotL, ls.LdotH, sd.linearRoughness) * M_1_PI * sd.diffuse.rgb;
+    return disneyDiffuseFresnel(sd.NdotV, ls.NdotL, ls.LdotH, sd.linearRoughness, sd.specular.r) * M_1_PI * sd.diffuse.rgb;
 }
 
 float principledDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness) {
@@ -76,10 +80,11 @@ float3 evalDiffuseLambertBrdf(ShadingData sd, LightSample ls) {
 */
 
 float frostbiteDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness) {
-    float energyBias = lerp(0, 0.5, linearRoughness);
-    float energyFactor = lerp(1, 1.0 / 1.51, linearRoughness);
+    float roughness = pow(linearRoughness, 1.0/2.2); // This mimics mantra roughness more closely
+    float energyBias = lerp(0, 0.5, roughness);
+    float energyFactor = lerp(1, 1.0 / 1.51, roughness);
 
-    float fd90 = energyBias + 2 * LdotH * LdotH * linearRoughness;
+    float fd90 = energyBias + 2 * LdotH * LdotH * roughness;
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, NdotV).r;
@@ -100,8 +105,9 @@ float evalDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoug
 #endif
 }
 
-float3 evalDiffuseBrdf(ShadingData sd, LightSample ls) {
 
+float3 evalDiffuseBrdf(ShadingData sd, LightSample ls) {
+return evalDiffuseDisneyBrdf(sd, ls);
 #if DiffuseBrdf == DiffuseBrdfLambert
     return evalDiffuseLambertBrdf(sd, ls);
 #elif DiffuseBrdf == DiffuseBrdfDisney
@@ -110,6 +116,7 @@ float3 evalDiffuseBrdf(ShadingData sd, LightSample ls) {
     return evalDiffuseFrostbiteBrdf(sd, ls);
 #endif
 }
+
 
 float3 evalSpecularBrdfOriginal(ShadingData sd, LightSample ls) {
     float ggxAlpha = sd.ggxAlpha;
@@ -122,5 +129,19 @@ float3 evalSpecularBrdfOriginal(ShadingData sd, LightSample ls) {
 
 float3 evalSpecularBrdf(ShadingData sd, LightSample ls) {
     return evalSpecularBrdfOriginal(sd, ls);
-    //return evalParovozSpecular(sd, ls);
+}
+
+float3 evalSpecularBrdfLprobe(ShadingData sd, LightSample ls) {
+    float ggxAlpha = sd.ggxAlpha;
+
+    ggxAlpha = fresnelSchlick(float3(ggxAlpha), float3(0), ls.LdotH).r;
+
+    float G = evalSmithGGX(ls.NdotL, sd.NdotV, ggxAlpha);
+
+    float GVis = (G * ls.LdotH) / (sd.NdotV * ls.NdotH);
+    float Fc = fresnelSchlick(sd.specular, 1, ls.LdotH).r;
+    float x = (1 - Fc) * GVis;
+    float y = Fc * GVis;
+
+    return Fc;//x + y;
 }

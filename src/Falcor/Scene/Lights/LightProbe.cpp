@@ -124,6 +124,15 @@ namespace Falcor {
 
     static PreIntegration sIntegration;
 
+    LightProbe::LightProbe(RenderContext* pContext) {
+        mData.doSolidColor = true;
+        mData.resources.origTexture = nullptr;
+        mData.resources.diffuseTexture = nullptr;
+        mData.resources.specularTexture = nullptr;
+        mData.sharedResources = {};
+        sLightProbeCount++;
+    }
+
     LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
         : mDiffSampleCount(diffSamples)
         , mSpecSampleCount(specSamples)
@@ -153,11 +162,15 @@ namespace Falcor {
         }
     }
 
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext) {
+        return SharedPtr(new LightProbe(pContext));
+    }
+
     LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat) {
         std::shared_ptr<Device> pDevice = pContext->device();
-        auto pResourceManager = pDevice->resourceManager();
-
         assert(pDevice);
+        
+        auto pResourceManager = pDevice->resourceManager();
         assert(pResourceManager);
         
         Texture::SharedPtr pTexture;

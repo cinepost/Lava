@@ -61,7 +61,7 @@ struct LightProbeData
     float  _pad1;
 
     float radius        = -1.0f;
-    float _pad2;
+    float doSolidColor  = false;
     float _pad3;
     float _pad4;
 

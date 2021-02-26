@@ -41,6 +41,10 @@ RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, Fbo:
     return SharedPtr(new RenderGraph(pDevice, pTargetFbo, name));
 }
 
+RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const std::string& name) {
+    return SharedPtr(new RenderGraph(pDevice, frame_size, ResourceFormat::RGBA16Float, name));
+}
+
 RenderGraph::SharedPtr RenderGraph::create(std::shared_ptr<Device> pDevice, uint2 frame_size, const ResourceFormat& format, const std::string& name) {
     return SharedPtr(new RenderGraph(pDevice, frame_size, format, name));
 }
@@ -350,7 +354,7 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
 void RenderGraph::execute(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");
+        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::execute() call");
         return;
     }
 
@@ -366,7 +370,7 @@ void RenderGraph::execute(RenderContext* pContext) {
 void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::resolvePerFrameSparseResources() call");
+        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::resolvePerFrameSparseResources() call");
         return;
     }
 
@@ -382,7 +386,7 @@ void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
 void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::resolvePerSampleSparseResources() call");
+        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::resolvePerSampleSparseResources() call");
         return;
     }
 

@@ -90,7 +90,7 @@ class Property {
 
         std::shared_ptr<PropertiesContainer> mpSubContainer = nullptr;
 
-    friend class PropertiesContainer;
+        friend class PropertiesContainer;
 };
 
 static inline Property::Type valueType(const Property::Value& value) {
@@ -143,15 +143,16 @@ static inline bool checkValueTypeLoose(Property::Type type, const Property::Valu
     return true;
 }
 
-class PropertiesContainer {
+class PropertiesContainer: public std::enable_shared_from_this<PropertiesContainer> {
  public:
     using SharedPtr = std::shared_ptr<PropertiesContainer>;
     using PropertyKey = std::pair<ast::Style, std::string>;
     using PropertiesMap = std::map<PropertyKey, Property>;
 
  public:
-    PropertiesContainer() {};
-    PropertiesContainer(PropertiesContainer::SharedPtr pParent) {};
+    PropertiesContainer(): mpParent(nullptr) {};
+    PropertiesContainer(PropertiesContainer::SharedPtr pParent): mpParent(pParent) {};
+    //virtual SharedPtr parent() { return mpParent; };
 
     bool declareProperty(ast::Style style, Property::Type type, const std::string& name, const Property::Value& value, Property::Owner owner = Property::Owner::SYS);
     bool setProperty(ast::Style style, const std::string& name, const Property::Value& value);
@@ -177,6 +178,7 @@ class PropertiesContainer {
 
  protected:
     PropertiesMap mPropertiesMap;
+    SharedPtr mpParent = nullptr;
 };
 
 std::string to_string(const PropertiesContainer::PropertyKey& key);

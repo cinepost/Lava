@@ -31,23 +31,21 @@ class Segment;
 
 using EmbeddedData = std::vector<unsigned char>;
 
-class ScopeBase: public PropertiesContainer, public std::enable_shared_from_this<ScopeBase> {
+class ScopeBase: public PropertiesContainer {
  public:
     using SharedPtr = std::shared_ptr<ScopeBase>;
 
     ScopeBase(SharedPtr pParent);
+
+    SharedPtr parent() { return std::dynamic_pointer_cast<ScopeBase>(mpParent); };
     virtual ~ScopeBase() {};
-
     virtual ast::Style type() const = 0;
-
-    SharedPtr parent() { return mpParent; };
-
     virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
 
     EmbeddedData& getEmbeddedData(const std::string& name);
 
  protected:
-    SharedPtr mpParent;
+    //SharedPtr mpParent;
     std::vector<SharedPtr> mChildren;
     std::unordered_map<std::string, EmbeddedData> mEmbeddedDataMap;
 };

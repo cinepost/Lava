@@ -11,4 +11,5 @@ endif()
 
 install(DIRECTORY soho DESTINATION houdini)
 install(FILES FBrenderLava DESTINATION houdini)
+install(FILES LavaTypeFormats DESTINATION houdini)
 install(FILES UsdRenderers.json DESTINATION houdini)

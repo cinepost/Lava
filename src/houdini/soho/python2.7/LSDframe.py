@@ -1001,7 +1001,8 @@ def isGeoLight(light, wrangler, now):
 
 def outputLight(light, now):
     # Find the wrangler for evaluating soho parameters
-    wrangler = LSDsettings.getWrangler(light, now, 'light_wrangler')
+    wrangler = LSDsettings.getLightWrangler(light, now, 'light_wrangler')
+
     if LSDhooks.call('pre_outputLight', wrangler, light, now):
         return
 
@@ -1512,7 +1513,7 @@ def saveRetained(now, objlist, lightlist):
         mbinfo = LSDmisc.geo_mbsamples(obj, now)
         LSDgeo.saveRetained(obj, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3])
     for light in lightlist:
-        wrangler = LSDsettings.getWrangler(light, now, 'light_wrangler')
+        wrangler = LSDsettings.getLightWrangler(light, now, 'light_wrangler')
         if isGeoLight(light, wrangler, now):
             mbinfo = LSDmisc.geo_mbsamples(light, now)
             LSDgeo.saveRetained(light, now, mbinfo[0], mbinfo[1], mbinfo[2], mbinfo[3])

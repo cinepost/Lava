@@ -39,13 +39,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
         std::vector<std::string> originalOutputs;
         std::unordered_map<std::string, uint32_t> graphOutputRefs;
 	};
-  public:
-    enum class SamplePattern : uint32_t {
-        Center,
-        DirectX,
-        Halton,
-        Stratified,
-    };
 
  public:
  	virtual ~Renderer();
@@ -56,23 +49,21 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	void						 	releaseInterface(std::unique_ptr<RendererIface> pInterface);
 
  public:
- 	//static UniquePtr create(Device::SharedPtr pDevice);
     static SharedPtr create(Device::SharedPtr pDevice);
-
+    bool init();
     Falcor::Device::SharedPtr device() { return mpDevice; };
 
- public:
- 	bool init();
+ protected:
  	bool isInited() const { return mInited; }
  	
     Display::SharedPtr display() { return mpDisplay; };
     bool loadDisplay(Display::DisplayType display_type);
-    bool openDisplay(const std::string& image_name, uint width, uint height);
     bool closeDisplay();
 
  	bool loadScript(const std::string& file_name);
-
  	void renderFrame(const RendererIface::FrameData frame_data);
+
+    bool addPlane(const RendererIface::PlaneData plane_data);
 
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
@@ -107,6 +98,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	bool mIfaceAquired = false;
 
  	Display::SharedPtr 			mpDisplay;
+    std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
 
     Falcor::Camera::SharedPtr   mpCamera;
 

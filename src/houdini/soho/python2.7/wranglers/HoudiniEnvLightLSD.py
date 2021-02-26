@@ -133,9 +133,9 @@ def get_color(plist):
     intensity = plist['light_intensity'].Value[0]
     exposure = plist['light_exposure'].Value[0]
     brightness = intensity * pow(2, exposure)
-    color[0] *= brightness
-    color[1] *= brightness
-    color[2] *= brightness
+    color[0] *= brightness * math.pi * 2
+    color[1] *= brightness * math.pi * 2
+    color[2] *= brightness * math.pi * 2
     return color
 
 def backgroundString(obj, now, value):

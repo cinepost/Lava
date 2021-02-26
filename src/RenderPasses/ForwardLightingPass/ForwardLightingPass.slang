@@ -82,6 +82,7 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     finalColor.rgb += sd.emissive;
     
     finalColor.a = sd.opacity;
+
     finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color.rgb;
 
     psOut.color = finalColor;
