@@ -3,6 +3,7 @@ file( GLOB SOURCES
     ./Core/*.cpp
     ./Core/API/*.cpp
     ./Core/API/Vulkan/*.cpp
+    ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
     ./Core/Platform/Linux/*.cpp
     ./Core/Program/*.cpp
@@ -156,6 +157,10 @@ set( SLANG_LIBRARY
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
+# Embree
+FIND_PACKAGE(embree 3.0 REQUIRED)
+
+
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 
@@ -165,6 +170,7 @@ target_link_libraries(
     avformat
     swscale
     stdc++fs
+    ${EMBREE_LIBRARY}
     ${ASSIMP_LIBRARY}
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
