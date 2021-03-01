@@ -477,10 +477,11 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     channels.push_back({"g", Display::TypeFormat::FLOAT32});
     channels.push_back({"b", Display::TypeFormat::FLOAT32});
     channels.push_back({"a", Display::TypeFormat::FLOAT32});
-    channels.push_back({"z", Display::TypeFormat::FLOAT32});
-    channels.push_back({"albedo.r", Display::TypeFormat::FLOAT16});
-    channels.push_back({"albedo.g", Display::TypeFormat::FLOAT16});
-    channels.push_back({"albedo.b", Display::TypeFormat::FLOAT16});
+    //channels.push_back({"z", Display::TypeFormat::FLOAT32});
+    //channels.push_back({"albedo.r", Display::TypeFormat::FLOAT16});
+    //channels.push_back({"albedo.g", Display::TypeFormat::FLOAT16});
+    //channels.push_back({"albedo.b", Display::TypeFormat::FLOAT16});
+    
     if(!mpDisplay->open(frame_data.imageFileName, frame_data.imageWidth, frame_data.imageHeight, channels)) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }

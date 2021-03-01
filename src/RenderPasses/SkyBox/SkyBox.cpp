@@ -134,7 +134,6 @@ RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
 }
 
 void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    LOG_DBG("SkyBox::execute");
     mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
     mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
 
@@ -152,9 +151,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
     mpState->setFbo(mpFbo);
-    LOG_DBG("SkyBox::execute render");
     mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
-    LOG_DBG("SkyBox::execute done");
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
