@@ -15,7 +15,7 @@ EmbreeDevice::SharedPtr EmbreeDevice::create() {
 		return nullptr;
 	}
 
-  rtcSetDeviceErrorFunction(mEmbDevice, errorFunction, NULL);
+  rtcSetDeviceErrorFunction(pDevice->mEmbDevice, errorFunction, NULL);
   return SharedPtr(pDevice);
 }
 
