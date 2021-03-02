@@ -97,7 +97,7 @@ bool decodeUU ( FILE *in, FILE *out, bool checkCRC ) {
    
   /* create output file */
 
-  if(out == NULL) {
+  if (out == NULL) {
     diskFile = true;
     out = fopen(dest, "wb");
   }

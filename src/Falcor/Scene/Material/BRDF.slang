@@ -131,17 +131,17 @@ float3 evalSpecularBrdf(ShadingData sd, LightSample ls) {
     return evalSpecularBrdfOriginal(sd, ls);
 }
 
+float normalDistributionGGX(float NdotH, float ggxAlpha) {
+    float a = (1.0 - (1.0 - ggxAlpha) * NdotH * NdotH);
+    return ggxAlpha * M_1_PI / (a * a);
+}
+
+float maskingShadowingSmith(float NdotL, float NdotV, float ggxAlpha) {
+    float lv = 0.5 * (-1.0 + sqrt(1.0 + ggxAlpha * (1.0 / (NdotV * NdotV) - 1.0)));
+    float ll = 0.5 * (-1.0 + sqrt(1.0 + ggxAlpha * (1.0 / (NdotL * NdotL) - 1.0)));
+    return (1.0 / (1.0 + lv)) * (1.0 / (1.0 + ll));
+}
+
 float3 evalSpecularBrdfLprobe(ShadingData sd, LightSample ls) {
-    float ggxAlpha = sd.ggxAlpha;
-
-    ggxAlpha = fresnelSchlick(float3(ggxAlpha), float3(0), ls.LdotH).r;
-
-    float G = evalSmithGGX(ls.NdotL, sd.NdotV, ggxAlpha);
-
-    float GVis = (G * ls.LdotH) / (sd.NdotV * ls.NdotH);
-    float Fc = fresnelSchlick(sd.specular, 1, ls.LdotH).r;
-    float x = (1 - Fc) * GVis;
-    float y = Fc * GVis;
-
-    return Fc;//x + y;
+    return float3(1.0f);
 }

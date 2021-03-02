@@ -51,7 +51,11 @@ namespace Falcor {
             mpDFGPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
 
             // Shared
-            mpSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+            auto samplerDesc = Sampler::Desc();
+            samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+            samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+            mpSampler = Sampler::create(pDevice, samplerDesc);
+           
             mpDiffuseLDPass["gSampler"] = mpSampler;
             mpSpecularLDPass["gSampler"] = mpSampler;
             mpDFGPass["gSampler"] = mpSampler;
@@ -142,8 +146,19 @@ namespace Falcor {
             assert(sLightProbeCount == 0);
             sIntegration.init(pContext->device());
             sSharedResources.dfgTexture = sIntegration.integrateDFG(pContext, pTexture, 128, ResourceFormat::RGBA16Float, 128);
-            sSharedResources.dfgSampler = Sampler::create(pContext->device(), Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+
+            auto dfgSamplerDesc = Sampler::Desc();
+            dfgSamplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+            dfgSamplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+            sSharedResources.dfgSampler = Sampler::create(pContext->device(), dfgSamplerDesc);
         }
+
+        auto samplerDesc = Sampler::Desc();
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Wrap);
+        samplerDesc.setMaxAnisotropy(16);
+        samplerDesc.setLodParams(0, Texture::kMaxPossible, -0.1f);
+        mData.resources.sampler = Sampler::create(pContext->device(), samplerDesc);
 
         mData.resources.origTexture = pTexture;
         mData.resources.diffuseTexture = sIntegration.integrateDiffuseLD(pContext, pTexture, diffSize, preFilteredFormat, diffSamples);

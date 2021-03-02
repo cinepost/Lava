@@ -61,6 +61,9 @@ struct PsOut
 PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
 
+    // pixel position
+    int2 ipos = int2(vOut.posH.xy);
+
     float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
     ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
 
@@ -83,7 +86,8 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     
     finalColor.a = sd.opacity;
 
-    finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color.rgb;
+    //finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color.rgb;
+    finalColor.rgb += evalMaterialIBL(sd, gScene.lightProbe, ipos).color.rgb;
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);
@@ -94,7 +98,7 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
 #endif
 
 #if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    float3 cascadeColor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).gba;
+    float3 cascadeColor = visibilityBuffer.Load(int3(ipos, 0)).gba;
     psOut.color.rgb *= cascadeColor;
 #endif
 

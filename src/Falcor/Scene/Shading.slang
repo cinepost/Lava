@@ -371,7 +371,49 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
     } else {
         sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
     }
-    sr.specular = lss.specular * sr.specularBrdf;
+    //sr.specular = lss.specular * sr.specularBrdf;
+    
+    sr.specular = 0;//evalLightProbeSampleSpecularColor(probe, sd) * sr.specularBrdf;
+
+    sr.color += sr.specular;
+
+    // Apply the occlusion factor
+    //sr.color *= occlusionFactor;
+
+    return sr;
+}
+
+ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_pos)
+{
+    ShadingResult sr = {};
+    LightSample lsd = evalLightProbeSampleDiffuse(probe, sd);
+    LightSample lss = evalLightProbeSampleSpecular(probe, sd);
+
+    sd.NdotV = saturate(sd.NdotV);
+
+    //float kt = evalTransmissionFresnel(sd, ls);
+    //float kr = 1.0f - kt;
+
+    // Calculate the diffuse term
+    // If the light doesn't hit the surface or we are viewing the surface from the back, return
+    if (lsd.NdotL <= 0) {
+        sr.diffuseBrdf = 0.0f;
+    } else {
+        sr.diffuseBrdf = evalDiffuseBrdf(sd, lsd) * M_PI;
+    }
+        sr.diffuse = lsd.diffuse * sr.diffuseBrdf;
+        sr.color = sr.diffuse;
+        
+    // Calculate the specular term
+    if (lsd.NdotL <= 0) {
+        sr.specularBrdf = 0.0f;
+    } else {
+        sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
+    }
+    //sr.specular = lss.specular * sr.specularBrdf;
+    
+    sr.specular = evalLightProbeSampleSpecularColor(probe, sd, pixel_pos) * sr.specularBrdf;
+
     sr.color += sr.specular;
 
     // Apply the occlusion factor

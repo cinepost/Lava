@@ -314,7 +314,9 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			// solid color lightprobe
 			pLightProbe = LightProbe::create(pDevice->getRenderContext());
     	} else {
-    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float);
+    		uint32_t diffSampleCount = 8192; // preintegration
+    		uint32_t specSampleCount = 8192; // preintegration
+    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float, diffSampleCount, specSampleCount);
     	}
     	assert(pLightProbe);
 

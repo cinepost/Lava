@@ -228,7 +228,7 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L) {
 
     if(sd.metallic < 1.0) {
 
-        //float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, ggxAlpha), 0).xy;
+        float2 dfg = probe.sharedResources.dfgTexture.SampleLevel(probe.sharedResources.dfgSampler, float2(sd.NdotV, ggxAlpha), 0).xy;
         //ld = lerp(ld * (dfg.x + dfg.y), ld, sd.metallic);
     }
 
@@ -322,7 +322,7 @@ LightSample evalLightProbeSampleDiffuse(LightProbeData probe, ShadingData sd) {
     LightSample ls;
 
     // Calculate dominant diffuse vector
-    ls.L = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
+    ls.L = sd.N; //getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
 
     // Evaluate diffuse component
     ls.diffuse = evalLightProbeDiffuse(probe, sd);
@@ -343,7 +343,7 @@ LightSample evalLightProbeSampleSpecular(LightProbeData probe, ShadingData sd) {
 
     // Calculate the reflection vector
     float3 R = reflect(-sd.V, sd.N);
-    ls.L = R;//getSpecularDominantDir(sd.N, R, sd.ggxAlpha);
+    ls.L = R; //getSpecularDominantDir(sd.N, R, sd.ggxAlpha);
 
     // Evaluate diffuse component
     ls.diffuse = 0.0f;
@@ -361,4 +361,143 @@ LightSample evalLightProbeSampleSpecular(LightProbeData probe, ShadingData sd) {
 
 LightSample evalLightProbeOld(LightProbeData probe, ShadingData sd) {
     return evalLightProbeLinear2DOld(probe, sd);
+}
+
+// ------ Filament based code
+
+#define IBL_INTEGRATION_IMPORTANCE_SAMPLING_COUNT 64
+
+float2 hammersley(uint index) {
+    // Compute Hammersley sequence
+    // TODO: these should come from uniforms
+    // TODO: we should do this with logical bit operations
+    const uint numSamples = uint(IBL_INTEGRATION_IMPORTANCE_SAMPLING_COUNT);
+    const uint numSampleBits = uint(log2(float(numSamples)));
+    const float invNumSamples = 1.0 / float(numSamples);
+    uint i = uint(index);
+    uint t = i;
+    uint bits = 0u;
+    for (uint j = 0u; j < numSampleBits; j++) {
+        bits = bits * 2u + (t - (2u * (t / 2u)));
+        t /= 2u;
+    }
+    return float2(float(i), float(bits)) * invNumSamples;
+}
+
+float3 F_Schlick(const float3 f0, float f90, float VoH) {
+    // Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
+    return f0 + (f90 - f0) * pow(1.0 - VoH, 5);
+}
+
+float3 fresnel(const float3 f0, float LoH) {
+    float f90 = saturate(dot(f0, float3(50.0 * 0.33)));
+    return F_Schlick(f0, f90, LoH);
+}
+
+float D_GGX(float roughness, float NoH, const float3 h) {
+    // Walter et al. 2007, "Microfacet Models for Refraction through Rough Surfaces"
+
+    // In mediump, there are two problems computing 1.0 - NoH^2
+    // 1) 1.0 - NoH^2 suffers floating point cancellation when NoH^2 is close to 1 (highlights)
+    // 2) NoH doesn't have enough precision around 1.0
+    // Both problem can be fixed by computing 1-NoH^2 in highp and providing NoH in highp as well
+
+    // However, we can do better using Lagrange's identity:
+    //      ||a x b||^2 = ||a||^2 ||b||^2 - (a . b)^2
+    // since N and H are unit vectors: ||N x H||^2 = 1.0 - NoH^2
+    // This computes 1.0 - NoH^2 directly (which is close to zero in the highlights and has
+    // enough precision).
+    // Overall this yields better performance, keeping all computations in mediump
+
+    float oneMinusNoHSquared = 1.0 - NoH * NoH;
+
+    float a = NoH * roughness;
+    float k = roughness / (oneMinusNoHSquared + a * a);
+    float d = k * k * (1.0 / M_PI);
+    return saturate(d);
+}
+
+float distribution(float roughness, float NoH, const float3 h) {
+    return D_GGX(roughness, NoH, h);
+}
+
+float V_SmithGGXCorrelated(float roughness, float NoV, float NoL) {
+    // Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"
+    float a2 = roughness * roughness;
+    // TODO: lambdaV can be pre-computed for all the lights, it should be moved out of this function
+    float lambdaV = NoL * sqrt((NoV - a2 * NoV) * NoV + a2);
+    float lambdaL = NoV * sqrt((NoL - a2 * NoL) * NoL + a2);
+    float v = 0.5 / (lambdaV + lambdaL);
+
+    // clamp to the maximum value representable 
+    return saturate(v);
+}
+
+float visibility(float roughness, float NoV, float NoL) {
+    return V_SmithGGXCorrelated(roughness, NoV, NoL);
+}
+
+float3 importanceSamplingNdfDggx(float2 u, float roughness) {
+    // Importance sampling D_GGX
+    float a2 = roughness * roughness;
+    float phi = 2.0 * M_PI * u.x;
+    float cosTheta2 = (1.0 - u.y) / (1.0 + (a2 - 1.0) * u.y);
+    float cosTheta = sqrt(cosTheta2);
+    float sinTheta = sqrt(1.0 - cosTheta2);
+    return float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+
+float3 evalLightProbeSampleSpecularColor(LightProbeData probe, ShadingData sd, int2 pixel_pos) {
+    // TODO: for a true anisotropic BRDF, we need a real tangent space
+    //float3 up = abs(sd.N.z) < 0.9999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 up = float3(0.0, 1.0, 0.0);
+
+    float3x3 tangentToWorld;
+    tangentToWorld[0] = normalize(cross(up, sd.N));
+    tangentToWorld[1] = cross(sd.N, tangentToWorld[0]);
+    tangentToWorld[2] = sd.N;
+
+    float roughness = sd.linearRoughness;
+
+    const uint numSamples = uint(IBL_INTEGRATION_IMPORTANCE_SAMPLING_COUNT);
+    const float invNumSamples = 1.0 / float(numSamples);
+
+    float3 indirectSpecular = float3(0.0);
+    
+    // Calculate the reflection vector
+    float3 R = reflect(-sd.V, sd.N);
+
+    float3 Ls = evalLightProbeSpecular(probe, sd, R);
+
+    for (uint i = 0u; i < numSamples; i++) {
+        float2 u = hammersley(i);
+        //float2 u = getHammersley(sample_i1, IBL_INTEGRATION_IMPORTANCE_SAMPLING_COUNT);
+        
+        float3 H = normalize(mul(importanceSamplingNdfDggx(u, roughness), tangentToWorld));
+
+        float3 L = getSpecularDominantDir(sd.N, R, sd.ggxAlpha);
+        float NdotL = dot(sd.N, L);
+
+        // Compute this sample's contribution to the brdf
+        if (NdotL > 0.0) {
+            float NdotH = saturate(dot(sd.N, H));
+            float LdotH = max(saturate(dot(L, H)), 0.0);
+
+            //float3 Ls = evalLightProbeSpecular(probe, sd, R); TODO: sample jittered R
+
+            float D = 1.0f;
+            if (roughness != 0.0f) {
+                D = distribution(roughness, NdotH, H);
+            }
+        
+            
+            float3 F = fresnel(sd.specular.r, LdotH);
+
+            float3 Fr = F * (D * invNumSamples);
+
+            indirectSpecular += (Fr * Ls);
+        }
+    }
+
+    return indirectSpecular;
 }

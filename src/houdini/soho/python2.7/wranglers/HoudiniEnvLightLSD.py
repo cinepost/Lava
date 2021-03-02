@@ -23,6 +23,7 @@ from __future__ import print_function
 # Here, we define methods for each of the properties on IFD light
 # sources.
 
+import math
 import soho
 from soho import SohoParm
 
@@ -133,9 +134,9 @@ def get_color(plist):
     intensity = plist['light_intensity'].Value[0]
     exposure = plist['light_exposure'].Value[0]
     brightness = intensity * pow(2, exposure)
-    color[0] *= brightness * math.pi * 2
-    color[1] *= brightness * math.pi * 2
-    color[2] *= brightness * math.pi * 2
+    color[0] *= brightness
+    color[1] *= brightness
+    color[2] *= brightness
     return color
 
 def backgroundString(obj, now, value):
