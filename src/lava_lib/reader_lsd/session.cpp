@@ -481,7 +481,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
+	bool pushGeoAsync = false; configStore.get<bool>("async_geo", true);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -531,7 +531,7 @@ bool Session::cmdEnd() {
 }
 
 bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
-	LLOG_DBG << "pushGeometryInstance";
+	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
 	auto it = mMeshMap.find(pObj->geometryName());
 	if(it == mMeshMap.end()) {
 		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
@@ -546,18 +546,11 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
 	assert(pSceneBuilder->device());
 
-	Falcor::SceneBuilder::Node node = {
-		it->first,
-		pObj->getTransformList()[0],
-		glm::mat4(1),
-		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
-	};
-
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
 
 	uint32_t mesh_id;
 	try {
-		LLOG_DBG << "getting sync mesh_id for obj_name " << obj_name;
+		LLOG_DBG << "getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
 		mesh_id = std::get<uint32_t>(it->second);	
 	} catch (const std::bad_variant_access&) {
 		LLOG_DBG << "getting async mesh_id for obj_name " << obj_name;
@@ -573,6 +566,13 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 		return false;
 	}
 	LLOG_DBG << "mesh_id " << mesh_id;
+
+	Falcor::SceneBuilder::Node node = {
+		it->first,
+		pObj->getTransformList()[0],
+		glm::mat4(1),
+		Falcor::SceneBuilder::kInvalidNode // just a node with no parent
+	};
 
 	uint32_t node_id = pSceneBuilder->addNode(node);
 
@@ -638,7 +638,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);
-
+    
 	return true;
 }
 

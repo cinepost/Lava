@@ -210,19 +210,33 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID) {
     mDirty = true;
 }
 
+//void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial) {
+//    assert(meshID < mMeshes.size());
+//    mSceneGraph.at(nodeID).meshes.push_back(meshID);
+
+//   auto &mesh = mMeshes.at(meshID);
+//    mesh.instances.push_back({});
+
+//    MeshInstanceSpec &instance = mesh.instances.back();
+//    instance.nodeId = nodeID;
+//    instance.materialId = addMaterial(pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
+//    instance.overrideMaterial = true;
+
+    //mMeshes.at(meshID).instances.push_back(instance);
+//    mDirty = true;
+//    getScene();
+//}
+
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial) {
     assert(meshID < mMeshes.size());
     mSceneGraph.at(nodeID).meshes.push_back(meshID);
 
-    auto &mesh = mMeshes.at(meshID);
-    mesh.instances.push_back({});
-
-    MeshInstanceSpec &instance = mesh.instances.back();
+    MeshInstanceSpec instance = {};
     instance.nodeId = nodeID;
-    instance.materialId = addMaterial(pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));;
+    instance.materialId = addMaterial(pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
     instance.overrideMaterial = true;
 
-    //mMeshes.at(meshID).instances.push_back(instance);
+    mMeshes.at(meshID).instances.push_back(instance);
     mDirty = true;
 }
 
@@ -410,7 +424,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
 
     spec->vertexCount = outputVertexCount;
     spec->topology = mesh.topology;
-    spec->materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
+    spec->materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials)); // We use materials on instances !!!
 
     if (mesh.hasBones()) {
         spec->hasDynamicData = true;
@@ -453,7 +467,8 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
     timeReport.addTotal("SceneBuilder::addMesh done in");
     timeReport.printToLog();
 
-    logInfo("Mesh '" + meshDesc.name + "' added.");
+    logInfo("Mesh '" + meshDesc.name + "' added");
+
     return ret;
 }
 
@@ -607,8 +622,7 @@ uint32_t SceneBuilder::createMeshData(Scene* pScene)
         drawCount += mesh.instances.size();
 
         // Mesh instance data
-        for (const auto& instance : mesh.instances)
-        {
+        for (const auto& instance : mesh.instances) {
             instanceData.push_back({});
             auto& meshInstance = instanceData.back();
             meshInstance.globalMatrixID = instance.nodeId;
@@ -618,13 +632,11 @@ uint32_t SceneBuilder::createMeshData(Scene* pScene)
             meshInstance.ibOffset = mesh.indexOffset;
         }
 
-        if (mesh.hasDynamicData)
-        {
+        if (mesh.hasDynamicData) {
             assert(mesh.instances.size() == 1);
             pScene->mMeshHasDynamicData[meshID] = true;
 
-            for (uint32_t i = 0; i < mesh.vertexCount; i++)
-            {
+            for (uint32_t i = 0; i < mesh.vertexCount; i++) {
                 mBuffersData.dynamicData[mesh.dynamicVertexOffset + i].globalMatrixID = (uint32_t)mesh.instances[0].nodeId;
             }
         }
@@ -638,16 +650,14 @@ Scene::SharedPtr SceneBuilder::getScene()
     // We cache the scene because creating it is not cheap.
     // With the PythonImporter, the scene is fetched twice, once for running
     // the scene script and another time when the scene has finished loading.
-    if (mpScene && !mDirty)
-    {
+    if (mpScene && !mDirty) {
         // PythonImporter sets the filename after loading the nested scene,
         // so we need to set it to the correct value here.
         mpScene->mFilename = mFilename;
         return mpScene;
     }
 
-    if (mMeshes.size() == 0)
-    {
+    if (mMeshes.size() == 0) {
         logError("Can't build scene. No meshes were loaded");
         return nullptr;
     }

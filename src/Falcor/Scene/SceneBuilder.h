@@ -143,6 +143,58 @@ class dlldecl SceneBuilder {
         }
     };
 
+    /** Pre-processed mesh data.
+        This data is formatted such that it can directly be copied
+        to the global scene buffers.
+    */
+    struct ProcessedMesh {
+        std::string name;
+        Vao::Topology topology = Vao::Topology::Undefined;
+        Material::SharedPtr pMaterial;
+
+        uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
+        bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
+        bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
+        std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+        std::vector<StaticVertexData> staticData;
+        std::vector<DynamicVertexData> dynamicData;
+    };
+
+    /** Curve description.
+    */
+    struct Curve {
+        template<typename T>
+        struct Attribute {
+            const T* pData = nullptr;
+        };
+
+        std::string name;                           ///< The curve's name.
+        uint32_t degree = 1;                        ///< Polynomial degree of the curve; linear (1) by default.
+        uint32_t vertexCount = 0;                   ///< The number of vertices.
+        uint32_t indexCount = 0;                    ///< The number of indices (i.e., tube segments).
+        const uint32_t* pIndices = nullptr;         ///< Array of indices. The element count must match `indexCount`. This field is required.
+        Material::SharedPtr pMaterial;              ///< The curve's material. Can't be nullptr.
+
+        Attribute<float3> positions;                ///< Array of vertex positions. This field is required.
+        Attribute<float> radius;                    ///< Array of sphere radius. This field is required.
+        Attribute<float3> tangents;                 ///< Array of vertex tangents. This field is required.
+        Attribute<float3> normals;                  ///< Array of vertex normals. This field is optional.
+        Attribute<float2> texCrds;                  ///< Array of vertex texture coordinates. This field is optional. If set to nullptr, all texCrds will be set to (0,0).
+    };
+
+    /** Pre-processed curve data.
+        This data is formatted such that it can directly be copied
+        to the global scene buffers.
+    */
+    struct ProcessedCurve {
+        std::string name;
+        Vao::Topology topology = Vao::Topology::LineStrip;
+        Material::SharedPtr pMaterial;
+
+        std::vector<uint32_t> indexData;
+        std::vector<StaticCurveVertexData> staticData;
+    };
+
     static const uint32_t kInvalidNode = Scene::kInvalidNode;
 
     struct Node {
@@ -268,8 +320,9 @@ protected:
     struct InternalNode : Node {
         InternalNode() = default;
         InternalNode(const Node& n) : Node(n) {}
-        std::vector<uint32_t> children;
-        std::vector<uint32_t> meshes;
+        std::vector<uint32_t> children;     ///< Node IDs of all child nodes.
+        std::vector<uint32_t> meshes;       ///< Node IDs of all child nodes.
+        std::vector<uint32_t> curves;       ///< Curve IDs of all curves this node transforms.
     };
 
     struct MeshInstanceSpec {
@@ -280,7 +333,7 @@ protected:
 
     struct MeshSpec {
         MeshSpec() = default;
-        Vao::Topology topology;
+        Vao::Topology topology = Vao::Topology::Undefined;
         uint32_t materialId = 0;
         uint32_t indexOffset = 0;
         uint32_t staticVertexOffset = 0;
@@ -292,6 +345,24 @@ protected:
         std::vector<MeshInstanceSpec> instances;
     };
 
+     // TODO: Add support for dynamic curves
+    struct CurveSpec {
+        std::string name;
+        Vao::Topology topology;
+        uint32_t materialId = 0;            ///< Global material ID.
+        uint32_t staticVertexOffset = 0;    ///< Offset into the shared 'staticData' array. This is calculated in createCurveGlobalBuffers().
+        uint32_t staticVertexCount = 0;     ///< Number of static curve vertices.
+        uint32_t indexOffset = 0;           ///< Offset into the shared 'indexData' array. This is calculated in createCurveGlobalBuffers().
+        uint32_t indexCount = 0;            ///< Number of indices.
+        uint32_t vertexCount = 0;           ///< Number of vertices.
+        uint32_t degree = 1;                ///< Polynomial degree of curve; linear (1) by default.
+        std::vector<uint32_t> instances;    ///< Node IDs of all instances of this curve.
+
+        // Pre-processed curve vertex data.
+        std::vector<uint32_t> indexData;    ///< Vertex indices in 32-bit.
+        std::vector<StaticCurveVertexData> staticData;
+    };
+
     // Geometry data
     struct BuffersData {
         std::vector<uint32_t> indices;
@@ -299,8 +370,15 @@ protected:
         std::vector<DynamicVertexData> dynamicData;
     } mBuffersData;
 
+    struct CurveBuffersData
+    {
+        std::vector<uint32_t> indexData;                ///< Vertex indices for all curves in 32-bit.
+        std::vector<StaticCurveVertexData> staticData;  ///< Vertex attributes for all curves.
+    } mCurveBuffersData;
+
     using SceneGraph = std::vector<InternalNode>;
     using MeshList = std::vector<MeshSpec>;
+    using CurveList = std::vector<CurveSpec>;
 
     bool mDirty = true;
 

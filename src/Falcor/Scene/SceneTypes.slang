@@ -207,4 +207,46 @@ struct VertexData
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
 };
 
+struct ProceduralPrimitiveData
+{
+    uint typeID;        ///< Type ID corresponding to how it was defined during Scene creation.
+    uint instanceIdx;   ///< Of custom primitives of this type, what instance index it is, in the order of addition to the scene.
+
+    uint AABBOffset;    ///< Offset into global AABB buffer.
+    uint AABBCount;     ///< Number of AABBs within a custom primitive.
+};
+
+struct CurveDesc
+{
+    uint vbOffset;      ///< Offset into global curve vertex buffer.
+    uint ibOffset;      ///< Offset into global curve index buffer.
+    uint vertexCount;   ///< Vertex count.
+    uint indexCount;    ///< Index count.
+    uint degree;        ///< Polynomial degree of curve; linear (1) by default.
+    uint materialID;    ///< Material ID.
+
+    uint getSegmentCount() CONST_FUNCTION
+    {
+        return indexCount;
+    }
+};
+
+struct CurveInstanceData
+{
+    uint globalMatrixID;
+    uint materialID;
+    uint curveID;
+    uint vbOffset;      ///< Offset into global curve vertex buffer.
+    uint ibOffset;      ///< Offset into global curve index buffer.
+};
+
+struct StaticCurveVertexData
+{
+    float3 position;    ///< Position.
+    float radius;       ///< Radius of the sphere at curve ends.
+    float3 tangent;     ///< Shading tangent.
+    float3 normal;      ///< Shading normal.
+    float2 texCrd;      ///< Texture coordinates.
+};
+
 END_NAMESPACE_FALCOR

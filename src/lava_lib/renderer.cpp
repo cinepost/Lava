@@ -83,7 +83,7 @@ bool Renderer::init() {
 
     Falcor::Threading::start();
 
-    mpSceneBuilder = lava::SceneBuilder::create(mpDevice);
+    mpSceneBuilder = lava::SceneBuilder::create(mpDevice, Falcor::SceneBuilder::Flags::DontMergeMeshes | Falcor::SceneBuilder::Flags::RemoveDuplicateMaterials);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
     mpSceneBuilder->addCamera(mpCamera);

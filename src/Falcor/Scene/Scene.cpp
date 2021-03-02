@@ -816,12 +816,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             assert(drawCount <= std::numeric_limits<uint32_t>::max());
         };
 
-        if (hasIndexBuffer())
-        {
+        if (hasIndexBuffer()) {
             std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
-            for (const auto& instance : mMeshInstanceData)
-            {
+            for (const auto& instance : mMeshInstanceData) {
+
                 const auto& mesh = mMeshDesc[instance.meshID];
                 const auto& transform = matrices[instance.globalMatrixID];
 
@@ -876,7 +875,12 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         }
 
         // The non-instanced meshes are grouped based on what global matrix ID their transform is.
+        
+        
+
         std::unordered_map<uint32_t, std::vector<uint32_t>> nodeToMeshList;
+        
+
         for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++)
         {
             const auto& instanceList = instanceLists[meshId];
@@ -886,6 +890,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             uint32_t globalMatrixId = mMeshInstanceData[instanceList[0]].globalMatrixID;
             nodeToMeshList[globalMatrixId].push_back(meshId);
         }
+
 
         // Build final result. Format is a list of Mesh ID's per mesh group.
 

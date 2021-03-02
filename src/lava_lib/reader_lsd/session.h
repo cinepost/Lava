@@ -67,8 +67,8 @@ class Session {
  	scope::ScopeBase::SharedPtr		mpCurrentScope;
  	scope::Global::SharedPtr		mpGlobal;
 
- 	std::map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
-    std::map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
+ 	std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
+    std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
 };
 
 }  // namespace lsd
