@@ -479,7 +479,7 @@ float3 evalLightProbeSampleSpecularColor(LightProbeData probe, ShadingData sd, i
         float NdotL = dot(sd.N, L);
 
         // Compute this sample's contribution to the brdf
-        if (NdotL > 0.0) {
+        if (NdotL >= 0.0) {
             float NdotH = saturate(dot(sd.N, H));
             float LdotH = max(saturate(dot(L, H)), 0.0);
 
