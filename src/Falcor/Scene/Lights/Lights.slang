@@ -491,7 +491,7 @@ float3 evalLightProbeSampleSpecularColor(LightProbeData probe, ShadingData sd, i
             }
         
             
-            float3 F = fresnel(sd.specular.r, LdotH);
+            float3 F = fresnel(sd.specular, LdotH);
 
             float3 Fr = F * (D * invNumSamples);
 
