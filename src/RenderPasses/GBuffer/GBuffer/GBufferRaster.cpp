@@ -183,7 +183,6 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Set program defines.
-    mRaster.pProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "1"); // TODO: get rid of this. everything should work without (virtual texturing)
     mRaster.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.

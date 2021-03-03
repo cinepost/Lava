@@ -16,6 +16,7 @@
 #
 
 import re
+import hashlib
 import soho, hou, sys
 import sohoglue
 import SOHOcommon
@@ -50,6 +51,13 @@ def _SohoGeometry(soppath, time = 0.0):
 
 def safeSopPathName(soppath):
     return re.sub(r'[^\w\d-]','_',soppath)
+
+def hashSopPathName(soppath):
+    sopname = soppath.rsplit("/")[-1]
+    sopname_len = len(sopname)
+    safe_soppath = safeSopPathName(soppath)
+    max_hexdigest_len = 240 - sopname_len
+    return "%s_%s" % (sopname, hashlib.sha256(safe_soppath).hexdigest()[:max_hexdigest_len])
 
 def _dummyGeometry():
     print """PGEOMETRY V5
@@ -758,7 +766,7 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
                         # Create a unique filename for the geometry
                         
                         #path = '%s_%s' % (sessionid, gdp.globalValue('geo:sopid')[0])
-                        path = '%s_%s' % (sessionid, safeSopPathName(soppath))
+                        path = '%s_%s' % (sessionid, hashSopPathName(soppath))
                         
                         if seg:
                             path += '-%d' % seg

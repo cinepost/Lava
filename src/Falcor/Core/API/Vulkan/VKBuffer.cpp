@@ -85,11 +85,6 @@ size_t getBufferDataAlignment(const Buffer* pBuffer) {
 }
 
 Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
-
-    std::cout << "createBuffer bindFlags " << to_string(bindFlags) << std::endl;
-    std::cout << "createBuffer memType " << to_string(memType) << std::endl;
-    std::cout << "createBuffer size " << size << std::endl;
-
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.flags = 0;
@@ -123,10 +118,6 @@ Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::B
 
     VmaStats stats = {};
     vmaCalculateStats(pDevice->allocator(), &stats);
-
-    std::cout << "VMA used byte: " << stats.total.usedBytes << std::endl;
-    std::cout << "VMA unused byte: " << stats.total.unusedBytes << std::endl;
-
 
 //
     //vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));

@@ -57,11 +57,11 @@ headerParms = {
     "lv_hippath"        : SohoParm("lv_hippath", "string", key="lv_hippath"),
     "lv_verbose"        : SohoParm("lv_verbose", "int"),
 
-    "lv_vtoff"          : SohoParm("lv_vtoff", "bool", key="lv_vtoff"),
-    "lv_fconv"          : SohoParm("lv_fconv", "bool", key="lv_fconv"),
-    "lv_sync_geo"       : SohoParm("lv_sync_geo", "bool", key="lv_sync_geo"),
-    "lv_cull_mode"      : SohoParm("lv_cull_mode", "string", [''], False),
-    "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", [''], False),
+    "lv_vtoff"                  : SohoParm("lv_vtoff", "bool", key="lv_vtoff", skipdefault=False),
+    "lv_fconv"                  : SohoParm("lv_fconv", "bool", key="lv_fconv", skipdefault=False),
+    "lv_async_geo"               : SohoParm("lv_async_geo", "bool", key="lv_async_geo", skipdefault=False),
+    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
+    "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
 
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
@@ -154,19 +154,19 @@ def header(now, propdefs):
 
     # Renderer configuation
     cmd_comment("Renderer configuration")
-    vtoff = plist.get('lv_vtoff', True)
+    vtoff = plist.get('lv_vtoff', None)
     cmd_config('vtoff', vtoff)
 
-    fconv = plist.get('lv_fconv', False)
+    fconv = plist.get('lv_fconv', None)
     cmd_config('fconv', fconv)
 
-    async_geo = plist.get('lv_async_geo', True)
+    async_geo = plist.get('lv_async_geo', None)
     cmd_config('async_geo', async_geo)
 
-    cull_mode = plist['lv_cull_mode'].Value[0]
+    cull_mode = plist.get('lv_cull_mode', None)
     cmd_config('cull_mode', cull_mode)
 
-    vtex_conv_quality = plist['lv_vtex_conv_quality'].Value[0]
+    vtex_conv_quality = plist.get('lv_vtex_conv_quality', None)
     cmd_config('vtex_conv_quality', vtex_conv_quality)
 
     cmd_comment(None)

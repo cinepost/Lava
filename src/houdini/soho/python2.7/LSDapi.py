@@ -62,9 +62,13 @@ def cmd_defaults(file):
     soho.indent()
     print 'cmd_defaults', repr(file)
 
-def cmd_config(prop_name, prop_value):
+def cmd_config(prop_name, soho_parm):
+    if not soho_parm:
+        return
+
     soho.indent()
 
+    prop_value = soho_parm.Value[0]
     prop_type = 'unknown'
     prop_value_repr = repr(prop_value)
 

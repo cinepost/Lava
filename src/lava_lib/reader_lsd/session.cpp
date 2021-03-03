@@ -481,7 +481,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = false; configStore.get<bool>("async_geo", true);
+	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;

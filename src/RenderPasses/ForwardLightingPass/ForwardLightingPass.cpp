@@ -75,6 +75,8 @@ Dictionary ForwardLightingPass::getScriptingDictionary() {
 
 ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
+    pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
+
     mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
 

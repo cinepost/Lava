@@ -79,7 +79,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     VertexData v = prepareVertexData(vsOut, faceNormal);
 
 #if !DISABLE_ALPHA_TEST
-    //if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
+    if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
 #endif
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);

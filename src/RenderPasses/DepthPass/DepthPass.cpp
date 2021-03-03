@@ -66,7 +66,10 @@ DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dict
 DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).psEntry("main");
+    
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(pDevice, desc);
+    pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST");
+
     mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
     mpFbo = Fbo::create(pDevice);
