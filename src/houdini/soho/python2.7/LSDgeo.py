@@ -48,6 +48,8 @@ def _SohoGeometry(soppath, time = 0.0):
         'geo:triangulate': True
     })
 
+def safeSopPathName(soppath):
+    return re.sub(r'[^\w\d-]','_',soppath)
 
 def _dummyGeometry():
     print """PGEOMETRY V5
@@ -754,8 +756,10 @@ def saveRetained(obj, now, times, velblur, accel_attrib, mbsegments):
                                     canreuse = True
 
                         # Create a unique filename for the geometry
-                        path = '%s_%s' % (sessionid,
-                                            gdp.globalValue('geo:sopid')[0])
+                        
+                        #path = '%s_%s' % (sessionid, gdp.globalValue('geo:sopid')[0])
+                        path = '%s_%s' % (sessionid, safeSopPathName(soppath))
+                        
                         if seg:
                             path += '-%d' % seg
                         path += '.bgeo.sc'
