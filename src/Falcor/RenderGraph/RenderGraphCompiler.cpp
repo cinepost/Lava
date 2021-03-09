@@ -128,10 +128,14 @@ void RenderGraphCompiler::resolveExecutionOrder() {
     auto topologicalSort = DirectedGraphTopologicalSort::sort(mGraph.mpGraph.get());
 
     // For each object in the vector, if it's being used in the execution, put it in the list
+    RenderPass::CompileData compileData;
+    compileData.defaultTexDims = mDependencies.defaultResourceProps.dims;
+    compileData.defaultTexFormat = mDependencies.defaultResourceProps.format;
+
     for (auto& node : topologicalSort) {
         if (participatingPasses.find(node) != participatingPasses.end()) {
             const auto pData = mGraph.mNodeData[node];
-            mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect({}) });
+            mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect(compileData) });
         }
     }
 }

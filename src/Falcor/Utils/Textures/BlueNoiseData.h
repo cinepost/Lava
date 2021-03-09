@@ -1,0 +1,6 @@
+#ifndef SRC_FALCOR_UTILS_TEXTURES_BLUENOISEDATA_H_
+#define SRC_FALCOR_UTILS_TEXTURES_BLUENOISEDATA_H_
+
+extern const float utils_tex_blue_noise_data[64 * 64][4];
+
+#endif  // SRC_FALCOR_UTILS_TEXTURES_BLUENOISEDATA_H_

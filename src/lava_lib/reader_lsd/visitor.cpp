@@ -168,7 +168,13 @@ void Visitor::operator()(ast::cmd_detail const& c) {
         }
         pBgeo->preCachePrimitives();
     } else {
-        pBgeo->readGeoFromFile(mpSession->getExpandedString(c.filename).c_str(), false); // FIXME: don't check version for now
+        auto fullpath = mpSession->getExpandedString(c.filename);
+        pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+
+        if(c.temporary) {
+            fs::remove(fullpath);
+        }
+
         pBgeo->preCachePrimitives();
     }
 }

@@ -287,7 +287,16 @@ namespace Falcor {
 
             // Vulkan spec requires VK_FILTER_NEAREST if blit source is a depth and/or stencil format
             VkFilter vkFilter = isDepthStencilFormat(pTexture->getFormat()) ? VK_FILTER_NEAREST : getVkFilter(filter);
-            vkCmdBlitImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blt, vkFilter);
+            vkCmdBlitImage(
+                mpLowLevelData->getCommandList(), 
+                pSrc->getResource()->getApiHandle(), 
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                pDst->getResource()->getApiHandle(), 
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                1, 
+                &blt, 
+                vkFilter
+            );
         }
         mCommandsPending = true;
     }

@@ -101,7 +101,7 @@ float4 integrateDiffuseLD(float3 N)
     float3 accumulation = 0;
     float accBrdf = 0;
     float3 V = N;
-    for (uint i = 0; i < gSampleCount; i++)
+    for (uint32_t i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
         float3 L = importanceSampleCosDir(u, N);
@@ -134,7 +134,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
     float3 accBrdf = 0;
     float accBrdfWeight = 0;
     float NdotV = saturate(dot(N, V));
-    for (uint i = 0; i < gSampleCount; i++)
+    for (uint32_t i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
         float3 H = importanceSampleGGX(u, N, roughness);

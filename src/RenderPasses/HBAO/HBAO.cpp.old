@@ -1,0 +1,388 @@
+/***************************************************************************
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+#include "HBAO.h"
+#include "glm/gtc/random.hpp"
+
+// Don't remove this. it's required for hot-reload to function properly
+extern "C" falcorexport const char* getProjDir() {
+    return PROJECT_DIR;
+}
+
+static void regHBAO(pybind11::module& m) {
+    pybind11::class_<HBAO, RenderPass, HBAO::SharedPtr> pass(m, "HBAO");
+    pass.def_property("kernelRadius", &HBAO::getKernelSize, &HBAO::setKernelSize);
+    pass.def_property("distribution", &HBAO::getDistribution, &HBAO::setDistribution);
+    pass.def_property("sampleRadius", &HBAO::getSampleRadius, &HBAO::setSampleRadius);
+
+    //auto sampleDistEnum = m.enum_<HBAO::SampleDistribution>("SampleDistribution");
+    //sampleDistEnum.regEnumVal(HBAO::SampleDistribution::Random);
+    //sampleDistEnum.regEnumVal(HBAO::SampleDistribution::UniformHammersley);
+    //sampleDistEnum.regEnumVal(HBAO::SampleDistribution::CosineHammersley);
+}
+
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
+    lib.registerClass("HBAO", "Screen-space ambient occlusion", HBAO::create);
+    ScriptBindings::registerBinding(regHBAO);
+}
+
+const char* HBAO::kDesc = "Screen-space ambient occlusion. Can be used with and without a normal-map";
+
+namespace {
+
+const std::string kHorizonMapSize = "aoMapSize";
+const std::string kKernelSize = "kernelSize";
+const std::string kNoiseSize = "noiseSize";
+const std::string kDistribution = "distribution";
+const std::string kRadius = "radius";
+const std::string kBlurKernelWidth = "blurWidth";
+const std::string kBlurSigma = "blurSigma";
+
+const std::string kAoOut = "aoOut";
+const std::string kDepth = "depth";
+const std::string kNormals = "normals";
+const std::string kHorizonMap = "aoHorizons";
+const std::string kMaxZ = "maxZBuffer";
+
+const std::string kComputeHorizonshaderFile = "RenderPasses/HBAO/HBAO.ComputeHorizons.ps.slang";
+const std::string kComputeAOShaderFile = "RenderPasses/HBAO/HBAO.ComputeAO.cs.slang";
+const std::string kComputeDownSampleDepthShaderFile = "RenderPasses/HBAO/HBAO.MinMaxZ.cs.slang";
+}
+
+static void mul_m4_v3(const glm::mat4& M, float3& r) {
+  const float x = r[0];
+  const float y = r[1];
+
+  r[0] = x * M[0][0] + y * M[1][0] + M[2][0] * r[2] + M[3][0];
+  r[1] = x * M[0][1] + y * M[1][1] + M[2][1] * r[2] + M[3][1];
+  r[2] = x * M[0][2] + y * M[1][2] + M[2][2] * r[2] + M[3][2];
+}
+
+static float mul_project_m4_v3_zfac(const glm::mat4& mat, const float3 co) {
+  return (mat[0][3] * co[0]) + (mat[1][3] * co[1]) + (mat[2][3] * co[2]) + mat[3][3];
+}
+
+static void mul_project_m4_v3(const glm::mat4& mat, float3& vec){
+  /* absolute value to not flip the frustum upside down behind the camera */
+  const float w = fabsf(mul_project_m4_v3_zfac(mat, vec));
+  mul_m4_v3(mat, vec);
+
+  vec[0] /= w;
+  vec[1] /= w;
+  vec[2] /= w;
+}
+
+static void unit_m4(glm::mat4& m) {
+  m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.0f;
+  m[0][1] = m[0][2] = m[0][3] = 0.0f;
+  m[1][0] = m[1][2] = m[1][3] = 0.0f;
+  m[2][0] = m[2][1] = m[2][3] = 0.0f;
+  m[3][0] = m[3][1] = m[3][2] = 0.0f;
+}
+
+/**
+ * Matches `glOrtho` result.
+ */
+static void orthographic_m4(glm::mat4& matrix,
+                     const float left,
+                     const float right,
+                     const float bottom,
+                     const float top,
+                     const float nearClip,
+                     const float farClip)
+{
+  float Xdelta, Ydelta, Zdelta;
+
+  Xdelta = right - left;
+  Ydelta = top - bottom;
+  Zdelta = farClip - nearClip;
+  if (Xdelta == 0.0f || Ydelta == 0.0f || Zdelta == 0.0f) {
+    return;
+  }
+  unit_m4(matrix);
+  matrix[0][0] = 2.0f / Xdelta;
+  matrix[3][0] = -(right + left) / Xdelta;
+  matrix[1][1] = 2.0f / Ydelta;
+  matrix[3][1] = -(top + bottom) / Ydelta;
+  matrix[2][2] = -2.0f / Zdelta; /* note: negate Z */
+  matrix[3][2] = -(farClip + nearClip) / Zdelta;
+}
+
+/**
+ * Matches `glFrustum` result.
+ */
+static void perspective_m4(glm::mat4& mat,
+                    const float left,
+                    const float right,
+                    const float bottom,
+                    const float top,
+                    const float nearClip,
+                    const float farClip)
+{
+  const float Xdelta = right - left;
+  const float Ydelta = top - bottom;
+  const float Zdelta = farClip - nearClip;
+
+  if (Xdelta == 0.0f || Ydelta == 0.0f || Zdelta == 0.0f) {
+    return;
+  }
+  mat[0][0] = nearClip * 2.0f / Xdelta;
+  mat[1][1] = nearClip * 2.0f / Ydelta;
+  mat[2][0] = (right + left) / Xdelta; /* note: negate Z */
+  mat[2][1] = (top + bottom) / Ydelta;
+  mat[2][2] = -(farClip + nearClip) / Zdelta;
+  mat[2][3] = -1.0f;
+  mat[3][2] = (-2.0f * nearClip * farClip) / Zdelta;
+  mat[0][1] = mat[0][2] = mat[0][3] = mat[1][0] = mat[1][2] = mat[1][3] = mat[3][0] = mat[3][1] =
+      mat[3][3] = 0.0f;
+}
+
+HBAO::HBAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    Program::DefineList hiz_defines = { { "MAX_PASS", "1" } };
+    mpDownSampleDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthShaderFile, "main", hiz_defines); 
+
+    mpHorizonsSearchPass = FullScreenPass::create(pDevice, kComputeHorizonshaderFile);
+
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
+        .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+    mpNoiseSampler = Sampler::create(pDevice, samplerDesc);
+    
+
+    Sampler::Desc depthPointSamplerDesc;
+    depthPointSamplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
+        .setMaxAnisotropy(0)
+        .setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    
+    mpPointSampler = Sampler::create(pDevice, samplerDesc); // Used for uninterpolated texel access
+
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    mpTextureSampler = Sampler::create(pDevice, samplerDesc);
+
+    Sampler::Desc depthSamplerDesc;
+    depthSamplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
+        //.setMaxAnisotropy(0)
+        .setComparisonMode(Sampler::ComparisonMode::Disabled)
+        .setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    
+    mpDepthSampler = Sampler::create(pDevice, depthSamplerDesc);  // depth sampler
+
+    //mpHBAOPass = FullScreenPass::create(pDevice, kHBAOShader);
+    //mComposeData.pComputeHBAOPass = FullScreenPass::create(pDevice, kApplyHBAOShader);
+    //Sampler::Desc desc;
+    //desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    //mComposeData.pComputeHBAOPass["gSampler"] = Sampler::create(pDevice, desc);
+    //mComposeData.pFbo = Fbo::create(pDevice);
+}
+
+HBAO::SharedPtr HBAO::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    SharedPtr pHBAO = SharedPtr(new HBAO(pRenderContext->device()));
+    Dictionary blurDict;
+    //for (const auto& v : dict) {
+    //    if (v.key() == kHorizonMapSize) pHBAO->mAoMapSize = (uint2)v.val();
+    //    else if (v.key() == kKernelSize) pHBAO->mData.kernelSize = v.val();
+    //    else if (v.key() == kNoiseSize) pHBAO->mNoiseSize = (uint2)v.val();
+    //    else if (v.key() == kDistribution) pHBAO->mHemisphereDistribution = (SampleDistribution)v.val();
+    //    else if (v.key() == kRadius) pHBAO->mData.radius = v.val();
+    //    else if (v.key() == kBlurKernelWidth) pHBAO->mBlurDict["kernelWidth"] = (uint32_t)v.val();
+    //    else if (v.key() == kBlurSigma) pHBAO->mBlurDict["sigma"] = (float)v.val();
+    //    else logWarning("Unknown field '" + v.key() + "' in a HBAO dictionary");
+    //}
+    return pHBAO;
+}
+
+Dictionary HBAO::getScriptingDictionary() {
+    Dictionary dict;
+    dict[kHorizonMapSize] = mAoMapSize;
+    dict[kKernelSize] = mData.kernelSize;
+    dict[kNoiseSize] = mNoiseSize;
+    dict[kRadius] = mData.radius;
+    dict[kDistribution] = mHemisphereDistribution;
+
+    return dict;
+}
+
+RenderPassReflection HBAO::reflect(const CompileData& compileData) {
+    RenderPassReflection reflector;
+    reflector.addInput(kDepth, "Depth-buffer").bindFlags(ResourceBindFlags::ShaderResource);
+    reflector.addInput(kNormals, "World space normals, [0, 1] range").flags(RenderPassReflection::Field::Flags::Optional);
+    
+    reflector.addInternal(kMaxZ, "Max Z buffer").bindFlags(ResourceBindFlags::ShaderResource).format(ResourceFormat::R32Float)
+        .texture2D(compileData.defaultTexDims[0], compileData.defaultTexDims[1], 1, RenderPassReflection::Field::kMaxMipLevels, 1);
+    
+    reflector.addOutput(kHorizonMap, "Horizons Map").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA16Float);//RGBA8Unorm);
+    //reflector.addOutput(kAoOut, "AO buffer, RG for Ambient/Reflection occlusion").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA16Float);//RGBA8Unorm);
+
+    return reflector;
+}
+
+void HBAO::compile(RenderContext* pRenderContext, const CompileData& compileData) {
+    mFrameDim = compileData.defaultTexDims;
+    mpHorizonsSearchPass["CB"]["frameDim"] = mFrameDim;
+
+    auto pDevice = pRenderContext->device();
+    Fbo::Desc fboDesc(pDevice);
+    fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm); 
+    mpAOFbo = Fbo::create2D(pDevice, mAoMapSize.x, mAoMapSize.y, fboDesc);
+
+    setKernel();
+    setNoiseTexture(mNoiseSize.x, mNoiseSize.y);
+}
+
+void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    if (!mpScene) return;
+    auto pCamera = mpScene->getCamera();
+
+    setNoiseTexture(mNoiseSize.x, mNoiseSize.y);
+
+    // Run MinMaxZ pass
+    //mpDownSampleDepthPass->addDefine("COPY_DEPTH", "");
+    int arrayLayer = 0;
+    uint32_t mipLevels = 6;
+    auto zcb = mpDownSampleDepthPass["CB"];
+    for(uint32_t mipLevel = 0; mipLevel <= mipLevels; mipLevel++) {
+        
+        auto pDepthBuffer = renderData[kDepth]->asTexture();
+        auto pMaxZBuffer = renderData[kMaxZ]->asTexture();
+        
+        int mip_width = pMaxZBuffer->getWidth(mipLevel);
+        int mip_height = pMaxZBuffer->getHeight(mipLevel);
+
+        zcb["gMipLevel"] = mipLevel;
+        zcb["frameDim"] = int2({mip_width, mip_height});
+        mpDownSampleDepthPass["gPointSampler"] = mpPointSampler;
+        mpDownSampleDepthPass["gGatherSampler"] = mpDepthSampler;
+
+        if(mipLevel == 0) {
+            // TODO: blitter desn't like it
+            auto srv = pDepthBuffer->getSRV(mipLevel,    1, 0, 1);
+            auto rtv = renderData[kMaxZ]->asTexture()->getRTV(mipLevel, arrayLayer, 1);
+            pRenderContext->blit(srv, rtv);
+            //mpDownSampleDepthPass["gDepthBuffer"].setSrv(pDepthBuffer->getSRV(mipLevel,    1, 0, 1));
+        } else {
+            mpDownSampleDepthPass["gDepthBuffer"].setSrv(pMaxZBuffer->getSRV(mipLevel - 1, 1, 0, 1));
+        }
+        mpDownSampleDepthPass["gOutputBuffer"].setUav(pMaxZBuffer->getUAV(mipLevel, arrayLayer, 1));
+        mpDownSampleDepthPass->execute(pRenderContext, mip_width, mip_height);
+    }
+
+
+    // Generate horizons buffer
+    auto cb = mpHorizonsSearchPass["CB"];
+
+    cb["gViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
+    cb["gViewProjInvMat"] = glm::inverse(mpScene->getCamera()->getViewProjMatrix());
+
+    cb["gViewMat"] = mpScene->getCamera()->getViewMatrix();
+    cb["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
+
+    cb["gProjMat"] = mpScene->getCamera()->getProjMatrix();
+    cb["gProjInvMat"] = glm::inverse(mpScene->getCamera()->getProjMatrix());
+    
+    cb["gHizMipOffset"] = 0; // For Half-Res use 1
+    cb["gAoDistance"] = 1.0f;
+    cb["gAoQuality"] = 1.0f;
+
+    cb["gViewVecN"] = mViewVecs[0];
+    cb["gViewVecF"] = mViewVecs[1];
+
+    //auto pcb = mpHorizonsSearchPass["PerFrameCB"];
+    pCamera->setShaderData(cb["gCamera"]);
+
+    mpHorizonsSearchPass["gPointSampler"] = mpPointSampler;
+    mpHorizonsSearchPass["gDepthSampler"] = mpDepthSampler;
+    mpHorizonsSearchPass["gNoiseSampler"] = mpNoiseSampler;
+    mpHorizonsSearchPass["gNoiseTex"] = mpNoiseTexture;
+    mpHorizonsSearchPass["gMaxZBuffer"] = renderData[kMaxZ]->asTexture();
+    mpHorizonsSearchPass["gDepthBuffer"] = renderData[kDepth]->asTexture();
+    mpHorizonsSearchPass["gHorizonsBuffer"] = renderData[kHorizonMap]->asTexture();
+    mpHorizonsSearchPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+
+}
+
+
+void HBAO::setSampleRadius(float radius) {
+    mData.radius = radius;
+    mDirty = true;
+}
+
+void HBAO::setKernelSize(uint32_t kernelSize) {
+    kernelSize = glm::clamp(kernelSize, 1u, kMaxSamples);
+    mData.kernelSize = kernelSize;
+    setKernel();
+}
+
+void HBAO::setDistribution(uint32_t distribution) {
+    mHemisphereDistribution = (SampleDistribution)distribution;
+    setKernel();
+}
+
+void HBAO::setKernel() {
+    for (uint32_t i = 0; i < mData.kernelSize; i++) {
+        // Hemisphere in the Z+ direction
+        float3 p;
+        switch (mHemisphereDistribution) {
+            case SampleDistribution::Random:
+                p = glm::normalize(glm::linearRand(float3(-1.0f, -1.0f, 0.0f), float3(1.0f, 1.0f, 1.0f)));
+                break;
+
+            case SampleDistribution::UniformHammersley:
+                p = hammersleyUniform(i, mData.kernelSize);
+                break;
+
+            case SampleDistribution::CosineHammersley:
+                p = hammersleyCosine(i, mData.kernelSize);
+                break;
+        }
+
+        mData.sampleKernel[i] = float4(p, 0.0f);
+
+        // Skew sample point distance on a curve so more cluster around the origin
+        float dist = (float)i / (float)mData.kernelSize;
+        dist = glm::mix(0.1f, 1.0f, dist * dist);
+        mData.sampleKernel[i] *= dist;
+    }
+
+    mDirty = true;
+}
+
+void HBAO::setNoiseTexture(uint32_t width, uint32_t height) {
+    std::vector<uint32_t> data;
+    data.resize(width * height);
+
+    for (uint32_t i = 0; i < width * height; i++) {
+        // Random directions on the XY plane
+        float2 dir = glm::normalize(glm::linearRand(float2(-1), float2(1))) * 0.5f + 0.5f;
+        data[i] = glm::packUnorm4x8(float4(dir, 0.0f, 1.0f));
+    }
+
+    mpNoiseTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::RGBA8Unorm, 1, Texture::kMaxPossible, data.data());
+
+    mData.noiseScale = float2(mpAOFbo->getWidth(), mpAOFbo->getHeight()) / float2(width, height);
+
+    mDirty = true;
+}

@@ -28,6 +28,9 @@
 #include "ForwardLightingPass.h"
 
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Utils/Textures/BlueNoiseTexture.h"
+#include "glm/gtc/random.hpp"
+
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -46,6 +49,7 @@ namespace {
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
     const std::string kNormals = "normals";
+    const std::string kAOBuffer = "aoHorizons";
     const std::string kVisBuffer = "visibilityBuffer";
 
     const std::string kSampleCount = "sampleCount";
@@ -75,6 +79,8 @@ Dictionary ForwardLightingPass::getScriptingDictionary() {
 
 ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
+    pProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
+    pProgram->addDefine("ENABLE_DEFERED_AO", "");
     pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
 
     mpState = GraphicsState::create(pDevice);
@@ -85,11 +91,17 @@ ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
     mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
+
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
+      .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+    mpNoiseSampler = Sampler::create(pDevice, samplerDesc);
 }
 
 RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
+    reflector.addInput(kAOBuffer, "Ambient occlusion horizons buffer").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSampleCount);
 
@@ -105,6 +117,14 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
     }
 
     return reflector;
+}
+
+void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
+    mFrameDim = compileData.defaultTexDims;
+    auto pDevice = pRenderContext->device();
+
+    mpNoiseOffsetGenerator = StratifiedSamplePattern::create(16);
+    mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
 }
 
 void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -157,10 +177,23 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     initFbo(pContext, renderData);
     
     if (mpScene) {
+        float2 f = mpNoiseOffsetGenerator->next();
+        uint2 noiseOffset = {64 * (f[0] + 0.5f), 64 * (f[1] + 0.5f)};
+
         mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-        
+        mpVars["PerFrameCB"]["gNoiseOffset"] = noiseOffset;
+        mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
+        mpVars["PerFrameCB"]["gUseAO"] = 1;
+        mpVars["PerFrameCB"]["gUseBentNormals"] = 1;
+
+        mpVars["gNoiseSampler"] = mpNoiseSampler;
+        mpVars["gNoiseTex"] = mpBlueNoiseTexture;
+
         if(renderData[kVisBuffer])
             mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+
+        if(renderData[kAOBuffer])
+            mpVars->setTexture(kAOBuffer, renderData[kAOBuffer]->asTexture());
         
         mpState->setFbo(mpFbo);
         mpScene->render(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);

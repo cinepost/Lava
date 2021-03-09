@@ -179,7 +179,6 @@ namespace Falcor {
         mBindSparseInfo.pImageBinds = &mImageMemoryBindInfo;
 
         // Opaque image memory binds for the mip tail
-        LOG_WARN("Texture mOpaqueMemoryBinds.size() %zu", mOpaqueMemoryBinds.size());
         mOpaqueMemoryBindInfo.image = mImage;
         mOpaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(mOpaqueMemoryBinds.size());
         mOpaqueMemoryBindInfo.pBinds = mOpaqueMemoryBinds.data();

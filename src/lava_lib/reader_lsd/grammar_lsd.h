@@ -675,24 +675,7 @@ namespace parser {
         }
     } const embedded_data_encoding;
 
-    //x3::rule<class object_, ast::Object> const object = "object";
-    //auto const object_def = lexeme["global" | "geo" | "geometry"];
-    //BOOST_SPIRIT_DEFINE(object)
-
     using boost::fusion::at_c;
-    //auto assign_objtype = [](auto& ctx) { _val(ctx).type = _attr(ctx); };
-    //auto assign_time = [](auto& ctx) { _val(ctx).time = _attr(ctx); };
-    //auto assign_version = [](auto& ctx) { 
-    //    _val(ctx).version[0] = at_c<0>(_attr(ctx)); 
-    //    _val(ctx).version[1] = at_c<1>(_attr(ctx));
-    //    _val(ctx).version[2] = at_c<2>(_attr(ctx));
-    //};
-    //auto assign_comment = [](auto& ctx) {};
-    //auto assign_prop_values = [](auto& ctx) { std::cout << "PROP: " << _attr(ctx); };
-    //auto assign_bgeo = [](auto& ctx) { 
-    //    std::cout << "BGEO!!!";
-    //    _val(ctx).bgeo = _attr(ctx); 
-    //};
 
     auto reset_lights = [](auto& ctx) { 
         _val(ctx).lights = true; 

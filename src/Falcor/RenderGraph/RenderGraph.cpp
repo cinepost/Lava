@@ -573,10 +573,6 @@ void RenderGraph::resize(uint width, uint height, const ResourceFormat& format) 
     mRecompile = true;
 }
 
-uint2 RenderGraph::dims() {
-    return mCompilerDeps.defaultResourceProps.dims;
-}
-
 bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst) {
     assert(is_set(src.getVisibility(), RenderPassReflection::Field::Visibility::Output) && is_set(dst.getVisibility(), RenderPassReflection::Field::Visibility::Input));
 

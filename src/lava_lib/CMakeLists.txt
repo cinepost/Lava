@@ -43,6 +43,7 @@ target_link_libraries(
     DepthPass
     ForwardLightingPass
     SkyBox
+    HBAO
 )
 
 if(UNIX)

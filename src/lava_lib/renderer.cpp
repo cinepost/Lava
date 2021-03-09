@@ -271,6 +271,12 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     // Main render graph
     auto mainChannelOutputFormat = ResourceFormat::RGBA32Float;
     mpRenderGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, mainChannelOutputFormat, "MainImageRenderGraph");
+    //mpRenderGraph->compile(mpRenderContext);
+
+    // HBAO pass
+    mpHBAOpass = HBAO::create(pRenderContext);
+    mpHBAOpass->setScene(pRenderContext, pScene);
+    auto hbao_pass = mpRenderGraph->addPass(mpHBAOpass, "HBAOPass");
 
     // Forward lighting
     mpLightingPass = ForwardLightingPass::create(pRenderContext);
@@ -297,6 +303,11 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
     //mpRenderGraph->setInput("SkyBoxPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    
+    if(mpHBAOpass) {
+        mpRenderGraph->addEdge("HBAOPass.aoHorizons", "LightingPass.aoHorizons");
+    }
+
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     //mpRenderGraph->setInput("LightingPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
@@ -524,6 +535,9 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             mpTexturesResolvePassGraph->execute(pRenderContext);
         }
 
+        if(mpHBAOpass) {
+            mpRenderGraph->setInput("HBAOPass.depth", pDepth);
+        }
         mpRenderGraph->setInput("SkyBoxPass.depth", pDepth);
         mpRenderGraph->setInput("LightingPass.depth", pDepth);
         mpRenderGraph->execute(pRenderContext);

@@ -110,6 +110,10 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 			LLOG_WRN << "setting ConfigStore property " << name << " with value " << boost::get<std::string>(value) << "\n";
 			configStore.set<std::string>(name, boost::get<std::string>(value));
 			break;
+		case ast::Type::INT:
+			LLOG_WRN << "setting ConfigStore property " << name << " with value " << boost::get<int>(value) << "\n";
+			configStore.set<int>(name, boost::get<int>(value));
+			break;
 		default:
 			LLOG_WRN << "Unsupported config store property type: " << to_string(type);
 			break;

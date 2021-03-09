@@ -23,6 +23,7 @@ file( GLOB SOURCES
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
     ./Utils/Image/*.cpp
+    ./Utils/Textures/*.cpp
     ./Utils/Perception/*.cpp
     ./Utils/SampleGenerators/*.cpp
     ./Utils/Sampling/*.cpp

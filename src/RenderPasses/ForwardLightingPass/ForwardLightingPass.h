@@ -45,7 +45,7 @@ class ForwardLightingPass : public RenderPass {
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
 
@@ -95,6 +95,12 @@ class ForwardLightingPass : public RenderPass {
     Scene::SharedPtr mpScene;
     GraphicsVars::SharedPtr mpVars;
     RasterizerState::SharedPtr mpRsState;
+
+    uint2 mFrameDim = { 0, 0 };
+
+    Sampler::SharedPtr                  mpNoiseSampler;
+    Texture::SharedPtr                  mpBlueNoiseTexture;
+    CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
 
     ResourceFormat mColorFormat = ResourceFormat::RGBA32Float; //Unknown;
     ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;

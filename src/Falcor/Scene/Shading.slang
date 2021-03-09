@@ -151,7 +151,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     // Sample the diffuse texture and apply the alpha test
     float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, float4(1), EXTRACT_DIFFUSE_TYPE(md.flags), lod) * md.baseColor;
     sd.opacity = baseColor.a;
-    applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
+    //applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
 
     sd.posW = v.posW;
     sd.uv = v.texC;
@@ -391,9 +391,6 @@ ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_p
 
     sd.NdotV = saturate(sd.NdotV);
 
-    //float kt = evalTransmissionFresnel(sd, ls);
-    //float kr = 1.0f - kt;
-
     // Calculate the diffuse term
     // If the light doesn't hit the surface or we are viewing the surface from the back, return
     if (lsd.NdotL <= 0) {
@@ -415,9 +412,6 @@ ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_p
     sr.specular = evalLightProbeSampleSpecularColor(probe, sd, pixel_pos) * sr.specularBrdf;
 
     sr.color += sr.specular;
-
-    // Apply the occlusion factor
-    //sr.color *= occlusionFactor;
 
     return sr;
 }

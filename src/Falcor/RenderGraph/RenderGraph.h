@@ -166,7 +166,11 @@ class Device;
 
         /** Get current render graph output dimensions
         */
-        uint2 dims();
+        uint2 dims() const { return mCompilerDeps.defaultResourceProps.dims; }
+
+        /** Get current render graph default resource format
+        */
+        const ResourceFormat& format() const { return mCompilerDeps.defaultResourceProps.format; };
 
         /** Get the attached scene
         */

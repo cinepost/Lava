@@ -83,7 +83,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             writeTileID(loMipLevelTileID);
             writeTileID(hiMipLevelTileID);
 
-            writeTileID(calculateTileID2D(vOut.texC, max(0.0, loMipLevel - 1), vtexData));
+            //writeTileID(calculateTileID2D(vOut.texC, max(0.0, loMipLevel - 1), vtexData));
 
             debugTileID = loMipLevelTileID;
         }

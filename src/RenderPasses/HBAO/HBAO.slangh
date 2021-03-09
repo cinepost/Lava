@@ -1,0 +1,29 @@
+#pragma once
+
+#include "Utils/HostDeviceShared.slangh"
+#include "Utils/Math/MathConstants.slangh"
+
+/* aoSettings flags */
+#define USE_AO 1
+#define USE_BENT_NORMAL 2
+#define USE_DENOISE 4
+
+#define MAX_LOD 6.0
+#define NO_OCCLUSION_DATA {float4(M_PI, -M_PI, M_PI, -M_PI), 1.0}
+
+struct OcclusionData {
+    /* 4 horizons angles, one in each direction around the view vector to form a cross pattern. */
+    float4 horizons;
+  
+    /* Custom large scale occlusion. */
+    float custom_occlusion;
+
+    [mutating] void unpack(float4 v) {
+        horizons = float4((1.0 - v) * float4(1, -1, 1, -1) * M_PI);
+        custom_occlusion = 0.0;
+    }
+
+    float4 pack() {
+        return float4(1.0 - horizons * float4(1, -1, 1, -1) * M_1_PI);
+    }
+};

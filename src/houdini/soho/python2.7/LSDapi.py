@@ -69,18 +69,11 @@ def cmd_config(prop_name, soho_parm):
     soho.indent()
 
     prop_value = soho_parm.Value[0]
-    prop_type = 'unknown'
+    prop_type = soho_parm.Type
     prop_value_repr = repr(prop_value)
 
-    if isinstance(prop_value, bool):
-        prop_type = 'bool'
+    if prop_type == "bool":
         prop_value_repr = int(prop_value)
-    elif isinstance(prop_value, int):
-        prop_type = 'int'
-    elif isinstance(prop_value, float):
-        prop_type = 'float'
-    elif isinstance(prop_value, str):
-        prop_type = 'string'
 
     print 'cmd_config', prop_type, prop_name, prop_value_repr
 

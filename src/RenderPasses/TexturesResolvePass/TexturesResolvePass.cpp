@@ -42,11 +42,11 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
 
 TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     
-    Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
+    //Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
 
-    mpProgram = GraphicsProgram::create(pDevice, desc, defines);
+    mpProgram = GraphicsProgram::create(pDevice, desc);
 
     mpFbo = Fbo::create(pDevice);
 

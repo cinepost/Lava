@@ -68,7 +68,8 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
     desc.addShaderLibrary(kProgramFile).psEntry("main");
     
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create(pDevice, desc);
-    pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST");
+    pProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
+    //pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); //TODO: make it work only after virtual texures resolution
 
     mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);

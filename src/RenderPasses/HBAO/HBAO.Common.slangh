@@ -1,0 +1,198 @@
+#pragma once
+
+#include "Utils/Math/MathConstants.slangh"
+//#include "HBAO.slangh"
+
+#define MAX_LOD 6.0
+#define MAX_SEARCH_ITER 32
+
+float4 packHorizons(float4 v){
+  return v * 0.5 + 0.5;
+}
+
+float4 unpackHorizons(float4 v) {
+  return v * 2.0 - 1.0;
+}
+
+uint2 textureSize(Texture2D tex, uint mipLevel) {
+  uint w, h, d;
+  //tex.GetDimensions(w, h);
+  tex.GetDimensions(mipLevel, w, h, d);
+  return int2(w,h);
+}
+
+/* [Drobot2014a] Low Level Optimizations for GCN */
+float fast_sqrt(float v) {
+  return asfloat(0x1fbd1df5 + (asint(v) >> 1));
+}
+
+float2 fast_sqrt(float2 v) {
+  return asfloat(0x1fbd1df5 + (asint(v) >> 1));
+}
+
+/* [Eberly2014] GPGPU Programming for Games and Science */
+float fast_acos(float v) {
+  float res = -0.156583 * abs(v) + M_PI_2;
+  //res *= fast_sqrt(1.0 - abs(v));
+  res *= sqrt(1.0 - abs(v));
+  return (v >= 0) ? res : M_PI - res;
+}
+
+float2 fast_acos(float2 v) {
+  float2 res = -0.156583 * abs(v) + M_PI_2;
+  //res *= fast_sqrt(1.0 - abs(v));
+  res *= sqrt(1.0 - abs(v));
+  v.x = (v.x >= 0) ? res.x : M_PI - res.x;
+  v.y = (v.y >= 0) ? res.y : M_PI - res.y;
+  return v;
+}
+
+float min_v2(float2 v) { return min(v.x, v.y); }
+float max_v2(float2 v) { return max(v.x, v.y); }
+
+// float4x4 viewMat;                   ///< Camera view matrix.
+// float4x4 projMat;                   ///< Camera projection matrix.
+// float4x4 viewProjMat;               ///< Camera view-projection matrix.
+// float4x4 invViewProj;               ///< Camera inverse view-projection matrix.
+
+/* Returns maximum screen distance an AO ray can travel for a given view depth */
+float2 getMaxDir(float view_depth) {
+  float4x4 mat = gCamera.data.projMat;
+  float homcco = mat[2][3] * view_depth + mat[3][3];
+  float max_dist = gAoDistance / homcco;
+  return float2(mat[0][0], mat[1][1]) * max_dist;// * 0.85; // ??
+}
+
+float3 transformDirection(float4x4 m, float3 v) {
+  return mul(v, float3x3(m));
+}
+
+float2 getAoDir(float jitter) {
+  /* Only half a turn because we integrate in slices. */
+  jitter *= M_PI;
+  return float2(cos(jitter), -sin(jitter));
+}
+
+float2 getUVsFromView(float3 view) {
+  float4 ndc = mul(float4(view, 1.0), gCamera.data.projMat);
+  return (ndc.xy / ndc.w) * -0.5 + 0.5;
+}
+
+float4 getWorldPositionFromDepth(float2 uv, float depth) {
+  float4 pos;
+  pos.x = uv.x * 2.0f - 1.0f;
+  pos.y = (1.0f - uv.y) * 2.0f - 1.0f;
+  pos.y = -pos.y; // Vulkan NDC space is inverted
+  pos.z = depth;
+  pos.w = 1.0f;
+
+  float4 posW = mul(pos, gCamera.data.invViewProj);
+  posW /= posW.w;
+
+  return posW;
+}
+
+float4 getViewPositionFromDepth(float2 uv, float depth) {
+  float4 posW = getWorldPositionFromDepth(uv, depth);
+  float4 posV = mul(posW, gCamera.data.viewMat);
+  return posV;
+}
+
+void get_max_horizon_grouped(float4 co1, float4 co2, float3 x, float lod, inout float h) {
+  int mip = int(lod) + gHizMipOffset;
+  
+  //co1 *= mipRatio[mip].xyxy;
+  //co2 *= mipRatio[mip].xyxy;
+
+  float depth1 = sampleMaxZTexture(co1.xy, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co1.xy, floor(lod)).r;
+  float depth2 = sampleMaxZTexture(co1.zw, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co1.zw, floor(lod)).r;
+  float depth3 = sampleMaxZTexture(co2.xy, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co2.xy, floor(lod)).r;
+  float depth4 = sampleMaxZTexture(co2.zw, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co2.zw, floor(lod)).r;
+
+  float4 len, s_h;
+
+  float3 s1 = getViewPositionFromDepth(co1.xy, depth1).xyz; /* s View coordinate */
+  float3 omega_s1 = s1 - x;
+  len.x = length(omega_s1);
+  s_h.x = omega_s1.z / len.x;
+
+  float3 s2 = getViewPositionFromDepth(co1.zw, depth2).xyz; /* s View coordinate */
+  float3 omega_s2 = s2 - x;
+  len.y = length(omega_s2);
+  s_h.y = omega_s2.z / len.y;
+
+  float3 s3 = getViewPositionFromDepth(co2.xy, depth3).xyz; /* s View coordinate */
+  float3 omega_s3 = s3 - x;
+  len.z = length(omega_s3);
+  s_h.z = omega_s3.z / len.z;
+
+  float3 s4 = getViewPositionFromDepth(co2.zw, depth4).xyz; /* s View coordinate */
+  float3 omega_s4 = s4 - x;
+  len.w = length(omega_s4);
+  s_h.w = omega_s4.z / len.w;
+
+  /* Blend weight after half the gAoDistance to fade artifacts */
+  float4 blend = saturate((1.0 - len / gAoDistance) * 2.0);
+
+  h = lerp(h, max(h, s_h.x), blend.x);
+  h = lerp(h, max(h, s_h.y), blend.y);
+  h = lerp(h, max(h, s_h.z), blend.z);
+  h = lerp(h, max(h, s_h.w), blend.w);
+}
+
+float2 search_horizon_sweep(float2 t_phi, float3 posV, float2 uvs, float jitter, float2 max_dir) {
+  max_dir *= max_v2(abs(t_phi));
+
+  /* Convert to pixel space. */
+  t_phi /= float2(textureSize(gMaxZBuffer, 0)) * 0.5; // FIXME: .5 here is to compensate full HiZ resolution. 
+
+  /* Avoid division by 0 */
+  t_phi += float2(1e-5);
+
+  jitter *= 0.25;
+
+
+  /* Compute end points */
+  float2 corner1 = min(float2(1.0) - uvs, max_dir);  /* Top right */
+  float2 corner2 = max(float2(0.0) - uvs, -max_dir); /* Bottom left */
+  float2 iter1 = corner1 / t_phi;
+  float2 iter2 = corner2 / t_phi;
+
+  float2 min_iter = max(-iter1, -iter2);
+  float2 max_iter = max(iter1, iter2);
+
+  float2 times = float2(-min_v2(min_iter), min_v2(max_iter));
+
+  float2 h = float2(-1.0); /* init at cos(pi) */
+
+  /* This is freaking sexy optimized. */
+  for (float i = 0.0, ofs = 4.0, time = -1.0; i < MAX_SEARCH_ITER && time > times.x; i++, time -= ofs, ofs = min(exp2(MAX_LOD) * 4.0, ofs + ofs * gAoQuality)) {
+    float4 t = max(times.xxxx, float4(time) - (float4(0.25, 0.5, 0.75, 1.0) - jitter) * ofs);
+    float4 cos1 = uvs.xyxy + t_phi.xyxy * t.xxyy;
+    float4 cos2 = uvs.xyxy + t_phi.xyxy * t.zzww;
+    float lod = min(MAX_LOD, max(i - jitter * 4.0, 0.0) * gAoQuality);
+    get_max_horizon_grouped(cos1, cos2, posV, lod, h.y);
+  }
+
+  for (float i = 0.0, ofs = 4.0, time = 1.0; i < MAX_SEARCH_ITER && time < times.y; i++, time += ofs, ofs = min(exp2(MAX_LOD) * 4.0, ofs + ofs * gAoQuality)) {
+    float4 t = min(times.yyyy, float4(time) + (float4(0.25, 0.5, 0.75, 1.0) - jitter) * ofs);
+    float4 cos1 = uvs.xyxy + t_phi.xyxy * t.xxyy;
+    float4 cos2 = uvs.xyxy + t_phi.xyxy * t.zzww;
+    float lod = min(MAX_LOD, max(i - jitter * 4.0, 0.0) * gAoQuality);
+    get_max_horizon_grouped(cos1, cos2, posV, lod, h.x);
+  }
+
+  return h;
+}
+
+float hbaoSpecularOcclusion(float NV, float AO, float roughness) {
+  return saturate(pow(NV + AO, roughness) - 1.0 + AO);
+}
+
+float sampleDepthTexture(float2 uv, int mip) {
+  return gDepthTex.SampleLevel(gDepthSampler, uv + (float2(0.5) / float2(gFrameDim)), mip).r;
+}
+
+float sampleMaxZTexture(float2 uv, int mipLevel) {
+  return gMaxZBuffer.SampleLevel(gDepthSampler, uv + (float2(0.5) / float2(gFrameDim)) , mipLevel).r;
+}

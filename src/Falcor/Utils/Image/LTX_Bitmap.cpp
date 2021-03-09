@@ -322,6 +322,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
 
     LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
 
+if( 1 == 1) {
     if( isPowerOfTwo(srcDims.x) && isPowerOfTwo(srcDims.y) ) {
         if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile)) {
             // re-write header as it might get modified ... 
@@ -337,6 +338,11 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
             fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
         }
     }
+}
+    //ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile);
+    //fseek(pFile, 0, SEEK_SET);
+    //fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+    
     fclose(pFile);
 }
 

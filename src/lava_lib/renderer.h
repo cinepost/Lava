@@ -23,6 +23,7 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
+#include "RenderPasses/HBAO/HBAO.h"
 
 #include "display.h"
 #include "renderer_iface.h"
@@ -125,6 +126,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
     ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
+    HBAO::SharedPtr                 mpHBAOpass = nullptr;
     ///
 
     bool mInited = false;
