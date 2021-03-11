@@ -10,6 +10,7 @@ cbuffer PerFrameCB {
   uint2  gNoiseOffset;
 
   float  gAoQuality;
+  float  gAoFactor; // No need to keep it here
   float  gRotationOffset;
   uint   gHizMipOffset;
   float  gAoDistance;

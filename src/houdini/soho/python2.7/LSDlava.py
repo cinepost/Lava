@@ -114,6 +114,13 @@ def initializeFeatures(settings):
     Renderer("renderer", "vexprofile", "int", "lv_vexprofile")
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
 
+    Renderer("renderer", "use_ssao", "bool", "lv_ambient_occlusion", skipdefault=False)
+    Renderer("renderer", "ssao_distance", "float", "lv_ambient_occlusion_distance", skipdefault=False)
+    Renderer("renderer", "ssao_factor", "float", "lv_ambient_occlusion_factor", skipdefault=False)
+    Renderer("renderer", "ssao_precision", "float", "lv_ambient_occlusion_precision", skipdefault=False)
+    Renderer("renderer", "ssao_bent_normals", "bool", "lv_ambient_occlusion_bent_normals", skipdefault=False)
+    Renderer("renderer", "ssao_bounce_approx", "bool", "lv_ambient_occlusion_bounce_approx", skipdefault=False)
+
     # -- Image --
     Image("image", "background", "string", "lv_background")
     Image("image", "backgroundchannels", "string", "lv_backgroundchannels")

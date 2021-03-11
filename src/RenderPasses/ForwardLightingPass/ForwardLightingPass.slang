@@ -43,6 +43,7 @@ cbuffer PerFrameCB {
   float4x4 gViewInvMat;
 
   int gUseAO;
+  float gAoFactor;
   int gUseBentNormals;
 
   // these values needed when deffered ao is not applicable. e.g. transparent objects rendering
@@ -162,7 +163,7 @@ float specular_occlusion(float NV, float AO, float roughness) {
 }
 
 /* Use the right occlusion  */
-float hbaoOcclusionCompute(float3 N, float3 posW, int2 ipos, float user_occlusion, float4 rand, out float3 bent_normal) {
+float hbaoOcclusionCompute(float3 N, float3 posW, int2 ipos, float user_visibility, float4 noise, out float3 bent_normal) {
   
 #ifndef USE_REFRACTION
   if (gUseAO != 0) {
@@ -170,10 +171,10 @@ float hbaoOcclusionCompute(float3 N, float3 posW, int2 ipos, float user_occlusio
     float3 vnor = mul(N, float3x3(gScene.camera.data.viewMat)) * float3(1, -1, 1);
     
 #  ifdef ENABLE_DEFERED_AO
-    gtao_deferred(vnor, rand, ipos, visibility, bent_normal);
+    gtao_deferred(vnor, noise, ipos, visibility, bent_normal);
 #  else
     float3 posV = mul(posW, gCamera.data.viewMat);
-    gtao(vnor, posV, rand, visibility, bent_normal);
+    gtao(vnor, posV, noise, visibility, bent_normal);
 #  endif
 
     /* Prevent some problems down the road. */
@@ -191,15 +192,40 @@ float hbaoOcclusionCompute(float3 N, float3 posW, int2 ipos, float user_occlusio
     }
 
     /* Scale by user factor */
-    float aoFactor = 1.0;
-    visibility = pow(visibility, aoFactor);
+    visibility = pow(visibility, gAoFactor);
 
-    return min(visibility, user_occlusion);
+    return min(visibility, user_visibility);
   }
 #endif
 
   bent_normal = N;
-  return user_occlusion;
+  return user_visibility;
+}
+
+// this one works strange
+float hbaoSpecularOcclusionCompute(float3 N, float3 bentNormal, float finalAO, int2 ipos, float roughness, inout float3 specularDir) {
+  specularDir = normalize(lerp(specularDir, bentNormal, roughness * (1.0 - finalAO)));
+
+  /* Visibility to cone angle (eq. 18). */
+  float vis_angle = fast_acos(sqrt(1 - finalAO));
+  
+  /* Roughness to cone angle (eq. 26). */
+  float spec_angle = max(0.001, fast_acos(cone_cosine(roughness)));
+  
+  /* Angle between cone axes. */
+  float cone_cone_dist = fast_acos(saturate(dot(bentNormal, specularDir)));
+  float cone_nor_dist = fast_acos(saturate(dot(N, specularDir)));
+
+  float isect_solid_angle = spherical_cap_intersection(vis_angle, spec_angle, cone_cone_dist);
+  float specular_solid_angle = spherical_cap_intersection(M_PI_2, spec_angle, cone_nor_dist);
+  float specular_occlusion = isect_solid_angle / specular_solid_angle;
+  
+  /* Mix because it is unstable in unoccluded areas. */
+  finalAO = lerp(isect_solid_angle / specular_solid_angle, 1.0, pow(finalAO, 8.0));
+
+  /* Scale by user factor */
+  finalAO = pow(saturate(finalAO), gAoFactor);
+  return finalAO;
 }
 
 VSOut vs(VSIn vIn)
@@ -233,11 +259,21 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
 
     float4 finalColor = float4(0, 0, 0, 1);
 
-    for (uint l = 0; l < gScene.getLightCount(); l++)
-    {
+    float diffuseAO = 1.0f;
+    float specularAO = 1.0f;
+
+#ifdef USE_SSAO
+    float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
+    float3 bentNormal;
+    float user_visibility = 1.0; // TODO: fetch matrial provided occlusion texture
+    
+    diffuseAO = hbaoOcclusionCompute(sd.N, vOut.posW, ipos, user_visibility, noise, bentNormal);
+    specularAO = hbaoSpecularOcclusion(sd.NdotV, diffuseAO, 1.0f - sd.linearRoughness);
+#endif
+
+    for (uint l = 0; l < gScene.getLightCount(); l++) {
         float shadowFactor = 1;
-        if (l == 0)
-        {
+        if (l == 0) {
             //shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
             //shadowFactor *= sd.opacity;
         }
@@ -250,20 +286,13 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     
     finalColor.a = sd.opacity;
 
-    //finalColor.rgb += evalMaterial(sd, gScene.lightProbe).color.rgb; // old stuff
-
-    // Evaluate env light and apply ambient occlusion
-    float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
-    float3 bentNormal;
-    float user_visibility = 1.0; // TODO: fetch matrial provided occlusion texture
-    
+    // World light probe (env light) 
     ShadingResult env = evalMaterialIBL(sd, gScene.lightProbe, ipos);
-    float finalAO = hbaoOcclusionCompute(sd.N, vOut.posW, ipos, user_visibility, noise, bentNormal);
-    env.diffuse *= finalAO;
-    env.specular *= hbaoSpecularOcclusion(sd.NdotV, finalAO, sd.linearRoughness);
-
+  
+    env.diffuse *= diffuseAO;
+    env.specular *= specularAO;
+    
     finalColor.rgb += env.diffuse + env.specular;
-    finalColor.rgb = float3(1) * hbaoSpecularOcclusion(sd.NdotV, finalAO, sd.linearRoughness);
 
     // Final
     psOut.color = finalColor;

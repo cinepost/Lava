@@ -30,6 +30,7 @@
 
 //#include "Falcor.h"
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "EnvMapData.slang"
 
@@ -50,6 +51,8 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
         \param[in] filename The environment map texture filename.
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
+
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Texture::SharedPtr pTexture);
 
     /** Set rotation angles.
         Rotation is applied as rotation around X axis, followed by rotation around Y and Z axes.
@@ -105,7 +108,9 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     Changes getChanges() const { return mChanges; }
 
 protected:
+    EnvMap(std::shared_ptr<Device> pDevice);
     EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename);
+    EnvMap(std::shared_ptr<Device> pDevice, Texture::SharedPtr pTexture);
 
     Texture::SharedPtr      mpEnvMap;           ///< Loaded environment map (RGB).
     Sampler::SharedPtr      mpEnvSampler;

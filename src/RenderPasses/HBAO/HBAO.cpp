@@ -40,7 +40,8 @@ extern "C" falcorexport const char* getProjDir() {
 static void regHBAO(pybind11::module& m) {
     pybind11::class_<HBAO, RenderPass, HBAO::SharedPtr> pass(m, "HBAO");
 
-    pass.def_property("sampleRadius", &HBAO::getSampleRadius, &HBAO::setSampleRadius);
+    pass.def_property("distance", &HBAO::getAoDistance, &HBAO::setAoDistance);
+    pass.def_property("precision", &HBAO::getAoTracePrecision, &HBAO::setAoTracePrecision);
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
@@ -51,6 +52,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 const char* HBAO::kDesc = "Screen-space ambient occlusion. Can be used with and without a normal-map";
 
 namespace {
+
+const std::string kFrameSampleCount = "frameSampleCount";
 
 const std::string kHorizonMapSize = "aoMapSize";
 const std::string kKernelSize = "kernelSize";
@@ -110,6 +113,11 @@ HBAO::HBAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
 HBAO::SharedPtr HBAO::create(RenderContext* pRenderContext, const Dictionary& dict) {
     SharedPtr pHBAO = SharedPtr(new HBAO(pRenderContext->device()));
     Dictionary blurDict;
+    
+    for (const auto& [key, value] : dict) {
+        if (key == kFrameSampleCount) pHBAO->setFrameSampleCount(value);
+        else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
+    }
     //for (const auto& v : dict) {
     //    if (v.key() == kHorizonMapSize) pHBAO->mAoMapSize = (uint2)v.val();
     //    else if (v.key() == kKernelSize) pHBAO->mData.kernelSize = v.val();
@@ -150,7 +158,7 @@ void HBAO::compile(RenderContext* pRenderContext, const CompileData& compileData
   mFrameDim = compileData.defaultTexDims;
   auto pDevice = pRenderContext->device();
 
-  mpNoiseOffsetGenerator = StratifiedSamplePattern::create(16);
+  mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
   mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
 }
 
@@ -214,10 +222,11 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   auto cb = mpHorizonsSearchPass["PerFrameCB"];
   cb["gFrameDim"] = mFrameDim;
   cb["gNoiseOffset"] = noiseOffset;
-  cb["gAoQuality"] = 0.0f; // 0 means highest possible quality
+  
+  cb["gAoQuality"] = 1.0f - mAoTracePrecision; // 0 means highest possible quality
+  cb["gAoDistance"] = mAoDistance;
   cb["gHizMipOffset"] = 1; // For Half-Res HiZ use 1
   cb["gRotationOffset"] = 0.0f;
-  cb["gAoDistance"] = 0.13f;
 
   //auto pcb = mpHorizonsSearchPass["PerFrameCB"];
   pCamera->setShaderData(cb["gCamera"]);
@@ -236,7 +245,19 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   mpHorizonsSearchPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 
-void HBAO::setSampleRadius(float radius) {
-    mData.radius = radius;
-    mDirty = true;
+void HBAO::setFrameSampleCount(uint32_t samples) {
+  mFrameSampleCount = samples;
+  mDirty = true; 
+}
+
+void HBAO::setAoDistance(float distance) {
+  if (mAoDistance == distance) return;
+  mAoDistance = distance; 
+  mDirty = true; 
+}
+
+void HBAO::setAoTracePrecision(float precision) {
+  if (mAoTracePrecision == precision) return;
+  mAoTracePrecision = precision; 
+  mDirty = true; 
 }

@@ -38,6 +38,11 @@ EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, const std::str
     return SharedPtr(new EnvMap(pDevice, filename));
 }
 
+EnvMap::SharedPtr EnvMap::create(std::shared_ptr<Device> pDevice, Texture::SharedPtr pTexture) {
+    if(!pTexture) return nullptr;
+    return SharedPtr(new EnvMap(pDevice, pTexture));
+}
+
 void EnvMap::setRotation(float3 degreesXYZ) {
     if (degreesXYZ != mRotation) {
         mRotation = degreesXYZ;
@@ -84,7 +89,20 @@ EnvMap::Changes EnvMap::beginFrame() {
     return getChanges();
 }
 
-EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):mpDevice(pDevice) {
+EnvMap::EnvMap(std::shared_ptr<Device> pDevice):mpDevice(pDevice) {
+    // Create sampler.
+    // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    mpEnvSampler = Sampler::create(pDevice, samplerDesc);
+}
+
+EnvMap::EnvMap(std::shared_ptr<Device> pDevice, Texture::SharedPtr pTexture):EnvMap(pDevice) {
+    mpEnvMap = pTexture;
+}
+
+EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):EnvMap(pDevice) {
     // Load environment map from file. Set it to generate mips and use linear color.
     //mpEnvMap = Texture::createFromFile(pDevice, filename, true, false);
     mpEnvMap = nullptr;
@@ -95,13 +113,6 @@ EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):mpD
 
     //mpEnvMap = Texture::createFromFile(pDevice, filename, true, false);
     if (!mpEnvMap) throw std::runtime_error("Failed to load environment map texture");
-
-    // Create sampler.
-    // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    mpEnvSampler = Sampler::create(pDevice, samplerDesc);
 }
 
 #ifdef SCRIPTING

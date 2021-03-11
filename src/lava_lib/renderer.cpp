@@ -66,7 +66,7 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 }
 
 
-Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false) {
+Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
     mpDisplay = nullptr;
 }
@@ -89,18 +89,19 @@ bool Renderer::init() {
     mpSceneBuilder->addCamera(mpCamera);
     mpSceneBuilder->setCamera("main");
 
-	//mpClock = new Falcor::Clock(mpDevice);
-    //mpClock->setTimeScale(config.timeScale);
-
-    //auto pBackBufferFBO = mpDevice->getOffscreenFbo();
-    //if (!pBackBufferFBO) {
-    //    logError("Unable to get swap chain FBO!!!");
-    //}
-
-    //mpFrameRate = new Falcor::FrameRate(mpDevice);
 
     mInited = true;
     return true;
+}
+
+void Renderer::initGlobalData(const RendererIface::GlobalData& global_data) {
+    if(mGlobalDataInited) {
+        LLOG_WRN << "Renderer global data already initialized !!!";
+        return;
+    }
+
+    mGlobalData = global_data;
+    mGlobalDataInited = true;
 }
 
 Renderer::~Renderer() {
@@ -110,11 +111,8 @@ Renderer::~Renderer() {
         return;
 
     mpDevice->resourceManager()->printStats();
-
-    //delete mpClock;
-    //delete mpFrameRate;
-
     mpDevice->flushAndSync();
+
     mGraphs.clear();
 
     mpSceneBuilder = nullptr;
@@ -185,7 +183,7 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str) 
     return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
 
-void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
+void Renderer::createRenderGraph() {
     assert(mpDevice);
 
     auto pRenderContext = mpDevice->getRenderContext();
@@ -195,6 +193,8 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     
     auto const& confgStore = Falcor::ConfigStore::instance();
     bool vtoff = confgStore.get<bool>("vtoff", true);
+
+    Falcor::uint2 imageSize = {mGlobalData.imageWidth, mGlobalData.imageHeight};
 
     // Pick rendering resource format's according to required Display::TypeFormat
     Falcor::ResourceFormat shadingResourceFormat;
@@ -221,7 +221,8 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     if(pLightProbe) {
         auto pTexture = pLightProbe->getOrigTexture();
         if (pTexture) {
-            auto pEnvMap = Falcor::EnvMap::create(mpDevice, pTexture->getSourceFilename());
+            auto pEnvMap = Falcor::EnvMap::create(mpDevice, pTexture);
+            pEnvMap->setTint(pLightProbe->getIntensity());
             pScene->setEnvMap(pEnvMap);
         }
         //pScene->loadEnvMap("/home/max/Desktop/parking_lot.hdr");
@@ -242,7 +243,7 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
 
     // Depth pre pass
     auto depthChannelOutputFormat = ResourceFormat::D32Float;
-    mpDepthPrePassGraph = RenderGraph::create(pRenderContext->device(), {frame_data.imageWidth, frame_data.imageHeight}, depthChannelOutputFormat, "Depth Pre-Pass");
+    mpDepthPrePassGraph = RenderGraph::create(pRenderContext->device(), imageSize, depthChannelOutputFormat, "Depth Pre-Pass");
     mpDepthPrePass = DepthPass::create(pRenderContext);
     mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPrePass->setScene(pRenderContext, pScene);
@@ -253,7 +254,7 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
     // Virtual textures stuff
     if(!vtoff) {
         auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
-        mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
+        mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
         mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext);
         mpTexturesResolvePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
@@ -261,8 +262,6 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
 
         mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
         mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.output");
-
-        //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     } else {
         mpTexturesResolvePassGraph = nullptr;
         mpTexturesResolvePass = nullptr;
@@ -270,16 +269,25 @@ void Renderer::createRenderGraph(const RendererIface::FrameData& frame_data) {
 
     // Main render graph
     auto mainChannelOutputFormat = ResourceFormat::RGBA32Float;
-    mpRenderGraph = RenderGraph::create(mpDevice, {frame_data.imageWidth, frame_data.imageHeight}, mainChannelOutputFormat, "MainImageRenderGraph");
+    mpRenderGraph = RenderGraph::create(mpDevice, imageSize, mainChannelOutputFormat, "MainImageRenderGraph");
     //mpRenderGraph->compile(mpRenderContext);
 
     // HBAO pass
-    mpHBAOpass = HBAO::create(pRenderContext);
-    mpHBAOpass->setScene(pRenderContext, pScene);
-    auto hbao_pass = mpRenderGraph->addPass(mpHBAOpass, "HBAOPass");
+    if(mGlobalData.use_ssao) {
+        Falcor::Dictionary hbaoPassDictionary;
+        hbaoPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
+
+        mpHBAOpass = HBAO::create(pRenderContext, hbaoPassDictionary);
+        mpHBAOpass->setScene(pRenderContext, pScene);
+        auto hbao_pass = mpRenderGraph->addPass(mpHBAOpass, "HBAOPass");
+    }
 
     // Forward lighting
-    mpLightingPass = ForwardLightingPass::create(pRenderContext);
+    Falcor::Dictionary lightingPassDictionary;
+
+    lightingPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
+    lightingPassDictionary["USE_SSAO"] =  mGlobalData.use_ssao;
+    mpLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
     mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
     mpLightingPass->setScene(pRenderContext, pScene);
     mpLightingPass->setColorFormat(mainChannelOutputFormat);
@@ -425,14 +433,14 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(RendererIface::SamplePa
 
 void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
     // finalize camera
-    mInvFrameDim = 1.f / float2({frame_data.imageWidth, frame_data.imageHeight});
+    mInvFrameDim = 1.f / float2({mGlobalData.imageWidth, mGlobalData.imageHeight});
 
-    mpSampleGenerator = createSamplePattern(frame_data.samplePattern, frame_data.imageSamples);
+    mpSampleGenerator = createSamplePattern(mGlobalData.samplePattern, mGlobalData.imageSamples);
     if (mpSampleGenerator) {
         mpCamera->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
     }
 
-    mpCamera->setAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
+    mpCamera->setAspectRatio(static_cast<float>(mGlobalData.imageWidth) / static_cast<float>(mGlobalData.imageHeight));
     mpCamera->setNearPlane(frame_data.cameraNearPlane);
     mpCamera->setFarPlane(frame_data.cameraFarPlane);
     mpCamera->setViewMatrix(frame_data.cameraTransform);
@@ -443,9 +451,8 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
     // finalize scene
     auto pScene = mpSceneBuilder->getScene();
 
-
     if (pScene) {
-        pScene->setCameraAspectRatio(static_cast<float>(frame_data.imageWidth) / static_cast<float>(frame_data.imageHeight));
+        pScene->setCameraAspectRatio(static_cast<float>(mGlobalData.imageWidth) / static_cast<float>(mGlobalData.imageHeight));
 
         if (mpSampler == nullptr) {
             // create common texture sampler
@@ -457,11 +464,6 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
         }
         pScene->bindSamplerToMaterials(mpSampler);
     }
-
-    //const auto& dims = mpRenderGraph->dims();
-    //if (dims.x != frame_data.imageWidth || dims.y != frame_data.imageHeight) {
-    //    mpRenderGraph->resize(frame_data.imageWidth, frame_data.imageHeight, Falcor::ResourceFormat::RGBA32Float);
-    //}
 }
 
 void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
@@ -470,15 +472,21 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 		return;
 	}
 
+    if (!mGlobalDataInited) {
+        LLOG_ERR << "Renderer global data not initialized !!!";
+        return;
+    }
+
     if(!mpDisplay) {
         LLOG_ERR << "Renderer display not initialized !!!";
         return;
     }
 
-    if( frame_data.imageSamples == 0) {
-        LLOG_WRN << "Not enough image samples specified in frame data !";
+    if( mGlobalData.imageSamples == 0) {
+        LLOG_WRN << "Not enough image samples specified !!!";
     }
 
+    // close previous frame display (if still opened)
     if(mpDisplay->opened()) {
         mpDisplay->close();
     }
@@ -493,24 +501,20 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     //channels.push_back({"albedo.g", Display::TypeFormat::FLOAT16});
     //channels.push_back({"albedo.b", Display::TypeFormat::FLOAT16});
     
-    if(!mpDisplay->open(frame_data.imageFileName, frame_data.imageWidth, frame_data.imageHeight, channels)) {
+    if(!mpDisplay->open(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels)) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
 
-    //this->resizeSwapChain(frame_data.imageWidth, frame_data.imageHeight);
-
-    if (!mpRenderGraph) 
-        createRenderGraph(frame_data);
-
     finalizeScene(frame_data);
 
-    auto pRenderContext = mpDevice->getRenderContext();
+    if (!mpRenderGraph) 
+        createRenderGraph();
+
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    //if (mGraphs.size()) {
     if (mpRenderGraph) {    
-        LLOG_DBG << "process render graphs";
+        LLOG_DBG << "process render graph(s)";
         
         auto pScene = mpSceneBuilder->getScene();
         if (!pScene) {
@@ -518,11 +522,23 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             return;
         }
 
+        auto pRenderContext = mpDevice->getRenderContext();
+
+        // TODO: set passes parameters in a more unified way
+        
+        if(mpHBAOpass) {
+            mpHBAOpass->setAoDistance(frame_data.ssao_distance);
+            mpHBAOpass->setAoTracePrecision(frame_data.ssao_precision);
+            if(mpLightingPass) {
+                mpLightingPass->setAoFactor(frame_data.ssao_factor);
+            }
+        }
+
         // render image samples
         double shutter_length = 0.5;
         double fps = 25.0;
         double time = frame_data.time;
-        double sample_time_duration = (1.0 * shutter_length) / frame_data.imageSamples;
+        double sample_time_duration = (1.0 * shutter_length) / mGlobalData.imageSamples;
         
         //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
         pScene->update(pRenderContext, time);
@@ -542,9 +558,9 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         mpRenderGraph->setInput("LightingPass.depth", pDepth);
         mpRenderGraph->execute(pRenderContext);
 
-        if ( frame_data.imageSamples > 1 ) {
-            for (uint i = 1; i < frame_data.imageSamples; i++) {
-                LLOG_DBG << "Rendering sample no " << i << " of " << frame_data.imageSamples;
+        if ( mGlobalData.imageSamples > 1 ) {
+            for (uint i = 1; i < mGlobalData.imageSamples; i++) {
+                LLOG_DBG << "Rendering sample no " << i << " of " << mGlobalData.imageSamples;
                 
                 // Update scene and camera.
                 time += sample_time_duration;
@@ -581,9 +597,9 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
             
-            assert(textureData.size() == frame_data.imageWidth * frame_data.imageHeight * channels * 4); // testing only on 32bit RGBA for now
+            assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 4); // testing only on 32bit RGBA for now
 
-            mpDisplay->sendImage(frame_data.imageWidth, frame_data.imageHeight, textureData.data());
+            mpDisplay->sendImage(mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
 
             }
 

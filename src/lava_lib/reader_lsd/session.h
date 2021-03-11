@@ -51,8 +51,10 @@ class Session {
  private:
  	Session(std::unique_ptr<RendererIface> pRendererIface);
  	
+    bool prepareGlobalData();
+    bool prepareFrameData();
  	bool prepareDisplayData();
- 	bool prepareFrameData();
+ 	
 
  	bool pushGeometryInstance(const scope::Object::SharedPtr pObj);
 
@@ -61,6 +63,7 @@ class Session {
  	bool 							mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
  	std::unique_ptr<RendererIface> 	mpRendererIface;
  	
+    RendererIface::GlobalData       mGlobalData;
  	RendererIface::DisplayData		mDisplayData;
  	RendererIface::FrameData		mFrameData;
 

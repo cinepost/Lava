@@ -171,16 +171,32 @@ bool Session::prepareDisplayData() {
 	return true;
 }
 
-// initialize frame dependet render data
-bool Session::prepareFrameData() {
-	LLOG_DBG << "prepareFrameData";
-	if(!mpRendererIface->initRenderer()) return false;
+// initialize frame independent render data
+bool Session::prepareGlobalData() {
+	LLOG_DBG << "prepareGlobalData";
 
 	// set up frame resolution (as they don't have to be the same size)
 	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
-	mFrameData.imageWidth = resolution[0];
-	mFrameData.imageHeight = resolution[1];
+	mGlobalData.imageWidth = resolution[0];
+	mGlobalData.imageHeight = resolution[1];
 
+
+	// set up image sampling
+	mGlobalData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+
+	std::string samplePatternName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samplingpattern", std::string("stratified"));
+	mGlobalData.samplePattern = samplePattern(samplePatternName);
+
+	// effects
+	mGlobalData.use_ssao = mpGlobal->getPropertyValue(ast::Style::RENDERER, "use_ssao", false);
+
+	return true;
+}
+
+// initialize frame dependent render data
+bool Session::prepareFrameData() {
+	LLOG_DBG << "prepareFrameData";
+	
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 	
@@ -194,19 +210,19 @@ bool Session::prepareFrameData() {
 		const auto& pSegment = segments[0];
 		mFrameData.cameraFocalLength = 50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
 		
-		double height_k = static_cast<double>(mFrameData.imageHeight) / static_cast<double>(mFrameData.imageWidth);
+		double height_k = static_cast<double>(mGlobalData.imageHeight) / static_cast<double>(mGlobalData.imageWidth);
 		mFrameData.cameraFrameHeight = height_k * 50.0;
 	}
 
-	// set up image sampling
-	mFrameData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
-
-	std::string samplePatternName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samplingpattern", std::string("stratified"));
-	mFrameData.samplePattern = samplePattern(samplePatternName);
+	// effects ssao
+	mFrameData.ssao_distance = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_distance", (float)0.5);
+    mFrameData.ssao_factor = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_factor", (float) 1.0);
+    mFrameData.ssao_precision = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_precision", (float)1.0);
+    mFrameData.ssao_bent_normals = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_bent_normals", false);
+    mFrameData.ssao_bounce_approx = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_bent_normals", false);
 
 	return true;
 }
-
 
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
@@ -214,6 +230,14 @@ bool Session::cmdRaytrace() {
 	
 	// push frame independent data to the rendering interface
 	if(mFirstRun) {
+		if(!mpRendererIface->initRenderer()) return false;
+
+		if(!prepareGlobalData()) {
+			LLOG_ERR << "Unable to prepare global data !!!";
+			return false;
+		}
+
+		mpRendererIface->initRendererGlobalData(mGlobalData);
 
 		// prepare display driver parameters
 		if(!prepareDisplayData()) {
@@ -318,14 +342,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			// solid color lightprobe
 			pLightProbe = LightProbe::create(pDevice->getRenderContext());
     	} else {
+    		bool loadAsSrgb = false;
     		uint32_t diffSampleCount = 8192; // preintegration
     		uint32_t specSampleCount = 8192; // preintegration
-    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, true, ResourceFormat::RGBA16Float, diffSampleCount, specSampleCount);
+    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, loadAsSrgb, ResourceFormat::RGBA16Float, diffSampleCount, specSampleCount);
     	}
     	assert(pLightProbe);
 
     	pLightProbe->setPosW(light_pos);
-
     	pLightProbe->setIntensity(light_color);
     	pSceneBuilder->setLightProbe(pLightProbe);
     	return;

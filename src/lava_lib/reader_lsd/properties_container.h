@@ -131,7 +131,16 @@ static inline bool checkValueTypeStrict(Property::Type type, const Property::Val
  * loose type checking. true returned when converion is possible
  */
 static inline bool checkValueTypeLoose(Property::Type type, const Property::Value& value) {
-    if (type == ast::Type::BOOL && value.type() != typeid(bool)) return false;
+    switch (type) {
+        case ast::Type::BOOL:
+            if(value.type() == typeid(bool)) { return true; }
+            else if (value.type() == typeid(int)) { return true; }
+            else if (value.type() == typeid(double)) { return true; }
+            return false;
+        default:
+            break;
+    };
+
     if ((type == ast::Type::INT || type == ast::Type::FLOAT) && (value.type() == typeid(int) || value.type() == typeid(double))) return true;
     if ((type == ast::Type::INT2 || type == ast::Type::VECTOR2) && (value.type() == typeid(Int2) || value.type() == typeid(Vector2))) return true;
     if ((type == ast::Type::INT3 || type == ast::Type::VECTOR3) && (value.type() == typeid(Int3) || value.type() == typeid(Vector3))) return true;

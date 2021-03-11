@@ -34,7 +34,11 @@ std::shared_ptr<PropertiesContainer> Property::createSubContainer() {
 
 template<>
 const bool Property::get() const {
-    return boost::get<bool>(mValue);
+    try {
+        return boost::get<bool>(mValue);
+    } catch (...) {
+        return (bool) boost::get<int>(mValue);
+    }
 }
 
 template<>
@@ -117,6 +121,12 @@ bool Property::set(const Value& value) {
     if (mType == Type::BOOL && type == Type::INT) {
         LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (bool) (boost::get<int>(value) == 0 ? false : true);
+        return true;
+    }
+
+    if (mType == Type::BOOL && type == Type::FLOAT) {
+        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        mValue = (bool) (boost::get<double>(value) == 0 ? false : true);
         return true;
     }
 

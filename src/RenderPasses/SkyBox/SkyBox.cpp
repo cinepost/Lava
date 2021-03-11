@@ -29,6 +29,7 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/euler_angles.hpp"
 
+#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 // Don't remove this. it's required for hot-reload to function properly
@@ -99,8 +100,10 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
 SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary& dict) {
     SharedPtr pSkyBox = SharedPtr(new SkyBox(pRenderContext->device()));
-    for (const auto& [key, value] : dict)
-    {
+    
+    auto pDevice = pRenderContext->device();
+
+    for (const auto& [key, value] : dict) {
         if (key == kTexName) pSkyBox->mTexName = value.operator std::string();
         else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
         else if (key == kFilter) pSkyBox->setFilter(value);
@@ -110,7 +113,9 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
 
     std::shared_ptr<Texture> pTexture;
     if (pSkyBox->mTexName.size() != 0) {
-        pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
+        auto pResourceManager = pDevice->resourceManager();
+        //pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
+        pTexture = pResourceManager->createTextureFromFile(pSkyBox->mTexName, true, pSkyBox->mLoadSrgb);
         if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
         pSkyBox->setTexture(pTexture);
     }
@@ -159,7 +164,11 @@ void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pSc
 
     if (mpScene) {
         mpCubeScene->setCamera(mpScene->getCamera());
-        if (mpScene->getEnvMap()) setTexture(mpScene->getEnvMap()->getEnvMap());
+        if (mpScene->getEnvMap()) {
+            auto pEnvMap = mpScene->getEnvMap();
+            setTexture(pEnvMap->getEnvMap());
+            setIntensity(pEnvMap->getTint());
+        }
     }
 }
 

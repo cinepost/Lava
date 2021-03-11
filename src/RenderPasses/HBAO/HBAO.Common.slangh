@@ -98,16 +98,16 @@ float4 getViewPositionFromDepth(float2 uv, float depth) {
   return posV;
 }
 
-void get_max_horizon_grouped(float4 co1, float4 co2, float3 x, float lod, inout float h) {
+void _getMaxHorizonGrouped(float4 co1, float4 co2, float3 x, float lod, inout float h) {
   int mip = int(lod) + gHizMipOffset;
   
   //co1 *= mipRatio[mip].xyxy;
   //co2 *= mipRatio[mip].xyxy;
 
-  float depth1 = sampleMaxZTexture(co1.xy, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co1.xy, floor(lod)).r;
-  float depth2 = sampleMaxZTexture(co1.zw, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co1.zw, floor(lod)).r;
-  float depth3 = sampleMaxZTexture(co2.xy, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co2.xy, floor(lod)).r;
-  float depth4 = sampleMaxZTexture(co2.zw, floor(lod)); //gMaxZBuffer.SampleLevel(gDepthSampler, co2.zw, floor(lod)).r;
+  float depth1 = sampleMaxZTexture(co1.xy, floor(lod));
+  float depth2 = sampleMaxZTexture(co1.zw, floor(lod));
+  float depth3 = sampleMaxZTexture(co2.xy, floor(lod));
+  float depth4 = sampleMaxZTexture(co2.zw, floor(lod));
 
   float4 len, s_h;
 
@@ -171,7 +171,7 @@ float2 search_horizon_sweep(float2 t_phi, float3 posV, float2 uvs, float jitter,
     float4 cos1 = uvs.xyxy + t_phi.xyxy * t.xxyy;
     float4 cos2 = uvs.xyxy + t_phi.xyxy * t.zzww;
     float lod = min(MAX_LOD, max(i - jitter * 4.0, 0.0) * gAoQuality);
-    get_max_horizon_grouped(cos1, cos2, posV, lod, h.y);
+    _getMaxHorizonGrouped(cos1, cos2, posV, lod, h.y);
   }
 
   for (float i = 0.0, ofs = 4.0, time = 1.0; i < MAX_SEARCH_ITER && time < times.y; i++, time += ofs, ofs = min(exp2(MAX_LOD) * 4.0, ofs + ofs * gAoQuality)) {
@@ -179,10 +179,56 @@ float2 search_horizon_sweep(float2 t_phi, float3 posV, float2 uvs, float jitter,
     float4 cos1 = uvs.xyxy + t_phi.xyxy * t.xxyy;
     float4 cos2 = uvs.xyxy + t_phi.xyxy * t.zzww;
     float lod = min(MAX_LOD, max(i - jitter * 4.0, 0.0) * gAoQuality);
-    get_max_horizon_grouped(cos1, cos2, posV, lod, h.x);
+    _getMaxHorizonGrouped(cos1, cos2, posV, lod, h.x);
   }
 
   return h;
+}
+
+/* ----------- Cone Aperture Approximation --------- */
+
+/* Return a fitted cone angle given the input roughness */
+float cone_cosine(float r)
+{
+  /* Using phong gloss
+   * roughness = sqrt(2/(gloss+2)) */
+  float gloss = -2 + 2 / (r * r);
+  /* Drobot 2014 in GPUPro5 */
+  // return cos(2.0 * sqrt(2.0 / (gloss + 2)));
+  /* Uludag 2014 in GPUPro5 */
+  // return pow(0.244, 1 / (gloss + 1));
+  /* Jimenez 2016 in Practical Realtime Strategies for Accurate Indirect Occlusion*/
+  return exp2(-3.32193 * r * r);
+}
+
+/**
+ * Approximate the area of intersection of two spherical caps
+ * radius1 : First cap’s radius (arc length in radians)
+ * radius2 : Second caps’ radius (in radians)
+ * dist : Distance between caps (radians between centers of caps)
+ * Note: Result is divided by pi to save one multiply.
+ **/
+float spherical_cap_intersection(float radius1, float radius2, float dist) {
+  /* From "Ambient Aperture Lighting" by Chris Oat
+   * Slide 15. */
+  float max_radius = max(radius1, radius2);
+  float min_radius = min(radius1, radius2);
+  float sum_radius = radius1 + radius2;
+  float area;
+  if (dist <= max_radius - min_radius) {
+    /* One cap in completely inside the other */
+    area = 1.0 - cos(min_radius);
+  }
+  else if (dist >= sum_radius) {
+    /* No intersection exists */
+    area = 0;
+  }
+  else {
+    float diff = max_radius - min_radius;
+    area = smoothstep(0.0, 1.0, 1.0 - saturate((dist - diff) / (sum_radius - diff)));
+    area *= 1.0 - cos(min_radius);
+  }
+  return area;
 }
 
 float hbaoSpecularOcclusion(float NV, float AO, float roughness) {

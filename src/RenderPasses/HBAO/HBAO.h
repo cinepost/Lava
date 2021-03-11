@@ -57,17 +57,26 @@ class HBAO : public RenderPass, public inherit_shared_from_this<RenderPass, HBAO
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override { mpScene = pScene; }
 
-    void setSampleRadius(float radius);
-    float getSampleRadius() { return mData.radius; }
+    void setFrameSampleCount(uint32_t samples);
+
+    void setAoDistance(float distance);
+    float getAoDistance() const { return mAoDistance; }
+
+    void setAoTracePrecision(float precision);
+    float getAoTracePrecision() const { return mAoTracePrecision; }
 
  private:
     HBAO(Device::SharedPtr pDevice);
-    void setKernel();
+
+    float mAoDistance;
+    float mAoTracePrecision; // [0, 1] range 
 
     ComputePass::SharedPtr mpDownCopyDepthPass;
     ComputePass::SharedPtr mpDownSampleDepthPass;
     ComputePass::SharedPtr mpHorizonsSearchPass;
+
     uint2                  mFrameDim = { 0, 0 };
+    uint32_t               mFrameSampleCount = 16;
 
     HBAOData mData;
     bool mDirty = false;

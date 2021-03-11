@@ -49,6 +49,10 @@ class ForwardLightingPass : public RenderPass {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
 
+    /** Set samples per frame count
+    */
+    void setFrameSampleCount(uint32_t samples);
+
     /** Set the color target format. This is always enabled
     */
     ForwardLightingPass& setColorFormat(ResourceFormat format);
@@ -61,9 +65,9 @@ class ForwardLightingPass : public RenderPass {
     */
     ForwardLightingPass& setMotionVecFormat(ResourceFormat format);
 
-    /** Set the required output sample-count. 0 will use the swapchain sample count
+    /** Set the required output supersample-count. 0 will use the swapchain sample count
     */
-    ForwardLightingPass& setSampleCount(uint32_t samples);
+    ForwardLightingPass& setSuperSampleCount(uint32_t samples);
 
     /** Enable super-sampling in the pixel-shader
     */
@@ -76,6 +80,10 @@ class ForwardLightingPass : public RenderPass {
     /** Set a sampler-state to be used during rendering. The default is tri-linear
     */
     ForwardLightingPass& setSampler(const Sampler::SharedPtr& pSampler);
+
+    /** Set SSAO factor
+    */
+    void setAoFactor(float factor);
 
     /** Get a description of the pass
     */
@@ -95,8 +103,12 @@ class ForwardLightingPass : public RenderPass {
     Scene::SharedPtr mpScene;
     GraphicsVars::SharedPtr mpVars;
     RasterizerState::SharedPtr mpRsState;
+    GraphicsProgram::SharedPtr mpProgram;
 
     uint2 mFrameDim = { 0, 0 };
+    uint32_t mFrameSampleCount = 16;
+    uint32_t mSuperSampleCount = 1;  // MSAA stuff
+    float mAoFactor = 0;
 
     Sampler::SharedPtr                  mpNoiseSampler;
     Texture::SharedPtr                  mpBlueNoiseTexture;
@@ -105,9 +117,12 @@ class ForwardLightingPass : public RenderPass {
     ResourceFormat mColorFormat = ResourceFormat::RGBA32Float; //Unknown;
     ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
     ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
-    uint32_t mSampleCount = 0;
+
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
+    bool mUseSSAO = false;
+
+    bool mDirty = false;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_

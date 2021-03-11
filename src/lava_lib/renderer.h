@@ -56,7 +56,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
  protected:
  	bool isInited() const { return mInited; }
- 	
+ 	void initGlobalData(const RendererIface::GlobalData& global_data);
+
     Display::SharedPtr display() { return mpDisplay; };
     bool loadDisplay(Display::DisplayType display_type);
     bool closeDisplay();
@@ -86,7 +87,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     */
     void finalizeScene(const RendererIface::FrameData& frame_data);
 
-    void createRenderGraph(const RendererIface::FrameData& frame_data);
+    void createRenderGraph();
 
  private:
 	Renderer(Device::SharedPtr pDevice);
@@ -97,6 +98,9 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	int mGpuId;
     
  	bool mIfaceAquired = false;
+    bool mGlobalDataInited = false;
+
+    RendererIface::GlobalData   mGlobalData;
 
  	Display::SharedPtr 			mpDisplay;
     std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;

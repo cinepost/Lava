@@ -52,18 +52,22 @@ namespace {
     const std::string kAOBuffer = "aoHorizons";
     const std::string kVisBuffer = "visibilityBuffer";
 
-    const std::string kSampleCount = "sampleCount";
+    const std::string kFrameSampleCount = "frameSampleCount";
+    const std::string kSuperSampleCount = "superSampleCount";
     const std::string kSuperSampling = "enableSuperSampling";
+    const std::string kUseSSAO = "USE_SSAO";
 }
 
 ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
-    pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
+    pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
 
     for (const auto& [key, value] : dict)
     {
-        if (key == kSampleCount) pThis->setSampleCount(value);
+        if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
+        else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kSuperSampling) pThis->setSuperSampling(value);
+        else if (key == kUseSSAO) pThis->mUseSSAO = value;
         else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
 
@@ -72,19 +76,20 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
 
 Dictionary ForwardLightingPass::getScriptingDictionary() {
     Dictionary d;
-    d[kSampleCount] = mSampleCount;
+    d[kFrameSampleCount] = mFrameSampleCount;
+    d[kSuperSampleCount] = mSuperSampleCount;
     d[kSuperSampling] = mEnableSuperSampling;
     return d;
 }
 
 ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
-    pProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
-    pProgram->addDefine("ENABLE_DEFERED_AO", "");
-    pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
+    GraphicsProgram::SharedPtr mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
+    mpProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
+    mpProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
+    mpProgram->addDefine("ENABLE_DEFERED_AO", "1");
 
     mpState = GraphicsState::create(pDevice);
-    mpState->setProgram(pProgram);
+    mpState->setProgram(mpProgram);
 
     mpFbo = Fbo::create(pDevice);
 
@@ -103,17 +108,17 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
 
     reflector.addInput(kAOBuffer, "Ambient occlusion horizons buffer").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
-    reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSampleCount);
+    reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSuperSampleCount);
 
     auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
-    depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSampleCount);
+    depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSuperSampleCount);
 
     if (mNormalMapFormat != ResourceFormat::Unknown) {
-        reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSampleCount);
+        reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSuperSampleCount);
     }
 
     if (mMotionVecFormat != ResourceFormat::Unknown) {
-        reflector.addOutput(kMotionVecs, "Screen-space motion vectors").format(mMotionVecFormat).texture2D(0, 0, mSampleCount);
+        reflector.addOutput(kMotionVecs, "Screen-space motion vectors").format(mMotionVecFormat).texture2D(0, 0, mSuperSampleCount);
     }
 
     return reflector;
@@ -123,7 +128,11 @@ void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileDa
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();
 
-    mpNoiseOffsetGenerator = StratifiedSamplePattern::create(16);
+    if(mUseSSAO) {
+        mpState->getProgram()->addDefine("USE_SSAO", "1");
+    }
+
+    mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
     mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
 }
 
@@ -183,8 +192,9 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
         mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
         mpVars["PerFrameCB"]["gNoiseOffset"] = noiseOffset;
         mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
-        mpVars["PerFrameCB"]["gUseAO"] = 1;
+        mpVars["PerFrameCB"]["gUseAO"] = (mAoFactor > 0) ? true : false;
         mpVars["PerFrameCB"]["gUseBentNormals"] = 1;
+        mpVars["PerFrameCB"]["gAoFactor"] = mAoFactor;
 
         mpVars["gNoiseSampler"] = mpNoiseSampler;
         mpVars["gNoiseTex"] = mpBlueNoiseTexture;
@@ -223,8 +233,15 @@ ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat form
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples) {
-    mSampleCount = samples;
+void ForwardLightingPass::setFrameSampleCount(uint32_t samples) {
+    if (mFrameSampleCount == samples) return;
+
+    mFrameSampleCount = samples;
+    mDirty = true;
+}
+
+ForwardLightingPass& ForwardLightingPass::setSuperSampleCount(uint32_t samples) {
+    mSuperSampleCount = samples;
     mPassChangedCB();
     return *this;
 }
@@ -257,4 +274,10 @@ ForwardLightingPass& ForwardLightingPass::setRasterizerState(const RasterizerSta
     mpRsState = pRsState;
     mpState->setRasterizerState(mpRsState);
     return *this;
+}
+
+void ForwardLightingPass::setAoFactor(float factor) {
+  if (mAoFactor == factor) return;
+  mAoFactor = factor; 
+  mDirty = true; 
 }

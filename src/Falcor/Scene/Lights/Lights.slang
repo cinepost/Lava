@@ -499,5 +499,5 @@ float3 evalLightProbeSampleSpecularColor(LightProbeData probe, ShadingData sd, i
         }
     }
 
-    return indirectSpecular;
+    return indirectSpecular * probe.intensity;
 }

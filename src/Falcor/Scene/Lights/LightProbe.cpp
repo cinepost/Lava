@@ -52,7 +52,7 @@ namespace Falcor {
 
             // Shared
             auto samplerDesc = Sampler::Desc();
-            samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
+            samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
             samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
             mpSampler = Sampler::create(pDevice, samplerDesc);
            

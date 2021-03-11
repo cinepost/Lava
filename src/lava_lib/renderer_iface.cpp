@@ -63,6 +63,16 @@ bool RendererIface::initRenderer() {
 	return mpRenderer->init();
 }
 
+void RendererIface::initRendererGlobalData(const GlobalData& global_data) {
+	LLOG_DBG << "initRendererGlobalData";
+	if(!mpRenderer->isInited()) {
+		LLOG_ERR << "Unable to inialize GlobalData. Renderer iself should be initialized !!!";
+		return;
+	}
+
+	mpRenderer->initGlobalData(global_data);
+}
+
 bool RendererIface::setDisplay(const DisplayData& display_data) {
 	if(!mpRenderer->loadDisplay(display_data.displayType)) {
 		return false;
