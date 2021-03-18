@@ -123,7 +123,7 @@ Renderer::~Renderer() {
     //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
     if(mpDisplay)
-        mpDisplay->close();
+        mpDisplay=nullptr;
 
     mpTargetFBO.reset();
 
@@ -175,7 +175,7 @@ bool Renderer::loadDisplay(Display::DisplayType display_type) {
 
 bool Renderer::closeDisplay() {
     if (!mpDisplay) return false;
-    return mpDisplay->close();
+    return mpDisplay->closeAll();
 }
 
 
@@ -268,7 +268,7 @@ void Renderer::createRenderGraph() {
     }
 
     // Main render graph
-    auto mainChannelOutputFormat = ResourceFormat::RGBA32Float;
+    auto mainChannelOutputFormat = ResourceFormat::RGBA16Float;
     mpRenderGraph = RenderGraph::create(mpDevice, imageSize, mainChannelOutputFormat, "MainImageRenderGraph");
     //mpRenderGraph->compile(mpRenderContext);
 
@@ -321,6 +321,7 @@ void Renderer::createRenderGraph() {
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
+    //mpRenderGraph->markOutput("LightingPass.color");
 
 }
 
@@ -486,24 +487,35 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_WRN << "Not enough image samples specified !!!";
     }
 
-    // close previous frame display (if still opened)
-    if(mpDisplay->opened()) {
-        mpDisplay->close();
-    }
-
-    std::vector<Display::Channel> channels;
-    channels.push_back({"r", Display::TypeFormat::FLOAT32});
-    channels.push_back({"g", Display::TypeFormat::FLOAT32});
-    channels.push_back({"b", Display::TypeFormat::FLOAT32});
-    channels.push_back({"a", Display::TypeFormat::FLOAT32});
-    //channels.push_back({"z", Display::TypeFormat::FLOAT32});
-    //channels.push_back({"albedo.r", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.g", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.b", Display::TypeFormat::FLOAT16});
+    // close previous frame display images (if still opened)
+    mpDisplay->closeAll();
     
-    if(!mpDisplay->open(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels)) {
+    std::vector<Display::Channel> channels;
+    channels.push_back({"r", Display::TypeFormat::UNSIGNED16});
+    channels.push_back({"g", Display::TypeFormat::UNSIGNED16});
+    channels.push_back({"b", Display::TypeFormat::UNSIGNED16});
+    channels.push_back({"a", Display::TypeFormat::UNSIGNED16});
+    
+    //channels.push_back({"z", Display::TypeFormat::FLOAT32});
+    
+    //channels.push_back({"albedo.000.r", Display::TypeFormat::FLOAT16});
+    //channels.push_back({"albedo.000.g", Display::TypeFormat::FLOAT16});
+    //channels.push_back({"albedo.000.b", Display::TypeFormat::FLOAT16});
+    
+    uint image1;
+
+    if(!mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels, image1)) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
+
+    // test
+    uint image2;
+    std::vector<Display::Channel> channels2;
+    channels2.push_back({"albedo.000.r", Display::TypeFormat::FLOAT16});
+    channels2.push_back({"albedo.000.g", Display::TypeFormat::FLOAT16});
+    channels2.push_back({"albedo.000.b", Display::TypeFormat::FLOAT16});
+    mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels2, image2);
+    //
 
     finalizeScene(frame_data);
 
@@ -534,6 +546,8 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             }
         }
 
+        uint32_t frameNumber = 0; // for now
+
         // render image samples
         double shutter_length = 0.5;
         double fps = 25.0;
@@ -556,18 +570,18 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         }
         mpRenderGraph->setInput("SkyBoxPass.depth", pDepth);
         mpRenderGraph->setInput("LightingPass.depth", pDepth);
-        mpRenderGraph->execute(pRenderContext);
+        mpRenderGraph->execute(pRenderContext, frameNumber, 0);
 
         if ( mGlobalData.imageSamples > 1 ) {
-            for (uint i = 1; i < mGlobalData.imageSamples; i++) {
-                LLOG_DBG << "Rendering sample no " << i << " of " << mGlobalData.imageSamples;
+            for (uint sampleNumber = 1; sampleNumber < mGlobalData.imageSamples; sampleNumber++) {
+                LLOG_DBG << "Rendering sample no " << sampleNumber << " of " << mGlobalData.imageSamples;
                 
                 // Update scene and camera.
                 time += sample_time_duration;
                 pScene->update(pRenderContext, time);
                 
-                mpDepthPrePassGraph->execute(pRenderContext);
-                mpRenderGraph->execute(pRenderContext);
+                mpDepthPrePassGraph->execute(pRenderContext, frameNumber, sampleNumber);
+                mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
             }
         }
 
@@ -579,8 +593,9 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             LLOG_DBG << "Reading rendered image data...";
             auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
-            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
+            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
+
             assert(pOutTex);
 
             Falcor::Texture* pTex = pOutTex.get();
@@ -597,10 +612,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 
             LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
             
-            assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 4); // testing only on 32bit RGBA for now
+            assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
 
-            mpDisplay->sendImage(mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-
+            mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+            mpDisplay->closeImage(image1);
             }
 
         } else {

@@ -351,7 +351,7 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
     }
 }
 
-void RenderGraph::execute(RenderContext* pContext) {
+void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_t sampleNumber) {
     std::string log;
     if (!compile(pContext, log)) {
         logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::execute() call");
@@ -364,7 +364,7 @@ void RenderGraph::execute(RenderContext* pContext) {
     c.pRenderContext = pContext;
     c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
     c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
-    mpExe->execute(c);
+    mpExe->execute(c, frameNumber, sampleNumber);
 }
 
 void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {

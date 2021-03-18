@@ -30,14 +30,14 @@
 
 namespace Falcor {
 
-    void RenderGraphExe::execute(const Context& ctx) {
+    void RenderGraphExe::execute(const Context& ctx, uint32_t frameNumber, uint32_t sampleNumber) {
         auto pDevice = ctx.pRenderContext->device();
         PROFILE(pDevice, "RenderGraphExe::execute()");
 
         for (const auto& pass : mExecutionList) {
             PROFILE(pDevice, pass.name);
 
-            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat);
+            RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, sampleNumber);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }
     }

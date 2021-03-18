@@ -28,25 +28,36 @@ class Display {
     static SharedPtr create(Display::DisplayType display_type);
 
 
-    bool open(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels);
-    bool close();
+    bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle);
+    bool closeImage(uint imageHandle);
+    bool closeAll();
 
-    bool opened() { return mOpened; }
-    bool closed() { return mClosed; }
+    bool opened(uint imageHandle) { return mImages[imageHandle].opened; }
+    bool closed(uint imageHandle) { return mImages[imageHandle].closed; }
 
     DisplayType type() const { return mDisplayType; };
 
-    uint width() { return mImageWidth; };
-    uint height() { return mImageHeight; };
+    std::string& imageName(uint imageHandle) { return mImages[imageHandle].name; };
+    uint imageWidth(uint imageHandle) { return mImages[imageHandle].width; };
+    uint imageHeight(uint imageHandle) { return mImages[imageHandle].height; };
 
     bool setStringParameter(const std::string& name, const std::vector<std::string>& strings);
     bool setIntParameter(const std::string& name, const std::vector<int>& ints);
     bool setFloatParameter(const std::string& name, const std::vector<float>& floats);
 
-    bool sendBucket(int x, int y, int width, int height, const uint8_t *data);
-    bool sendImage(int width, int height, const uint8_t *data);
+    bool sendBucket(uint imageHandle, int x, int y, int width, int height, const uint8_t *data);
+    bool sendImage(uint imageHandle, int width, int height, const uint8_t *data);
 
  private:
+    struct ImageData {
+        PtDspyImageHandle handle;
+        std::string name = "";
+        uint width = 0;
+        uint height = 0;
+        bool opened = false;
+        bool closed = false;
+    };
+
     Display();
 
     //static void makeStringsParameter(const char* name, const char** strings, int count, UserParameter& parameter);
@@ -58,15 +69,17 @@ class Display {
     DisplayType mDisplayType = DisplayType::NONE;
 
     std::string mDriverName = "";
-    std::string mImageName = "";
-    uint mImageWidth, mImageHeight;
-    bool mOpened = false;
-    bool mClosed = false;
+
+    //std::string mImageName = "";
+    //uint mImageWidth, mImageHeight;
+    //bool mOpened = false;
+    //bool mClosed = false;
 
     std::vector<UserParameter>      mUserParameters;
 
-    PtDspyImageHandle   mImage;
-    PtFlagStuff         mFlagstuff;
+    //PtDspyImageHandle   mImage;
+    std::vector<ImageData>  mImages;
+    PtFlagStuff             mFlagstuff;
 
     PtDspyOpenFuncPtr               mOpenFunc = nullptr;
     PtDspyWriteFuncPtr              mWriteFunc = nullptr;

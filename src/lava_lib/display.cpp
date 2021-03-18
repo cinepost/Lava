@@ -48,6 +48,7 @@ static unsigned getTypeFormat(Display::TypeFormat tformat) {
         case Display::TypeFormat::SIGNED8:
             return PkDspySigned8;
         case Display::TypeFormat::FLOAT16:
+            //return PkDspyFloat32;
             return PkDspySigned16;
         case Display::TypeFormat::FLOAT32:
         default:
@@ -81,11 +82,14 @@ static std::string getDisplayDriverFileName(Display::DisplayType display_type) {
     return "";
 }
 
-Display::Display(): mOpened(false), mClosed(false) {
-    mImageWidth = mImageHeight = 0;
+Display::Display() {
+    mImages.clear();
 }
 
-Display::~Display() { }
+Display::~Display() {
+    closeAll();
+}
+
 
 Display::SharedPtr Display::create(Display::DisplayType display_type) {
 	char *error;
@@ -151,15 +155,11 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
     return SharedPtr(pDisplay);
 }
 
-bool Display::open(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels) {
+bool Display::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
     if( width == 0 || height == 0) {
         printf("[%s] Wrong image dimensions !!!\n", __FILE__);
         return false;
     }
-
-    mImageName = image_name;
-    mImageWidth = width;
-    mImageHeight = height;
 
     //format can be rgb, rgba or rgbaz for now...
     //int formatCount = 4;
@@ -178,7 +178,11 @@ bool Display::open(const std::string& image_name, uint width, uint height, const
         f_ptr++;
     }
 
-    PtDspyError err = mOpenFunc(&mImage, mDriverName.c_str(), mImageName.c_str(), mImageWidth, mImageHeight, mUserParameters.size(), mUserParameters.data(), channels.size(), outformat, &mFlagstuff);
+    PtDspyImageHandle pvImage;
+    PtDspyError err = mOpenFunc(&pvImage, mDriverName.c_str(), image_name.c_str(), width, height, mUserParameters.size(), mUserParameters.data(), 
+        channels.size(), outformat, &mFlagstuff);
+
+    PtDspySizeInfo img_info;
 
     // check for an error
     if(err != PkDspyErrorNone ) {
@@ -188,16 +192,13 @@ bool Display::open(const std::string& image_name, uint width, uint height, const
     } else {
         // check image info
         if (mQueryFunc != nullptr) {
-            PtDspySizeInfo img_info;
-
-            err = mQueryFunc(mImage, PkSizeQuery, sizeof(PtDspySizeInfo), &img_info);
+            err = mQueryFunc(pvImage, PkSizeQuery, sizeof(PtDspySizeInfo), &img_info);
             if(err) {
                 LLOG_ERR << "Unable to query image size info";
                 LLOG_ERR << getDspyErrorMessage(err);
                 return false;
             } else {
-                mImageWidth = img_info.width; mImageHeight = img_info.height;
-                LLOG_DBG << "Opened image name: " << mImageName << " size: " << mImageWidth << " " << mImageHeight << " aspect ratio: " << img_info.aspectRatio;
+                LLOG_DBG << "Opened image name: " << image_name << " size: " << img_info.width << " " << img_info.height << " aspect ratio: " << img_info.aspectRatio;
             }
         }
 
@@ -212,19 +213,37 @@ bool Display::open(const std::string& image_name, uint width, uint height, const
             LLOG_DBG << "PkDspyFlagsWantsNullEmptyBuckets";
     }
 
-    mOpened = true;
+    imageHandle = mImages.size();
+
+    ImageData imgData = {};
+    imgData.name = image_name;
+    imgData.handle = pvImage;
+    imgData.width = img_info.width;
+    imgData.height = img_info.height;
+    imgData.opened = true;
+
+    mImages.push_back(imgData);
     return true;
 }
 
-bool Display::close() {
-    if(mClosed) // already closed
+bool Display::closeAll() {
+    bool ret = true;
+    for (uint i = 0; i < mImages.size(); i++) {
+        if(!close(i)) ret = false;
+    }
+    mImages.clear();
+    return ret;
+}
+
+bool Display::closeImage(uint imageHandle) {
+    if(mImages[imageHandle].closed) // already closed
         return true;
 
-    if(!mImage) // mOpenFunc was unsuccessfull
+    if(!mImages[imageHandle].handle) // mOpenFunc was unsuccessfull
         return false;
 
     LLOG_DBG << "Closing display " << mDriverName;
-    PtDspyError err = mCloseFunc(mImage);
+    PtDspyError err = mCloseFunc(mImages[imageHandle].handle);
     
     if(err) {
         LLOG_ERR << "Unable to close display " << mDriverName;
@@ -232,20 +251,20 @@ bool Display::close() {
         return false; 
     }
 
-    mOpened = false;
-    mClosed = true;
+    mImages[imageHandle].opened = false;
+    mImages[imageHandle].closed = true;
     return true;
 }
 
-bool Display::sendBucket(int x, int y, int width, int height, const uint8_t *data) {
-    if(!mOpened) {
+bool Display::sendBucket(uint imageHandle, int x, int y, int width, int height, const uint8_t *data) {
+    if(!mImages[imageHandle].opened) {
         LLOG_ERR << "Can't send image data. Display not opened !!!";
         return false;
     }
 
-    int entrysize = 4 * 4; // for testing... 4 channels 4 bytes(32bits) each
+    int entrysize = 4 * 2; // for testing... 4 channels 4 bytes(32bits) each
 
-    PtDspyError err = mWriteFunc(mImage, x, x+width, y, y+height, entrysize, data);
+    PtDspyError err = mWriteFunc(mImages[imageHandle].handle, x, x+width, y, y+height, entrysize, data);
     if(err != PkDspyErrorNone ) {
         LLOG_ERR << getDspyErrorMessage(err);
         return false;
@@ -254,40 +273,40 @@ bool Display::sendBucket(int x, int y, int width, int height, const uint8_t *dat
     return true;
 }
 
-bool Display::sendImage(int width, int height, const uint8_t *data) {
-    if(!mOpened) {
+bool Display::sendImage(uint imageHandle, int width, int height, const uint8_t *data) {
+    if(!mImages[imageHandle].opened) {
         LLOG_ERR << "Can't send image data. Display not opened !!!";
         return false;
     }
 
-    if( width != mImageWidth || height != mImageHeight) {
+    if( width != mImages[imageHandle].width || height != mImages[imageHandle].height) {
         LLOG_ERR << "Display and sended image sizes are different !!!";
         return false;
     }
 
     if(mActiveRegionFunc) {
         LLOG_DBG << "Asking display to set active region";
-        PtDspyError err = mActiveRegionFunc(mImage, 0, width, 0, height);
+        PtDspyError err = mActiveRegionFunc(mImages[imageHandle].handle, 0, width, 0, height);
             if(err != PkDspyErrorNone ) {
             LLOG_ERR << getDspyErrorMessage(err);
             return false;
         }
     }
 
-    int entrysize = 4 * 4; // for testing... 4 channels 4 bytes(32bits) each
+    int entrysize = 4 * 2; // for testing... 4 channels 4 bytes(32bits) each
 
     uint32_t scanline_offset = width * entrysize;
     if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder) {
         LLOG_DBG << "Sending " <<  std::to_string(height) << " scan lines";
         for(uint32_t y = 0; y < height; y++) {
-            if(!sendBucket(0, y, width,y, data)) 
+            if(!sendBucket(imageHandle, 0, y, width,y, data)) 
                 return false;
 
             data += scanline_offset;
         }
 
     } else {
-        return sendBucket(0, 0, width, height, data);
+        return sendBucket(imageHandle, 0, 0, width, height, data);
     }
 
     return true;
@@ -295,10 +314,10 @@ bool Display::sendImage(int width, int height, const uint8_t *data) {
 
 bool Display::setStringParameter(const std::string& name, const std::vector<std::string>& strings) {
     LLOG_DBG << "String parameter " << name;
-    if(mOpened) {
-        LLOG_ERR << "Can't push parameter. Display opened already !!!";
-        return false;
-    }
+    //if(mOpened) {
+    //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
+    //    return false;
+    //}
     mUserParameters.push_back({});
     makeStringsParameter(name, strings, mUserParameters.back());
     return true;
@@ -306,10 +325,10 @@ bool Display::setStringParameter(const std::string& name, const std::vector<std:
 
 bool Display::setIntParameter(const std::string& name, const std::vector<int>& ints) {
     LLOG_DBG << "Int parameter " << name;
-    if(mOpened) {
-        LLOG_ERR << "Can't push parameter. Display opened already !!!";
-        return false;
-    }
+    //if(mOpened) {
+    //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
+    //    return false;
+    //}
     mUserParameters.push_back({});
     makeIntsParameter(name, ints, mUserParameters.back());
     return true;
@@ -317,10 +336,10 @@ bool Display::setIntParameter(const std::string& name, const std::vector<int>& i
 
 bool Display::setFloatParameter(const std::string& name, const std::vector<float>& floats) {
     LLOG_DBG << "Float parameter " << name;
-    if(mOpened) {
-        LLOG_ERR << "Can't push parameter. Display opened already !!!";
-        return false;
-    }
+    //if(mOpened) {
+    //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
+    //    return false;
+    //}
     mUserParameters.push_back({});
     makeFloatsParameter(name, floats, mUserParameters.back());
     return true;

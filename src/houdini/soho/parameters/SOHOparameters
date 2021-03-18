@@ -8,6 +8,6 @@
 // Include the factory settings
 #include "$HFS/houdini/soho/parameters/SOHOparameters"
 
-#include "lava.ds"
+//#include "lava.ds"
 
 #endif // __LAVA_LSD_PARAMETERS__

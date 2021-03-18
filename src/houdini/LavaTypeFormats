@@ -1,4 +1,4 @@
 int8 '8 bit integer'
-int16 '18 bit integer'
+int16 '16 bit integer'
 float16 '16 bit float'
 float32 '32 bit float'

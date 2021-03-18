@@ -69,7 +69,7 @@ log(const int level, const char* fmt, ...) {
 	}
 	else if (fmt && D_HOUDINI_DEBUG_LEVEL > level) {
 		if (!log) {
-			log = fopen("/tmp/ri_display.log", "w");
+			log = fopen("/tmp/houdini_display.log", "w");
 			if (log)
 				fprintf(log, "=== OpenLog[%d] ===\n", GETPID());
 		}
@@ -101,8 +101,7 @@ getNewNamedPipe(const char* pipeName) {
 	do {
 		if (pipe)
 			CloseHandle(pipe);
-		sprintf(const_cast<char*>(pipeName), 
-			"//./pipe/HoudiniUTWritePipe%d", numPipes++);
+		sprintf(const_cast<char*>(pipeName),  "//./pipe/HoudiniUTWritePipe%d", numPipes++);
 		pipe = CreateFile(pipeName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	} while(GetLastError() != ERROR_FILE_NOT_FOUND);
 
@@ -139,8 +138,7 @@ static PipeData* pipeArray = NULL;
 // passed back to the caller are closed automatically. The caller
 // must close all other handles.
 
-void*
-UnixPOpen(const std::string& file, const void** in, const void** out, const void** err) {
+void* UnixPOpen(const std::string& file, const void** in, const void** out, const void** err) {
 	SECURITY_ATTRIBUTES sec = {sizeof(sec), NULL, TRUE};
 	PROCESS_INFORMATION pinfo;
 	STARTUPINFO sinfo;
@@ -223,9 +221,7 @@ UnixPOpen(const std::string& file, const void** in, const void** out, const void
 
 // Uses the general UnixPOpen function above to simulate a popen call.
 
-FILE*
-UnixPOpen(const std::string& file, const std::string& mode)
-{
+FILE* UnixPOpen(const std::string& file, const std::string& mode) {
 	int tmpPipe = -1;
 	FILE* pipe = NULL;
 	int doRead = 0, doWrite = 0;
@@ -254,8 +250,8 @@ UnixPOpen(const std::string& file, const std::string& mode)
 	out = NULL;
 	in  = NULL;
 
-	hProc = UnixPOpen(file.c_str(), (const void**) &in, (const void**) &out,
-			 NULL);
+	hProc = UnixPOpen(file.c_str(), (const void**) &in, (const void**) &out, NULL);
+
 	if(hProc) {
 		if(doRead) {
 			tmpPipe = _open_osfhandle((intptr_t)out, _O_RDONLY|_O_BINARY);
@@ -278,23 +274,25 @@ UnixPOpen(const std::string& file, const std::string& mode)
 		if(doWrite)
 			CloseHandle(in);
 	}
+	
 	if(doWrite)
 		CloseHandle(out);
+	
 	if(doRead)
 		CloseHandle(in);
 
 	return pipe;
 }
 
-int
-UnixPClose(const FILE* file)
-{
+int UnixPClose(const FILE* file) {
 	int i = 0;
 	
 	if(!pipeArray)
 		return -1;
+
 	while(i < 64 && pipeArray[i].fileptr != file)
 		++i;
+	
 	if(i < 64) {
 		unsigned long retval;
 
@@ -321,6 +319,68 @@ FILE* popen(const std::string& name, const std::string& mode) {
 int pclose(FILE* f) {
 	return UnixPClose(f);
 }
+#else // Linux
+
+static FILE *my_popen (const char *cmd, const char *mode) {
+    int fd[2];
+    int read_fd, write_fd;
+    int pid;               
+
+    /* First, create a pipe and a pair of file descriptors for its both ends */
+    pipe(fd);
+    read_fd = fd[0];
+    write_fd = fd[1];
+
+    /* Now fork in order to create process from we'll read from */
+    pid = fork();
+    if (pid == 0) {
+        /* Child process */
+
+    	if (strcmp(mode, "r")==0) {
+        /* Close "read" endpoint - child will only use write end */
+        close(read_fd);
+
+        /* Now "bind" fd 1 (standard output) to our "write" end of pipe */
+        dup2(write_fd,1);
+
+        /* Close original descriptor we got from pipe() */
+        close(write_fd);
+    } else {
+    	close(write_fd);
+        dup2(read_fd,1);
+        close(read_fd);
+    }
+
+        /* Execute command via shell - this will replace current process */
+        execl("/bin/sh", "sh", "-c", cmd, NULL);
+
+        /* Don't let compiler be angry with us */
+        return NULL;
+    } else {
+        /* Parent */
+
+    	if (strcmp(mode, "r")==0) {
+	        /* Close "write" end, not needed in this process */
+	        close(write_fd);
+
+	        /* Parent process is simpler - just create FILE* from file descriptor,
+	           for compatibility with popen() */
+	        return fdopen(read_fd, mode);
+    	} else {
+    		close(read_fd);
+    		return fdopen(write_fd, mode);
+    	}
+    }
+}
+
+FILE* _popen(const std::string& name, const std::string& mode) {
+	return my_popen(name.c_str(), mode.c_str());
+}
+
+void _pclose(FILE* f) {
+	fclose(f);
+}
+
 #endif
 
 #define MAGIC (('h'<<24)+('M'<<16)+('P'<<8)+('0'))
@@ -350,6 +410,8 @@ public:
             fwrite(header, sizeof(int), 4, myPipe);
 
             ::pclose(myPipe);
+            //_pclose(myPipe);
+
             myPipe = (FILE*)0;
         }
     }
@@ -362,9 +424,19 @@ public:
     
 private:
 
-    IMDisplay(const char* argv)
-    {
-        myPipe = ::popen(argv, "w");
+    IMDisplay(const char* argv) {
+
+    	const char* env_p = std::getenv("PATH");
+    	std::string pth = "PATH=$PATH:";
+		if(env_p) {
+			pth.append(env_p);
+			std::cout << "Your PATH is: " << env_p << '\n';
+			//execl( "export", pth.c_str(), (char*)0 );
+    	}
+
+
+    	myPipe = ::popen(argv, "w");
+    	//myPipe = _popen(argv, "w");
     }
     
     
@@ -473,8 +545,7 @@ addChanDef(const PtDspyDevFormat& def,
 
 	dot = strrchr(prefix.c_str(), '.');
 	if (!dot) {
-		if (!strcmp(name, "r") || !strcmp(name, "g") || !strcmp(name, "b") ||
-                                                        !strcmp(name, "a")) {
+		if (!strcmp(name, "r") || !strcmp(name, "g") || !strcmp(name, "b") || !strcmp(name, "a")) {
 			prefix = "C";
         } else if (!strcmp(name, "z")) {
 			offset = 0;
@@ -527,10 +598,7 @@ addChanDef(const PtDspyDevFormat& def,
 		list[i]->mySize = offset+1;
 }
 
-static int
-addImageChannels(ImagePtr img, const int nformats,
-                    const PtDspyDevFormat* formats)
-{
+static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFormat* formats) {
 	int i, ok;
 	vector< h_shared_ptr< H_ChanDef > > defs;
 
@@ -560,8 +628,7 @@ addImageChannels(ImagePtr img, const int nformats,
 				type = "Unknown";
 				break;
 		}
-		log(0, "Format[%d] = '%s' type %s (%d)\n",
-			i, formats[i].name, type, format_type );
+		log(0, "Format[%d] = '%s' type %s (%d)\n", i, formats[i].name, type, format_type );
 	}
 #endif
 
@@ -579,8 +646,7 @@ addImageChannels(ImagePtr img, const int nformats,
 	for (i = 0; i < defs.size(); ++i) {
 		if (defs[i]->isValid()) {
 			defs[i]->dump(i);
-			img->addChannel(defs[i]->myName, defs[i]->myFormat, defs[i]->mySize,
-                            defs[i]->myOffset);
+			img->addChannel(defs[i]->myName, defs[i]->myFormat, defs[i]->mySize, defs[i]->myOffset);
 			ok++;
 		} else {
 			log(0, "---------- INVALID CHANNEL ----------\n");
@@ -1025,9 +1091,7 @@ H_Image::addChannel(const std::string& name, const int format, const int count, 
 // simply reference count the H_Image's underway
 
 /* static */
-int
-H_Image::openPipe(void)
-{
+int H_Image::openPipe(void) {
     if (g_masterImages.size() == 0) {
         return 0;
     }
@@ -1067,10 +1131,9 @@ H_Image::openPipe(void)
     cmd = cmdss.str();
 
     if (img->hasDisplayOptions()) {
-        cmd += img->getDisplayOptions();
+        //cmd += img->getDisplayOptions();
+        cmd.append(img->getDisplayOptions());
     }
-
-    //cmd = "imdisplay 640 480 4";
 
     log(0, "popen: '%s'\n", cmd.c_str());
 	

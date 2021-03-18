@@ -46,10 +46,10 @@ class RendererIface {
     /* FrameData frame specific data
      */
     struct FrameData {
+        double time = 0.0;
 
         // image section
         std::string imageFileName = "";
-        double time = 0.0;
 
         // camera section
         std::string cameraProjectionName = "perspective";

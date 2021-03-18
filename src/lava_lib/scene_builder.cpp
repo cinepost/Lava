@@ -239,8 +239,31 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 indices.push_back(csi);
                                 face_count += 3;
                                 break;
+                            case 6:
+                                indices.push_back(csi+2);
+                                indices.push_back(csi+1);
+                                indices.push_back(csi);
+
+                                indices.push_back(csi+3);
+                                indices.push_back(csi+2);
+                                indices.push_back(csi);
+
+                                indices.push_back(csi+4);
+                                indices.push_back(csi+3);
+                                indices.push_back(csi);
+
+                                indices.push_back(csi+4);
+                                indices.push_back(csi+3);
+                                indices.push_back(csi);
+
+                                indices.push_back(csi+5);
+                                indices.push_back(csi+4);
+                                indices.push_back(csi);
+
+                                face_count += 4;
+                                break;
                             default:
-                                LLOG_WRN << "Poly sides more than 5 unsupported for now !";
+                                LLOG_WRN << "Poly sides more than 6 unsupported for now !";
                                 break;
                         }
                     }
@@ -288,8 +311,26 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 indices.push_back(vtx_list[cur_i]);
                                 face_count += 3;
                                 break;
+                            case 6:
+                                indices.push_back(vtx_list[cur_i+2]);
+                                indices.push_back(vtx_list[cur_i+1]);
+                                indices.push_back(vtx_list[cur_i]);
+
+                                indices.push_back(vtx_list[cur_i+3]);
+                                indices.push_back(vtx_list[cur_i+2]);
+                                indices.push_back(vtx_list[cur_i]);
+
+                                indices.push_back(vtx_list[cur_i+4]);
+                                indices.push_back(vtx_list[cur_i+3]);
+                                indices.push_back(vtx_list[cur_i]);
+
+                                indices.push_back(vtx_list[cur_i+5]);
+                                indices.push_back(vtx_list[cur_i+4]);
+                                indices.push_back(vtx_list[cur_i]);
+                                face_count += 4;
+                                break;
                             default:
-                                LLOG_WRN << "Poly sides more than 5 unsupported for now !";
+                                LLOG_WRN << "Poly sides more than 6 unsupported for now !";
                                 break;
                         }
 

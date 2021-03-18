@@ -69,12 +69,17 @@ class dlldecl RenderData {
     ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
  protected:
     friend class RenderGraphExe;
-    RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat);
+    
+    RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
+        ,uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
+    
     const std::string& mName;
     ResourceCache::SharedPtr mpResources;
     InternalDictionary::SharedPtr mpDictionary;
     uint2 mDefaultTexDims;
     ResourceFormat mDefaultTexFormat;
+    uint32_t mFrameNumber;
+    uint32_t mSampleNumber;
 };
 
 /** Base class for render passes.

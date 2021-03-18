@@ -114,9 +114,9 @@ class ForwardLightingPass : public RenderPass {
     Texture::SharedPtr                  mpBlueNoiseTexture;
     CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
 
-    ResourceFormat mColorFormat = ResourceFormat::RGBA32Float; //Unknown;
-    ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
-    ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
+    ResourceFormat mColorFormat = ResourceFormat::RGBA16Float; //Default color rendering format;
+    ResourceFormat mNormalMapFormat = ResourceFormat::RGBA16Float;
+    ResourceFormat mMotionVecFormat = ResourceFormat::RG8Snorm;
 
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;

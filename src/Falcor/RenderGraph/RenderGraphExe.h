@@ -44,11 +44,14 @@ class dlldecl RenderGraphExe {
         InternalDictionary::SharedPtr pGraphDictionary;
         uint2 defaultTexDims;
         ResourceFormat defaultTexFormat;
+
+        uint32_t frameNumber;
+        uint32_t sampleNumber;
     };
 
     /** Execute the graph
     */
-    void execute(const Context& ctx);
+    void execute(const Context& ctx, uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
 
     /** Resolve graph's per frame sparse resources
     */

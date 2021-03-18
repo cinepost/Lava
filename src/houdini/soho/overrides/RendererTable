@@ -5,5 +5,5 @@
     override.name   Lava
     shopstyle       [ "Lava" ]
     soho_script     [ "LSD.py" ]
-    soho_pipecmd    [ "lava" ]
+    soho_pipecmd    [ "lava" ] //[ $viewmantra ]
 }

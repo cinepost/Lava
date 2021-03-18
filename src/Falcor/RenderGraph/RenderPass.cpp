@@ -30,12 +30,15 @@
 
 namespace Falcor {
 
-RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat)
+RenderData::RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const InternalDictionary::SharedPtr& pDict, const uint2& defaultTexDims, ResourceFormat defaultTexFormat
+	,uint32_t frameNumber, uint32_t sampleNumber)
     : mName(passName)
     , mpResources(pResourceCache)
     , mpDictionary(pDict)
     , mDefaultTexDims(defaultTexDims)
     , mDefaultTexFormat(defaultTexFormat)
+    , mFrameNumber(frameNumber)
+    , mSampleNumber(sampleNumber)
 {
     if (!mpDictionary) mpDictionary = InternalDictionary::create();
 }

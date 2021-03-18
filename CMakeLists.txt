@@ -140,7 +140,7 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # Our stuff
 add_subdirectory( src )
-#add_subdirectory( contrib )
+add_subdirectory( contrib )
 
 
 #install(

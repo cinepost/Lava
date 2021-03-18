@@ -45,7 +45,7 @@ static void regAccumulatePass(pybind11::module& m) {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("AccumulatePass", "Temporal accumulation", AccumulatePass::create);
+    lib.registerClass("AccumulatePass", "Buffer accumulation", AccumulatePass::create);
     ScriptBindings::registerBinding(regAccumulatePass);
 }
 
@@ -100,8 +100,10 @@ Dictionary AccumulatePass::getScriptingDictionary() {
 
 RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
-    reflector.addInput(kInputChannel, "Input data to be temporally accumulated").bindFlags(ResourceBindFlags::ShaderResource);
-    reflector.addOutput(kOutputChannel, "Output data that is temporally accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource).format(ResourceFormat::RGBA32Float);
+    reflector.addInput(kInputChannel, "Input data to be accumulated").bindFlags(ResourceBindFlags::ShaderResource);
+    reflector.addOutput(kOutputChannel, "Output data that is accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource)
+        //.format(ResourceFormat::RGBA16Float);
+        .format(ResourceFormat::RGBA16Unorm);
     return reflector;
 }
 

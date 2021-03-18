@@ -102,7 +102,7 @@ class Device;
 
         /** Execute the graph
         */
-        void execute(RenderContext* pContext);
+        void execute(RenderContext* pContext, uint32_t frameNumber = 0, uint32_t sampleNumber = 0);
 
         /** Resolves graph's per frame sparse resources
         */
