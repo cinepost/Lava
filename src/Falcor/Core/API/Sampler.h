@@ -52,6 +52,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     enum class Filter {
         Point,
         Linear,
+        Cubic,
     };
 
     /** Addressing mode in case the texture coordinates are out of [0, 1] range

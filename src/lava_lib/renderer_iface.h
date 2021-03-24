@@ -73,8 +73,9 @@ class RendererIface {
             COLOR_ALPHA, // RGBA channel
             NOMRAL,
             DEPTH,       // Z channel
-            G_ALBEDO,    // GBuffer surface albedo
+            ALBEDO,      // Surface albedo
         };
+
         Channel             channel;
         Display::TypeFormat format;
         std::string         name;

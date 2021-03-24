@@ -2,6 +2,8 @@
 
 #include <array>
 
+#include "c-blosc2/blosc/blosc2.h"
+
 #include "Falcor/stdafx.h"
 #include "ResourceManager.h"
 
@@ -59,10 +61,15 @@ ResourceManager::ResourceManager(std::shared_ptr<Device> pDevice) {
     LOG_DBG("ResourceManager::ResourceManager");
     mpDevice = pDevice;
     mpCtx = pDevice->getRenderContext();
+
+    blosc_init();
 }
 
 ResourceManager::~ResourceManager() {
     LOG_DBG("ResourceManager::~ResourceManager");
+    
+    blosc_destroy();
+
     if(!mpDevice)
         return;
 }
@@ -175,7 +182,11 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     if(!vtoff) {
         if(configStore.get<bool>("fconv", true) || !fs::exists(ltxFilename)) {
             LOG_DBG("Converting texture %s to LTX format ...",  fullpath.c_str());
-            LTX_Bitmap::convertToKtxFile(mpDevice, fullpath, ltxFilename, true);
+
+            LTX_Bitmap::TLCParms tlcParms;
+            tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
+            tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
+            LTX_Bitmap::convertToKtxFile(mpDevice, fullpath, ltxFilename, true, tlcParms);
             LOG_DBG("Conversion done %s", ltxFilename.c_str());
         }
     }

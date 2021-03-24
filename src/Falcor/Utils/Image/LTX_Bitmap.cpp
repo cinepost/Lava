@@ -35,6 +35,8 @@
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
+#include "c-blosc2/blosc/blosc2.h"
+
 #include "stdafx.h"
 #include "Bitmap.h"
 #include "LTX_Bitmap.h"
@@ -51,6 +53,7 @@ namespace Falcor {
 namespace oiio = OpenImageIO_v2_3;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
+static const size_t kLtxPageSize = 65536;
 
 static bool isPowerOfTwo(int x) {
     return x > 0 && !(x & (x-1));
@@ -61,6 +64,35 @@ static struct {
         return a < b;
     }   
 } pageSort;
+
+static LTX_Header::TopLevelCompression getTLCFromString(const std::string & name) {
+    if(name == "lz4") return LTX_Header::TopLevelCompression::LZ4;
+    if(name == "lz4hc") return LTX_Header::TopLevelCompression::LZ4HC;
+    if(name == "snappy") return LTX_Header::TopLevelCompression::SNAPPY;
+    if(name == "zlib") return LTX_Header::TopLevelCompression::ZLIB;
+    if(name == "ztsd") return LTX_Header::TopLevelCompression::ZSTD;
+    if(name == "blosclz") return LTX_Header::TopLevelCompression::BLOSC_LZ;
+    return LTX_Header::TopLevelCompression::NONE;
+} 
+
+static const char* getBloscCompressionName(LTX_Header::TopLevelCompression tlc) {
+    switch(tlc) {
+        case LTX_Header::TopLevelCompression::BLOSC_LZ:
+            return "blosclz";
+        case LTX_Header::TopLevelCompression::LZ4:
+            return "lz4";
+        case LTX_Header::TopLevelCompression::LZ4HC:
+            return "lz4hc";
+        case LTX_Header::TopLevelCompression::SNAPPY:
+            return "snappy";
+        case LTX_Header::TopLevelCompression::ZLIB:
+            return "zlib";
+        case LTX_Header::TopLevelCompression::ZSTD:
+            return "ztsd";
+        default:
+            return "none";
+    }
+} 
 
 bool LTX_Bitmap::checkMagic(const unsigned char* magic) {
     int match = 0;
@@ -106,6 +138,16 @@ LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pD
     auto pFile = fopen(filename.c_str(), "rb");
     fread(&pLtxBitmap->mHeader, sizeof(LTX_Header), 1, pFile );
 
+    pLtxBitmap->mTopLevelCompression = pLtxBitmap->mHeader.topLevelCompression;
+
+    if( pLtxBitmap->mTopLevelCompression != LTX_Header::TopLevelCompression::NONE ) {
+        pLtxBitmap->mCompressedPageDataOffset.resize(pLtxBitmap->mHeader.pagesCount);
+        pLtxBitmap->mCompressedPageDataSize.resize(pLtxBitmap->mHeader.pagesCount);
+
+        fread(pLtxBitmap->mCompressedPageDataOffset.data(), sizeof(uint32_t), pLtxBitmap->mHeader.pagesCount, pFile );
+        fread(pLtxBitmap->mCompressedPageDataSize.data(), sizeof(uint16_t), pLtxBitmap->mHeader.pagesCount, pFile );
+    }
+
     fseek(pFile, 0L, SEEK_END);
     size_t mDataSize = ftell(pFile) - sizeof(LTX_Header);
     fclose(pFile);
@@ -128,6 +170,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
             switch (BASETYPE(baseType)) {
                 case BASETYPE::UINT8:
                     return ResourceFormat::R8Unorm;
+                case BASETYPE::UINT16:
+                    return ResourceFormat::R16Unorm;
                 case BASETYPE::UINT32:
                     return ResourceFormat::R32Uint;
                 case BASETYPE::FLOAT:
@@ -141,6 +185,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
             switch (BASETYPE(baseType)) {
                 case BASETYPE::UINT8:
                     return ResourceFormat::RG8Unorm;
+                case BASETYPE::UINT16:
+                    return ResourceFormat::RG16Uint;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RG32Uint;
                 case BASETYPE::HALF:
@@ -156,6 +202,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
             switch (BASETYPE(baseType)) {
                 case BASETYPE::UINT8:
                     return ResourceFormat::RGB8Unorm;
+                case BASETYPE::UINT16:
+                    return ResourceFormat::RGB16Unorm;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RGB32Uint;
                 case BASETYPE::HALF:
@@ -172,6 +220,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
             switch (BASETYPE(baseType)) {
                 case BASETYPE::UINT8:
                     return ResourceFormat::RGBA8Unorm;
+                case BASETYPE::UINT16:
+                    return ResourceFormat::RGBA16Uint;
                 case BASETYPE::UINT32:
                     return ResourceFormat::RGBA32Uint;
                 case BASETYPE::HALF:
@@ -196,10 +246,12 @@ static ResourceFormat getDestFormat(const ResourceFormat &format) {
             return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
         case ResourceFormat::RGB32Uint:
             return ResourceFormat::RGBA32Uint;  // this should force 96bit to 128bit conversion
+        case ResourceFormat::RGB16Unorm:
+            return ResourceFormat::RGBA16Unorm; // this should force 48bit to 64bit conversion
         case ResourceFormat::RGB16Float:
-            return ResourceFormat::RGBA16Float; // this should force 48bit to 64bit conversion
+            return ResourceFormat::RGBA16Float; // this should force 48bit to 64bit float conversion
         case ResourceFormat::RGB32Float:
-            return ResourceFormat::RGBA32Float; // this should force 96bit to 128bit conversion
+            return ResourceFormat::RGBA32Float; // this should force 96bit to 128bit float conversion
         default:
             break;
     }
@@ -209,27 +261,27 @@ static ResourceFormat getDestFormat(const ResourceFormat &format) {
 
 static uint3 getPageDims(const ResourceFormat &format) {
     uint32_t channelCount = getFormatChannelCount(format);
-    uint32_t totalBits = 0;
+    uint32_t totalBits = 0u;
 
     for(uint i = 0; i < channelCount; i++) totalBits += getNumChannelBits(format, i);
 
     switch(totalBits) {
         case 8:
-            return {256, 256, 1};
+            return {256u, 256u, 1u};
         case 16:
-            return {256, 128, 1};
+            return {256u, 128u, 1u};
         case 32:
-            return {128, 128, 1};
+            return {128u, 128u, 1u};
         case 64:
-            return {128, 64, 1};
+            return {128u, 64u, 1u};
         case 128:
-            return {64, 64, 1};
+            return {64u, 64u, 1u};
         default:
             should_not_get_here();
             break;
     } 
 
-    return {0, 0, 0};
+    return {0u, 0u, 0u};
 }
 
 static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &format) {
@@ -244,7 +296,7 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
     for( uint mipLevel = 0; mipLevel < info.mipLevelsCount; mipLevel++) {
         info.mipLevelsDims[mipLevel].x = std::max(uint32_t(imgDims.x / pow(2, mipLevel)), 1u);
         info.mipLevelsDims[mipLevel].y = std::max(uint32_t(imgDims.y / pow(2, mipLevel)), 1u);
-        info.mipLevelsDims[mipLevel].z = 1;//std::max(imgDims.z / pow(2, mipLevel), 1);
+        info.mipLevelsDims[mipLevel].z = 1u;//std::max(imgDims.z / pow(2, mipLevel), 1);
     }
 
     // find mip tail starting mip level
@@ -260,7 +312,7 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
     return info;
 }
 
-void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown) {
+void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown, const TLCParms& compParms) {
     auto in = oiio::ImageInput::open(srcFilename);
     if (!in) {
         LOG_ERR("Error reading image file %s", srcFilename.c_str());
@@ -309,29 +361,83 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     header.height = dstDims.y;
     header.depth = dstDims.z;
     header.pageDims = {mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z};
-    header.pageDataSize = 65536;
+    header.pageDataSize = kLtxPageSize;
     header.pagesCount = 0;
     header.arrayLayersCount = 1;
     header.mipLevelsCount = mipInfo.mipLevelsCount;
     header.mipTailStart   = mipInfo.mipTailStart;
-    header.format = dstFormat;//pBitmap->getFormat();
+    header.format = dstFormat;
+    header.dataOffset = sizeof(LTX_Header);
+
+    for( auto const& mipSize: mipInfo.mipLevelsDims) {
+        uint32_t pagesCountX = std::max((uint32_t)std::ceil((float)mipSize[0] / (float)mipInfo.pageDims.x), 1u);
+        uint32_t pagesCountY = std::max((uint32_t)std::ceil((float)mipSize[1] / (float)mipInfo.pageDims.y), 1u);
+        uint32_t pagesCountZ = std::max((uint32_t)std::ceil((float)mipSize[2] / (float)mipInfo.pageDims.z), 1u);
+
+        header.pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+    }
+
+    LOG_WARN("LTX calc pages count is: %u", header.pagesCount);
+
+    // test
+    header.topLevelCompression = getTLCFromString(compParms.compressorName);//BLOSC_LZ;
+    header.topLevelCompressionLevel = compParms.compressionLevel;
+
+    if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+        // if top level compression used, data begins after two additional tables 
+        header.dataOffset += (sizeof(uint32_t) + sizeof(uint16_t)) * header.pagesCount; 
+    }
 
     // open file and write header
     FILE *pFile = fopen(dstFilename.c_str(), "wb");
     fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
 
+    // if some compression being used we have to write additional tables before actual pages data begins.
+    // first table is individual page offset values
+    // second table is individual compressed page size values
+
+    TLCInfo compressionInfo;
+
+    std::vector<uint32_t> pageOffsets;
+    std::vector<uint16_t> compressedPageSizes;
+
+    if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+        pageOffsets.resize(header.pagesCount);
+        compressedPageSizes.resize(header.pagesCount);
+
+        compressionInfo.topLevelCompression = header.topLevelCompression;
+        compressionInfo.compressionLevel = header.topLevelCompressionLevel;
+        compressionInfo.pPageOffsets = pageOffsets.data();
+        compressionInfo.pCompressedPageSizes = compressedPageSizes.data();
+
+        const char *compname = getBloscCompressionName(header.topLevelCompression);
+        if(blosc_set_compressor(compname) == -1) {
+            LOG_ERR("Error setting Blosc compressor type to %s", compname);
+            fclose(pFile);
+            return;
+        }
+
+        LOG_WARN("LTX Tlc: %s clevel: %u", compname, compressionInfo.compressionLevel);
+
+        // write initial values. these valuse are going to rewriten after all pages compressed and written to disk
+        fwrite(pageOffsets.data(), sizeof(uint32_t), header.pagesCount, pFile);
+        fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);
+    }
+
     LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
+
+
 
 if( 1 == 1) {
     if( isPowerOfTwo(srcDims.x) && isPowerOfTwo(srcDims.y) ) {
-        if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile)) {
+        if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile, compressionInfo)) {
             // re-write header as it might get modified ... 
             // TODO: increment pagesCount ONLY upon successfull fwrite !
             fseek(pFile, 0, SEEK_SET);
             fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
         }
     } else {
-        if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile)) {
+        if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile, compressionInfo)) {
             // re-write header as it might get modified ... 
             // TODO: increment pagesCount ONLY upon successfull fwrite !
             fseek(pFile, 0, SEEK_SET);
@@ -339,10 +445,20 @@ if( 1 == 1) {
         }
     }
 }
+
+    if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+        // write updated compressed blocks table balesues. these valuse are going to rewriten after all pages compressed and written to disk
+        fseek(pFile, kLtxHeaderOffset, SEEK_SET);
+        fwrite(pageOffsets.data(), sizeof(uint32_t), header.pagesCount, pFile);
+        fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);
+    }
+
     //ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile);
     //fseek(pFile, 0, SEEK_SET);
     //fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
     
+    LOG_WARN("LTX post write pages count is: %u", header.pagesCount);
+
     fclose(pFile);
 }
 
@@ -353,8 +469,7 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
     }
 
     auto pFile = fopen(mFilename.c_str(), "rb");
-    fseek(pFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
-    fread(pData, 1, mHeader.pageDataSize, pFile);
+    readPageData(pageNum, pData, pFile);
     fclose(pFile);
 }
 
@@ -367,8 +482,23 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
         return;
     }
 
-    fseek(pFile, kLtxHeaderOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
-    fread(pData, 1, mHeader.pageDataSize, pFile);
+    if (mTopLevelCompression == LTX_Header::TopLevelCompression::NONE) {
+        // read uncompressed page data
+        fseek(pFile, mHeader.dataOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
+        fread(pData, 1, mHeader.pageDataSize, pFile);
+    } else {
+        // read compressed page fata
+        std::vector<unsigned char> tmp(65536);
+
+        size_t page_data_offset = mHeader.dataOffset + mCompressedPageDataOffset[pageNum];
+
+        fseek(pFile, page_data_offset, SEEK_SET);
+        fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
+
+        auto nbytes = blosc_decompress(tmp.data(), pData, 65536);
+        LOG_WARN("Compressed page (read) %zu size is %u offset %u decomp size %u", pageNum, mCompressedPageDataSize[pageNum], page_data_offset, nbytes);
+    }
+
 }
 
 void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) const {
@@ -381,7 +511,7 @@ void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, boo
     }
 
     for(auto& page: pages) {
-        fseek(pFile, kLtxHeaderOffset + page.first * mHeader.pageDataSize, SEEK_SET);
+        fseek(pFile, mHeader.dataOffset + page.first * mHeader.pageDataSize, SEEK_SET);
     }
     
     fclose(pFile);

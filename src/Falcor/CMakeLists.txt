@@ -171,6 +171,7 @@ target_link_libraries(
     avformat
     swscale
     stdc++fs
+    blosc2
     ${EMBREE_LIBRARY}
     ${ASSIMP_LIBRARY}
     ${SLANG_LIBRARY}

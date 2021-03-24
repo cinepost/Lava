@@ -150,6 +150,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 
     // Sample the diffuse texture and apply the alpha test
     float4 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, float4(1), EXTRACT_DIFFUSE_TYPE(md.flags), lod) * md.baseColor;
+    //float4 baseColor = mr.baseColor.SampleLevel(mr.samplerState, v.texC, 1) * md.baseColor;
     sd.opacity = baseColor.a;
     //applyAlphaTest(md.flags, baseColor.a, md.alphaThreshold, v.posW);
 

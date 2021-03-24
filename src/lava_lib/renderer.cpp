@@ -208,7 +208,7 @@ void Renderer::createRenderGraph() {
             case RendererIface::PlaneData::Channel::COLOR_ALPHA:
                 shadingResourceFormat = resolveShadingResourceFormat(plane.format, 4);
                 break;
-            case RendererIface::PlaneData::Channel::G_ALBEDO:
+            case RendererIface::PlaneData::Channel::ALBEDO:
                 auxAlbedoResourceFormat = resolveShadingResourceFormat(plane.format, 3);
                 break;
             default:
@@ -459,11 +459,11 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
             // create common texture sampler
             Sampler::Desc desc;
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Linear, Sampler::Filter::Linear);
-            //desc.setLodParams(0,8,1);
-            //desc.setMaxAnisotropy(16);
+            desc.setLodParams(0,16,0);
+            desc.setMaxAnisotropy(8);
             mpSampler = Falcor::Sampler::create(mpDevice, desc);
         }
-        pScene->bindSamplerToMaterials(mpSampler);
+        //pScene->bindSamplerToMaterials(mpSampler);
     }
 }
 

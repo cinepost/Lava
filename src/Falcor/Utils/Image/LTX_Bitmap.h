@@ -21,9 +21,9 @@ struct LTX_Header {
     uint32_t        depth = 0;
 
     struct PageDims {
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
+        uint16_t width;
+        uint16_t height;
+        uint16_t depth;
     } pageDims = {0, 0, 0};
 
     uint32_t        pagesCount = 0; // number of mem pages that were physycally written
@@ -36,9 +36,22 @@ struct LTX_Header {
     ResourceFormat  format;
     
     struct CompressionRatio {
-        uint32_t width;
-        uint32_t height;
-    } compressionRatio = {1, 1};
+        uint8_t width;
+        uint8_t height;
+    } textureCompressionRatio = {1, 1}; // texture data comression ratio
+
+    enum TopLevelCompression: uint8_t {
+        NONE,
+        BLOSC_LZ,
+        LZ4,
+        LZ4HC,
+        SNAPPY,
+        ZLIB,
+        ZSTD
+    } topLevelCompression = TopLevelCompression::NONE;
+    uint8_t topLevelCompressionLevel = 0;
+
+    uint32_t dataOffset = sizeof(LTX_Header);
 };
 
 struct LTX_MipInfo {
@@ -48,10 +61,16 @@ struct LTX_MipInfo {
     std::vector<uint3> mipLevelsDims;
 };
 
+
 /** A class representing a memory bitmap with sparse storage
 */
 class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
  public:
+    struct TLCParms {
+        std::string compressorName = "";
+        int compressionLevel = 1;   
+    };
+
     enum class ExportFlags : uint32_t {
         None = 0u,              //< Default
         Lossy = 1u << 0,        //< Try to store in a lossy format
@@ -125,7 +144,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     
  protected:
-    static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown);
+    static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown, const TLCParms& compParms);
 
     void readPageData (size_t pageNum, void *pData) const;
     void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
@@ -154,6 +173,10 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     ResourceFormat mFormat;
 
     LTX_Header mHeader;
+
+    bool mTopLevelCompression = LTX_Header::TopLevelCompression::NONE;
+    std::vector<uint32_t> mCompressedPageDataOffset;
+    std::vector<uint16_t> mCompressedPageDataSize;
 };
 
 enum_class_operators(LTX_Bitmap::ExportFlags);

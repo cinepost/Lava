@@ -26,7 +26,7 @@ import LSDsettings
 import LSDhooks
 from LSDapi import *
 from hutil.file import insertFileSuffix
-import quickplanes
+import lava_quickplanes as quickplanes
 
 _OutputObjects = set()
 
@@ -91,14 +91,14 @@ def objectTransform(space, obj, times, xfunc=cmd_transform, mxfunc=cmd_mtransfor
         seg += 1
     LSDhooks.call('post_objTransform', space, obj, times, xfunc, invert,cubemap)
 
-def defplane(channel, variable, vextype, idx, wrangler, cam, now,
+def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
                 filename=None,
                 component=None,
                 lightexport=None,
                 showrelightingbuffer=False,
                 excludedcm=False):
     if len(variable):
-        if LSDhooks.call('pre_defplane', variable, vextype, idx,
+        if LSDhooks.call('pre_defplane', variable, lsdtype, idx,
                     wrangler, cam, now, filename, lightexport):
             return
 
@@ -106,7 +106,7 @@ def defplane(channel, variable, vextype, idx, wrangler, cam, now,
             channel = variable
         cmd_start('plane')
         cmd_property('plane', 'variable', [variable])
-        cmd_property('plane', 'vextype', [vextype])
+        cmd_property('plane', 'type', [lsdtype])
         if filename:
             soho.makeFilePathDirsIfEnabled(filename)
             cmd_property('plane', 'planefile', [filename])
@@ -123,7 +123,7 @@ def defplane(channel, variable, vextype, idx, wrangler, cam, now,
         plist = LSDsettings.evaluateImagePlane(idx, wrangler, cam, now)
         cmd_propertyV('plane', plist)
 
-        if LSDhooks.call('post_defplane', variable, vextype, idx,
+        if LSDhooks.call('post_defplane', variable, lsdtype, idx,
                     wrangler, cam, now, filename, lightexport):
             return
         cmd_end()
@@ -134,7 +134,7 @@ def iprplane(channel):
             return
         cmd_start('plane')
         cmd_property('plane', 'variable', [channel])
-        cmd_property('plane', 'vextype', ['float'])
+        cmd_property('plane', 'type', ['float'])
         cmd_property('plane', 'channel', [channel])
         cmd_property('plane', 'sfilter', ['closest'])
         cmd_property('plane', 'pfilter', ['minmax idcover'])
@@ -156,8 +156,8 @@ planeDisplayParms = {
                                 key='excludedcm'),
     'variable'  :SohoParm('lv_variable_plane%d','string', [''], False,
                                 key='variable'),
-    'vextype'   :SohoParm('lv_vextype_plane%d', 'string', ['float'], False,
-                                key='vextype'),
+    'type'   :SohoParm('lv_type_plane%d', 'string', ['float'], False,
+                                key='lsdtype'),
     'usefile'   :SohoParm('lv_usefile_plane%d', 'int', [0], False,
                                 key='usefile'),
     'filename'  :SohoParm('lv_filename_plane%d', 'string', [''], False,
@@ -236,7 +236,7 @@ def envmapDisplay(cam, now, cubemap):
     filename = cubemap.Filename
     cmd_image(cubemap.Filename, '', '')
     LSDsettings.outputImageFormatOptions(None, cam, now)
-    defplane("C", 'Cf+Af', 'vector4', -1, None, cam, now)
+    defplane("COLOR_ALPHA", 'Cf+Af', 'vector4', -1, None, cam, now)
     soho.indent(-1, "", None)
     LSDhooks.call('post_envmapDisplay', cam, now, cubemap)
 
@@ -264,12 +264,12 @@ def lightDisplay(wrangler, light, now):
     if deep:
         cmd_property('plane', 'planefile', ['null:'])
         cmd_property('plane', 'variable', ['Of'])
-        cmd_property('plane', 'vextype', ['vector'])
+        cmd_property('plane', 'type', ['vector'])
     else:
         soho.makeFilePathDirsIfEnabled(filename)
         cmd_property('plane', 'planefile', [filename])
         cmd_property('plane', 'variable', ['Z-Far'])
-        cmd_property('plane', 'vextype', ['float'])
+        cmd_property('plane', 'type', ['float'])
         cmd_property('plane', 'quantize', ['float'])
     cmd_property('plane', 'pfilter', ['ubox'])      # Unit box pixel filter
     cmd_end()
@@ -285,7 +285,7 @@ def lightDisplay(wrangler, light, now):
 
 def lightExportPlanes(wrangler, cam, now, lexport,
         lscope, lselect, channel, comp,
-        variable, vextype, plane, filename, excludedcm,
+        variable, lsdtype, plane, filename, excludedcm,
         unique_names):
     # Define a plane for each light in the selection
     def _getName(channel, unique_names):
@@ -314,7 +314,7 @@ def lightExportPlanes(wrangler, cam, now, lexport,
         # down an string that presumably doesn't match any light name.
         if not lightexport:
             lightexport = '__nolights__'
-        defplane(_getName(channel, unique_names), variable, vextype, plane,
+        defplane(_getName(channel, unique_names), variable, lsdtype, plane,
                 wrangler, cam, now, filename, comp, lightexport,
                 excludedcm=excludedcm)
     elif lexport == 1:
@@ -330,30 +330,30 @@ def lightExportPlanes(wrangler, cam, now, lexport,
             else:
                 soho.error("Empty suffix for per-light exports")
             lchannel = _getName(lchannel, unique_names)
-            defplane(lchannel, variable, vextype, plane,
+            defplane(lchannel, variable, lsdtype, plane,
                     wrangler, cam, now, filename, comp, l.getName(),
                     excludedcm=excludedcm)
     else:
-        defplane(channel, variable, vextype, plane, wrangler, cam, now,
+        defplane(channel, variable, lsdtype, plane, wrangler, cam, now,
                 filename, comp,
                 excludedcm=excludedcm)
 
 def quickImagePlanes(wrangler, cam, now, components):
     def _quickPlane(wrangler, cam, now, variable, channel,
-                    vextype, quantize, opts):
-        if LSDhooks.call('pre_defplane', variable, vextype, -1,
+                    lsdtype, quantize, opts):
+        if LSDhooks.call('pre_defplane', variable, lsdtype, -1,
                     wrangler, cam, now, '', 0):
             return
         cmd_start('plane')
         cmd_property('plane', 'variable', [variable])
         cmd_property('plane', 'channel', [channel])
-        cmd_property('plane', 'vextype', [vextype])
+        cmd_property('plane', 'type', [lsdtype])
         if quantize != 'float16':
             cmd_property('plane', 'quantize', [quantize])
         for opt, optvalue in opts.iteritems():
             cmd_property('plane', opt, optvalue)
 
-        if LSDhooks.call('post_defplane', variable, vextype, -1,
+        if LSDhooks.call('post_defplane', variable, lsdtype, -1,
                     wrangler, cam, now, '', 0):
             return
         cmd_end()
@@ -381,10 +381,10 @@ def quickImagePlanes(wrangler, cam, now, components):
                     compvariable = re.sub('_comp$', "_" + comp, variable)
                     compchannel = re.sub('_comp$', "_" + comp, channel)
                     _quickPlane(cam, wrangler, now, compvariable, compchannel,
-                                plane.vextype, plane.quantize, plane.opts)
+                                plane.lsdtype, plane.quantize, plane.opts)
             else:
                 _quickPlane(cam, wrangler, now, variable, channel,
-                            plane.vextype, plane.quantize, plane.opts)
+                            plane.lsdtype, plane.quantize, plane.opts)
 
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):
@@ -431,7 +431,7 @@ def cameraDisplay(wrangler, cam, now):
     # uv render may have Cf+Af disabled for performance reasons
     skipCf = cam.wrangleInt(wrangler, 'lv_bake_skipcf', now, [0])[0]
     if not skipCf:
-        defplane("C", 'Cf+Af', 'vector4', -1, wrangler, cam, now)
+        defplane("COLOR_ALPHA", 'Cf+Af', 'vector4', -1, wrangler, cam, now)
     else:
         defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
 
@@ -464,7 +464,7 @@ def cameraDisplay(wrangler, cam, now):
         filename = plist['filename'].Value[0]
         channel  = plist['channel'].Value[0]
         variable = plist['variable'].Value[0]
-        vextype  = plist['vextype'].Value[0]
+        lsdtype  = plist['type'].Value[0]
         lexport  = plist['lightexport'].Value[0]
         cexport  = plist['componentexport'].Value[0]
         lscope   = plist['lightscope'].Value[0]
@@ -485,7 +485,7 @@ def cameraDisplay(wrangler, cam, now):
         filename = insertFileSuffix(filename, file_suffix)
         unique_names = unique_names_per_filename[primary_filename]
 
-        if not disable and variable and vextype:
+        if not disable and variable and lsdtype:
             if not channel:
                 channel = variable
 
@@ -504,16 +504,16 @@ def cameraDisplay(wrangler, cam, now):
                     cchannel = channel + "_" + comp
                     lightExportPlanes(wrangler, cam, now,
                                 lexport, lscope, lselect, cchannel, comp,
-                                variable, vextype, plane, filename, excludedcm,
+                                variable, lsdtype, plane, filename, excludedcm,
                                 unique_names)
             else:
                 lightExportPlanes(wrangler, cam, now,
                                 lexport, lscope, lselect, channel, None,
-                                variable, vextype, plane, filename, excludedcm,
+                                variable, lsdtype, plane, filename, excludedcm,
                                 unique_names)
 
             if is_preview and lv_relightingbuffer[0] and variable == 'Pixel_Samples':
-                defplane('Pixel_Samples_Relighting', variable, vextype,
+                defplane('Pixel_Samples_Relighting', variable, lsdtype,
                          -1, wrangler, cam, now,
                          showrelightingbuffer=True,
                          excludedcm=excludedcm)

@@ -57,12 +57,6 @@ headerParms = {
     "lv_hippath"        : SohoParm("lv_hippath", "string", key="lv_hippath"),
     "lv_verbose"        : SohoParm("lv_verbose", "int"),
 
-    "lv_vtoff"                  : SohoParm("lv_vtoff", "bool", key="lv_vtoff", skipdefault=False),
-    "lv_fconv"                  : SohoParm("lv_fconv", "bool", key="lv_fconv", skipdefault=False),
-    "lv_async_geo"               : SohoParm("lv_async_geo", "bool", key="lv_async_geo", skipdefault=False),
-    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
-    "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
-
     "houdinipid"        : SohoParm("soho:houdinipid", "int", key="houdinipid"),
     "pipepid"           : SohoParm("soho:pipepid", "int", key="pipepid"),
     "pipestream"        : SohoParm("soho:pipestream", "int", key="pipestream"),
@@ -70,6 +64,16 @@ headerParms = {
                                     key="tmpsharedstorage"),
     "tmplocalstorage"   : SohoParm("lv_tmplocalstorage", "string",
                                     key="tmplocalstorage"),
+}
+
+configParms = {
+    "lv_vtoff"                  : SohoParm("lv_vtoff", "bool", key="lv_vtoff", skipdefault=False),
+    "lv_fconv"                  : SohoParm("lv_fconv", "bool", key="lv_fconv", skipdefault=False),
+    "lv_async_geo"              : SohoParm("lv_async_geo", "bool", key="lv_async_geo", skipdefault=False),
+    "lv_cull_mode"              : SohoParm("lv_cull_mode", "string", key="lv_cull_mode", skipdefault=False),
+    "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
+    "lv_vtex_tlc"               : SohoParm("lv_vtex_tlc", "string", key="lv_vtex_tlc", skipdefault=False),
+    "lv_vtex_tlc_level"         : SohoParm("lv_vtex_tlc_level", "int", key="lv_vtex_tlc_level", skipdefault=False),
 }
 
 objXformMotion = [
@@ -153,21 +157,28 @@ def header(now, propdefs):
         cmd_defaults(propdefs)
 
     # Renderer configuation
+    cfg_plist = rop.evaluate(configParms, now)
     cmd_comment("Renderer configuration")
-    vtoff = plist.get('lv_vtoff', None)
+    vtoff = cfg_plist.get('lv_vtoff', None)
     cmd_config('vtoff', vtoff)
 
-    fconv = plist.get('lv_fconv', None)
+    fconv = cfg_plist.get('lv_fconv', None)
     cmd_config('fconv', fconv)
 
-    async_geo = plist.get('lv_async_geo', None)
+    async_geo = cfg_plist.get('lv_async_geo', None)
     cmd_config('async_geo', async_geo)
 
-    cull_mode = plist.get('lv_cull_mode', None)
+    cull_mode = cfg_plist.get('lv_cull_mode', None)
     cmd_config('cull_mode', cull_mode)
 
-    vtex_conv_quality = plist.get('lv_vtex_conv_quality', None)
+    vtex_conv_quality = cfg_plist.get('lv_vtex_conv_quality', None)
     cmd_config('vtex_conv_quality', vtex_conv_quality)
+
+    vtex_tlc = cfg_plist.get('lv_vtex_tlc', None)
+    cmd_config('vtex_tlc', vtex_tlc)
+
+    vtex_tlc_level = cfg_plist.get('lv_vtex_tlc_level', None)
+    cmd_config('vtex_tlc_level', vtex_tlc_level)
 
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])

@@ -373,6 +373,8 @@ namespace Falcor {
                 return VK_FILTER_NEAREST;
             case Sampler::Filter::Linear:
                 return VK_FILTER_LINEAR;
+            case Sampler::Filter::Cubic:
+                return VK_FILTER_CUBIC_EXT;
             default:
                 should_not_get_here();
                 return VK_FILTER_NEAREST;
@@ -384,6 +386,7 @@ namespace Falcor {
             case Sampler::Filter::Point:
                 return VK_SAMPLER_MIPMAP_MODE_NEAREST;
             case Sampler::Filter::Linear:
+            case Sampler::Filter::Cubic:
                 return VK_SAMPLER_MIPMAP_MODE_LINEAR;
             default:
                 should_not_get_here();
@@ -421,6 +424,7 @@ namespace Falcor {
         infoOut = {};
 
         infoOut.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        infoOut.pNext = NULL;
         infoOut.magFilter = getVkFilter(pSampler->getMagFilter());
         infoOut.minFilter = getVkFilter(pSampler->getMinFilter());
         infoOut.mipmapMode = getVkMipMapFilterMode(pSampler->getMipFilter());

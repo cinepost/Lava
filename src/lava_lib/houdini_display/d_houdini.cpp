@@ -659,15 +659,13 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 
 // store a single resolution of a multires render
 // allows storage also of a single lod
-H_MultiRes::~H_MultiRes()
-{
+H_MultiRes::~H_MultiRes() {
 	log(0, "H_MultiRes destructor: level: %d, xres: %d, yres: %d\n",
         myLevel, myXres, myYres);
 }
 
 void
-H_MultiRes::init(const int xres, const int yres, const int level)
-{
+H_MultiRes::init(const int xres, const int yres, const int level) {
 	// record the current multires lod resolution
 	myXres = xres;
 	myYres = yres;
