@@ -263,11 +263,11 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vecto
     if (type == FormatType::Float && channels < 3) {
         Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
         pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
-        textureData = pContext->readTextureSubresource(pOther.get(), 0);
+        pContext->readTextureSubresource(pOther.get(), 0, textureData);
         resourceFormat = ResourceFormat::RGBA32Float;
     } else {
         uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
-        textureData = pContext->readTextureSubresource(this, subresource);
+        pContext->readTextureSubresource(this, subresource, textureData);
     }
 }
 

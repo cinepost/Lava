@@ -72,7 +72,7 @@ namespace Falcor {
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
 
-            //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
+            LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
 
             if (pBuffer->isTyped()) {
                 texelBufferView = pBuffer->getUAV()->getApiHandle();
@@ -88,6 +88,10 @@ namespace Falcor {
             write.pImageInfo = nullptr;
         } else {
             assert(handle.getType() == VkResourceType::Image);
+            
+            Texture* pTexture = dynamic_cast<Texture*>(pView->getResource());
+            LOG_DBG("Texture %zu update descriptor set bindFlags %s", pTexture->id(),to_string(pTexture->getBindFlags()).c_str());
+
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             image.imageView = handle;
             image.sampler = nullptr;

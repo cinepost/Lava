@@ -3,6 +3,7 @@
 #include "LTX_BitmapAlgo.h"
 
 #include <OpenImageIO/filter.h>
+#include <OpenImageIO/color.h>
 
 #include "c-blosc2/blosc/blosc2.h"
 
@@ -156,6 +157,11 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
         }
     }
 
+    // color space converions processors
+    oiio::ColorConfig cc;
+    auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
+    auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
+
     // Write 1+ MIP tiles
     for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
         uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
@@ -188,9 +194,13 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
         bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
         oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+        //auto tmpBuff = oiio::ImageBufAlgo::colorconvert(srcBuff, processor_tolin.get(), true);
+        //oiio::ImageBufAlgo::colorconvert(oiio::ImageBufAlgo::resize(tmpBuff, "", 0, roi), processor_tosrgb.get(), true).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+        
         oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
         
-        //oiio::Filter2D *filter = oiio::Filter2D::create("box", ((float)img_width/(float)mipLevelWidth) * .5f, ((float)img_height/(float)mipLevelHeight) * .5f);
+
+        //oiio::Filter2D *filter = oiio::Filter2D::create("box", ((float)img_width/(float)mipLevelWidth) * 1.0f, ((float)img_height/(float)mipLevelHeight) * 1.0f);
         //oiio::ImageBufAlgo::resize(srcBuff, filter, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
         //delete filter;
 
@@ -386,6 +396,11 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
         }
     }
 
+    // color space converions processors
+    oiio::ColorConfig cc;
+    auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
+    auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
+
     // Write 1+ MIP tiles
     oiio::ImageBuf prevBuff;
     oiio::ImageBuf scaledBuff;
@@ -416,9 +431,15 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 
         scaledBuff = oiio::ImageBuf(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, spec.nchannels, spec.format), oiio::InitializePixels::No);
 
+        //auto tmpBuff = oiio::ImageBufAlgo::colorconvert(prevBuff, processor_tolin.get(), true);
+        //oiio::ImageBufAlgo::resample(scaledBuff, tmpBuff, true, roi);
+        //tmpBuff = oiio::ImageBufAlgo::colorconvert(scaledBuff, processor_tosrgb.get(), true);
+        //scaledBuff = tmpBuff;
+        //scaledBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+        
         oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
         scaledBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-        
+
         for(uint32_t z = 0; z < pagesCountZ; z++) {
             for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
 
@@ -495,6 +516,15 @@ static oiio::cspan<float> dbg_cls_dark[8] = {
 bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
     assert(pFile);
 
+    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+        assert(compressionInfo.pPageOffsets);
+        assert(compressionInfo.pCompressedPageSizes);
+    }
+
+    int comp_level = compressionInfo.compressionLevel; // default compression level (if used)
+    int comp_doshuffle = BLOSC_NOSHUFFLE; //BLOSC_SHUFFLE;
+    size_t comp_typesize = 8; // default compresssor shuffle preconditioner
+
     // image dimesions
     uint32_t img_width  = header.width;
     uint32_t img_height = header.height;
@@ -535,8 +565,14 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
     if( partialPageDims.y != 0) pagesCountY++;
     if( partialPageDims.z != 0) pagesCountZ++;
 
+    std::vector<unsigned char> page_data(65536);
+    std::vector<unsigned char> compressed_page_data(65536 + BLOSC_MAX_OVERHEAD); // temporary compressed page data
+
     std::vector<unsigned char> zero_buff(65536, 0);
     std::vector<unsigned char> tiles_buffer(img_width * page_height * dstBytesPerPixel);
+
+    uint32_t currentPageId = 0;
+    uint32_t currentPageOffset = 0;
 
     // write mip level 0
     LOG_WARN("Writing mip level 0 tiles %u %u ...", pagesCountX, pagesCountY);
@@ -567,40 +603,61 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
                 bool partialColumn = false;
                 if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
                 
+                unsigned char *pPageData = page_data.data();
                 unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
 
                 if( partialRow && partialColumn) {
-                    // write partial corner tile
+                    // fill page data from partial corner tile
+                    ::memset(pPageData, 0, 65536);
                     for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        fwrite(pTileData, sizeof(uint8_t), partialTileWidthStride, pFile);
+                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
+                        pPageData += partialTileWidthStride;
                         pTileData += bufferWidthStride;
                     }
-                    // write zero padding
-                    fwrite(zero_buff.data(), sizeof(uint8_t), (tileWidthStride - partialTileWidthStride) * writeLinesCount, pFile);
-                    fwrite(zero_buff.data(), sizeof(uint8_t), tileWidthStride * (page_height - writeLinesCount), pFile);
                 } else if( partialRow ) {
-                    // write partial bottom tile
+                    // fill page data from partial bottom tile
+                    ::memset(pPageData, 0, 65536);
                     for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
+                        ::memcpy(pPageData, pTileData, tileWidthStride );
+                        pPageData += tileWidthStride;
                         pTileData += bufferWidthStride;
                     }
-                    // write zero padding
-                    fwrite(zero_buff.data(), sizeof(uint8_t), tileWidthStride * (page_height - writeLinesCount), pFile);
                 } else if( partialColumn ) { 
-                    // write partial column tile
+                    // fill page data from partial column tile
+                    ::memset(pPageData, 0, 65536);
                     for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        fwrite(pTileData, sizeof(uint8_t), partialTileWidthStride, pFile);
+                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
+                        pPageData += partialTileWidthStride;
                         pTileData += bufferWidthStride;
                     }
-                    // write zero padding
-                    fwrite(zero_buff.data(), sizeof(uint8_t), (tileWidthStride - partialTileWidthStride) * page_height, pFile);
                 } else {
-                    // write full tile
+                    // fill page data from full tile
                     for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
+                        ::memcpy(pPageData, pTileData, tileWidthStride );
+                        pPageData += tileWidthStride;
                         pTileData += bufferWidthStride;
                     }
                 }
+
+                if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+                    // write compressed tile
+                    int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
+                           compressed_page_data.data(), compressed_page_data.size());
+
+                    LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+
+                    fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
+                    compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
+                    compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
+
+                    currentPageOffset += cbytes;
+                } else {
+
+                    // write uncompressed tile
+                    fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
+                }
+
+                currentPageId++;
             }
         }
     }
@@ -636,7 +693,6 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
         bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
         oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
-        //oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
         oiio::ImageBuf A(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, 4, oiio::TypeDesc::UINT8));
         oiio::ImageBufAlgo::checker( A, 128/ pow(2, mipLevel), 128/ pow(2, mipLevel),1, dbg_cls_dark[mipLevel], dbg_cls_light[mipLevel], 0, 0, 0);
         A.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
@@ -658,40 +714,62 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
                     bool partialColumn = false;
                     if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
 
+                    unsigned char *pPageData = page_data.data();
                     unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
                    
                     if( partialRow && partialColumn) {
-                        // write partial corner tile
+                        // fill page data from partial corner tile
+                        ::memset(pPageData, 0, 65536);
                         for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            fwrite(pTileData, sizeof(uint8_t), partialTileWidthStride, pFile);
+                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
+                            pPageData += partialTileWidthStride;
                             pTileData += bufferWidthStride;
                         }
-                        // write zero padding
-                        fwrite(zero_buff.data(), sizeof(uint8_t), (tileWidthStride - partialTileWidthStride) * writeLinesCount, pFile);
-                        fwrite(zero_buff.data(), sizeof(uint8_t), tileWidthStride * (page_height - writeLinesCount), pFile);
                     } else if( partialRow ) {
-                        // write partial bottom tile
+                        // fill page data from partial bottom tile
+                        ::memset(pPageData, 0, 65536);
                         for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
+                            ::memcpy(pPageData, pTileData, tileWidthStride );
+                            pPageData += tileWidthStride;
                             pTileData += bufferWidthStride;
                         }
-                        // write zero padding
-                        fwrite(zero_buff.data(), sizeof(uint8_t), tileWidthStride * (page_height - writeLinesCount), pFile);
                     } else if( partialColumn ) {
-                        // write partial column tile
+                        // fill page data from partial column tile
+                        ::memset(pPageData, 0, 65536);
                         for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            fwrite(pTileData, sizeof(uint8_t), partialTileWidthStride, pFile);
+                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
+                            pPageData += partialTileWidthStride;
                             pTileData += bufferWidthStride;
                         }
-                        // write zero padding
-                        fwrite(zero_buff.data(), sizeof(uint8_t), (tileWidthStride - partialTileWidthStride) * page_height, pFile);
                     } else {
-                        // write full tile
+                        // //  fill page data from full tile
                         for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            fwrite(pTileData, sizeof(uint8_t), tileWidthStride, pFile);
+                            ::memcpy(pPageData, pTileData, tileWidthStride );
+                            pPageData += tileWidthStride;
                             pTileData += bufferWidthStride;
                         }
                     }
+
+                    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+                        // write compressed tile
+
+                        int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
+                            compressed_page_data.data(), compressed_page_data.size());
+
+                        LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+
+                        fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
+                        compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
+                        compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
+
+                        currentPageOffset += cbytes;
+
+                    } else {
+                        // write uncompressed tile
+                        fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
+                    }
+
+                    currentPageId++;
                 }
             }
         }

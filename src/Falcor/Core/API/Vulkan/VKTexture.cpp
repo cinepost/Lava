@@ -242,12 +242,18 @@ namespace Falcor {
 
         mState.global = (pData && !mIsSparse ) ? Resource::State::PreInitialized : Resource::State::Undefined;
 
-        //auto result = vkCreateImage(mpDevice->getApiHandle(), &imageCreateInfo, nullptr, &mImage);
-        VmaAllocationCreateInfo allocInfo = {};
-        allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
+        VkResult result;
         VmaAllocation allocation;
-        auto result = vmaCreateImage(mpDevice->allocator(), &imageCreateInfo, &allocInfo, &mImage, &allocation, nullptr);
+
+        if(mIsSparse) {
+            result = vkCreateImage(mpDevice->getApiHandle(), &imageCreateInfo, nullptr, &mImage);
+        } else {
+            VmaAllocationCreateInfo allocInfo = {};
+            allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+            result = vmaCreateImage(mpDevice->allocator(), &imageCreateInfo, &allocInfo, &mImage, &allocation, nullptr);
+        }
 
         if (VK_FAILED(result)) {
             mImage = VK_NULL_HANDLE;

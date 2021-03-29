@@ -6,7 +6,7 @@ then
     export LAVA_HOME=@LAVA_INST_DIR@
 fi
 
-export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LAVA_HOME/lib:$LAVA_HOME/render_passes:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LAVA_HOME/lib:$LAVA_HOME/3rdparty/lib:$LAVA_HOME/render_passes:$LD_LIBRARY_PATH
 export PATH=$HFS/bin:$PATH
 
 # source virtualenv

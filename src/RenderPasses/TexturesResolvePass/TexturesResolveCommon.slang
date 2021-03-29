@@ -40,33 +40,89 @@ float4 randomColor(int tileID) {
 float calculateBaseMipMapLevel2D(float2 texCoord, float2 texDims, float mipBias) {
     // Modified The OpenGL Graphics System: A Specification 4.2 - chapter 3.9.11, equation 3.21
 
-    float2 dx_vtc = ddx(texCoord) * texDims.x;
-    float2 dy_vtc = ddy(texCoord) * texDims.y;
+    // bias scale
+    float bias = pow(2, mipBias);
+
+    float2 dx_vtc = ddx(texCoord * texDims) * bias; // texDims.x;
+    float2 dy_vtc = ddy(texCoord * texDims) * bias; // texDims.y;
     float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
 
-    return max(0.0, 0.5 * log2(delta_max_sqr) + mipBias);
+    return max(0.0, 0.5 * log2(delta_max_sqr));
 }
 
 float calculateAnisoMipMapLevel2D(float2 texCoord, float2 texDims, float mipBias) {
-    float2 dx_vtc = ddx_fine(texCoord) * texDims.x;
-    float2 dy_vtc = ddy_fine(texCoord) * texDims.y;
+    // bias scale
+    float bias = pow(2, mipBias);
+
+    float2 tc = texCoord * texDims;
+
+    float2 dx_vtc = ddx_fine(tc) * bias; // * texDims.x;
+    float2 dy_vtc = ddy_fine(tc) * bias; // * texDims.y;
+    
     float p_x = sqrt(dot(dx_vtc, dx_vtc));
     float p_y = sqrt(dot(dy_vtc, dy_vtc));
-
-    //float p_x = sqrt(dx_vtc.x * dx_vtc.x + dx_vtc.y * dx_vtc.y);
-    //float p_y = sqrt(dy_vtc.x * dy_vtc.x + dy_vtc.y * dy_vtc.y);
 
     float p_min = min(p_x, p_y);
     float p_max = max(p_x, p_y);
 
-    float max_anisotropy = 8;
-    //float n = min(ceil(p_max/p_min), max_anisotropy);
+    float max_anisotropy = 16;
     float n = min(p_max/p_min, max_anisotropy);
 
     float p = p_max / n;
+    p = p_min * n;
 
-    return max(0.0, log2(p) + mipBias);
+    return max(0.0, log2(p));
 }
+
+float _calculateAnisoMipMapLevel2D(float2 texCoord, float2 texDims, float mipBias) {
+    // bias scale
+    float bias = pow(2, mipBias);
+
+    float2 tc = texCoord * texDims;
+
+    float2 dx_vtc = ddx_fine(tc) * bias; // * texDims.x;
+    float2 dy_vtc = ddy_fine(tc) * bias; // * texDims.y;
+    
+    float p_x = sqrt(dot(dx_vtc, dx_vtc));
+    float p_y = sqrt(dot(dy_vtc, dy_vtc));
+
+    float p_min = min(p_x, p_y);
+    float p_max = max(p_x, p_y);
+
+    float max_anisotropy = 16;
+    float n = min(p_max/p_min, max_anisotropy);
+
+    return p_max - p_min;
+
+    float p = p_max / n;
+    p = p_min * n;
+
+    return max(0.0, log2(p));
+}
+
+
+float2 calculateAnisoMipMapLevel2D2(float2 texCoord, float2 texDims, float mipBias) {
+    // bias scale
+    float bias = pow(2, mipBias);
+
+    float2 dx_vtc = ddx_fine(texCoord) * bias * texDims.x;
+    float2 dy_vtc = ddy_fine(texCoord) * bias * texDims.y;
+    
+    float p_x = sqrt(dot(dx_vtc, dx_vtc));
+    float p_y = sqrt(dot(dy_vtc, dy_vtc));
+
+    float p_min = min(p_x, p_y);
+    float p_max = max(p_x, p_y);
+
+    float max_anisotropy = 16;
+    float n = min(p_max/p_min, max_anisotropy);
+
+    float p1 = p_max / n;
+    float p2 = p_min / n;
+
+    return float2(max(0.0, log2(p1)), max(0.0, log2(p2)));
+}
+
 
 // computes tile ID for a given mipLevel of a virtual texture at given tex_coord
 int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData) {

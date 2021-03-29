@@ -511,9 +511,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     // test
     uint image2;
     std::vector<Display::Channel> channels2;
-    channels2.push_back({"albedo.000.r", Display::TypeFormat::FLOAT16});
-    channels2.push_back({"albedo.000.g", Display::TypeFormat::FLOAT16});
-    channels2.push_back({"albedo.000.b", Display::TypeFormat::FLOAT16});
+    channels2.push_back({"albedo.000.r", Display::TypeFormat::UNSIGNED16});
+    channels2.push_back({"albedo.000.g", Display::TypeFormat::UNSIGNED16});
+    channels2.push_back({"albedo.000.b", Display::TypeFormat::UNSIGNED16});
+    channels2.push_back({"albedo.000.a", Display::TypeFormat::UNSIGNED16});
     mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels2, image2);
     //
 
@@ -616,6 +617,26 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
 
             mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
             mpDisplay->closeImage(image1);
+            
+            }
+
+            {
+                Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
+                Falcor::Texture* pTex = pOutTex.get();
+
+                Falcor::ResourceFormat resourceFormat;
+                uint32_t channels;
+                std::vector<uint8_t> textureData;
+                LLOG_DBG << "readTextureData";
+                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+                LLOG_DBG << "readTextureData done";
+
+                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+                
+                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 8bit RGBA for now
+
+                mpDisplay->sendImage(image2, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+                mpDisplay->closeImage(image2);
             }
 
         } else {

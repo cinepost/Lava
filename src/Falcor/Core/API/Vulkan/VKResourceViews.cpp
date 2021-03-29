@@ -135,6 +135,11 @@ VkImageViewCreateInfo initializeImageViewInfo(const Texture* pTexture, uint32_t 
 
     ResourceFormat texFormat = pTexture->getFormat();
 
+    if( isSrgbFormat(texFormat) && pTexture->isSparse()) {
+        // sparse textures need this
+        //texFormat = srgbToLinearFormat(texFormat);
+    }
+
     outInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     outInfo.image = pTexture->getApiHandle();
     outInfo.viewType = getViewType(pTexture->getType(), pTexture->getArraySize() > 1);

@@ -73,6 +73,9 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     void initDepth(RenderContext* pContext, const RenderData& renderData);
     void updateTexturesResolveData();
 
+    void createMipCalibrationTexture(RenderContext* pRenderContext);
+    void createLtxCalibrationTexture(RenderContext* pRenderContext);
+
     Fbo::SharedPtr              mpFbo;
     GraphicsState::SharedPtr    mpState;
     GraphicsVars::SharedPtr     mpVars;
@@ -82,11 +85,15 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     GraphicsProgram::SharedPtr      mpProgram;
     DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
-    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
+    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA16Unorm;
 
     ParameterBlock::SharedPtr   mpDataBlock;
     Buffer::SharedPtr           mpTexResolveDataBuffer;
     bool                        mUsePreGenDepth = false;
+
+
+    Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
+    Texture::SharedPtr          mpLtxCalibrationTexture = nullptr;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_TEXTURESRESOLVEPASS_H_

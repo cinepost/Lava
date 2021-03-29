@@ -37,7 +37,13 @@ Dictionary TexturesResolvePass::getScriptingDictionary() {
 }
 
 TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new TexturesResolvePass(pRenderContext->device(), dict));
+    auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->device(), dict);
+
+    // Create calibration textures
+    pTexturesResolvePass->createMipCalibrationTexture(pRenderContext);
+    pTexturesResolvePass->createLtxCalibrationTexture(pRenderContext);
+
+    return SharedPtr(pTexturesResolvePass);
 }
 
 TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
@@ -226,6 +232,9 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
     mpVars["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
 
+    mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
+    mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
+
     LOG_WARN("%u textures needs to be resolved", resolvedTexturesCount);
 
     mpScene->render(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
@@ -282,4 +291,38 @@ TexturesResolvePass& TexturesResolvePass::setRasterizerState(const RasterizerSta
     mpRsState = pRsState;
     mpState->setRasterizerState(mpRsState);
     return *this;
+}
+
+void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderContext) {
+    if (mpMipCalibrationTexture) return;
+
+    // We use 8 mip levels calibration texture (128 x 128)
+
+    mpMipCalibrationTexture = Texture::create2D(pRenderContext->device(), 128, 128, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+    if (!mpMipCalibrationTexture) LOG_ERR("Error creating MIP calibration texture !!!");
+
+    for(uint32_t mipLevel = 0; mipLevel < mpMipCalibrationTexture->getMipCount(); mipLevel++) {
+        uint32_t width = mpMipCalibrationTexture->getWidth(mipLevel);
+        uint32_t height = mpMipCalibrationTexture->getHeight(mipLevel); 
+    
+        // upload mip level data
+        std::vector<unsigned char> initData(width*height, (unsigned char)mipLevel);
+        uint32_t subresource = mpMipCalibrationTexture->getSubresourceIndex(0, mipLevel);
+        pRenderContext->updateSubresourceData(mpMipCalibrationTexture.get(), subresource, initData.data());
+    }
+}
+
+void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderContext) {
+    if (mpLtxCalibrationTexture) return;
+
+    // Worst case scenario is 1024 pages per dimension
+
+    mpLtxCalibrationTexture = Texture::create2D(pRenderContext->device(), 1024, 1024, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+    if (!mpLtxCalibrationTexture) LOG_ERR("Error creating LTX calibration texture !!!");
+
+    for(uint32_t mipLevel = 0; mipLevel < mpLtxCalibrationTexture->getMipCount(); mipLevel++) {
+        uint32_t width = mpLtxCalibrationTexture->getWidth(mipLevel);
+        uint32_t height = mpLtxCalibrationTexture->getHeight(mipLevel); 
+        
+    }
 }

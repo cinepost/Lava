@@ -444,6 +444,11 @@ if( 1 == 1) {
             fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
         }
     }
+} else {
+    // debug tiles texture
+    ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile, compressionInfo);
+    fseek(pFile, 0, SEEK_SET);
+    fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
 }
 
     if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
@@ -452,10 +457,6 @@ if( 1 == 1) {
         fwrite(pageOffsets.data(), sizeof(uint32_t), header.pagesCount, pFile);
         fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);
     }
-
-    //ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile);
-    //fseek(pFile, 0, SEEK_SET);
-    //fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
     
     LOG_WARN("LTX post write pages count is: %u", header.pagesCount);
 

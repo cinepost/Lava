@@ -652,17 +652,19 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
     pMaterial->setReflectivity(surface_reflectivity);
 
     LLOG_DBG << "setting material textures";
+  	bool loadAsSrgb = true;
+
     if(surface_base_color_texture != "" && surface_use_basecolor_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture);
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture, true); // load as srgb texture
 
     if(surface_metallic_texture != "" && surface_use_metallic_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Specular, surface_metallic_texture);
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Specular, surface_metallic_texture, false); // load as linear texture
 
     if(surface_rough_texture != "" && surface_use_roughness_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture);
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
 
     if(surface_base_normal_texture != "" && surface_use_basenormal_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture);
+    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture, false); // load as linear texture
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);

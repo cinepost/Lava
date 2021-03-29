@@ -117,9 +117,9 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     // create default sampler
     Sampler::Desc desc;
-    desc.setMaxAnisotropy(8);
-    desc.setLodParams(0.0f, 16.0f, 0.0f);
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
+    desc.setMaxAnisotropy(16);
+    desc.setLodParams(0.0f, 1000.0f, -0.0f);
+    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
 

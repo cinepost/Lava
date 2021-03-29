@@ -1,6 +1,8 @@
 import Scene.Raster;
 import Scene.Shading;
 import Utils.Helpers;
+import Experimental.Scene.Material.TexLODHelpers;
+
 import TexturesResolveCommon;
 
 
@@ -12,11 +14,12 @@ cbuffer PerFrameCB {
 
 StructuredBuffer<MaterialResolveData> materialsResolveData;
 
+Texture2D mipCalibrationTexture;
+Texture2D ltxCalibrationTexture;
+
 RWByteAddressBuffer resolvedPagesBuff; // all virtual pages needed buffer, 0 means unused page
-//RWByteAddressBuffer resolvedPagesBitsetBuff; // all virtual pages needed buffer, unset bits means unused page
 
 SamplerState gSampler;
-Texture2DArray <uint4>  g_tTex2du4a;
 
 // Vertex
 
@@ -41,6 +44,30 @@ void writeTileID(int tileID) {
     resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
 }
 
+// calculate required texture mip levels using calibration texture
+float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
+    // bias scale
+    float bias = pow(2, mipBias);
+
+    float2 vtexSize = float2(vtexData.width, vtexData.height);
+
+    float2 tc = uv * float2(vtexData.width / 128.0, vtexData.height / 128.0);
+
+    float  mc = float(vtexData.mipLevelsCount) / 8.0f;
+    float2 gradX = ddx_fine(tc);
+    float2 gradY = ddy_fine(tc);
+
+    float fMipLevel = mipCalibrationTexture.SampleGrad(calibrationSampler, float2(0.5, 0.5), gradX, gradY).r * 255.0;
+    
+    //TODO: Sample additional mips (9+ levels)
+    //float fMipLevel2 = mipCalibrationTexture.SampleGrad(calibrationSampler, float2(0.5, 0.5), gradX*0.5, gradY*0.5).r * 255.0;
+    
+    float f1 = ceil(fMipLevel) - 1.0;
+    float f2 = floor(fMipLevel) - 1.0;
+
+    return float3(f1, f2, fMipLevel);
+}
+
 [earlydepthstencil]
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC : TEXCOORD) {
 
@@ -50,7 +77,9 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     MaterialResolveData matData = materialsResolveData[materialID];
 
     int debugTileID = 0;
-    float debug_mip_level = 0.0;
+    float debug_mip_level_lo = 0.0;
+    float debug_mip_level_hi = 0.0;
+    float debug_mip_level_f  = 0.0;
     uint virtualTexturesCount = matData.virtualTexturesCount;
     
     for(uint v = 0; v < virtualTexturesCount; v++) {
@@ -62,26 +91,45 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         uint32_t textureID = vtexData.textureID;
 
         if (!vtexData.empty) {
-            float mipBias = -0.25; // TODO: use actual texture sampler bias
-            mipBias = 0.0;
+            float mipBias = -0.0; // TODO: use actual texture sampler bias
 
-            float fMipLevel = 0.0;
-            if (anisotropicFilteringRequired) { 
-                fMipLevel = calculateAnisoMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
-            } else {
-                fMipLevel = calculateBaseMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
-            }
-            
-            debug_mip_level = fMipLevel;
+            //float fMipLevel = 0.0;
+            //if (anisotropicFilteringRequired) { 
+            //    fMipLevel = _calculateAnisoMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
+            //} else {
+            //    fMipLevel = calculateBaseMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
+            //}
 
-            int loMipLevel = floor(fMipLevel);
-            int hiMipLevel = ceil(fMipLevel);
-            
+            //int loMipLevel = floor(fMipLevel);
+            //int hiMipLevel = ceil(fMipLevel);
+
+            float3 mips = calcTextureMipLevels(vOut.texC, gSampler, vtexData, mipBias);
+            //float fmip = fcalcTextureMipLevel(vOut.texC, gSampler, vtexData, mipBias) + mipBias;
+
+            int loMipLevel = max(0, (int)mips.x);
+            int hiMipLevel = max(0, (int)mips.y);
+
+            debug_mip_level_lo = loMipLevel * 0.1;
+            debug_mip_level_hi = hiMipLevel * 0.1;
+            debug_mip_level_f  = mips.z * 0.1;
+
             int loMipLevelTileID = calculateTileID2D(vOut.texC, loMipLevel, vtexData);
             int hiMipLevelTileID = calculateTileID2D(vOut.texC, hiMipLevel, vtexData);
 
             writeTileID(loMipLevelTileID);
             writeTileID(hiMipLevelTileID);
+
+
+            //Texture2D tex = gScene.materialResources[materialID].baseColor;
+            //float ff = g_tTex2df4a.CalculateLevelOfDetail(gSampler, vOut.texC);
+
+            //writeTileID(calculateTileID2D(vOut.texC, 1, vtexData));
+
+            //writeTileID(calculateTileID2D(vOut.texC, 0, vtexData));
+            //writeTileID(calculateTileID2D(vOut.texC, 1, vtexData));
+            //writeTileID(calculateTileID2D(vOut.texC, 2, vtexData));
+            //writeTileID(calculateTileID2D(vOut.texC, 3, vtexData));
+            //writeTileID(calculateTileID2D(vOut.texC, 4, vtexData));
 
             //writeTileID(calculateTileID2D(vOut.texC, max(0.0, loMipLevel - 1), vtexData));
 
@@ -89,7 +137,12 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         }
     }
 
-    psOut.output = float4(0, 0, 0, 0);
+    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, debug_mip_level_f, 1);
+
+    //psOut.output.r = mipCalibrationTexture.Sample(gSampler, vOut.texC).r * 255.0 * 0.1;
+
+    //psOut.output.g = floor(psOut.output.r * 10.0) * 0.1;
+    //psOut.output.b = ceil(psOut.output.r * 10.0) * 0.1;
 
     //psOut.output = randomColor(debugTileID);
     //psOut.output = randomColor(floor(debug_mip_level));

@@ -119,3 +119,14 @@ ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir)
     VertexData v = prepareVertexData(vsOut, faceNormal);
     return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
 }
+
+
+/** Helper function that prepares the ShadingData struct based on VSOut.
+    This version uses texture gradients LOD and fetches material data directly from the scene.
+*/
+ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir, float2 gradX, float2 gradY)
+{
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex);
+    VertexData v = prepareVertexData(vsOut, faceNormal);
+    return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir, gradX, gradY);
+}

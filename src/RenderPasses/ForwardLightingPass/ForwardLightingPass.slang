@@ -254,8 +254,15 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     // pixel position
     int2 ipos = int2(vOut.posH.xy);
 
+    // screen space texture coordinates gradient
+
+    float2 gradX = ddx_fine(vOut.texC) * 0.5;// * gRenderTargetDim.x; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY = ddy_fine(vOut.texC) * 0.5;// * gRenderTargetDim.y; ///< Gradient of texture coordiante in teh screen-space Y direction
+    
     float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
+    
+    //ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
+    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir, gradX, gradY);
 
     float4 finalColor = float4(0, 0, 0, 1);
 
@@ -267,6 +274,8 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     float3 bentNormal;
     float user_visibility = 1.0; // TODO: fetch matrial provided occlusion texture
     
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex); // Maybe faceNormal should work better than shadingNormal ?
+
     diffuseAO = hbaoOcclusionCompute(sd.N, vOut.posW, ipos, user_visibility, noise, bentNormal);
     specularAO = hbaoSpecularOcclusion(sd.NdotV, diffuseAO, 1.0f - sd.linearRoughness);
 #endif
@@ -309,6 +318,7 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
 #endif
 
     // DEBUG
+    //psOut.color.rgb = sd.diffuse;
 
     // Return
     return psOut;

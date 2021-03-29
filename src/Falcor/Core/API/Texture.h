@@ -275,7 +275,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     // Call before sparse binding to update memory bind list etc.
     void updateSparseBindInfo();
 
-    bool isSparse() { return mIsSparse; };
+    bool isSparse() const { return mIsSparse; };
 
     const std::vector<VirtualTexturePage::SharedPtr>& pages();
 
