@@ -12,7 +12,6 @@ cbuffer PerFrameCB {
   float  gAoQuality;
   float  gAoFactor; // No need to keep it here
   float  gRotationOffset;
-  uint   gHizMipOffset;
   float  gAoDistance;
 }
 
@@ -20,24 +19,21 @@ SamplerState gNoiseSampler;
 SamplerState gPointSampler;
 SamplerState gDepthSampler;
 
-Buffer<float2> mipRatio; // to correct texel misalignment
-
 Texture2D gDepthTex;
-//Texture2D gNormalTex;
+Texture2D gHiMaxZTex;
 Texture2D gNoiseTex;
-Texture2D gMaxZBuffer;
 
 RWTexture2D<float4> gOutput;
 
 
 /* Return horizon angle cosine. */
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   
   const uint2 ipos = dispatchThreadId.xy;
   
   float2 uvs = ipos / float2(gFrameDim);
-  float depth = sampleDepthTexture(uvs, 0);
+  float depth = sampleDepthTexture(uvs);
 
   // Early out
   if (depth >= 1) {
@@ -45,7 +41,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   }
 
   // Avoid self shadowing.
-  depth = saturate(depth - 3e-6); /* Tweaked for 24bit depth buffer. */
+  //depth = saturate(depth - 3e-6); /* Tweaked for 24bit depth buffer. */
 
   float3 viewPosition = getViewPositionFromDepth(uvs, depth).xyz;
   float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
@@ -58,13 +54,15 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   /* Search in 4 directions. */
   float4 output;
   output.xy = search_horizon_sweep(dirs.xy, viewPosition, uvs, noise.y, max_dir);
-  output.zw = search_horizon_sweep(dirs.zw, viewPosition, uvs, noise.y, max_dir);
+  output.zw = search_horizon_sweep(dirs.zw, viewPosition, uvs, noise.z, max_dir);
 
   /* Resize output for integer texture. */
   gOutput[ipos] = packHorizons(output);
 
 
   // DBG
-  //gOutput[ipos] = packHorizons(float4(viewPosition, 0));
+  //gOutput[ipos] = packHorizons(0.1 * float4(sampleDepthTexture(uvs)));
+  //gOutput[ipos] = packHorizons(float4(0, 0.5, 1, 1));
+  //gOutput[ipos] = packHorizons(float4(sampleHiMaxZTexture(uvs, 0), sampleHiMaxZTexture(uvs, 1), sampleHiMaxZTexture(uvs, 2), sampleHiMaxZTexture(uvs, 3)));
 
 }

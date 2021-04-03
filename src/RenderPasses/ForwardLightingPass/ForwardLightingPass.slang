@@ -33,6 +33,10 @@ import Utils.Helpers;
 
 #define gCamera gScene.camera
 #define gFrameDim gRenderTargetDim
+
+#define MAX_LOD 1.0
+#define MAX_SEARCH_ITER 8
+
 #include "RenderPasses/HBAO/HBAO.Common.slangh"
 
 cbuffer PerFrameCB {
@@ -58,7 +62,7 @@ SamplerState gDepthSampler;
 
 Buffer<float2> mipRatio; // to correct texel misalignment
 Texture2D gDepthTex;
-Texture2D gMaxZBuffer;
+Texture2D gHiMaxZTex;
 
 Texture2D aoHorizons;
 Texture2D gNoiseTex;
@@ -274,7 +278,7 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     float3 bentNormal;
     float user_visibility = 1.0; // TODO: fetch matrial provided occlusion texture
     
-    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex); // Maybe faceNormal should work better than shadingNormal ?
+    float3 faceNormal = gScene.getFaceNormalW(vOut.meshInstanceID, triangleIndex); // Maybe faceNormal should work better than shadingNormal ?
 
     diffuseAO = hbaoOcclusionCompute(sd.N, vOut.posW, ipos, user_visibility, noise, bentNormal);
     specularAO = hbaoSpecularOcclusion(sd.NdotV, diffuseAO, 1.0f - sd.linearRoughness);
@@ -318,7 +322,10 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
 #endif
 
     // DEBUG
-    //psOut.color.rgb = sd.diffuse;
+    //float4 horizons = aoHorizons.Load(uint3(ipos, 0));
+    //horizons = unpackHorizons(horizons);
+    //psOut.color.rgb = float3(horizons.r, horizons.g, horizons.b);
+    //psOut.color.rgb = float3(diffuseAO);
 
     // Return
     return psOut;

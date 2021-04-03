@@ -55,7 +55,16 @@ class dlldecl SceneBuilder {
         UseMetalRoughMaterials      = 0x40,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else.
         NonIndexedVertices          = 0x80,   ///< Convert meshes to use non-indexed vertices. This requires more memory but may increase performance.
 
+        MikkTSpaceTangets           = 0x100,  ///< Use MikkTSpace for tangents generation.
+
         Default = None
+    };
+
+    /** Tangent space generation mode
+    */
+    enum class TangentSpaceMode {
+        MIKKTSPACE,
+        SHADER 
     };
 
     /** Mesh description
@@ -408,6 +417,8 @@ protected:
     void calculateMeshBoundingBoxes(Scene* pScene);
     void createAnimationController(Scene* pScene);
     std::string mFilename;
+
+    TangentSpaceMode mTangentSpaceMode = TangentSpaceMode::SHADER;
 };
 
 enum_class_operators(SceneBuilder::Flags);

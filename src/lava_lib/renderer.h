@@ -121,12 +121,12 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     float2 mInvFrameDim;
     CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
     
-    Falcor::RenderGraph::SharedPtr  mpDepthPrePassGraph = nullptr;
     Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
     Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
 
     AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
     DepthPass::SharedPtr            mpDepthPrePass = nullptr;
+    DepthPass::SharedPtr            mpDepthPass = nullptr;
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
     ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;

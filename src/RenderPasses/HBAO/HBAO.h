@@ -65,18 +65,23 @@ class HBAO : public RenderPass, public inherit_shared_from_this<RenderPass, HBAO
     void setAoTracePrecision(float precision);
     float getAoTracePrecision() const { return mAoTracePrecision; }
 
+    void setMaxLodLevel(uint8_t maxHiZLodLevel);
+    void setMaxSearchIter(uint8_t maxSearchIter);
+
  private:
     HBAO(Device::SharedPtr pDevice);
 
     float mAoDistance;
     float mAoTracePrecision; // [0, 1] range 
 
-    ComputePass::SharedPtr mpDownCopyDepthPass;
-    ComputePass::SharedPtr mpDownSampleDepthPass;
     ComputePass::SharedPtr mpHorizonsSearchPass;
 
-    uint2                  mFrameDim = { 0, 0 };
-    uint32_t               mFrameSampleCount = 16;
+    uint2                   mFrameDim = { 0, 0 };
+    uint32_t                mFrameSampleCount = 16;
+
+    float                   mMaxHiZLod = 1.0;
+    uint8_t                 mMaxSearchIter = 8;
+    bool                    mUseDepthAsMipZero = false;  ///< Since we use half resolution HiZ buffer, we might want to use depth buffer as a zero mip level at full resolution. 
 
     HBAOData mData;
     bool mDirty = false;

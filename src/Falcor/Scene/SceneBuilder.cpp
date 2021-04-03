@@ -39,6 +39,7 @@ namespace fs = boost::filesystem;
 #include "SceneBuilder.h"
 #include "../Externals/mikktspace/mikktspace.h"
 
+#include "Falcor/Utils/ConfigStore.h"
 
 std::mutex g_meshes_mutex;
 std::mutex g_materials_mutex;
@@ -139,7 +140,13 @@ bool compareVertices(const SceneBuilder::Mesh::Vertex& lhs, const SceneBuilder::
 
 }  // namespace anon
 
-SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {};
+SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
+    if(is_set(mFlags, Flags::MikkTSpaceTangets)) {
+        mTangentSpaceMode = TangentSpaceMode::MIKKTSPACE;
+    } else {
+        mTangentSpaceMode = TangentSpaceMode::SHADER;
+    }
+};
 
 SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags)
 {
@@ -275,23 +282,24 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
 
     timeReport.measure("SceneBuilder::addMesh early checks");
 
-    // Generate tangent space if that's required.
-#if 0
-    std::vector<float4> tangents;
-    if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
-        tangents = MikkTSpaceWrapper::generateTangents(mesh);
-        if (!tangents.empty()) {
-            assert(tangents.size() == mesh.indexCount);
-            mesh.tangents.pData = tangents.data();
-            mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
-        } else {
-            mesh.tangents.pData = nullptr;
-            mesh.tangents.frequency = Mesh::AttributeFrequency::None;
-        }
-    }
-#endif
+    if( mTangentSpaceMode == TangentSpaceMode::MIKKTSPACE ) {
+        // Generate tangent space if that's required.
 
-    timeReport.measure("SceneBuilder::addMesh tangent space generation");
+        std::vector<float4> tangents;
+        if (!is_set(mFlags, Flags::UseOriginalTangentSpace) || !mesh.tangents.pData) {
+            tangents = MikkTSpaceWrapper::generateTangents(mesh);
+            if (!tangents.empty()) {
+                assert(tangents.size() == mesh.indexCount);
+                mesh.tangents.pData = tangents.data();
+                mesh.tangents.frequency = Mesh::AttributeFrequency::FaceVarying;
+            } else {
+                mesh.tangents.pData = nullptr;
+                mesh.tangents.frequency = Mesh::AttributeFrequency::None;
+            }
+        }
+
+        timeReport.measure("SceneBuilder::addMesh tangent space generation");
+    }
 
     // Build new vertex/index buffers by merging identical vertices.
     // The search is based on the topology defined by the original index buffer.
@@ -446,7 +454,7 @@ uint32_t SceneBuilder::addMesh(const Mesh& meshDesc) {
         s.position = v.position;
         s.normal = v.normal;
         s.texCrd = v.texCrd;
-        //s.tangent = v.tangent;
+        s.tangent = v.tangent;
 
         mBuffersData.staticData.push_back(PackedStaticVertexData(s));    
 

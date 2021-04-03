@@ -74,6 +74,8 @@ configParms = {
     "lv_vtex_conv_quality"      : SohoParm("lv_vtex_conv_quality", "string", key="lv_vtex_conv_quality", skipdefault=False),
     "lv_vtex_tlc"               : SohoParm("lv_vtex_tlc", "string", key="lv_vtex_tlc", skipdefault=False),
     "lv_vtex_tlc_level"         : SohoParm("lv_vtex_tlc_level", "int", key="lv_vtex_tlc_level", skipdefault=False),
+
+    "lv_geo_tangent_generation" : SohoParm("lv_geo_tangent_generation", "string", key="lv_geo_tangent_generation", skipdefault=False),
 }
 
 objXformMotion = [
@@ -179,6 +181,9 @@ def header(now, propdefs):
 
     vtex_tlc_level = cfg_plist.get('lv_vtex_tlc_level', None)
     cmd_config('vtex_tlc_level', vtex_tlc_level)
+
+    geo_tangent_generation = cfg_plist.get('lv_geo_tangent_generation', None)
+    cmd_config('geo_tangent_generation', geo_tangent_generation)
 
     cmd_comment(None)
     cmd_declare('global', 'float', 'global:fps', [FPS])

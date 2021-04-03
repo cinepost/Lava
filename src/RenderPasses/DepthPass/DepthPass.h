@@ -53,7 +53,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual std::string getDesc() override { return kDesc; };
@@ -62,9 +62,24 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     DepthPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
+    void setAlphaTestDisabled(bool value);
+    void setHiZEnabled(bool value);
+    void setHiZMaxMipLevels(uint8_t maxMipLevels) { mHiZMaxMipLevels = maxMipLevels; };
+
  private:
     DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
+
+    // HiZ stuff
+    bool        mHiZenabled = false;
+    uint8_t     mHiZMaxMipLevels = 5;
+
+    ComputePass::SharedPtr  mpDownSampleDepthPass;
+    Sampler::SharedPtr      mpDepthSampler;
+
+
+    // Common stuff
+    bool        mAlphaTestDisabled = true;
 
     Fbo::SharedPtr mpFbo;
     GraphicsState::SharedPtr mpState;
@@ -72,6 +87,8 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     RasterizerState::SharedPtr mpRsState;
     ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     Scene::SharedPtr mpScene;
+
+
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_

@@ -33,16 +33,13 @@
 
 namespace Falcor {
 
-class dlldecl RenderPassReflection
-{
+class dlldecl RenderPassReflection {
 public:
-    class dlldecl Field
-    {
+    class dlldecl Field {
     public:
         /** The type of visibility the field has
         */
-        enum class Visibility
-        {
+        enum class Visibility {
             Undefined = 0x0,
             Input = 0x1,  ///< Input field
             Output = 0x2,  ///< Output field
@@ -51,8 +48,7 @@ public:
 
         /** Miscellaneous flags to control allocation and lifetime policy
         */
-        enum class Flags
-        {
+        enum class Flags {
             None = 0x0,         ///< None
             Optional = 0x1,     ///< Mark that field as optional. For output resources, it means that they don't have to be bound unless their result is required by the caller. For input resources, it means that the pass can function correctly without them being bound (but the behavior might be different)
             Persistent = 0x2,   ///< The resource bound to this field must not change between execute() calls (not the pointer nor the data). It can change only during the RenderGraph recompilation.
@@ -60,8 +56,7 @@ public:
 
         /** Field type
         */
-        enum class Type
-        {
+        enum class Type {
             Texture1D,
             Texture2D,
             Texture3D,
@@ -123,7 +118,7 @@ public:
         uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
         uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
         uint32_t mSampleCount = 1;                     ///< 0 means don't care - the pass will use whatever is bound
-        uint32_t mMipCount = 1;                        ///< The required mip-level count. Only valid for textures
+        uint32_t mMipCount = 1;                        ///< 0 means don't care - the pass will use whatever is bound. The required mip-level count. Only valid for textures
         uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures
         ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
         ResourceBindFlags mBindFlags = ResourceBindFlags::None;  ///< The required bind flags. The default for outputs is RenderTarget, for inputs is ShaderResource and for InOut (RenderTarget | ShaderResource)

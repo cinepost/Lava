@@ -1,5 +1,6 @@
 cbuffer CB {
-  uint2 frameDim;
+  uint2 prevMipDim;
+  uint2 currMipDim;
   int   gMipLevel;
 
 #ifdef _LAYERED
@@ -8,7 +9,7 @@ cbuffer CB {
 
 }
 
-SamplerState gGatherSampler;     ///< Sampler for linear interpolated fetches.
+SamplerState gDepthSampler;     ///< Sampler for point interpolated fetches.
 
 #ifdef _LAYERED
 Texture2DArray gSourceBuffer;
@@ -20,10 +21,11 @@ RWTexture2D<float> gOutputBuffer;
 
 #ifdef _LAYERED
 #  define sampleLowerMip(t) gSourceBuffer[int3(t, gDepthLayer)].r
-#  define gatherLowerMip(uv) gSourceBuffer.SampleLevel(gGatherSampler, float3(uv, gDepthLayer), 0)
+#  define gatherLowerMip(uv) gSourceBuffer.SampleLevel(gDepthSampler, float3(uv, gDepthLayer), 0)
 #else
 #  define sampleLowerMip(t) gSourceBuffer[t].r
-#  define gatherLowerMip(uv) gSourceBuffer.SampleLevel(gGatherSampler, uv, 0)
+#  define sampleLowerMipF(uv) gSourceBuffer.SampleLevel(gDepthSampler, uv, 0).r
+#  define gatherLowerMip(uv) gSourceBuffer.SampleLevel(gDepthSampler, uv, 0)
 #endif
 
 #ifdef MIN_PASS
@@ -37,13 +39,15 @@ RWTexture2D<float> gOutputBuffer;
 #endif
 
 
-[numthreads(16, 16, 1)]
+[numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   
   uint2 texelPos = dispatchThreadId.xy;
-  if (any(texelPos >= frameDim)) return;
+  if (any(texelPos >= currMipDim)) return;
   
-  uint2 mipsize = frameDim;
+  uint2 mipsize = currMipDim;
+
+  float2 texelPosMul = float2((float)prevMipDim.x / (float)currMipDim.x, (float)prevMipDim.y / (float)currMipDim.y);
 
 //#ifndef COPY_DEPTH
 //  texelPos *= 2;
@@ -57,26 +61,39 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   /* + 1.0 to gather at the center of target 4 texels. */
   samp = gatherLowerMip((float2(texelPos) + 1.0) / float2(mipsize));
 #  else
-  samp.x = sampleLowerMip(texelPos*2);
-  samp.y = sampleLowerMip(texelPos*2 + int2(1, 0));
-  samp.z = sampleLowerMip(texelPos*2 + int2(1, 1));
-  samp.w = sampleLowerMip(texelPos*2 + int2(0, 1));
+  //samp.x = sampleLowerMip(texelPos*texelPosMul);
+  //samp.y = sampleLowerMip(texelPos*texelPosMul + int2(1, 0));
+  //samp.z = sampleLowerMip(texelPos*texelPosMul + int2(1, 1));
+  //samp.w = sampleLowerMip(texelPos*texelPosMul + int2(0, 1));
+
+  float2 uv1 = float2(texelPos) / float2(currMipDim) + float2(0.5) / float2(prevMipDim);
+  float2 uv2 = float2(texelPos + float2(0.5, 0)) / float2(currMipDim) + float2(0.5) / float2(prevMipDim);
+  float2 uv3 = float2(texelPos + float2(0.5, 0.5)) / float2(currMipDim) + float2(0.5) / float2(prevMipDim);
+  float2 uv4 = float2(texelPos + float2(0, 0.5)) / float2(currMipDim) + float2(0.5) / float2(prevMipDim);
+
+  samp.x = sampleLowerMipF(uv1);
+  samp.y = sampleLowerMipF(uv2);
+  samp.z = sampleLowerMipF(uv3);
+  samp.w = sampleLowerMipF(uv4);
 #  endif
 
   float val = minmax4(samp.x, samp.y, samp.z, samp.w);
+
+  gOutputBuffer[texelPos] = val;
+  return;
 
   /* if we are reducing an odd-width texture then fetch the edge texels */
   if (((mipsize.x & 1) != 0) && (texelPos.x == mipsize.x - 3)) {
     /* if both edges are odd, fetch the top-left corner texel */
     if (((mipsize.y & 1) != 0) && (texelPos.y == mipsize.y - 3)) {
-      samp.x = sampleLowerMip(texelPos*2 + int2(2, 2));
+      samp.x = sampleLowerMip(texelPos*texelPosMul + int2(2, 2));
       val = minmax2(val, samp.x);
     }
 #  ifdef GPU_ARB_texture_gather
     samp = gatherLowerMip((float2(texelPos) + float2(2.0, 1.0)) / float2(mipsize));
 #  else
-    samp.y = sampleLowerMip(texelPos*2 + int2(2, 0));
-    samp.z = sampleLowerMip(texelPos*2 + int2(2, 1));
+    samp.y = sampleLowerMip(texelPos*texelPosMul + int2(2, 0));
+    samp.z = sampleLowerMip(texelPos*texelPosMul + int2(2, 1));
 #  endif
     val = minmax3(val, samp.y, samp.z);
   }
@@ -85,8 +102,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #  ifdef GPU_ARB_texture_gather
     samp = gatherLowerMip((float2(texelPos) + float2(1.0, 2.0)) / float2(mipsize));
 #  else
-    samp.x = sampleLowerMip(texelPos*2 + int2(0, 2));
-    samp.y = sampleLowerMip(texelPos*2 + int2(1, 2));
+    samp.x = sampleLowerMip(texelPos*texelPosMul + int2(0, 2));
+    samp.y = sampleLowerMip(texelPos*texelPosMul + int2(1, 2));
 #  endif
     val = minmax3(val, samp.x, samp.y);
   }

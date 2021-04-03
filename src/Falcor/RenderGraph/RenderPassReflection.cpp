@@ -118,16 +118,13 @@ namespace Falcor
     RenderPassReflection::Field& RenderPassReflection::Field::name(const std::string& name) { mName = name; return *this; }
     RenderPassReflection::Field& RenderPassReflection::Field::desc(const std::string& desc) { mDesc = desc; return *this; }
 
-    bool RenderPassReflection::Field::isValid() const
-    {
-        if (mSampleCount > 1 && mMipCount > 1)
-        {
+    bool RenderPassReflection::Field::isValid() const {
+        if (mSampleCount > 1 && mMipCount > 1) {
             logError("Trying to create a multisampled RenderPassReflection::Field `" + mName + "` with mip-count larger than 1. This is illegal.");
             return false;
         }
 
-        if (is_set(mVisibility, Visibility::Internal) && is_set(mFlags, Flags::Optional))
-        {
+        if (is_set(mVisibility, Visibility::Internal) && is_set(mFlags, Flags::Optional)) {
             logError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
             return false;
         }
@@ -135,13 +132,10 @@ namespace Falcor
         return true;
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addField(const Field& field)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addField(const Field& field) {
         // See if the field already exists
-        for (auto& existingF : mFields)
-        {
-            if (existingF.getName() == field.getName())
-            {
+        for (auto& existingF : mFields) {
+            if (existingF.getName() == field.getName()) {
                 // We can only merge input and output fields, otherwise override the previous field
                 bool ioField = is_set(existingF.getVisibility(), Field::Visibility::Input | Field::Visibility::Output);
                 bool ioRequest = is_set(field.getVisibility(), Field::Visibility::Input | Field::Visibility::Output);
@@ -161,35 +155,28 @@ namespace Falcor
         return mFields.back();
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, const std::string& desc, Field::Visibility visibility)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, const std::string& desc, Field::Visibility visibility) {
         return addField(Field(name, desc, visibility));
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name, const std::string& desc)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name, const std::string& desc) {
         return addField(name, desc, Field::Visibility::Input);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name, const std::string& desc)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name, const std::string& desc) {
         return addField(name, desc, Field::Visibility::Output);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name, const std::string& desc)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name, const std::string& desc) {
         return addField(name, desc, Field::Visibility::Input | Field::Visibility::Output);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInternal(const std::string& name, const std::string& desc)
-    {
+    RenderPassReflection::Field& RenderPassReflection::addInternal(const std::string& name, const std::string& desc) {
         return addField(name, desc, Field::Visibility::Internal);
     }
 
-    const RenderPassReflection::Field* RenderPassReflection::getField(const std::string& name) const
-    {
-        for (const auto& field : mFields)
-        {
+    const RenderPassReflection::Field* RenderPassReflection::getField(const std::string& name) const {
+        for (const auto& field : mFields) {
             if (field.getName() == name) return &field;
         }
         return nullptr;
@@ -197,7 +184,10 @@ namespace Falcor
 
     RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPassReflection::Field& other) {
         auto err = [&](const std::string& msg) {
-            const std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
+            //const
+             std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
+
+            s += "base mipCount " + to_string(getMipCount()) + " newField mipCount " + to_string(other.getMipCount());
 
             throw std::runtime_error((s + msg).c_str());
         };
@@ -207,11 +197,9 @@ namespace Falcor
         // Default to base dimension
         // If newField property is not 0, retrieve value from newField
         // If both newField and base property is specified, generate warning.
-        auto mf = [err](auto& mine, const auto& other, const std::string& name)
-        {
+        auto mf = [err](auto& mine, const auto& other, const std::string& name) {
             auto none = std::remove_reference_t<decltype(mine)>(0);
-            if (other != none)
-            {
+            if (other != none) {
                 if (mine == none) mine = other;
                 else if (mine != other) err(name + " already specified with a mismatching value in a different pass");
             }

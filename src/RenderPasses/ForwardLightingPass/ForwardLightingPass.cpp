@@ -45,7 +45,7 @@ const char* ForwardLightingPass::kDesc = "The pass computes the lighting results
 "The pass can output the world-space normals and screen-space motion vectors, both are optional";
 
 namespace {
-    const std::string kDepth = "depth";
+    const std::string kDepth = "depthL";
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
     const std::string kNormals = "normals";
@@ -60,7 +60,8 @@ namespace {
 
 ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
-    pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
+    pThis->setColorFormat(ResourceFormat::RGBA32Float)
+        .setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
 
     for (const auto& [key, value] : dict)
     {
@@ -110,8 +111,9 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSuperSampleCount);
 
-    auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
-    depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSuperSampleCount);
+    //auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
+    //depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSuperSampleCount);
+    auto& depthField = reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(Resource::BindFlags::DepthStencil);
 
     if (mNormalMapFormat != ResourceFormat::Unknown) {
         reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSuperSampleCount);

@@ -64,24 +64,23 @@ const std::string kBlurKernelWidth = "blurWidth";
 const std::string kBlurSigma = "blurSigma";
 
 const std::string kAoOut = "aoOut";
-const std::string kDepth = "depth";
+const std::string kDepth = "depthH";
+const std::string kHiMaxZ = "hiMaxZ";
 const std::string kNormals = "normals";
 const std::string kHorizonMap = "aoHorizons";
-const std::string kMaxZ = "maxZBuffer";
 
 const std::string kComputeHorizonshaderFile = "RenderPasses/HBAO/HBAO.ComputeHorizons.cs.slang";
 const std::string kComputeAOShaderFile = "RenderPasses/HBAO/HBAO.ComputeAO.cs.slang";
-const std::string kComputeDownSampleDepthShaderFile = "RenderPasses/HBAO/HBAO.MinMaxZ.cs.slang";
+const std::string kComputeDownSampleDepthShaderFile = "RenderPasses/HBAO/HBAO.HiZ.cs.slang";
 }
 
 
 HBAO::HBAO(Device::SharedPtr pDevice): RenderPass(pDevice) {
-  mpDownCopyDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthShaderFile, "main", {{"MAX_PASS", ""}, {"COPY_DEPTH", ""}});
-  mpDownSampleDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthShaderFile, "main", {{"MAX_PASS", ""}}); 
 
+  mpHorizonsSearchPass = ComputePass::create(pDevice, kComputeHorizonshaderFile, "main"); 
+  setMaxLodLevel(0);
+  setMaxSearchIter(8);
 
-  Program::DefineList horzns_defines = {};
-  mpHorizonsSearchPass = ComputePass::create(pDevice, kComputeHorizonshaderFile, "main", horzns_defines); 
 
   Sampler::Desc samplerDesc;
   samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
@@ -118,16 +117,6 @@ HBAO::SharedPtr HBAO::create(RenderContext* pRenderContext, const Dictionary& di
         if (key == kFrameSampleCount) pHBAO->setFrameSampleCount(value);
         else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
-    //for (const auto& v : dict) {
-    //    if (v.key() == kHorizonMapSize) pHBAO->mAoMapSize = (uint2)v.val();
-    //    else if (v.key() == kKernelSize) pHBAO->mData.kernelSize = v.val();
-    //    else if (v.key() == kNoiseSize) pHBAO->mNoiseSize = (uint2)v.val();
-    //    else if (v.key() == kDistribution) pHBAO->mHemisphereDistribution = (SampleDistribution)v.val();
-    //    else if (v.key() == kRadius) pHBAO->mData.radius = v.val();
-    //    else if (v.key() == kBlurKernelWidth) pHBAO->mBlurDict["kernelWidth"] = (uint32_t)v.val();
-    //    else if (v.key() == kBlurSigma) pHBAO->mBlurDict["sigma"] = (float)v.val();
-    //    else logWarning("Unknown field '" + v.key() + "' in a HBAO dictionary");
-    //}
     return pHBAO;
 }
 
@@ -142,13 +131,13 @@ Dictionary HBAO::getScriptingDictionary() {
 
 RenderPassReflection HBAO::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
-    reflector.addInput(kDepth, "Depth-buffer").bindFlags(ResourceBindFlags::ShaderResource);
+    
+    reflector.addInputOutput(kDepth, "Depth-buffer").bindFlags(ResourceBindFlags::ShaderResource);
+    reflector.addInputOutput(kHiMaxZ, "Hierarchical max depth-buffer").bindFlags(ResourceBindFlags::ShaderResource)
+      .texture2D(0, 0, 1, 0, 1);
+    
     reflector.addInput(kNormals, "World space normals, [0, 1] range").flags(RenderPassReflection::Field::Flags::Optional);
-    
-    reflector.addInternal(kMaxZ, "Max Z buffer").bindFlags(ResourceBindFlags::ShaderResource)
-      .format(ResourceFormat::R32Float)
-      .texture2D(compileData.defaultTexDims[0]/2, compileData.defaultTexDims[1]/2, 1, RenderPassReflection::Field::kMaxMipLevels, 1);
-    
+
     reflector.addOutput(kHorizonMap, "Horizons Map").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA8Unorm);//RGBA8Unorm);
 
     return reflector;
@@ -168,52 +157,13 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   auto pDevice = pRenderContext->device();
   auto pCamera = mpScene->getCamera();
 
-  // Downcopy depth buffet to HiZ texture
+  const auto pHiMaxZTex = renderData[kHiMaxZ]->asTexture();
 
-  auto pHizTexture = renderData[kMaxZ]->asTexture();
-  uint32_t hiZMipLevelsCount = pHizTexture->getMipCount();
-  std::vector<int2> hiZmipSizes(std::max(10u, hiZMipLevelsCount), {1,1});
-
-  uint2 hiZDims = {pHizTexture->getWidth(0), pHizTexture->getHeight(0)};
-  hiZmipSizes[0] = {hiZDims[0], hiZDims[1]};
-
-  mpDownCopyDepthPass["CB"]["gMipLevel"] = 0;
-  mpDownCopyDepthPass["CB"]["frameDim"] = hiZDims;
-
-  mpDownCopyDepthPass["gGatherSampler"] = mpDepthSampler;
-  mpDownCopyDepthPass["gSourceBuffer"] = renderData[kDepth]->asTexture();
-  mpDownCopyDepthPass["gOutputBuffer"] = renderData[kMaxZ]->asTexture();//.setUav(renderData[kMaxZ]->asTexture()->getUAV(0, 0, 1));// = renderData[kMaxZ]->asTexture();
-  mpDownCopyDepthPass->execute(pRenderContext, hiZDims[0], hiZDims[1]);
-
-  // Run Recursive Downsample depth pass (max depth)
-
-  for(uint32_t mipLevel = 1; mipLevel < hiZMipLevelsCount; mipLevel++) {
-      
-    auto pMaxZBuffer = renderData[kMaxZ]->asTexture();
-
-    int mip_width = pMaxZBuffer->getWidth(mipLevel);
-    int mip_height = pMaxZBuffer->getHeight(mipLevel);
-
-    hiZmipSizes[mipLevel] = int2({mip_width, mip_height});
-
-    mpDownSampleDepthPass["CB"]["gMipLevel"] = mipLevel;
-    mpDownSampleDepthPass["CB"]["frameDim"] = int2({mip_width, mip_height});
-
-    mpDownSampleDepthPass["gGatherSampler"] = mpDepthSampler;
-    mpDownSampleDepthPass["gSourceBuffer"].setSrv(pMaxZBuffer->getSRV(mipLevel - 1, 1, 0, 1));
-    mpDownSampleDepthPass["gOutputBuffer"].setUav(pMaxZBuffer->getUAV(mipLevel, 0, 1));
-    mpDownSampleDepthPass->execute(pRenderContext, mip_width, mip_height);
-  }
-
-  /**
-   * Compute Mipmap texel alignment.
-   */
-  std::vector<float2> mipRatios(10);  
-  for (int i = 0; i < 10; i++) {
-    int2 mip_size;
-    mipRatios[i][0] = mFrameDim.x / (hiZmipSizes[i].x * powf(2.0f, i));
-    mipRatios[i][1] = mFrameDim.y / (hiZmipSizes[i].y * powf(2.0f, i));
-  }
+  setMaxLodLevel(mUseDepthAsMipZero ? pHiMaxZTex->getMipCount() : pHiMaxZTex->getMipCount() - 1);
+  setMaxSearchIter(std::max(std::min(std::max(mFrameDim[0], mFrameDim[1]) / 32, 16u), 64u));
+  
+  if(mUseDepthAsMipZero) 
+    mpHorizonsSearchPass->addDefine("USE_DEPTH_AS_MIP_ZERO", "");
 
   // Generate horizons buffer
   float2 f = mpNoiseOffsetGenerator->next();
@@ -222,10 +172,8 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   auto cb = mpHorizonsSearchPass["PerFrameCB"];
   cb["gFrameDim"] = mFrameDim;
   cb["gNoiseOffset"] = noiseOffset;
-  
   cb["gAoQuality"] = 1.0f - mAoTracePrecision; // 0 means highest possible quality
   cb["gAoDistance"] = mAoDistance;
-  cb["gHizMipOffset"] = 1; // For Half-Res HiZ use 1
   cb["gRotationOffset"] = 0.0f;
 
   //auto pcb = mpHorizonsSearchPass["PerFrameCB"];
@@ -235,14 +183,19 @@ void HBAO::execute(RenderContext* pRenderContext, const RenderData& renderData) 
   mpHorizonsSearchPass["gDepthSampler"] = mpDepthSampler;
   mpHorizonsSearchPass["gNoiseSampler"] = mpNoiseSampler;
 
-  auto pBuff = Buffer::createTyped<float2>(pDevice, 10, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mipRatios.data());
-
-  mpHorizonsSearchPass["mipRatio"] = pBuff;
   mpHorizonsSearchPass["gNoiseTex"] = mpBlueNoiseTexture;
-  mpHorizonsSearchPass["gMaxZBuffer"] = renderData[kMaxZ]->asTexture();
   mpHorizonsSearchPass["gDepthTex"] = renderData[kDepth]->asTexture();
+  mpHorizonsSearchPass["gHiMaxZTex"] = pHiMaxZTex;
   mpHorizonsSearchPass["gOutput"] = renderData[kHorizonMap]->asTexture();
+
+  //auto t1 = std::chrono::high_resolution_clock::now();
+
   mpHorizonsSearchPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+  
+  //auto t2 = std::chrono::high_resolution_clock::now();
+  //auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  //std::cout << "1 run in " << ms_int.count() << " ms\n";
+
 }
 
 void HBAO::setFrameSampleCount(uint32_t samples) {
@@ -260,4 +213,18 @@ void HBAO::setAoTracePrecision(float precision) {
   if (mAoTracePrecision == precision) return;
   mAoTracePrecision = precision; 
   mDirty = true; 
+}
+
+void HBAO::setMaxLodLevel(uint8_t maxHiZLodLevel) {
+  if (mMaxHiZLod == maxHiZLodLevel) return;
+
+  mMaxHiZLod = maxHiZLodLevel;
+  mpHorizonsSearchPass->addDefine("MAX_HIZ_LOD", std::to_string(mMaxHiZLod).c_str());
+}
+
+void HBAO::setMaxSearchIter(uint8_t maxSearchIter) {
+  if (mMaxSearchIter == maxSearchIter) return;
+
+  mMaxSearchIter = maxSearchIter;
+  mpHorizonsSearchPass->addDefine("MAX_SEARCH_ITER", std::to_string(mMaxSearchIter).c_str());
 }

@@ -83,7 +83,15 @@ bool Renderer::init() {
 
     Falcor::Threading::start();
 
-    mpSceneBuilder = lava::SceneBuilder::create(mpDevice, Falcor::SceneBuilder::Flags::DontMergeMeshes | Falcor::SceneBuilder::Flags::RemoveDuplicateMaterials);
+    auto const& confgStore = Falcor::ConfigStore::instance();
+    std::string tangentMode = confgStore.get<std::string>("geo_tangent_generation", "mikkt");
+
+    auto sceneBuilderFlags = Falcor::SceneBuilder::Flags::DontMergeMeshes | Falcor::SceneBuilder::Flags::RemoveDuplicateMaterials;
+    if( tangentMode == "mikkt" ) {
+        sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
+    }
+
+    mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
     mpSceneBuilder->addCamera(mpCamera);
@@ -196,6 +204,8 @@ void Renderer::createRenderGraph() {
 
     Falcor::uint2 imageSize = {mGlobalData.imageWidth, mGlobalData.imageHeight};
 
+    LOG_ERR("createRenderGraph frame dim %u %u", mGlobalData.imageWidth, mGlobalData.imageHeight);
+
     // Pick rendering resource format's according to required Display::TypeFormat
     Falcor::ResourceFormat shadingResourceFormat;
     Falcor::ResourceFormat auxAlbedoResourceFormat;
@@ -241,27 +251,31 @@ void Renderer::createRenderGraph() {
     }
     rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
-    // Depth pre pass
-    auto depthChannelOutputFormat = ResourceFormat::D32Float;
-    mpDepthPrePassGraph = RenderGraph::create(pRenderContext->device(), imageSize, depthChannelOutputFormat, "Depth Pre-Pass");
-    mpDepthPrePass = DepthPass::create(pRenderContext);
-    mpDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
-    mpDepthPrePass->setScene(pRenderContext, pScene);
-    mpDepthPrePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
-    mpDepthPrePassGraph->addPass(mpDepthPrePass, "DepthPrePass");
-    mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
-
-    // Virtual textures stuff
+    // Virtual textures resolve render graph
     if(!vtoff) {
         auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
         mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
+        // Depth pre-pass
+        Falcor::Dictionary depthPrePassDictionary;
+        depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
+        depthPrePassDictionary["buildHiZ"] = false;
+
+        auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
+        pDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
+        pDepthPrePass->setScene(pRenderContext, pScene);
+        pDepthPrePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+        mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
+
+        // Vitrual textures resolve pass
         mpTexturesResolvePass = TexturesResolvePass::create(pRenderContext);
         mpTexturesResolvePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
         mpTexturesResolvePass->setScene(pRenderContext, pScene);
 
         mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
         mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.output");
+
+        mpTexturesResolvePassGraph->addEdge("DepthPrePass.depth", "SparseTexturesResolvePrePass.depth");
     } else {
         mpTexturesResolvePassGraph = nullptr;
         mpTexturesResolvePass = nullptr;
@@ -270,13 +284,32 @@ void Renderer::createRenderGraph() {
     // Main render graph
     auto mainChannelOutputFormat = ResourceFormat::RGBA16Float;
     mpRenderGraph = RenderGraph::create(mpDevice, imageSize, mainChannelOutputFormat, "MainImageRenderGraph");
-    //mpRenderGraph->compile(mpRenderContext);
+    //mpRenderGraph->compile(pRenderContext);
+
+    // Depth pass
+    Falcor::Dictionary depthPassDictionary;
+    depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
+    depthPassDictionary["maxMipLevels"] = (uint8_t)5;
+
+    if(mGlobalData.use_ssao) {
+        depthPassDictionary["buildHiZ"] = true;
+    }
+
+    LOG_ERR("DepthPass 0");
+    mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
+    mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
+    mpDepthPass->setScene(pRenderContext, pScene);
+    mpDepthPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+    LOG_ERR("DepthPass 1");
+    mpRenderGraph->addPass(mpDepthPass, "DepthPass");
+    LOG_ERR("DepthPass 2");
 
     // HBAO pass
     if(mGlobalData.use_ssao) {
         Falcor::Dictionary hbaoPassDictionary;
         hbaoPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
 
+        LOG_ERR("HBAOPass 0");
         mpHBAOpass = HBAO::create(pRenderContext, hbaoPassDictionary);
         mpHBAOpass->setScene(pRenderContext, pScene);
         auto hbao_pass = mpRenderGraph->addPass(mpHBAOpass, "HBAOPass");
@@ -287,6 +320,8 @@ void Renderer::createRenderGraph() {
 
     lightingPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
     lightingPassDictionary["USE_SSAO"] =  mGlobalData.use_ssao;
+
+    LOG_ERR("LightingPass 0");
     mpLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
     mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
     mpLightingPass->setScene(pRenderContext, pScene);
@@ -295,6 +330,7 @@ void Renderer::createRenderGraph() {
 
 
     // SkyBox
+    LOG_ERR("SkyBoxPass 0");
     mpSkyBoxPass = SkyBox::create(pRenderContext);
     
     if(pLightProbe) {
@@ -310,18 +346,26 @@ void Renderer::createRenderGraph() {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    //mpRenderGraph->setInput("SkyBoxPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
-    
     if(mpHBAOpass) {
+        LOG_ERR("HBAOPass addEdge 0");
+        mpRenderGraph->addEdge("DepthPass.depth", "HBAOPass.depthH");
+        mpRenderGraph->addEdge("DepthPass.hiMaxZ", "HBAOPass.hiMaxZ");
         mpRenderGraph->addEdge("HBAOPass.aoHorizons", "LightingPass.aoHorizons");
     }
 
+
+    LOG_ERR("LightingPass addEdge 0");
+    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depthL");
+    LOG_ERR("SkyBoxPass addEdge 0");
+    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depthS");
+    
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
-    //mpRenderGraph->setInput("LightingPass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
     //mpRenderGraph->markOutput("LightingPass.color");
+
+    LOG_ERR("createRenderGraph done");
 
 }
 
@@ -508,8 +552,11 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
     }
 
+
     // test
     uint image2;
+
+if( 1== 2) {
     std::vector<Display::Channel> channels2;
     channels2.push_back({"albedo.000.r", Display::TypeFormat::UNSIGNED16});
     channels2.push_back({"albedo.000.g", Display::TypeFormat::UNSIGNED16});
@@ -517,6 +564,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     channels2.push_back({"albedo.000.a", Display::TypeFormat::UNSIGNED16});
     mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels2, image2);
     //
+}
 
     finalizeScene(frame_data);
 
@@ -558,19 +606,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
         pScene->update(pRenderContext, time);
 
-        mpDepthPrePassGraph->execute(pRenderContext);
-        auto pDepth = mpDepthPrePassGraph->getOutput("DepthPrePass.depth");
-
         if(mpTexturesResolvePassGraph) {
-            mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", pDepth);
             mpTexturesResolvePassGraph->execute(pRenderContext);
         }
 
-        if(mpHBAOpass) {
-            mpRenderGraph->setInput("HBAOPass.depth", pDepth);
-        }
-        mpRenderGraph->setInput("SkyBoxPass.depth", pDepth);
-        mpRenderGraph->setInput("LightingPass.depth", pDepth);
         mpRenderGraph->execute(pRenderContext, frameNumber, 0);
 
         if ( mGlobalData.imageSamples > 1 ) {
@@ -581,7 +620,6 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
                 time += sample_time_duration;
                 pScene->update(pRenderContext, time);
                 
-                mpDepthPrePassGraph->execute(pRenderContext, frameNumber, sampleNumber);
                 mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
             }
         }
@@ -620,7 +658,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
             
             }
 
-            {
+            if( 1 == 2) {
                 Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
                 Falcor::Texture* pTex = pOutTex.get();
 
