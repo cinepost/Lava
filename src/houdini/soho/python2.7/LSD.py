@@ -25,7 +25,16 @@ import LSDgeo
 import LSDsettings
 import LSDhooks
 from soho import SohoParm
+
+reload(LSDapi)
+reload(LSDmisc)
+reload(LSDframe)
+reload(LSDgeo)
+reload(LSDsettings)
+reload(LSDhooks)
+
 from LSDapi import *
+
 
 LSDhooks.call("pre_lsdGen")
 
