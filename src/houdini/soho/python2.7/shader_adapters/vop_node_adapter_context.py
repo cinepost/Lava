@@ -36,6 +36,10 @@ class VopNodeAdapterContext(object):
 		return self._outputs
 
 	@property
+	def vopNode(self):
+		return self._vop_node
+
+	@property
 	def vopNodeName(self):
 		return self._vop_node_name
 
@@ -45,7 +49,7 @@ class VopNodeAdapterContext(object):
 
 	@property
 	def codeFuncName(self):
-		return "vop_%s" % self.vopNodeName
+		return "_".join(self.vopNodePath.strip("/").split("/"))
 	
 	def filterInputs(self, data_type):
 		if not isinstance(data_type, (VopNodeSocket.DataType, str)):

@@ -25,25 +25,47 @@ def reload_package(package):
 
 	return reload_recursive_ex(package)
 
-import hou
 
+import hou
 import shader_adapters
-#reload_package(shader_adapters)
 
 
 def processMaterialNode(vop_node):
-	print shader_adapters.VopNodeAdapterRegistry.registeredAdapterClasses()
+	#print shader_adapters.VopNodeAdapterRegistry.registeredAdapterClasses()
 	print shader_adapters.VopNodeAdapterRegistry.registeredAdapterTypes()
 
 	if vop_node.shaderType() != hou.shaderType.VopMaterial:
 		# For now only VopMaterial shader types
 		raise ValueError('Non VopMaterial material node "%s" specified !!!' % vop_node.path())
 
-	vop_adapter = shader_adapters.getVopNodeAdapter(vop_node)
-	
-	processor = shader_adapters.VopNodeAdapterProcessor(vop_adapter)
+	#vop_adapter = shader_adapters.getVopNodeAdapter(vop_node)
 
-	return processor.process()	
+	#try:
+	#	if vop_node.supportsMultiCookCodeContexts():
+	#		multi_slang_code_contexts = True
+	#except:
+	#	pass
+
+	#if multi_slang_code_contexts:
+	#	for slang_context in ['surface', 'displacement']:
+	#		processor = shader_adapters.VopNodeAdapterProcessor(vop_adapter)
+	#		processor.process()
+	
+	processor = shader_adapters.VopNodeAdapterProcessor(vop_node)
+
+	#result_code_dict = processor.process()	
+	shaders = processor.generateShaders()
+
+	print shaders['surface']
+
+	#print "\nSlang code dict:\n"
+
+	#for shading_context in result_code_dict:
+		#shader_adapters.prettifySlangCodeString(result_code_dict[shading_context])
+	#	print result_code_dict[shading_context]
+	#	print "\n"
+
+	#return result_code_dict
 
 def _processMaterialNode(mat_node):
 	if mat_node.shaderType() != hou.shaderType.VopMaterial:

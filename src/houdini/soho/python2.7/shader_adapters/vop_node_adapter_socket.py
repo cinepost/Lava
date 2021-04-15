@@ -25,16 +25,20 @@ class VopNodeSocket(object):
 		STRING 	= 3
 		COLOR   = 4
 		VECTOR 	= 5
-		VECTOR4 = 6
-		MATRIX  = 7
-		MATRIX3 = 8
-		BSDF    = 9
-		SHADER  = 10
-		SURFACE = 11
+		VECTOR2 = 6
+		VECTOR4 = 7
+		MATRIX  = 8
+		MATRIX3 = 9
+		BSDF    = 10
+		SHADER  = 11
+		SURFACE = 12
+		DISPLACE= 13
 
 		@classmethod
 		def isSlandDataType(cls, data_type):
-			if data_type == cls.STRING: return False
+			if data_type == cls.STRING: return False	# we have no string is slang shading language
+			if data_type == cls.SURFACE: return False	# this is a slang shader context
+			if data_type == cls.DISPLACE: return False	# this is a slang shader context
 
 			return True
 
@@ -71,11 +75,13 @@ class VopNodeSocket(object):
 	def slangDataTypeString(self):
 		if self._data_type == VopNodeSocket.DataType.INT:    return 'int'
 		if self._data_type == VopNodeSocket.DataType.FLOAT:  return 'float'
+		if self._data_type == VopNodeSocket.DataType.VECTOR2:return 'float2'
 		if self._data_type == VopNodeSocket.DataType.VECTOR: return 'float3'
 		if self._data_type == VopNodeSocket.DataType.VECTOR4:return 'float4'
 		if self._data_type == VopNodeSocket.DataType.BSDF:   return 'bsdf'
 		if self._data_type == VopNodeSocket.DataType.SHADER: return 'shader'
 		if self._data_type == VopNodeSocket.DataType.SURFACE:return 'surface'
+		if self._data_type == VopNodeSocket.DataType.DISPLACE:return 'displacement'
 		
 		if self._data_type == VopNodeSocket.DataType.STRING:
 			raise ValueError('Con not convert VopNodeSocket.DataType.STRING to Slang type !!!')
@@ -89,10 +95,12 @@ class VopNodeSocket(object):
 		if socket_data_type_string == 'float': return VopNodeSocket.DataType.FLOAT
 		if socket_data_type_string == 'string': return VopNodeSocket.DataType.STRING
 		if socket_data_type_string == 'vector': return VopNodeSocket.DataType.VECTOR
+		if socket_data_type_string == 'vector2': return VopNodeSocket.DataType.VECTOR2
 		if socket_data_type_string == 'color': return VopNodeSocket.DataType.VECTOR
 		if socket_data_type_string == 'vector4': return VopNodeSocket.DataType.VECTOR4
 		if socket_data_type_string == 'bsdf': return VopNodeSocket.DataType.BSDF
 		if socket_data_type_string == 'shader': return VopNodeSocket.DataType.SHADER
 		if socket_data_type_string == 'surface': return VopNodeSocket.DataType.SURFACE
+		if socket_data_type_string == 'displacement': return VopNodeSocket.DataType.DISPLACE
 
 		raise ValueError('Unknown socket data type %s', socket_data_type_string)

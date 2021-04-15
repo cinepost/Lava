@@ -2,7 +2,7 @@ import hou
 
 from vop_node_adapter_registry import VopNodeAdapterRegistry
 from vop_node_adapter_context import VopNodeAdapterContext
-
+from code_template import CodeTemplate
 
 class VopNodeAdapterAPI(object):
 	@property 
@@ -13,9 +13,19 @@ class VopNodeAdapterAPI(object):
 	def vopTypeName(cls):
 		raise NotImplementedError
 
-	def getSlangTemplate(self):
+	def getSlangTemplate(self, slang_context=None):
 		raise NotImplementedError
 
+	def getOutputs(self, slang_context=None):
+		return self._context.outputs
+
+	@classmethod
+	def getCodeTemplateString(cls):
+		return ""
+
+	@classmethod
+	def getTemplateContext(cls, vop_node):
+		return {}
 
 class VopNodeAdapterBase(VopNodeAdapterAPI):
 	__metaclass__ = VopNodeAdapterRegistry
@@ -24,21 +34,3 @@ class VopNodeAdapterBase(VopNodeAdapterAPI):
 	def __init__(self, context):
 		super(VopNodeAdapterBase, self).__init__()
 		self._context = context
-
-#.subnetTerminalChild('surface')
-
-class VopNodeSubnetAdapterBase(VopNodeAdapterAPI):
-	__metaclass__ = VopNodeAdapterRegistry
-	__base__ = True
-
-	def __init__(self, context):
-		super(VopNodeSubnetAdapterBase, self).__init__()
-		self._context = context
-
-	def getSlangTemplate(self):
-		code  = "${RETURN_TYPE} ${FUNC_NAME}(${PARAMS}) {\n"
-		code += "	/* CODE BEGIN ${OP_PATH} */\n"
-		code += "	/* CODE END ${OP_PATH} */\n"
-		code += "}"
-
-		return code
