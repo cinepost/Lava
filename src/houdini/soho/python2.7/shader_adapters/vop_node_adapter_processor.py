@@ -2,13 +2,12 @@ import hou
 
 from enum import Enum
 
-from jinja2 import Template
-from jinja2.utils import concat
-
-from code_template import Code, CodeTemplate
 from functions import getVopNodeAdapter, incrLastStringNum, vexDataTypeToSlang
-from vop_node_adapter_base import VopNodeAdapterBase
+from vop_node_adapter_base import VopNodeAdapterBase, VopNodeAdapterAPI
 from vop_node_adapter_socket import VopNodeSocket
+from vop_node_context import VopNodeContext
+from vop_node_graph import NodeWrapper, NodeSubnetWrapper, generateGraph
+#from code import SlangCodeContext
 
 def appendSocketsAsFuncArgs(args_str, sockets):
 	if not isinstance(sockets, (list, tuple)):
@@ -67,6 +66,8 @@ class VopNodeAdapterProcessor(object):
 		self._args_names_cache = {}
 		self._last_arg_names = {}
 
+		self._slang_code_context = None #SlangCodeContext()
+
 	def generateShaders(self):
 		node = self._root_node
 		shader_type = node.shaderType()
@@ -86,13 +87,16 @@ class VopNodeAdapterProcessor(object):
 
 		return {}
 
-	def _renderNode(self, vop_node, slang_context = 'surface'):
+
+	def _process(self, vop_node, slang_context = 'surface'):
+		from functions import getVopNodeAdapter
+		from utils import printHighlightedSlangCode
+
 		if not issubclass(type(vop_node), hou.VopNode):
 			raise ValueError('Wrong object of type "%s" passed as a vop node !!!' % type(vop_node))
 
-		code = Code()
-		if vop_node.path() in self._node_code_cache:
-			return code 
+		if vop_node.isBypassed():
+			return None
 
 		node_adapter = None
 		try:
@@ -101,64 +105,33 @@ class VopNodeAdapterProcessor(object):
 			pass
 
 		if node_adapter:
-			code_template_string = node_adapter.getCodeTemplateString().strip()
+			print "generate graph"
+			graph = generateGraph(vop_node)
+			print "generate", vop_node.path()
 			
-			template = Template(code_template_string)
+			#for res in node_adapter.generate(VopNodeContext(node_adapter, NodeSubnetWrapper(vop_node))):
+			node_wrapper = graph.nodeWrapper(vop_node.path())
+			node_context = VopNodeContext(node_wrapper)
+			for res in node_adapter.generateCode(node_context):
+				printHighlightedSlangCode(res)
+				#pass
 
-			template_dict = self.buildVopContext(vop_node, node_adapter.getTemplateContext(vop_node))
-			template_context = template.new_context(template_dict)
+			return ""
 
-			if 'ARGS' in template.blocks:
-				code.args = concat(template.blocks['ARGS'](template_context)).strip()
+		return None
+    
 
-			if 'BODY' in template.blocks:
-				code.body = concat(template.blocks['BODY'](template_context)).strip()
-
-		else:
-			code.body = '// Missing adapter for vop type "%s" !!!\n' % vop_node.type().name()
-
-		code.prettify()
-		self._node_code_cache[vop_node.path()] = code
-
-		return code
-
-	def _process(self, vop_node, slang_context = 'surface'):
-		from functions import getVopNodeAdapter
-
-		if not issubclass(type(vop_node), hou.VopNode):
-			raise ValueError('Wrong object of type "%s" passed as a vop node !!!' % type(vop_node))
-
-		code = Code()
-
-		if vop_node.inputConnections():
-			for connection in vop_node.inputConnections():
-				input_node = connection.inputNode()
-				input_node_output_name = connection.inputName()
-
-				code += self._process(input_node, slang_context)
-				
-			code += self._renderNode(vop_node, slang_context)
-			return code
-
-		if vop_node.isSubNetwork():
-			terminals = [vop_node.subnetTerminalChild(output_name) for output_name in vop_node.outputNames()]
-
-			for terminal in terminals:
-				terminal_node = terminal[0]
-				terminal_node_input_name = terminal[1]
-
-				code += self._process(terminal_node, slang_context)
-
-			code += self._renderNode(vop_node, slang_context)
-			return code
-		
-		return self._renderNode(vop_node, slang_context)
-
-	def buildVopContext(self, vop_node, custom_node_context=""):
+	def buildVopContext(self, vop_node, custom_node_context):
 		from collections import OrderedDict
 
 		if vop_node.type().category().name() != 'Vop':
 			raise ValueError("Non VOP node %s provided !!!", vop_node.path())
+
+		node_adapter = None
+		try:
+			node_adapter = getVopNodeAdapter(vop_node)
+		except:
+			pass
 
 		context_parms = OrderedDict()
 		for parm in vop_node.parms():
@@ -174,8 +147,8 @@ class VopNodeAdapterProcessor(object):
 			input_arg_type = connection.inputDataType()
 
 			context_inputs[input_name] = {
-				'ARG_NAME': self.getSafeArgName(input_arg_node, input_arg_name),
-				'ARG_TYPE': vexDataTypeToSlang(input_arg_type),
+				'VAR_NAME': self.getSafeArgName(input_arg_node, input_arg_name),
+				'VAR_TYPE': vexDataTypeToSlang(input_arg_type),
 			}
 		
 		context_outputs = OrderedDict()
@@ -184,19 +157,29 @@ class VopNodeAdapterProcessor(object):
 			output_node = connection.inputNode()
 			output_type = connection.inputDataType()
 
+			mangled_output_name = output_name
+			if node_adapter:
+				mangled_output_name = node_adapter.mangleOutputName(output_name, custom_node_context)
+
 			context_outputs[output_name] = {
-				'ARG_NAME': self.getSafeArgName(output_node, output_name),
-				'ARG_TYPE': vexDataTypeToSlang(output_type),
+				'VAR_NAME': self.getSafeArgName(output_node, mangled_output_name),
+				'VAR_TYPE': vexDataTypeToSlang(output_type),
 			}
 
 		context = {
 			'CREATOR_COMMENT': '// Code produced by: %s' % vop_node.path(),
+			'SLANG_CONTEXT': self._slang_code_context,
 			'NODE_NAME': vop_node.name(),
 			'NODE_PATH': vop_node.path(),
 			'PARMS': context_parms,
 			'INPUTS': context_inputs,
 			'OUTPUTS': context_outputs,
+			'PARENT': None,
 		}
+
+		#if vop_node.path() != self._root_node.path():
+		#	if vop_node.parent():
+		#		context['PARENT'] = self.buildVopContext(vop_node.parent())
 
 		if custom_node_context:
 			context['NODE_CONTEXT'] = custom_node_context
@@ -213,6 +196,7 @@ class VopNodeAdapterProcessor(object):
 		
 		if arg_name in self._last_arg_names:
 			incremented_name = incrLastStringNum(self._last_arg_names[arg_name])
+			self._last_arg_names[arg_name] = incremented_name
 			self._args_names_cache[arg_path] = incremented_name
 			return incremented_name
 		

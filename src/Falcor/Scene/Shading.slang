@@ -353,9 +353,6 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
 
     sd.NdotV = saturate(sd.NdotV);
 
-    //float kt = evalTransmissionFresnel(sd, ls);
-    //float kr = 1.0f - kt;
-
     // Calculate the diffuse term
     // If the light doesn't hit the surface or we are viewing the surface from the back, return
     if (lsd.NdotL <= 0) {
@@ -372,7 +369,6 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
     } else {
         sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
     }
-    //sr.specular = lss.specular * sr.specularBrdf;
     
     sr.specular = 0;//evalLightProbeSampleSpecularColor(probe, sd) * sr.specularBrdf;
 
@@ -408,7 +404,6 @@ ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_p
     } else {
         sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
     }
-    //sr.specular = lss.specular * sr.specularBrdf;
     
     sr.specular = evalLightProbeSampleSpecularColor(probe, sd, pixel_pos) * sr.specularBrdf;
 

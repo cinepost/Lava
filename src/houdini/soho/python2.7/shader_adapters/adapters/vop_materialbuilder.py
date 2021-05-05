@@ -1,42 +1,49 @@
-from ..vop_node_adapter_base import VopNodeAdapterBase
-from ..code_template import CodeTemplate
+from ..vop_node_adapter_base import VopNodeAdapterBase, VopNodeNetworkAdapterBase
 from ..exceptions import *
+from .vop_generic_subnet import VopNodeGenericSubnet
 
-class VopNodeMaterialbuilder(VopNodeAdapterBase):
-	def getSlangTemplate(self, slang_context=None):
-		if len(self.context.filterOutputs("surface")) != 1:
-			raise VopAdapterOutputsCountMismatchError(self, 'Exactly one output of type "surface" is expected !!!')
+from .. import code
 
-		if slang_context == 'surface':
-			return self.getSlangSurfaceTemplate()
-		elif slang_context == 'displacement':
-			return self.getSlangDisplacementTemplate()
-		
-		raise ValueError('Unknown slang context %s pased to MaterialBuilder adapter !!!' % slang_context)
-
-
+class VopNodeMaterialbuilder(VopNodeNetworkAdapterBase):
 	@classmethod
 	def vopTypeName(cls):
 		return "materialbuilder"
 
-	def getSlangSurfaceTemplate(self):
-		codeTemplate = CodeTemplate()
+	@classmethod
+	def generateCode(cls, vop_node_ctx):
+		shader_name = vop_node_ctx.vop_node_wrapper.name()
 
-		codeTemplate.addLine("surface ${FUNC_NAME}(${ARGS}) {")
-		codeTemplate.addLine("/* BEGIN CODE BY: ${OP_PATH} */")
-		codeTemplate.addLine("${SUPER_BLOCK}")
-		codeTemplate.addLine("/* END CODE BY: ${OP_PATH} */")
-		codeTemplate.addLine("}")
+		block = code.Block([])
 
-		return codeTemplate
+		# Append children variables
+		for adapter, context in vop_node_ctx.children():
+			# Append children variables
+			for generable in adapter.generateVariables(context):
+				block.append(generable)
 
-	def getSlangDisplacementTemplate(self):
-		codeTemplate = CodeTemplate()
+		# Shader variables
+		shader_vars = []
 
-		codeTemplate.addLine("displacement ${FUNC_NAME}(${ARGS}) {")
-		codeTemplate.addLine("/* BEGIN CODE BY: ${OP_PATH} */")
-		codeTemplate.addLine("${SUPER_BLOCK}")
-		codeTemplate.addLine("/* END CODE BY: ${OP_PATH} */")
-		codeTemplate.addLine("}")
+		for adapter, context in vop_node_ctx.children():
+			# Append shader variables
+			for generable in adapter.generateShaderVariables(context):
+				shader_vars += [generable]
 
-		return codeTemplate
+			# Append children code
+			for generable in adapter.generateCode(context):
+				block.append(generable)
+
+		func = code.FunctionBody(
+			code.FunctionDeclaration(code.Value("ShadingResult", "evalMaterial"), shader_vars),
+			block
+		)
+
+		#yield func
+
+		src = code.Source("/home/max/vop_tests/{}.slang".format(shader_name), [
+			code.Include("qqqq.slang"), 
+			code.Import(" Scene.Camera.Camera"), 
+			func
+		])
+		
+		yield src

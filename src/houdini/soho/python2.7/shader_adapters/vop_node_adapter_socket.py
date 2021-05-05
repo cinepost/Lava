@@ -1,6 +1,7 @@
 from enum import Enum
 import hou
 
+
 def toCamelCase(snake_str):
 	if not snake_str:
 		return snake_str
@@ -11,6 +12,24 @@ def toCamelCase(snake_str):
 	# We capitalize the first letter of each component except the first one
 	# with the 'title' method and join them together.
 	return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def slangDataTypeString(vex_type):
+	if vex_type == VopNodeSocket.DataType.INT:    return 'int'
+	if vex_type == VopNodeSocket.DataType.FLOAT:  return 'float'
+	if vex_type == VopNodeSocket.DataType.VECTOR2:return 'float2'
+	if vex_type == VopNodeSocket.DataType.VECTOR: return 'float3'
+	if vex_type == VopNodeSocket.DataType.VECTOR4:return 'float4'
+	if vex_type == VopNodeSocket.DataType.BSDF:   return 'bsdf'
+	if vex_type == VopNodeSocket.DataType.SHADER: return 'shader'
+	if vex_type == VopNodeSocket.DataType.SURFACE:return 'surface'
+	if vex_type == VopNodeSocket.DataType.DISPLACE:return 'displacement'
+	
+	if self._data_type == VopNodeSocket.DataType.STRING:
+		raise ValueError('Con not convert VopNodeSocket.DataType.STRING to Slang type !!!')
+
+	return 'undef'
+
 
 class VopNodeSocket(object):
 	class Direction(Enum):
@@ -45,20 +64,29 @@ class VopNodeSocket(object):
 	_direction = Direction.INPUT
 
 	def __init__(self, socket_name, socket_data_type_string, direction):
-		self._vop_name = socket_name
+		self._var_name = socket_name
 		self._data_type = VopNodeSocket.dataTypeFromString(socket_data_type_string)
 		self._direction = direction
+		self._default_value = None
+
+	#@property
+	#def vopName(self):
+	#	return self._vop_name
+
+	def setDefaultValue(self, default_value):
+		self._default_value = default_value
 
 	@property
-	def vopName(self):
-		return self._vop_name
-
-	@property
-	def codeVarName(self):
-		return "_%s" % toCamelCase(self.vopName)
+	def var_name(self):
+		return self._var_name
+		#return "_%s" % toCamelCase(self.vopName)
 	
 	@property
-	def dataType(self):
+	def var_type(self):
+		return slangDataTypeString(self._data_type)
+	
+	@property
+	def vex_type(self):
 		return self._data_type
 
 	@property
@@ -66,27 +94,14 @@ class VopNodeSocket(object):
 		return self._direction
 
 	@property
+	def default_value(self):
+		return self._default_value
+
+	@property
 	def slangTypeAccessString(self):	
 		if self._direction == VopNodeSocket.Direction.INPUT: return None
 		if self._direction == VopNodeSocket.Direction.OUTPUT: return "out"
 		if self._direction == VopNodeSocket.Direction.INOUT: return "inout"
-
-	@property
-	def slangDataTypeString(self):
-		if self._data_type == VopNodeSocket.DataType.INT:    return 'int'
-		if self._data_type == VopNodeSocket.DataType.FLOAT:  return 'float'
-		if self._data_type == VopNodeSocket.DataType.VECTOR2:return 'float2'
-		if self._data_type == VopNodeSocket.DataType.VECTOR: return 'float3'
-		if self._data_type == VopNodeSocket.DataType.VECTOR4:return 'float4'
-		if self._data_type == VopNodeSocket.DataType.BSDF:   return 'bsdf'
-		if self._data_type == VopNodeSocket.DataType.SHADER: return 'shader'
-		if self._data_type == VopNodeSocket.DataType.SURFACE:return 'surface'
-		if self._data_type == VopNodeSocket.DataType.DISPLACE:return 'displacement'
-		
-		if self._data_type == VopNodeSocket.DataType.STRING:
-			raise ValueError('Con not convert VopNodeSocket.DataType.STRING to Slang type !!!')
-
-		return 'undef'
 
 	@classmethod
 	def dataTypeFromString(cls, socket_data_type_string):

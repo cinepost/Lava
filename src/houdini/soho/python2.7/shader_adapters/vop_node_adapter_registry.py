@@ -34,10 +34,14 @@ class VopNodeAdapterRegistry(type):
 		if class_name in _vop_adapter_registry_by_cls_name:
 			return _vop_adapter_registry_by_cls_name[class_name]
 
+		return None
+
 	@classmethod
 	def getAdapterClassByTypeName(cls, type_name):
 		if type_name in _vop_adapter_registry_by_type_name:
 			return _vop_adapter_registry_by_type_name[type_name]
+
+		return None
 
 	@classmethod
 	def registeredAdapterClasses(cls):

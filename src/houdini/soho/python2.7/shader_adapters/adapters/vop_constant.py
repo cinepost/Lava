@@ -1,38 +1,46 @@
 from ..vop_node_adapter_base import VopNodeAdapterBase
-from ..code_template import CodeTemplate
+from .. import code
+
 
 class VopNodeConstant(VopNodeAdapterBase):
-	def getSlangTemplate(self, slang_context=None):
-		#return super(VopNodeSubnet, self).getSlangTemplate()
-		return CodeTemplate()
-
 	@classmethod
 	def vopTypeName(cls):
 		return "constant"
 
 	@classmethod
-	def getTemplateContext(cls, vop_node):
-		slang_type = "undef"
-		slang_value = ""
-		consttype = vop_node.parm('consttype').evalAsString()
+	def generateCode(cls, vop_node_ctx):
+		for i in super(VopNodeConstant, cls).generateCode(vop_node_ctx): yield i
+
+		consttype = vop_node_ctx.parms.get("consttype")
+
+		def_value_str = "0";
+
+		# 3 components
 		if consttype == "color":
-			slang_type = "float3"
-			slang_value = "%s, %s, %s" % (vop_node.parm('colordefr').evalAsFloat(), vop_node.parm('colordefg').evalAsFloat(), vop_node.parm('colordefb').evalAsFloat())
+			val1 = vop_node_ctx.parms.get("colordefr") or 0
+			val2 = vop_node_ctx.parms.get("colordefg") or 0
+			val3 = vop_node_ctx.parms.get("colordefb") or 0
+			def_value_str = "float3({}, {}, {})".format(val1, val2, val3)
 		
-		return {
-			'SLANG_CONST_TYPE': slang_type,
-			'SLANG_CONST_VALUE': slang_value,
-		}
+		if consttype == "vector":
+			val1 = vop_node_ctx.parms.get("float3def1") or 0
+			val2 = vop_node_ctx.parms.get("float3def2") or 0
+			val3 = vop_node_ctx.parms.get("float3def3") or 0
+			def_value_str = "float3({}, {}, {})".format(val1, val2, val3)
 
-	@classmethod
-	def getCodeTemplateString(cls):
-		return r"""
-		{% block ARGS %}
-			{{ NODE_CONTEXT.SLANG_CONST_TYPE }} {{ OUTPUTS.Value.ARG_NAME }};
-		{% endblock %}
+		# 4 components
+		if consttype == "coloralpha":
+			val1 = vop_node_ctx.parms.get("color4defr") or 0
+			val2 = vop_node_ctx.parms.get("color4defg") or 0
+			val3 = vop_node_ctx.parms.get("color4defb") or 0
+			val4 = vop_node_ctx.parms.get("color4defa") or 0
+			def_value_str = "float4({}, {}, {}, {})".format(val1, val2, val3, val4)
 
-		{% block BODY %}
-			{{ CREATOR_COMMENT }}
-			{{ OUTPUTS.Value.ARG_NAME }} = {{ NODE_CONTEXT.SLANG_CONST_TYPE }}({{ NODE_CONTEXT.SLANG_CONST_VALUE }});
-		{% endblock %}
-		"""
+		if consttype == "float4":
+			val1 = vop_node_ctx.parms.get("float4def1") or 0
+			val2 = vop_node_ctx.parms.get("float4def2") or 0
+			val3 = vop_node_ctx.parms.get("float4def3") or 0
+			val4 = vop_node_ctx.parms.get("float4def4") or 0
+			def_value_str = "float4({}, {}, {}, {})".format(val1, val2, val3, val4)
+
+		yield code.Assign(vop_node_ctx.outputs.values()[0].var_name, def_value_str)

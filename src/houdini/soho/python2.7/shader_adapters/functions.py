@@ -1,19 +1,26 @@
 from vop_node_adapter_registry import VopNodeAdapterRegistry
 from vop_node_adapter_context import VopNodeAdapterContext
 
-def getVopNodeAdapter(vop_node):
-	if vop_node.type().category().name() != 'Vop':
-		raise ValueError("Non VOP node %s provided !!!", vop_node.path())
+def getVopNodeAdapter(vop_node_wrapper):
+	if vop_node_wrapper.type().category().name() != 'Vop':
+		raise ValueError("Non VOP node %s provided !!!", vop_node_wrapper.path())
 
-	vop_node_adapter_context = VopNodeAdapterContext(vop_node)
+	vop_node_adapter_context = VopNodeAdapterContext(vop_node_wrapper)
 
-	vop_type_name = vop_node.type().name()
+	vop_type_name = vop_node_wrapper.type().name()
 	if VopNodeAdapterRegistry.hasRegisteredAdapterType(vop_type_name):
 		adapter_class = VopNodeAdapterRegistry.getAdapterClassByTypeName(vop_type_name)
-		#return adapter_class(vop_node_adapter_context)
-		return adapter_class
-	else:
-		raise Exception('No vop node adapter of vop type "%s" registered for %s !!!' % (vop_node.type().name(), vop_node.path()))
+		if adapter_class:
+			return adapter_class
+	
+	if vop_node_wrapper.isSubNetwork():
+		# If this it a subnetwork node, we can use generic subnet adapter
+		subnet_adapter_class = VopNodeAdapterRegistry.getAdapterClassByTypeName("__generic__subnet__")
+		if subnet_adapter_class:
+			return subnet_adapter_class
+
+	print 'No vop node adapter of vop type "%s" registered for %s !!!' % (vop_node_wrapper.type().name(), vop_node_wrapper.path())
+	return None
 
 def incrLastStringNum(text):
 	import re
@@ -33,6 +40,7 @@ def vexDataTypeToSlang(vex_data_type_name):
 	if vex_data_type_name == 'vector2': return 'float2'
 	if vex_data_type_name == 'color': return 'float3'
 	if vex_data_type_name == 'color4': return 'float4'
+	if vex_data_type_name == 'coloralpha': return 'float4'
 	if vex_data_type_name == 'vector4': return 'float4'
 	
 	return vex_data_type_name
