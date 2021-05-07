@@ -29,6 +29,7 @@ class VopNodeMaterialbuilder(VopNodeNetworkAdapterBase):
 			for generable in adapter.generateShaderVariables(context):
 				shader_vars += [generable]
 
+		for adapter, context in vop_node_ctx.children():
 			# Append children code
 			for generable in adapter.generateCode(context):
 				block.append(generable)

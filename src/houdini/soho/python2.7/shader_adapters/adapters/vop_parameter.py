@@ -27,20 +27,16 @@ class VopNodeParameter(VopNodeAdapterBase):
 		parmscope = vop_node_ctx.parms.get("parmscope")
 		parmname = vop_node_ctx.parms.get("parmname")
 
-		export = False
-		if (exportparm == "whenconnected" and len(vop_node_ctx.inputs) == 1) or (exportparm == "on"):
-			export = True
-
-		shader_variables += [code.Value("int", parmname)]
-
-		for var in shader_variables:
-			yield var
+		if (exportparm == "whenconnected" and vop_node_ctx.inputs["input"].isConnected()) or (exportparm == "on"):
+			shader_variables += [code.Value("int", parmname)]
+			for var in shader_variables:
+				yield var
 
 	@classmethod
 	def generateSubnetVariables(cls, vop_node_ctx):
-		for i in super(VopNodeParameter, cls).generateSubnetVariables(vop_node_ctx): yield i
-
 		if vop_node_ctx.parms.get("parmscope") == "subnet":
+			for i in super(VopNodeParameter, cls).generateSubnetVariables(vop_node_ctx): yield i
+			
 			output_name = "_%s" % vop_node_ctx.parms.get("parmname")
 			parent_input_name = output_name[1:]
 			parent_input_socket = vop_node_ctx.parent_context.inputs[parent_input_name]
@@ -60,7 +56,7 @@ class VopNodeParameter(VopNodeAdapterBase):
 		parmname = vop_node_ctx.parms.get("parmname")
 
 		export = False
-		if (exportparm == "whenconnected" and len(vop_node_ctx.inputs) == 1) or (exportparm == "on"):
+		if (exportparm == "whenconnected" and vop_node_ctx.inputs["input"].isConnected()) or (exportparm == "on"):
 			export = True
 		
 		if export:

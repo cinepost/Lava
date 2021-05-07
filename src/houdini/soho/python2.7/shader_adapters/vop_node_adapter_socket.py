@@ -63,8 +63,8 @@ class VopNodeSocket(object):
 
 	_direction = Direction.INPUT
 
-	def __init__(self, socket_name, socket_data_type_string, direction):
-		self._var_name = socket_name
+	def __init__(self, var_name, socket_data_type_string, direction):
+		self._var_name = var_name # incoming or outgoing code variable name
 		self._data_type = VopNodeSocket.dataTypeFromString(socket_data_type_string)
 		self._direction = direction
 		self._default_value = None
@@ -72,6 +72,10 @@ class VopNodeSocket(object):
 	#@property
 	#def vopName(self):
 	#	return self._vop_name
+
+	def isConnected(self):
+		if self._var_name: return True
+		else: return False
 
 	def setDefaultValue(self, default_value):
 		self._default_value = default_value
@@ -110,6 +114,7 @@ class VopNodeSocket(object):
 		if socket_data_type_string == 'float': return VopNodeSocket.DataType.FLOAT
 		if socket_data_type_string == 'string': return VopNodeSocket.DataType.STRING
 		if socket_data_type_string == 'vector': return VopNodeSocket.DataType.VECTOR
+		if socket_data_type_string == 'normal': return VopNodeSocket.DataType.VECTOR
 		if socket_data_type_string == 'vector2': return VopNodeSocket.DataType.VECTOR2
 		if socket_data_type_string == 'color': return VopNodeSocket.DataType.VECTOR
 		if socket_data_type_string == 'vector4': return VopNodeSocket.DataType.VECTOR4

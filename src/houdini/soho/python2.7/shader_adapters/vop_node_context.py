@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import hou
 
 from vop_node_adapter_socket import VopNodeSocket
@@ -8,18 +10,25 @@ class VopNodeContext(object):
 	_args_names_cache = {}
 	_last_arg_names = {}
 
-	def __init__(self, vop_node_wrapper, parent_vop_node_context=None):
-		from collections import OrderedDict
+	def __init__(self, vop_node_wrapper, shading_context, parent_vop_node_context=None):
+		from vop_node_graph import NodeWrapperBase
 
-		assert vop_node_wrapper
+		assert isinstance(vop_node_wrapper, NodeWrapperBase)
+		assert shading_context in ['surface', 'displacement']
 
+		self._shading_context = shading_context
 		self._parent_vop_node_context = parent_vop_node_context
 		self._vop_node_wrapper = None
 
-		# build parameters dict
+		self._inputs = OrderedDict()
+		self._outputs = OrderedDict()
+		self._input_node_wrappers_names = []
 		self._parms = {}
+
 		if vop_node_wrapper:
+			self._adapter = vop_node_wrapper.adapter()
 			self._vop_node_wrapper = vop_node_wrapper
+
 			for parm in vop_node_wrapper.parms():
 				parm_value = None
 				parm_template = parm.parmTemplate()
@@ -41,48 +50,47 @@ class VopNodeContext(object):
 
 				if parm_value: self._parms[parm.name()] = parm_value
 
-		# all inputs/outpus
-		self._inputs = OrderedDict()
-		self._outputs = OrderedDict()
+			# all inputs/outpus
+			input_names = vop_node_wrapper.inputNames()
+			input_data_types = vop_node_wrapper.inputDataTypes()
+			for i in range(len(input_data_types)):
+				input_type = input_data_types[i]
+				if input_type != 'undef':
+					input_name = input_names[i]
+					self._inputs[input_name] = VopNodeSocket(None, input_type, direction=VopNodeSocket.Direction.INPUT)
 
-		self._adapter = vop_node_wrapper.adapter()
+			output_names = vop_node_wrapper.outputNames()
+			output_data_types = vop_node_wrapper.outputDataTypes()
+			for i in range(len(output_data_types)):
+				output_type = output_data_types[i]
+				if output_type != 'undef':
+					output_name = output_names[i]
+					self._outputs[output_name] = VopNodeSocket(None, output_type, direction=VopNodeSocket.Direction.INPUT)
 
-		input_names = vop_node_wrapper.inputNames()
-		input_data_types = vop_node_wrapper.inputDataTypes()
-		for i in range(len(input_data_types)):
-			input_type = input_data_types[i]
-			if input_type != 'undef':
-				input_name = input_names[i]
-				self._inputs[input_name] = VopNodeSocket(None, input_type, direction=VopNodeSocket.Direction.INPUT)
+			# connected inputs
+			for connection in vop_node_wrapper.inputConnections():
+				input_name = connection.inputName()
+				input_node_wrapper = connection.inputNodeWrapper()
+				input_type = connection.inputDataType()
 
-		output_names = vop_node_wrapper.outputNames()
-		output_data_types = vop_node_wrapper.outputDataTypes()
-		for i in range(len(output_data_types)):
-			output_type = output_data_types[i]
-			if output_type != 'undef':
-				output_name = output_names[i]
-				self._outputs[output_name] = VopNodeSocket(None, output_type, direction=VopNodeSocket.Direction.INPUT)
+				self._inputs[connection.outputName()] = VopNodeSocket(self.getSafeArgName(input_node_wrapper, input_name), input_type, direction=VopNodeSocket.Direction.INPUT)
+				
+				input_node_wrapper_name = connection.inputNodeWrapperName()
+				if not input_node_wrapper_name in self._input_node_wrappers_names:
+					self._input_node_wrappers_names.insert(0, input_node_wrapper_name)
 
-		# connected inputs
-		for connection in vop_node_wrapper.inputConnections():
-			input_name = connection.inputName()
-			input_node_wrapper = connection.inputNodeWrapper()
-			input_type = connection.inputDataType()
+			# connected outputs
+			for connection in vop_node_wrapper.outputConnections():
+				output_name = connection.inputName()
+				output_var_name =  self._adapter.outputVariableName(self, output_name)
+				output_type = connection.inputDataType()
 
-			self._inputs[connection.outputName()] = VopNodeSocket(self.getSafeArgName(input_node_wrapper, input_name), input_type, direction=VopNodeSocket.Direction.INPUT)
-		
-		# connected outputs
-		for connection in vop_node_wrapper.outputConnections():
-			output_name = connection.inputName()
-			output_var_name =  self._adapter.outputVariableName(self, output_name)
-			output_type = connection.inputDataType()
+				self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(vop_node_wrapper, output_var_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
 
-			self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(vop_node_wrapper, output_var_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
-
-		self._vop_node_name = vop_node_wrapper.name()
-		self._vop_node_path = vop_node_wrapper.path()
-		self._vop_node_type_name = vop_node_wrapper.type().name()
-		self._vop_node_type_category_name = vop_node_wrapper.type().category().name()
+			self._vop_node_name = vop_node_wrapper.name()
+			self._vop_node_path = vop_node_wrapper.path()
+			self._vop_node_type_name = vop_node_wrapper.type().name()
+			self._vop_node_type_category_name = vop_node_wrapper.type().category().name()
 
 		# build adapter specific context
 		self._adapter_ctx = {}
@@ -90,13 +98,53 @@ class VopNodeContext(object):
 			self._adapter_ctx = self._adapter.getAdapterContext(self)
 
 	def children(self):
-		for child_vop_node_wrapper in self._vop_node_wrapper.children():
+		for child_vop_node_wrapper in self._vop_node_wrapper.childrenSorted(self._shading_context):
 			adapter = child_vop_node_wrapper.adapter()
 			if adapter:
-				yield (adapter, VopNodeContext(child_vop_node_wrapper, parent_vop_node_context=self))
+				yield (adapter, VopNodeContext(child_vop_node_wrapper, self._shading_context, parent_vop_node_context=self))
 			else:
 				print "missing adapter", child_vop_node_wrapper.path()
 
+	def terminalChildren(self):
+		from vop_node_graph import NodeSubnetWrapper
+
+		if not isinstance(self._vop_node_wrapper, NodeSubnetWrapper):
+			return
+			yield
+
+		for child_vop_node_wrapper in self._vop_node_wrapper.terminalChildren():
+			adapter = child_vop_node_wrapper.adapter()
+			if adapter:
+				yield (adapter, VopNodeContext(child_vop_node_wrapper, self._shading_context, parent_vop_node_context=self))
+			else:
+				print "missing adapter", child_vop_node_wrapper.path()
+
+	def inputNodes(self):
+		if not self._parent_vop_node_context:
+			return
+			yield
+		else:
+			for input_node_wrapper_name in self._input_node_wrappers_names:
+
+				#if self._parent_vop_node_context.vop_node_wrapper.hasChildByName(input_node_wrapper_name):
+				input_wrapper = self._parent_vop_node_context.vop_node_wrapper.getChildByName(input_node_wrapper_name)
+				if input_wrapper:
+					print "input_wrapper", input_wrapper
+					adapter = input_wrapper.adapter()
+					if adapter:
+						yield (adapter, VopNodeContext(input_wrapper, self._shading_context, parent_vop_node_context=self._parent_vop_node_context))
+					else:
+						print "missing adapter", input_wrapper.path()
+	
+	def __str__(self):
+		return "VopNodeContext for %s" % self._vop_node_path
+
+	def __repr__(self):
+		return "VopNodeContext for %s" % self._vop_node_path
+
+	@property
+	def shading_context(self):
+		return self._shading_context
 
 	@property
 	def parms(self):
@@ -109,6 +157,9 @@ class VopNodeContext(object):
 	@property 
 	def outputs(self):
 		return self._outputs
+
+	def adapter(self):
+		return self._adapter
 
 	def outputNames(self):
 		return self._outputs.keys()
