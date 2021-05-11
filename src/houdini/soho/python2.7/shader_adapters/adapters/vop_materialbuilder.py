@@ -13,6 +13,18 @@ class VopNodeMaterialbuilder(VopNodeNetworkAdapterBase):
 	def generateCode(cls, vop_node_ctx):
 		shader_name = vop_node_ctx.vop_node_wrapper.name()
 
+		if vop_node_ctx.shading_context == 'surface':
+			for i in cls.generateSurfaceShadingFiles(vop_node_ctx): yield i
+		elif vop_node_ctx.shading_context == 'displacement':
+			for i in cls.generateDisplacementShadingFiles(vop_node_ctx): yield i
+		else:
+			return
+			yield
+
+	@classmethod
+	def generateSurfaceShadingFiles(cls, vop_node_ctx):
+		shader_name = vop_node_ctx.vop_node_wrapper.name()
+
 		block = code.Block([])
 
 		# Append children variables
@@ -39,12 +51,22 @@ class VopNodeMaterialbuilder(VopNodeNetworkAdapterBase):
 			block
 		)
 
-		#yield func
-
-		src = code.Source("/home/max/vop_tests/{}.slang".format(shader_name), [
+		src = code.Source("/home/max/vop_tests/{}.{}.slang".format(shader_name,  vop_node_ctx.shading_context), [
+			code.Comment("%s shader" % vop_node_ctx.shading_context),
+			code.EmptyLine(),
 			code.Include("qqqq.slang"), 
 			code.Import(" Scene.Camera.Camera"), 
+			code.EmptyLine(),
+			code.Ifndef("VOP_SHADING"),
+			code.Define("VOP_SHADING"),
+			code.Endif(),
+			code.EmptyLine(),
 			func
 		])
 		
 		yield src
+
+	@classmethod
+	def generateDisplacementShadingFiles(cls, vop_node_ctx):
+		return
+		yield

@@ -79,7 +79,7 @@ class VopNodeAdapterProcessor(object):
 			print "generateShaders VopMaterial"
 			return {
 				'surface': self._process(node, 'surface'),
-				#'displacement': self._process(node, 'displacement')
+				'displacement': self._process(node, 'displacement')
 			}
 		elif shader_type == hou.shaderType.Surface:
 			print "generateShaders Surface"
@@ -91,91 +91,6 @@ class VopNodeAdapterProcessor(object):
 
 		return {}
 
-	def _renderNode(self, vop_node, slang_context = 'surface', subnet_children_code=None):
-		if not issubclass(type(vop_node), hou.VopNode):
-			raise ValueError('Wrong object of type "%s" passed as a vop node !!!' % type(vop_node))
-
-		code = Code()
-		if vop_node.path() in self._node_code_cache:
-			return code 
-
-		node_adapter = None
-		try:
-			node_adapter = getVopNodeAdapter(vop_node)
-		except:
-			pass
-
-		if node_adapter:
-			node_adapter.preprocess(vop_node, self._slang_code_context)
-
-			code_template_string = node_adapter.getCodeTemplateString().strip()
-			
-			# Build environment from super classes templates
-			env_dict = {}
-			base_adapter_classes = filter(lambda cls: issubclass(cls, VopNodeAdapterAPI), node_adapter.__mro__)
-			for cls in base_adapter_classes:
-				env_dict[cls.__name__] = cls.getCodeTemplateString()
-
-			j2_env = Environment(loader=DictLoader(env_dict), trim_blocks=True)
-
-			template = Template(code_template_string)
-			template = j2_env.get_template(node_adapter.__mro__[0].__name__)
-
-			template_dict = self.buildVopContext(vop_node, node_adapter.getTemplateContext(vop_node))
-			
-			if vop_node.isSubNetwork() and subnet_children_code:
-				print "is subnet! ", vop_node.path()
-				if not isinstance(subnet_children_code, Code):
-					raise ValueError('Wrong object of type "%s" passed as subnet_children_code !!!' % type(vop_node))
-				
-				template_dict["CHILDREN_CODE"] = subnet_children_code
-
-				subnet_children_ctx = {}
-				for child_node in vop_node.children():
-					
-					child_node_adapter = None
-					try:
-						child_node_adapter = getVopNodeAdapter(child_node)
-					except:
-						print "no vop adapter for ", child_node.path() 
-						pass
-
-					child_node_template_context = {}
-					if child_node_adapter:
-						child_node_template_context = child_node_adapter.getTemplateContext(child_node)
-
-					subnet_children_ctx[child_node.path()] = self.buildVopContext(child_node, child_node_template_context)
-
-				template_dict["CHILDREN"] = subnet_children_ctx
-
-				print "is subnet! ", vop_node.path(), "done"
-
-			template_context = template.new_context(template_dict)
-
-			print "render ", vop_node.path()
-
-			code.body = template.render(template_context)
-
-			print "render ", vop_node.path(), "done"
-
-			#if 'ARGS' in template.blocks:
-			#	code.args = concat(template.blocks['ARGS'](template_context)).strip()
-
-			#if 'TEMP' in template.blocks:
-			#	code.temp = concat(template.blocks['TEMP'](template_context)).strip()
-
-			#if 'BODY' in template.blocks:
-			#	code.body = concat(template.blocks['BODY'](template_context)).strip()
-
-		else:
-			code.body = '// Missing adapter for vop type "%s" !!!\n' % vop_node.type().name()
-
-		code.prettify()
-		self._node_code_cache[vop_node.path()] = code
-
-		#print code.body
-
-		return code
 
 	def _process(self, vop_node, slang_context = 'surface'):
 		from functions import getVopNodeAdapter

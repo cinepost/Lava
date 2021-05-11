@@ -74,8 +74,8 @@ class VopNodeAdapterProcessor(object):
 		if   shader_type == hou.shaderType.VopMaterial:
 			print "generateShaders VopMaterial"
 			return {
-				'surface': self._process(node, 'displacement'),
-				#'displacement': self._process(node, 'displacement')
+				'surface': self._process(node, 'surface'),
+				'displacement': self._process(node, 'displacement')
 			}
 		elif shader_type == hou.shaderType.Surface:
 			print "generateShaders Surface"
@@ -105,90 +105,20 @@ class VopNodeAdapterProcessor(object):
 			pass
 
 		if node_adapter:
-			print "generate graph"
 			graph = generateGraph(vop_node)
 			print "generate", vop_node.path()
 			
-			#for res in node_adapter.generate(VopNodeContext(node_adapter, NodeSubnetWrapper(vop_node))):
 			node_wrapper = graph.nodeWrapper(vop_node.path())
-
-			print "wrapper", node_wrapper.path()
-
 			node_context = VopNodeContext(node_wrapper, shading_context)
+			
 			for res in node_adapter.generateCode(node_context):
 				print "res", type(res)
 				printHighlightedSlangCode(res)
-				#pass
-
+			
 			return ""
 
 		return None
-    
 
-	def buildVopContext(self, vop_node, custom_node_context):
-		from collections import OrderedDict
-
-		if vop_node.type().category().name() != 'Vop':
-			raise ValueError("Non VOP node %s provided !!!", vop_node.path())
-
-		node_adapter = None
-		try:
-			node_adapter = getVopNodeAdapter(vop_node)
-		except:
-			pass
-
-		context_parms = OrderedDict()
-		for parm in vop_node.parms():
-			context_parms[parm.name()] = {
-				'VALUE': parm.eval(),
-			}
-
-		context_inputs = OrderedDict()
-		for connection in vop_node.inputConnections():
-			input_name = connection.outputName()
-			input_arg_name = connection.inputName()
-			input_arg_node = connection.inputNode()
-			input_arg_type = connection.inputDataType()
-
-			context_inputs[input_name] = {
-				'VAR_NAME': self.getSafeArgName(input_arg_node, input_arg_name),
-				'VAR_TYPE': vexDataTypeToSlang(input_arg_type),
-			}
-		
-		context_outputs = OrderedDict()
-		for connection in vop_node.outputConnections():
-			output_name = connection.inputName()
-			output_node = connection.inputNode()
-			output_type = connection.inputDataType()
-
-			mangled_output_name = output_name
-			if node_adapter:
-				mangled_output_name = node_adapter.mangleOutputName(output_name, custom_node_context)
-
-			context_outputs[output_name] = {
-				'VAR_NAME': self.getSafeArgName(output_node, mangled_output_name),
-				'VAR_TYPE': vexDataTypeToSlang(output_type),
-			}
-
-		context = {
-			'CREATOR_COMMENT': '// Code produced by: %s' % vop_node.path(),
-			'SLANG_CONTEXT': self._slang_code_context,
-			'NODE_NAME': vop_node.name(),
-			'NODE_PATH': vop_node.path(),
-			'PARMS': context_parms,
-			'INPUTS': context_inputs,
-			'OUTPUTS': context_outputs,
-			'PARENT': None,
-		}
-
-		#if vop_node.path() != self._root_node.path():
-		#	if vop_node.parent():
-		#		context['PARENT'] = self.buildVopContext(vop_node.parent())
-
-		if custom_node_context:
-			context['NODE_CONTEXT'] = custom_node_context
-
-		return context
 
 	def getSafeArgName(self, vop_node, arg_name):
 		import re 

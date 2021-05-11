@@ -133,15 +133,36 @@ class FunctionDeclaration(NestedDeclarator):
 
 
 class Define(Generable):
-	def __init__(self, symbol, value):
+	def __init__(self, symbol, value=None):
 		self.symbol = symbol
 		self.value = value
 
 	def generate(self):
-		#yield f"#define {self.symbol} {self.value}"
-		yield "#define {} {}".format(self.symbol, self.value)
+		if not self.value:
+			yield "#define {}".format(self.symbol)
+		else:
+			yield "#define {} {}".format(self.symbol, self.value)
 
 	mapper_method = "map_define"
+
+
+class Ifndef(Generable):
+	def __init__(self, symbol):
+		self.symbol = symbol
+		
+	def generate(self):
+		yield "#ifndef {}".format(self.symbol)
+
+	mapper_method = "map_ifndef"
+
+class Endif(Generable):
+	def __init__(self):
+		pass
+		
+	def generate(self):
+		yield "#endif"
+
+	mapper_method = "map_endif"
 
 
 class Include(Generable):
@@ -179,36 +200,45 @@ class Statement(Generable):
 
 
 class Assign(Generable):
-    def __init__(self, lvalue, rvalue):
-        self.lvalue = lvalue
-        self.rvalue = rvalue
+	def __init__(self, lvalue, rvalue):
+		self.lvalue = lvalue
+		self.rvalue = rvalue
 
-    def generate(self):
-    	yield "{} = {};".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
+	def generate(self, with_semicolon=True):
+		result = "{} = {}".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
+		if with_semicolon:
+			result += ";"
+		yield result
 
-    mapper_method = "map_assignment"
+	def inline(self, with_semicolon=False):
+		result = ', '.join([str(generable) for generable in self.generate(with_semicolon=False)])
+		if with_semicolon:
+			result += ';'
+		return result
+
+	mapper_method = "map_assignment"
 
 
 class Add(Generable):
-    def __init__(self, lvalue, rvalue):
-        self.lvalue = lvalue
-        self.rvalue = rvalue
+	def __init__(self, lvalue, rvalue):
+		self.lvalue = lvalue
+		self.rvalue = rvalue
 
-    def generate(self):
-        yield "{} + {}".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
+	def generate(self):
+		yield "{} + {}".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
 
-    mapper_method = "map_add"
+	mapper_method = "map_add"
 
 
 class Multiply(Generable):
-    def __init__(self, lvalue, rvalue):
-        self.lvalue = lvalue
-        self.rvalue = rvalue
+	def __init__(self, lvalue, rvalue):
+		self.lvalue = lvalue
+		self.rvalue = rvalue
 
-    def generate(self):
-        yield "{} * {}".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
+	def generate(self):
+		yield "{} * {}".format(generateSafe(self.lvalue, with_semicolon=False), generateSafe(self.rvalue, with_semicolon=False))
 
-    mapper_method = "map_multiple"
+	mapper_method = "map_multiple"
 
 
 class EmptyLine(Generable):

@@ -1,5 +1,6 @@
 from ..vop_node_adapter_base import VopNodeAdapterBase
 from ..exceptions import *
+from ..functions import vexDataTypeToSlang
 from utils import getDefaultTypeValuePair
 
 from .. import code
@@ -14,23 +15,23 @@ class VopNodeParameter(VopNodeAdapterBase):
 	def outputVariableName(cls, vop_node_ctx, output_name):
 		output_name = super(VopNodeParameter, cls).outputVariableName(vop_node_ctx, output_name)
 
-		if vop_node_ctx.parms.get("exportparm") != "off":
+		if cls.doExport(vop_node_ctx):
 			output_name += "_tmp"
 
 		return output_name
 
 	@classmethod
 	def generateShaderVariables(cls, vop_node_ctx):
-		shader_variables = [i for i in super(VopNodeParameter, cls).generateShaderVariables(vop_node_ctx)]
+		for i in super(VopNodeParameter, cls).generateShaderVariables(vop_node_ctx): yield i
 
-		exportparm = vop_node_ctx.parms.get("exportparm")
-		parmscope = vop_node_ctx.parms.get("parmscope")
 		parmname = vop_node_ctx.parms.get("parmname")
+		parmtype = vop_node_ctx.parms.get("parmtype")
 
-		if (exportparm == "whenconnected" and vop_node_ctx.inputs["input"].isConnected()) or (exportparm == "on"):
-			shader_variables += [code.Value("int", parmname)]
-			for var in shader_variables:
-				yield var
+		if cls.doExport(vop_node_ctx):
+			default_type, default_value = getDefaultTypeValuePair(vop_node_ctx, "parmtype")
+			
+			assert vexDataTypeToSlang(parmtype) == default_type
+			yield code.Assign(code.Value(vexDataTypeToSlang(parmtype), parmname), default_value)
 
 	@classmethod
 	def generateSubnetVariables(cls, vop_node_ctx):
@@ -51,16 +52,24 @@ class VopNodeParameter(VopNodeAdapterBase):
 	def generateCode(cls, vop_node_ctx):
 		for i in super(VopNodeParameter, cls).generateCode(vop_node_ctx): yield i
 
-		exportparm = vop_node_ctx.parms.get("exportparm")
-		parmscope = vop_node_ctx.parms.get("parmscope")
 		parmname = vop_node_ctx.parms.get("parmname")
 
-		export = False
+		if cls.doExport(vop_node_ctx):
+			yield code.Assign(vop_node_ctx.outputs.values()[0].var_name, parmname)
+
+	@classmethod
+	def doExport(cls, vop_node_ctx):
+		exportparm = vop_node_ctx.parms.get("exportparm")
+		exportcontext = vop_node_ctx.parms.get("exportcontext")
+
+		if exportcontext == 'surface' and vop_node_ctx.shading_context != 'surface':
+			return False
+
+		if exportcontext == 'displace' and vop_node_ctx.shading_context != 'displacement':
+			return False
+
+
 		if (exportparm == "whenconnected" and vop_node_ctx.inputs["input"].isConnected()) or (exportparm == "on"):
-			export = True
-		
-		if export:
-			if "input" in vop_node_ctx.inputs:
-				yield code.Assign(parmname, vop_node_ctx.inputs["input"].var_name)
-			else:
-				yield code.Assign(vop_node_ctx.outputs.values()[0].var_name, vop_node_ctx.outputs.keys()[0])
+			return True
+
+		return False

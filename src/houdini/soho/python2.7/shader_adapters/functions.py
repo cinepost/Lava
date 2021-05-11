@@ -35,13 +35,9 @@ def incrLastStringNum(text):
 def vexDataTypeToSlang(vex_data_type_name):
 	if vex_data_type_name == 'int': return 'int'
 	if vex_data_type_name == 'float': return 'float'
-	if vex_data_type_name == 'vector': return 'float3'
-	if vex_data_type_name == 'vector4': return 'float4'
 	if vex_data_type_name == 'vector2': return 'float2'
-	if vex_data_type_name == 'color': return 'float3'
-	if vex_data_type_name == 'color4': return 'float4'
-	if vex_data_type_name == 'coloralpha': return 'float4'
-	if vex_data_type_name == 'vector4': return 'float4'
+	if vex_data_type_name in ['color', 'vector', 'point', 'normal']: return 'float3'
+	if vex_data_type_name in ['color4', 'vector4', 'coloralpha']: return 'float4'
 	
 	return vex_data_type_name
 	#raise ValueError('Unsupported vex data type "%s" !!!' % vex_data_type_name)

@@ -52,7 +52,7 @@ class NodeWrapperBase(object):
 		self._bypassed = None
 
 		if vop_node:
-			self._name = vop_node.name()
+			self._vop_name = vop_node.name()
 			self._vop_path = vop_node.path()
 			self._vop_node = vop_node
 			self._vop_type = vop_node.type()
@@ -95,13 +95,19 @@ class NodeWrapperBase(object):
 		return self._vop_node
 
 	def name(self):
+		if self._vop_name:
+			return self._vop_name
+
 		return self._name
 
 	def path(self):
-		if self._parent:
-			return "{}/{}".format(self._parent.path(), self._name)
+		if self._vop_path:
+			return self._vop_path
 
-		return self._name
+		if self._parent:
+			return "{}/{}".format(self._parent.path(), self.name())
+
+		return self.name()
 
 	def parms(self):
 		return self._parms
@@ -262,14 +268,23 @@ class NodeSubnetWrapper(NodeManagerWrapper, NodeWrapper):
 
 			yield node_wrapper
 
+		else:
+			#print "not allowed in shading context", node_wrapper
+			return
+			yield
+
 	def _prepareDependencyGraph(self, shading_context):
 		self._dep_graphs[shading_context] = defaultdict(list) #dictionary containing adjacency list
 
 		self._children_chains[shading_context] = {}
 
 		for termial_node_wrapper in self.terminalChildren():
-			for node_wrapper in self._nodeWrappersChain(termial_node_wrapper, shading_context):
-				self._children_chains[shading_context][node_wrapper.name()] = node_wrapper
+			
+			# check termial node has any input connections, otherwise just ignore it
+			if termial_node_wrapper.inputConnections():
+			
+				for node_wrapper in self._nodeWrappersChain(termial_node_wrapper, shading_context):
+					self._children_chains[shading_context][node_wrapper.name()] = node_wrapper
 
 		for to_node_wrapper in self._children_chains[shading_context].values():
 			for connection in to_node_wrapper.inputConnections():
@@ -319,8 +334,8 @@ class NodeMaterialManagerWrapper(NodeManagerWrapper):
 		assert vop_node.isMaterialManager()
 		super(NodeMaterialManagerWrapper, self).__init__(vop_node, parent)
 
-		if vop_node:
-			self._name = vop_node.path()
+		#if vop_node:
+		#	self._name = vop_node.path()
 
 	def isMaterialManager(self):
 		return True

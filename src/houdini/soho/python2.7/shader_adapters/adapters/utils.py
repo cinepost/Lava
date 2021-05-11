@@ -10,6 +10,11 @@ def getDefaultTypeValuePair(vop_node_ctx, type_parm_name):
 
 	print "parmtype", vop_node_ctx.vop_node_path, parmtype
 
+	# 1 component
+	if parmtype == "float":
+		val = vop_node_ctx.parms.get("floatdef") or 0
+		def_value_str = "float({})".format(val)
+
 	# 3 components
 	if parmtype == "color":
 		val1 = vop_node_ctx.parms.get("colordefr") or 0
@@ -27,6 +32,12 @@ def getDefaultTypeValuePair(vop_node_ctx, type_parm_name):
 		val1 = vop_node_ctx.parms.get("vectordef1") or 0
 		val2 = vop_node_ctx.parms.get("vectordef2") or 0
 		val3 = vop_node_ctx.parms.get("vectordef3") or 0
+		def_value_str = "float3({}, {}, {})".format(val1, val2, val3)
+
+	if parmtype == "point":
+		val1 = vop_node_ctx.parms.get("pointdef1") or 0
+		val2 = vop_node_ctx.parms.get("pointdef2") or 0
+		val3 = vop_node_ctx.parms.get("pointdef3") or 0
 		def_value_str = "float3({}, {}, {})".format(val1, val2, val3)
 
 	# 4 components

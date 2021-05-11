@@ -26,6 +26,11 @@ class VopNodeContext(object):
 		self._parms = {}
 
 		if vop_node_wrapper:
+			self._vop_node_name = vop_node_wrapper.name()
+			self._vop_node_path = vop_node_wrapper.path()
+			self._vop_node_type_name = vop_node_wrapper.type().name()
+			self._vop_node_type_category_name = vop_node_wrapper.type().category().name()
+
 			self._adapter = vop_node_wrapper.adapter()
 			self._vop_node_wrapper = vop_node_wrapper
 
@@ -73,7 +78,14 @@ class VopNodeContext(object):
 				input_node_wrapper = connection.inputNodeWrapper()
 				input_type = connection.inputDataType()
 
-				self._inputs[connection.outputName()] = VopNodeSocket(self.getSafeArgName(input_node_wrapper, input_name), input_type, direction=VopNodeSocket.Direction.INPUT)
+				input_var_name = ""
+				if input_node_wrapper.adapter():
+					input_wrapper_ctx = VopNodeContext(input_node_wrapper, shading_context, parent_vop_node_context=self._parent_vop_node_context)
+					input_var_name = self.getSafeArgName(input_node_wrapper, input_node_wrapper.adapter().outputVariableName(input_wrapper_ctx, input_name))
+				else:
+					input_var_name = self.getSafeArgName(input_node_wrapper, input_name)
+
+				self._inputs[connection.outputName()] = VopNodeSocket(input_var_name, input_type, direction=VopNodeSocket.Direction.INPUT)
 				
 				input_node_wrapper_name = connection.inputNodeWrapperName()
 				if not input_node_wrapper_name in self._input_node_wrappers_names:
@@ -82,15 +94,10 @@ class VopNodeContext(object):
 			# connected outputs
 			for connection in vop_node_wrapper.outputConnections():
 				output_name = connection.inputName()
-				output_var_name =  self._adapter.outputVariableName(self, output_name)
+				output_var_name = self._adapter.outputVariableName(self, output_name)
 				output_type = connection.inputDataType()
 
 				self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(vop_node_wrapper, output_var_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
-
-			self._vop_node_name = vop_node_wrapper.name()
-			self._vop_node_path = vop_node_wrapper.path()
-			self._vop_node_type_name = vop_node_wrapper.type().name()
-			self._vop_node_type_category_name = vop_node_wrapper.type().category().name()
 
 		# build adapter specific context
 		self._adapter_ctx = {}

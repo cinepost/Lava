@@ -64,6 +64,9 @@ class VopNodeAdapterAPI(object):
 
 	@classmethod
 	def allowedInShadingContext(cls, vop_node_ctx):
+		if not vop_node_ctx.adapter:
+			return False
+			
 		return True
 
 
