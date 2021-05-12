@@ -179,26 +179,40 @@ class NodeWrapper(NodeWrapperBase):
 	def __init__(self, vop_node, parent):
 		super(NodeWrapper, self).__init__(vop_node, parent)
 
+		self._inputNames = []
+		self._outputNames = []
 		self._inputDataTypes = []
 		self._outputDataTypes = []
 
 		if vop_node:
 			self._bypassed = vop_node.isBypassed()
 			self._adapter = getVopNodeAdapter(vop_node)
+			self._inputNames = vop_node.inputNames()
+			self._outputNames = vop_node.outputNames()
 			self._inputDataTypes = vop_node.inputDataTypes()
 			self._outputDataTypes = vop_node.outputDataTypes()
+			self._shader_name = vop_node.shaderName()
 
 	def __str__(self):
 		return "NodeWrapper %s" % self.path()
 
 	def __repr__(self):
 		return "NodeWrapper %s" % self.path()
-			
+	
+	def inputNames(self):
+		return self._inputNames
+
+	def outputNames(self):
+		return self._outputNames
+
 	def inputDataTypes(self):
 		return self._inputDataTypes
 
 	def outputDataTypes(self):
 		return self._outputDataTypes
+
+	def shaderName(self):
+		return self._shader_name or self.parent().shaderName()
 
 	def allowedInShadingContext(self, shading_context):
 		if not self._adapter:
@@ -253,6 +267,14 @@ class NodeSubnetWrapper(NodeManagerWrapper, NodeWrapper):
 		else:
 			return
 			yield
+
+
+	def getTerminalWrapperByNetworkOutputName(self, output_name):
+		for termial_node_wrapper in self._children.values():
+			if output_name in termial_node_wrapper.outputNames():
+				return termial_node_wrapper
+
+		return None
 
 	def childrenSorted(self, shading_context):
 		return self.topologicalSort(shading_context)

@@ -15,6 +15,10 @@ def getDefaultTypeValuePair(vop_node_ctx, type_parm_name):
 		val = vop_node_ctx.parms.get("floatdef") or 0
 		def_value_str = "float({})".format(val)
 
+	if parmtype == "int":
+		val = vop_node_ctx.parms.get("intdef") or 0
+		def_value_str = "int({})".format(val)
+
 	# 3 components
 	if parmtype == "color":
 		val1 = vop_node_ctx.parms.get("colordefr") or 0

@@ -7,8 +7,11 @@ from functions import incrLastStringNum
 
 
 class VopNodeContext(object):
-	_args_names_cache = {}
-	_last_arg_names = {}
+	_scoped_args_names_cache = {}
+	_scoped_last_arg_names = {}
+
+	#_args_names_cache = OrderedDict()
+	#_last_arg_names = {}
 
 	def __init__(self, vop_node_wrapper, shading_context, parent_vop_node_context=None):
 		from vop_node_graph import NodeWrapperBase
@@ -79,14 +82,17 @@ class VopNodeContext(object):
 				input_type = connection.inputDataType()
 
 				input_var_name = ""
-				if input_node_wrapper.adapter():
+				if input_node_wrapper.isSubNetwork():
+					input_wrapper_ctx = VopNodeContext(input_node_wrapper, shading_context, parent_vop_node_context=self._parent_vop_node_context)
+					input_var_name = input_wrapper_ctx.outputs[input_name].var_name
+				elif input_node_wrapper.adapter():
 					input_wrapper_ctx = VopNodeContext(input_node_wrapper, shading_context, parent_vop_node_context=self._parent_vop_node_context)
 					input_var_name = self.getSafeArgName(input_node_wrapper, input_node_wrapper.adapter().outputVariableName(input_wrapper_ctx, input_name))
 				else:
 					input_var_name = self.getSafeArgName(input_node_wrapper, input_name)
 
 				self._inputs[connection.outputName()] = VopNodeSocket(input_var_name, input_type, direction=VopNodeSocket.Direction.INPUT)
-				
+					
 				input_node_wrapper_name = connection.inputNodeWrapperName()
 				if not input_node_wrapper_name in self._input_node_wrappers_names:
 					self._input_node_wrappers_names.insert(0, input_node_wrapper_name)
@@ -97,7 +103,12 @@ class VopNodeContext(object):
 				output_var_name = self._adapter.outputVariableName(self, output_name)
 				output_type = connection.inputDataType()
 
-				self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(vop_node_wrapper, output_var_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
+				if vop_node_wrapper.isSubNetwork():
+					terminal_child_wrapper = self.vop_node_wrapper.getTerminalWrapperByNetworkOutputName(output_name)
+					if terminal_child_wrapper:
+						self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(terminal_child_wrapper, output_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
+				else:
+					self._outputs[output_name] = VopNodeSocket(self.getSafeArgName(vop_node_wrapper, output_var_name), output_type, direction=VopNodeSocket.Direction.OUTPUT)
 
 		# build adapter specific context
 		self._adapter_ctx = {}
@@ -228,20 +239,35 @@ class VopNodeContext(object):
 
 		return result
 
-	def getSafeArgName(self, vop_node, arg_name):
+	def getSafeArgName(self, vop_node_wrapper, arg_name):
 		import re 
+		from vop_node_graph import NodeWrapperBase
 
-		arg_path = "%s/%s" % (vop_node.path(), arg_name)
+		assert isinstance(vop_node_wrapper, NodeWrapperBase)
 
-		if arg_path in self._args_names_cache:
-			return self._args_names_cache[arg_path]
+		shader_name = vop_node_wrapper.shaderName()
+
+		if not shader_name in self._scoped_args_names_cache:
+			self._scoped_args_names_cache[shader_name] = OrderedDict()
+			self._scoped_last_arg_names[shader_name] = {}
+
+		arg_path = "%s/%s" % (vop_node_wrapper.path(), arg_name)
+
+		if arg_path in self._scoped_args_names_cache[shader_name]:
+			return self._scoped_args_names_cache[shader_name][arg_path]
 		
-		if arg_name in self._last_arg_names:
-			incremented_name = incrLastStringNum(self._last_arg_names[arg_name])
-			self._last_arg_names[arg_name] = incremented_name
-			self._args_names_cache[arg_path] = incremented_name
+		if arg_name in self._scoped_last_arg_names[shader_name]:
+			incremented_name = incrLastStringNum(self._scoped_last_arg_names[shader_name][arg_name])
+			self._scoped_last_arg_names[shader_name][arg_name] = incremented_name
+			self._scoped_args_names_cache[shader_name][arg_path] = incremented_name
 			return incremented_name
 		
-		self._last_arg_names[arg_name] = arg_name
-		self._args_names_cache[arg_path] = arg_name
+		self._scoped_last_arg_names[shader_name][arg_name] = arg_name
+		self._scoped_args_names_cache[shader_name][arg_path] = arg_name
 		return arg_name
+
+	def printArgsCache(self):
+		print "args cache"
+		for scope_name in self._scoped_args_names_cache:
+			for path in self._scoped_args_names_cache[scope_name]:
+				print path, self._scoped_args_names_cache[scope_name][path] 

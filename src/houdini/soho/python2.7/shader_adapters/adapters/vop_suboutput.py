@@ -17,4 +17,4 @@ class VopNodeSubOutput(VopNodeAdapterBase):
 		for i in super(VopNodeSubOutput, cls).generateCode(vop_node_ctx): yield i
 
 		inp_name, inp = vop_node_ctx.inputs.items()[0]
-		yield code.Assign(inp_name, inp.var_name)
+		yield code.Assign(vop_node_ctx.parent_context.outputs[inp_name].var_name, inp.var_name)

@@ -42,7 +42,7 @@ class VopNodeOutput(VopNodeAdapterBase):
 			input_socket = vop_node_ctx.inputs[input_name]
 
 			if input_socket.isConnected():
-				yield code.Assign('P', input_socket.var_name)
+				yield code.Assign(input_name, input_socket.var_name)
 
 	@classmethod
 	def generateCode_displacement(cls, vop_node_ctx):
@@ -50,4 +50,4 @@ class VopNodeOutput(VopNodeAdapterBase):
 			input_socket = vop_node_ctx.inputs[input_name]
 
 			if input_socket.isConnected():
-				yield code.Assign('P', input_socket.var_name)
+				yield code.Assign(input_name, input_socket.var_name)

@@ -115,10 +115,11 @@ class VopNodeAdapterProcessor(object):
 				print "res", type(res)
 				printHighlightedSlangCode(res)
 			
+			node_context.printArgsCache()
+
 			return ""
 
 		return None
-
 
 	def getSafeArgName(self, vop_node, arg_name):
 		import re 

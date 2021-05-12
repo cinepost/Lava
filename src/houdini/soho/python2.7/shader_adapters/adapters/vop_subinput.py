@@ -17,9 +17,10 @@ class VopNodeSubInput(VopNodeAdapterBase):
 		for i in super(VopNodeSubInput, cls).generateSubnetVariables(vop_node_ctx): yield i
 
 		output_name = vop_node_ctx.outputNames()[0]
+		parent_output_name = vop_node_ctx.parent_context.outputs[output_name].var_name
 		parent_input_name = output_name[1:]
 		parent_input_socket = vop_node_ctx.parent_context.inputs[parent_input_name]
-		yield code.Assign(code.Value(parent_input_socket.var_type, output_name), parent_input_socket.var_name)
+		yield code.Assign(code.Value(parent_input_socket.var_type, parent_output_name), parent_input_socket.var_name)
 
 	@classmethod
 	def generateCode(cls, vop_node):

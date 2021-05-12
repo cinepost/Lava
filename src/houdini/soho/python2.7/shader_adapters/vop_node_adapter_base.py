@@ -66,7 +66,7 @@ class VopNodeAdapterAPI(object):
 	def allowedInShadingContext(cls, vop_node_ctx):
 		if not vop_node_ctx.adapter:
 			return False
-			
+
 		return True
 
 
@@ -98,7 +98,9 @@ class VopNodeAdapterBase(VopNodeAdapterAPI):
 		else:	
 			for output_name in vop_node_ctx.outputs:
 				output = vop_node_ctx.outputs[output_name]
-				yield code.Value(output.var_type, output.var_name)
+				if output.isConnected():
+					#yield code.Comment(vop_node_ctx.vop_node_path)
+					yield code.Value(output.var_type, output.var_name)
 
 
 class VopNodeNetworkAdapterBase(VopNodeAdapterAPI):
