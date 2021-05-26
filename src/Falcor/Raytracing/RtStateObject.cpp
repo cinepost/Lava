@@ -30,36 +30,35 @@
 #include "RtStateObjectHelper.h"
 #include "Utils/StringUtils.h"
 #include "Core/API/Device.h"
+#include "Core/API/RootSignature.h"
 #include "ShaderTable.h"
 
-namespace Falcor
-{
-    bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const
-    {
-        bool b = true;
-        b = b && (mMaxTraceRecursionDepth == other.mMaxTraceRecursionDepth);
-        b = b && (mpKernels == other.mpKernels);
-        return b;
-    }
-    
-    RtStateObject::SharedPtr RtStateObject::create(const Desc& desc)
-    {
-        SharedPtr pState = SharedPtr(new RtStateObject(desc));
+namespace Falcor {
 
-        RtStateObjectHelper rtsoHelper;
-        // Pipeline config
-        rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
+bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const {
+    bool b = true;
+    b = b && (mMaxTraceRecursionDepth == other.mMaxTraceRecursionDepth);
+    b = b && (mpKernels == other.mpKernels);
+    return b;
+}
 
-        // Loop over the programs
-        auto pKernels = pState->getKernels();
-        for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
-        {
-            assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
-            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
-            switch( pBaseEntryPointGroup->getType() )
+RtStateObject::SharedPtr RtStateObject::create(const Desc& desc, Device::SharedPtr pDevice) {
+    SharedPtr pState = SharedPtr(new RtStateObject(desc, pDevice));
+
+    RtStateObjectHelper rtsoHelper;
+    // Pipeline config
+    rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
+
+    // Loop over the programs
+    auto pKernels = pState->getKernels();
+    for (const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() ) {
+
+        assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+        auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
+        switch( pBaseEntryPointGroup->getType() ) {
+
+            case EntryPointGroupKernels::Type::RtHitGroup: 
             {
-            case EntryPointGroupKernels::Type::RtHitGroup:
-                {
                     const Shader* pIntersection = pEntryPointGroup->getShader(ShaderType::Intersection);
                     const Shader* pAhs = pEntryPointGroup->getShader(ShaderType::AnyHit);
                     const Shader* pChs = pEntryPointGroup->getShader(ShaderType::ClosestHit);
@@ -75,20 +74,17 @@ namespace Falcor
 
                     rtsoHelper.addHitProgramDesc(pAhsBlob, ahsExport, pChsBlob, chsExport, pIntersectionBlob, intersectionExport, exportName);
 
-                    if (intersectionExport.size())
-                    {
+                    if (intersectionExport.size()) {
                         rtsoHelper.addLocalRootSignature(&intersectionExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
                         rtsoHelper.addShaderConfig(&intersectionExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
                     }
 
-                    if (ahsExport.size())
-                    {
+                    if (ahsExport.size()) {
                         rtsoHelper.addLocalRootSignature(&ahsExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
                         rtsoHelper.addShaderConfig(&ahsExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
                     }
 
-                    if (chsExport.size())
-                    {
+                    if (chsExport.size()) {
                         rtsoHelper.addLocalRootSignature(&chsExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
                         rtsoHelper.addShaderConfig(&chsExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
                     }
@@ -96,44 +92,45 @@ namespace Falcor
                 break;
 
             default:
-                {
-                    const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
+            {
+                const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
 
 
-                    const Shader* pShader = pEntryPointGroup->getShaderByIndex(0);
-                    rtsoHelper.addProgramDesc(pShader->getD3DBlob(), exportName);
+                const Shader* pShader = pEntryPointGroup->getShaderByIndex(0);
+                rtsoHelper.addProgramDesc(pShader->getD3DBlob(), exportName);
 
-                    // Root signature
-                    rtsoHelper.addLocalRootSignature(&exportName, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-                    // Payload size
-                    rtsoHelper.addShaderConfig(&exportName, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
-                }
-                break;
+                // Root signature
+                //rtsoHelper.addLocalRootSignature(&exportName, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                rtsoHelper.addLocalRootSignature(&exportName, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().get());
+                // Payload size
+                rtsoHelper.addShaderConfig(&exportName, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
             }
+            break;
         }
-
-        // Add an empty global root-signature
-        RootSignature* pRootSig = desc.mpGlobalRootSignature ? desc.mpGlobalRootSignature.get() : RootSignature::getEmpty().get();
-        rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
-
-        // Create the state
-        D3D12_STATE_OBJECT_DESC objectDesc = rtsoHelper.getDesc();
-        GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
-        d3d_call(pDevice5->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
-
-        MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
-        ID3D12StateObjectPropertiesPtr pRtsoProps = pState->getApiHandle();
-
-        for( const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
-        {
-            assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
-            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
-            const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
-
-            void const* pShaderIdentifier = pRtsoProps->GetShaderIdentifier(exportName.c_str());
-            pState->mShaderIdentifiers.push_back(pShaderIdentifier);
-        }
-
-        return pState;
     }
+
+    // Add an empty global root-signature
+    RootSignature* pRootSig = desc.mpGlobalRootSignature ? desc.mpGlobalRootSignature.get() : RootSignature::getEmpty(pDevice).get();
+    rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
+
+    // Create the state
+    D3D12_STATE_OBJECT_DESC objectDesc = rtsoHelper.getDesc();
+    GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+    d3d_call(pDevice5->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
+
+    MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
+    ID3D12StateObjectPropertiesPtr pRtsoProps = pState->getApiHandle();
+
+    for( const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() ) {
+        assert(dynamic_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get()));
+        auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pBaseEntryPointGroup.get());
+        const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
+
+        void const* pShaderIdentifier = pRtsoProps->GetShaderIdentifier(exportName.c_str());
+        pState->mShaderIdentifiers.push_back(pShaderIdentifier);
+    }
+
+    return pState;
 }
+
+}  // namespace Falcor

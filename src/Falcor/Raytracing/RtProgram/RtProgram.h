@@ -25,126 +25,127 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RAYTRACING_RTPROGRAM_RTPROGRAM_H_
+#define FALCOR_RAYTRACING_RTPROGRAM_RTPROGRAM_H_
+
 #include "Falcor/Core/Program/Program.h"
 #include "Falcor/Core/API/RootSignature.h"
 #include "Falcor/Raytracing/RtStateObject.h"
 #include "Falcor/Raytracing/ShaderTable.h"
 #include "Falcor/Scene/Scene.h"
 
-namespace Falcor
-{
-    /** Ray tracing program. See GraphicsProgram and ComputeProgram to manage other types of programs.
-    */
-    class dlldecl RtProgram : public Program, public inherit_shared_from_this<Program, RtProgram>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtProgram>;
-        using SharedConstPtr = std::shared_ptr<const RtProgram>;
-        using inherit_shared_from_this<Program, RtProgram>::shared_from_this;
+namespace Falcor {
+/** Ray tracing program. See GraphicsProgram and ComputeProgram to manage other types of programs.
+*/
 
-        using DefineList = Program::DefineList;
+class dlldecl RtProgram : public Program, public inherit_shared_from_this<Program, RtProgram> {
+  public:
+    using SharedPtr = std::shared_ptr<RtProgram>;
+    using SharedConstPtr = std::shared_ptr<const RtProgram>;
+    using inherit_shared_from_this<Program, RtProgram>::shared_from_this;
 
-        struct dlldecl DescExtra
-        {
-        public:
-            struct GroupInfo
-            {
-                int32_t groupIndex = -1;
-            };
+    using DefineList = Program::DefineList;
 
-            /** Set the max recursion depth
-            */
-            void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
-
-            std::vector<GroupInfo> mRayGenEntryPoints;
-            std::vector<GroupInfo> mMissEntryPoints;
-            std::vector<GroupInfo> mHitGroups;
-            uint32_t mMaxTraceRecursionDepth = 1;
+    struct dlldecl DescExtra {
+      public:
+        struct GroupInfo {
+            int32_t groupIndex = -1;
         };
 
-        class dlldecl Desc : public DescExtra
-        {
-        public:
-            Desc() { init(); }
-            Desc(const std::string& filename) : mBaseDesc(filename) { init(); }
-
-            Desc& addShaderLibrary(const std::string& filename);
-            Desc& setRayGen(const std::string& raygen);
-            Desc& addRayGen(const std::string& raygen);
-            Desc& addMiss(uint32_t missIndex, const std::string& miss);
-            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
-            Desc& addDefine(const std::string& define, const std::string& value);
-            Desc& addDefines(const DefineList& defines);
-
-            /** Set the compiler flags. Replaces any previously set flags.
-            */
-            Desc& setCompilerFlags(Shader::CompilerFlags flags) { mBaseDesc.setCompilerFlags(flags); return *this; }
-
-        private:
-            friend class RtProgram;
-
-            void init();
-
-            Program::Desc mBaseDesc;
-            DefineList mDefineList;
-        };
-
-        /** Create a new ray tracing program.
-            \param[in] desc The program description.
-            \param[in] maxPayloadSize The maximum ray payload size in bytes.
-            \param[in] maxAttributesSize The maximum attributes size in bytes.
-            \return A new object, or an exception is thrown if creation failed.
+        /** Set the max recursion depth
         */
-        static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
 
-        /** Get the max recursion depth
-        */
-        uint32_t getMaxTraceRecursionDepth() const { return mDescExtra.mMaxTraceRecursionDepth; }
-
-        /** Get the raytracing state object for this program
-        */
-        RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
-
-        // Ray-gen
-        uint32_t getRayGenProgramCount() const { return (uint32_t) mDescExtra.mRayGenEntryPoints.size(); }
-        uint32_t getRayGenIndex(uint32_t index) const { return mDescExtra.mRayGenEntryPoints[index].groupIndex; }
-
-        // Hit
-        uint32_t getHitProgramCount() const { return (uint32_t) mDescExtra.mHitGroups.size(); }
-        uint32_t getHitIndex(uint32_t index) const { return mDescExtra.mHitGroups[index].groupIndex; }
-
-        // Miss
-        uint32_t getMissProgramCount() const { return (uint32_t) mDescExtra.mMissEntryPoints.size(); }
-        uint32_t getMissIndex(uint32_t index) const { return mDescExtra.mMissEntryPoints[index].groupIndex; }
-
-        /** Set the scene
-        */
-        void setScene(Scene::ConstSharedPtrRef pScene);
-
-        DescExtra const& getDescExtra() const { return mDescExtra; }
-
-    protected:
-        void init(const Desc& desc);
-
-        EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
-            const std::vector<Shader::SharedPtr>& shaders,
-            EntryPointGroupReflection::SharedPtr const& pReflector) const override;
-
-    private:
-        RtProgram(RtProgram const&) = delete;
-        RtProgram& operator=(RtProgram const&) = delete;
-
-        RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
-
-        DescExtra mDescExtra;
-
-        uint32_t mMaxPayloadSize;
-        uint32_t mMaxAttributesSize;
-
-        using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
-        StateGraph mRtsoGraph;
-
-        Scene::SharedPtr mpScene;
+        std::vector<GroupInfo> mRayGenEntryPoints;
+        std::vector<GroupInfo> mMissEntryPoints;
+        std::vector<GroupInfo> mHitGroups;
+        uint32_t mMaxTraceRecursionDepth = 1;
     };
-}
+
+    class dlldecl Desc : public DescExtra {
+      public:
+        Desc() { init(); }
+        Desc(const std::string& filename) : mBaseDesc(filename) { init(); }
+
+        Desc& addShaderLibrary(const std::string& filename);
+        Desc& setRayGen(const std::string& raygen);
+        Desc& addRayGen(const std::string& raygen);
+        Desc& addMiss(uint32_t missIndex, const std::string& miss);
+        Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
+        Desc& addDefine(const std::string& define, const std::string& value);
+        Desc& addDefines(const DefineList& defines);
+
+        /** Set the compiler flags. Replaces any previously set flags.
+        */
+        Desc& setCompilerFlags(Shader::CompilerFlags flags) { mBaseDesc.setCompilerFlags(flags); return *this; }
+
+      private:
+        friend class RtProgram;
+
+        void init();
+
+        Program::Desc mBaseDesc;
+        DefineList mDefineList;
+    };
+
+    /** Create a new ray tracing program.
+        \param[in] desc The program description.
+        \param[in] maxPayloadSize The maximum ray payload size in bytes.
+        \param[in] maxAttributesSize The maximum attributes size in bytes.
+        \return A new object, or an exception is thrown if creation failed.
+    */
+    static RtProgram::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+
+    /** Get the max recursion depth
+    */
+    uint32_t getMaxTraceRecursionDepth() const { return mDescExtra.mMaxTraceRecursionDepth; }
+
+    /** Get the raytracing state object for this program
+    */
+    RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
+
+    // Ray-gen
+    uint32_t getRayGenProgramCount() const { return (uint32_t) mDescExtra.mRayGenEntryPoints.size(); }
+    uint32_t getRayGenIndex(uint32_t index) const { return mDescExtra.mRayGenEntryPoints[index].groupIndex; }
+
+    // Hit
+    uint32_t getHitProgramCount() const { return (uint32_t) mDescExtra.mHitGroups.size(); }
+    uint32_t getHitIndex(uint32_t index) const { return mDescExtra.mHitGroups[index].groupIndex; }
+
+    // Miss
+    uint32_t getMissProgramCount() const { return (uint32_t) mDescExtra.mMissEntryPoints.size(); }
+    uint32_t getMissIndex(uint32_t index) const { return mDescExtra.mMissEntryPoints[index].groupIndex; }
+
+    /** Set the scene
+    */
+    void setScene(Scene::SharedPtr pScene);
+
+    DescExtra const& getDescExtra() const { return mDescExtra; }
+
+protected:
+    void init(std::shared_ptr<Device> pDevice, const Desc& desc);
+
+    EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
+        const std::vector<Shader::SharedPtr>& shaders,
+        EntryPointGroupReflection::SharedPtr const& pReflector) const override;
+
+private:
+    RtProgram(RtProgram const&) = delete;
+    RtProgram& operator=(RtProgram const&) = delete;
+
+    RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+
+    DescExtra mDescExtra;
+
+    uint32_t mMaxPayloadSize;
+    uint32_t mMaxAttributesSize;
+
+    using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
+    StateGraph mRtsoGraph;
+
+    Scene::SharedPtr mpScene;
+};
+
+} // namespace Falcor
+
+#endif  // FALCOR_RAYTRACING_RTPROGRAM_RTPROGRAM_H_

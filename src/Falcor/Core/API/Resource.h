@@ -84,9 +84,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-#ifdef FALCOR_D3D12
         AccelerationStructure,
-#endif
     };
 
     using SharedPtr = std::shared_ptr<Resource>;

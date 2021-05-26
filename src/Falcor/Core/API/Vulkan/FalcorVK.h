@@ -125,9 +125,24 @@ static const uint32_t kDefaultSwapChainBuffers = 5;
 
 using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 
+PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+PFN_vkBuildAccelerationStructuresKHR vkBuildAccelerationStructuresKHR;
+PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
+PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
+PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
+
 class Device;
 
 uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
+
+// The max scalars supported by our driver
+#define FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES (14 * sizeof(float))
+#define FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES 32
 
 }  // namespace Falcor
 

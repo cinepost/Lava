@@ -25,122 +25,127 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RAYTRACING_SHADERTABLE_H_
+#define FALCOR_RAYTRACING_SHADERTABLE_H_
 
-namespace Falcor
-{
-    class Scene;
-    class Program;
-    class RtStateObject;
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/RenderContext.h"
 
-    /* We are using the following layout for the shader-table:
-      
-       +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-       |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        | 
-       |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |   
-       |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
-       |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
-       +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-      
-       The first record is the ray gen, followed by the miss records, followed by the meshes records.
-       For each mesh we have N hit records, N == number of ray types in the program
-       The size of each record is varying based on the type. RayGen and miss entries contain only the program identifier. Hit entries contain the program identifier and the geometry index as a shader constant
+namespace Falcor {
 
-       User provided local root signatures are not supported for performance reasons. Managing and updating data for custom root-signatures results in significant overhead.
-       To get the root-signature that matches this table, call the static function getRootSignatre()
+class Scene;
+class Program;
+class RtStateObject;
+
+/* We are using the following layout for the shader-table:
+  
+   +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
+   |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        | 
+   |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |   
+   |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
+   |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
+   +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
+  
+   The first record is the ray gen, followed by the miss records, followed by the meshes records.
+   For each mesh we have N hit records, N == number of ray types in the program
+   The size of each record is varying based on the type. RayGen and miss entries contain only the program identifier. Hit entries contain the program identifier and the geometry index as a shader constant
+
+   User provided local root signatures are not supported for performance reasons. Managing and updating data for custom root-signatures results in significant overhead.
+   To get the root-signature that matches this table, call the static function getRootSignatre()
+*/
+
+class dlldecl ShaderTable {
+  public:
+    using SharedPtr = std::shared_ptr<ShaderTable>;
+    using ConstSharedPtrRef = const SharedPtr&;
+    ~ShaderTable();
+
+    /** Create a new object
     */
+    static SharedPtr create();//RtProgram* pProgram, const Scene* pScene);
 
-    class dlldecl ShaderTable
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ShaderTable>;
-        using ConstSharedPtrRef = const SharedPtr&;
-        ~ShaderTable();
+    /** Update the shader table.
+        This function doesn't do any early out. If it's called, it will always update the table.
+        Call it only when the RtStateObject changed or when the program was recompiled
+    */
+    void update(
+        RenderContext*          pCtx,
+        RtStateObject*          pRtso,
+        RtProgramVars const*    pVars,
+        Scene*                  pScene);
 
-        /** Create a new object
-        */
-        static SharedPtr create();//RtProgram* pProgram, const Scene* pScene);
+    void flushBuffer(
+        RenderContext*          pCtx);
 
-        /** Update the shader table.
-            This function doesn't do any early out. If it's called, it will always update the table.
-            Call it only when the RtStateObject changed or when the program was recompiled
-        */
-        void update(
-            RenderContext*          pCtx,
-            RtStateObject*          pRtso,
-            RtProgramVars const*    pVars,
-            Scene*                  pScene);
-
-        void flushBuffer(
-            RenderContext*          pCtx);
-
-        struct SubTableInfo
-        {
-            uint32_t recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-            uint32_t recordCount = 0;
-            uint32_t offset = 0;
-        };
-
-        enum class SubTableType
-        {
-            RayGen,
-            Miss,
-            Hit,
-            Count,
-        };
-
-        SubTableInfo getSubTableInfo(SubTableType type) const { return mSubTables[int32_t(type)]; }
-        uint32_t getRecordSize(SubTableType type) const { return getSubTableInfo(type).recordSize; }
-        uint32_t getRecordCount(SubTableType type) const { return getSubTableInfo(type).recordCount; }
-        uint32_t getOffset(SubTableType type) const { return getSubTableInfo(type).offset; }
-
-        uint8_t* getRecordPtr(SubTableType type, uint32_t index);
-
-        /** Get the buffer
-        */
-        Buffer::ConstSharedPtrRef getBuffer() const { return mpBuffer; }
-
-        /** Get the size of the RayGen record
-        */
-        uint32_t getRayGenRecordSize() const { return getRecordSize(SubTableType::RayGen); }
-
-        /** Get the offset of the RayGen table
-        */
-        uint32_t getRayGenTableOffset() const { return getOffset(SubTableType::RayGen); }
-
-        /** Get the size of the miss record
-        */
-        uint32_t getMissRecordSize() const { return getRecordSize(SubTableType::Miss); }
-
-        /** Get the number of miss records
-        */
-        uint32_t getMissRecordCount() const { return getRecordCount(SubTableType::Miss); }
-
-        /** Get the offset to the miss table
-        */
-        uint32_t getMissTableOffset() const { return getOffset(SubTableType::Miss); }
-
-        /** Get the size of the hit record
-        */
-        uint32_t getHitRecordSize() const { return getRecordSize(SubTableType::Hit); }
-
-        /** Get the number of hit entries
-        */
-        uint32_t getHitRecordCount() const { return getRecordCount(SubTableType::Hit); }
-
-        /** Get the offset to the first hit table
-        */
-        uint32_t getHitTableOffset() const { return getOffset(SubTableType::Hit); }
-
-        RtStateObject* getRtso() const { return mpRtso; }
-
-    private:
-        ShaderTable();
-
-        SubTableInfo mSubTables[int(SubTableType::Count)];
-
-        RtStateObject*          mpRtso = nullptr;
-        Buffer::SharedPtr       mpBuffer;
-        std::vector<uint8_t>    mData;
+    struct SubTableInfo {
+        uint32_t recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        uint32_t recordCount = 0;
+        uint32_t offset = 0;
     };
-}
+
+    enum class SubTableType {
+        RayGen,
+        Miss,
+        Hit,
+        Count,
+    };
+
+    SubTableInfo getSubTableInfo(SubTableType type) const { return mSubTables[int32_t(type)]; }
+    uint32_t getRecordSize(SubTableType type) const { return getSubTableInfo(type).recordSize; }
+    uint32_t getRecordCount(SubTableType type) const { return getSubTableInfo(type).recordCount; }
+    uint32_t getOffset(SubTableType type) const { return getSubTableInfo(type).offset; }
+
+    uint8_t* getRecordPtr(SubTableType type, uint32_t index);
+
+    /** Get the buffer
+    */
+    Buffer::ConstSharedPtrRef getBuffer() const { return mpBuffer; }
+
+    /** Get the size of the RayGen record
+    */
+    uint32_t getRayGenRecordSize() const { return getRecordSize(SubTableType::RayGen); }
+
+    /** Get the offset of the RayGen table
+    */
+    uint32_t getRayGenTableOffset() const { return getOffset(SubTableType::RayGen); }
+
+    /** Get the size of the miss record
+    */
+    uint32_t getMissRecordSize() const { return getRecordSize(SubTableType::Miss); }
+
+    /** Get the number of miss records
+    */
+    uint32_t getMissRecordCount() const { return getRecordCount(SubTableType::Miss); }
+
+    /** Get the offset to the miss table
+    */
+    uint32_t getMissTableOffset() const { return getOffset(SubTableType::Miss); }
+
+    /** Get the size of the hit record
+    */
+    uint32_t getHitRecordSize() const { return getRecordSize(SubTableType::Hit); }
+
+    /** Get the number of hit entries
+    */
+    uint32_t getHitRecordCount() const { return getRecordCount(SubTableType::Hit); }
+
+    /** Get the offset to the first hit table
+    */
+    uint32_t getHitTableOffset() const { return getOffset(SubTableType::Hit); }
+
+    RtStateObject* getRtso() const { return mpRtso; }
+
+private:
+    ShaderTable();
+
+    SubTableInfo mSubTables[int(SubTableType::Count)];
+
+    RtStateObject*          mpRtso = nullptr;
+    Buffer::SharedPtr       mpBuffer;
+    std::vector<uint8_t>    mData;
+};
+
+}  // namespace Falcor
+
+#endif  // FALCOR_RAYTRACING_SHADERTABLE_H_

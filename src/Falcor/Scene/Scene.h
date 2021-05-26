@@ -31,6 +31,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Core/API/VAO.h"
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Scene/Animation/Animation.h"
@@ -48,6 +49,7 @@
 namespace Falcor {
 
 class Device;
+class RtProgram;
 class RtProgramVars;
 
 /** DXR Scene and Resources Layout:
@@ -150,6 +152,15 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         FirstPerson,
         Orbiter,
         SixDOF
+    };
+
+    // Ray tracing acceleration structure
+    struct AccelerationStructure {
+        VkAccelerationStructureKHR handle;
+        uint64_t deviceAddress = 0;
+        VkDeviceMemory memory;
+        //VkBuffer buffer;
+        Buffer::SharedPtr pBuffer;
     };
 
     /** Get the render settings.
@@ -366,10 +377,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Render the scene using raytracing
     */
-    #ifdef FALCOR_D3D12
     void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims);
-    #endif
-
+    
     /** Bind a sampler to the materials
     */
     void bindSamplerToMaterials(const Sampler::SharedPtr& pSampler);
@@ -483,10 +492,10 @@ private:
 
     /** Generate bottom level acceleration structures for all meshes
     */
-    #ifdef FALCOR_D3D12
     void buildBlas(RenderContext* pContext);
-    #endif
 
+    void createAccelerationStructureBuffer(AccelerationStructure &accelerationStructure, VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo);
+    
     /** Generate data for creating a TLAS.
         #SCENE TODO: Add argument to build descs based off a draw list
     */
@@ -497,10 +506,8 @@ private:
     /** Generate top level acceleration structure for the scene. Automatically determines whether to build or refit.
         \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table
     */
-    #ifdef FALCOR_D3D12
     void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
-    #endif
-
+    
     /** Check whether scene has an index buffer.
     */
     bool hasIndexBuffer() const { return mpVao->getIndexBuffer() != nullptr; }
@@ -625,6 +632,10 @@ private:
 
     // Raytracing Data
 
+    AccelerationStructure mBottomLevelAS{};
+    AccelerationStructure mTopLevelAS{};
+
+    // Ray tracing acceleration structure old
     struct TlasData {
         Buffer::SharedPtr pTlas;
         ShaderResourceView::SharedPtr pSrv;             ///< Shader Resource View for binding the TLAS
@@ -634,8 +645,6 @@ private:
 
     std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
                                                         ///< Number of ray types in program affects Shader Table indexing
-
-#ifdef FALCOR_D3D12
     UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
     UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
 
@@ -663,7 +672,6 @@ private:
     Buffer::SharedPtr mpBlasScratch;    ///< Scratch buffer used for BLAS builds.
     bool mRebuildBlas = true;           ///< Flag to indicate BLASes need to be rebuilt.
     bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
-#endif
 
     std::string mFilename;
 };

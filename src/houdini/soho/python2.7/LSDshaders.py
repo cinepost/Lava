@@ -19,7 +19,6 @@ def reload_package(package):
 				fn_child = getattr(module_child, "__file__", None)
 				if (fn_child is not None) and fn_child.startswith(fn_dir):
 					if fn_child not in module_visit:
-						# print("reloading:", fn_child, "from", module)
 						module_visit.add(fn_child)
 						reload_recursive_ex(module_child)
 
@@ -27,19 +26,18 @@ def reload_package(package):
 
 
 import hou
-import shader_adapters
+import slangvopadapters
 
 
 def processMaterialNode(vop_node):
-	#print shader_adapters.VopNodeAdapterRegistry.registeredAdapterClasses()
-	print shader_adapters.VopNodeAdapterRegistry.registeredAdapterTypes()
+	print "Registered Slang adapters", slangvopadapters.VopNodeAdapterRegistry.registeredAdapterTypes()
 
 	if vop_node.shaderType() != hou.shaderType.VopMaterial:
 		# For now only VopMaterial shader types
 		raise ValueError('Non VopMaterial material node "%s" specified !!!' % vop_node.path())
 
 
-	processor = shader_adapters.VopNodeAdapterProcessor(vop_node)
+	processor = slangvopadapters.VopNodeAdapterProcessor(vop_node)
 
 	shaders = processor.generateShaders()
 

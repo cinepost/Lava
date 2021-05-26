@@ -448,9 +448,24 @@ static void initDeviceQueuesInfo(const Device::Desc& desc, const DeviceApiData *
     }
 }
 
-VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount], VkPhysicalDeviceFeatures &deviceFeatures) {
+VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount], 
+    VkPhysicalDeviceFeatures &deviceFeatures, VkPhysicalDeviceRayTracingPipelinePropertiesKHR &rayTracingPipelineProperties, VkPhysicalDeviceAccelerationStructureFeaturesKHR &accelerationStructureFeatures) {
     // Features
     vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+
+    // Get ray tracing pipeline properties, which will be used later on in the sample
+    rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+    VkPhysicalDeviceProperties2 deviceProperties2{};
+    deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    deviceProperties2.pNext = &rayTracingPipelineProperties;
+    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+
+    // Get acceleration structure properties, which will be used later on in the sample
+    accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    VkPhysicalDeviceFeatures2 deviceFeatures2{};
+    deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    deviceFeatures2.pNext = &accelerationStructureFeatures;
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
 
     // Queues
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -493,6 +508,18 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
         return nullptr;
     }
 
+    // Get the ray tracing and accelertion structure related function pointers required by this sample
+    vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR"));
+    vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
+    vkBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
+    vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
+    vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
+    vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
+    vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
+    vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+    vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
+    vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+
     // Get the queues we created
     for (uint32_t type = 0; type < arraysize(pData->falcorToVulkanQueueType); type++) {
         for (uint32_t i = 0; i < (uint32_t)cmdQueues[type].size(); i++) {
@@ -533,8 +560,8 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     if (!physicalDevice) return false;
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    
-    VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, deviceFeatures);
+
+    VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures, mRayTracingPipelineProperties, mAaccelerationStructureFeatures);
     if (!device) return false;
 
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
@@ -548,7 +575,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     }
 
     VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
-    vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_0;
+    vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     vmaAllocatorCreateInfo.physicalDevice =physicalDevice;
     vmaAllocatorCreateInfo.device = device;
     vmaAllocatorCreateInfo.instance = instance;

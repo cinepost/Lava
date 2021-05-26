@@ -1,0 +1,161 @@
+from ..vop_node_adapter_base import VopNodeAdapterBase, VopNodeNetworkAdapterBase
+from ..exceptions import *
+from .vop_generic_subnet import VopNodeGenericSubnet
+
+from .. import code
+
+class VopNodeMaterialbuilder(VopNodeNetworkAdapterBase):
+	@classmethod
+	def vopTypeName(cls):
+		return "materialbuilder"
+
+	@classmethod
+	def generateCode(cls, vop_node_ctx):
+		shader_name = vop_node_ctx.vop_node_wrapper.name()
+
+		if vop_node_ctx.shading_context == 'surface':
+			for i in cls.generateSurfaceShadingFiles(vop_node_ctx): yield i
+		elif vop_node_ctx.shading_context == 'displacement':
+			for i in cls.generateDisplacementShadingFiles(vop_node_ctx): yield i
+		else:
+			return
+			yield
+
+	@classmethod
+	def generateSurfaceShadingFiles(cls, vop_node_ctx):
+		shader_name = vop_node_ctx.vop_node_wrapper.name()
+
+		block = code.Block([])
+
+		# Append children variables
+		for adapter, context in vop_node_ctx.children():
+			# Append children variables
+			for generable in adapter.generateVariables(context):
+				block.append(generable)
+
+		# Shader variables
+		shader_vars = []
+
+		for adapter, context in vop_node_ctx.children():
+			# Append shader variables
+			for generable in adapter.generateShaderVariables(context):
+				shader_vars += [generable]
+
+		for adapter, context in vop_node_ctx.children():
+			# Append children code
+			for generable in adapter.generateCode(context):
+				block.append(generable)
+
+		func = code.FunctionBody(
+			code.FunctionDeclaration(code.Value("ShadingResult", "evalMaterial"), shader_vars),
+			block
+		)
+
+		src = code.Source("/home/max/vop_tests/{}.{}.slang".format(shader_name,  vop_node_ctx.shading_context), [
+			code.Comment("%s shader" % vop_node_ctx.shading_context),
+			code.EmptyLine(),
+			code.Include("qqqq.slang"), 
+			code.Import(" Scene.Camera.Camera"), 
+			code.EmptyLine(),
+			code.Ifndef("VOP_SHADING"),
+			code.Define("VOP_SHADING"),
+			code.Endif(),
+			code.EmptyLine(),
+			func
+		])
+		
+		yield src
+
+	@classmethod
+	def generateDisplacementShadingFiles(cls, vop_node_ctx):
+		return
+		yield
+
+"""
+struct MaterialData {
+    float4   baseColor              = float4(0.2, 0.2, 0.2, 1.0);        ///< Material base color (RGB) and opacity (A).
+    
+    float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
+    
+    float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
+    float    roughness              = 0.3;
+    
+    float    metalness              = 0.0;
+    float    anisotropic;
+    float    sheen;
+    float    subsurface;
+
+    float    emissiveFactor         = 0.f;              ///< Multiplication factor for the emissive color to control light intensity.
+    float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
+    float    IoR                    = 1.5f;             ///< Index of refraction.
+    float    specularTransmission   = 0.f;              ///< Specular transmission.
+
+    float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
+    uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
+
+    float    reflectivity           = 1.0f;
+    float    _pad1;
+    float    _pad2;
+    float    _pad3;
+
+    uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
+};
+
+
+struct ShadingData {
+    float3  posW;                   ///< Shading hit position in world space
+    bool    frontFacing;            ///< True if primitive seen from the front-facing side.
+
+    float3  V;                      ///< Direction to the eye at shading hit
+    bool    doubleSided;            ///< Material double-sided flag, if false only shade front face.
+
+    float3  N;                      ///< Shading normal at shading hit
+    float   NdotV;                  // Unclamped, can be negative.
+
+    float3  T;                      ///< Shading tangent at shading hit
+    uint    materialID;             ///< Material ID at shading location.
+
+    float3  B;                      ///< Shading bitangent at shading hit
+    uint    activeLobes;            ///< BSDF lobes to include for sampling and evaluation. See LobeType in BxDFTypes.slang.
+
+    float2  uv;                     ///< Texture mapping coordinates
+    float   _pad0;
+    float   _pad1;
+
+    float3  faceN;                  ///< Face normal in world space, always on the front-facing side.
+    float   _pad2;
+
+    float3  diffuse;                ///< Diffuse albedo.
+    float   opacity;
+    
+    float3  specular;               ///< Specular albedo.
+    float   linearRoughness;        ///< This is the original roughness, before re-mapping.
+    
+    float3  emissive;
+    float   ggxAlpha;               ///< DEPRECATED: This is the re-mapped roughness value, which should be used for GGX computations. It equals `roughness^2`
+    
+    float4  occlusion;
+    
+    float   IoR;                    ///< Index of refraction of the medium "behind" the surface.
+    float   metallic;               ///< Metallic parameter, blends between dielectric and conducting BSDFs.
+    float   specularTransmission;   ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
+    float   eta;                    ///< Relative index of refraction (incident IoR / transmissive IoR).
+
+    [mutating] void setActiveLobes(uint lobes) { activeLobes = lobes; }
+
+    // Utility functions
+
+    /** Computes new ray origin based on the hit point to avoid self-intersection.
+        The method is described in Ray Tracing Gems, Chapter 6, "A Fast and Robust
+        Method for Avoiding Self-Intersection" by Carsten Wächter and Nikolaus Binder.
+        param[in] viewside True if the origin should be on the view side (reflection) or false otherwise (transmission).
+        return Ray origin of the new ray.
+    */
+    float3 computeNewRayOrigin(bool viewside = true)
+    {
+        return computeRayOrigin(posW, (frontFacing == viewside) ? faceN : -faceN);
+    }
+};
+
+
+"""

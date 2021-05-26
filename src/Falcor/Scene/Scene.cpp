@@ -32,10 +32,8 @@
 #include "HitInfo.h"
 #include "Importer.h"
 
-#ifdef FALCOR_D3D12
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
-#endif
 
 #include "Falcor/Utils/Debug/debug.h"
 
@@ -63,11 +61,9 @@ typedef struct D3D12_DRAW_ARGUMENTS {
     static_assert(sizeof(PackedMeshInstanceData) % 16 == 0, "PackedMeshInstanceData size should be a multiple of 16");
     static_assert(PackedMeshInstanceData::kMatrixBits + PackedMeshInstanceData::kMeshBits + PackedMeshInstanceData::kFlagsBits <= 32);
 
-    namespace
-    {
+    namespace {
         // Checks if the transform flips the coordinate system handedness (its determinant is negative).
-        bool doesTransformFlip(const glm::mat4& m)
-        {
+        bool doesTransformFlip(const glm::mat4& m) {
             return glm::determinant((glm::mat3)m) < 0.f;
         }
 
@@ -95,31 +91,26 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         const std::string kSelectViewpoint = "selectViewpoint";
     }
 
-    const FileDialogFilterVec& Scene::getFileExtensionFilters()
-    {
+    const FileDialogFilterVec& Scene::getFileExtensionFilters() {
         return Importer::getFileExtensionFilters();
     }
 
-    Scene::Scene(std::shared_ptr<Device> pDevice): mpDevice(pDevice)
-    {
+    Scene::Scene(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
         mpFrontClockwiseRS = RasterizerState::create(RasterizerState::Desc().setFrontCounterCW(false));
     }
 
-    Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename)
-    {
+    Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
         assert(pDevice);
         auto pBuilder = SceneBuilder::create(pDevice, filename);
         return pBuilder ? pBuilder->getScene() : nullptr;
     }
 
-    Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice)
-    {
+    Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice) {
         assert(pDevice);
         return Scene::SharedPtr(new Scene(pDevice));
     }
 
-    Shader::DefineList Scene::getSceneDefines() const
-    {
+    Shader::DefineList Scene::getSceneDefines() const {
         Shader::DefineList defines;
         defines.add("MATERIAL_COUNT", std::to_string(mMaterials.size()));
         defines.add("INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
@@ -127,18 +118,15 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return defines;
     }
 
-    const LightCollection::SharedPtr& Scene::getLightCollection(RenderContext* pContext)
-    {
-        if (!mpLightCollection)
-        {
+    const LightCollection::SharedPtr& Scene::getLightCollection(RenderContext* pContext) {
+        if (!mpLightCollection) {
             mpLightCollection = LightCollection::create(pContext, shared_from_this());
             mpLightCollection->setShaderData(mpSceneBlock["lightCollection"]);
         }
         return mpLightCollection;
     }
 
-    void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags)
-    {
+    void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags) {
         PROFILE(mpDevice, "renderScene");
 
         pState->setVao(mpVao);
@@ -148,15 +136,13 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         auto pCurrentRS = pState->getRasterizerState();
         bool isIndexed = hasIndexBuffer();
 
-        if (mDrawCounterClockwiseMeshes.count)
-        {
+        if (mDrawCounterClockwiseMeshes.count) {
             if (overrideRS) pState->setRasterizerState(nullptr);
             if (isIndexed) pContext->drawIndexedIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
             else pContext->drawIndirect(pState, pVars, mDrawCounterClockwiseMeshes.count, mDrawCounterClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
         }
 
-        if (mDrawClockwiseMeshes.count)
-        {
+        if (mDrawClockwiseMeshes.count) {
             if (overrideRS) pState->setRasterizerState(mpFrontClockwiseRS);
             if (isIndexed) pContext->drawIndexedIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
             else pContext->drawIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
@@ -165,17 +151,14 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         if (overrideRS) pState->setRasterizerState(pCurrentRS);
     }
 
-    #ifdef FALCOR_D3D12
-    void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims)
-    {
+    void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims) {
         PROFILE(mpDevice, "raytraceScene");
 
         auto rayTypeCount = pProgram->getHitProgramCount();
         setRaytracingShaderData(pContext, pVars->getRootVar(), rayTypeCount);
 
         // If not set yet, set geometry indices for this RtProgramVars.
-        if (pVars->getSceneForGeometryIndices().get() != this)
-        {
+        if (pVars->getSceneForGeometryIndices().get() != this) {
             setGeometryIndexIntoRtVars(pVars);
             pVars->setSceneForGeometryIndices(shared_from_this());
         }
@@ -185,8 +168,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
         pContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
     }
-    #endif  // FALCOR_D3D12
-
+    
     void Scene::initResources() {
         TimeReport timeReport;
         LOG_DBG("Scene::initResources timeReport");
@@ -507,13 +489,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return flags;
     }
 
-    Scene::UpdateFlags Scene::updateLights(bool forceUpdate)
-    {
+    Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
         Light::Changes combinedChanges = Light::Changes::None;
 
         // Animate lights and get list of changes.
-        for (const auto& light : mLights)
-        {
+        for (const auto& light : mLights) {
             updateAnimatable(*light, *mpAnimationController, forceUpdate);
             auto changes = light->beginFrame();
             combinedChanges |= changes;
@@ -522,13 +502,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // Update changed lights.
         uint32_t lightCount = 0;
 
-        for (const auto& light : mLights)
-        {
+        for (const auto& light : mLights) {
             if (!light->isActive()) continue;
             auto changes = light->getChanges();
 
-            if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate)
-            {
+            if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate) {
                 // TODO: This is slow since the buffer is not CPU writable. Copy into CPU buffer and upload once instead.
                 mpLightsBuffer->setElement(lightCount, light->getData());
             }
@@ -536,8 +514,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             lightCount++;
         }
 
-        if (combinedChanges != Light::Changes::None || forceUpdate)
-        {
+        if (combinedChanges != Light::Changes::None || forceUpdate) {
             mpSceneBlock["lightCount"] = lightCount;
             updateLightStats();
         }
@@ -554,15 +531,12 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return flags;
     }
 
-    Scene::UpdateFlags Scene::updateEnvMap(bool forceUpdate)
-    {
+    Scene::UpdateFlags Scene::updateEnvMap(bool forceUpdate) {
         UpdateFlags flags = UpdateFlags::None;
 
-        if (mpEnvMap)
-        {
+        if (mpEnvMap) {
             auto envMapChanges = mpEnvMap->beginFrame();
-            if (envMapChanges != EnvMap::Changes::None || forceUpdate)
-            {
+            if (envMapChanges != EnvMap::Changes::None || forceUpdate) {
                 if (envMapChanges != EnvMap::Changes::None) flags |= UpdateFlags::EnvMapChanged;
                 mpEnvMap->setShaderData(mpSceneBlock[kEnvMap]);
             }
@@ -571,19 +545,17 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return flags;
     }
 
-    Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate)
-    {
+    Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
         UpdateFlags flags = UpdateFlags::None;
 
         // Early out if no materials have changed
         if (!forceUpdate && Material::getGlobalUpdates() == Material::UpdateFlags::None) return flags;
 
-        for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId)
-        {
+        for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId) {
             auto& material = mMaterials[materialId];
             auto materialUpdates = material->getUpdates();
-            if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
-            {
+
+            if (forceUpdate || materialUpdates != Material::UpdateFlags::None) {
                 material->clearUpdates();
                 uploadMaterial(materialId);
                 flags |= UpdateFlags::MaterialsChanged;
@@ -595,16 +567,12 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return flags;
     }
 
-    Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime)
-    {
+    Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
         mUpdates = UpdateFlags::None;
-        if (mpAnimationController->animate(pContext, currentTime))
-        {
+        if (mpAnimationController->animate(pContext, currentTime)) {
             mUpdates |= UpdateFlags::SceneGraphChanged;
-            for (const auto& inst : mMeshInstanceData)
-            {
-                if (mpAnimationController->didMatrixChanged(inst.globalMatrixID))
-                {
+            for (const auto& inst : mMeshInstanceData) {
+                if (mpAnimationController->didMatrixChanged(inst.globalMatrixID)) {
                     mUpdates |= UpdateFlags::MeshesMoved;
                 }
             }
@@ -615,16 +583,15 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mUpdates |= updateEnvMap(false);
         //mUpdates |= updateMaterials(false); // TODO: check this! textures got screwed during per sample scene updates !!! 
         pContext->flush();
-        if (is_set(mUpdates, UpdateFlags::MeshesMoved))
-        {
+
+        if (is_set(mUpdates, UpdateFlags::MeshesMoved)) {
             mTlasCache.clear();
             updateMeshInstances(false);
         }
 
         // If a transform in the scene changed, update BLASes with skinned meshes
         #ifdef FALCOR_D3D12
-        if (mBlasData.size() && mHasSkinnedMesh && is_set(mUpdates, UpdateFlags::SceneGraphChanged))
-        {
+        if (mBlasData.size() && mHasSkinnedMesh && is_set(mUpdates, UpdateFlags::SceneGraphChanged)) {
             mTlasCache.clear();
             buildBlas(pContext);
         }
@@ -633,8 +600,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // Update light collection
         if (mpLightCollection && mpLightCollection->update(pContext)) mUpdates |= UpdateFlags::LightCollectionChanged;
 
-        if (mRenderSettings != mPrevRenderSettings)
-        {
+        if (mRenderSettings != mPrevRenderSettings) {
             mUpdates |= UpdateFlags::RenderSettingsChanged;
             mPrevRenderSettings = mRenderSettings;
         }
@@ -642,18 +608,15 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         return mUpdates;
     }
 
-    bool Scene::useEnvBackground() const
-    {
+    bool Scene::useEnvBackground() const {
         return mpEnvMap != nullptr;
     }
 
-    bool Scene::useEnvLight() const
-    {
+    bool Scene::useEnvLight() const {
         return mRenderSettings.useEnvLight && mpEnvMap != nullptr;
     }
 
-    bool Scene::useAnalyticLights() const
-    {
+    bool Scene::useAnalyticLights() const {
         return mRenderSettings.useAnalyticLights && mLights.empty() == false;
     }
 
@@ -692,45 +655,38 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         updateSelectedCamera(false);
     }
 
-    void Scene::resetCamera(bool resetDepthRange)
-    {
+    void Scene::resetCamera(bool resetDepthRange) {
         auto camera = getCamera();
         float radius = length(mSceneBB.extent);
         camera->setPosition(mSceneBB.center);
         camera->setTarget(mSceneBB.center + float3(0, 0, -1));
         camera->setUpVector(float3(0, 1, 0));
 
-        if (resetDepthRange)
-        {
+        if (resetDepthRange) {
             float nearZ = std::max(0.1f, radius / 750.0f);
             float farZ = radius * 50;
             camera->setDepthRange(nearZ, farZ);
         }
     }
 
-    void Scene::setCameraSpeed(float speed)
-    {
+    void Scene::setCameraSpeed(float speed) {
         mCameraSpeed = clamp(speed, 0.f, std::numeric_limits<float>::max());
         mpCamCtrl->setCameraSpeed(speed);
     }
 
-    void Scene::addViewpoint()
-    {
+    void Scene::addViewpoint() {
         auto camera = getCamera();
         addViewpoint(camera->getPosition(), camera->getTarget(), camera->getUpVector(), mSelectedCamera);
     }
 
-    void Scene::addViewpoint(const float3& position, const float3& target, const float3& up, uint32_t cameraIndex)
-    {
+    void Scene::addViewpoint(const float3& position, const float3& target, const float3& up, uint32_t cameraIndex) {
         Viewpoint viewpoint = { cameraIndex, position, target, up };
         mViewpoints.push_back(viewpoint);
         mCurrentViewpoint = (uint32_t)mViewpoints.size() - 1;
     }
 
-    void Scene::removeViewpoint()
-    {
-        if (mCurrentViewpoint == 0)
-        {
+    void Scene::removeViewpoint() {
+        if (mCurrentViewpoint == 0) {
             logWarning("Cannot remove default viewpoint");
             return;
         }
@@ -738,10 +694,8 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mCurrentViewpoint = std::min(mCurrentViewpoint, (uint32_t)mViewpoints.size() - 1);
     }
 
-    void Scene::selectViewpoint(uint32_t index)
-    {
-        if (index >= mViewpoints.size())
-        {
+    void Scene::selectViewpoint(uint32_t index) {
+        if (index >= mViewpoints.size()) {
             logWarning("Viewpoint does not exist");
             return;
         }
@@ -755,43 +709,35 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mCurrentViewpoint = index;
     }
 
-    Material::SharedPtr Scene::getMaterialByName(const std::string& name) const
-    {
-        for (const auto& m : mMaterials)
-        {
+    Material::SharedPtr Scene::getMaterialByName(const std::string& name) const {
+        for (const auto& m : mMaterials) {
             if (m->getName() == name) return m;
         }
 
         return nullptr;
     }
 
-    Light::SharedPtr Scene::getLightByName(const std::string& name) const
-    {
-        for (const auto& l : mLights)
-        {
+    Light::SharedPtr Scene::getLightByName(const std::string& name) const {
+        for (const auto& l : mLights) {
             if (l->getName() == name) return l;
         }
 
         return nullptr;
     }
 
-    void Scene::toggleAnimations(bool animate)
-    {
+    void Scene::toggleAnimations(bool animate) {
         for (auto& light : mLights) light->setIsAnimated(animate);
         for (auto& camera : mCameras) camera->setIsAnimated(animate);
         mpAnimationController->setEnabled(animate);
     }
 
-    #ifdef FALCOR_D3D12
     void Scene::setBlasUpdateMode(UpdateMode mode)
     {
         if (mode != mBlasUpdateMode) mRebuildBlas = true;
         mBlasUpdateMode = mode;
     }
-    #endif  // FALCOR_D3D12
-
-    void Scene::createDrawList()
-    {
+    
+    void Scene::createDrawList() {
         auto pMatricesBuffer = mpSceneBlock->getBuffer("worldMatrices");
         const glm::mat4* matrices = (glm::mat4*)pMatricesBuffer->map(Buffer::MapType::Read); // #SCENEV2 This will cause the pipeline to flush and sync, but it's probably not too bad as this only happens once
 
@@ -839,8 +785,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         {
             std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
-            for (const auto& instance : mMeshInstanceData)
-            {
+            for (const auto& instance : mMeshInstanceData) {
                 const auto& mesh = mMeshDesc[instance.meshID];
                 const auto& transform = matrices[instance.globalMatrixID];
                 assert(mesh.indexCount == 0);
@@ -857,8 +802,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         }
     }
 
-    void Scene::sortMeshes()
-    {
+    void Scene::sortMeshes() {
         // We first sort meshes into groups with the same transform.
         // The mesh instances list is then reordered to match this order.
         //
@@ -868,8 +812,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
         // Build a list of mesh instance indices per mesh.
         std::vector<std::vector<size_t>> instanceLists(mMeshDesc.size());
-        for (size_t i = 0; i < mMeshInstanceData.size(); i++)
-        {
+        for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
             assert(mMeshInstanceData[i].meshID < instanceLists.size());
             instanceLists[mMeshInstanceData[i].meshID].push_back(i);
         }
@@ -881,8 +824,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         std::unordered_map<uint32_t, std::vector<uint32_t>> nodeToMeshList;
         
 
-        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++)
-        {
+        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++) {
             const auto& instanceList = instanceLists[meshId];
             if (instanceList.size() > 1) continue; // Only processing non-instanced meshes here
 
@@ -901,8 +843,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         for (const auto& it : nodeToMeshList) mMeshGroups.push_back({ it.second });
 
         // Meshes that have multiple instances go in their own groups.
-        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++)
-        {
+        for (uint32_t meshId = 0; meshId < (uint32_t)instanceLists.size(); meshId++) {
             const auto& instanceList = instanceLists[meshId];
             if (instanceList.size() == 1) continue; // Only processing instanced meshes here
             mMeshGroups.push_back({ std::vector<uint32_t>({ meshId }) });
@@ -911,13 +852,10 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // Calculate mapping from new mesh instance ID to existing instance index.
         // Here, just append existing instance ID's in order they appear in the mesh groups.
         std::vector<size_t> instanceMapping;
-        for (const auto& meshGroup : mMeshGroups)
-        {
-            for (const uint32_t meshId : meshGroup.meshList)
-            {
+        for (const auto& meshGroup : mMeshGroups) {
+            for (const uint32_t meshId : meshGroup.meshList) {
                 const auto& instanceList = instanceLists[meshId];
-                for (size_t idx : instanceList)
-                {
+                for (size_t idx : instanceList) {
                     instanceMapping.push_back(idx);
                 }
             }
@@ -932,8 +870,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // Now reorder mMeshInstanceData based on the new mapping.
         // We'll make a copy of the existing data first, and the populate the array.
         std::vector<MeshInstanceData> prevInstanceData = mMeshInstanceData;
-        for (size_t i = 0; i < mMeshInstanceData.size(); i++)
-        {
+        for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
             assert(instanceMapping[i] < prevInstanceData.size());
             mMeshInstanceData[i] = prevInstanceData[instanceMapping[i]];
         }
@@ -941,15 +878,12 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // Create mapping of meshes to their instances.
         mMeshIdToInstanceIds.clear();
         mMeshIdToInstanceIds.resize(mMeshDesc.size());
-        for (uint32_t instId = 0; instId < (uint32_t)mMeshInstanceData.size(); instId++)
-        {
+        for (uint32_t instId = 0; instId < (uint32_t)mMeshInstanceData.size(); instId++) {
             mMeshIdToInstanceIds[mMeshInstanceData[instId].meshID].push_back(instId);
         }
     }
 
-    #ifdef FALCOR_D3D12
-    void Scene::initGeomDesc()
-    {
+    void Scene::initGeomDesc() {
         assert(mBlasData.empty());
 
         const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
@@ -961,15 +895,14 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         mRebuildBlas = true;
         mHasSkinnedMesh = false;
 
-        for (size_t i = 0; i < mBlasData.size(); i++)
-        {
+        for (size_t i = 0; i < mBlasData.size(); i++) {
+
             const auto& meshList = mMeshGroups[i].meshList;
             auto& blas = mBlasData[i];
             auto& geomDescs = blas.geomDescs;
             geomDescs.resize(meshList.size());
 
-            for (size_t j = 0; j < meshList.size(); j++)
-            {
+            for (size_t j = 0; j < meshList.size(); j++) {
                 const MeshDesc& mesh = mMeshDesc[meshList[j]];
                 blas.hasSkinnedMesh |= mMeshHasDynamicData[meshList[j]];
 
@@ -989,14 +922,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
                 desc.Triangles.VertexFormat = getDxgiFormat(pVbLayout->getElementFormat(0));
 
                 // Set index data
-                if (pIb)
-                {
+                if (pIb) {
                     desc.Triangles.IndexBuffer = pIb->getGpuAddress() + (mesh.ibOffset * getFormatBytesPerBlock(mpVao->getIndexBufferFormat()));
                     desc.Triangles.IndexCount = mesh.indexCount;
                     desc.Triangles.IndexFormat = getDxgiFormat(mpVao->getIndexBufferFormat());
-                }
-                else
-                {
+                } else {
                     assert(mesh.indexCount == 0);
                     desc.Triangles.IndexBuffer = NULL;
                     desc.Triangles.IndexCount = 0;
@@ -1007,11 +937,30 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             mHasSkinnedMesh |= blas.hasSkinnedMesh;
         }
     }
-    #endif  // FALCOR_D3D12
 
-    #ifdef FALCOR_D3D12
-    void Scene::buildBlas(RenderContext* pContext)
-    {
+    void Scene::createAccelerationStructureBuffer(AccelerationStructure &accelerationStructure, VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo) {
+        //VkBufferCreateInfo bufferCreateInfo{};
+        //bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        //bufferCreateInfo.size = buildSizeInfo.accelerationStructureSize;
+        //bufferCreateInfo.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        //VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &accelerationStructure.buffer));
+        //VkMemoryRequirements memoryRequirements{};
+        //vkGetBufferMemoryRequirements(device, accelerationStructure.buffer, &memoryRequirements);
+        //VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
+        //memoryAllocateFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+        //memoryAllocateFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+        //VkMemoryAllocateInfo memoryAllocateInfo{};
+        //memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        //memoryAllocateInfo.pNext = &memoryAllocateFlagsInfo;
+        //memoryAllocateInfo.allocationSize = memoryRequirements.size;
+        //memoryAllocateInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        //VK_CHECK_RESULT(vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &accelerationStructure.memory));
+        //VK_CHECK_RESULT(vkBindBufferMemory(device, accelerationStructure.buffer, accelerationStructure.memory, 0));
+
+        accelerationStructure.pBuffer = Buffer::create(mpDevice, buildSizeInfo.accelerationStructureSize, Resource::BindFlags::AccelerationStructure);
+    }
+    
+    void Scene::buildBlas(RenderContext* pContext) {
         PROFILE(mpDevice, "buildBlas");
 
         // Add barriers for the VB and IB which will be accessed by the build.
@@ -1026,13 +975,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         // - Build all BLASes into an intermediate buffer
         // - Calculate total compacted buffer size
         // - Compact/clone all BLASes to their final location
-        if (mRebuildBlas)
-        {
+        if (mRebuildBlas) {
             uint64_t totalMaxBlasSize = 0;
             uint64_t totalScratchSize = 0;
 
-            for (auto& blas : mBlasData)
-            {
+            for (auto& blas : mBlasData) {
                 // Determine how BLAS build/update should be done.
                 // The default choice is to compact all static BLASes and those that don't need to be rebuilt every frame. For those compaction just adds overhead.
                 // TODO: Add compaction on/off switch for profiling.
@@ -1049,12 +996,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
                 inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
                 // Add necessary flags depending on settings.
-                if (blas.useCompaction)
-                {
+                if (blas.useCompaction) {
                     inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
                 }
-                if (blas.hasSkinnedMesh && blas.updateMode == UpdateMode::Refit)
-                {
+
+                if (blas.hasSkinnedMesh && blas.updateMode == UpdateMode::Refit) {
                     inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
                 }
 
@@ -1084,13 +1030,10 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             // Allocate intermediate buffers and scratch buffer.
             // The scratch buffer we'll retain because it's needed for subsequent rebuilds and updates.
             // TODO: Save memory by reducing the scratch buffer to the minimum required for the dynamic objects.
-            if (mpBlasScratch == nullptr || mpBlasScratch->getSize() < totalScratchSize)
-            {
+            if (mpBlasScratch == nullptr || mpBlasScratch->getSize() < totalScratchSize) {
                 mpBlasScratch = Buffer::create(mpDevice, totalScratchSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
                 mpBlasScratch->setName("Scene::mpBlasScratch");
-            }
-            else
-            {
+            } else {
                 // If we didn't need to reallocate, just insert a barrier so it's safe to use.
                 pContext->uavBarrier(mpBlasScratch.get());
             }
@@ -1106,8 +1049,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             assert(pDestBuffer && pPostbuildInfoBuffer && mpBlasScratch);
             uint64_t postBuildInfoOffset = 0;
 
-            for (const auto& blas : mBlasData)
-            {
+            for (const auto& blas : mBlasData) {
                 D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
                 asDesc.Inputs = blas.buildInputs;
                 asDesc.ScratchAccelerationStructureData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
@@ -1135,8 +1077,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
                 (const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE_DESC*) pPostbuildInfoBuffer->map(Buffer::MapType::Read);
 
             uint64_t totalBlasSize = 0;
-            for (size_t i = 0; i < mBlasData.size(); i++)
-            {
+            for (size_t i = 0; i < mBlasData.size(); i++) {
                 auto& blas = mBlasData[i];
                 blas.blasByteSize = postBuildInfo[i].CompactedSizeInBytes;
                 assert(blas.blasByteSize <= blas.prebuildInfo.ResultDataMaxSizeInBytes);
@@ -1146,13 +1087,10 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             pPostbuildInfoBuffer->unmap();
 
             // Allocate final BLAS buffer.
-            if (mpBlas == nullptr || mpBlas->getSize() < totalBlasSize)
-            {
+            if (mpBlas == nullptr || mpBlas->getSize() < totalBlasSize) {
                 mpBlas = Buffer::create(totalBlasSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
                 mpBlas->setName("Scene::mpBlas");
-            }
-            else
-            {
+            } else {
                 // If we didn't need to reallocate, just insert a barrier so it's safe to use.
                 pContext->uavBarrier(mpBlas.get());
             }
@@ -1162,8 +1100,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
             // Compact/clone all BLASes to their final location.
             uint64_t blasOffset = 0;
-            for (auto& blas : mBlasData)
-            {
+            for (auto& blas : mBlasData) {
                 GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
                 pList4->CopyRaytracingAccelerationStructure(
                     mpBlas->getGpuAddress() + blasOffset,
@@ -1196,8 +1133,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         pContext->uavBarrier(mpBlas.get());
         pContext->uavBarrier(mpBlasScratch.get());
 
-        for (const auto& blas : mBlasData)
-        {
+        for (const auto& blas : mBlasData) {
             // Skip updating BLASes not containing skinned meshes.
             if (!blas.hasSkinnedMesh) continue;
 
@@ -1207,14 +1143,11 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             asDesc.ScratchAccelerationStructureData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
             asDesc.DestAccelerationStructureData = mpBlas->getGpuAddress() + blas.blasByteOffset;
 
-            if (blas.updateMode == UpdateMode::Refit)
-            {
+            if (blas.updateMode == UpdateMode::Refit) {
                 // Set source address to destination address to update in place.
                 asDesc.SourceAccelerationStructureData = asDesc.DestAccelerationStructureData;
                 asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-            }
-            else
-            {
+            } else {
                 // We'll rebuild in place. The BLAS should not be compacted, check that size matches prebuild info.
                 assert(blas.blasByteSize == blas.prebuildInfo.ResultDataMaxSizeInBytes);
             }
@@ -1229,15 +1162,13 @@ typedef struct D3D12_DRAW_ARGUMENTS {
     #endif  // FALCOR_D3D12
 
     #ifdef FALCOR_D3D12
-    void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const
-    {
+    void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const {
         assert(mpBlas);
         instanceDescs.clear();
         uint32_t instanceContributionToHitGroupIndex = 0;
         uint32_t instanceId = 0;
 
-        for (size_t i = 0; i < mBlasData.size(); i++)
-        {
+        for (size_t i = 0; i < mBlasData.size(); i++) {
             const auto& meshList = mMeshGroups[i].meshList;
 
             D3D12_RAYTRACING_INSTANCE_DESC desc = {};
@@ -1249,8 +1180,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             // If multiple meshes are in a BLAS:
             // - Their global matrix is the same.
             // - From sortMeshes(), each mesh in the BLAS is guaranteed to be non-instanced, so only one INSTANCE_DESC is needed
-            if (meshList.size() > 1)
-            {
+            if (meshList.size() > 1) {
                 assert(mMeshIdToInstanceIds[meshList[0]].size() == 1);
                 assert(mMeshIdToInstanceIds[meshList[0]][0] == instanceId); // Mesh instances are sorted by instanceId
                 desc.InstanceID = instanceId;
@@ -1265,14 +1195,12 @@ typedef struct D3D12_DRAW_ARGUMENTS {
             // If only one mesh is in the BLAS, there CAN be multiple instances of it. It is either:
             // - A non-instanced mesh that was unable to be merged with others
             // - A mesh with multiple instances
-            else
-            {
+            else {
                 assert(meshList.size() == 1);
                 const auto& instanceList = mMeshIdToInstanceIds[meshList[0]];
 
                 // For every instance of the mesh, create an INSTANCE_DESC
-                for (uint32_t instId : instanceList)
-                {
+                for (uint32_t instId : instanceList) {
                     assert(instId == instanceId); // Mesh instances are sorted by instanceId
                     desc.InstanceID = instanceId++;
                     uint32_t matrixId = mMeshInstanceData[desc.InstanceID].globalMatrixID;
@@ -1303,8 +1231,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
         // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
-        if (mpAnimationController->hasAnimations() && mTlasUpdateMode == UpdateMode::Refit)
-        {
+        if (mpAnimationController->hasAnimations() && mTlasUpdateMode == UpdateMode::Refit) {
             inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
             // If TLAS has been built already and it was built with ALLOW_UPDATE
@@ -1314,8 +1241,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         tlas.updateMode = mTlasUpdateMode;
 
         // On first build for the scene, create scratch buffer and cache prebuild info. As long as INSTANCE_DESC count doesn't change, we can reuse these
-        if (mpTlasScratch == nullptr)
-        {
+        if (mpTlasScratch == nullptr) {
             // Prebuild
             GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
             pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &mTlasPrebuildInfo);
@@ -1331,15 +1257,13 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         asDesc.Inputs = inputs;
 
         // If first time building this TLAS
-        if (tlas.pTlas == nullptr)
-        {
+        if (tlas.pTlas == nullptr) {
             assert(tlas.pInstanceDescs == nullptr); // Instance desc should also be null if no TLAS
             tlas.pTlas = Buffer::create(mTlasPrebuildInfo.ResultDataMaxSizeInBytes, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
             tlas.pInstanceDescs = Buffer::create(mpDevice, (uint32_t)mInstanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
         }
         // Else update instance descs and barrier TLAS buffers
-        else
-        {
+        else {
             assert(mpAnimationController->hasAnimations());
             pContext->uavBarrier(tlas.pTlas.get());
             pContext->uavBarrier(mpTlasScratch.get());
@@ -1363,8 +1287,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
         pContext->uavBarrier(tlas.pTlas.get());
 
         // Create TLAS SRV
-        if (tlas.pSrv == nullptr)
-        {
+        if (tlas.pSrv == nullptr) {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

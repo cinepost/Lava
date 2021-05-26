@@ -226,47 +226,6 @@ void WhittedRayTracer::execute(RenderContext* pRenderContext, const RenderData& 
     mFrameCount++;
 }
 
-void WhittedRayTracer::renderUI(Gui::Widgets& widget)
-{
-    bool dirty = false;
-
-    dirty |= widget.var("Max bounces", mMaxBounces, 0u, 5u);
-    widget.tooltip("Maximum path length for indirect illumination.\n0 = direct only\n1 = one indirect bounce etc.", true);
-
-    std::string text = std::string("Whitted Ray Tracer with ") + (mUsingRasterizedGBuffer ? std::string("rasterized G-buffer") : std::string("ray traced G-buffer"));
-    widget.text(text);
-    uint32_t modeIndex = static_cast<uint32_t>(mTexLODMode);
-    if (widget.dropdown("Texture LOD mode", mTexLODModes, modeIndex))
-    {
-        setTexLODMode(TexLODMode(modeIndex));
-        dirty = true;
-    }
-    widget.tooltip("The texture level-of-detail mode to use.");
-
-    // Lighting controls.
-    auto lightsGroup = Gui::Group(widget, "Lights", true);
-    if (lightsGroup.open())
-    {
-        dirty |= lightsGroup.checkbox("Use analytic lights", mUseAnalyticLights);
-        lightsGroup.tooltip("This enables Falcor's built-in analytic lights.\nThese are specified in the scene description (.fscene).", true);
-        dirty |= lightsGroup.checkbox("Use emissive lights", mUseEmissiveLights);
-        lightsGroup.tooltip("This enables using emissive triangles as light sources.", true);
-        dirty |= lightsGroup.checkbox("Use env map as light", mUseEnvLight);
-        lightsGroup.tooltip("This enables using the environment map as a distant light source", true);
-        dirty |= lightsGroup.checkbox("Use env map as background", mUseEnvBackground);
-        lightsGroup.text(("Env map: " + (mpEnvProbe ? mEnvProbeFilename : "N/A")).c_str());
-
-        lightsGroup.release();
-    }
-
-    // If rendering options that modify the output have changed, set flag to indicate that.
-    // In execute() we will pass the flag to other passes for reset of temporal data etc.
-    if (dirty)
-    {
-        mOptionsChanged = true;
-    }
-}
-
 void WhittedRayTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     // Clear data for previous scene.

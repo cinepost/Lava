@@ -1,0 +1,1007 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"re",
+				"return"
+			],
+			[
+				"sh",
+				"shaders"
+			],
+			[
+				"sha",
+				"shading_context_name"
+			],
+			[
+				"no",
+				"node_path"
+			],
+			[
+				"i",
+				"import"
+			],
+			[
+				"co",
+				"codeTabs"
+			],
+			[
+				"Qt",
+				"QtGui"
+			],
+			[
+				"clo",
+				"closeButton"
+			],
+			[
+				"vop",
+				"vop_node_ctx"
+			],
+			[
+				"arg",
+				"_args_names_cache"
+			],
+			[
+				"_scop",
+				"_scoped_last_arg_name"
+			],
+			[
+				"_ar",
+				"_arg_scopes"
+			],
+			[
+				"pa",
+				"parent"
+			],
+			[
+				"is",
+				"isinstance"
+			],
+			[
+				"node",
+				"node_context"
+			],
+			[
+				"out",
+				"outputs"
+			],
+			[
+				"inpu",
+				"input_wrapper_ctx"
+			],
+			[
+				"ter",
+				"terminal_child_wrapper"
+			],
+			[
+				"ge",
+				"generateSurfaceFiles"
+			],
+			[
+				"va",
+				"value"
+			],
+			[
+				"parm",
+				"parmtype"
+			],
+			[
+				"wi",
+				"with_semicolon"
+			],
+			[
+				"def",
+				"default_type"
+			],
+			[
+				"Vop",
+				"VopNodeContext"
+			],
+			[
+				"inp",
+				"input"
+			],
+			[
+				"output",
+				"outputs"
+			],
+			[
+				"_vop",
+				"_vop_mame"
+			],
+			[
+				"expo",
+				"exportcontext"
+			],
+			[
+				"ex",
+				"exportcontext"
+			],
+			[
+				"par",
+				"parm"
+			],
+			[
+				"input_n",
+				"input_node_wrapper"
+			],
+			[
+				"in",
+				"input_name"
+			],
+			[
+				"gne",
+				"generateCode_surface"
+			],
+			[
+				"to_node",
+				"to_node_wrapper"
+			],
+			[
+				"get",
+				"getChildByName"
+			],
+			[
+				"chil",
+				"children"
+			],
+			[
+				"_chi",
+				"_children_chain"
+			],
+			[
+				"wrappe",
+				"node_wrapper"
+			],
+			[
+				"child",
+				"child_name"
+			],
+			[
+				"chi",
+				"child_name"
+			],
+			[
+				"ci",
+				"child_name"
+			],
+			[
+				"_v",
+				"_vop_node_path"
+			],
+			[
+				"_",
+				"_adapter"
+			],
+			[
+				"a",
+				"adapter"
+			],
+			[
+				"te",
+				"terminal_children_names"
+			],
+			[
+				"c",
+				"children"
+			],
+			[
+				"No",
+				"NodeManagerWrapper"
+			],
+			[
+				"de",
+				"default_type"
+			],
+			[
+				"parms",
+				"parmscope"
+			],
+			[
+				"ch",
+				"child_vop_node_wrapper"
+			],
+			[
+				"gen",
+				"generable"
+			],
+			[
+				"gene",
+				"generable"
+			],
+			[
+				"Vo",
+				"VopNodeContext"
+			],
+			[
+				"vpo",
+				"vop_node_ctx"
+			],
+			[
+				"_vo",
+				"_vop_node_wrapper"
+			],
+			[
+				"v",
+				"vop_node_ctx"
+			],
+			[
+				"V",
+				"VopNodeSocket"
+			],
+			[
+				"_pa",
+				"_parent_vop_node_context"
+			],
+			[
+				"var",
+				"var_name"
+			],
+			[
+				"vo",
+				"vop_node"
+			],
+			[
+				"Node",
+				"NodeSubnetWrapper"
+			],
+			[
+				"_p",
+				"_parent_net"
+			],
+			[
+				"_ou",
+				"_outputConnections"
+			],
+			[
+				"outpu",
+				"outputConnections"
+			],
+			[
+				"inputN",
+				"inputNames"
+			],
+			[
+				"el",
+				"else"
+			],
+			[
+				"ou",
+				"outputs"
+			],
+			[
+				"vop_no",
+				"vop_node_ctx"
+			],
+			[
+				"o",
+				"output"
+			],
+			[
+				"fun",
+				"func_name"
+			],
+			[
+				"Sl",
+				"SlangStyle"
+			],
+			[
+				"S",
+				"SlangStyle"
+			],
+			[
+				"E",
+				"EXTRA_TYPES"
+			],
+			[
+				"f",
+				"func"
+			],
+			[
+				"e",
+				"exportparm"
+			],
+			[
+				"df",
+				"def_value"
+			],
+			[
+				"A",
+				"Add"
+			],
+			[
+				"genera",
+				"generable"
+			],
+			[
+				"pro",
+				"processChildren"
+			],
+			[
+				"pr",
+				"process"
+			],
+			[
+				"bl",
+				"block"
+			],
+			[
+				"sl",
+				"self"
+			],
+			[
+				"to",
+				"to_node"
+			],
+			[
+				"tp_",
+				"tp_decl"
+			],
+			[
+				"for",
+				"format"
+			],
+			[
+				"dec",
+				"declareShaderParameter"
+			],
+			[
+				"_sa",
+				"_slang_code_context"
+			],
+			[
+				"Slang",
+				"SlangVariable"
+			],
+			[
+				"_var",
+				"_var_type"
+			],
+			[
+				"SL",
+				"SlangType"
+			],
+			[
+				"FLO",
+				"FLOAT3"
+			],
+			[
+				"temp",
+				"template"
+			],
+			[
+				"en",
+				"env_dict"
+			],
+			[
+				"PA",
+				"PARENT"
+			],
+			[
+				"tem",
+				"template_dict"
+			],
+			[
+				"sub",
+				"subnet_children_code"
+			],
+			[
+				"su",
+				"subnet_adapter_class"
+			],
+			[
+				"sla",
+				"slang_str"
+			],
+			[
+				"vex",
+				"vex_data_type_name"
+			],
+			[
+				"con",
+				"connection"
+			],
+			[
+				"input",
+				"input_name"
+			],
+			[
+				"cons",
+				"consttype"
+			],
+			[
+				"ar",
+				"args"
+			],
+			[
+				"code",
+				"code_template_string"
+			],
+			[
+				"shader",
+				"shaderType"
+			],
+			[
+				"connec",
+				"connection"
+			],
+			[
+				"vop_n",
+				"vop_node"
+			],
+			[
+				"res",
+				"result_code_dict"
+			],
+			[
+				"s",
+				"slang_str"
+			],
+			[
+				"slan",
+				"slang_context"
+			],
+			[
+				"resu",
+				"resultCode"
+			],
+			[
+				"so",
+				"socket"
+			],
+			[
+				"sock",
+				"sockets"
+			],
+			[
+				"args",
+				"args_str"
+			],
+			[
+				"class",
+				"classmethod"
+			],
+			[
+				"data",
+				"data_type"
+			],
+			[
+				"IN",
+				"INPUT"
+			],
+			[
+				"I",
+				"INPUT"
+			],
+			[
+				"float",
+				"float3"
+			],
+			[
+				"VO",
+				"VopNodeAdapterBase"
+			],
+			[
+				"clas",
+				"classmethod"
+			],
+			[
+				"vop_",
+				"vop_multiply"
+			],
+			[
+				"cla",
+				"classmethod"
+			],
+			[
+				"VOP",
+				"VopNodeBase"
+			],
+			[
+				"LS",
+				"LSDhooks"
+			],
+			[
+				"LSD",
+				"LSDapi"
+			],
+			[
+				"ada",
+				"adapter_class"
+			],
+			[
+				"N",
+				"NodeSocket"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "/*!\n *  \\author    Viktor Zoutman\n *  \\date      2019-2020\n *  \\copyright GNU General Public License v3.0\n */\n\n#include \"application.hpp\"\n\n#include <imgui.h>\n\n#ifdef _WIN32\n\t#define GLFW_EXPOSE_NATIVE_WIN32\n\t#include <GLFW/glfw3native.h>\n#endif\n\n#include \"util/log.hpp\"\n#include \"settings.hpp\"\n#include \"imgui/icons_font_awesome5.hpp\"\n#include \"imgui/imgui_impl_glfw.hpp\"\n\nApplication::Application(std::string const & name): m_window(nullptr), m_name(name), m_created(false) {\n\tif (!glfwInit()) {\n\t\tLOGE(\"Failed to initialize GLFW\");\n\t}\n}\n\nApplication::~Application()\t{\n\tDestroy();\n}\n\nvoid Application::KeyCallback_Internal(GLFWwindow* window, int key, int scan_code, int action, int mods) {\n\tImGui_ImplGlfw_KeyCallback(window, key, scan_code, action, mods);\n\tstatic_cast<Application*>(glfwGetWindowUserPointer(window))->KeyCallback(key, action, mods);\n}\n\nvoid Application::ResizeCallback_Internal(GLFWwindow* window, int width, int height) {\nstatic_cast<Application*>(glfwGetWindowUserPointer(window))->ResizeCallback(static_cast<std::uint32_t>(width),\n                                                                            static_cast<std::uint32_t>(height));\n}\n\nvoid Application::MouseButtonCallback_Internal(GLFWwindow* window, int key, int action, int mods) {\n\tImGui_ImplGlfw_MouseButtonCallback(window, key, action, mods);\n\tstatic_cast<Application*>(glfwGetWindowUserPointer(window))->MouseButtonCallback(key, action);\n}\n\nvoid Application::MousePosCallback_Internal(GLFWwindow* window, double x, double y) {\n\tstatic_cast<Application*>(glfwGetWindowUserPointer(window))->MousePosCallback(static_cast<float>(x), static_cast<float>(y));\n}\n\nvoid Application::CharCallback_Internal(GLFWwindow* window, unsigned int c) {\n\tImGui_ImplGlfw_CharCallback(window, c);\n}\n\nvoid Application::ScrollCallback_Internal(GLFWwindow* window, double xoffset, double yoffset)\t{\n\tImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);\n}\n\n\nvoid Application::Create(std::uint32_t width, std::uint32_t height)\n{\nglfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);\n\nm_window = glfwCreateWindow(width, height, m_name.c_str(), nullptr, nullptr);\nif (!m_window)\n{\n\tglfwTerminate();\n\tLOGC(\"Failed to create GLFW window.\");\n}\n\nif (!glfwVulkanSupported())\n{\n\tLOGC(\"Vulkan is not supported!\");\n}\n\nglfwSetWindowUserPointer(m_window, this);\nglfwSetKeyCallback(m_window, Application::KeyCallback_Internal);\nglfwSetFramebufferSizeCallback(m_window, Application::ResizeCallback_Internal);\nglfwSetMouseButtonCallback(m_window, Application::MouseButtonCallback_Internal);\nglfwSetCursorPosCallback(m_window, Application::MousePosCallback_Internal);\nglfwSetScrollCallback(m_window, Application::ScrollCallback_Internal);\nglfwSetCharCallback(m_window, Application::CharCallback_Internal);\n\n// Init ImGui\nif constexpr (settings::use_imgui)\n{\n\tIMGUI_CHECKVERSION();\n\tImGui::CreateContext();\n\tImGuiIO& io = ImGui::GetIO(); (void)io;\n\tio.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls\n\tio.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking\n\tio.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows\n\tio.IniFilename = nullptr;\n\tImGui::LoadIniSettingsFromDisk(settings::imgui_ini_filename);\n\tio.ConfigDockingWithShift = true;\n\n\tif (settings::m_imgui_font.has_value())\n\t{\n\t\tio.Fonts->AddFontFromFileTTF(settings::m_imgui_font.value().c_str(), settings::m_imgui_font_size.value_or(13.f));\n\t}\n\n\tstatic const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};\n\tImFontConfig icons_config;\n\ticons_config.MergeMode = true;\n\ticons_config.PixelSnapH = true;\n\tio.Fonts->AddFontFromFileTTF((std::string(\"fonts/\") + std::string(FONT_ICON_FILE_NAME_FAS)).c_str(), settings::m_imgui_font_size.value_or(13.f), &icons_config, icons_ranges);\n\n\tImGui_ImplGlfw_InitForVulkan(m_window, false);\n}\n\nm_created = true;\n}\n\nvoid Application::Start(std::uint32_t width, std::uint32_t height)\n{\nif (!m_created)\n{\n\tCreate(width, height);\n}\n\nInit();\n\nwhile (!glfwWindowShouldClose(m_window))\n{\n\tLoop();\n\n\tglfwPollEvents();\n}\n\nDestroy();\n}\n\nvoid Application::Close()\n{\nglfwSetWindowShouldClose(m_window, true);\n}\n\nstd::uint32_t Application::GetWidth() const\n{\nstd::int32_t width, _;\nglfwGetWindowSize(m_window, &width, &_);\n\nreturn static_cast<std::uint32_t>(width);\n}\n\nstd::uint32_t Application::GetHeight() const\n{\nstd::int32_t height, _;\nglfwGetWindowSize(m_window, &_, &height);\n\nreturn static_cast<std::uint32_t>(height);\n}\n\nglm::vec2 Application::GetMousePos() const\n{\ndouble x, y;\nglfwGetCursorPos(m_window, &x, &y);\nreturn glm::vec2(static_cast<float>(x), static_cast<float>(y));\n}\n\nbool Application::IsFullscreen() const\n{\nreturn glfwGetWindowMonitor(m_window) != nullptr;\n}\n\nvoid Application::SetFullscreen(bool value)\n{\nif (IsFullscreen() == value)\n{\n\tLOGW(\"Window is already in that mode. nothing is being done\");\n\treturn;\n}\n\nif (value)\n{\n\t// backup window position and window size\n\tglfwGetWindowPos(m_window, &prev_x, &prev_y);\n\tglfwGetWindowSize(m_window, &prev_width, &prev_height);\n\n\t// get resolution of monitor\n\tconst auto monitor = glfwGetPrimaryMonitor();\n\tconst auto mode = glfwGetVideoMode(monitor);\n\n\t// Switch to full screen\n\tglfwSetWindowMonitor(m_window, monitor, 0, 0, mode->width, mode->height, 0 );\n}\nelse\n{\n\t// restore last window size and position\n\tglfwSetWindowMonitor(m_window, nullptr, prev_x, prev_y, prev_width, prev_height, 0 );\n}\n}\n\nvoid Application::SetVisibility(bool value)\n{\nif (value)\n{\n\tglfwShowWindow(m_window);\n}\nelse\n{\n\tglfwHideWindow(m_window);\n}\n}\n\nvoid Application::SetMouseVisibility(bool value)\n{\nglfwSetInputMode(m_window, GLFW_CURSOR, value ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);\n}\n\nvoid Application::SetMousePos(float x, float y)\n{\nglfwSetCursorPos(m_window, x, y);\n}\n\nvoid Application::DisableResizing()\n{\nauto hwnd = glfwGetWin32Window(m_window);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_MINIMIZEBOX);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_MAXIMIZEBOX);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_THICKFRAME);\n\nEnableMenuItem(GetSystemMenu(hwnd, FALSE), SC_CLOSE,\n\tMF_BYCOMMAND | MF_DISABLED | MF_GRAYED);\n}\n\nvoid Application::EnableResizing()\n{\nauto hwnd = glfwGetWin32Window(m_window);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MINIMIZEBOX);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_MAXIMIZEBOX);\nSetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) | WS_THICKFRAME);\n\nEnableMenuItem(GetSystemMenu(hwnd, FALSE), SC_CLOSE,\n\tMF_BYCOMMAND | MF_ENABLED);\n}\n\nbool Application::GetGamepad(int id, GLFWgamepadstate* state)\n{\nint present = glfwJoystickPresent(id);\nint is_gamepad = glfwJoystickIsGamepad(id);\n\t\n\tif (present && is_gamepad) {\n\t\tif (glfwGetGamepadState(id, state)) {\n\t\t\treturn true;\n\t\t}\n\t\treturn false;\n\t}\n\n\treturn false;\n}\n\nGLFWwindow* Application::GetWindow() {\n\treturn m_window;\n}\n\nvoid Application::Destroy() {\n\tif constexpr(settings::use_imgui) {\n\t\tImGui_ImplGlfw_Shutdown();\n\t}\n\n\tglfwDestroyWindow(m_window);\n\tglfwTerminate();\n}\n",
+			"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.cpp",
+			"file_size": 7204,
+			"file_write_time": 132659086761895707,
+			"settings":
+			{
+				"buffer_size": 7087,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "Searching 143 files for \"GLFW_EXPOSE_NATIVE_WIN32\" (case sensitive)\n\n/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.cpp:\n    8  \n    9  #include <imgui.h>\n   10: #define GLFW_EXPOSE_NATIVE_WIN32\n   11  #include <GLFW/glfw3native.h>\n   12  #include <GLFW/glfw3natived.h>\n\n/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.cpp.old:\n    8  \n    9  #include <imgui.h>\n   10: #define GLFW_EXPOSE_NATIVE_WIN32\n   11  #include <GLFW/glfw3native.h>\n   12  \n\n/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/imgui/imgui_impl_glfw.cpp:\n    6  #ifdef _WIN32\n    7  #undef APIENTRY\n    8: #define GLFW_EXPOSE_NATIVE_WIN32\n    9  #include <GLFW/glfw3native.h>   // for glfwGetWin32Window\n   10  #endif\n\n3 matches across 3 files\n",
+			"settings":
+			{
+				"buffer_size": 710,
+				"line_ending": "Unix",
+				"name": "Find Results",
+				"scratch": true
+			}
+		},
+		{
+			"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/imgui/imgui_impl_glfw.cpp",
+			"settings":
+			{
+				"buffer_size": 33045,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.hpp",
+			"settings":
+			{
+				"buffer_size": 2440,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 320.0,
+		"history":
+		[
+			"cd /home/max/dev"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/mnt/misc_hdd/dev/RTX-Mesh-Shaders",
+		"/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src",
+		"/mnt/misc_hdd/dev/RTX-Mesh-Shaders/tests"
+	],
+	"file_history":
+	[
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/_code.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/vop_node_wrapper.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/utils.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/vop_node_adapter_code.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/vop_node_subnet_adapter_base.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/vop_node_adapter_mixin.py",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/shader_adapters/_vop_node_subnet.py",
+		"/home/max/dev/Lava/src/RenderPasses/HBAO/HBAO.cpp.old",
+		"/home/max/dev/Lava/src/RenderPasses/HBAO/HBAO.HiZ.cs.slang.bak",
+		"/home/max/dev/Lava/src/lava_lib/lava_display/display.h",
+		"/home/max/dev/Lava/src/Falcor/Utils/Textures/BlueNoise.h",
+		"/home/max/dev/Lava/src/RenderPasses/HBAO/HBAO.ComputeAO.cs.slang",
+		"/home/max/dev/Lava/src/RenderPasses/HBAO/HBAO.HorizonSearch.cs.slang",
+		"/home/max/dev/Lava/src/Falcor/Scene/Scene.cpp",
+		"/home/max/dev/Lava/src/houdini/soho/python2.7/wranglers/ArnoldLightLSD.py",
+		"/opt/htoa/htoa-5.5.0.2_r1582e12_houdini-18.5.408/htoa-5.5.0.2_r1582e12_houdini-18.5.408/soho/arnold.py",
+		"/home/max/dev/Lava/src/Falcor/Utils/Scripting/Console.cpp",
+		"/home/max/dev/Lava/src/Falcor/RenderGraph/RenderGraphUI.cpp",
+		"/home/max/dev/Lava/src/Falcor/Core/Sample.h",
+		"/home/max/dev/Lava/src/Falcor/Core/Sample.cpp",
+		"/home/max/dev/Lava/src/Falcor/Core/Window.cpp",
+		"/home/max/dev/Lava/src/Falcor/Core/Window.h",
+		"/opt/houdini18.5/houdini/soho/python2.7/IFDgeo.py",
+		"/opt/houdini18.5/houdini/soho/python2.7/IFDmantra.py",
+		"/opt/houdini18.5/houdini/soho/python2.7/IFDframe.py",
+		"/opt/houdini18.5/houdini/soho/python2.7/IFDapi.py",
+		"/opt/houdini18.5/houdini/soho/python2.7/IFD.py",
+		"/home/max/dev/Lava/src/Falcor/Utils/ThreadPool.cpp",
+		"/home/max/dev/Lava/src/pxr/imaging/plugin/hdLava/plugInfo.json.old",
+		"/home/max/dev/Lava/media/textures/uv_checkers/512x512 Texel Density Texture 1.png.ltx",
+		"/home/max/dev/Lava/src/Falcor/Utils/Image/DDSHeader.h",
+		"/home/max/Desktop/mantra_vex.txt",
+		"/home/max/dev/Lava/src/Falcor/Utils/Image/LTX_Bitmap.cpp.bak2",
+		"/home/max/dev/Lava/cmake/modules/FindTIFF.cmake",
+		"/home/max/dev/Lava/src/CMakeLists.txt",
+		"/home/max/dev/Lava/build_scripts/build_lava.sh",
+		"/home/max/dev/Falcor/Media/textures/npot_sized/feathers_1293_1701.png.ltx",
+		"/home/max/dev/Falcor/Media/textures/npot_sized/feathers_1293_1701.png",
+		"/home/max/dev/Falcor/src/lava_cmd/conf/default.py.bak",
+		"/home/max/dev/Falcor/Media/textures/tiled_rocks_2048x2048.jpg.ltx",
+		"/home/max/dev/Falcor/Media/textures/car_1024x1024.hdr.ltx",
+		"/home/max/dev/Falcor/src/Falcor/Core/API/D3D12/D3D12Formats.cpp",
+		"/home/max/dev/Falcor/cmake/modules/FindZLIB.cmake",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Image/LTXHeader.h",
+		"/home/max/dev/Falcor/third_party/assimp/include/assimp/LTX_Bitmap.h",
+		"/home/max/dev/Falcor/src/lava_cmd/lava_cmd.cpp",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIBapiprman.py",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIBapi.py",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIB.py",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIBprman17.0.py",
+		"/home/max/dev/Falcor/third_party/ri_display/d_houdini.cpp",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIBmisc.py",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/RIBframe.py",
+		"/home/max/dev/Falcor/src/lava_cmd/bin/lava_app_init.sh",
+		"/home/max/dev/Falcor/src/houdini/soho/parameters/lava.ds",
+		"/home/max/dev/Falcor/src/lava_cmd/bin/lava",
+		"/home/max/dev/Falcor/third_party/ri_display/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/houdini/soho/parameters/SOHOparameters",
+		"/home/max/dev/Falcor/third_party/ri_display/d_houdini.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/visitor.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/grammar_lsd_expr.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/grammar_lsd.h",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Math/FalcorMath.h",
+		"/home/max/dev/Falcor/src/Externals/GLM/glm/ext/matrix_float4x4.hpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/bgeo_handler.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/bgeo_handler.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/bgeo.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/session.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/visitor_echo.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/properties_container.h",
+		"/home/max/dev/Falcor/src/Falcor/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/properties_container.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/reader_lsd.cpp",
+		"/home/max/dev/Falcor/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Scripting/Console.h",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Scripting/Console.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/sdl_display/d_sdl.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/sdl_display/sdl_opengl_window.h",
+		"/home/max/dev/Falcor/src/lava_lib/sdl_display/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/lava_lib/sdl_display/sdl_opengl_window.cpp",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/RenderState",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/RenderViewer",
+		"/home/max/dev/Falcor/src/lava_lib/CMakeLists.txt",
+		"/opt/lava/test/test_inline_ascii.lsd",
+		"/opt/lava/test/simple_inline_ascii2.lsd",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/soho.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSD.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDapi.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDframe.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDgeo.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDmisc.py",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDmantra.py",
+		"/opt/hfs17.5.460/houdini/soho/python2.7/wranglers/HoudiniLightIFD.py",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/ViewportCameraRender",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/ViewportRender",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/backtracking.h",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/RenderCOP",
+		"/home/max/dev/Falcor/src/houdini/soho/overrides/RenderCommand",
+		"/home/max/dev/Falcor/src/houdini/soho/LSDsettings.py",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Primitives.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Info.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Run.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Run.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/StorageTraits.cpp",
+		"/home/max/dev/Falcor/third_party/bgeo_reader/bgeo/parser/Run.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/PackedGeometry.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_lsd/CMakeLists.txt",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/Bgeo.cpp",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Detail.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/Info.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/VertexMap.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/parser/NumericData.h",
+		"/home/max/dev/Falcor/src/lava_lib/reader_bgeo/bgeo/PolySplitter.cpp",
+		"/home/max/dev/Falcor/src/houdini/soho/python2.7/LSDgeo.py",
+		"/home/max/dev/Falcor/src/Falcor/Falcor.h",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Timing/TimeReport.h",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Timing/TimeReport.cpp",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Math/MathConstants.slangh",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Importers/PythonImporter.cpp",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Importers/SceneImporter.cpp",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Lights/LightProbeData.slang",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Lights/LightData.slang",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Lights/Light.cpp",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Lights/Light.h",
+		"/home/max/dev/Falcor/src/Falcor/Utils/Color/ColorHelpers.slang",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Material/Material.cpp",
+		"/home/max/dev/Falcor/src/Falcor/Scene/Camera/CameraController.cpp"
+	],
+	"find":
+	{
+		"height": 27.0
+	},
+	"find_in_files":
+	{
+		"height": 125.0,
+		"where_history":
+		[
+			"/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src"
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+			"GLFW_EXPOSE_NATIVE_WIN32"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 7087,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1867,
+								1867
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 108.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 710,
+						"regions":
+						{
+							"match":
+							{
+								"flags": 112,
+								"regions":
+								[
+									[
+										174,
+										198
+									],
+									[
+										384,
+										408
+									],
+									[
+										580,
+										604
+									]
+								],
+								"scope": ""
+							}
+						},
+						"selection":
+						[
+							[
+								593,
+								593
+							]
+						],
+						"settings":
+						{
+							"detect_indentation": false,
+							"line_numbers": false,
+							"output_tag": 1,
+							"result_base_dir": "",
+							"result_file_regex": "^([^ \t].*):$",
+							"result_line_regex": "^ +([0-9]+):",
+							"scroll_past_end": true,
+							"syntax": "Packages/Default/Find Results.hidden-tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/imgui/imgui_impl_glfw.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 33045,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								84,
+								84
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "/mnt/misc_hdd/dev/RTX-Mesh-Shaders/src/application.hpp",
+					"semi_transient": true,
+					"settings":
+					{
+						"buffer_size": 2440,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 27.0
+	},
+	"input":
+	{
+		"height": 40.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.SublimeLinter":
+	{
+		"height": 0.0
+	},
+	"output.find_results":
+	{
+		"height": 31.0
+	},
+	"output.unsaved_changes":
+	{
+		"height": 31.0
+	},
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
+	"project": "rtx.sublime-project",
+	"replace":
+	{
+		"height": 50.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 475.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

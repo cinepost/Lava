@@ -117,35 +117,29 @@ namespace Falcor
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addDefines(const DefineList& defines)
-    {
+    RtProgram::Desc& RtProgram::Desc::addDefines(const DefineList& defines) {
         for (auto it : defines) addDefine(it.first, it.second);
         return *this;
     }
 
-    RtProgram::SharedPtr RtProgram::create(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
-    {
+    RtProgram::SharedPtr RtProgram::create(std::shared_ptr<Device> pDevice, const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize) {
         size_t rayGenCount = desc.mRayGenEntryPoints.size();
-        if (rayGenCount == 0)
-        {
-            throw std::exception("Can't create an RtProgram without a ray generation shader");
-        }
-        else if(rayGenCount > 1)
-        {
-            throw std::exception("Can't create an RtProgram with more than one ray generation shader");
+        if (rayGenCount == 0) {
+            throw std::runtime_error("Can't create an RtProgram without a ray generation shader");
+        } else if(rayGenCount > 1) {
+            throw std::runtime_error("Can't create an RtProgram with more than one ray generation shader");
         }
 
         SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
-        pProg->init(desc);
+        pProg->init(pDevice, desc);
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
         pProg->addDefine("_DEFAULT_ALPHA_TEST");
 
         return pProg;
     }
 
-    void RtProgram::init(const RtProgram::Desc& desc)
-    {
-        Program::init(desc.mBaseDesc, desc.mDefineList);
+    void RtProgram::init(std::shared_ptr<Device> pDevice, const RtProgram::Desc& desc) {
+        Program::init(pDevice, desc.mBaseDesc, desc.mDefineList);
         mDescExtra = desc;
     }
 
@@ -164,7 +158,7 @@ namespace Falcor
     {
         assert(shaders.size() != 0);
 
-        auto localRootSignature = RootSignature::createLocal(pReflector.get());
+        auto localRootSignature = RootSignature::createLocal(mpDevice, pReflector.get());
 
         switch( shaders[0]->getType() )
         {
@@ -182,8 +176,7 @@ namespace Falcor
 
     }
 
-    RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars)
-    {
+    RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars) {
         auto pProgramVersion = getActiveVersion();
         auto pProgramKernels = pProgramVersion->getKernels(pVars);
 
@@ -191,8 +184,7 @@ namespace Falcor
 
         RtStateObject::SharedPtr pRtso = mRtsoGraph.getCurrentNode();
 
-        if (pRtso == nullptr)
-        {
+        if (pRtso == nullptr) {
             RtStateObject::Desc desc;
             desc.setKernels(pProgramKernels);
             desc.setMaxTraceRecursionDepth(mDescExtra.mMaxTraceRecursionDepth);
@@ -203,12 +195,9 @@ namespace Falcor
                 return pRtso && (desc == pRtso->getDesc());
             };
 
-            if (mRtsoGraph.scanForMatchingNode(cmpFunc))
-            {
+            if (mRtsoGraph.scanForMatchingNode(cmpFunc)) {
                 pRtso = mRtsoGraph.getCurrentNode();
-            }
-            else
-            {
+            } else {
                 pRtso = RtStateObject::create(desc);
                 mRtsoGraph.setCurrentNodeData(pRtso);
             }
@@ -217,9 +206,9 @@ namespace Falcor
         return pRtso;
     }
 
-    void RtProgram::setScene(Scene::ConstSharedPtrRef pScene)
-    {
+    void RtProgram::setScene(Scene::SharedPtr pScene) {
         if (mpScene == pScene) return;
         mpScene = pScene;
     }
+
 }

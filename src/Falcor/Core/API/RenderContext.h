@@ -38,10 +38,8 @@
 
 namespace Falcor {
 
-#ifdef FALCOR_D3D12
 class RtProgram;
 class RtProgramVars;
-#endif
 
 class FullScreenPass;
 
@@ -186,11 +184,9 @@ class dlldecl RenderContext : public ComputeContext {
     */
     void resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource);
 
-#ifdef FALCOR_D3D12
     /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same.
     */
     void raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
-#endif
 
 private:
     RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);

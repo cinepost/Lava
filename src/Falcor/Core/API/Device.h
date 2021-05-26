@@ -306,7 +306,14 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
 
-    VkPhysicalDeviceFeatures deviceFeatures;
+    VkPhysicalDeviceFeatures                            mDeviceFeatures;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR     mRayTracingPipelineProperties{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mAaccelerationStructureFeatures{};
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures{};
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures{};
+
     VmaAllocator  mAllocator; 
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;

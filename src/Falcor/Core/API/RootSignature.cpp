@@ -179,7 +179,7 @@ RootSignature::SharedPtr RootSignature::create(std::shared_ptr<Device> device, c
     return RootSignature::create(device, d);
 }
 
-RootSignature::SharedPtr RootSignature::createLocal(std::shared_ptr<Device> device, const EntryPointBaseReflection* pReflector) {
+RootSignature::SharedPtr RootSignature::createLocal(std::shared_ptr<Device> pDevice, const EntryPointBaseReflection* pReflector) {
     assert(pReflector);
     RootSignature::Desc d;
     addParamBlockSets(pReflector, d);
@@ -192,7 +192,7 @@ RootSignature::SharedPtr RootSignature::createLocal(std::shared_ptr<Device> devi
     throw std::runtime_error("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
 #endif
 
-    return RootSignature::create(device, d);
+    return RootSignature::create(pDevice, d);
 }
 
 }  // namespace Falcor

@@ -75,6 +75,8 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
     setBit(Buffer::BindFlags::IndirectArg,      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
     setBit(Buffer::BindFlags::Constant,         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
+    setBit(Buffer::BindFlags::AccelerationStructure, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
     return flags;
 }
 

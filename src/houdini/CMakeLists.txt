@@ -10,6 +10,8 @@ if (DEFINED ENV{LAVA_DEPLOY})
 endif()
 
 install(DIRECTORY soho DESTINATION houdini)
+install(DIRECTORY python2.7libs DESTINATION houdini)
+install(FILES OPmenu.xml DESTINATION houdini)
 install(FILES FBrenderLava DESTINATION houdini)
 install(FILES LavaTypeFormats DESTINATION houdini)
 install(FILES UsdRenderers.json DESTINATION houdini)

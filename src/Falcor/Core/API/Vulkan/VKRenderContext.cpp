@@ -29,6 +29,7 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Raytracing/RtProgram/RtProgram.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
@@ -316,5 +317,11 @@ namespace Falcor {
         const auto& pDstRtv = pDst->getRTV(dstMip, dstArray, 1);
 
         blit(pSrcSrv, pDstRtv);
+    }
+
+    void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
+        auto pRtso = pProgram->getRtso(pVars);
+
+        pVars->apply(this, pRtso.get());
     }
 }

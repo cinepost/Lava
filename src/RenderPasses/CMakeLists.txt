@@ -119,6 +119,9 @@ makeRenderPassLib(NAME "HBAO")
 makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "SkyBox")
 
+makeRenderPassLib(NAME "WhittedRayTracer")
+makeRenderPassLib(NAME "MinimalPathTracer")
+
 #makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
 

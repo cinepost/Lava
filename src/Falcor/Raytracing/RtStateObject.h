@@ -25,49 +25,57 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RAYTRACING_RTSTATEOBJECT_H_
+#define FALCOR_RAYTRACING_RTSTATEOBJECT_H_
 
-namespace Falcor
-{
-    class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtStateObject>;
-        using SharedConstPtr = std::shared_ptr<const RtStateObject>;
-        using ApiHandle = ID3D12StateObjectPtr;
+#include <memory>
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/Program/ProgramVersion.h"
 
-        class dlldecl Desc
-        {
-        public:
-            Desc& setKernels(const ProgramKernels::SharedConstPtr& pKernels) { mpKernels = pKernels; return *this; }
-            Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
+namespace Falcor {
 
-            // TODO(tfoley): this is redundant with the kernels
-            Desc& setGlobalRootSignature(const RootSignature::SharedPtr& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
-            bool operator==(const Desc& other) const;
+class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject> {
+  public:
+    using SharedPtr = std::shared_ptr<RtStateObject>;
+    using SharedConstPtr = std::shared_ptr<const RtStateObject>;
+    using ApiHandle = VkPipeline; //ID3D12StateObjectPtr;
 
-        private:
-            ProgramKernels::SharedConstPtr mpKernels;
-            RootSignature::SharedPtr mpGlobalRootSignature;
-            uint32_t mMaxTraceRecursionDepth = 1;
-            friend RtStateObject;
-        };
+    class dlldecl Desc {
+      public:
+        Desc& setKernels(const ProgramKernels::SharedConstPtr& pKernels) { mpKernels = pKernels; return *this; }
+        Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
 
-        static SharedPtr create(const Desc& desc);
-        const ApiHandle& getApiHandle() const { return mApiHandle; }
+        // TODO(tfoley): this is redundant with the kernels
+        Desc& setGlobalRootSignature(const RootSignature::SharedPtr& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
+        bool operator==(const Desc& other) const;
 
-        const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.mpKernels; };
-        uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
-        const RootSignature::SharedPtr& getGlobalRootSignature() const { return mDesc.mpGlobalRootSignature; }
-
-        void const* getShaderIdentifier(uint32_t index) const { return mShaderIdentifiers[index]; }
-
-        const Desc& getDesc() const { return mDesc; }
-    private:
-        RtStateObject(const Desc& d) : mDesc(d) {}
-        ApiHandle mApiHandle;
-
-        std::vector<void const*> mShaderIdentifiers;
-        Desc mDesc;
+      private:
+        ProgramKernels::SharedConstPtr mpKernels;
+        RootSignature::SharedPtr mpGlobalRootSignature;
+        uint32_t mMaxTraceRecursionDepth = 1;
+        friend RtStateObject;
     };
+
+    static SharedPtr create(const Desc& desc, Device::SharedPtr pDevice);
+    const ApiHandle& getApiHandle() const { return mApiHandle; }
+
+    const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.mpKernels; };
+    uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
+    const RootSignature::SharedPtr& getGlobalRootSignature() const { return mDesc.mpGlobalRootSignature; }
+
+    void const* getShaderIdentifier(uint32_t index) const { return mShaderIdentifiers[index]; }
+
+    const Desc& getDesc() const { return mDesc; }
+  private:
+    RtStateObject(const Desc& d, Device::SharedPtr pDevice) : mDesc(d), mpDevice(pDevice) {}
+    ApiHandle mApiHandle;
+
+    std::vector<void const*> mShaderIdentifiers;
+    Desc mDesc;
+    Device::SharedPtr mpDevice;
+};
+
 }
+
+#endif  // FALCOR_RAYTRACING_RTSTATEOBJECT_H_

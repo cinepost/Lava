@@ -29,17 +29,14 @@
 #include "Core/API/Shader.h"
 #include "Slang/slang.h"
 
-namespace Falcor
-{
-    struct ShaderData
-    {
-        ID3DBlobPtr pBlob;
-    };
+namespace Falcor {
 
-    std::string getTargetString(ShaderType type, const std::string& shaderModel)
-    {
-        switch (type)
-        {
+struct ShaderData {
+    ID3DBlobPtr pBlob;
+};
+
+std::string getTargetString(ShaderType type, const std::string& shaderModel) {
+    switch (type) {
         case ShaderType::Vertex:
             return "vs_" + shaderModel;
         case ShaderType::Pixel:
@@ -55,38 +52,34 @@ namespace Falcor
         default:
             should_not_get_here();
             return "";
-        }
-    }
-
-    Shader::Shader(ShaderType type) : mType(type)
-    {
-        mpPrivateData = new ShaderData;
-    }
-
-    Shader::~Shader()
-    {
-        ShaderData* pData = (ShaderData*)mpPrivateData;
-        safe_delete(pData);
-    }
-
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
-    {
-        // Compile the shader
-        ShaderData* pData = (ShaderData*)mpPrivateData;
-        pData->pBlob = shaderBlob.get();
-
-        if (pData->pBlob == nullptr)
-        {
-            return nullptr;
-        }
-
-        mApiHandle = { pData->pBlob->GetBufferPointer(), pData->pBlob->GetBufferSize() };
-        return true;
-    }
-
-    ID3DBlobPtr Shader::getD3DBlob() const
-    {
-        const ShaderData* pData = (ShaderData*)mpPrivateData;
-        return pData->pBlob;
     }
 }
+
+Shader::Shader(ShaderType type) : mType(type) {
+    mpPrivateData = new ShaderData;
+}
+
+Shader::~Shader() {
+    ShaderData* pData = (ShaderData*)mpPrivateData;
+    safe_delete(pData);
+}
+
+bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+    // Compile the shader
+    ShaderData* pData = (ShaderData*)mpPrivateData;
+    pData->pBlob = shaderBlob.get();
+
+    if (pData->pBlob == nullptr) {
+        return nullptr;
+    }
+
+    mApiHandle = { pData->pBlob->GetBufferPointer(), pData->pBlob->GetBufferSize() };
+    return true;
+}
+
+ID3DBlobPtr Shader::getD3DBlob() const {
+    const ShaderData* pData = (ShaderData*)mpPrivateData;
+    return pData->pBlob;
+}
+
+}  // namespace Falcor

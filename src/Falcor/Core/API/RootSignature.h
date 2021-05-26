@@ -129,7 +129,7 @@ class dlldecl RootSignature {
         \param[in] pReflection Reflection object.
         \return New object, or throws an exception if creation failed.
     */
-    static SharedPtr createLocal(std::shared_ptr<Device> device, const EntryPointGroupReflection* pReflector);
+    static SharedPtr createLocal(std::shared_ptr<Device> pDevice, const EntryPointGroupReflection* pReflector);
 
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 

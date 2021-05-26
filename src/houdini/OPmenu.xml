@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<menuDocument>
+    <menu>
+        <subMenu id="opmenu.lava_slang_options">
+            <insertAfter>opmenu.vop_options_menu</insertAfter>
+            <label>Lava/Slang Options</label>
+            <context>
+            <expression>
+<![CDATA[
+node = kwargs.get("node", None)
+if node is None:
+    return False
+
+if node.type().category().name() != 'Vop':
+    return False
+
+return True
+]]>
+            </expression>
+        </context>
+        <scriptItem id="opmenu.lava_view_code">
+        <label>View Slang code...</label>
+        <context>
+            <expression>
+            <![CDATA[
+node = kwargs.get("node", None)
+
+if node.shaderType() != hou.shaderType.VopMaterial:
+    return False
+
+return True
+            ]]>
+            </expression>
+        </context>
+        <scriptCode>
+            <![CDATA[
+from slangviewer import SlangViewerWindow
+
+node = kwargs.get("node")
+slangwindow = SlangViewerWindow(node)
+slangwindow.show()
+            ]]>
+        </scriptCode>
+        </scriptItem>
+        </subMenu>
+    </menu>
+</menuDocument>

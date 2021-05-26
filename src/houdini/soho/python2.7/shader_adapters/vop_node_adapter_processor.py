@@ -115,7 +115,7 @@ class VopNodeAdapterProcessor(object):
 				print "res", type(res)
 				printHighlightedSlangCode(res)
 			
-			node_context.printArgsCache()
+			#node_context.printArgsCache()
 
 			return ""
 
