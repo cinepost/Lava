@@ -57,7 +57,7 @@ class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject>
         friend RtStateObject;
     };
 
-    static SharedPtr create(const Desc& desc, Device::SharedPtr pDevice);
+    static SharedPtr create( Device::SharedPtr pDevice, const Desc& desc);
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
     const ProgramKernels::SharedConstPtr& getKernels() const { return mDesc.mpKernels; };
@@ -68,7 +68,7 @@ class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject>
 
     const Desc& getDesc() const { return mDesc; }
   private:
-    RtStateObject(const Desc& d, Device::SharedPtr pDevice) : mDesc(d), mpDevice(pDevice) {}
+    RtStateObject(Device::SharedPtr pDevice, const Desc& d) : mDesc(d), mpDevice(pDevice) {}
     ApiHandle mApiHandle;
 
     std::vector<void const*> mShaderIdentifiers;

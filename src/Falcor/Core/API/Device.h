@@ -45,6 +45,7 @@
 #include "Falcor/Core/API/Sampler.h"
 
 #include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "RadeonRays_SDK/src/core/include/radeonrays_vlk.h"
 
 namespace Falcor {
 
@@ -75,8 +76,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     struct Desc {
         ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
         ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
-        uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
-        uint32_t apiMinorVersion = 0;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
+        uint32_t apiMajorVersion = 1;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
+        uint32_t apiMinorVersion = 2;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
         bool enableVsync = false;                                       ///< Controls vertical-sync
         bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
 
@@ -314,7 +315,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures{};
 
-    VmaAllocator  mAllocator; 
+    VmaAllocator    mAllocator;
+    RRContext       mRRcontext = nullptr; 
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 };

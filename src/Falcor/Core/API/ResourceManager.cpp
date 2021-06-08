@@ -75,7 +75,7 @@ ResourceManager::~ResourceManager() {
 }
 
 bool ResourceManager::checkDeviceFeatures(std::shared_ptr<Device> pDevice) {
-    VkPhysicalDeviceFeatures &deviceFeatures = pDevice->deviceFeatures;
+    VkPhysicalDeviceFeatures &deviceFeatures = pDevice->mDeviceFeatures;
 
     if (deviceFeatures.sparseBinding && deviceFeatures.sparseResidencyImage2D) {
         enabledFeatures.shaderResourceResidency = VK_TRUE;

@@ -35,7 +35,7 @@
 #include <initializer_list>
 
 #include "Falcor/Core/Framework.h"
-
+#include <slang/slang.h>
 
 struct ISlangBlob;
 
@@ -208,6 +208,8 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 
 #ifdef FALCOR_D3D12
     ID3DBlobPtr getD3DBlob() const;
+#else
+    ISlangBlob* getISlangBlob() const;
 #endif
 
  protected:

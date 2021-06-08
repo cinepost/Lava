@@ -37,21 +37,9 @@
 #include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
 
 namespace Falcor {
-    
-//VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, GpuMemoryHeap::Type memType, uint32_t memoryTypeBits, size_t size) {
-//    VkMemoryAllocateInfo allocInfo = {};
-//    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-//    allocInfo.allocationSize = size;
-//    allocInfo.memoryTypeIndex = pDevice->getVkMemoryType(memType, memoryTypeBits);
-
-//    VkDeviceMemory deviceMem;
-//    vk_call(vkAllocateMemory(pDevice->getApiHandle(), &allocInfo, nullptr, &deviceMem));
-//    return deviceMem;
-//}
 
 void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size) {
     void* pData;
-    //vk_call(vkMapMemory(pDevice->getApiHandle(), apiHandle, 0, size, 0, &pData));
     vk_call(vmaMapMemory(pDevice->allocator(), apiHandle.allocation(), &pData));
     return pData;
 }
@@ -121,16 +109,6 @@ Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::B
     VmaStats stats = {};
     vmaCalculateStats(pDevice->allocator(), &stats);
 
-//
-    //vk_call(vkCreateBuffer(pDevice->getApiHandle(), &bufferInfo, nullptr, &buffer));
-
-    // Get the required buffer size
-//    VkMemoryRequirements reqs;
-//    vkGetBufferMemoryRequirements(pDevice->getApiHandle(), buffer, &reqs);
-
-//    VkDeviceMemory mem = allocateDeviceMemory(pDevice, memType, reqs.memoryTypeBits, reqs.size);
-//    vk_call(vkBindBufferMemory(pDevice->getApiHandle(), buffer, mem, 0));
-//    Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, mem);
     Buffer::ApiHandle apiHandle = Buffer::ApiHandle::create(pDevice, buffer, allocation);
     return apiHandle;
 }
@@ -149,8 +127,12 @@ void Buffer::apiInit(bool hasInitData) {
 }
 
 uint64_t Buffer::getGpuAddress() const {
-    UNSUPPORTED_IN_VULKAN(__FUNCTION__);
-    return 0;
+    //UNSUPPORTED_IN_VULKAN(__FUNCTION__);
+    //return 0;
+    VkBufferDeviceAddressInfo info = {};
+    info.buffer = mApiHandle.mBuffer;
+
+    vkGetBufferDeviceAddressKHR(mpDevice->getApiHandle(), &pInfo);
 }
 
 void Buffer::unmap() {

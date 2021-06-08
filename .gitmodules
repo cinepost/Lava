@@ -67,3 +67,6 @@
 [submodule "third_party/c-blosc2"]
 	path = third_party/c-blosc2
 	url = https://github.com/Blosc/c-blosc2.git
+[submodule "third_party/RadeonRays_SDK"]
+	path = third_party/RadeonRays_SDK
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/RadeonRays_SDK.git

@@ -33,6 +33,19 @@ file( GLOB SOURCES
     ./Experimental/Scene/Lights/*.cpp
     #./Testing/*.cpp
 
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.h
+    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.cpp
+
     #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
     #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp

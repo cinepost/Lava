@@ -79,7 +79,7 @@ class dlldecl ShaderTable {
         RenderContext*          pCtx);
 
     struct SubTableInfo {
-        uint32_t recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        uint32_t recordSize = 16;//align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
         uint32_t recordCount = 0;
         uint32_t offset = 0;
     };

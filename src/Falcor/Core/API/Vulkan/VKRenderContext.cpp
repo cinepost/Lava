@@ -29,10 +29,12 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Raytracing/RtProgram/RtProgram.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
+
+#include "Falcor/Raytracing/RtProgram/RtProgram.h"
+#include "Falcor/Raytracing/RtProgramVars.h"
 
 namespace Falcor {
     
@@ -95,18 +97,6 @@ namespace Falcor {
             vkScissors[i].extent.height = scissors[i].bottom - scissors[i].top;
         }
         vkCmdSetScissor(cmdList, 0, (uint32_t)scissors.size(), vkScissors.data());
-    }
-
-    static VkIndexType getVkIndexType(ResourceFormat format) {
-        switch (format) {
-            case ResourceFormat::R16Uint:
-                return VK_INDEX_TYPE_UINT16;
-            case ResourceFormat::R32Uint:
-                return VK_INDEX_TYPE_UINT32;
-            default:
-                should_not_get_here();
-                return VK_INDEX_TYPE_MAX_ENUM;
-        }
     }
 
     void setVao(CopyContext* pCtx, const Vao* pVao) {
@@ -257,8 +247,7 @@ namespace Falcor {
         offset[0].y = (rect.y == -1) ? 0 : rect.y;
         offset[0].z = 0;
 
-        if(offsetCount > 1)
-        {
+        if(offsetCount > 1) {
             offset[1].x = (rect.z == -1) ? pTex->getWidth(viewInfo.mostDetailedMip) : rect.z;
             offset[1].y = (rect.w == -1) ? pTex->getHeight(viewInfo.mostDetailedMip) : rect.w;
             offset[1].z = 1;
@@ -321,7 +310,20 @@ namespace Falcor {
 
     void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth) {
         auto pRtso = pProgram->getRtso(pVars);
-
         pVars->apply(this, pRtso.get());
+
+        VkStridedDeviceAddressRegionKHR      raygenShaderBindingTable;
+        VkStridedDeviceAddressRegionKHR      missShaderBindingTable;
+        VkStridedDeviceAddressRegionKHR      hitShaderBindingTable;
+        VkStridedDeviceAddressRegionKHR      callableShaderBindingTable;
+
+        vkCmdTraceRaysKHR( mpLowLevelData->getCommandList(),
+                &raygenShaderBindingTable,
+                &missShaderBindingTable,
+                &hitShaderBindingTable,
+                &callableShaderBindingTable,
+                width,
+                height,
+                depth);
     }
 }

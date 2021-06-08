@@ -31,20 +31,17 @@
 #include "Core/API/Device.h"
 //#include "RtStateObject.h"
 
-#include "RtProgramVarsHelper.h"
+//#include "RtProgramVarsHelper.h"
 
-namespace Falcor
-{
-    static bool checkParams(RtProgram::SharedPtr pProgram, Scene::SharedPtr pScene)
-    {
-        if (pScene == nullptr)
-        {
+namespace Falcor {
+
+    static bool checkParams(RtProgram::SharedPtr pProgram, Scene::SharedPtr pScene) {
+        if (pScene == nullptr) {
             logError("RtProgramVars must have a scene attached to it");
             return false;
         }
 
-        if (pProgram == nullptr || pProgram->getRayGenProgramCount() == 0)
-        {
+        if (pProgram == nullptr || pProgram->getRayGenProgramCount() == 0) {
             logError("RtProgramVars must have a ray-gen program attached to it");
             return false;
         }
@@ -112,27 +109,23 @@ namespace Falcor
         mHitVars.resize(totalHitBlockCount);
         mDescHitGroupCount = descHitGroupCount;
 
-        for(uint32_t i = 0; i < rayGenProgCount; ++i)
-        {
+        for(uint32_t i = 0; i < rayGenProgCount; ++i) {
             auto& info = descExtra.mRayGenEntryPoints[i];
             if(info.groupIndex < 0) continue;
 
             mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         }
 
-        for(uint32_t i = 0; i < descHitGroupCount; ++i)
-        {
+        for(uint32_t i = 0; i < descHitGroupCount; ++i) {
             auto& info = descExtra.mHitGroups[i];
             if(info.groupIndex < 0) continue;
 
-            for(uint32_t j = 0; j < blockCountPerHitGroup; ++j)
-            {
+            for(uint32_t j = 0; j < blockCountPerHitGroup; ++j) {
                 mHitVars[j*descHitGroupCount + i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
             }
         }
 
-        for(uint32_t i = 0; i < missProgCount; ++i)
-        {
+        for(uint32_t i = 0; i < missProgCount; ++i) {
             auto& info = descExtra.mMissEntryPoints[i];
             if(info.groupIndex < 0) continue;
 
@@ -159,8 +152,10 @@ namespace Falcor
         assert(pKernels);
 
         auto pShaderIdentifier = pRtso->getShaderIdentifier(uniqueEntryPointGroupIndex);
-        memcpy(pRecord, pShaderIdentifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+        
+        //memcpy(pRecord, pShaderIdentifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        
+        pRecord += 32;//D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
         auto pLocalRootSignature = pKernels->getLocalRootSignature();
 
@@ -188,42 +183,36 @@ namespace Falcor
         auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
 
         bool needShaderTableUpdate = false;
-        if(!mpShaderTable)
-        {
+        if(!mpShaderTable) {
             mpShaderTable = ShaderTable::create();
             needShaderTableUpdate = true;
         }
 
-        if( !needShaderTableUpdate )
-        {
-            if( pRtso != mpShaderTable->getRtso() )
-            {
+        if( !needShaderTableUpdate ) {
+            if( pRtso != mpShaderTable->getRtso() ) {
                 needShaderTableUpdate = true;
             }
         }
 
-        if( !needShaderTableUpdate )
-        {
+        if( !needShaderTableUpdate ) {
             // We need to check if anything has changed that would require the shader
             // table to be rebuilt.
             //
             uint32_t rayGenCount = getRayGenVarsCount();
-            for (uint32_t r = 0; r < rayGenCount; r++)
-            {
+
+            for (uint32_t r = 0; r < rayGenCount; r++) {
                 auto& varsInfo = mRayGenVars[r];
                 auto pBlock = varsInfo.pVars.get();
 
                 auto changeEpoch = computeEpochOfLastChange(pBlock);
 
-                if(changeEpoch != varsInfo.lastObservedChangeEpoch)
-                {
+                if(changeEpoch != varsInfo.lastObservedChangeEpoch) {
                     needShaderTableUpdate = true;
                 }
             }
         }
 
-        if(needShaderTableUpdate)
-        {
+        if(needShaderTableUpdate) {
             mpShaderTable->update(pCtx, pRtso, this, mpScene.get());
 
             // We will iterate over the sub-tables (ray-gen, hit, miss)
@@ -233,8 +222,8 @@ namespace Falcor
             //
 
             uint32_t rayGenCount = getRayGenVarsCount();
-            for (uint32_t r = 0; r < rayGenCount; r++)
-            {
+
+            for (uint32_t r = 0; r < rayGenCount; r++) {
                 auto& varsInfo = mRayGenVars[r];
                 auto pBlock = varsInfo.pVars.get();
 
@@ -245,8 +234,7 @@ namespace Falcor
 
                 uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::RayGen, r);
 
-                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
-                {
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get())) {
                     return false;
                 }
                 varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
@@ -255,8 +243,7 @@ namespace Falcor
 
             // Loop over the rays
             uint32_t hitCount = getTotalHitVarsCount();
-            for (uint32_t h = 0; h < hitCount; h++)
-            {
+            for (uint32_t h = 0; h < hitCount; h++) {
                 auto& varsInfo = mHitVars[h];
                 auto pBlock = varsInfo.pVars.get();
 
@@ -267,16 +254,14 @@ namespace Falcor
 
                 uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::Hit, h);
 
-                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
-                {
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get())) {
                     return false;
                 }
                 varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
             }
 
             uint32_t missCount = pProgram->getMissProgramCount();
-            for (uint32_t m = 0; m < missCount; m++)
-            {
+            for (uint32_t m = 0; m < missCount; m++) {
                 auto& varsInfo = mMissVars[m];
                 auto pBlock = varsInfo.pVars.get();
 
@@ -287,8 +272,7 @@ namespace Falcor
 
                 uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::Miss, m);
 
-                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
-                {
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get())) {
                     return false;
                 }
                 varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
@@ -297,8 +281,7 @@ namespace Falcor
             mpShaderTable->flushBuffer(pCtx);
         }
 
-        if( !applyProgramVarsCommon<false>(this, pCtx, true, pRtso->getGlobalRootSignature().get()) )
-        {
+        if( !applyProgramVarsCommon<false>(this, pCtx, true, pRtso->getGlobalRootSignature().get()) ) {
             return false;
         }
 

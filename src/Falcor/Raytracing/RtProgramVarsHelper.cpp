@@ -29,122 +29,33 @@
 #include "RtProgramVarsHelper.h"
 #include "Core/API/Device.h"
 
-namespace Falcor
+namespace Falcor {
+
+//LowLevelContextData::CommandQueueType::Direct
+RtVarsContext::SharedPtr RtVarsContext::create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) {
+    return SharedPtr(new RtVarsContext(pDevice, queue));
+}
+
+RtVarsContext::RtVarsContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue) : CopyContext(pDevice, LowLevelContextData::CommandQueueType::Direct, queue) {
+    //mpList = RtVarsCmdList::create();
+    //assert(mpList);
+    //ID3D12GraphicsCommandList* pList = mpList.get();
+    //mpLowLevelData->setCommandList(pList);
+}
+
+RtVarsContext::~RtVarsContext()
 {
-    RtVarsContext::SharedPtr RtVarsContext::create()
-    {
-        return SharedPtr(new RtVarsContext());
-    }
+    // Release the low-level data before the list
+    mpLowLevelData = nullptr;
+    //mpList = nullptr;
+}
 
-    RtVarsContext::RtVarsContext()
-        : CopyContext(LowLevelContextData::CommandQueueType::Direct, nullptr)
-    {
-        mpList = RtVarsCmdList::create();
-        assert(mpList);
-        ID3D12GraphicsCommandList* pList = mpList.get();
-        mpLowLevelData->setCommandList(pList);
-    }
+bool RtVarsContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo) {
+    return mpDevice->getRenderContext()->resourceBarrier(pResource, newState, pViewInfo);
+}
 
-    RtVarsContext::~RtVarsContext()
-    {
-        // Release the low-level data before the list
-        mpLowLevelData = nullptr;
-        mpList = nullptr;
-    }
+void RtVarsContext::uavBarrier(const Resource* pResource) {
+    mpDevice->getRenderContext()->uavBarrier(pResource);
+}
 
-    bool RtVarsContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
-    {
-        return gpDevice->getRenderContext()->resourceBarrier(pResource, newState, pViewInfo);
-    }
-
-    void RtVarsContext::uavBarrier(const Resource* pResource)
-    {
-        gpDevice->getRenderContext()->uavBarrier(pResource);
-    }
-
-    HRESULT RtVarsCmdList::QueryInterface(REFIID riid, void **ppvObject)
-    {
-        if (riid == __uuidof(ID3D12CommandList))
-        {
-            *ppvObject = dynamic_cast<ID3D12CommandList*>(this);
-            return S_OK;
-        }
-        else if (riid == __uuidof(ID3D12GraphicsCommandList4))
-        {
-            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList4*>(this);
-            return S_OK;
-        }
-        else if (riid == __uuidof(ID3D12GraphicsCommandList3))
-        {
-            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList3*>(this);
-            return S_OK;
-        }
-        else if (riid == __uuidof(ID3D12GraphicsCommandList2))
-        {
-            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList2*>(this);
-            return S_OK;
-        }
-        else if (riid == __uuidof(ID3D12GraphicsCommandList1))
-        {
-            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList1*>(this);
-            return S_OK;
-        }
-        else if (riid == __uuidof(ID3D12GraphicsCommandList))
-        {
-            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList*>(this);
-            return S_OK;
-        }
-        else
-        {
-            *ppvObject = nullptr;
-            return E_NOINTERFACE;
-        }
-    }
-
-    void RtVarsCmdList::SetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
-    {
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-        *(uint64_t*)(mpRootBase + rootOffset) = BaseDescriptor.ptr;
-    }
-
-    void RtVarsCmdList::SetGraphicsRoot32BitConstant(UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues)
-    {
-        assert(DestOffsetIn32BitValues == 0);
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-        *(uint32_t*)(mpRootBase + rootOffset) = SrcData;
-    }
-
-    void RtVarsCmdList::SetGraphicsRoot32BitConstants(UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues)
-    {
-        assert(DestOffsetIn32BitValues == 0);
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-
-        auto pSrcCursor = (uint32_t*)pSrcData;
-        auto pDstCursor = (uint32_t*)(mpRootBase + rootOffset);
-        for( UINT ii = 0; ii < Num32BitValuesToSet; ++ii )
-        {
-            *pDstCursor++ = *pSrcCursor++;
-        }
-    }
-
-    void RtVarsCmdList::SetGraphicsRootConstantBufferView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
-    {
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-        assert((rootOffset % 8) == 0);
-        *(D3D12_GPU_VIRTUAL_ADDRESS*)(mpRootBase + rootOffset) = BufferLocation;
-    }
-
-    void RtVarsCmdList::SetGraphicsRootShaderResourceView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
-    {
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-        assert((rootOffset % 8) == 0);
-        *(D3D12_GPU_VIRTUAL_ADDRESS*)(mpRootBase + rootOffset) = BufferLocation;
-    }
-
-    void RtVarsCmdList::SetGraphicsRootUnorderedAccessView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
-    {
-        uint32_t rootOffset = mpRootSignature->getElementByteOffset(RootParameterIndex);
-        assert((rootOffset % 8) == 0);
-        *(D3D12_GPU_VIRTUAL_ADDRESS*)(mpRootBase + rootOffset) = BufferLocation;
-    }
 }

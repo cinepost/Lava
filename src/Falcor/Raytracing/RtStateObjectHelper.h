@@ -25,10 +25,11 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_RAYTRACING_RTSTATEOBJECT_H_
-#define FALCOR_RAYTRACING_RTSTATEOBJECT_H_
+#ifndef FALCOR_RAYTRACING_RTSTATEOBJECTHELPER_H_
+#define FALCOR_RAYTRACING_RTSTATEOBJECTHELPER_H_
 
 #include <list>
+#include <slang/slang.h>
 #include "Falcor/Core/Framework.h"
 
 namespace Falcor {
@@ -44,12 +45,12 @@ class dlldecl RtStateObjectHelper {
         mDirty = true;
     }
 
-    void addProgramDesc(ID3DBlobPtr pBlob, const std::wstring& exportName) {
+    void addProgramDesc(ISlangBlob* pBlob, const std::wstring& exportName) {
         addSubobject<ProgramDesc>(pBlob, exportName);
         mDirty = true;
     }
 
-    void addHitProgramDesc(ID3DBlobPtr pAhsBlob, const std::wstring& ahsExportName, ID3DBlobPtr pChsBlob, const std::wstring& chsExportName, ID3DBlobPtr pIntersectionBlob, const std::wstring& intersectionExportName, const std::wstring& name) {
+    void addHitProgramDesc(ISlangBlob* pAhsBlob, const std::wstring& ahsExportName, ISlangBlob* pChsBlob, const std::wstring& chsExportName, ISlangBlob* pIntersectionBlob, const std::wstring& intersectionExportName, const std::wstring& name) {
         addSubobject<HitProgramDesc>(pAhsBlob, ahsExportName, pChsBlob, chsExportName, pIntersectionBlob, intersectionExportName, name);
         mDirty = true;
     }
@@ -114,14 +115,14 @@ class dlldecl RtStateObjectHelper {
     };
 
     struct ProgramDesc : public RtStateSubobjectBase {
-        ProgramDesc(ID3DBlobPtr pBlob, const std::wstring& exportName_) : pShaderBlob(pBlob), exportName(exportName_) {
+        ProgramDesc(ISlangBlob* pBlob, const std::wstring& exportName_) : pShaderBlob(pBlob), exportName(exportName_) {
             subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
             subobject.pDesc = &dxilLibDesc;
 
             dxilLibDesc = {};
             if (pBlob) {
-                dxilLibDesc.DXILLibrary.pShaderBytecode = pBlob->GetBufferPointer();
-                dxilLibDesc.DXILLibrary.BytecodeLength = pBlob->GetBufferSize();
+                dxilLibDesc.DXILLibrary.pShaderBytecode = pBlob->getBufferPointer();
+                dxilLibDesc.DXILLibrary.BytecodeLength = pBlob->getBufferSize();
 
                 exportDesc.Name = exportName.c_str();
                 exportDesc.Flags = D3D12_EXPORT_FLAG_NONE;
@@ -142,9 +143,9 @@ class dlldecl RtStateObjectHelper {
 
     struct HitProgramDesc : public RtStateSubobjectBase {
         HitProgramDesc(
-            ID3DBlobPtr pAhsBlob, const std::wstring& ahsExportName,
-            ID3DBlobPtr pChsBlob, const std::wstring& chsExportName,
-            ID3DBlobPtr pIntersectionBlob, const std::wstring& intersectionExportName,
+            ISlangBlob* pAhsBlob, const std::wstring& ahsExportName,
+            ISlangBlob* pChsBlob, const std::wstring& chsExportName,
+            ISlangBlob* pIntersectionBlob, const std::wstring& intersectionExportName,
             const std::wstring& name) :
             anyHitShader(pAhsBlob, ahsExportName),
             closestHitShader(pChsBlob, chsExportName),
@@ -270,4 +271,6 @@ class dlldecl RtStateObjectHelper {
     }
 };
 
-}  // namespace FALCOR_RAYTRACING_RTSTATEOBJECT_H_
+}  // namespace Falcor
+
+#endif  // FALCOR_RAYTRACING_RTSTATEOBJECTHELPER_H_

@@ -31,10 +31,20 @@
 
 namespace Falcor {
 
-    Shader::Shader(std::shared_ptr<Device> device, ShaderType type) : mType(type), mpDevice(device) {}
+    struct ShaderData {
+        ISlangBlob* pBlob;
+    };
 
-    Shader::~Shader() = default;
+    Shader::Shader(std::shared_ptr<Device> device, ShaderType type) : mType(type), mpDevice(device) {
+        mpPrivateData = new ShaderData;
+    }
 
+    Shader::~Shader() {
+        ShaderData* pData = (ShaderData*)mpPrivateData;
+        safe_delete(pData);
+    }
+
+    /*
     bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
         VkShaderModuleCreateInfo moduleCreateInfo = {};
         moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -51,5 +61,60 @@ namespace Falcor {
         mApiHandle = ApiHandle::create(mpDevice, shaderModule);
         return true;
     }
+    */
+
+    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+        ShaderData* pData = (ShaderData*)mpPrivateData;
+        pData->pBlob = shaderBlob.get();
+
+        if (pData->pBlob == nullptr) {
+            logError("Shader blob is null !!!");
+            return false;
+        }
+
+        VkShaderModuleCreateInfo moduleCreateInfo = {};
+        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        moduleCreateInfo.codeSize = shaderBlob->getBufferSize();
+        moduleCreateInfo.pCode = (uint32_t*)shaderBlob->getBufferPointer();
+
+        assert(moduleCreateInfo.codeSize % 4 == 0);
+
+        VkShaderModule shaderModule;
+        if (VK_FAILED(vkCreateShaderModule(mpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule))) {
+            logError("Could not create shader !!!");
+            return false;
+        }
+        mApiHandle = ApiHandle::create(mpDevice, shaderModule);
+        return true;
+    }
+
+    ISlangBlob* Shader::getISlangBlob() const {
+        const ShaderData* pData = (ShaderData*)mpPrivateData;
+        return pData->pBlob;
+    }
 
 }  // namespace Falcor
+
+/* D3D
+
+bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+    // Compile the shader
+    ShaderData* pData = (ShaderData*)mpPrivateData;
+    pData->pBlob = shaderBlob.get();
+
+    if (pData->pBlob == nullptr) {
+        return nullptr;
+    }
+
+    mApiHandle = { pData->pBlob->GetBufferPointer(), pData->pBlob->GetBufferSize() };
+    return true;
+}
+
+ID3DBlobPtr Shader::getD3DBlob() const {
+    const ShaderData* pData = (ShaderData*)mpPrivateData;
+    return pData->pBlob;
+}
+
+
+
+*/

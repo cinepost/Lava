@@ -310,6 +310,8 @@ protected:
     ConstantBufferView::SharedPtr mpCBV; // For constant-buffers
     Buffer::SharedPtr mpUAVCounter; // For structured-buffers
 
+    VkBufferDeviceAddressInfo mAddressInfo;
+
     /** Helper for converting host type to resource format for typed buffers.
         See list of supported formats for typed UAV loads:
         https://docs.microsoft.com/en-us/windows/win32/direct3d12/typed-unordered-access-view-loads

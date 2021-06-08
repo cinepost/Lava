@@ -46,6 +46,8 @@
 
 namespace Falcor {
 
+#define RR_FAILED(res) (res != RR_SUCCESS)
+
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     VkDebugReportFlagsEXT       flags,
@@ -563,6 +565,12 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures, mRayTracingPipelineProperties, mAaccelerationStructureFeatures);
     if (!device) return false;
+
+    // RadeonRays context
+    //if (CHECK_RR_CALL(rrCreateContextVk(RR_API_VERSION, device, physicalDevice, queue, queue_family_index_, &mRRcontext))) {
+    //    logError("Could not create RadeonRays context");
+    //    mRRcontext = nullptr;
+    //}
 
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 

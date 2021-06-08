@@ -340,7 +340,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     deprecate("4.0.2", "Use Light::setIsAnimated() instead.")
     void toggleLightAnimation(int index, bool active) { mLights[index]->setIsAnimated(active); }
 
-    #ifdef FALCOR_D3D12
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
     */
@@ -358,7 +357,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Get the scene's BLAS update mode when raytracing.
     */
     UpdateMode getBlasUpdateMode() { return mBlasUpdateMode; }
-    #endif
 
     /** Update the scene. Call this once per frame to update the camera location, animations, etc.
         \param pContext
@@ -648,15 +646,19 @@ private:
     UpdateMode mTlasUpdateMode = UpdateMode::Rebuild;   ///< How the TLAS should be updated when there are changes in the scene
     UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
 
-    std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
+    //std::vector<D3D12_RAYTRACING_INSTANCE_DESC> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
 
     Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
+    //D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
 
     struct BlasData {
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs;
-        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDescs;
+        //D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo;
+        //D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS buildInputs;
+        //std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDescs;
+
+        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
+        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
+        std::vector<VkAccelerationStructureGeometryKHR> geomDescs;
 
         uint64_t blasByteSize = 0;                      ///< Size of the final BLAS.
         uint64_t blasByteOffset = 0;                    ///< Offset into the BLAS buffer to where it is stored.

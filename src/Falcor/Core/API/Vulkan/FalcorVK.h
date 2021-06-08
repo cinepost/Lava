@@ -69,6 +69,18 @@ inline VkFormat getVkFormat(ResourceFormat format) {
     return kVkFormatDesc[(uint32_t)format].vkFormat;
 }
 
+inline VkIndexType getVkIndexType(ResourceFormat format) {
+    switch (format) {
+        case ResourceFormat::R16Uint:
+            return VK_INDEX_TYPE_UINT16;
+        case ResourceFormat::R32Uint:
+            return VK_INDEX_TYPE_UINT32;
+        default:
+            should_not_get_here();
+            return VK_INDEX_TYPE_MAX_ENUM;
+    }
+}
+
 using HeapCpuHandle = void*;
 using HeapGpuHandle = void*;
 

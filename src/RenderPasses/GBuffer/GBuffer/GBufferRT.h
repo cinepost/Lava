@@ -25,9 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef GBUFFER_RT_H_
+#define GBUFFER_RT_H_
 
-#ifdef FALCOR_D3D
 
 #include "GBuffer.h"
 #include "Utils/Sampling/SampleGenerator.h"
@@ -37,9 +37,8 @@ using namespace Falcor;
 /** Ray traced G-buffer pass.
     This pass renders a fixed set of G-buffer channels using ray tracing.
 */
-class GBufferRT : public GBuffer
-{
-public:
+class GBufferRT : public GBuffer {
+  public:
     using SharedPtr = std::shared_ptr<GBufferRT>;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -50,14 +49,13 @@ public:
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     std::string getDesc() override { return kDesc; }
 
-    enum class LODMode
-    {
+    enum class LODMode {
         UseMip0          = 0,       // Don't compute LOD (default)
         RayDifferentials = 1,       // Use ray differentials
         RayCones         = 2,       // Cone based LOD computation (not implemented yet)
     };
 
-private:
+  private:
     GBufferRT(const Dictionary& dict);
     void parseDictionary(const Dictionary& dict) override;
 
@@ -68,8 +66,7 @@ private:
     LODMode                         mLODMode = LODMode::UseMip0;
 
     // Ray tracing resources
-    struct
-    {
+    struct {
         RtProgram::SharedPtr pProgram;
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
@@ -79,4 +76,4 @@ private:
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
 
-#endif  // FALCOR_D3D
+#endif  // GBUFFER_RT_H_
