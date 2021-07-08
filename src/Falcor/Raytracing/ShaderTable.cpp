@@ -33,16 +33,16 @@
 
 namespace Falcor
 {
-    ShaderTable::ShaderTable()
+    ShaderTable::ShaderTable(Device::SharedPtr pDevice): mpDevice(pDevice)
     {}
 
     ShaderTable::~ShaderTable()
     {
     }
 
-    ShaderTable::SharedPtr ShaderTable::create()
+    ShaderTable::SharedPtr ShaderTable::create(Device::SharedPtr pDevice)
     {
-        return SharedPtr(new ShaderTable());
+        return SharedPtr(new ShaderTable(pDevice));
     }
 
     uint8_t* ShaderTable::getRecordPtr(SubTableType type, uint32_t index)
@@ -133,7 +133,7 @@ namespace Falcor
         // Create a buffer
         if( !mpBuffer || mpBuffer->getSize() < shaderTableBufferSize )
         {
-            mpBuffer = Buffer::create(shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
+            mpBuffer = Buffer::create(mpDevice, shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
         }
 
         pCtx->updateBuffer(mpBuffer.get(), mData.data());

@@ -105,11 +105,10 @@
 
 // Scene
 #include "Falcor/Scene/Scene.h"
-#include "Falcor/Scene/Importer.h"
+//#include "Falcor/Scene/Importer.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Camera/CameraController.h"
 #include "Falcor/Scene/Lights/Light.h"
-#include "Falcor/Scene/Lights/LightProbe.h"
 #include "Falcor/Scene/Material/Material.h"
 #include "Falcor/Scene/Animation/Animation.h"
 #include "Falcor/Scene/Animation/AnimationController.h"
@@ -119,6 +118,7 @@
 #include "Falcor/Utils/Math/AABB.h"
 #include "Falcor/Utils/BinaryFileStream.h"
 #include "Falcor/Utils/Logger.h"
+#include "Falcor/Utils/NumericRange.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/TermColor.h"
 #include "Falcor/Utils/Threading.h"

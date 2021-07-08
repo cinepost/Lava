@@ -53,18 +53,6 @@ class OSServices {
     static void stop();
 };
 
-/** Sets the main window handle.
-    This is used to set the parent window when showing message boxes.
-    \param[in] windowHandle Window handle.
-*/
-dlldecl void setMainWindowHandle(WindowHandle windowHandle);
-
-/** Adds an icon to the foreground window.
-    \param[in] iconFile Icon file name
-    \param[in] windowHandle The api handle of the window for which we need to set the icon to. nullptr will apply the icon to the foreground window
-*/
-dlldecl void setWindowIcon(const std::string& iconFile, WindowHandle windowHandle);
-
 /** Retrieves estimated/user-set pixel density of a display.
     \return integer value of number of pixels per inch.
 */

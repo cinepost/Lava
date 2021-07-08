@@ -215,7 +215,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
     Scene::RenderFlags flags = mForceCullMode ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None;
-    mpScene->render(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
+    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
 
     mGBufferParams.frameCount++;
 }

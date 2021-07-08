@@ -29,12 +29,12 @@
 #include "RenderGraph/RenderPassHelpers.h"
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("MinimalPathTracer", "Minimal path tracer", MinimalPathTracer::create);
 }
@@ -72,10 +72,10 @@ namespace
 
 MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new MinimalPathTracer(dict));
+    return SharedPtr(new MinimalPathTracer(pRenderContext->device(), dict));
 }
 
-MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
+MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice)
 {
     // Deserialize pass from dictionary.
     serializePass<true>(dict);
@@ -87,7 +87,7 @@ MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
     progDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
     progDesc.addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
     progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pProgram = RtProgram::create(progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
+    mTracer.pProgram = RtProgram::create(mpDevice, progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -115,7 +115,7 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
 void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // Update refresh flag if options that affect the output have changed.
-    Dictionary& dict = renderData.getDictionary();
+    auto& dict = renderData.getDictionary();
     if (mOptionsChanged)
     {
         auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
@@ -145,10 +145,10 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     // These defines should not modify the program vars. Do not trigger program vars re-creation.
     mTracer.pProgram->addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
     mTracer.pProgram->addDefine("COMPUTE_DIRECT", mComputeDirect ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ENV_LIGHT", (mpEnvProbe && mUseEnvLight) ? "1" : "0");
-    mTracer.pProgram->addDefine("USE_ENV_BACKGROUND", (mpEnvProbe && mUseEnvBackground) ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ANALYTIC_LIGHTS", mpScene->useAnalyticLights() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_EMISSIVE_LIGHTS", mpScene->useEmissiveLights() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ENV_LIGHT", mpScene->useEnvLight() ? "1" : "0");
+    mTracer.pProgram->addDefine("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
@@ -192,8 +192,6 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     // Clear data for previous scene.
     // After changing scene, the program vars should to be recreated.
     mTracer.pVars = nullptr;
-    mpEnvProbe = nullptr;
-    mEnvProbeFilename = "";
     mFrameCount = 0;
 
     // Set new scene.
@@ -202,15 +200,6 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     if (pScene)
     {
         mTracer.pProgram->addDefines(pScene->getSceneDefines());
-
-        // Load environment map if scene uses one.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
-        {
-            std::string filename = pEnvMap->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
-        }
     }
 }
 
@@ -220,21 +209,14 @@ void MinimalPathTracer::prepareVars()
     assert(mTracer.pProgram);
 
     // Configure program.
-    mpSampleGenerator->prepareProgram(mTracer.pProgram.get());
+    mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mpScene);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mpScene);
 
     // Bind utility classes into shared data.
     auto pGlobalVars = mTracer.pVars->getRootVar();
     bool success = mpSampleGenerator->setShaderData(pGlobalVars);
-    if (!success) throw std::exception("Failed to bind sample generator");
-
-    // Bind the light probe if one is loaded.
-    if (mpEnvProbe)
-    {
-        bool success = mpEnvProbe->setShaderData(pGlobalVars["CB"]["gEnvProbe"]);
-        if (!success) throw std::exception("Failed to bind environment map");
-    }
+    if (!success) throw std::runtime_error("Failed to bind sample generator");
 }

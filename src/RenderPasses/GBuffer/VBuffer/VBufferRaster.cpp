@@ -118,5 +118,5 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
     // Rasterize the scene.
-    mpScene->render(pRenderContext, mRaster.pState.get(), mRaster.pVars.get());
+    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get());
 }

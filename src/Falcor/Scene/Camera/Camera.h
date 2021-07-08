@@ -37,7 +37,7 @@
 
 namespace Falcor {
 
-struct BoundingBox;
+struct AABB;
 class ParameterBlock;
 
 /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
@@ -227,7 +227,7 @@ public:
     /** Check if an object should be culled
         \param[in] box Bounding box of the object to check
     */
-    bool isObjectCulled(const BoundingBox& box) const;
+    bool isObjectCulled(const AABB& box) const;
 
     /** Set the camera into a shader var
     */
@@ -239,8 +239,7 @@ public:
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
-    enum class Changes
-    {
+    enum class Changes {
         None            = 0x0,
         Movement        = 0x1,
         Exposure        = 0x2,
@@ -280,15 +279,13 @@ private:
     mutable CameraData mData;
     CameraData mPrevData;
 
-    struct
-    {
+    struct {
         float3 xyz;     ///< Camera frustum plane position
         float negW;     ///< Camera frustum plane, sign of the coordinates
         float3 sign;    ///< Camera frustum plane position
     } mutable mFrustumPlanes[6];
 
-    struct
-    {
+    struct {
         CPUSampleGenerator::SharedPtr pGenerator;
         float2 scale;
     } mJitterPattern;

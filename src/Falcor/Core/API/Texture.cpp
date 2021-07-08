@@ -340,6 +340,17 @@ const std::vector<VirtualTexturePage::SharedPtr>& Texture::pages() {
     return mPages;
 }
 
+uint64_t Texture::getTexelCount() const {
+    uint64_t count = 0;
+    for (uint32_t i = 0; i < getMipCount(); i++) {
+        uint64_t texelsInMip = (uint64_t)getWidth(i) * getHeight(i) * getDepth(i);
+        assert(texelsInMip > 0);
+        count += texelsInMip;
+    }
+    count *= getArraySize();
+    assert(count > 0);
+    return count;
+}
 
 #ifdef FLACOR_D3D12
 uint32_t Texture::getTextureSizeInBytes() {

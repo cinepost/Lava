@@ -316,14 +316,12 @@ SlangStage getSlangStage(ShaderType type) {
         case ShaderType::Hull:          return SLANG_STAGE_HULL;
         case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
         case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
-#ifdef FALCOR_D3D12
         case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
         case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
         case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;
         case ShaderType::ClosestHit:    return SLANG_STAGE_CLOSEST_HIT;
         case ShaderType::Miss:          return SLANG_STAGE_MISS;
         case ShaderType::Callable:      return SLANG_STAGE_CALLABLE;
-#endif
         default:
             should_not_get_here();
             return SLANG_STAGE_NONE;

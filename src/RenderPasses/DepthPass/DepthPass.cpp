@@ -144,7 +144,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpState->setFbo(mpFbo);
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    mpScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
 
     // caclulate hierarchical z buffers
     auto pHiMaxZ = renderData[kHiMaxZ]->asTexture();

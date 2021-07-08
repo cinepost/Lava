@@ -57,12 +57,12 @@ namespace
 const char* MegakernelPathTracer::sDesc = "Megakernel path tracer";
 
 // Don't remove this. it's required for hot-reload to function properly
-extern "C" __declspec(dllexport) const char* getProjDir()
+extern "C" falcorexport const char* getProjDir()
 {
     return PROJECT_DIR;
 }
 
-extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 {
     lib.registerClass("MegakernelPathTracer", MegakernelPathTracer::sDesc, MegakernelPathTracer::create);
 }
@@ -83,7 +83,7 @@ MegakernelPathTracer::MegakernelPathTracer(const Dictionary& dict)
     progDesc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
     progDesc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
     progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pProgram = RtProgram::create(progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
+    mTracer.pProgram = RtProgram::create(mpDevice, progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
 }
 
 void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -146,7 +146,7 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
     // Spawn the rays.
     {
-        PROFILE("MegakernelPathTracer::execute()_RayTrace");
+        PROFILE(mpDevice, "MegakernelPathTracer::execute()_RayTrace");
         mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
     }
 
@@ -156,35 +156,31 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
 
 void MegakernelPathTracer::prepareVars()
 {
-    assert(mpScene);
+assert(mpScene);
     assert(mTracer.pProgram);
 
     // Configure program.
-    mpSampleGenerator->prepareProgram(mTracer.pProgram.get());
+    mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mpScene);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mpScene);
 
     // Bind utility classes into shared data.
     auto pGlobalVars = mTracer.pVars->getRootVar();
     bool success = mpSampleGenerator->setShaderData(pGlobalVars);
-    if (!success) throw std::exception("Failed to bind sample generator");
+    if (!success) throw std::runtime_error("Failed to bind sample generator");
 
     // Create parameter block for shared data.
     ProgramReflection::SharedConstPtr pReflection = mTracer.pProgram->getReflector();
     ParameterBlockReflection::SharedConstPtr pBlockReflection = pReflection->getParameterBlock(kParameterBlockName);
     assert(pBlockReflection);
-    mTracer.pParameterBlock = ParameterBlock::create(pBlockReflection);
+    mTracer.pParameterBlock = ParameterBlock::create(mpDevice, pBlockReflection);
     assert(mTracer.pParameterBlock);
 
     // Bind static resources to the parameter block here. No need to rebind them every frame if they don't change.
     // Bind the light probe if one is loaded.
-    if (mpEnvProbe)
-    {
-        bool success = mpEnvProbe->setShaderData(mTracer.pParameterBlock["envProbe"]);
-        if (!success) throw std::exception("Failed to bind environment map");
-    }
+    if (mpEnvMapSampler) mpEnvMapSampler->setShaderData(mTracer.pParameterBlock["envMapSampler"]);
 
     // Bind the parameter block to the global program variables.
     mTracer.pVars->setParameterBlock(kParameterBlockName, mTracer.pParameterBlock);
@@ -203,6 +199,6 @@ void MegakernelPathTracer::setTracerData(const RenderData& renderData)
     {
         assert(mpEmissiveSampler);
         bool success = mpEmissiveSampler->setShaderData(pBlock["emissiveSampler"]);
-        if (!success) throw std::exception("Failed to bind emissive light sampler");
+        if (!success) throw std::runtime_error("Failed to bind emissive light sampler");
     }
 }

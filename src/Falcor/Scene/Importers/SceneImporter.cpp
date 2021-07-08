@@ -126,7 +126,6 @@ private:
     bool parseSceneUnit(const rapidjson::Value& jsonVal);
     bool parseModels(const rapidjson::Value& jsonVal);
     bool parseLights(const rapidjson::Value& jsonVal);
-    bool parseLightProbes(const rapidjson::Value& jsonVal);
     bool parseCameras(const rapidjson::Value& jsonVal);
     bool parseCamera(const rapidjson::Value& jsonVal);
     bool parseAmbientIntensity(const rapidjson::Value& jsonVal);
@@ -739,92 +738,6 @@ bool SceneImporterImpl::parseLights(const rapidjson::Value& jsonVal)
     return true;
 }
 
-bool SceneImporterImpl::parseLightProbes(const rapidjson::Value& jsonVal)
-{
-    if (jsonVal.IsArray() == false)
-    {
-        return error("Light probes should be an array of objects.");
-    }
-
-    for (uint32_t i = 0; i < jsonVal.Size(); i++)
-    {
-        const auto& lightProbe = jsonVal[i];
-
-        if (lightProbe.HasMember(SceneKeys::kFilename) == false)
-        {
-            return error("An image file must be specified for a light probe.");
-        }
-
-        // Check if path is relative, if not, assume full path
-        std::string imagePath = lightProbe[SceneKeys::kFilename].GetString();
-        std::string actualPath = mDirectory + '/' + imagePath;
-        if (doesFileExist(actualPath) == false)
-        {
-            actualPath = imagePath;
-        }
-
-        float3 position;
-        float3 intensity(1.0f);
-        float radius = -1;
-        uint32_t diffuseSamples = LightProbe::kDefaultDiffSamples;
-        uint32_t specSamples = LightProbe::kDefaultSpecSamples;
-
-        for (auto m = lightProbe.MemberBegin(); m < lightProbe.MemberEnd(); m++)
-        {
-            std::string key = m->name.GetString();
-            const auto& value = m->value;
-            if (key == SceneKeys::kLightIntensity)
-            {
-                if (getFloatVec<3>(value, "Light probe intensity", &intensity[0]) == false)
-                {
-                    return false;
-                }
-            }
-            else if (key == SceneKeys::kLightPos)
-            {
-                if (getFloatVec<3>(value, "Light probe world position", &position[0]) == false)
-                {
-                    return false;
-                }
-            }
-            else if (key == SceneKeys::kLightProbeRadius)
-            {
-                if (value.IsUint() == false)
-                {
-                    error("Light Probe radius must be a float.");
-                    return false;
-                }
-                radius = float(value.GetDouble());
-            }
-            else if (key == SceneKeys::kLightProbeDiffSamples)
-            {
-                if (value.IsUint() == false)
-                {
-                    error("Light Probe diffuse sample count must be a uint.");
-                    return false;
-                }
-                diffuseSamples = value.GetUint();
-            }
-            else if (key == SceneKeys::kLightProbeSpecSamples)
-            {
-                if (value.IsUint() == false)
-                {
-                    error("Light Probe specular sample count must be a uint.");
-                    return false;
-                }
-                specSamples = value.GetUint();
-            }
-        }
-
-        LightProbe::SharedPtr pLightProbe = LightProbe::create(mpDevice->getRenderContext(), actualPath, true, ResourceFormat::RGBA16Float, diffuseSamples, specSamples);
-        pLightProbe->setPosW(position);
-        pLightProbe->setIntensity(intensity);
-        mBuilder.setLightProbe(pLightProbe);
-    }
-
-    return true;
-}
-
 bool SceneImporterImpl::parsePaths(const rapidjson::Value& jsonVal)
 {
     if (jsonVal.IsArray() == false)
@@ -1039,8 +952,9 @@ bool SceneImporterImpl::parseActiveCamera(const rapidjson::Value& jsonVal)
         return error("Selected camera should be a name.");
     }
 
-    std::string s = (std::string)(jsonVal.GetString());
-    mBuilder.setCamera(s);
+    std::string name(jsonVal.GetString());
+    auto it = std::find_if(mBuilder.getCameras().begin(), mBuilder.getCameras().end(), [&name] (const Camera::SharedPtr& pCamera) { return pCamera->getName() == name; });
+    if (it != mBuilder.getCameras().end()) mBuilder.setSelectedCamera(*it);
     return true;
 }
 
@@ -1142,7 +1056,6 @@ const SceneImporterImpl::FuncValue SceneImporterImpl::kFunctionTable[] =
 
     {SceneKeys::kModels, &SceneImporterImpl::parseModels},
     {SceneKeys::kLights, &SceneImporterImpl::parseLights},
-    {SceneKeys::kLightProbes, &SceneImporterImpl::parseLightProbes},
     {SceneKeys::kCameras, &SceneImporterImpl::parseCameras},
     {SceneKeys::kCamera, &SceneImporterImpl::parseCamera},
     {SceneKeys::kActiveCamera, &SceneImporterImpl::parseActiveCamera},  // Should come after ParseCameras

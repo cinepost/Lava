@@ -351,7 +351,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
     	pLightProbe->setPosW(light_pos);
     	pLightProbe->setIntensity(light_color);
-    	pSceneBuilder->setLightProbe(pLightProbe);
+    	//pSceneBuilder->setLightProbe(pLightProbe);
     	return;
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";

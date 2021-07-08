@@ -75,7 +75,7 @@ bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdat
         UpdateFlags updateFlags = UpdateFlags::None;
 
         // Check if instance transform changed.
-        if (mpScene->getAnimationController()->didMatrixChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
+        if (mpScene->getAnimationController()->isMatrixChanged(instanceData.globalMatrixID)) updateFlags |= UpdateFlags::MatrixChanged;
 
         // Store update status.
         if (updateFlags != UpdateFlags::None) updatedLights.push_back(lightIdx);
@@ -579,14 +579,12 @@ void LightCollection::copyDataToStagingBuffer(RenderContext* pRenderContext) con
     mStagingBufferValid = true;
 }
 
-void LightCollection::syncCPUData() const
-{
+void LightCollection::syncCPUData() const {
     if (mCPUInvalidData == CPUOutOfDateFlags::None) return;
 
     // If the data has not yet been copied to the staging buffer, we have to do that first.
     // This should normally have done by calling prepareSyncCPUData().
-    if (!mStagingBufferValid)
-    {
+    if (!mStagingBufferValid) {
         logWarning("LightCollection::syncCPUData() performance warning - Call LightCollection::prepareSyncCPUData() ahead of time if possible");
         prepareSyncCPUData(mpDevice->getRenderContext());
     }
@@ -610,26 +608,22 @@ void LightCollection::syncCPUData() const
 
     assert(mTriangleCount > 0);
     assert(mMeshLightTriangles.size() == (size_t)mTriangleCount);
-    for (uint32_t triIdx = 0; triIdx < mTriangleCount; triIdx++)
-    {
+    for (uint32_t triIdx = 0; triIdx < mTriangleCount; triIdx++) {
         const auto tri = triangleData[triIdx].unpack();
         auto& meshLightTri = mMeshLightTriangles[triIdx];
 
-        if (updateTriangleData)
-        {
+        if (updateTriangleData) {
             meshLightTri.lightIdx = tri.lightIdx;
             meshLightTri.normal = tri.normal;
             meshLightTri.area = tri.area;
 
-            for (uint32_t j = 0; j < 3; j++)
-            {
+            for (uint32_t j = 0; j < 3; j++) {
                 meshLightTri.vtx[j].pos = tri.posW[j];
                 meshLightTri.vtx[j].uv = tri.texCoords[j];
             }
         }
 
-        if (updateFluxData)
-        {
+        if (updateFluxData) {
             meshLightTri.flux = fluxData[triIdx].flux;
             meshLightTri.averageRadiance = fluxData[triIdx].averageRadiance;
         }
@@ -637,6 +631,18 @@ void LightCollection::syncCPUData() const
 
     mpStagingBuffer->unmap();
     mCPUInvalidData = CPUOutOfDateFlags::None;
+}
+
+uint64_t LightCollection::getMemoryUsageInBytes() const {
+    uint64_t m = 0;
+    if (mpTriangleData) m += mpTriangleData->getSize();
+    if (mpActiveTriangleList) m += mpActiveTriangleList->getSize();
+    if (mpFluxData) m += mpFluxData->getSize();
+    if (mpMeshData) m += mpMeshData->getSize();
+    if (mpPerMeshInstanceOffset) m += mpPerMeshInstanceOffset->getSize();
+    if (mpStagingBuffer) m += mpStagingBuffer->getSize();
+    if (mIntegrator.pResultBuffer) m += mIntegrator.pResultBuffer->getSize();
+    return m;
 }
 
 }  // namespace Falcor

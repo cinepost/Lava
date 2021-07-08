@@ -103,6 +103,7 @@ const char* getLogLevelString(Logger::Level L) {
     const char* c = nullptr;
 #define create_level_case(_l) case _l: c = "(" #_l ")" ;break;
     switch(L) {
+        create_level_case(Logger::Level::Debug);
         create_level_case(Logger::Level::Info);
         create_level_case(Logger::Level::Warning);
         create_level_case(Logger::Level::Error);
@@ -129,36 +130,6 @@ void Logger::log(Level L, const std::string& msg, MsgBox mbox) {
         }
     }
 #endif
-    if (sShowBoxOnError) {
-        if (mbox == MsgBox::Auto) {
-            mbox = (L >= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
-        }
-
-        if (mbox != MsgBox::None) {
-            enum ButtonId {
-                ContinueOrRetry,
-                Debug,
-                Abort
-            };
-
-            // Setup message box buttons
-            std::vector<MsgBoxCustomButton> buttons;
-            if (L != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
-            if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
-            buttons.push_back({Abort, "Abort"});
-
-            // Setup icon
-            MsgBoxIcon icon = MsgBoxIcon::Info;
-            if (L == Level::Warning) icon = MsgBoxIcon::Warning;
-            else if (L >= Level::Error) icon = MsgBoxIcon::Error;
-
-            // Show message box
-            auto result = msgBox(msg, buttons, icon);
-            if (result == Debug) debugBreak();
-            else if (result == Abort) exit(1);
-        }
-    }
-
     // Terminate on errors if showBoxOnError is not set
     if (L == Level::Error && sShowBoxOnError == false) exit(1);
 

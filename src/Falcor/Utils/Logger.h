@@ -41,11 +41,14 @@ namespace Falcor {
         /** Log messages severity
         */
         enum class Level {
-            Info = 0,       ///< Informative messages.
-            Warning = 1,    ///< Warning messages.
-            Error = 2,      ///< Error messages. Application might be able to continue running, but incorrectly.
-            Fatal = 3,      ///< Unrecoverable error messages. Terminates application immediately.
-            Disabled = -1
+            Disabled,   ///< Disable log messages.
+            Fatal,      ///< Unrecoverable error messages. Terminates application immediately.
+            Error,      ///< Error messages. Application might be able to continue running, but incorrectly.
+            Warning,    ///< Warning messages.
+            Info,       ///< Informative messages.
+            Debug,      ///< Debugging messages.
+
+            Count,      ///< Keep this last.
         };
 
         /** Message box behavior
@@ -97,6 +100,7 @@ namespace Falcor {
         friend void logWarning(const std::string& msg, MsgBox mbox);
         friend void logError(const std::string& msg, MsgBox mbox);
         friend void logFatal(const std::string& msg, MsgBox mbox);
+        friend void logDebug(const std::string& msg, MsgBox mbox);
 
         static void log(Level L, const std::string& msg, MsgBox mbox = Logger::MsgBox::Auto);
         Logger() = delete;
@@ -107,6 +111,14 @@ namespace Falcor {
         LOG_DBG("%s", msg.c_str());
         #else 
         Logger::log(Logger::Level::Info, msg, mbox); 
+        #endif
+    }
+
+    inline void logDebug(const std::string& msg, Logger::MsgBox mbox = Logger::MsgBox::Auto) { 
+        #ifdef DEBUG
+        LOG_DBG("%s", msg.c_str());
+        #else 
+        Logger::log(Logger::Level::Debug, msg, mbox); 
         #endif
     }
     

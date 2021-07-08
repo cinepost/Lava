@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -33,6 +33,14 @@ struct AABB
 {
     float3 minPoint;    ///< Minimum point.
     float3 maxPoint;    ///< Maximum point. If any minPoint > maxPoint the box is invalid.
+
+    /** Create a new AABB.
+        Note if minPoint > maxPoint in any component the box is invalid.
+    */
+    static AABB create(float3 minPoint, float3 maxPoint)
+    {
+        return { minPoint, maxPoint };
+    }
 
     /** Set box to single point.
     */

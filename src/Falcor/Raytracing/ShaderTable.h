@@ -29,8 +29,15 @@
 #define FALCOR_RAYTRACING_SHADERTABLE_H_
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/RenderContext.h"
+
+
+#define D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES 64
+#define D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT 64
+#define D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT 64
+
 
 namespace Falcor {
 
@@ -63,7 +70,7 @@ class dlldecl ShaderTable {
 
     /** Create a new object
     */
-    static SharedPtr create();//RtProgram* pProgram, const Scene* pScene);
+    static SharedPtr create(Device::SharedPtr pDevice);//RtProgram* pProgram, const Scene* pScene);
 
     /** Update the shader table.
         This function doesn't do any early out. If it's called, it will always update the table.
@@ -137,13 +144,14 @@ class dlldecl ShaderTable {
     RtStateObject* getRtso() const { return mpRtso; }
 
 private:
-    ShaderTable();
+    ShaderTable(Device::SharedPtr pDevice);
 
     SubTableInfo mSubTables[int(SubTableType::Count)];
 
     RtStateObject*          mpRtso = nullptr;
     Buffer::SharedPtr       mpBuffer;
     std::vector<uint8_t>    mData;
+    Device::SharedPtr       mpDevice;
 };
 
 }  // namespace Falcor

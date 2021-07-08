@@ -156,7 +156,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
     mpState->setFbo(mpFbo);
-    mpCubeScene->render(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

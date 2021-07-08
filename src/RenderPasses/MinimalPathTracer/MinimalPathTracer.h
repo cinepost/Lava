@@ -25,10 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_MINIMALPATHTRACER_MINIMALPATHTRACER_H_
+#define SRC_FALCOR_RENDERPASSES_MINIMALPATHTRACER_MINIMALPATHTRACER_H_
+
 #include "Falcor.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Raytracing/RtProgram/RtProgram.h"
+#include "Falcor/Raytracing/RtProgramVars.h"
 
 using namespace Falcor;
 
@@ -51,27 +55,19 @@ public:
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    MinimalPathTracer(const Dictionary& dict);
+    MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict);
     void prepareVars();
 
     // Internal state
     Scene::SharedPtr            mpScene;                    ///< Current scene.
     SampleGenerator::SharedPtr  mpSampleGenerator;          ///< GPU sample generator.
-    EnvProbe::SharedPtr         mpEnvProbe;                 ///< Environment map sampling (if used).
-    std::string                 mEnvProbeFilename;          ///< Name of loaded environment map (stripped of full path).
 
     // Configuration
     uint                        mMaxBounces = 3;            ///< Max number of indirect bounces (0 = none).
     bool                        mComputeDirect = true;      ///< Compute direct illumination (otherwise indirect only).
-    int                         mUseAnalyticLights = true;  ///< Use built-in analytic lights.
-    int                         mUseEmissiveLights = true;  ///< Use emissive geometry as light sources.
-    int                         mUseEnvLight = true;        ///< Use environment map as light source (if loaded).
-    int                         mUseEnvBackground = true;   ///< Use environment map as background (if loaded).
-
+    
     // Runtime data
     uint                        mFrameCount = 0;            ///< Frame count since scene was loaded.
     bool                        mOptionsChanged = false;
@@ -96,18 +92,16 @@ private:
         // Add variables here that should be serialized to/from the dictionary.
         serialize(mMaxBounces);
         serialize(mComputeDirect);
-        serialize(mUseAnalyticLights);
-        serialize(mUseEmissiveLights);
-        serialize(mUseEnvLight);
-        serialize(mUseEnvBackground);
 
         if constexpr (loadFromDict)
         {
-            for (const auto& v : dict)
+            for (const auto& [key, value] : dict)
             {
-                if (vars.find(v.key()) == vars.end()) logWarning("Unknown field `" + v.key() + "` in a PathTracer dictionary");
+                if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a PathTracer dictionary");
             }
         }
     }
 #undef serialize
 };
+
+#endif  // SRC_FALCOR_RENDERPASSES_MINIMALPATHTRACER_MINIMALPATHTRACER_H_

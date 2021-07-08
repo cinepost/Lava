@@ -48,28 +48,22 @@ namespace Falcor {
         return true;
     }
     
-    RtProgramVars::RtProgramVars(
-        const RtProgram::SharedPtr& pProgram,
-        const Scene::SharedPtr& pScene)
-        : ProgramVars(pProgram->getReflector())
-        , mpScene(pScene)
+    RtProgramVars::RtProgramVars(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene)
+        : ProgramVars(pDevice, pProgram->getReflector()), mpScene(pScene)
     {
-        if (checkParams(pProgram, pScene) == false)
-        {
-            throw std::exception("Failed to create RtProgramVars object");
+        if (checkParams(pProgram, pScene) == false) {
+            throw std::runtime_error("Failed to create RtProgramVars object");
         }
-        mpRtVarsHelper = RtVarsContext::create();
+        mpRtVarsHelper = RtVarsContext::create(pDevice);
         assert(mpRtVarsHelper);
         init();
     }
 
-    RtProgramVars::SharedPtr RtProgramVars::create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene)
-    {
-        return SharedPtr(new RtProgramVars(pProgram, pScene));
+    RtProgramVars::SharedPtr RtProgramVars::create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene) {
+        return SharedPtr(new RtProgramVars(pDevice, pProgram, pScene));
     }
 
-    void RtProgramVars::init()
-    {
+    void RtProgramVars::init() {
         // We must create sub-shader-objects for all the entry point
         // groups that are required by the scene.
         //
@@ -113,7 +107,7 @@ namespace Falcor {
             auto& info = descExtra.mRayGenEntryPoints[i];
             if(info.groupIndex < 0) continue;
 
-            mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+            mRayGenVars[i].pVars = EntryPointGroupVars::create(mpDevice, pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         }
 
         for(uint32_t i = 0; i < descHitGroupCount; ++i) {
@@ -121,7 +115,7 @@ namespace Falcor {
             if(info.groupIndex < 0) continue;
 
             for(uint32_t j = 0; j < blockCountPerHitGroup; ++j) {
-                mHitVars[j*descHitGroupCount + i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+                mHitVars[j*descHitGroupCount + i].pVars = EntryPointGroupVars::create(mpDevice, pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
             }
         }
 
@@ -129,7 +123,7 @@ namespace Falcor {
             auto& info = descExtra.mMissEntryPoints[i];
             if(info.groupIndex < 0) continue;
 
-            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
+            mMissVars[i].pVars = EntryPointGroupVars::create(mpDevice, pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         }
 
         for(auto entryPointGroupInfo : mRayGenVars)
@@ -159,7 +153,7 @@ namespace Falcor {
 
         auto pLocalRootSignature = pKernels->getLocalRootSignature();
 
-        pContext->getRtVarsCmdList()->setRootParams(pLocalRootSignature, pRecord);
+        //pContext->getRtVarsCmdList()->setRootParams(pLocalRootSignature, pRecord);
         return applyProgramVarsCommon<true>(pVars, pContext, true, pLocalRootSignature.get());
 
         return true;
@@ -175,16 +169,13 @@ namespace Falcor {
         return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
-    bool RtProgramVars::apply(
-        RenderContext*  pCtx,
-        RtStateObject*  pRtso)
-    {
+    bool RtProgramVars::apply(RenderContext*  pCtx, RtStateObject*  pRtso) {
         auto pKernels = pRtso->getKernels();
         auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
 
         bool needShaderTableUpdate = false;
         if(!mpShaderTable) {
-            mpShaderTable = ShaderTable::create();
+            mpShaderTable = ShaderTable::create(pCtx->device());
             needShaderTableUpdate = true;
         }
 

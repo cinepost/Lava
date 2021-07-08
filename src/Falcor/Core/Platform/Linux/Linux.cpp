@@ -37,7 +37,7 @@
     #include <sys/ptrace.h>
 #endif
 
-#include <gtk/gtk.h>
+// #include <gtk/gtk.h>
 // #include <fstream>
 #include <fcntl.h>
 // #include <libgen.h>
@@ -53,10 +53,6 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
-void setMainWindowHandle(WindowHandle windowHandle) {
-    //gMainWindowHandle = windowHandle;
-}
-
 enum class MsgResponseId {
     Cancel,
     Retry,
@@ -69,79 +65,7 @@ uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons,
 }
 
 MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType, MsgBoxIcon icon) {
-    if (!gtk_init_check(0, nullptr)) {
-        should_not_get_here();
-    }
-
-    GtkButtonsType buttonType = GTK_BUTTONS_NONE;
-        switch (mbType) {
-        case MsgBoxType::Ok:
-            buttonType = GTK_BUTTONS_OK;
-            break;
-        case MsgBoxType::OkCancel:
-            buttonType = GTK_BUTTONS_OK_CANCEL;
-            break;
-        case MsgBoxType::RetryCancel:
-        case MsgBoxType::AbortRetryIgnore:
-            buttonType = GTK_BUTTONS_NONE;
-            break;
-        case MsgBoxType::YesNo:
-            buttonType = GTK_BUTTONS_YES_NO;
-            break;
-        default:
-            should_not_get_here();
-            break;
-    }
-
-    GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    GtkWidget* pDialog = gtk_message_dialog_new(
-        GTK_WINDOW(pParent),
-        GTK_DIALOG_MODAL,
-        GTK_MESSAGE_INFO,
-        buttonType,
-        "%s",
-        msg.c_str()
-    );
-
-    // If custom button layout needed
-    if (buttonType == GTK_BUTTONS_NONE) {
-        if (mbType == MsgBoxType::RetryCancel) {
-            gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
-            gtk_dialog_add_button(GTK_DIALOG(pDialog), "Cancel", gint(MsgResponseId::Cancel));
-        } else if (mbType == MsgBoxType::AbortRetryIgnore) {
-            gtk_dialog_add_button(GTK_DIALOG(pDialog), "Abort", gint(MsgResponseId::Abort));
-            gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
-            gtk_dialog_add_button(GTK_DIALOG(pDialog), "Ignore", gint(MsgResponseId::Ignore));
-        }
-    }
-
-    gtk_window_set_title(GTK_WINDOW(pDialog), "Falcor");
-    gint result = gtk_dialog_run(GTK_DIALOG(pDialog));
-    gtk_widget_destroy(pDialog);
-    gtk_widget_destroy(pParent);
-    while (gtk_events_pending()) {
-        gtk_main_iteration();
-    }
-
-    switch (result) {
-        case GTK_RESPONSE_OK:
-            return MsgBoxButton::Ok;
-        case GTK_RESPONSE_CANCEL:
-            return MsgBoxButton::Cancel;
-        case GTK_RESPONSE_YES:
-            return MsgBoxButton::Yes;
-        case GTK_RESPONSE_NO:
-            return MsgBoxButton::No;
-        case gint(MsgResponseId::Retry):
-            return MsgBoxButton::Retry;
-        case gint(MsgResponseId::Abort):
-            return MsgBoxButton::Abort;
-        case gint(MsgResponseId::Ignore):
-            return MsgBoxButton::Ignore;
-        default:
-            should_not_get_here();
-            return MsgBoxButton::Cancel;
-    }
+    return MsgBoxButton::Ignore;
 }
 
 std::string exec(const std::string& cmd) {
@@ -270,63 +194,7 @@ bool getEnvironmentVariable(const std::string& varName, std::string& value) {
 
 template<bool bOpen>
 bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename) {
-    if (!gtk_init_check(0, nullptr)) {
-        should_not_get_here();
-    }
-
-    GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    GtkWidget* pDialog = nullptr;
-    gint result = 0;
-
     bool success = false;
-    if (bOpen) {
-        pDialog = gtk_file_chooser_dialog_new(
-            "Open File",
-            GTK_WINDOW(pParent),
-            GTK_FILE_CHOOSER_ACTION_OPEN,
-            "_Cancel",
-            GTK_RESPONSE_CANCEL,
-            "_Open",
-            GTK_RESPONSE_ACCEPT,
-            NULL);
-
-        result = gtk_dialog_run(GTK_DIALOG(pDialog));
-        if (result == GTK_RESPONSE_ACCEPT) {
-            char* gtkFilename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(pDialog));
-            filename = std::string(gtkFilename);
-            g_free(gtkFilename);
-            success = true;
-        }
-    } else {
-        pDialog = gtk_file_chooser_dialog_new(
-            "Save File",
-            GTK_WINDOW(pParent),
-            GTK_FILE_CHOOSER_ACTION_SAVE,
-            "_Cancel",
-            GTK_RESPONSE_CANCEL,
-            "_Save",
-            GTK_RESPONSE_ACCEPT,
-            NULL);
-
-        GtkFileChooser* pAsChooser = GTK_FILE_CHOOSER(pDialog);
-
-        gtk_file_chooser_set_do_overwrite_confirmation(pAsChooser, TRUE);
-        gtk_file_chooser_set_current_name(pAsChooser, "");
-
-        result = gtk_dialog_run(GTK_DIALOG(pDialog));
-        if (result == GTK_RESPONSE_ACCEPT) {
-            char* gtkFilename = gtk_file_chooser_get_filename(pAsChooser);
-            filename = std::string(gtkFilename);
-            g_free(gtkFilename);
-            success = true;
-        }
-    }
-
-    gtk_widget_destroy(pDialog);
-    gtk_widget_destroy(pParent);
-    while (gtk_events_pending()) {
-        gtk_main_iteration();
-    }
     return success;
 }
 
@@ -371,7 +239,7 @@ bool isDebuggerPresent() {
 }
 
 void debugBreak() {
-    raise(SIGTRAP);
+//    raise(SIGTRAP);
 }
 
 void printToDebugWindow(const std::string& s) {
@@ -379,6 +247,7 @@ void printToDebugWindow(const std::string& s) {
 }
 
 void enumerateFiles(std::string searchString, std::vector<std::string>& filenames) {
+/*
     DIR* pDir = opendir(searchString.c_str());
     if (pDir != nullptr) {
         struct dirent* pDirEntry = readdir(pDir);
@@ -391,6 +260,7 @@ void enumerateFiles(std::string searchString, std::vector<std::string>& filename
             pDirEntry = readdir(pDir);
         }
     }
+*/
 }
 
 std::thread::native_handle_type getCurrentThread() {

@@ -31,6 +31,7 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Scene/Transform.h"
 
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
@@ -92,6 +93,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
         Normal,
         Occlusion,
         SpecularTransmission,
+        Displacement,
 
         Count // Must be last
     };
@@ -360,21 +362,37 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     const MaterialResources& getResources() const { return mResources; }
 
+    /** Set the material texture transform.
+    */
+    void setTextureTransform(const Transform& texTransform);
+
+    /** Get a reference to the material texture transform.
+    */
+    Transform& getTextureTransform() { return mTextureTransform; }
+
+    /** Get the material texture transform.
+    */
+    const Transform& getTextureTransform() const { return mTextureTransform; }
+
 private:
     void markUpdates(UpdateFlags updates);
 
     void setFlags(uint32_t flags);
-    void updateBaseColorType();
-    void updateSpecularType();
-    void updateRoughnessType();
-    void updateEmissiveType();
-    void updateOcclusionFlag();
-    void updateSpecularTransmissionType();
+        void updateBaseColorType();
+        void updateSpecularType();
+        void updateEmissiveType();
+        void updateRoughnessType();
+        void updateSpecularTransmissionType();
+        void updateAlphaMode();
+        void updateNormalMapMode();
+        void updateOcclusionFlag();
+        void updateDisplacementFlag();
 
     Material(std::shared_ptr<Device> pDevice, const std::string& name);
     std::string mName;
     MaterialData mData;
     MaterialResources mResources;
+    Transform mTextureTransform;
     bool mOcclusionMapEnabled = false;
     mutable UpdateFlags mUpdates = UpdateFlags::None;
     static UpdateFlags sGlobalUpdates;

@@ -45,9 +45,10 @@ bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const {
 RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const Desc& desc) {
     SharedPtr pState = SharedPtr(new RtStateObject(pDevice, desc));
 
-    RtStateObjectHelper rtsoHelper;
+    //RtStateObjectHelper rtsoHelper;
+    
     // Pipeline config
-    rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
+    //rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
 
     // Loop over the programs
     auto pKernels = pState->getKernels();
@@ -110,7 +111,7 @@ RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const 
 
     // Add an empty global root-signature
     RootSignature* pRootSig = desc.mpGlobalRootSignature ? desc.mpGlobalRootSignature.get() : RootSignature::getEmpty(pDevice).get();
-    rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
+    //rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
 
     // Create the state
 

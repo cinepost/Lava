@@ -130,9 +130,9 @@ uint64_t Buffer::getGpuAddress() const {
     //UNSUPPORTED_IN_VULKAN(__FUNCTION__);
     //return 0;
     VkBufferDeviceAddressInfo info = {};
-    info.buffer = mApiHandle.mBuffer;
+    info.buffer = mApiHandle.getBuffer();
 
-    vkGetBufferDeviceAddressKHR(mpDevice->getApiHandle(), &pInfo);
+    return vkGetBufferDeviceAddressKHR(mpDevice->getApiHandle(), &info);
 }
 
 void Buffer::unmap() {

@@ -86,16 +86,16 @@ bool Renderer::init() {
     auto const& confgStore = Falcor::ConfigStore::instance();
     std::string tangentMode = confgStore.get<std::string>("geo_tangent_generation", "mikkt");
 
-    auto sceneBuilderFlags = Falcor::SceneBuilder::Flags::DontMergeMeshes | Falcor::SceneBuilder::Flags::RemoveDuplicateMaterials;
+    auto sceneBuilderFlags = Falcor::SceneBuilder::Flags::DontMergeMeshes;
     if( tangentMode == "mikkt" ) {
-        sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
+        //sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
     }
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
     mpSceneBuilder->addCamera(mpCamera);
-    mpSceneBuilder->setCamera("main");
+    //mpSceneBuilder->setCamera("main");
 
 
     mInited = true;
@@ -227,15 +227,11 @@ void Renderer::createRenderGraph() {
     }
 
     //// create env map stuff
-    auto pLightProbe = mpSceneBuilder->getLightProbe();
-    if(pLightProbe) {
-        auto pTexture = pLightProbe->getOrigTexture();
-        if (pTexture) {
-            auto pEnvMap = Falcor::EnvMap::create(mpDevice, pTexture);
-            pEnvMap->setTint(pLightProbe->getIntensity());
-            pScene->setEnvMap(pEnvMap);
-        }
-        //pScene->loadEnvMap("/home/max/Desktop/parking_lot.hdr");
+    Texture::SharedPtr pEnvTexture = nullptr;
+    if (pEnvTexture) {
+        auto pEnvMap = Falcor::EnvMap::create(mpDevice, pEnvTexture);
+        //pEnvMap->setTint(...);
+        pScene->setEnvMap(pEnvMap);
     }
     ////
 
@@ -332,12 +328,10 @@ void Renderer::createRenderGraph() {
     // SkyBox
     LOG_ERR("SkyBoxPass 0");
     mpSkyBoxPass = SkyBox::create(pRenderContext);
-    
-    if(pLightProbe) {
-        mpSkyBoxPass->setIntensity(pLightProbe->getIntensity());
-    } else {
-        mpSkyBoxPass->setTransparency(0.0f);
-    }
+
+    // TODO: handle transparency    
+    mpSkyBoxPass->setTransparency(0.0f);
+
     mpSkyBoxPass->setScene(pRenderContext, pScene);
     auto pass3 = mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 

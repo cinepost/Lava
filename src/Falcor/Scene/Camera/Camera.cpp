@@ -33,8 +33,7 @@
 
 namespace Falcor {
 
-namespace
-{
+namespace {
     const std::string kAnimated = "animated";
     const std::string kPosition = "position";
     const std::string kTarget = "target";
@@ -46,22 +45,17 @@ static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size shoul
 // Default dimensions of full frame cameras and 35mm film
 const float Camera::kDefaultFrameHeight = 24.0f;
 
-Camera::Camera()
-{
-}
+Camera::Camera() {}
 
 Camera::~Camera() = default;
 
-Camera::SharedPtr Camera::create()
-{
+Camera::SharedPtr Camera::create() {
     Camera* pCamera = new Camera;
     return SharedPtr(pCamera);
 }
 
-Camera::Changes Camera::beginFrame(bool firstFrame)
-{
-    if (mJitterPattern.pGenerator)
-    {
+Camera::Changes Camera::beginFrame(bool firstFrame) {
+    if (mJitterPattern.pGenerator) {
         float2 jitter = mJitterPattern.pGenerator->next();
         jitter *= mJitterPattern.scale;
         setJitterInternal(jitter.x, jitter.y);
@@ -101,17 +95,12 @@ Camera::Changes Camera::beginFrame(bool firstFrame)
     return getChanges();
 }
 
-void Camera::calculateCameraParameters() const
-{
-    if (mDirty)
-    {
-        if (mPreserveHeight)
-        {
+void Camera::calculateCameraParameters() const {
+    if (mDirty) {
+        if (mPreserveHeight) {
             // Set frame width based on height and aspect ratio
             mData.frameWidth = mData.frameHeight * mData.aspectRatio;
-        }
-        else
-        {
+        } else {
             // Set frame height based on width and aspect ratio
             mData.frameHeight = mData.frameWidth / mData.aspectRatio;
         }
@@ -119,32 +108,23 @@ void Camera::calculateCameraParameters() const
         // Interpret focal length of 0 as 0 FOV. Technically 0 FOV should be focal length of infinity.
         const float fovY = mData.focalLength == 0.0f ? 0.0f : focalLengthToFovY(mData.focalLength, mData.frameHeight);
 
-        if (mEnablePersistentViewMat)
-        {
+        if (mEnablePersistentViewMat) {
             mData.viewMat = mPersistentViewMat;
             auto viewInvMat = glm::inverse(mPersistentViewMat);
 
             // set camera word position from our persistent view matrix
             mData.posW = {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]};
-        }
-        else
-        {
+        } else {
             mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
         }
 
         // if camera projection is set to be persistent, don't override it.
-        if (mEnablePersistentProjMat)
-        {
+        if (mEnablePersistentProjMat) {
             mData.projMat = mPersistentProjMat;
-        }
-        else
-        {
-            if (fovY != 0.f)
-            {
+        } else {
+            if (fovY != 0.f) {
                 mData.projMat = glm::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
-            }
-            else
-            {
+            } else {
                 // Take the length of look-at vector as half a viewport size
                 const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
                 mData.projMat = glm::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
@@ -168,8 +148,7 @@ void Camera::calculateCameraParameters() const
         // Extract camera space frustum planes from the VP matrix
         // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
         glm::mat4 tempMat = glm::transpose(mData.viewProjMat);
-        for (int i = 0; i < 6; i++)
-        {
+        for (int i = 0; i < 6; i++) {
             float4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
             if(i != 5) // Z range is [0, w]. For the 0 <= z plane we don't need to add w
             {
@@ -194,113 +173,95 @@ void Camera::calculateCameraParameters() const
     }
 }
 
-const glm::mat4& Camera::getViewMatrix() const
-{
+const glm::mat4& Camera::getViewMatrix() const {
     calculateCameraParameters();
     return mData.viewMat;
 }
 
-const glm::mat4& Camera::getProjMatrix() const
-{
+const glm::mat4& Camera::getProjMatrix() const {
     calculateCameraParameters();
     return mData.projMat;
 }
 
-const glm::mat4& Camera::getViewProjMatrix() const
-{
+const glm::mat4& Camera::getViewProjMatrix() const {
     calculateCameraParameters();
     return mData.viewProjMat;
 }
 
-const glm::mat4& Camera::getInvViewProjMatrix() const
-{
+const glm::mat4& Camera::getInvViewProjMatrix() const {
     calculateCameraParameters();
     return mData.invViewProj;
 }
 
-void Camera::setProjectionMatrix(const glm::mat4& proj)
-{
+void Camera::setProjectionMatrix(const glm::mat4& proj) {
     mDirty = true;
     mPersistentProjMat = proj;
     togglePersistentProjectionMatrix(true);
 }
 
-void Camera::setViewMatrix(const glm::mat4& view)
-{
+void Camera::setViewMatrix(const glm::mat4& view) {
     mDirty = true;
     mPersistentViewMat = view;
     togglePersistentViewMatrix(true);
 }
 
-void Camera::togglePersistentProjectionMatrix(bool persistent)
-{
+void Camera::togglePersistentProjectionMatrix(bool persistent) {
     mEnablePersistentProjMat = persistent;
 }
 
-void Camera::togglePersistentViewMatrix(bool persistent)
-{
+void Camera::togglePersistentViewMatrix(bool persistent) {
     mEnablePersistentViewMat = persistent;
 }
 
-bool Camera::isObjectCulled(const BoundingBox& box) const
-{
+bool Camera::isObjectCulled(const AABB& box) const {
     calculateCameraParameters();
 
     bool isInside = true;
     // AABB vs. frustum test
     // See method 4b: https://fgiesen.wordpress.com/2010/10/17/view-frustum-culling/
-    for (int plane = 0; plane < 6; plane++)
-    {
-        float3 signedExtent = box.extent * mFrustumPlanes[plane].sign;
-        float dr = glm::dot(box.center + signedExtent, mFrustumPlanes[plane].xyz);
+    for (int plane = 0; plane < 6; plane++) {
+        float3 signedHalfExtent = 0.5f * box.extent() * mFrustumPlanes[plane].sign;
+        float dr = glm::dot(box.center() + signedHalfExtent, mFrustumPlanes[plane].xyz);
         isInside = isInside && (dr > mFrustumPlanes[plane].negW);
     }
 
     return !isInside;
 }
 
-void Camera::setShaderData(const ShaderVar& var) const
-{
+void Camera::setShaderData(const ShaderVar& var) const {
     calculateCameraParameters();
     var["data"].setBlob(mData);
 }
 
-void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale)
-{
+void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const float2& scale) {
     mJitterPattern.pGenerator = pGenerator;
     mJitterPattern.scale = scale;
-    if (!pGenerator)
-    {
+    if (!pGenerator) {
         setJitterInternal(0, 0);
     }
 }
 
-void Camera::setJitter(float jitterX, float jitterY)
-{
-    if (mJitterPattern.pGenerator)
-    {
+void Camera::setJitter(float jitterX, float jitterY) {
+    if (mJitterPattern.pGenerator) {
         logWarning("Camera::setJitter() called when a pattern-generator object was attached to the camera. Detaching the pattern-generator");
         mJitterPattern.pGenerator = nullptr;
     }
     setJitterInternal(jitterX, jitterY);
 }
 
-void Camera::setJitterInternal(float jitterX, float jitterY)
-{
+void Camera::setJitterInternal(float jitterX, float jitterY) {
     mData.jitterX = jitterX;
     mData.jitterY = jitterY;
     mDirty = true;
 }
 
-float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const
-{
+float Camera::computeScreenSpacePixelSpreadAngle(const uint32_t winHeightPixels) const {
     const float FOVrad = focalLengthToFovY(getFocalLength(), Camera::kDefaultFrameHeight);
     const float angle = std::atan(2.0f * std::tan(FOVrad * 0.5f) / winHeightPixels);
     return angle;
 }
 
-void Camera::updateFromAnimation(const glm::mat4& transform)
-{
+void Camera::updateFromAnimation(const glm::mat4& transform) {
     float3 up = float3(transform[1]);
     float3 fwd = float3(transform[2]);
     float3 pos = float3(transform[3]);
@@ -309,17 +270,14 @@ void Camera::updateFromAnimation(const glm::mat4& transform)
     setTarget(pos + fwd);
 }
 
-std::string Camera::getScript(const std::string& cameraVar)
-{
+std::string Camera::getScript(const std::string& cameraVar) {
     std::string c;
 
-    if (hasAnimation() && !isAnimated())
-    {
+    if (hasAnimation() && !isAnimated()) {
         c += Scripting::makeSetProperty(cameraVar, kAnimated, false);
     }
 
-    if (!hasAnimation() || !isAnimated())
-    {
+    if (!hasAnimation() || !isAnimated()) {
         c += Scripting::makeSetProperty(cameraVar, kPosition, getPosition());
         c += Scripting::makeSetProperty(cameraVar, kTarget, getTarget());
         c += Scripting::makeSetProperty(cameraVar, kUp, getUpVector());
@@ -329,8 +287,7 @@ std::string Camera::getScript(const std::string& cameraVar)
 }
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(Camera)
-{
+SCRIPT_BINDING(Camera) {
     pybind11::class_<Camera, Animatable, Camera::SharedPtr> camera(m, "Camera");
     camera.def_property_readonly("name", &Camera::getName);
     camera.def_property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);

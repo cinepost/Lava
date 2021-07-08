@@ -33,40 +33,40 @@
 
 namespace Falcor {
 
-    class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass> {
-     public:
-        //using SharedPtr = ParameterBlockSharedPtr::shared_ptr<RasterScenePass>;
-        using SharedPtr = ParameterBlockSharedPtr<RasterScenePass>;
+class dlldecl RasterScenePass : public BaseGraphicsPass, public std::enable_shared_from_this<RasterScenePass> {
+ public:
+    //using SharedPtr = ParameterBlockSharedPtr::shared_ptr<RasterScenePass>;
+    using SharedPtr = ParameterBlockSharedPtr<RasterScenePass>;
 
-        /** Create a new object.
-            \param[in] pScene The scene object.
-            \param[in] progDesc The program description.
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
+    /** Create a new object.
+        \param[in] pScene The scene object.
+        \param[in] progDesc The program description.
+        \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines = Program::DefineList());
 
-        /** Create a new object.
-            \param[in] pScene The scene object
-            \param[in] filename Program filename.
-            \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
-            \param[in] psEntry Pixel shader entry point.
-            \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
-            \return A new object, or throws an exception if creation failed.
-        */
-        static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
+    /** Create a new object.
+        \param[in] pScene The scene object
+        \param[in] filename Program filename.
+        \param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
+        \param[in] psEntry Pixel shader entry point.
+        \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
+        \return A new object, or throws an exception if creation failed.
+    */
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const Program::DefineList& programDefines = Program::DefineList());
 
-        /** Render the scene into the dst FBO
-        */
-        void renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo);
+    /** Render the scene into the dst FBO
+    */
+    void renderScene(RenderContext* pContext, const Fbo::SharedPtr& pDstFbo);
 
-        /** Get the scene
-        */
-        const Scene::SharedPtr& getScene() const { return mpScene; }
-     private:
-        RasterScenePass(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
-        Scene::SharedPtr mpScene;
-    };
+    /** Get the scene
+    */
+    const Scene::SharedPtr& getScene() const { return mpScene; }
+ private:
+    RasterScenePass(std::shared_ptr<Device> pDevice, const Scene::SharedPtr& pScene, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    Scene::SharedPtr mpScene;
+};
 
 }  // namespace Falcor
 

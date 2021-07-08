@@ -268,6 +268,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     */
     const std::string& getSourceFilename() const { return mSourceFilename; }
 
+    /** Returns the total number of texels across all mip levels and array slices.
+    */
+    uint64_t getTexelCount() const;
+
     /** Returns the size of the texture in bytes as allocated in GPU memory.
     */
     size_t getTextureSizeInBytes();

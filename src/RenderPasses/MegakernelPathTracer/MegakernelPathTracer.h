@@ -25,9 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_MEGAKERNELPATHTRACER_MEGAKERNELPATHTRACER_H_
+#define SRC_FALCOR_RENDERPASSES_MEGAKERNELPATHTRACER_MEGAKERNELPATHTRACER_H_
+
 #include "Falcor.h"
 #include "RenderPasses/Shared/PathTracer/PathTracer.h"
+#include "Falcor/Raytracing/RtProgram/RtProgram.h"
+#include "Falcor/Raytracing/RtProgramVars.h"
+
 
 using namespace Falcor;
 
@@ -68,3 +73,5 @@ private:
         ParameterBlock::SharedPtr pParameterBlock;      ///< ParameterBlock for all data.
     } mTracer;
 };
+
+#endif // SRC_FALCOR_RENDERPASSES_MEGAKERNELPATHTRACER_MEGAKERNELPATHTRACER_H_

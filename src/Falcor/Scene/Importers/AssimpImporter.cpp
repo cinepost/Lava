@@ -221,24 +221,28 @@ namespace
         resetTime(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys);
     }
 
-    Animation::SharedPtr createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
+    void createAnimation(ImporterData& data, const aiAnimation* pAiAnim)
     {
         assert(pAiAnim->mNumMeshChannels == 0);
         double duration = pAiAnim->mDuration;
         double ticksPerSecond = pAiAnim->mTicksPerSecond ? pAiAnim->mTicksPerSecond : 25;
         double durationInSeconds = duration / ticksPerSecond;
 
-        Animation::SharedPtr pAnimation = Animation::create(pAiAnim->mName.C_Str(), durationInSeconds);
-
         for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
         {
             aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
             resetNegativeKeyframeTimes(pAiNode);
 
-            std::vector<uint32_t> channels;
+            std::vector<Animation::SharedPtr> animations;
             for (uint32_t i = 0; i < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); i++)
             {
-                channels.push_back(pAnimation->addChannel(data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i)));
+                Animation::SharedPtr pAnimation = Animation::create(
+                    std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(i),
+                    data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), i),
+                    durationInSeconds
+                );
+                animations.push_back(pAnimation);
+                data.builder.addAnimation(pAnimation);
             }
 
             uint32_t pos = 0, rot = 0, scale = 0;
@@ -265,11 +269,9 @@ namespace
                 done = parseAnimationChannel(pAiNode->mPositionKeys, pAiNode->mNumPositionKeys, time, pos, keyframe.translation);
                 done = parseAnimationChannel(pAiNode->mRotationKeys, pAiNode->mNumRotationKeys, time, rot, keyframe.rotation) && done;
                 done = parseAnimationChannel(pAiNode->mScalingKeys, pAiNode->mNumScalingKeys, time, scale, keyframe.scaling) && done;
-                for(auto c : channels) pAnimation->addKeyframe(c, keyframe);
+                for(auto pAnimation : animations) pAnimation->addKeyframe(keyframe);
             }
         }
-
-        return pAnimation;
     }
 
     bool createCameras(ImporterData& data, ImportMode importMode)
@@ -398,8 +400,7 @@ namespace
     {
         for (uint32_t i = 0; i < data.pScene->mNumAnimations; i++)
         {
-            Animation::SharedPtr pAnimation = createAnimation(data, data.pScene->mAnimations[i]);
-            data.builder.addAnimation(pAnimation);
+            createAnimation(data, data.pScene->mAnimations[i]);
         }
         return true;
     }

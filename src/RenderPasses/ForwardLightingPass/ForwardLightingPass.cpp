@@ -208,7 +208,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
             mpVars->setTexture(kAOBuffer, renderData[kAOBuffer]->asTexture());
         
         mpState->setFbo(mpFbo);
-        mpScene->render(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+        mpScene->rasterize(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
     }
 }
 

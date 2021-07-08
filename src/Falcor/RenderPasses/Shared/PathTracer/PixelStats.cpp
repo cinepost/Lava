@@ -111,24 +111,6 @@ namespace Falcor
         }
     }
 
-    void PixelStats::renderUI(Gui::Widgets& widget)
-    {
-        // Configuration.
-        widget.checkbox("Pixel stats", mStatsEnabled);
-        widget.tooltip("Collects ray tracing traversal stats on the GPU.\nNote that this option slows down the performance.");
-
-        // Fetch data and show stats if available.
-        copyStatsToCPU();
-        if (mStatsValid)
-        {
-            std::ostringstream oss;
-            oss << "Path length (avg): " << std::fixed << std::setprecision(3) << mStats.avgPathLength << "\n";
-            oss << "Traced rays (avg): " << std::fixed << std::setprecision(3) << mStats.avgRaysPerPixel << "\n";
-            oss << "Traced rays (total): " << mStats.totalRays << "\n";
-            widget.text(oss.str().c_str());
-        }
-    }
-
     bool PixelStats::getStats(PixelStats::Stats& stats)
     {
         copyStatsToCPU();

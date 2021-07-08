@@ -25,18 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_
-#define SRC_FALCOR_RENDERGRAPH_RENDERPASS_H_
+#ifndef FALCOR_RENDERGRAPH_RENDERPASS_H_
+#define FALCOR_RENDERGRAPH_RENDERPASS_H_
 
-#include "Falcor/Core/Framework.h"
-#include "RenderPassReflection.h"
+
+//#include "Falcor/Core/Framework.h"
+//#include "RenderPassReflection.h"
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/InternalDictionary.h"
-#include "ResourceCache.h"
-#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Scene.h" 
-#include "Falcor/Core/API/RenderContext.h" 
-#include "Falcor/Core/API/Device.h"
+#include "ResourceCache.h"
+//#include "Falcor/Core/API/Texture.h"
+//#include "Falcor/Scene/Scene.h" 
+//#include "Falcor/Core/API/RenderContext.h" 
 
 namespace Falcor {
 
@@ -135,7 +137,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Set a scene into the render-pass
     */
-    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
+    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {}
 
     /** Called upon hot reload (by pressing F5).
         \param[in] reloaded Resources that have been reloaded.

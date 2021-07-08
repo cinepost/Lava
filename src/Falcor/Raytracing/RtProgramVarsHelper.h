@@ -41,7 +41,7 @@ class dlldecl RtVarsContext : public CopyContext {
     /** Create a new ray tracing vars context object.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueHandle queue = nullptr);
 
     const LowLevelContextData::SharedPtr& getLowLevelData() const override { return mpLowLevelData; }
     bool resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr) override;

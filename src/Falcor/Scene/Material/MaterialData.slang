@@ -46,6 +46,7 @@ struct MaterialResources {
     Texture2D emissive;
     Texture2D normalMap;
     Texture2D specularTransmission;
+    Texture2D displacementMap;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map

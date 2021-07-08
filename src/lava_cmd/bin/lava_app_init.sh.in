@@ -10,4 +10,8 @@ export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LAVA_HOM
 export PATH=$HFS/bin:$PATH
 
 # source virtualenv
-source /home/max/dev/Lava/venv/bin/activate
+source @LAVA_INST_DIR@venv/bin/activate
+
+# make lava default cache dir
+mkdir -p /tmp/lava/cache
+

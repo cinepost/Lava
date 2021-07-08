@@ -26,11 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
-#include "Experimental/Scene/Lights/EnvProbe.h"
+#include "Experimental/Scene/Lights/EnvMapSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
 #include "Experimental/Scene/Lights/LightBVHSampler.h"
 #include "RenderGraph/RenderPassHelpers.h"
@@ -50,9 +51,6 @@ namespace Falcor
         virtual RenderPassReflection reflect(const CompileData& compileData) override;
         virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
         virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-        virtual void renderUI(Gui::Widgets& widget) override;
-        virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
-        virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
     protected:
         PathTracer(const Dictionary& dict, const ChannelList& outputs);
@@ -65,9 +63,6 @@ namespace Falcor
         uint32_t maxRaysPerPixel() const;
         bool beginFrame(RenderContext* pRenderContext, const RenderData& renderData);
         void endFrame(RenderContext* pRenderContext, const RenderData& renderData);
-        bool renderSamplingUI(Gui::Widgets& widget);
-        bool renderLightsUI(Gui::Widgets& widget);
-        void renderLoggingUI(Gui::Widgets& widget);
 
         virtual void setStaticParams(Program* pProgram) const;
 
@@ -76,11 +71,10 @@ namespace Falcor
 
         SampleGenerator::SharedPtr          mpSampleGenerator;              ///< GPU sample generator.
         EmissiveLightSampler::SharedPtr     mpEmissiveSampler;              ///< Emissive light sampler or nullptr if disabled.
-        EnvProbe::SharedPtr                 mpEnvProbe;                     ///< Environment map sampling (if used).
-        std::string                         mEnvProbeFilename;              ///< Name of loaded environment map (stripped of full path).
+        EnvMapSampler::SharedPtr            mpEnvMapSampler;                ///< Environment map sampler or nullptr if disabled.
 
-        PixelStats::SharedPtr               mpPixelStats;                    ///< Utility class for collecting pixel stats.
-        PixelDebug::SharedPtr               mpPixelDebug;                    ///< Utility class for pixel debugging (print in shaders).
+        PixelStats::SharedPtr               mpPixelStats;                   ///< Utility class for collecting pixel stats.
+        PixelDebug::SharedPtr               mpPixelDebug;                   ///< Utility class for pixel debugging (print in shaders).
 
         ChannelList                         mInputChannels;                 ///< Render pass inputs.
         const ChannelList                   mOutputChannels;                ///< Render pass outputs.

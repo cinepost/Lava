@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RAYTRACING_RTPROGRAMVARS_H_
+#define FALCOR_RAYTRACING_RTPROGRAMVARS_H_
 
 #include "Core/Program/ProgramVars.h"
 #include "RtProgram/RtProgram.h"
@@ -46,29 +47,27 @@ class dlldecl RtProgramVars : public ProgramVars {
         \param[in] pScene The scene.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
+    static SharedPtr create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
 
     const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
     const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
     const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID*mDescHitGroupCount + rayID].pVars; }
+    const EntryPointGroupVars::SharedPtr& getAABBHitVars(uint32_t rayID, uint32_t primitiveIndex) { return mAABBHitVars[primitiveIndex * mDescHitGroupCount + rayID].pVars; }
 
-    bool apply(
-        RenderContext*  pCtx,
-        RtStateObject*  pRtso);
+    bool apply(RenderContext*  pCtx, RtStateObject*  pRtso);
 
     ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
 
-    uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
-    uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
     uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
     uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
+    uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+    uint32_t getAABBHitVarsCount() const { return uint32_t(mAABBHitVars.size()); }
+    uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
 
     Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices; }
     void setSceneForGeometryIndices(Scene::SharedPtr pScene) { mpSceneForGeometryIndices = pScene; }
 
   private:
-    void updateShaderTable(RenderContext* pCtx, RtStateObject* pRtso) const;
-
     struct EntryPointGroupInfo {
         EntryPointGroupVars::SharedPtr  pVars;
         ChangeEpoch                     lastObservedChangeEpoch = 0;
@@ -76,11 +75,10 @@ class dlldecl RtProgramVars : public ProgramVars {
 
     using VarsVector = std::vector<EntryPointGroupInfo>;
 
-    RtProgramVars(
-        const RtProgram::SharedPtr& pProgram,
-        const Scene::SharedPtr& pScene);
+    RtProgramVars(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
 
     void init();
+    bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
 
     Scene::SharedPtr mpScene;
     uint32_t mDescHitGroupCount = 0;
@@ -89,10 +87,13 @@ class dlldecl RtProgramVars : public ProgramVars {
     VarsVector mRayGenVars;
     VarsVector mHitVars;
     VarsVector mMissVars;
+    VarsVector mAABBHitVars;
 
     RtVarsContext::SharedPtr mpRtVarsHelper;
 
     Scene::SharedPtr mpSceneForGeometryIndices;
 };
 
-}
+} // namespace Falcor
+
+#endif  // FALCOR_RAYTRACING_RTPROGRAMVARS_H_

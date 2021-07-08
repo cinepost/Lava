@@ -1,5 +1,5 @@
 file( GLOB SOURCES
-    ./*.cpp
+    #./*.cpp
     ./Core/*.cpp
     ./Core/API/*.cpp
     ./Core/API/Vulkan/*.cpp
@@ -12,13 +12,15 @@ file( GLOB SOURCES
     ./RenderGraph/*.cpp
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
+    ./Raytracing/*.cpp
+    ./Raytracing/RtProgram/*.cpp
     ./Scene/*.cpp
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
-    ./Scene/Importers/*.cpp
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
-    #./Scene/ParticleSystem/*.cpp
+    ./Scene/Volume/*.cpp
+    ./Scene/Importers/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -31,20 +33,22 @@ file( GLOB SOURCES
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
+
+    #./Scene/ParticleSystem/*.cpp
     #./Testing/*.cpp
 
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.cpp
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.h
-    ${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.cpp
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.h
+    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.cpp
 
     #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
     #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
@@ -109,14 +113,6 @@ if (OpenImageIO_FOUND)
 endif()
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
-# ImGui
-#include_directories( ${PROJECT_SOURCE_DIR}/third_party/imgui )
-
-# GLFW 
-#find_package(glfw3 CONFIG REQUIRED)
-#include_directories(${GLFW_INCLUDE_DIRS})
-#link_libraries(${GLFW_LIBRARIES})
-
 # Use FindVulkan module added with CMAKE 3.7
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     message(STATUS "Using module to find Vulkan")
@@ -172,7 +168,20 @@ set( SLANG_LIBRARY
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 # Embree
-FIND_PACKAGE(embree 3.0 REQUIRED)
+find_package(embree 3.0 REQUIRED)
+
+# OpenVDB/NanoVDB
+find_package(OpenVDB REQUIRED openvdb nanovdb)
+include_directories( /usr/local/ )
+
+#list(APPEND SAMPLE_INCLUDE_DIR /usr/local/include)
+find_library(OpenVDB_LIBRARY openvdb HINTS /opt/lava/3drparty/lib)
+find_library(NanoVDB_LIBRARY nanovdb HINTS /usr/local/lib)
+
+include_directories( ${OpenVDB_INCLUDE_DIRS})
+
+message("OpenVDB ${OpenVDB_LIBRARY}")
+message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
 
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
@@ -197,6 +206,8 @@ target_link_libraries(
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
     OpenImageIO::OpenImageIO
+    #OpenVDB::openvdb
+    ${OpenVDB_LIBRARY}
 )
 
 # Copy/install all needed shaders

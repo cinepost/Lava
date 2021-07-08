@@ -169,9 +169,15 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
         }
 
         VkResourceType getType() const { return get()->mType; }
+        
         ImageType getImage() const {
             return get()->mImage;
         }
+        
+        BufferType getBuffer() const {
+            return get()->mBuffer;
+        }
+        
         operator ImageType() const {assert(get()->mType == VkResourceType::Image); return get()->mImage; }
         operator BufferType() const { assert(get()->mType == VkResourceType::Buffer); return get()->mBuffer; }
         operator VkDeviceMemory() const { return get()->mDeviceMem; }
@@ -203,7 +209,7 @@ class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBas
     VkResource(std::shared_ptr<Device> device, BufferType buffer, VmaAllocation allocation) : VkBaseApiHandle(device), mType(VkResourceType::Buffer), mBuffer(buffer), mAllocation(allocation) { }
 
     VkResourceType mType = VkResourceType::None;
-    ImageType mImage = VK_NULL_HANDLE;
+    ImageType  mImage = VK_NULL_HANDLE;
     BufferType mBuffer = VK_NULL_HANDLE;
     VkDeviceMemory mDeviceMem = VK_NULL_HANDLE;
     VmaAllocation mAllocation = {};

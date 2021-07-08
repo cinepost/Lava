@@ -37,6 +37,7 @@
 namespace Falcor {
 
 class Device;
+class ShaderVar;
 
 /** Environment map based radiance probe.
     Utily class for evaluating radiance stored in an lat-long environment map.
@@ -92,8 +93,7 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     */
     void setShaderData(const ShaderVar& var) const;
 
-    enum class Changes
-    {
+    enum class Changes {
         None            = 0x0,
         Transform       = 0x1,
         Intensity       = 0x2,
@@ -106,6 +106,11 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
     /** Get the environment map changes that happened in since the previous frame.
     */
     Changes getChanges() const { return mChanges; }
+
+    /** Get the total GPU memory usage in bytes.
+    */
+    uint64_t getMemoryUsageInBytes() const;
+
 
 protected:
     EnvMap(std::shared_ptr<Device> pDevice);

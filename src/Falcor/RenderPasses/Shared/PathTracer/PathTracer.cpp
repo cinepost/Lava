@@ -55,20 +55,6 @@ namespace Falcor
         {
             { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format", false, ResourceFormat::RG32Uint },
         };
-
-        // UI variables.
-        const Gui::DropdownList kMISHeuristicList =
-        {
-            { (uint32_t)MISHeuristic::BalanceHeuristic, "Balance heuristic" },
-            { (uint32_t)MISHeuristic::PowerTwoHeuristic, "Power heuristic (exp=2)" },
-            { (uint32_t)MISHeuristic::PowerExpHeuristic, "Power heuristic" },
-        };
-
-        const Gui::DropdownList kEmissiveSamplerList =
-        {
-            { (uint32_t)EmissiveLightSamplerType::Uniform, "Uniform" },
-            { (uint32_t)EmissiveLightSamplerType::LightBVH, "LightBVH" },
-        };
     };
 
     static_assert(has_vtable<PathTracerParams>::value == false, "PathTracerParams must be non-virtual");
@@ -117,200 +103,6 @@ namespace Falcor
         mSharedParams.frameDim = compileData.defaultTexDims;
     }
 
-    void PathTracer::renderUI(Gui::Widgets& widget)
-    {
-        bool dirty = false;
-
-        dirty |= widget.var("Samples/pixel", mSharedParams.samplesPerPixel, 1u, 1u << 16, 1);
-        if (dirty |= widget.var("Light samples/vertex", mSharedParams.lightSamplesPerVertex, 1u, kMaxLightSamplesPerVertex)) recreateVars();  // Trigger recreation of the program vars.
-        widget.tooltip("The number of shadow rays that will be traced at each path vertex.\n"
-            "The supported range is [1," + std::to_string(kMaxLightSamplesPerVertex) + "].", true);
-        dirty |= widget.var("Max bounces", mSharedParams.maxBounces, 0u, kMaxPathLength);
-        widget.tooltip("Maximum path length.\n0 = direct only\n1 = one indirect bounce etc.", true);
-
-        widget.text("Max rays/pixel: " + std::to_string(mMaxRaysPerPixel));
-        widget.tooltip("This is the maximum number of rays that will be traced per pixel.\n"
-            "The number depends on the scene's available light types and the current configuration.", true);
-
-        // Clamping for basic firefly removal.
-        dirty |= widget.checkbox("Clamp samples", mSharedParams.clampSamples);
-        widget.tooltip("Basic firefly removal.\n\n"
-            "This option enables clamping the per-sample contribution before accumulating. "
-            "Note that energy is lost and the images will be darker when clamping is enabled.", true);
-        if (mSharedParams.clampSamples)
-        {
-            dirty |= widget.var("Threshold", mSharedParams.clampThreshold, 0.f, std::numeric_limits<float>::max(), mSharedParams.clampThreshold * 0.01f);
-        }
-
-        dirty |= widget.checkbox("Force alpha to 1.0", mSharedParams.forceAlphaOne);
-        widget.tooltip("Forces the output alpha channel to 1.0.\n"
-            "Otherwise the background will be 0.0 and the foreground 1.0 to allow separate compositing.", true);
-
-        dirty |= widget.checkbox("Use nested dielectrics", mSharedParams.useNestedDielectrics);
-
-        dirty |= widget.checkbox("Use legacy BSDF code", mSharedParams.useLegacyBSDF);
-
-        // Draw sub-groups for various options.
-        dirty |= renderSamplingUI(widget);
-        dirty |= renderLightsUI(widget);
-        renderLoggingUI(widget);
-
-        // If rendering options that modify the output have changed, set flag to indicate that.
-        // In execute() we will pass the flag to other passes for reset of temporal data etc.
-        if (dirty)
-        {
-            validateParameters();
-            mOptionsChanged = true;
-        }
-    }
-
-    bool PathTracer::renderSamplingUI(Gui::Widgets& widget)
-    {
-        bool dirty = false;
-
-        auto samplingGroup = Gui::Group(widget, "Sampling", true);
-        if (samplingGroup.open())
-        {
-            // Importance sampling controls.
-            dirty |= samplingGroup.checkbox("BRDF importance sampling", mSharedParams.useBRDFSampling);
-            samplingGroup.tooltip("BRDF importance sampling should normally be enabled.\n\n"
-                "If disabled, cosine-weighted hemisphere sampling is used.\n"
-                "That can be useful for debugging but expect slow convergence.", true);
-
-            dirty |= samplingGroup.checkbox("Multiple importance sampling (MIS)", mSharedParams.useMIS);
-            samplingGroup.tooltip("MIS should normally be enabled.\n\n"
-                "BRDF sampling is combined with light sampling for the environment map and emissive lights.\n"
-                "Note that MIS has currently no effect on analytic lights.", true);
-            if (mSharedParams.useMIS)
-            {
-                dirty |= samplingGroup.dropdown("MIS heuristic", kMISHeuristicList, mSharedParams.misHeuristic);
-                if (mSharedParams.misHeuristic == (uint32_t)MISHeuristic::PowerExpHeuristic)
-                {
-                    dirty |= samplingGroup.var("MIS power exponent", mSharedParams.misPowerExponent, 0.01f, 10.f);
-                }
-            }
-
-            dirty |= samplingGroup.checkbox("Use light samples in volumes", mSharedParams.useLightSamplesInVolumes);
-            samplingGroup.tooltip("Use direct light sampling within volumes even though they typically are occluded.", true);
-
-            // Russian roulette.
-            dirty |= samplingGroup.checkbox("Russian roulette", mSharedParams.useRussianRoulette);
-            if (mSharedParams.useRussianRoulette)
-            {
-                dirty |= samplingGroup.var("Absorption probability ", mSharedParams.probabilityAbsorption, 0.0f, 0.999f);
-                samplingGroup.tooltip("Russian roulette probability of absorption at each bounce (p).\n"
-                    "Disable via the checkbox if not used (setting p = 0.0 still incurs a runtime cost).", true);
-            }
-
-            // Sample generator selection.
-            samplingGroup.text("Sample generator:");
-            if (samplingGroup.dropdown("##SampleGenerator", SampleGenerator::getGuiDropdownList(), mSelectedSampleGenerator, true))
-            {
-                mpSampleGenerator = SampleGenerator::create(mSelectedSampleGenerator);
-                recreateVars(); // Trigger recreation of the program vars.
-                dirty = true;
-            }
-
-            samplingGroup.checkbox("Use fixed seed", mSharedParams.useFixedSeed);
-            samplingGroup.tooltip("Forces a fixed random seed for each frame.\n\n"
-                "This should produce exactly the same image each frame, which can be useful for debugging using print() and otherwise.", true);
-
-            samplingGroup.release();
-        }
-
-        return dirty;
-    }
-
-    bool PathTracer::renderLightsUI(Gui::Widgets& widget)
-    {
-        bool dirty = false;
-
-        auto lightsGroup = Gui::Group(widget, "Lights", true);
-        if (lightsGroup.open())
-        {
-            dirty |= lightsGroup.checkbox("Use analytic lights", mSharedParams.useAnalyticLights);
-            lightsGroup.tooltip("This enables Falcor's built-in analytic lights.\nThese are specified in the scene description (.fscene).", true);
-
-            dirty |= lightsGroup.checkbox("Use emissive lights", mSharedParams.useEmissiveLights);
-            lightsGroup.tooltip("This enables using emissive triangles as light sources.", true);
-            if (mSharedParams.useEmissiveLights)
-            {
-                dirty |= lightsGroup.checkbox("Use emissive light sampling", mSharedParams.useEmissiveLightSampling);
-                lightsGroup.tooltip("This option enables explicit sampling of emissive geometry by using an emissive sampler to pick samples "
-                    "on the emissive triangles and tracing shadow rays to evaluate their visibility. See options in separate tab.\n"
-                    "When disabled, the contribution from emissive lights is only accounted for when they are directly hit by a scatter ray.", true);
-
-                lightsGroup.text("Emissive sampler:");
-                lightsGroup.tooltip("Selects which light sampler to use for importance sampling of emissive geometry.", true);
-                if (lightsGroup.dropdown("##EmissiveSampler", kEmissiveSamplerList, (uint32_t&)mSelectedEmissiveSampler, true))
-                {
-                    mpEmissiveSampler = nullptr;
-                    dirty = true;
-                }
-            }
-
-            dirty |= lightsGroup.checkbox("Use env map as light", mSharedParams.useEnvLight);
-            lightsGroup.tooltip("This enables using the environment map as a distant light source", true);
-            dirty |= lightsGroup.checkbox("Use env map as background", mSharedParams.useEnvBackground);
-
-            // Print info about the lights.
-            std::ostringstream oss;
-            oss << "Analytic lights: "
-                << mSharedParams.lightCountPoint << " point, "
-                << mSharedParams.lightCountDirectional << " directional, "
-                << mSharedParams.lightCountAnalyticArea << " area\n"
-                << "Mesh lights: "
-                << mSharedParams.lightCountTriangle << " triangles";
-            lightsGroup.text(oss.str());
-
-            lightsGroup.text("Environment map: " + (mpEnvProbe ? mEnvProbeFilename : "N/A"));
-
-            lightsGroup.release();
-        }
-
-        if (mpEmissiveSampler)
-        {
-            auto emissiveGroup = Gui::Group(widget, "Emissive sampler options");
-            if (emissiveGroup.open())
-            {
-                if (mpEmissiveSampler->renderUI(emissiveGroup))
-                {
-                    // Get the latest options for the current sampler. We need these to re-create the sampler at scene changes and for pass serialization.
-                    switch (mSelectedEmissiveSampler)
-                    {
-                    case EmissiveLightSamplerType::Uniform:
-                        mUniformSamplerOptions = std::static_pointer_cast<EmissiveUniformSampler>(mpEmissiveSampler)->getOptions();
-                        break;
-                    case EmissiveLightSamplerType::LightBVH:
-                        mLightBVHSamplerOptions = std::static_pointer_cast<LightBVHSampler>(mpEmissiveSampler)->getOptions();
-                        break;
-                    default:
-                        should_not_get_here();
-                    }
-                    dirty = true;
-                }
-
-                emissiveGroup.release();
-            }
-        }
-
-        return dirty;
-    }
-
-    void PathTracer::renderLoggingUI(Gui::Widgets& widget)
-    {
-        auto logGroup = Gui::Group(widget, "Logging");
-        if (logGroup.open())
-        {
-            // Pixel stats.
-            mpPixelStats->renderUI(logGroup);
-
-            // Pixel debugger.
-            mpPixelDebug->renderUI(logGroup);
-
-            logGroup.release();
-        }
-    }
 
     void PathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
     {
@@ -318,14 +110,9 @@ namespace Falcor
         mSharedParams.frameCount = 0;
 
         // Lighting setup. This clears previous data if no scene is given.
-        if (!initLights(pRenderContext)) throw std::exception("Failed to initialize lights");
+        if (!initLights(pRenderContext)) throw std::runtime_error("Failed to initialize lights");
 
         recreateVars(); // Trigger recreation of the program vars.
-    }
-
-    bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
-    {
-        return mpPixelDebug->onMouseEvent(mouseEvent);
     }
 
     void PathTracer::validateParameters()
@@ -347,8 +134,6 @@ namespace Falcor
     bool PathTracer::initLights(RenderContext* pRenderContext)
     {
         // Clear lighting data for previous scene.
-        mpEnvProbe = nullptr;
-        mEnvProbeFilename = "";
         mpEmissiveSampler = nullptr;
         mUseEmissiveLights = mUseEmissiveSampler = mUseAnalyticLights = mUseEnvLight = false;
         mSharedParams.lightCountPoint = 0;
@@ -357,15 +142,6 @@ namespace Falcor
 
         // If we have no scene, we're done.
         if (mpScene == nullptr) return true;
-
-        // Load environment map if scene uses one.
-        Texture::SharedPtr pEnvMap = mpScene->getEnvironmentMap();
-        if (pEnvMap != nullptr)
-        {
-            std::string filename = pEnvMap->getSourceFilename();
-            mpEnvProbe = EnvProbe::create(pRenderContext, filename);
-            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(filename) : "";
-        }
 
         // Setup for analytic lights.
         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
@@ -404,11 +180,8 @@ namespace Falcor
             return false;
         }
 
-        // Configure light sampling.
-        mUseAnalyticLights = mSharedParams.useAnalyticLights && mpScene->getLightCount() > 0;
-        mUseEnvLight = mSharedParams.useEnvLight && mpEnvProbe != nullptr;
-
         bool lightingChanged = false;
+        
         if (!mSharedParams.useEmissiveLights)
         {
             mUseEmissiveLights = mUseEmissiveSampler = false;
@@ -442,7 +215,7 @@ namespace Falcor
                     default:
                         logError("Unknown emissive light sampler type");
                     }
-                    if (!mpEmissiveSampler) throw std::exception("Failed to create emissive light sampler");
+                    if (!mpEmissiveSampler) throw std::runtime_error("Failed to create emissive light sampler");
 
                     recreateVars(); // Trigger recreation of the program vars.
                 }
@@ -494,7 +267,7 @@ namespace Falcor
         mMaxRaysPerPixel = maxRaysPerPixel();
 
         // Update refresh flag if changes that affect the output have occured.
-        Dictionary& dict = renderData.getDictionary();
+        auto& dict = renderData.getDictionary();
         if (mOptionsChanged || lightingChanged)
         {
             auto flags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
@@ -578,7 +351,7 @@ namespace Falcor
         defines.add("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
         defines.add("USE_EMISSIVE_SAMPLER", mUseEmissiveSampler ? "1" : "0");
         defines.add("USE_ENV_LIGHT", mUseEnvLight ? "1" : "0");
-        defines.add("USE_ENV_BACKGROUND", (mpEnvProbe && mSharedParams.useEnvBackground) ? "1" : "0");
+        defines.add("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
         defines.add("USE_BRDF_SAMPLING", mSharedParams.useBRDFSampling ? "1" : "0");
         defines.add("USE_MIS", mSharedParams.useMIS ? "1" : "0");
         defines.add("MIS_HEURISTIC", std::to_string(mSharedParams.misHeuristic));
@@ -593,6 +366,7 @@ namespace Falcor
         pProgram->addDefines(defines);
     }
 
+#ifdef SCRIPTING
     SCRIPT_BINDING(PathTracer)
     {
         // Register our parameters struct.
@@ -630,4 +404,5 @@ namespace Falcor
 
 #undef field
     }
+#endif  // SCRIPTING
 }

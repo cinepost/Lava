@@ -31,7 +31,12 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
   ${CMAKE_INSTALL_PREFIX}/3rdparty/lib/cmake/assimp-5.0
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/oneTBB/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src/cmake
+  /opt/lava/3rdparty/lib/cmake/OpenVDB
+
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/cmake
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/nanovdb/cmake
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -111,6 +116,9 @@ include_directories(
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/openvdb
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/openvdb/openvdb
+  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/nanovdb
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
 )
 
@@ -137,6 +145,8 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # thirt party libs
 #add_subdirectory( third_party )
+#add_subdirectory( third_party/tbb )
+#add_subdirectory( third_party/openvdb )
 
 # Our stuff
 add_subdirectory( src )

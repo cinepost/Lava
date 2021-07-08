@@ -40,15 +40,14 @@
 
 namespace Falcor {
 
-class Scene;
+//class Scene;
 class ShaderVar;
 
 
 /** Base class for light sources. All light sources should inherit from this.
 */
-class dlldecl Light : public Animatable
-{
-public:
+class dlldecl Light : public Animatable {
+  public:
     using SharedPtr = std::shared_ptr<Light>;
     using SharedConstPtr = std::shared_ptr<const Light>;
 

@@ -54,7 +54,25 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/API/Vulkan/VKSmartHandle.h"
 
+
+//PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+//PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
+/*
+PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+PFN_vkBuildAccelerationStructuresKHR vkBuildAccelerationStructuresKHR;
+PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
+PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
+*/
+
+
 namespace Falcor {
+
+extern PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+extern PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
 
 struct VkFormatDesc {
     ResourceFormat falcorFormat;
@@ -85,15 +103,6 @@ using HeapCpuHandle = void*;
 using HeapGpuHandle = void*;
 
 class DescriptorHeapEntry;
-
-#ifdef _WIN32
-using WindowHandle = HWND;
-#else
-struct WindowHandle {
-    Display* pDisplay;
-    Window window;
-};
-#endif
 
 using DeviceHandle = VkDeviceData::SharedPtr;
 using CommandListHandle = VkCommandBuffer;
@@ -136,18 +145,6 @@ using BlendStateHandle = void*;
 static const uint32_t kDefaultSwapChainBuffers = 5;
 
 using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
-
-PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
-PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
-PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
-PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
-PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
-PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
-PFN_vkBuildAccelerationStructuresKHR vkBuildAccelerationStructuresKHR;
-PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
-PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
-PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
-
 class Device;
 
 uint32_t getMaxViewportCount(std::shared_ptr<Device> device);

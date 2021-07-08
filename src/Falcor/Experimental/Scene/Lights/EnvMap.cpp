@@ -115,6 +115,11 @@ EnvMap::EnvMap(std::shared_ptr<Device> pDevice, const std::string& filename):Env
     if (!mpEnvMap) throw std::runtime_error("Failed to load environment map texture");
 }
 
+uint64_t EnvMap::getMemoryUsageInBytes() const {
+    return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
+}
+
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(EnvMap) {
     pybind11::class_<EnvMap, EnvMap::SharedPtr> envMap(m, "EnvMap");

@@ -27,12 +27,16 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "Animation.h"
+#include "AnimationController.h"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/transform.hpp"
-#include "AnimationController.h"
 
 namespace Falcor {
+
+namespace {
     
+const double kEpsilonTime = 1e-5f;
+
 // Bezier form hermite spline
 static float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t)
 {
@@ -92,77 +96,45 @@ static Animation::Keyframe interpolateHermite(const Animation::Keyframe& k0, con
     return result;
 }
 
-Animation::SharedPtr Animation::create(const std::string& name, double durationInSeconds)
-{
-    return SharedPtr(new Animation(name, durationInSeconds));
 }
 
-Animation::Animation(const std::string& name, double durationInSeconds) : mName(name), mDurationInSeconds(durationInSeconds) {}
+Animation::SharedPtr Animation::create(const std::string& name, uint32_t nodeID, double duration) {
+    return SharedPtr(new Animation(name, nodeID, duration));
+}
 
-size_t Animation::findChannelFrame(const Channel& c, double time) const
-{
-    size_t frameID = (time < c.lastUpdateTime) ? 0 : c.lastKeyframeUsed;
-    while (frameID < c.keyframes.size() - 1)
-    {
-        if (c.keyframes[frameID + 1].time > time) break;
-        frameID++;
+Animation::Animation(const std::string& name, uint32_t nodeID, double duration)
+        : mName(name)
+        , mNodeID(nodeID)
+        , mDuration(duration)
+{}
+
+glm::mat4 Animation::animate(double currentTime) {
+    // Calculate the sample time.
+    double time = currentTime;
+    if (time < mKeyframes.front().time || time > mKeyframes.back().time) {
+        time = calcSampleTime(currentTime);
     }
 
-    // Cache last used key frame.
-    c.lastUpdateTime = time;
-    c.lastKeyframeUsed = frameID;
-
-    return frameID;
-}
-
-glm::mat4 Animation::animateChannel(const Channel& c, double time) const
-{
-    auto mode = c.interpolationMode;
-
-    // Use linear interpolation if there are less than 4 keyframes.
-    if (c.keyframes.size() < 4) mode = InterpolationMode::Linear;
+    // Determine if the animation behaves linearly outside of defined keyframes.
+    bool isLinearPostInfinity = time > mKeyframes.back().time && this->getPostInfinityBehavior() == Behavior::Linear;
+    bool isLinearPreInfinity = time < mKeyframes.front().time && this->getPreInfinityBehavior() == Behavior::Linear;
 
     Keyframe interpolated;
 
-    // Compute index of adjacent frame including optional warping.
-    auto adjacentFrame = [] (const Channel& c, size_t frame, int32_t offset = 1)
-    {
-        size_t count = c.keyframes.size();
-        if ((int64_t)frame + offset < 0) frame += count;
-        return c.enableWarping ? (frame + offset) % count : std::min(frame + offset, count - 1);
-    };
-
-    if (mode == InterpolationMode::Linear)
-    {
-        size_t i0 = findChannelFrame(c, time);
-        size_t i1 = adjacentFrame(c, i0);
-
-        const Keyframe& k0 = c.keyframes[i0];
-        const Keyframe& k1 = c.keyframes[i1];
-
+    if (isLinearPreInfinity && mKeyframes.size() > 1) {
+        const auto& k0 = mKeyframes.front();
+        auto k1 = interpolate(mInterpolationMode, k0.time + kEpsilonTime);
         double segmentDuration = k1.time - k0.time;
-        if (c.enableWarping && segmentDuration < 0.0) segmentDuration += mDurationInSeconds;
-        float t = (float)clamp(segmentDuration > 0.0 ? (time - k0.time) / segmentDuration : 1.0, 0.0, 1.0);
-
+        float t = (float)((time - k0.time) / segmentDuration);
         interpolated = interpolateLinear(k0, k1, t);
-    }
-    else if (mode == InterpolationMode::Hermite)
-    {
-        size_t i1 = findChannelFrame(c, time);
-        size_t i0 = adjacentFrame(c, i1, -1);
-        size_t i2 = adjacentFrame(c, i1, 1);
-        size_t i3 = adjacentFrame(c, i1, 2);
-
-        const Keyframe& k0 = c.keyframes[i0];
-        const Keyframe& k1 = c.keyframes[i1];
-        const Keyframe& k2 = c.keyframes[i2];
-        const Keyframe& k3 = c.keyframes[i3];
-
-        double segmentDuration = k2.time - k1.time;
-        if (c.enableWarping && segmentDuration < 0.0) segmentDuration += mDurationInSeconds;
-        float t = (float)clamp(segmentDuration > 0.0 ? (time - k1.time) / segmentDuration : 1.0, 0.0, 1.0);
-
-        interpolated = interpolateHermite(k0, k1, k2, k3, t);
+    } else if (isLinearPostInfinity && mKeyframes.size() > 1) {
+        const auto& k1 = mKeyframes.back();
+        auto k0 = interpolate(mInterpolationMode, k1.time - kEpsilonTime);
+        double segmentDuration = k1.time - k0.time;
+        float t = (float)((time - k0.time) / segmentDuration);
+        interpolated = interpolateLinear(k0, k1, t);
+    } else {
+        interpolated = interpolate(mInterpolationMode, time);
     }
 
     glm::mat4 T = translate(interpolated.translation);
@@ -173,98 +145,164 @@ glm::mat4 Animation::animateChannel(const Channel& c, double time) const
     return transform;
 }
 
-void Animation::animate(double totalTime, std::vector<glm::mat4>& matrices)
-{
-    // Calculate the relative time
-    double modTime = std::fmod(totalTime, mDurationInSeconds);
-    for (auto& c : mChannels)
-    {
-        matrices[c.matrixID] = animateChannel(c, modTime);
+Animation::Keyframe Animation::interpolate(InterpolationMode mode, double time) const {
+    assert(!mKeyframes.empty());
+
+    // Validate cached frame index.
+    size_t frameIndex = clamp(mCachedFrameIndex, (size_t)0, mKeyframes.size() - 1);
+    if (time < mKeyframes[frameIndex].time) frameIndex = 0;
+
+    // Find frame index.
+    while (frameIndex < mKeyframes.size() - 1) {
+        if (mKeyframes[frameIndex + 1].time > time) break;
+        frameIndex++;
+    }
+
+    // Cache frame index;
+    mCachedFrameIndex = frameIndex;
+
+    // Compute index of adjacent frame including optional warping.
+    auto adjacentFrame = [this] (size_t frame, int32_t offset = 1) {
+        size_t count = mKeyframes.size();
+        return mEnableWarping ? (frame + count + offset) % count : clamp(frame + offset, (size_t)0, count - 1);
+    };
+
+    if (mode == InterpolationMode::Linear || mKeyframes.size() < 4) {
+        size_t i0 = frameIndex;
+        size_t i1 = adjacentFrame(i0);
+
+        const Keyframe& k0 = mKeyframes[i0];
+        const Keyframe& k1 = mKeyframes[i1];
+
+        double segmentDuration = k1.time - k0.time;
+        if (mEnableWarping && segmentDuration < 0.0) segmentDuration += mDuration;
+        float t = (float)clamp((segmentDuration > 0.0 ? (time - k0.time) / segmentDuration : 1.0), 0.0, 1.0);
+
+        return interpolateLinear(k0, k1, t);
+    } else if (mode == InterpolationMode::Hermite) {
+        size_t i1 = frameIndex;
+        size_t i0 = adjacentFrame(i1, -1);
+        size_t i2 = adjacentFrame(i1, 1);
+        size_t i3 = adjacentFrame(i1, 2);
+
+        const Keyframe& k0 = mKeyframes[i0];
+        const Keyframe& k1 = mKeyframes[i1];
+        const Keyframe& k2 = mKeyframes[i2];
+        const Keyframe& k3 = mKeyframes[i3];
+
+        double segmentDuration = k2.time - k1.time;
+        if (mEnableWarping && segmentDuration < 0.0) segmentDuration += mDuration;
+        float t = (float)clamp(segmentDuration > 0.0 ? (time - k1.time) / segmentDuration : 1.0, 0.0, 1.0);
+
+        return interpolateHermite(k0, k1, k2, k3, t);
+    } else {
+        throw std::runtime_error("Unknown interpolation mode");
     }
 }
 
-uint32_t Animation::addChannel(uint32_t matrixID)
-{
-    mChannels.push_back(Channel(matrixID));
-    return (uint32_t)(mChannels.size() - 1);
-}
+// Calculates the sample time within the keyframe range if the current time lies outside and
+// the animation does not behave linearly. If the animation behaves linearly, then the
+// current time is returned. This function should not be used if the current time lies
+// within the range of defined keyframe times.
+double Animation::calcSampleTime(double currentTime) {
+    double modifiedTime = currentTime;
+    double firstKeyframeTime = mKeyframes.front().time;
+    double lastKeyframeTime = mKeyframes.back().time;
+    double duration = lastKeyframeTime - firstKeyframeTime;
 
-uint32_t Animation::getChannel(uint32_t matrixID) const
-{
-    for (uint32_t i = 0; i < mChannels.size(); ++i)
-    {
-        if (mChannels[i].matrixID == matrixID) return i;
+    assert(currentTime < firstKeyframeTime || currentTime > lastKeyframeTime);
+
+    Behavior behavior = (currentTime < firstKeyframeTime) ? mPreInfinityBehavior : mPostInfinityBehavior;
+        switch (behavior) {
+        case Behavior::Constant:
+            modifiedTime = clamp(currentTime, firstKeyframeTime, lastKeyframeTime);
+            break;
+        case Behavior::Cycle:
+            // Calculate the relative time
+            modifiedTime = firstKeyframeTime + std::fmod(currentTime - firstKeyframeTime, duration);
+            if (modifiedTime < firstKeyframeTime) modifiedTime += duration;
+            break;
+        case Behavior::Oscillate:
+            // Calculate the relative time
+            double offset = std::fmod(currentTime - firstKeyframeTime, 2 * duration);
+            if (offset < 0) offset += 2 * duration;
+            if (offset > duration) offset = 2 * duration - offset;
+            modifiedTime = firstKeyframeTime + offset;
     }
-    return kInvalidChannel;
+
+    return modifiedTime;
 }
 
-void Animation::addKeyframe(uint32_t channelID, const Keyframe& keyframe)
-{
-    assert(channelID < mChannels.size());
-    assert(keyframe.time <= mDurationInSeconds);
+void Animation::addKeyframe(const Keyframe& keyframe) {
+    assert(keyframe.time <= mDuration);
 
-    mChannels[channelID].lastKeyframeUsed = 0;
-    auto& channelFrames = mChannels[channelID].keyframes;
-
-    if (channelFrames.size() == 0 || channelFrames[0].time > keyframe.time)
-    {
-        channelFrames.insert(channelFrames.begin(), keyframe);
+    if (mKeyframes.size() == 0 || mKeyframes[0].time > keyframe.time) {
+        mKeyframes.insert(mKeyframes.begin(), keyframe);
         return;
-    }
-    else
-    {
-        for (size_t i = 0; i < channelFrames.size(); i++)
-        {
-            auto& current = channelFrames[i];
+    } else {
+        for (size_t i = 0; i < mKeyframes.size(); i++) {
+            auto& current = mKeyframes[i];
             // If we already have a key-frame at the same time, replace it
-            if (current.time == keyframe.time)
-            {
+            if (current.time == keyframe.time) {
                 current = keyframe;
                 return;
             }
 
             // If this is not the last frame, Check if we are in between frames
-            if (i < channelFrames.size() - 1)
-            {
-                auto& Next = channelFrames[i + 1];
-                if (current.time < keyframe.time && Next.time > keyframe.time)
-                {
-                    channelFrames.insert(channelFrames.begin() + i + 1, keyframe);
+            if (i < mKeyframes.size() - 1) {
+                auto& Next = mKeyframes[i + 1];
+                if (current.time < keyframe.time && Next.time > keyframe.time) {
+                    mKeyframes.insert(mKeyframes.begin() + i + 1, keyframe);
                     return;
                 }
             }
         }
 
         // If we got here, need to push it to the end of the list
-        channelFrames.push_back(keyframe);
+        mKeyframes.push_back(keyframe);
     }
 }
 
-const Animation::Keyframe& Animation::getKeyframe(uint32_t channelID, double time) const
-{
-    assert(channelID < mChannels.size());
-    for (const auto& k : mChannels[channelID].keyframes)
-    {
+const Animation::Keyframe& Animation::getKeyframe(double time) const {
+    for (const auto& k : mKeyframes) {
         if (k.time == time) return k;
     }
     throw std::runtime_error(("Animation::getKeyframe() - can't find a keyframe at time " + std::to_string(time)).c_str());
 }
 
-bool Animation::doesKeyframeExists(uint32_t channelID, double time) const
-{
-    assert(channelID < mChannels.size());
-    for (const auto& k : mChannels[channelID].keyframes)
-    {
+bool Animation::doesKeyframeExists(double time) const {
+    for (const auto& k : mKeyframes) {
         if (k.time == time) return true;
     }
     return false;
 }
 
-void Animation::setInterpolationMode(uint32_t channelID, InterpolationMode mode, bool enableWarping)
-{
-    assert(channelID < mChannels.size());
-    mChannels[channelID].interpolationMode = mode;
-    mChannels[channelID].enableWarping = enableWarping;
+#ifdef SCRIPTING
+SCRIPT_BINDING(Animation) {
+    pybind11::class_<Animation, Animation::SharedPtr> animation(m, "Animation");
+    animation.def_property_readonly("name", &Animation::getName);
+    animation.def_property_readonly("nodeID", &Animation::getNodeID);
+    animation.def_property_readonly("duration", &Animation::getDuration);
+    animation.def_property("preInfinityBehavior", &Animation::getPreInfinityBehavior, &Animation::setPreInfinityBehavior);
+    animation.def_property("postInfinityBehavior", &Animation::getPostInfinityBehavior, &Animation::setPostInfinityBehavior);
+    animation.def_property("interpolationMode", &Animation::getInterpolationMode, &Animation::setInterpolationMode);
+    animation.def_property("enableWarping", &Animation::isWarpingEnabled, &Animation::setEnableWarping);
+    animation.def(pybind11::init(&Animation::create), "name"_a, "nodeID"_a, "duration"_a);
+    animation.def("addKeyframe", [] (Animation* pAnimation, double time, const Transform& transform) {
+        Animation::Keyframe keyframe{ time, transform.getTranslation(), transform.getScaling(), transform.getRotation() };
+        pAnimation->addKeyframe(keyframe);
+    });
+
+    pybind11::enum_<Animation::InterpolationMode> interpolationMode(animation, "InterpolationMode");
+    interpolationMode.value("Linear", Animation::InterpolationMode::Linear);
+    interpolationMode.value("Hermite", Animation::InterpolationMode::Hermite);
+
+    pybind11::enum_<Animation::Behavior> behavior(animation, "Behavior");
+    behavior.value("Constant", Animation::Behavior::Constant);
+    behavior.value("Linear", Animation::Behavior::Linear);
+    behavior.value("Cycle", Animation::Behavior::Cycle);
+    behavior.value("Oscillate", Animation::Behavior::Oscillate);
 }
+#endif // SCRIPTING
 
 }  // namespace Falcor

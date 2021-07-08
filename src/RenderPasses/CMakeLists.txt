@@ -121,6 +121,7 @@ makeRenderPassLib(NAME "SkyBox")
 
 makeRenderPassLib(NAME "WhittedRayTracer")
 makeRenderPassLib(NAME "MinimalPathTracer")
+makeRenderPassLib(NAME "MegakernelPathTracer")
 
 #makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
