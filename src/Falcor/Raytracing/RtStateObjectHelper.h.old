@@ -54,14 +54,14 @@ class dlldecl RtStateObjectHelper {
         mDirty = true;
     }
 
-    void addLocalRootSignature(const std::wstring exportNames[], uint32_t count, ID3D12RootSignature* pRootSig)
+    void addLocalRootSignature(const std::wstring exportNames[], uint32_t count, VkPipelineLayout* pRootSig)
     {
         LocalRootSignature* pLocalRoot = new LocalRootSignature(pRootSig);
         addSubobject<ExportAssociation>(exportNames, count, pLocalRoot);
         mDirty = true;
     }
 
-    void addGlobalRootSignature(ID3D12RootSignature* pRootSig) {
+    void addGlobalRootSignature(VkPipelineLayout* pRootSig) {
         addSubobject<GlobalRootSignature>(pRootSig);
         mDirty = true;
     }
@@ -210,12 +210,12 @@ class dlldecl RtStateObjectHelper {
     };
 
     struct GlobalRootSignature : public RtStateSubobjectBase {
-        GlobalRootSignature(ID3D12RootSignature* pRootSig) {
+        GlobalRootSignature(VkPipelineLayout* pRootSig) {
             pSignature = pRootSig;
             subobject.pDesc = &pSignature;
             subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
         }
-        ID3D12RootSignature* pSignature;
+        VkPipelineLayout* pSignature;
     };
 
     struct ShaderConfig : public RtStateSubobjectBase {
@@ -231,13 +231,13 @@ class dlldecl RtStateObjectHelper {
     };
 
     struct LocalRootSignature : public RtStateSubobjectBase {
-        LocalRootSignature(ID3D12RootSignature* pRootSig) {
+        LocalRootSignature(VkPipelineLayout* pRootSig) {
             pSignature = pRootSig;
             subobject.pDesc = &pSignature;
             subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
         }
         virtual ~LocalRootSignature() = default;
-        ID3D12RootSignature* pSignature;
+        VkPipelineLayout* pSignature;
     };
 
     bool mDirty = false;

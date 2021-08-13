@@ -300,12 +300,12 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     finalColor.a = sd.opacity;
 
     // World light probe (env light) 
-    ShadingResult env = evalMaterialIBL(sd, gScene.lightProbe, ipos);
+    //ShadingResult env = evalMaterialIBL(sd, gScene.lightProbe, ipos);
   
-    env.diffuse *= diffuseAO;
-    env.specular *= specularAO;
+    //env.diffuse *= diffuseAO;
+    //env.specular *= specularAO;
     
-    finalColor.rgb += env.diffuse + env.specular;
+    //finalColor.rgb += env.diffuse + env.specular;
 
     // Final
     psOut.color = finalColor;

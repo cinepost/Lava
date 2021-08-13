@@ -63,14 +63,17 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
 
 [shader("fragment")]
 float4 ps(float3 dir : NORMAL) : SV_TARGET {
+
+return float4(0.0, 0.5, 1.0, 0.0);
+
 #ifdef _SKYBOX_SOLID_MODE
     return float4(gIntensity, gTransparency);
-#endif
-
-#ifdef _SPHERICAL_MAP
-    float2 uv = dirToSphericalCrd(dir);
-    return gTexture.Sample(gSampler, uv) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
 #else
-    return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
+    #ifdef _SPHERICAL_MAP
+        float2 uv = dirToSphericalCrd(dir);
+        return gTexture.Sample(gSampler, uv) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
+    #else
+        return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
+    #endif
 #endif
 }

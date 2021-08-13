@@ -36,7 +36,8 @@ import Utils.Math.PackedFormats;
 
 BEGIN_NAMESPACE_FALCOR
 
-enum class MeshFlags : uint32_t {
+enum class MeshFlags : uint32_t
+{
     None = 0x0,
     Use16BitIndices = 0x1,  ///< Indices are in 16-bit format. The default is 32-bit.
     HasDynamicData = 0x2,   ///< Mesh has dynamic vertex data.
@@ -45,7 +46,8 @@ enum class MeshFlags : uint32_t {
 
 /** Mesh data stored in 64B.
 */
-struct MeshDesc {
+struct MeshDesc
+{
     uint vbOffset;          ///< Offset into global vertex buffer.
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
     uint vertexCount;       ///< Vertex count.
@@ -55,15 +57,18 @@ struct MeshDesc {
     uint flags;             ///< See MeshFlags.
     uint _pad;
 
-    uint getTriangleCount() CONST_FUNCTION {
+    uint getTriangleCount() CONST_FUNCTION
+    {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;
     }
 
-    bool use16BitIndices() CONST_FUNCTION {
+    bool use16BitIndices() CONST_FUNCTION
+    {
         return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
     }
 
-    bool isFrontFaceCW() CONST_FUNCTION {
+    bool isFrontFaceCW() CONST_FUNCTION
+    {
         return (flags & (uint)MeshFlags::IsFrontFaceCW) != 0;
     }
 };
@@ -87,11 +92,12 @@ struct MeshInstanceData
     uint globalMatrixID;
     uint materialID;
     uint meshID;
-    uint flags;         ///< MeshInstanceFlags.
+    uint flags;         ///< See MeshInstanceFlags.
     uint vbOffset;      ///< Offset into global vertex buffer.
     uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
 
-    bool hasDynamicData() CONST_FUNCTION {
+    bool hasDynamicData() CONST_FUNCTION
+    {
         return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
     }
 };
@@ -154,7 +160,8 @@ struct PackedMeshInstanceData
     }
 };
 
-struct StaticVertexData {
+struct StaticVertexData
+{
     float3 position;    ///< Position.
     float3 normal;      ///< Shading normal.
     float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
@@ -283,6 +290,5 @@ struct StaticCurveVertexData
     float3 normal;      ///< Shading normal.
     float2 texCrd;      ///< Texture coordinates.
 };
-
 
 END_NAMESPACE_FALCOR

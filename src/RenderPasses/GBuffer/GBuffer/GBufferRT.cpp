@@ -63,16 +63,14 @@ namespace
     };
 };
 
-void GBufferRT::registerBindings(pybind11::module& m)
-{
+void GBufferRT::registerBindings(pybind11::module& m) {
     pybind11::enum_<GBufferRT::LODMode> lodMode(m, "LODMode");
     lodMode.value("UseMip0", GBufferRT::LODMode::UseMip0);
     lodMode.value("RayDifferentials", GBufferRT::LODMode::RayDifferentials);
     lodMode.value("RayCones", GBufferRT::LODMode::RayCones);
 }
 
-RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
-{
+RenderPassReflection GBufferRT::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     // Add all outputs as UAVs.
@@ -82,33 +80,27 @@ RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void GBufferRT::parseDictionary(const Dictionary& dict)
-{
+void GBufferRT::parseDictionary(const Dictionary& dict) {
     // Call the base class first.
     GBuffer::parseDictionary(dict);
 
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kLOD) mLODMode = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
 
-GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new GBufferRT(dict));
 }
 
-Dictionary GBufferRT::getScriptingDictionary()
-{
+Dictionary GBufferRT::getScriptingDictionary() {
     Dictionary dict = GBuffer::getScriptingDictionary();
     dict[kLOD] = mLODMode;
     return dict;
 }
 
-GBufferRT::GBufferRT(const Dictionary& dict)
-    : GBuffer()
-{
+GBufferRT::GBufferRT(const Dictionary& dict) : GBuffer() {
     parseDictionary(dict);
 
     // Create random engine
@@ -126,27 +118,22 @@ GBufferRT::GBufferRT(const Dictionary& dict)
     setCullMode(mCullMode);
 }
 
-void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     GBuffer::setScene(pRenderContext, pScene);
 
     mRaytrace.pVars = nullptr;
 
-    if (pScene)
-    {
+    if (pScene) {
         mRaytrace.pProgram->addDefines(pScene->getSceneDefines());
     }
 }
 
-void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBuffer::execute(pRenderContext, renderData);
 
     // If there is no scene, clear the output and return.
-    if (mpScene == nullptr)
-    {
-        auto clear = [&](const ChannelDesc& channel)
-        {
+    if (mpScene == nullptr) {
+        auto clear = [&](const ChannelDesc& channel) {
             auto pTex = renderData[channel.name]->asTexture();
             if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
         };
@@ -171,8 +158,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     mRaytrace.pProgram->addDefines(getValidResourceDefines(kGBufferExtraChannels, renderData));
 
     // Create program vars.
-    if (!mRaytrace.pVars)
-    {
+    if (!mRaytrace.pVars) {
         mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, mpScene);
     }
 
@@ -181,8 +167,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) mGBufferParams.rayFlags = D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
     else mGBufferParams.rayFlags = D3D12_RAY_FLAG_NONE;
 
-    if (mLODMode == LODMode::RayDifferentials)
-    {
+    if (mLODMode == LODMode::RayDifferentials) {
         // TODO: Remove this warning when the TexLOD code has been fixed.
         logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
     }

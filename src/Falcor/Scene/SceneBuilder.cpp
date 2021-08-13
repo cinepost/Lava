@@ -708,6 +708,8 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     instance.nodeId = nodeID;
     instance.materialId = addMaterial(pMaterial);
     instance.overrideMaterial = true;
+
+    LOG_DBG("SceneBuilder::addMeshInstance added mesh instance with material id %u", instance.materialId);
 }
 
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
@@ -1378,6 +1380,8 @@ void SceneBuilder::createCurveGlobalBuffers() {
 }
 
 void SceneBuilder::removeDuplicateMaterials() {
+    return; // TODO: recalculate material ids on all mesh/instances after duplicates removal
+
     if (is_set(mFlags, Flags::DontMergeMaterials)) return;
 
     std::vector<Material::SharedPtr> uniqueMaterials;
@@ -1597,7 +1601,7 @@ uint32_t SceneBuilder::createMeshData() {
                 instanceData.push_back({});
                 auto& meshInstance = instanceData.back();
                 meshInstance.globalMatrixID = instance.nodeId;
-                meshInstance.materialID = mesh.materialId;
+                meshInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
                 meshInstance.meshID = meshID;
                 meshInstance.vbOffset = mesh.staticVertexOffset;
                 meshInstance.ibOffset = mesh.indexOffset;
