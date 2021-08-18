@@ -337,20 +337,27 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
 
 		auto pDevice = pSceneBuilder->device();
-		LightProbe::SharedPtr pLightProbe;
+		//LightProbe::SharedPtr pLightProbe;
+		
 		if (texture_file_name.size() == 0) {
 			// solid color lightprobe
-			pLightProbe = LightProbe::create(pDevice->getRenderContext());
-    	} else {
+			//pLightProbe = LightProbe::create(pDevice->getRenderContext());
+		} else {
     		bool loadAsSrgb = false;
-    		uint32_t diffSampleCount = 8192; // preintegration
-    		uint32_t specSampleCount = 8192; // preintegration
-    		pLightProbe = LightProbe::create(pDevice->getRenderContext(), texture_file_name, loadAsSrgb, ResourceFormat::RGBA16Float, diffSampleCount, specSampleCount);
+    		//uint32_t diffSampleCount = 8192; // preintegration
+    		//uint32_t specSampleCount = 8192; // preintegration
+    		auto pResourceManager = pDevice->resourceManager();
+    		if (pResourceManager) {
+        		auto pEnvMapTexture = pResourceManager->createTextureFromFile(texture_file_name, true, loadAsSrgb);
+    			EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    			pEnvMap->setTint(light_color);
+    			pSceneBuilder->setEnvMap(pEnvMap);
+    		}
     	}
-    	assert(pLightProbe);
+    	//assert(pLightProbe);
 
-    	pLightProbe->setPosW(light_pos);
-    	pLightProbe->setIntensity(light_color);
+    	//pLightProbe->setPosW(light_pos);
+    	//pLightProbe->setIntensity(light_color);
     	//pSceneBuilder->setLightProbe(pLightProbe);
     	return;
 	} else { 

@@ -215,8 +215,10 @@ Scene::SharedPtr SceneBuilder::getScene() {
     mpScene->mCustomPrimitiveAABBs = mCustomPrimitiveAABBs;
     mpScene->mGrids = mGrids;
     mpScene->mGridIDs = mGridIDs;
-    mpScene->mpEnvMap = mpEnvMap;
+    //mpScene->mpEnvMap = mpEnvMap;
     mpScene->mFilename = mFilename;
+
+    mpScene->setEnvMap(mpEnvMap);
 
     // Prepare scene resources.
     createNodeList();

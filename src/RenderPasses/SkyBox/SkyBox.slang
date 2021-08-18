@@ -64,8 +64,6 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
 [shader("fragment")]
 float4 ps(float3 dir : NORMAL) : SV_TARGET {
 
-return float4(0.0, 0.5, 1.0, 0.0);
-
 #ifdef _SKYBOX_SOLID_MODE
     return float4(gIntensity, gTransparency);
 #else

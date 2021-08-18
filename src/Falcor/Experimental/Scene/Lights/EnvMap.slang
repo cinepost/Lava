@@ -43,6 +43,7 @@ struct EnvMap
     {
         // Get (u,v) coord in latitude-longitude map format.
         float2 uv = world_to_latlong_map(toLocal(dir));
+        return envMap.SampleLevel(envSampler, uv, lod).rgb;
         return data.intensity * data.tint * envMap.SampleLevel(envSampler, uv, lod).rgb;
     }
 

@@ -32,6 +32,7 @@ __exported import Scene.ShadingData;
 import Scene.SceneTypes;
 import Scene.TextureSampler;
 import Scene.Material.MaterialData;
+import Experimental.Scene.Lights.EnvMap;
 import Experimental.Scene.Material.BxDFTypes;
 import Utils.Helpers;
 
@@ -380,11 +381,11 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
     return sr;
 }
 
-ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_pos)
+ShadingResult evalMaterialIBL(ShadingData sd, EnvMap envMap, int2 pixel_pos)
 {
     ShadingResult sr = {};
-    LightSample lsd = evalLightProbeSampleDiffuse(probe, sd);
-    LightSample lss = evalLightProbeSampleSpecular(probe, sd);
+    LightSample lsd = evalEnvMapSampleDiffuse(envMap, sd);
+    LightSample lss = evalEnvMapSampleSpecular(envMap, sd);
 
     sd.NdotV = saturate(sd.NdotV);
 
@@ -395,18 +396,19 @@ ShadingResult evalMaterialIBL(ShadingData sd, LightProbeData probe, int2 pixel_p
     } else {
         sr.diffuseBrdf = evalDiffuseBrdf(sd, lsd) * M_PI;
     }
-        sr.diffuse = lsd.diffuse * sr.diffuseBrdf;
-        sr.color = sr.diffuse;
+    
+    sr.diffuse = lsd.diffuse * sr.diffuseBrdf;
+    sr.color = sr.diffuse;
         
     // Calculate the specular term
     if (lsd.NdotL <= 0) {
         sr.specularBrdf = 0.0f;
     } else {
-        sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);// * lss.NdotL;
+        sr.specularBrdf = evalSpecularBrdfLprobe(sd, lss);
     }
     
-    sr.specular = evalLightProbeSampleSpecularColor(probe, sd, pixel_pos) * sr.specularBrdf;
-
+    //sr.specular = evalLightProbeSampleSpecularColor(probe, sd, pixel_pos) * sr.specularBrdf;
+    sr.diffuse = lss.specular * sr.specularBrdf;
     sr.color += sr.specular;
 
     return sr;

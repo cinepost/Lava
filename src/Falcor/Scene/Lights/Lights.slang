@@ -35,6 +35,7 @@
 import Utils.Helpers;
 import Scene.ShadingData;
 
+import Experimental.Scene.Lights.EnvMap;
 //import Scene.Material.BRDFCommon;
 __exported import Scene.Lights.LightData;
 __exported import Scene.Lights.LightProbeData;
@@ -316,7 +317,7 @@ LightSample evalLightProbeLinear2DOld(LightProbeData probe, ShadingData sd) {
     return ls;
 }
 
-/** Evaluate the properties of a light-probe
+/** Evaluate the properties of a LightProbe
 */
 LightSample evalLightProbeSampleDiffuse(LightProbeData probe, ShadingData sd) {
     LightSample ls;
@@ -362,6 +363,47 @@ LightSample evalLightProbeSampleSpecular(LightProbeData probe, ShadingData sd) {
 LightSample evalLightProbeOld(LightProbeData probe, ShadingData sd) {
     return evalLightProbeLinear2DOld(probe, sd);
 }
+
+/** Evaluate the properties of an EnvMap
+*/
+LightSample evalEnvMapSampleDiffuse(EnvMap envMap, ShadingData sd) {
+    LightSample ls;
+
+    // Calculate dominant diffuse vector
+    ls.L = sd.N;
+
+    // Evaluate diffuse component
+    float lod = 0.f;
+    ls.diffuse = envMap.eval(ls.L, lod);// * envMap.data.tint * envMap.data.intensity;
+    
+    // Get the specular component
+    ls.specular = 0.0f;
+    ls.posW = sd.posW + ls.L * 1;
+    ls.distance = 1;
+    calcCommonLightProperties(sd, ls);
+
+    return ls;
+}
+
+LightSample evalEnvMapSampleSpecular(EnvMap envMap, ShadingData sd) {
+    LightSample ls;
+
+    // Calculate the reflection vector
+    ls.L = reflect(-sd.V, sd.N);
+
+    // Evaluate diffuse component
+    ls.diffuse = 0.0f;
+
+    // Get the specular component
+    float lod = 0.f;
+    ls.specular = envMap.eval(ls.L, lod);// * envMap.data.tint * envMap.data.intensity;
+    ls.posW = sd.posW - ls.L * 1;
+    ls.distance = 1;
+    calcCommonLightProperties(sd, ls);
+
+    return ls;
+}
+
 
 // ------ Filament based code
 
