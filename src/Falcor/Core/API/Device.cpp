@@ -261,6 +261,11 @@ void Device::toggleVSync(bool enable) {
 }
 
 void Device::cleanup() {
+    if (!mpApiData) {
+        std::cout << "Device cleanup (skip), Device mpApiData False \n";
+        return;
+    }
+
     std::cout << "Device cleanup \n";
     toggleFullScreen(false);
     mpRenderContext->flush(true);
