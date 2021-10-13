@@ -31,32 +31,28 @@
 
 namespace Falcor {
 
-static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field)
-{
-    if (cbOffset.getByteOffset() != cppOffset)
-    {
+static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
+    if (cbOffset.getByteOffset() != cppOffset) {
         logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset.getByteOffset()) + ", C++ data offset is " + std::to_string(cppOffset));
         return false;
     }
     return true;
 }
 
-void Light::setActive(bool active)
-{
-    if (active != mActive)
-    {
+// Light
+
+void Light::setActive(bool active) {
+    if (active != mActive) {
         mActive = active;
         mActiveChanged = true;
     }
 }
 
-void Light::setIntensity(const float3& intensity)
-{
+void Light::setIntensity(const float3& intensity) {
     mData.intensity = intensity;
 }
 
-Light::Changes Light::beginFrame()
-{
+Light::Changes Light::beginFrame() {
     mChanges = Changes::None;
     if (mActiveChanged) mChanges |= Changes::Active;
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Position;
@@ -66,10 +62,10 @@ Light::Changes Light::beginFrame()
     if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
-    if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position & Changes::Direction);
+    if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
-    //assert(mPrevData.tangent == mData.tangent);
-    //assert(mPrevData.bitangent == mData.bitangent);
+    assert(mPrevData.tangent == mData.tangent);
+    assert(mPrevData.bitangent == mData.bitangent);
 
     mPrevData = mData;
     mActiveChanged = false;
@@ -77,8 +73,7 @@ Light::Changes Light::beginFrame()
     return getChanges();
 }
 
-void Light::setShaderData(const ShaderVar& var)
-{
+void Light::setShaderData(const ShaderVar& var) {
 #if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
     check_offset(dirW);
@@ -90,177 +85,104 @@ void Light::setShaderData(const ShaderVar& var)
     var.setBlob(mData);
 }
 
-float3 Light::getColorForUI()
-{
-    if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
-    {
-        float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
-        if (mag <= 1.f)
-        {
-            mUiLightIntensityColor = mData.intensity;
-            mUiLightIntensityScale = 1.0f;
-        }
-        else
-        {
-            mUiLightIntensityColor = mData.intensity / mag;
-            mUiLightIntensityScale = mag;
-        }
-    }
-
-    return mUiLightIntensityColor;
-}
-
-void Light::setColorFromUI(const float3& uiColor)
-{
-    mUiLightIntensityColor = uiColor;
-    setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
-}
-
-float Light::getIntensityForUI()
-{
-    if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
-    {
-        float mag = std::max(mData.intensity.x, std::max(mData.intensity.y, mData.intensity.z));
-        if (mag <= 1.f)
-        {
-            mUiLightIntensityColor = mData.intensity;
-            mUiLightIntensityScale = 1.0f;
-        }
-        else
-        {
-            mUiLightIntensityColor = mData.intensity / mag;
-            mUiLightIntensityScale = mag;
-        }
-    }
-
-    return mUiLightIntensityScale;
-}
-
-void Light::setIntensityFromUI(float intensity)
-{
-    mUiLightIntensityScale = intensity;
-    setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
-}
-
-
-Light::Light(LightType type)
-{
+Light::Light(const std::string& name, LightType type) : mName(name) {
     mData.type = (uint32_t)type;
 }
 
+// PointLight
 
-DirectionalLight::DirectionalLight()
-    : Light(LightType::Directional)
-{
+PointLight::SharedPtr PointLight::create(const std::string& name) {
+    return SharedPtr(new PointLight(name));
 }
 
-DirectionalLight::SharedPtr DirectionalLight::create()
-{
-    DirectionalLight* pLight = new DirectionalLight;
-    return DirectionalLight::SharedPtr(pLight);
+PointLight::PointLight(const std::string& name) : Light(name, LightType::Point) {
+    mPrevData = mData;
 }
 
-DirectionalLight::~DirectionalLight() = default;
-
-void DirectionalLight::setWorldDirection(const float3& dir)
-{
-    if (!(glm::length(dir) > 0.f)) // NaNs propagate
-    {
+void PointLight::setWorldDirection(const float3& dir) {
+    if (!(glm::length(dir) > 0.f)) { 
+        // NaNs propagate
         logWarning("Can't set light direction to zero length vector. Ignoring call.");
         return;
     }
     mData.dirW = normalize(dir);
 }
 
-void DirectionalLight::updateFromAnimation(const glm::mat4& transform)
-{
-    float3 fwd = float3(transform[2]);
-    setWorldDirection(fwd);
-}
-
-PointLight::SharedPtr PointLight::create()
-{
-    PointLight* pLight = new PointLight;
-    return SharedPtr(pLight);
-}
-
-PointLight::PointLight()
-    : Light(LightType::Point)
-{
-}
-
-PointLight::~PointLight() = default;
-
-void PointLight::setWorldDirection(const float3& dir)
-{
-    if (!(glm::length(dir) > 0.f)) // NaNs propagate
-    {
-        logWarning("Can't set light direction to zero length vector. Ignoring call.");
-        return;
-    }
-    mData.dirW = normalize(dir);
-}
-
-void PointLight::setWorldPosition(const float3& pos)
-{
+void PointLight::setWorldPosition(const float3& pos) {
     mData.posW = pos;
 }
 
-float PointLight::getPower() const
-{
+float PointLight::getPower() const {
     return luminance(mData.intensity) * 4.f * (float)M_PI;
 }
 
-void PointLight::setOpeningAngle(float openingAngle)
-{
+void PointLight::setOpeningAngle(float openingAngle) {
     openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
     if (openingAngle == mData.openingAngle) return;
 
     mData.openingAngle = openingAngle;
-    /* Prepare an auxiliary cosine of the opening angle to quickly check whether we're within the cone of a spot light */
+    mData.penumbraAngle = std::min(mData.penumbraAngle, openingAngle);
+
+    // Prepare an auxiliary cosine of the opening angle to quickly check whether we're within the cone of a spot light.
     mData.cosOpeningAngle = std::cos(openingAngle);
 }
 
-void PointLight::setPenumbraAngle(float angle)
-{
+void PointLight::setPenumbraAngle(float angle) {
     angle = glm::clamp(angle, 0.0f, mData.openingAngle);
     if (mData.penumbraAngle == angle) return;
     mData.penumbraAngle = angle;
 }
 
-void PointLight::updateFromAnimation(const glm::mat4& transform)
-{
-    float3 fwd = float3(transform[2]);
+void PointLight::updateFromAnimation(const glm::mat4& transform) {
+    float3 fwd = float3(-transform[2]);
     float3 pos = float3(transform[3]);
     setWorldPosition(pos);
     setWorldDirection(fwd);
 }
 
-DistantLight::SharedPtr DistantLight::create()
-{
-    DistantLight* pLight = new DistantLight();
-    return SharedPtr(pLight);
+// DirectionalLight
+
+DirectionalLight::DirectionalLight(const std::string& name) : Light(name, LightType::Directional) {
+    mPrevData = mData;
 }
 
-DistantLight::DistantLight()
-    : Light(LightType::Distant)
-{
+DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
+    return SharedPtr(new DirectionalLight(name));
+}
+
+void DirectionalLight::setWorldDirection(const float3& dir) {
+    if (!(glm::length(dir) > 0.f)) // NaNs propagate
+    {
+        logWarning("Can't set light direction to zero length vector. Ignoring call.");
+        return;
+    }
+    mData.dirW = normalize(dir);
+}
+
+void DirectionalLight::updateFromAnimation(const glm::mat4& transform) {
+    float3 fwd = float3(-transform[2]);
+    setWorldDirection(fwd);
+}
+
+// DistantLight
+
+DistantLight::SharedPtr DistantLight::create(const std::string& name) {
+    return SharedPtr(new DistantLight(name));
+}
+
+DistantLight::DistantLight(const std::string& name) : Light(name, LightType::Distant) {
     mData.dirW = float3(0.f, -1.f, 0.f);
     setAngle(0.5f * 0.53f * (float)M_PI / 180.f);   // Approximate sun half-angle
     update();
+    mPrevData = mData;
 }
 
-DistantLight::~DistantLight() = default;
-
-void DistantLight::setAngle(float angle)
-{
+void DistantLight::setAngle(float angle) {
     mAngle = glm::clamp(angle, 0.f, (float)M_PI_2);
-
     mData.cosSubtendedAngle = std::cos(mAngle);
 }
 
-void DistantLight::setWorldDirection(const float3& dir)
-{
+void DistantLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) // NaNs propagate
     {
         logWarning("Can't set light direction to zero length vector. Ignoring call.");
@@ -270,42 +192,38 @@ void DistantLight::setWorldDirection(const float3& dir)
     update();
 }
 
-void DistantLight::update()
-{
+void DistantLight::update() {
     // Update transformation matrices
     // Assumes that mData.dirW is normalized
     const float3 up(0.f, 0.f, 1.f);
     float3 vec = glm::cross(up, -mData.dirW);
     float sinTheta = glm::length(vec);
-    if (sinTheta > 0.f)
-    {
+    
+    if (sinTheta > 0.f) {
         float cosTheta = glm::dot(up, -mData.dirW);
         mData.transMat = glm::rotate(glm::mat4(), std::acos(cosTheta), vec);
-    }
-    else
-    {
+    } else {
         mData.transMat = glm::mat4();
     }
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
 }
 
-// Code for analytic area lights.
-AnalyticAreaLight::SharedPtr AnalyticAreaLight::create(LightType type)
-{
-    AnalyticAreaLight* pLight = new AnalyticAreaLight(type);
-    return SharedPtr(pLight);
+void DistantLight::updateFromAnimation(const glm::mat4& transform) {
+    float3 fwd = float3(-transform[2]);
+    setWorldDirection(fwd);
 }
 
-AnalyticAreaLight::AnalyticAreaLight(LightType type): Light(type) {
+// AnalyticAreaLight
+
+AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : Light(name, type) {
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
     mData.surfaceArea = 4.0f;
 
     mScaling = float3(1, 1, 1);
     update();
+    mPrevData = mData;
 }
-
-AnalyticAreaLight::~AnalyticAreaLight() = default;
 
 float AnalyticAreaLight::getPower() const {
     return luminance(mData.intensity) * (float)M_PI * mData.surfaceArea;
@@ -315,39 +233,53 @@ void AnalyticAreaLight::update() {
     // Update matrix
     mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
-
-    switch ((LightType)mData.type) {
-        case LightType::Rect:
-            {
-                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-                mData.surfaceArea = 4.0f * rx * ry;
-            }
-            break;
-
-        case LightType::Sphere:
-            {
-                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-                float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
-
-                mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
-            }
-            break;
-
-        case LightType::Disc:
-            {
-                float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-                float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-
-                mData.surfaceArea = (float)M_PI * rx * ry;
-            }
-            break;
-
-        default:
-            break;
-    }
 }
+
+// RectLight
+
+RectLight::SharedPtr RectLight::create(const std::string& name) {
+    return SharedPtr(new RectLight(name));
+}
+
+void RectLight::update() {
+    AnalyticAreaLight::update();
+
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    mData.surfaceArea = 4.0f * rx * ry;
+}
+
+// DiscLight
+
+DiscLight::SharedPtr DiscLight::create(const std::string& name) {
+    return SharedPtr(new DiscLight(name));
+}
+
+void DiscLight::update() {
+    AnalyticAreaLight::update();
+
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+
+    mData.surfaceArea = (float)M_PI * rx * ry;
+}
+
+// SphereLight
+
+SphereLight::SharedPtr SphereLight::create(const std::string& name) {
+    return SharedPtr(new SphereLight(name));
+}
+
+void SphereLight::update() {
+    AnalyticAreaLight::update();
+
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+
+    mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
+}
+
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Light)

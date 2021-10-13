@@ -238,7 +238,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
     LOG_WARN("%u textures needs to be resolved", resolvedTexturesCount);
 
-    mpScene->rasterize(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::Back);
     pContext->flush(true);
 
     // Test resolved data

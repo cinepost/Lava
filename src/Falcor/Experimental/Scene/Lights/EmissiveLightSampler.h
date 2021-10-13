@@ -25,50 +25,60 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVELIGHTSAMPLER_H_
+#define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVELIGHTSAMPLER_H_
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Scene/Scene.h"
 #include "EmissiveLightSamplerType.slangh"
 
-namespace Falcor
+namespace Falcor {
+
+//class RenderContext;
+//class Program;
+
+/** Base class for emissive light sampler implementations.
+
+    All light samplers follows the same interface to make them interchangeable.
+    If an unrecoverable error occurs, these functions may throw exceptions.
+*/
+class dlldecl EmissiveLightSampler : public std::enable_shared_from_this<EmissiveLightSampler>
 {
-    /** Base class for emissive light sampler implementations.
+public:
+    using SharedPtr = std::shared_ptr<EmissiveLightSampler>;
+    virtual ~EmissiveLightSampler() = default;
 
-        All light samplers follows the same interface to make them interchangeable.
-        If an unrecoverable error occurs, these functions may throw exceptions.
+    /** Updates the sampler to the current frame.
+        \param[in] pRenderContext The render context.
+        \return True if the sampler was updated.
     */
-    class dlldecl EmissiveLightSampler : public std::enable_shared_from_this<EmissiveLightSampler>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<EmissiveLightSampler>;
-        virtual ~EmissiveLightSampler() = default;
+    virtual bool update(RenderContext* pRenderContext) { return false; }
 
-        /** Updates the sampler to the current frame.
-            \param[in] pRenderContext The render context.
-            \return True if the sampler was updated.
-        */
-        virtual bool update(RenderContext* pRenderContext) { return false; }
+    /** Add compile-time specialization to program to use this light sampler.
+        This function must be called every frame before the sampler is bound.
+        Note that ProgramVars may need to be re-created after this call, check the return value.
+        \param[in] pProgram The Program to add compile-time specialization to.
+        \return True if the ProgramVars needs to be re-created.
+    */
+    virtual bool prepareProgram(Program* pProgram) const;
 
-        /** Add compile-time specialization to program to use this light sampler.
-            This function must be called every frame before the sampler is bound.
-            Note that ProgramVars may need to be re-created after this call, check the return value.
-            \param[in] pProgram The Program to add compile-time specialization to.
-            \return True if the ProgramVars needs to be re-created.
-        */
-        virtual bool prepareProgram(Program* pProgram) const;
+    /** Bind the light sampler data to a given shader var
+    */
+    virtual bool setShaderData(const ShaderVar& var) const { return true; }
 
-        /** Bind the light sampler data to a given shader var
-        */
-        virtual bool setShaderData(const ShaderVar& var) const { return true; }
+    /** Returns the type of emissive light sampler.
+        \return The type of the derived class.
+    */
+    EmissiveLightSamplerType getType() const { return mType; }
 
-        /** Returns the type of emissive light sampler.
-            \return The type of the derived class.
-        */
-        EmissiveLightSamplerType getType() const { return mType; }
+protected:
+    EmissiveLightSampler(EmissiveLightSamplerType type, Scene::SharedPtr pScene) : mType(type), mpScene(pScene) {}
 
-    protected:
-        EmissiveLightSampler(EmissiveLightSamplerType type, Scene::SharedPtr pScene) : mType(type), mpScene(pScene) {}
+    // Internal state
+    const EmissiveLightSamplerType mType;       ///< Type of emissive sampler. See EmissiveLightSamplerType.slangh.
+    Scene::SharedPtr mpScene;
+};
 
-        // Internal state
-        const EmissiveLightSamplerType mType;       ///< Type of emissive sampler. See EmissiveLightSamplerType.slangh.
-        Scene::SharedPtr mpScene;
-    };
 }
+
+#endif  // SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVELIGHTSAMPLER_H_

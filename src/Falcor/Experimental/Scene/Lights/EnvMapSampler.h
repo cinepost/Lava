@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 
-#include "EnvMap.h"
+#include "Falcor/Scene/Lights/EnvMap.h"
 
 namespace Falcor {
 

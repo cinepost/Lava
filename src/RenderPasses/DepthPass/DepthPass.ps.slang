@@ -26,13 +26,46 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Raster;
+import Utils.Sampling.SampleGenerator;
 
-void main(VSOut vOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
 
+cbuffer PerFrameCB {
+  uint              gSampleNumber;        // Interframe sample number.
+  uint              gSamplesPerFrame;
+
+}
+
+float checker(float2 uv, float repeats) 
+{
+  float cx = floor(repeats * uv.x);
+  float cy = floor(repeats * uv.y); 
+  float result = fmod(cx + cy, 2.0);
+  return sign(result);
+}
+
+void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
+
+    // pixel position
+    int2 ipos = int2(vsOut.posH.xy);
+
+    // Mesh and material IDs for sampling
+    uint geometryID = vsOut.instanceID.index;
+    uint materialID = vsOut.materialID;
+
+    // pseudo-random sample generator
+    SampleGenerator sg = SampleGenerator.create(ipos + uint2(geometryID, materialID), gSampleNumber);
+
+    // Calculate surface material opacity
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
+
+    if (sd.opacity < sampleNext1D(sg)) discard;
+    if (0.5 < sampleNext1D(sg)) discard;
+    
 #ifndef DISABLE_ALPHA_TEST
     // Calling prepareShadingData() to discard pixels that fail alpha test. The pixel shader has no other side effects.
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    prepareShadingData(vOut, triangleIndex, viewDir);
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+    prepareShadingData(vsOut, triangleIndex, viewDir);
 #endif
 
 }

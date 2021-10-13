@@ -214,20 +214,28 @@ namespace Falcor
             return ReflectionResourceType::Type::Sampler;
         case TypeReflection::Kind::ShaderStorageBuffer:
             return ReflectionResourceType::Type::StructuredBuffer;
+        case TypeReflection::Kind::TextureBuffer:
+            return ReflectionResourceType::Type::TypedBuffer;
         case TypeReflection::Kind::Resource:
             switch (pSlangType->getResourceShape() & SLANG_RESOURCE_BASE_SHAPE_MASK)
             {
             case SLANG_STRUCTURED_BUFFER:
                 return ReflectionResourceType::Type::StructuredBuffer;
-
             case SLANG_BYTE_ADDRESS_BUFFER:
                 return ReflectionResourceType::Type::RawBuffer;
             case SLANG_TEXTURE_BUFFER:
                 return ReflectionResourceType::Type::TypedBuffer;
-            default:
+            case SLANG_ACCELERATION_STRUCTURE:
+                return ReflectionResourceType::Type::AccelerationStructure;
+            case SLANG_TEXTURE_1D:
+            case SLANG_TEXTURE_2D:
+            case SLANG_TEXTURE_3D:
+            case SLANG_TEXTURE_CUBE:
                 return ReflectionResourceType::Type::Texture;
+            default:
+                should_not_get_here();
+                return ReflectionResourceType::Type(-1);
             }
-            break;
         default:
             should_not_get_here();
             return ReflectionResourceType::Type(-1);
@@ -312,6 +320,8 @@ namespace Falcor
             return ReflectionResourceType::Dimensions::TextureCube;
         case SLANG_TEXTURE_CUBE_ARRAY:
             return ReflectionResourceType::Dimensions::TextureCubeArray;
+        case SLANG_ACCELERATION_STRUCTURE:
+            return ReflectionResourceType::Dimensions::AccelerationStructure;
 
         case SLANG_TEXTURE_BUFFER:
         case SLANG_STRUCTURED_BUFFER:
@@ -608,8 +618,9 @@ namespace Falcor
         // Check that the root descriptor type is supported.
         if (isRootDescriptor) {
 
-            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer) {
-                logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw and structured buffers are supported.");
+            if (type != ReflectionResourceType::Type::RawBuffer && type != ReflectionResourceType::Type::StructuredBuffer &&
+                type != ReflectionResourceType::Type::AccelerationStructure) {
+                logError("Resource '" + name + "' cannot be bound as root descriptor. Only raw buffers, structured buffers, and acceleration structures are supported.");
                 return nullptr;
             }
             
@@ -627,7 +638,7 @@ namespace Falcor
                     return nullptr;
                 }
             }
-            assert(dims == ReflectionResourceType::Dimensions::Buffer); // We shouldn't get here otherwise
+            assert(dims == ReflectionResourceType::Dimensions::Buffer || dims == ReflectionResourceType::Dimensions::AccelerationStructure); // We shouldn't get here otherwise
         }
 
         ReflectionResourceType::SharedPtr pType = ReflectionResourceType::create(type, dims, structuredType, retType, shaderAccess, pSlangType);
@@ -640,8 +651,8 @@ namespace Falcor
         if (isRootDescriptor) bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::RootDescriptor;
 
         switch (type) {
-            //default:
-            //    break;
+            default:
+                break;
 
             case ReflectionResourceType::Type::StructuredBuffer:
                 {
@@ -697,9 +708,6 @@ namespace Falcor
                     }
                     bindingInfo.pSubObjectReflector = pSubBlock;
                 }
-                break;
-            
-            default:
                 break;
         }
 
@@ -1174,14 +1182,12 @@ namespace Falcor
 
         CASE(COMPUTE,   Compute);
 
-#ifdef FALCOR_D3D12
         CASE(RAY_GENERATION,    RayGeneration);
         CASE(INTERSECTION,      Intersection);
         CASE(ANY_HIT,           AnyHit);
         CASE(CLOSEST_HIT,       ClosestHit);
         CASE(MISS,              Miss);
         CASE(CALLABLE,          Callable);
-#endif
 #undef CASE
 
         default:
@@ -1289,6 +1295,7 @@ namespace Falcor
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
+            case DescriptorSet::Type::AccelerationStructureSrv:
                 fieldRange.baseIndex = ioBuildState.srvCount;
                 ioBuildState.srvCount += fieldRange.count;
                 break;
@@ -1509,6 +1516,10 @@ namespace Falcor
             return shaderAccess == ReflectionResourceType::ShaderAccess::Read
                 ? DescriptorSet::Type::TypedBufferSrv
                 : DescriptorSet::Type::TypedBufferUav;
+            break;
+        case ReflectionResourceType::Type::AccelerationStructure:
+            assert(shaderAccess == ReflectionResourceType::ShaderAccess::Read);
+            return DescriptorSet::Type::AccelerationStructureSrv;
             break;
         case ReflectionResourceType::Type::Sampler:
             return DescriptorSet::Type::Sampler;

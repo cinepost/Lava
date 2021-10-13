@@ -36,6 +36,19 @@ BEGIN_NAMESPACE_FALCOR
 #define Texture2D std::shared_ptr<Texture>
 #endif
 
+static const uint kMaterialTypeBits = 8;    ///< Maximum number of bits to store MaterialType.
+
+/** Material type.
+*/
+// TODO: Specify the backing type when Slang issue has been resolved
+enum class MaterialType : uint32_t {
+    Standard = 0,
+    Cloth    = 1,
+    Hair     = 3,
+
+    Count // Must be last
+};
+
 /** This is a host/device structure that describes material resources.
 */
 struct MaterialResources {
@@ -45,13 +58,15 @@ struct MaterialResources {
     Texture2D roughness;
     Texture2D emissive;
     Texture2D normalMap;
-    Texture2D specularTransmission;
+    Texture2D transmission;
     Texture2D displacementMap;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
 
     SamplerState samplerState;
+    SamplerState displacementSamplerStateMin;
+    SamplerState displacementSamplerStateMax;
 };
 
 /** This is a host/device structure that describes a material.
@@ -75,13 +90,31 @@ struct MaterialData {
     float    specularTransmission   = 0.f;              ///< Specular transmission.
 
     float3   volumeAbsorption       = float3(0, 0, 0);  ///< Volume absorption coefficient.
+    float    volumeAnisotropy       = 0.f;              ///< Volume phase function anisotropy (g).
+
+    float3   volumeScattering       = float3(0.f);      ///< Volume scattering coefficient.
+    float    diffuseTransmission    = 0.f;              ///< Diffuse transmission.
+
+
     uint32_t flags                  = 0;                ///< See flags in MaterialDefines.slangh
+    uint32_t type                   = (uint32_t)MaterialType::Standard; ///< Material type.
+    float    displacementScale      = 0.f;              ///< Displacement scale value.
+    float    displacementOffset     = 0.f;              ///< Displacement offset value.
 
+    float3   transmission           = float3(1.f);      ///< Transmission color.
+    float    _pad0                  = 0.f;
+
+    float3   opacity                = float3(1, 1, 1);
     float    reflectivity           = 1.0f;
-    float    _pad1;
-    float    _pad2;
-    float    _pad3;
 
+    /** Get the material type. This decides how the fields should be interpreted.
+        \return Material type.
+    */
+    MaterialType getType() { return (MaterialType)type; }
+
+    /** Get the nested priority used for nested dielectrics.
+        \return Nested priority, with 0 reserved for the highest possible priority.
+    */
     uint getNestedPriority() { return EXTRACT_NESTED_PRIORITY(flags); }
 };
 

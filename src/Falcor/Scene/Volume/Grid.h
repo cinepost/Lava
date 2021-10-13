@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_SCENE_VOLUME_GRID_H_
 #define SRC_FALCOR_SCENE_VOLUME_GRID_H_
 
+#include "BrickedGrid.h"
+
 //#pragma warning(disable:4244 4267)
 #include "openvdb/nanovdb/nanovdb/NanoVDB.h"
 #include "openvdb/nanovdb/nanovdb/util/GridHandle.h"
@@ -117,6 +119,14 @@ class dlldecl Grid {
     */
     const nanovdb::GridHandle<nanovdb::HostBuffer>& getGridHandle() const;
 
+    /** Get the (affine) NanoVDB transformation matrix.
+    */
+    glm::mat4 getTransform() const;
+
+    /** Get the inverse (affine) NanoVDB transformation matrix.
+    */
+    glm::mat4 getInvTransform() const;
+
   private:
     Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle);
 
@@ -125,10 +135,17 @@ class dlldecl Grid {
 
 
     Device::SharedPtr mpDevice;
+    
+    // Host data.
     nanovdb::GridHandle<nanovdb::HostBuffer> mGridHandle;
     nanovdb::FloatGrid* mpFloatGrid;
     nanovdb::FloatGrid::AccessorType mAccessor;
+    
+    // Device data.
     Buffer::SharedPtr mpBuffer;
+    BrickedGrid mBrickedGrid;
+
+    friend class SceneCache;
 };
 
 }  // namespace Falcor

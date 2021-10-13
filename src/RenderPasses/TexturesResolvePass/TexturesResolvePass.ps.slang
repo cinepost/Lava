@@ -93,18 +93,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         if (!vtexData.empty) {
             float mipBias = -0.0; // TODO: use actual texture sampler bias
 
-            //float fMipLevel = 0.0;
-            //if (anisotropicFilteringRequired) { 
-            //    fMipLevel = _calculateAnisoMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
-            //} else {
-            //    fMipLevel = calculateBaseMipMapLevel2D(vOut.texC, float2(vtexData.width, vtexData.height), mipBias);
-            //}
-
-            //int loMipLevel = floor(fMipLevel);
-            //int hiMipLevel = ceil(fMipLevel);
-
             float3 mips = calcTextureMipLevels(vOut.texC, gSampler, vtexData, mipBias);
-            //float fmip = fcalcTextureMipLevel(vOut.texC, gSampler, vtexData, mipBias) + mipBias;
 
             int loMipLevel = max(0, (int)mips.x);
             int hiMipLevel = max(0, (int)mips.y);
@@ -119,33 +108,10 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             writeTileID(loMipLevelTileID);
             writeTileID(hiMipLevelTileID);
 
-
-            //Texture2D tex = gScene.materialResources[materialID].baseColor;
-            //float ff = g_tTex2df4a.CalculateLevelOfDetail(gSampler, vOut.texC);
-
-            //writeTileID(calculateTileID2D(vOut.texC, 1, vtexData));
-
-            //writeTileID(calculateTileID2D(vOut.texC, 0, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, 1, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, 2, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, 3, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, 4, vtexData));
-
-            //writeTileID(calculateTileID2D(vOut.texC, max(0.0, loMipLevel - 1), vtexData));
-
             debugTileID = loMipLevelTileID;
         }
     }
 
     psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, debug_mip_level_f, 1);
-
-    //psOut.output.r = mipCalibrationTexture.Sample(gSampler, vOut.texC).r * 255.0 * 0.1;
-
-    //psOut.output.g = floor(psOut.output.r * 10.0) * 0.1;
-    //psOut.output.b = ceil(psOut.output.r * 10.0) * 0.1;
-
-    //psOut.output = randomColor(debugTileID);
-    //psOut.output = randomColor(floor(debug_mip_level));
-    
     return psOut;
 }

@@ -38,6 +38,8 @@ namespace Falcor {
 namespace {
     // Constants.
     const float kMaxAnisotropy = 0.99f;
+    const double kMinFrameRate = 1.0;
+    const double kMaxFrameRate = 1000.0;
 }
 
 static_assert(sizeof(VolumeData) % 16 == 0, "Volume::VolumeData size should be a multiple of 16");
@@ -140,6 +142,22 @@ void Volume::setGridFrame(uint32_t gridFrame) {
         mGridFrame = gridFrame;
         markUpdates(UpdateFlags::GridsChanged);
         updateBounds();
+    }
+}
+
+void Volume::setFrameRate(double frameRate) {
+    mFrameRate = clamp(frameRate, kMinFrameRate, kMaxFrameRate);
+}
+
+void Volume::setPlaybackEnabled(bool enabled) {
+    mPlaybackEnabled = enabled;
+}
+
+void Volume::updatePlayback(double currentTime) {
+    uint32_t frameCount = getGridFrameCount();
+    if (mPlaybackEnabled && frameCount > 0) {
+        uint32_t frameIndex = (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate) % frameCount;
+        setGridFrame(frameIndex);
     }
 }
 

@@ -36,6 +36,9 @@
 #include <nanovdb/util/Primitives.h>
 #include <openvdb/openvdb.h>
 #pragma warning(default:4146 4244 4267 4275 4996)
+#include <glm/gtc/type_ptr.hpp>
+#include "GridConverter.h"
+
 
 namespace Falcor {
 
@@ -83,6 +86,13 @@ Grid::SharedPtr Grid::createFromFile(Device::SharedPtr pDevice, const std::strin
 
 void Grid::setShaderData(const ShaderVar& var) {
     var["buf"] = mpBuffer;
+    var["rangeTex"] = mBrickedGrid.range;
+    var["indirectionTex"] = mBrickedGrid.indirection;
+    var["atlasTex"] = mBrickedGrid.atlas;
+    var["minIndex"] = getMinIndex();
+    var["minValue"] = getMinValue();
+    var["maxIndex"] = getMaxIndex();
+    var["maxValue"] = getMaxValue();
 }
 
 int3 Grid::getMinIndex() const {
@@ -106,7 +116,11 @@ uint64_t Grid::getVoxelCount() const {
 }
 
 uint64_t Grid::getGridSizeInBytes() const {
-    return mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
+    const uint64_t nvdb = mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
+    const uint64_t bricks = (mBrickedGrid.range ? mBrickedGrid.range->getTextureSizeInBytes() : (uint64_t)0) +
+        (mBrickedGrid.indirection ? mBrickedGrid.indirection->getTextureSizeInBytes() : (uint64_t)0) +
+        (mBrickedGrid.atlas ? mBrickedGrid.atlas->getTextureSizeInBytes() : (uint64_t)0);
+    return nvdb + bricks;
 }
 
 AABB Grid::getWorldBounds() const {
@@ -116,6 +130,20 @@ AABB Grid::getWorldBounds() const {
 
 float Grid::getValue(const int3& ijk) const {
     return mAccessor.getValue(nanovdb::Coord(ijk.x, ijk.y, ijk.z));
+}
+
+glm::mat4 Grid::getTransform() const {
+    const auto& gridMap = mGridHandle.gridMetaData()->map();
+    const float3x3 affine = glm::make_mat3(gridMap.mMatF);
+    const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+    return glm::translate(float4x4(affine), translation);
+}
+
+glm::mat4 Grid::getInvTransform() const {
+    const auto& gridMap = mGridHandle.gridMetaData()->map();
+    const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
+    const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+    return glm::translate(float4x4(invAffine), -translation);
 }
 
 const nanovdb::GridHandle<nanovdb::HostBuffer>& Grid::getGridHandle() const {
@@ -140,6 +168,9 @@ Grid::Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> g
         Buffer::CpuAccess::None,
         mGridHandle.data()
     );
+
+    using NanoVDBGridConverter = NanoVDBConverterBC4;
+    mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert();
 }
 
 Grid::SharedPtr Grid::createFromNanoVDBFile(Device::SharedPtr pDevice, const std::string& path, const std::string& gridname) {

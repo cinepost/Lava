@@ -64,6 +64,8 @@ namespace {
 }
 
 SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
+    assert(pDevice);
+
     mpCubeScene = Scene::create(pDevice, "SkyBox/cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
@@ -86,15 +88,14 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
 
     // Create the rasterizer state
     RasterizerState::Desc rastDesc;
-    rastDesc.setCullMode(RasterizerState::CullMode::Front).setDepthClamp(true);
-    mpState->setRasterizerState(RasterizerState::create(rastDesc));
+    rastDesc.setCullMode(RasterizerState::CullMode::None).setDepthClamp(true);
+    mpRsState = RasterizerState::create(rastDesc);
 
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
     mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
     mpState->setProgram(mpProgram);
 
-    assert(mpDevice);
     setFilter((uint32_t)mFilter);
 }
 
@@ -156,7 +157,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
     mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
     mpState->setFbo(mpFbo);
-    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

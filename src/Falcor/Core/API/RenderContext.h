@@ -163,6 +163,17 @@ class dlldecl RenderContext : public ComputeContext {
     */
     void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect = uint4(-1), const uint4& dstRect = uint4(-1), Sampler::Filter = Sampler::Filter::Linear);
 
+    /** Complex blits (low-level copy) an SRV into an RTV.
+        \param[in] pSrc Source view to copy from
+        \param[in] pDst Target view to copy to
+        \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down]
+        \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down]
+        \param[in] componentsReduction Reduction mode for each of the input components (Standard, Min, Max).  Comparison reduction mode is not supported.
+        \param[in] componentsTransform Linear combination factors of the input components for each output component.
+    */
+    void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+
+
     /** Submit the command list
     */
     void flush(bool wait = false) override;

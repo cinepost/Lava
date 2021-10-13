@@ -29,7 +29,6 @@
 #define FALCOR_RAYTRACING_SHADERTABLE_H_
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/RenderContext.h"
 
@@ -45,32 +44,28 @@ class Scene;
 class Program;
 class RtStateObject;
 
-/* We are using the following layout for the shader-table:
-  
-   +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-   |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        | 
-   |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |   
-   |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
-   |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
-   +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-  
-   The first record is the ray gen, followed by the miss records, followed by the meshes records.
-   For each mesh we have N hit records, N == number of ray types in the program
-   The size of each record is varying based on the type. RayGen and miss entries contain only the program identifier. Hit entries contain the program identifier and the geometry index as a shader constant
-
-   User provided local root signatures are not supported for performance reasons. Managing and updating data for custom root-signatures results in significant overhead.
-   To get the root-signature that matches this table, call the static function getRootSignatre()
+/** This class represents the GPU shader table for raytracing programs.
+    We are using the following layout for the shader table:
+    +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+    |            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
+    |   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
+    |   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
+    |            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
+    +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+    The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
+    For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
+    The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records contain only the program identifier (32B).
+    User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
+    To get the root signature that matches this table, call the static function getRootSignature().
 */
 
 class dlldecl ShaderTable {
   public:
     using SharedPtr = std::shared_ptr<ShaderTable>;
-    using ConstSharedPtrRef = const SharedPtr&;
-    ~ShaderTable();
 
     /** Create a new object
     */
-    static SharedPtr create(Device::SharedPtr pDevice);//RtProgram* pProgram, const Scene* pScene);
+    static SharedPtr create();//RtProgram* pProgram, const Scene* pScene);
 
     /** Update the shader table.
         This function doesn't do any early out. If it's called, it will always update the table.
@@ -79,8 +74,7 @@ class dlldecl ShaderTable {
     void update(
         RenderContext*          pCtx,
         RtStateObject*          pRtso,
-        RtProgramVars const*    pVars,
-        Scene*                  pScene);
+        RtProgramVars const*    pVars);
 
     void flushBuffer(
         RenderContext*          pCtx);
@@ -144,14 +138,13 @@ class dlldecl ShaderTable {
     RtStateObject* getRtso() const { return mpRtso; }
 
 private:
-    ShaderTable(Device::SharedPtr pDevice);
+    ShaderTable() = default;
 
     SubTableInfo mSubTables[int(SubTableType::Count)];
 
     RtStateObject*          mpRtso = nullptr;
     Buffer::SharedPtr       mpBuffer;
     std::vector<uint8_t>    mData;
-    Device::SharedPtr       mpDevice;
 };
 
 }  // namespace Falcor

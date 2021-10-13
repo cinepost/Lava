@@ -28,7 +28,6 @@
 #ifndef FALCOR_FALCOREXPERIMENTAL_H_
 #define FALCOR_FALCOREXPERIMENTAL_H_
 
-#include "Experimental/Scene/Lights/EnvMap.h"
 #include "Experimental/Scene/Lights/EmissiveLightSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
 

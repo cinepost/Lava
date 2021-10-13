@@ -44,6 +44,8 @@ target_link_libraries(
     ForwardLightingPass
     SkyBox
     HBAO
+    MinimalPathTracer
+    GBuffer
 )
 
 if(UNIX)

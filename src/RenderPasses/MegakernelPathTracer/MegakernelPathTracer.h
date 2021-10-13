@@ -29,6 +29,7 @@
 #define SRC_FALCOR_RENDERPASSES_MEGAKERNELPATHTRACER_MEGAKERNELPATHTRACER_H_
 
 #include "Falcor.h"
+#include "Falcor/Core/API/Device.h"
 #include "RenderPasses/Shared/PathTracer/PathTracer.h"
 #include "Falcor/Raytracing/RtProgram/RtProgram.h"
 #include "Falcor/Raytracing/RtProgramVars.h"
@@ -59,7 +60,7 @@ public:
     static const char* sDesc;
 
 private:
-    MegakernelPathTracer(const Dictionary& dict);
+    MegakernelPathTracer(Device::SharedPtr pDevice, const Dictionary& dict);
 
     void recreateVars() override { mTracer.pVars = nullptr; }
     void prepareVars();
@@ -69,6 +70,7 @@ private:
     struct
     {
         RtProgram::SharedPtr pProgram;
+        RtBindingTable::SharedPtr pBindingTable;
         RtProgramVars::SharedPtr pVars;
         ParameterBlock::SharedPtr pParameterBlock;      ///< ParameterBlock for all data.
     } mTracer;

@@ -32,6 +32,7 @@
 #include <memory>
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/Program/ProgramReflection.h"
 
 namespace Falcor {
 
@@ -80,6 +81,7 @@ template<typename ApiHandleType>
 class dlldecl ResourceView {
  public:
     using ApiHandle = ApiHandleType;
+    using Dimension = ReflectionResourceType::Dimensions;
     static const uint32_t kMaxPossible = -1;
     virtual ~ResourceView();
 
@@ -88,6 +90,9 @@ class dlldecl ResourceView {
 
     ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
         : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource), mViewInfo(firstElement, elementCount) {}
+
+    ResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr& pResource, ApiHandle handle)
+        : mApiHandle(handle), mpDevice(pDevice), mpResource(pResource) {}
 
     /** Get the raw API handle.
     */
@@ -109,23 +114,28 @@ class dlldecl ResourceView {
 };
 
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
- public:
+  public:
     using SharedPtr = std::shared_ptr<ShaderResourceView>;
     using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
+    //static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr createViewForAccelerationStructure(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer);
+
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
     static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
     static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
 
-    // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
- private:
+  private:
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
         : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
+
+    ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle)
+        : ResourceView(pDevice, pResource, handle) {}
 };
 
 class dlldecl DepthStencilView : public ResourceView<DsvHandle> {

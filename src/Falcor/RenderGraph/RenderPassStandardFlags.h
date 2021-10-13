@@ -25,7 +25,10 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_
+#define FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_
+
+#include "Falcor/Core/Framework.h"
 
 namespace Falcor {
 
@@ -47,6 +50,12 @@ static const char kRenderPassRefreshFlags[] = "_refreshFlags";
 */
 static const char kRenderPassPRNGDimension[] = "_prngDimension";
 
+/** Adjust shading normals on primary hits.
+*/
+static const char kRenderPassGBufferAdjustShadingNormals[] = "_gbufferAdjustShadingNormals";
+
 enum_class_operators(RenderPassRefreshFlags);
 
 }  // namespace Falcor
+
+#endif  // FALCOR_RENDERGRAPH_RENDERPASS_STANDARD_FLAGS_H_

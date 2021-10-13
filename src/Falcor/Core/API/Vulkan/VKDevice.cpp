@@ -166,21 +166,6 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
         throw std::runtime_error("Failed to create FBO texture.");
     }
 
-//    // Allocate the GPU memory
-//    VkMemoryRequirements memRequirements;
-//    vkGetImageMemoryRequirements(mApiHandle, image, &memRequirements);
-
-//    VkDeviceMemory deviceMem;
-//    VkMemoryAllocateInfo allocInfo = {};
-//    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-//    allocInfo.allocationSize = memRequirements.size;
-//    allocInfo.memoryTypeIndex = getVkMemoryType(Device::MemoryType::Default, memRequirements.memoryTypeBits);
-
-//    vk_call(vkAllocateMemory(mApiHandle, &allocInfo, nullptr, &deviceMem));
-
-//    vkBindImageMemory(mApiHandle, image, deviceMem, 0);
-    
-//    apiHandle = ResourceHandle::create(shared_from_this(), image, nullptr);
     apiHandle = ResourceHandle::create(shared_from_this(), image, allocation);
     return true;
 }
@@ -529,17 +514,6 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
     PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR"));
     PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
 
-    //vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR"));
-    //vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
-    //vkBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
-    //vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
-    //vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
-    //vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
-    //vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
-    //vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
-    //vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
-    //vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
-
     // Get the queues we created
     for (uint32_t type = 0; type < arraysize(pData->falcorToVulkanQueueType); type++) {
         for (uint32_t i = 0; i < (uint32_t)cmdQueues[type].size(); i++) {
@@ -566,6 +540,29 @@ void Device::apiPresent() {
     mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
 }
 
+Device::SupportedFeatures getSupportedFeatures(VkPhysicalDevice device) {
+
+    Device::SupportedFeatures supported = Device::SupportedFeatures::None;
+
+    // TODO: check conservative rasterization
+    supported |= Device::SupportedFeatures::ConservativeRasterizationTier1 | Device::SupportedFeatures::ConservativeRasterizationTier2 | Device::SupportedFeatures::ConservativeRasterizationTier3;
+    
+    // TODO: check rasterizer ordered views (ROVs)
+    supported |= Device::SupportedFeatures::RasterizerOrderedViews;
+    
+    // TODO: check programmable sample positions supoprt
+    supported |= Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly;
+    supported |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
+
+    // TODO: check barycentrics support
+    supported |= Device::SupportedFeatures::Barycentrics;
+
+    // TODO: check raytracing support
+    supported |= Device::SupportedFeatures::Raytracing;
+
+    return supported;
+}
+
 /**
  * Initialize vulkan device
  */
@@ -584,17 +581,13 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures, mRayTracingPipelineProperties, mAaccelerationStructureFeatures);
     if (!device) return false;
 
-    // RadeonRays context
-    //if (CHECK_RR_CALL(rrCreateContextVk(RR_API_VERSION, device, physicalDevice, queue, queue_family_index_, &mRRcontext))) {
-    //    logError("Could not create RadeonRays context");
-    //    mRRcontext = nullptr;
-    //}
-
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
     mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
     mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
+
+    mSupportedFeatures = getSupportedFeatures(physicalDevice);
 
     if (createOffscreenFBO(desc.colorFormat) == false) {
         return false;

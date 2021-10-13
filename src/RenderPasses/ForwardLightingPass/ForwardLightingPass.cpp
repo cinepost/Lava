@@ -49,13 +49,11 @@ namespace {
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
     const std::string kNormals = "normals";
-    const std::string kAOBuffer = "aoHorizons";
     const std::string kVisBuffer = "visibilityBuffer";
 
     const std::string kFrameSampleCount = "frameSampleCount";
     const std::string kSuperSampleCount = "superSampleCount";
     const std::string kSuperSampling = "enableSuperSampling";
-    const std::string kUseSSAO = "USE_SSAO";
 }
 
 ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -68,7 +66,6 @@ ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRende
         if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
         else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kSuperSampling) pThis->setSuperSampling(value);
-        else if (key == kUseSSAO) pThis->mUseSSAO = value;
         else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
 
@@ -89,30 +86,34 @@ ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(
     mpProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
     mpProgram->addDefine("ENABLE_DEFERED_AO", "1");
 
+    // Create a GPU sample generator.
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    assert(mpSampleGenerator);
+    mpProgram->addDefines(mpSampleGenerator->getDefines());
+
     mpState = GraphicsState::create(pDevice);
     mpState->setProgram(mpProgram);
 
     mpFbo = Fbo::create(pDevice);
 
     DepthStencilState::Desc dsDesc;
-    dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+    dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::Equal);
     mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point)
       .setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
     mpNoiseSampler = Sampler::create(pDevice, samplerDesc);
+
+    mSampleNumber = 0;
 }
 
 RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    reflector.addInput(kAOBuffer, "Ambient occlusion horizons buffer").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSuperSampleCount);
 
-    //auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
-    //depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSuperSampleCount);
     auto& depthField = reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(Resource::BindFlags::DepthStencil);
 
     if (mNormalMapFormat != ResourceFormat::Unknown) {
@@ -187,29 +188,53 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     initDepth(pContext, renderData);
     initFbo(pContext, renderData);
     
-    if (mpScene) {
-        float2 f = mpNoiseOffsetGenerator->next();
-        uint2 noiseOffset = {64 * (f[0] + 0.5f), 64 * (f[1] + 0.5f)};
+    if (!mpScene) return;
 
-        mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
-        mpVars["PerFrameCB"]["gNoiseOffset"] = noiseOffset;
-        mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
-        mpVars["PerFrameCB"]["gUseAO"] = (mAoFactor > 0) ? true : false;
-        mpVars["PerFrameCB"]["gUseBentNormals"] = 1;
-        mpVars["PerFrameCB"]["gAoFactor"] = mAoFactor;
+    // Prepare program vars. This may trigger shader compilation.
+    // The program should have all necessary defines set at this point.
+    prepareVars(pContext);
+    
+    float2 f = mpNoiseOffsetGenerator->next();
+    uint2 noiseOffset = {64 * (f[0] + 0.5f), 64 * (f[1] + 0.5f)};
 
-        mpVars["gNoiseSampler"] = mpNoiseSampler;
-        mpVars["gNoiseTex"] = mpBlueNoiseTexture;
+    mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
+    mpVars["PerFrameCB"]["gNoiseOffset"] = noiseOffset;
+    mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
+    mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
+    mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
 
-        if(renderData[kVisBuffer])
-            mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    if(renderData[kVisBuffer])
+        mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    
+    mpState->setFbo(mpFbo);
+    mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
+}
 
-        if(renderData[kAOBuffer])
-            mpVars->setTexture(kAOBuffer, renderData[kAOBuffer]->asTexture());
-        
-        mpState->setFbo(mpFbo);
-        mpScene->rasterize(pContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+void ForwardLightingPass::prepareVars(RenderContext* pContext) {
+    assert(mpVars);
+
+    if (!mDirty) return;
+
+    // Update env map lighting
+    const auto& pEnvMap = mpScene->getEnvMap();
+    if (pEnvMap && (!mpEnvMapLighting || mpEnvMapLighting->getEnvMap() != pEnvMap)) {
+        mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
+        mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
+        mpState->getProgram()->addDefine("_USE_ENV_MAP");
+    } else if (!pEnvMap) {
+        mpEnvMapLighting = nullptr;
+        mpState->getProgram()->removeDefine("_USE_ENV_MAP");
     }
+
+    mpState->getProgram()->addDefines(mpSampleGenerator->getDefines());
+
+    mpVars["gNoiseSampler"]     = mpNoiseSampler;
+    mpVars["gNoiseTex"]         = mpBlueNoiseTexture;
+    
+    bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
+    if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
+
+    mDirty = false;
 }
 
 ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) {
@@ -276,10 +301,4 @@ ForwardLightingPass& ForwardLightingPass::setRasterizerState(const RasterizerSta
     mpRsState = pRsState;
     mpState->setRasterizerState(mpRsState);
     return *this;
-}
-
-void ForwardLightingPass::setAoFactor(float factor) {
-  if (mAoFactor == factor) return;
-  mAoFactor = factor; 
-  mDirty = true; 
 }

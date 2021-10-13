@@ -29,7 +29,6 @@
 #include <thread>
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Scene/Lights/LightProbe.h"
 
 #include "scene_builder.h"
 #include "lava_utils_lib/logging.h"
@@ -400,7 +399,6 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(ika::bgeo::Bgeo::Sha
 }
 
 void SceneBuilder::finalize() {
-    mDirty = true;
     getScene();
 }
 

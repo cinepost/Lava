@@ -82,6 +82,7 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     GraphicsProgram::SharedPtr mpProgram;
     GraphicsVars::SharedPtr mpVars;
     GraphicsState::SharedPtr mpState;
+    RasterizerState::SharedPtr mpRsState;
     Fbo::SharedPtr mpFbo;
     Scene::SharedPtr mpScene;
     Sampler::SharedPtr mpSampler;

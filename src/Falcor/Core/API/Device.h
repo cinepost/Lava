@@ -84,14 +84,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
         std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 1 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
 
-#ifdef FALCOR_D3D12
-        // GUID list for experimental features
-        std::vector<UUID> experimentalFeatures;
-#endif
-
-#ifdef FALCOR_VK
         std::vector<std::string> requiredExtensions;
-#endif
 
         uint32_t width = 1280;                                          ///< Headless FBO width
         uint32_t height = 720;                                          ///< Headless FBO height
@@ -104,6 +97,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         Barycentrics = 0x4,                           // On D3D12, pixel shader barycentrics are supported.
         Raytracing = 0x8,                             // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
         RaytracingTier1_1 = 0x10,                     // On D3D12, DirectX Raytracing Tier 1.1 is supported.
+        ConservativeRasterizationTier1 = 0x20,        // On D3D12, conservative rasterization tier 1 is supported.
+        ConservativeRasterizationTier2 = 0x40,        // On D3D12, conservative rasterization tier 2 is supported.
+        ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
+        RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
     };
 
     using MemoryType = GpuMemoryHeap::Type;

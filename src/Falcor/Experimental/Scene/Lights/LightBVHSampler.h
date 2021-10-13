@@ -30,7 +30,7 @@
 #include "EmissiveLightSampler.h"
 #include "LightBVH.h"
 #include "LightBVHBuilder.h"
-#include "LightCollection.h"
+#include "Falcor/Scene/Lights/LightCollection.h"
 #include "LightBVHSamplerSharedDefinitions.slang"
 
 namespace Falcor

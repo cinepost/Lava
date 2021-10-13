@@ -23,7 +23,8 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
-#include "RenderPasses/HBAO/HBAO.h"
+#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
+#include "RenderPasses/GBuffer/GBuffer/GBufferRaster.h"
 
 #include "display.h"
 #include "renderer_iface.h"
@@ -98,44 +99,46 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	int mGpuId;
     
  	bool mIfaceAquired = false;
-    bool mGlobalDataInited = false;
+   bool mGlobalDataInited = false;
 
-    RendererIface::GlobalData   mGlobalData;
+   RendererIface::GlobalData   mGlobalData;
 
  	Display::SharedPtr 			mpDisplay;
-    std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
+   std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
 
-    Falcor::Camera::SharedPtr   mpCamera;
+   Falcor::Camera::SharedPtr   mpCamera;
 
  	Falcor::Fbo::SharedPtr 		mpTargetFBO;		///< The FBO available to renderers
  	Falcor::FrameRate*			mpFrameRate;
-    Falcor::Clock* 	   			mpClock;
-    Falcor::ArgList 			mArgList;
+   Falcor::Clock* 	   			mpClock;
+   Falcor::ArgList 			mArgList;
 
-    lava::SceneBuilder::SharedPtr   mpSceneBuilder;
-    Falcor::Sampler::SharedPtr      mpSampler;
-    std::vector<GraphData>          mGraphs;
-    uint32_t mActiveGraph = 0;
+   lava::SceneBuilder::SharedPtr   mpSceneBuilder;
+   Falcor::Sampler::SharedPtr      mpSampler;
+   std::vector<GraphData>          mGraphs;
+   uint32_t mActiveGraph = 0;
 
-    ///
-    float2 mInvFrameDim;
-    CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
+   ///
+   float2 mInvFrameDim;
+   CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
     
-    Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
-    Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
+   Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
+   Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
 
-    AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
-    DepthPass::SharedPtr            mpDepthPrePass = nullptr;
-    DepthPass::SharedPtr            mpDepthPass = nullptr;
-    SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
-    ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
-    TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
-    HBAO::SharedPtr                 mpHBAOpass = nullptr;
-    ///
+   AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
+   DepthPass::SharedPtr            mpDepthPrePass = nullptr;
+   DepthPass::SharedPtr            mpDepthPass = nullptr;
+   SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
+   ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
+   TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
 
-    bool mInited = false;
+   GBufferRaster::SharedPtr        mpGBufferRasterPass = nullptr;
+   MinimalPathTracer::SharedPtr    mpMinimalPathTracer = nullptr;
+   ///
 
-    friend class RendererIface;
+   bool mInited = false;
+
+   friend class RendererIface;
 }; 
 
 }  // namespace lava

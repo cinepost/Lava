@@ -33,6 +33,12 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 
+typedef enum D3D12_RAYTRACING_PIPELINE_FLAGS {
+  D3D12_RAYTRACING_PIPELINE_FLAG_NONE,
+  D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_TRIANGLES,
+  D3D12_RAYTRACING_PIPELINE_FLAG_SKIP_PROCEDURAL_PRIMITIVES
+} D3D12_RAYTRACING_PIPELINE_FLAGS;
+
 namespace Falcor {
 
 class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject> {
@@ -45,6 +51,7 @@ class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject>
       public:
         Desc& setKernels(const ProgramKernels::SharedConstPtr& pKernels) { mpKernels = pKernels; return *this; }
         Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
+        Desc& setPipelineFlags(D3D12_RAYTRACING_PIPELINE_FLAGS flags) { mPipelineFlags = flags; return *this; }
 
         // TODO(tfoley): this is redundant with the kernels
         Desc& setGlobalRootSignature(const RootSignature::SharedPtr& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
@@ -53,7 +60,8 @@ class dlldecl RtStateObject : public std::enable_shared_from_this<RtStateObject>
       private:
         ProgramKernels::SharedConstPtr mpKernels;
         RootSignature::SharedPtr mpGlobalRootSignature;
-        uint32_t mMaxTraceRecursionDepth = 1;
+        uint32_t mMaxTraceRecursionDepth = 0;
+        D3D12_RAYTRACING_PIPELINE_FLAGS mPipelineFlags = D3D12_RAYTRACING_PIPELINE_FLAG_NONE;
         friend RtStateObject;
     };
 

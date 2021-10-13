@@ -31,6 +31,7 @@
 #include "Core/Program/ProgramVars.h"
 #include "RtProgram/RtProgram.h"
 #include "RtProgramVarsHelper.h"
+#include "RtBindingTable.h"
 
 namespace Falcor {
 
@@ -47,25 +48,34 @@ class dlldecl RtProgramVars : public ProgramVars {
         \param[in] pScene The scene.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
+    static SharedPtr create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-    const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
-    const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
-    const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID*mDescHitGroupCount + rayID].pVars; }
-    const EntryPointGroupVars::SharedPtr& getAABBHitVars(uint32_t rayID, uint32_t primitiveIndex) { return mAABBHitVars[primitiveIndex * mDescHitGroupCount + rayID].pVars; }
+    const EntryPointGroupVars::SharedPtr& getRayGenVars()
+    {
+      assert(mRayGenVars.size() == 1);
+      return mRayGenVars[0].pVars;
+    }
+    const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t missIndex)
+    {
+      assert(missIndex < mMissVars.size());
+      return mMissVars[missIndex].pVars;
+    }
+    const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayType, uint32_t geometryID)
+    {
+      assert(rayType < mRayTypeCount&& geometryID < mGeometryCount);
+      return mHitVars[mRayTypeCount * geometryID + rayType].pVars;
+    }
 
     bool apply(RenderContext*  pCtx, RtStateObject*  pRtso);
 
     ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
 
-    uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
     uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
     uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
-    uint32_t getAABBHitVarsCount() const { return uint32_t(mAABBHitVars.size()); }
-    uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
+    uint32_t getRayTypeCount() const { return mRayTypeCount; }
+    uint32_t getGeometryCount() const { return mGeometryCount; }
 
-    Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices; }
-    void setSceneForGeometryIndices(Scene::SharedPtr pScene) { mpSceneForGeometryIndices = pScene; }
+    const std::vector<int32_t>& getUniqueEntryPointGroupIndices() const { return mUniqueEntryPointGroupIndices; }
 
   private:
     struct EntryPointGroupInfo {
@@ -75,23 +85,22 @@ class dlldecl RtProgramVars : public ProgramVars {
 
     using VarsVector = std::vector<EntryPointGroupInfo>;
 
-    RtProgramVars(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
+    RtProgramVars(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-    void init();
+    void init(const RtBindingTable::SharedPtr& pBindingTable);
     bool applyVarsToTable(ShaderTable::SubTableType type, uint32_t tableOffset, VarsVector& varsVec, const RtStateObject* pRtso);
 
-    Scene::SharedPtr mpScene;
-    uint32_t mDescHitGroupCount = 0;
+    uint32_t mRayTypeCount = 0;                         ///< Number of ray types (= number of hit groups per geometry).
+    uint32_t mGeometryCount = 0;                        ///< Number of geometries.
+    std::vector<int32_t> mUniqueEntryPointGroupIndices; ///< Indices of all unique entry point groups that we use in the associated program.
+
     mutable ShaderTable::SharedPtr mpShaderTable;
 
-    VarsVector mRayGenVars;
-    VarsVector mHitVars;
+     VarsVector mRayGenVars;
     VarsVector mMissVars;
-    VarsVector mAABBHitVars;
+    VarsVector mHitVars;
 
     RtVarsContext::SharedPtr mpRtVarsHelper;
-
-    Scene::SharedPtr mpSceneForGeometryIndices;
 };
 
 } // namespace Falcor

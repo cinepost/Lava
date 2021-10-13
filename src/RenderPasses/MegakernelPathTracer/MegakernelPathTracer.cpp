@@ -39,7 +39,7 @@ namespace
     // The payload for the scatter rays is currently 8B without and 20B with nested dielectrics enabled.
     // The payload for the shadow rays is 4B.
     const uint32_t kMaxPayloadSizeBytes = 20;
-    const uint32_t kMaxAttributesSizeBytes = 8;
+    const uint32_t kMaxAttributeSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
     // Render pass output channels.
@@ -69,35 +69,46 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
 
 MegakernelPathTracer::SharedPtr MegakernelPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    return SharedPtr(new MegakernelPathTracer(dict));
+    return SharedPtr(new MegakernelPathTracer(pRenderContext->device(), dict));
 }
 
-MegakernelPathTracer::MegakernelPathTracer(const Dictionary& dict)
-    : PathTracer(dict, kOutputChannels)
+MegakernelPathTracer::MegakernelPathTracer(Device::SharedPtr pDevice, const Dictionary& dict)
+    : PathTracer(pDevice, dict, kOutputChannels)
 {
-    // Create ray tracing program.
-    RtProgram::Desc progDesc;
-    progDesc.addShaderLibrary(kShaderFile).setRayGen("rayGen");
-    progDesc.addHitGroup(kRayTypeScatter, "scatterClosestHit", "scatterAnyHit").addMiss(kRayTypeScatter, "scatterMiss");
-    progDesc.addHitGroup(kRayTypeShadow, "", "shadowAnyHit").addMiss(kRayTypeShadow, "shadowMiss");
-    progDesc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
-    progDesc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
-    progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pProgram = RtProgram::create(mpDevice, progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
+
 }
 
-void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void MegakernelPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     PathTracer::setScene(pRenderContext, pScene);
 
-    if (pScene)
-    {
-        mTracer.pProgram->addDefines(pScene->getSceneDefines());
+    if (mpScene) {
+        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural)) {
+            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
+        }
+
+        // Create ray tracing program.
+        RtProgram::Desc desc;
+        desc.addShaderLibrary(kShaderFile);
+        desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
+        desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
+        desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+        desc.addDefines(mpScene->getSceneDefines());
+        desc.addDefine("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
+        desc.addDefine("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
+
+        mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+        auto& sbt = mTracer.pBindingTable;
+        sbt->setRayGen(desc.addRayGen("rayGen"));
+        sbt->setMiss(kRayTypeScatter, desc.addMiss("scatterMiss"));
+        sbt->setMiss(kRayTypeShadow, desc.addMiss("shadowMiss"));
+        sbt->setHitGroupByType(kRayTypeScatter, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
+        sbt->setHitGroupByType(kRayTypeShadow, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
+
+        mTracer.pProgram = RtProgram::create(pRenderContext->device(), desc);
     }
 }
 
-void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Call shared pre-render code.
     if (!beginFrame(pRenderContext, renderData)) return;
 
@@ -154,9 +165,8 @@ void MegakernelPathTracer::execute(RenderContext* pRenderContext, const RenderDa
     endFrame(pRenderContext, renderData);
 }
 
-void MegakernelPathTracer::prepareVars()
-{
-assert(mpScene);
+void MegakernelPathTracer::prepareVars() {
+    assert(mpScene);
     assert(mTracer.pProgram);
 
     // Configure program.
@@ -164,7 +174,7 @@ assert(mpScene);
 
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mpScene);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mTracer.pBindingTable);
 
     // Bind utility classes into shared data.
     auto pGlobalVars = mTracer.pVars->getRootVar();

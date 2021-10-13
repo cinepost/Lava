@@ -31,19 +31,17 @@
 
 const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
 
-namespace
-{
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
-    #ifdef FALCOR_D3D12
-    const std::string shaderModel = "6_1";
-    #else
-    const std::string shaderModel = "450";
-    #endif
+namespace {
 
+    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+    const std::string shaderModel = "450";
+    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
+
+    
     // Additional output channels.
     // TODO: Some are RG32 floats now. I'm sure that all of these could be fp16.
-    const ChannelList kGBufferExtraChannels =
-    {
+    const std::string kVBufferName = "vbuffer";
+    const ChannelList kGBufferExtraChannels = {
         { "vbuffer",          "gVBuffer",            "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
         { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
         { "faceNormalW",      "gFaceNormalW",        "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
@@ -75,6 +73,14 @@ GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, co
 }
 
 GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice) {
+    // Check for required features.
+    if (!pDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
+        throw std::runtime_error("Pixel shader barycentrics are not supported by the current device");
+    }
+    if (!pDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews)) {
+        throw std::runtime_error("Rasterizer ordered views (ROVs) are not supported by the current device");
+    }
+
     parseDictionary(dict);
 
     // Create raster program
@@ -134,20 +140,10 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     if (mpDepthPrePassGraph) mpDepthPrePassGraph->setScene(pScene);
 }
 
-void GBufferRaster::setCullMode(RasterizerState::CullMode mode) {
-    GBuffer::setCullMode(mode);
-    RasterizerState::Desc rsDesc;
-    rsDesc.setCullMode(mCullMode);
-    mRaster.pRsState = RasterizerState::create(rsDesc);
-    assert(mRaster.pState);
-    mRaster.pState->setRasterizerState(mRaster.pRsState);
-}
-
 void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
     GBuffer::resolvePerFrameSparseResources(pRenderContext, renderData);
 
-    // Setup depth pass to use same culling mode.
-    mpDepthPrePass->setRasterizerState(mForceCullMode ? mRaster.pRsState : nullptr);
+    // TODO: Setup depth pass to use same culling mode.
 
     // Copy depth buffer.
     mpDepthPrePassGraph->execute(pRenderContext);
@@ -162,28 +158,31 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     
     // Bind primary channels as render targets and clear them.
     for (size_t i = 0; i < kGBufferChannels.size(); ++i) {
-        auto pResource = renderData[kGBufferChannels[i].name];
-        if (!pResource) continue;
-        Texture::SharedPtr pTex = pResource->asTexture();
+        Texture::SharedPtr pTex = renderData[kGBufferChannels[i].name]->asTexture();
         mpFbo->attachColorTarget(pTex, uint32_t(i));
     }
-
     pRenderContext->clearFbo(mpFbo.get(), float4(0), 1.f, 0, FboAttachmentType::Color);
 
-    // If there is no scene, clear the outputs and return.
+    // Clear extra output buffers.
+    auto clear = [&](const ChannelDesc& channel) {
+        auto pTex = renderData[channel.name]->asTexture();
+        if (pTex) {
+            if (channel.name == kVBufferName) pRenderContext->clearUAV(pTex->getUAV().get(), uint4(std::numeric_limits<uint32_t>::max()));
+            else pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+        }
+    };
+    for (const auto& channel : kGBufferExtraChannels) clear(channel);
+
+    // If there is no scene, clear depth buffer and return.
     if (mpScene == nullptr) {
-        auto clear = [&](const ChannelDesc& channel) {
-            auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-        };
-        for (const auto& channel : kGBufferExtraChannels) clear(channel);
         auto pDepth = renderData[kDepthName]->asTexture();
         pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
         return;
     }
 
     // Set program defines.
-    mRaster.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
+    mRaster.pProgram->addDefine("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
+    mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
@@ -195,7 +194,8 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Setup depth pass to use same culling mode.
-    mpDepthPrePass->setRasterizerState(mForceCullMode ? mRaster.pRsState : nullptr);
+    RasterizerState::CullMode cullMode = mForceCullMode ? mCullMode : kDefaultCullMode;
+    mpDepthPrePass->setCullMode(cullMode);
 
     // Copy depth buffer.
     mpDepthPrePassGraph->execute(pRenderContext);
@@ -204,18 +204,15 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kGBufferExtraChannels) {
-        auto pResource = renderData[channel.name];
-        if(!pResource) continue;
-        Texture::SharedPtr pTex = pResource->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
+        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
         mRaster.pVars[channel.texname] = pTex;
     }
 
     mRaster.pVars["PerFrameCB"]["gParams"].setBlob(mGBufferParams);
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
 
-    Scene::RenderFlags flags = mForceCullMode ? Scene::RenderFlags::UserRasterizerState : Scene::RenderFlags::None;
-    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), flags);
+    // Rasterize the scene.
+    mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), cullMode);
 
     mGBufferParams.frameCount++;
 }

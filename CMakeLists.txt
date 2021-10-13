@@ -136,8 +136,29 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #------------------------------------------
-# Documentation
+# External Projects
 #------------------------------------------
+
+#file(
+#  DOWNLOAD https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true premake5
+#)
+
+#file( 
+#  CHMOD premake5
+#  FILE_PERMISSIONS OWNER_EXECUTE
+#)
+
+#find_program(MAKE_EXE NAMES gmake)
+#include(ExternalProject)
+#ExternalProject_Add(slang
+#  GIT_REPOSITORY    https://github.com/shader-slang/slang.git
+#  GIT_TAG           0ab4d044896ad3d8c5c9cedbb7bd7ec94be81d69 # v0.18.6
+#  SOURCE_DIR        "${CMAKE_BINARY_DIR}/slang-src"
+#  BINARY_DIR        "${CMAKE_BINARY_DIR}/slang-build"
+#  #STEP_TARGETS      build
+#  BUILD_COMMAND     premake5 ${MAKE_EXE} 
+#)
+
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 

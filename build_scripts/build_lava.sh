@@ -25,7 +25,7 @@ LAVA_3RDPARTY_LIB_INSTALL_DIR=$LAVA_3RDPARTY_INSTALL_DIR/lib
 
 #sudo snap install cmake --classic
 #sudo apt install -y libboost-all-dev libavcodec57 libavformat57 libswscale4 libdc1394-22-dev libgtk-3-dev libglfw3-dev libsdl2-dev libglew-dev libavformat-dev libswscale-dev vulkan-validationlayers vulkan-sdk clang \
-#    libminizip-dev g++-multilib libzzip-dev libtiff-dev libgif-dev libopencolorio-dev libraw-dev libwebp-dev python3.7-dev libpython3.7-dev rapidjson-dev
+#    libminizip-dev g++-multilib libzzip-dev libtiff-dev libgif-dev libopencolorio-dev libraw-dev libwebp-dev python3.7-dev libpython3.7-dev rapidjson-dev liblz4-dev
 
 export PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.7/
 

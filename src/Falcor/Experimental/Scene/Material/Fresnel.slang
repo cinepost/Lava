@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,6 +38,11 @@
     \return Fresnel term.
 */
 float3 evalFresnelSchlick(float3 f0, float3 f90, float cosTheta)
+{
+    return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
+}
+
+float evalFresnelSchlick(float f0, float f90, float cosTheta)
 {
     return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }

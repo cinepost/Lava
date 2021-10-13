@@ -1008,7 +1008,10 @@ public:
         Texture2DMS,
         Texture2DMSArray,
         TextureCubeArray,
+        AccelerationStructure,
         Buffer,
+
+        Count
     };
 
     /** For structured-buffers, describes the type of the buffer
@@ -1031,7 +1034,8 @@ public:
         RawBuffer,
         TypedBuffer,
         Sampler,
-        ConstantBuffer
+        ConstantBuffer,
+        AccelerationStructure,
     };
 
     /** Create a new object
@@ -1278,6 +1282,7 @@ public:
         };
 
         Flavor flavor = Flavor::Simple;
+        ReflectionResourceType::Dimensions dimension = ReflectionResourceType::Dimensions::Unknown;
 
         uint32_t regIndex = 0;          ///< The register index
         uint32_t regSpace = 0;          ///< The register space

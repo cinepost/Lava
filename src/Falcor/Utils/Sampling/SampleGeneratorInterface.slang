@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -34,3 +34,38 @@ interface ISampleGenerator
     */
     [mutating] uint next();
 };
+
+/** Convenience functions for generating 1D/2D/3D values in the range [0,1).
+
+    Note: These are global instead of member functions in the sample generator
+    interface, as there seems to be no way in Slang currently to specify default
+    implementations without duplicating the code into all classes that implement
+    the interace.
+*/
+
+float sampleNext1D<S : ISampleGenerator>(inout S sg)
+{
+    // Use upper 24 bits and divide by 2^24 to get a number u in [0,1).
+    // In floating-point precision this also ensures that 1.0-u != 0.0.
+    uint bits = sg.next();
+    return (bits >> 8) * 0x1p-24;
+}
+
+float2 sampleNext2D<S : ISampleGenerator>(inout S sg)
+{
+    float2 sample;
+    // Don't use the float2 initializer to ensure consistent order of evaluation.
+    sample.x = sampleNext1D(sg);
+    sample.y = sampleNext1D(sg);
+    return sample;
+}
+
+float3 sampleNext3D<S : ISampleGenerator>(inout S sg)
+{
+    float3 sample;
+    // Don't use the float3 initializer to ensure consistent order of evaluation.
+    sample.x = sampleNext1D(sg);
+    sample.y = sampleNext1D(sg);
+    sample.z = sampleNext1D(sg);
+    return sample;
+}

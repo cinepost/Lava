@@ -29,16 +29,11 @@
 #define FALCOR_RENDERGRAPH_RENDERPASS_H_
 
 
-//#include "Falcor/Core/Framework.h"
-//#include "RenderPassReflection.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/InternalDictionary.h"
 #include "Falcor/Scene/Scene.h" 
 #include "ResourceCache.h"
-//#include "Falcor/Core/API/Texture.h"
-//#include "Falcor/Scene/Scene.h" 
-//#include "Falcor/Core/API/RenderContext.h" 
 
 namespace Falcor {
 

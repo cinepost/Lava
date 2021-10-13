@@ -31,117 +31,99 @@
 #include "RtProgram/RtProgram.h"
 #include "RtProgramVars.h"
 
-namespace Falcor
-{
-    ShaderTable::ShaderTable(Device::SharedPtr pDevice): mpDevice(pDevice)
-    {}
+namespace Falcor {
 
-    ShaderTable::~ShaderTable()
-    {
+
+ShaderTable::SharedPtr ShaderTable::create() {
+    return SharedPtr(new ShaderTable());
+}
+
+uint8_t* ShaderTable::getRecordPtr(SubTableType type, uint32_t index) {
+    auto info = getSubTableInfo(type);
+    assert(index < info.recordCount);
+    return &mData[0] + info.offset + index*info.recordSize;
+}
+
+static RtEntryPointGroupKernels* getUniqueRtEntryPointGroup(const ProgramKernels::SharedConstPtr& pKernels, int32_t index) {
+    if(index < 0) return nullptr;
+    auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(index);
+    assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
+    return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
+}
+
+void ShaderTable::update(RenderContext* pCtx, RtStateObject* pRtso, RtProgramVars const* pVars) {
+    mpRtso = pRtso;
+
+    auto& pKernels = pRtso->getKernels();
+
+    for (uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i) {
+        mSubTables[i].offset = 0;
+        mSubTables[i].recordCount = 0;
+        mSubTables[i].recordSize = 0;
     }
 
-    ShaderTable::SharedPtr ShaderTable::create(Device::SharedPtr pDevice)
-    {
-        return SharedPtr(new ShaderTable(pDevice));
-    }
+    mSubTables[uint32_t(SubTableType::RayGen)].recordCount = 1;
+    mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
+    mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
 
-    uint8_t* ShaderTable::getRecordPtr(SubTableType type, uint32_t index)
-    {
-        auto info = getSubTableInfo(type);
-        assert(index < info.recordCount);
-        return &mData[0] + info.offset + index*info.recordSize;
-    }
+    // Iterate over the entry points used by RtProgramVars to compute the
+    // maximum shader table record size for each sub-table.
+    for (auto index : pVars->getUniqueEntryPointGroupIndices()) {
+        auto pEntryPointGroup = getUniqueRtEntryPointGroup(pKernels, index);
 
-    static RtEntryPointGroupKernels* getUniqueRtEntryPointGroup(const ProgramKernels::SharedConstPtr& pKernels, int32_t index)
-    {
-        if(index < 0) return nullptr;
-        auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(index);
-        assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
-        return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
-    }
-
-    void ShaderTable::update(
-        RenderContext*          pCtx,
-        RtStateObject*          pRtso,
-        RtProgramVars const*    pVars,
-        Scene*                  pScene)
-    {
-        mpRtso = pRtso;
-        auto meshInstanceCount = pScene->getMeshInstanceCount();
-
-        auto pKernels = pRtso->getKernels();
-        auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
-
-        for( uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i )
+        SubTableType subTableType = SubTableType::Count;
+        switch (pEntryPointGroup->getShaderByIndex(0)->getType())
         {
-            mSubTables[i].offset = 0;
-            mSubTables[i].recordCount = 0;
-            mSubTables[i].recordSize = 0;
+        case ShaderType::AnyHit:
+        case ShaderType::ClosestHit:
+        case ShaderType::Intersection:
+            subTableType = SubTableType::Hit;
+            break;
+
+        case ShaderType::RayGeneration:
+            subTableType = SubTableType::RayGen;
+            break;
+
+        case ShaderType::Miss:
+            subTableType = SubTableType::Miss;
+            break;
+
+        default:
+            should_not_get_here();
+            break;
         }
 
-        mSubTables[uint32_t(SubTableType::Hit)].recordCount = pVars->getTotalHitVarsCount();
-        mSubTables[uint32_t(SubTableType::Miss)].recordCount = pVars->getMissVarsCount();
-        mSubTables[uint32_t(SubTableType::RayGen)].recordCount = pVars->getRayGenVarsCount();
-
-        for( auto pUniqueEntryPointGroup : pKernels->getUniqueEntryPointGroups() )
-        {
-            auto pEntryPointGroup = static_cast<RtEntryPointGroupKernels*>(pUniqueEntryPointGroup.get());
-
-            SubTableType subTableType = SubTableType::Count;
-            switch( pEntryPointGroup->getShaderByIndex(0)->getType() )
-            {
-            case ShaderType::AnyHit:
-            case ShaderType::ClosestHit:
-            case ShaderType::Intersection:
-                subTableType = SubTableType::Hit;
-                break;
-
-            case ShaderType::RayGeneration:
-                subTableType = SubTableType::RayGen;
-                break;
-
-            case ShaderType::Miss:
-                subTableType = SubTableType::Miss;
-                break;
-
-            default:
-                should_not_get_here();
-                break;
-            }
-
-            auto& info = mSubTables[uint32_t(subTableType)];
-            info.recordSize = std::max(pEntryPointGroup->getLocalRootSignature()->getSizeInBytes(), info.recordSize);
-        }
-
-        uint32_t subTableOffset = 0;
-        for( uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i )
-        {
-            auto& info = mSubTables[i];
-
-            info.offset = subTableOffset;
-            info.recordSize += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-            info.recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, info.recordSize);
-
-            subTableOffset += info.recordCount * info.recordSize;
-            subTableOffset = align_to(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, subTableOffset);
-        }
-
-        uint32_t shaderTableBufferSize = subTableOffset;
-
-        mData.resize(shaderTableBufferSize);
-
-        // Create a buffer
-        if( !mpBuffer || mpBuffer->getSize() < shaderTableBufferSize )
-        {
-            mpBuffer = Buffer::create(mpDevice, shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
-        }
-
-        pCtx->updateBuffer(mpBuffer.get(), mData.data());
+        auto& info = mSubTables[uint32_t(subTableType)];
+        info.recordSize = std::max(pEntryPointGroup->getLocalRootSignature()->getSizeInBytes(), info.recordSize);
     }
 
-    void ShaderTable::flushBuffer(
-        RenderContext*          pCtx)
-    {
-        pCtx->updateBuffer(mpBuffer.get(), mData.data());
+    uint32_t subTableOffset = 0;
+    for (uint32_t i = 0; i < uint32_t(SubTableType::Count); ++i) {
+        auto& info = mSubTables[i];
+
+        info.offset = subTableOffset;
+        info.recordSize += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+        info.recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, info.recordSize);
+
+        subTableOffset += info.recordCount * info.recordSize;
+        subTableOffset = align_to(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, subTableOffset);
+    }
+
+    uint32_t shaderTableBufferSize = subTableOffset;
+
+    // Reallocate CPU buffer for shader table.
+    // Make sure it's zero initialized as there may be unused miss/hit entries.
+    if (shaderTableBufferSize != mData.size()) mData.resize(shaderTableBufferSize, 0);
+    else std::fill(mData.begin(), mData.end(), 0);
+
+    // Create GPU buffer.
+    if (!mpBuffer || mpBuffer->getSize() < shaderTableBufferSize) {
+        mpBuffer = Buffer::create(pCtx->device(), shaderTableBufferSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
     }
 }
+
+void ShaderTable::flushBuffer(RenderContext* pCtx) {
+    pCtx->updateBuffer(mpBuffer.get(), mData.data());
+}
+
+}  // namespace Falcor

@@ -159,6 +159,26 @@ class dlldecl Volume : public Animatable {
     */
     uint32_t getGridFrameCount() const { return mGridFrameCount; }
 
+    /** Set the frame rate for grid playback.
+    */
+    void setFrameRate(double frameRate);
+
+    /** Get the frame rate for grid playback.
+    */
+    double getFrameRate() const { return mFrameRate; }
+
+    /** Enable/disable grid playback.
+    */
+    void setPlaybackEnabled(bool enabled);
+
+    /** Check if grid playback is enabled.
+    */
+    bool isPlaybackEnabled() const { return mPlaybackEnabled; }
+
+    /** Update the selected grid frame based on global time in seconds.
+    */
+    void updatePlayback(double curentTime);
+
     /** Set the density grid.
     */
     void setDensityGrid(const Grid::SharedPtr& densityGrid) { setGrid(GridSlot::Density, densityGrid); };
@@ -246,9 +266,13 @@ class dlldecl Volume : public Animatable {
     std::array<GridSequence, (size_t)GridSlot::Count> mGrids;
     uint32_t mGridFrame = 0;
     uint32_t mGridFrameCount = 1;
+    double mFrameRate = 25.f;
+    bool mPlaybackEnabled = false;
     AABB mBounds;
     VolumeData mData;
     mutable UpdateFlags mUpdates = UpdateFlags::None;
+
+    friend class SceneCache;
 };
 
 enum_class_operators(Volume::UpdateFlags);

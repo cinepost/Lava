@@ -68,27 +68,39 @@ void GBufferBase::registerBindings(pybind11::module& m) {
 }
 
 namespace {
-    // Scripting options.
+// Scripting options.
     const char kSamplePattern[] = "samplePattern";
     const char kSampleCount[] = "sampleCount";
-    const char kDisableAlphaTest[] = "disableAlphaTest";
+    const char kUseAlphaTest[] = "useAlphaTest";
+    const char kDisableAlphaTest[] = "disableAlphaTest"; ///< Deprecated for "useAlphaTest".
+    const char kAdjustShadingNormals[] = "adjustShadingNormals";
+    const char kForceCullMode[] = "forceCullMode";
+    const char kCullMode[] = "cull";
 }
 
 void GBufferBase::parseDictionary(const Dictionary& dict) {
     for (const auto& [key, value] : dict) {
         if (key == kSamplePattern) mSamplePattern = value;
         else if (key == kSampleCount) mSampleCount = value;
-        else if (key == kDisableAlphaTest) mDisableAlphaTest = value;
+        else if (key == kUseAlphaTest) mUseAlphaTest = value;
+        else if (key == kAdjustShadingNormals) mAdjustShadingNormals = value;
+        else if (key == kForceCullMode) mForceCullMode = value;
+        else if (key == kCullMode) mCullMode = value;
         // TODO: Check for unparsed fields, including those parsed in derived classes.
     }
+
+    // Handle deprecated "disableAlphaTest" value.
+    if (dict.keyExists(kDisableAlphaTest) && !dict.keyExists(kUseAlphaTest)) mUseAlphaTest = !dict[kDisableAlphaTest];
 }
 
-Dictionary GBufferBase::getScriptingDictionary()
-{
+Dictionary GBufferBase::getScriptingDictionary() {
     Dictionary dict;
     dict[kSamplePattern] = mSamplePattern;
     dict[kSampleCount] = mSampleCount;
-    dict[kDisableAlphaTest] = mDisableAlphaTest;
+    dict[kUseAlphaTest] = mUseAlphaTest;
+    dict[kAdjustShadingNormals] = mAdjustShadingNormals;
+    dict[kForceCullMode] = mForceCullMode;
+    dict[kCullMode] = mCullMode;
     return dict;
 }
 
@@ -102,23 +114,21 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
     }
 }
 
-void GBufferBase::updateFlags(const RenderData& renderData) {
+void GBufferBase::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) { }
+
+void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Update refresh flag if options that affect the output have changed.
     auto& dict = renderData.getDictionary();
     if (mOptionsChanged) {
         auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
-        
         dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
-    }  
-}
+    }
 
-void GBufferBase::resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {
-    updateFlags(renderData);
-}
+    // Pass flag for adjust shading normals to subsequent passes via the dictionary.
+    // Adjusted shading normals cannot be passed via the VBuffer, so this flag allows consuming passes to compute them when enabled.
+    dict[Falcor::kRenderPassGBufferAdjustShadingNormals] = mAdjustShadingNormals;
 
-void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    updateFlags(renderData);
 
     // Setup camera with sample generator.
     if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
@@ -126,7 +136,17 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
+    mFrameCount = 0;
     updateSamplePattern();
+
+    if (pScene) {
+        // Trigger graph recompilation if we need to change the V-buffer format.
+        ResourceFormat format = pScene->getHitInfo().getFormat();
+        if (format != mVBufferFormat) {
+            mVBufferFormat = format;
+            mPassChangedCB();
+        }
+    }
 }
 
 static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount) {
@@ -145,8 +165,7 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
     }
 }
 
-void GBufferBase::updateSamplePattern()
-{
+void GBufferBase::updateSamplePattern() {
     mpSampleGenerator = createSamplePattern(mSamplePattern, mSampleCount);
     if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
 }

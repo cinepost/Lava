@@ -46,7 +46,7 @@ namespace
     // Ray tracing settings that affect the traversal stack size.
     // These should be set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 80u;
-    const uint32_t kMaxAttributesSizeBytes = 8u;
+    const uint32_t kMaxAttributeSizeBytes = 8u;
     const uint32_t kMaxRecursionDepth = 2u;
 
     const char kViewDirInput[] = "viewW";
@@ -55,9 +55,13 @@ namespace
     {
         { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
         { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-        { "bitangentW",     "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */ },
+        
+        { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
+        
         { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
+        
         { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
+        
         { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
         { "mtlSpecRough",   "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"          },
         { "mtlEmissive",    "gMaterialEmissive",          "Material emissive color (xyz)"                            },
@@ -68,6 +72,9 @@ namespace
     {
         { "color",          "gOutputColor",               "Output color (sum of direct and indirect)"                },
     };
+
+    const char kMaxBounces[] = "maxBounces";
+    const char kComputeDirect[] = "computeDirect";
 };
 
 MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -77,17 +84,7 @@ MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderCon
 
 MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice)
 {
-    // Deserialize pass from dictionary.
-    serializePass<true>(dict);
-
-    // Create ray tracing program.
-    RtProgram::Desc progDesc;
-    progDesc.addShaderLibrary(kShaderFile).setRayGen("rayGen");
-    progDesc.addHitGroup(0, "scatterClosestHit", "scatterAnyHit").addMiss(0, "scatterMiss");
-    progDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
-    progDesc.addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
-    progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pProgram = RtProgram::create(mpDevice, progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
+    parseDictionary(dict);
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -96,9 +93,19 @@ MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary
 
 Dictionary MinimalPathTracer::getScriptingDictionary()
 {
-    Dictionary dict;
-    serializePass<false>(dict);
-    return dict;
+    Dictionary d;
+    d[kMaxBounces] = mMaxBounces;
+    d[kComputeDirect] = mComputeDirect;
+    return d;
+}
+
+void MinimalPathTracer::parseDictionary(const Dictionary& dict) {
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kMaxBounces) mMaxBounces = value;
+        else if (key == kComputeDirect) mComputeDirect = value;
+        else logWarning("Unknown field '" + key + "' in MinimalPathTracer dictionary");
+    }
 }
 
 RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
@@ -114,12 +121,12 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
 
 void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // Update refresh flag if options that affect the output have changed.
+ // Update refresh flag if options that affect the output have changed.
     auto& dict = renderData.getDictionary();
     if (mOptionsChanged)
     {
-        auto prevFlags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
-        dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)(prevFlags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged);
+        auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
+        dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
@@ -132,6 +139,17 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
             if (pDst) pRenderContext->clearTexture(pDst);
         }
         return;
+    }
+
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    {
+        throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
+    }
+
+    // Request the light collection if emissive lights are enabled.
+    if (mpScene->getRenderSettings().useEmissiveLights)
+    {
+        mpScene->getLightCollection(pRenderContext);
     }
 
     // Configure depth-of-field.
@@ -161,17 +179,16 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     assert(mTracer.pVars);
 
     // Set constants.
-    auto pVars = mTracer.pVars;
-    pVars["CB"]["gFrameCount"] = mFrameCount;
-    pVars["CB"]["gPRNGDimension"] = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
+    auto var = mTracer.pVars->getRootVar();
+    var["CB"]["gFrameCount"] = mFrameCount;
+    var["CB"]["gPRNGDimension"] = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
     // Bind I/O buffers. These needs to be done per-frame as the buffers may change anytime.
     auto bind = [&](const ChannelDesc& desc)
     {
         if (!desc.texname.empty())
         {
-            auto pGlobalVars = mTracer.pVars;
-            pGlobalVars[desc.texname] = renderData[desc.name]->asTexture();
+            var[desc.texname] = renderData[desc.name]->asTexture();
         }
     };
     for (auto channel : kInputChannels) bind(channel);
@@ -190,33 +207,55 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
 void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     // Clear data for previous scene.
-    // After changing scene, the program vars should to be recreated.
+    // After changing scene, the raytracing program should to be recreated.
+    mTracer.pProgram = nullptr;
+    mTracer.pBindingTable = nullptr;
     mTracer.pVars = nullptr;
     mFrameCount = 0;
 
     // Set new scene.
     mpScene = pScene;
 
-    if (pScene)
+    if (mpScene)
     {
-        mTracer.pProgram->addDefines(pScene->getSceneDefines());
+        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
+        {
+            logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
+        }
+
+        // Create ray tracing program.
+        RtProgram::Desc desc;
+        desc.addShaderLibrary(kShaderFile);
+        desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
+        desc.setMaxAttributeSize(kMaxAttributeSizeBytes);
+        desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+        desc.addDefines(mpScene->getSceneDefines());
+
+        mTracer.pBindingTable = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
+        auto& sbt = mTracer.pBindingTable;
+        sbt->setRayGen(desc.addRayGen("rayGen"));
+        sbt->setMiss(0, desc.addMiss("scatterMiss"));
+        sbt->setMiss(1, desc.addMiss("shadowMiss"));
+        sbt->setHitGroupByType(0, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("scatterClosestHit", "scatterAnyHit"));
+        sbt->setHitGroupByType(1, mpScene, Scene::GeometryType::TriangleMesh, desc.addHitGroup("", "shadowAnyHit"));
+
+        mTracer.pProgram = RtProgram::create(mpDevice, desc);
     }
 }
 
 void MinimalPathTracer::prepareVars()
 {
-    assert(mpScene);
     assert(mTracer.pProgram);
 
     // Configure program.
     mTracer.pProgram->addDefines(mpSampleGenerator->getDefines());
 
-    // Create program variables for the current program/scene.
+    // Create program variables for the current program.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
-    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mpScene);
+    mTracer.pVars = RtProgramVars::create(mpDevice, mTracer.pProgram, mTracer.pBindingTable);
 
     // Bind utility classes into shared data.
-    auto pGlobalVars = mTracer.pVars->getRootVar();
-    bool success = mpSampleGenerator->setShaderData(pGlobalVars);
+    auto var = mTracer.pVars->getRootVar();
+    bool success = mpSampleGenerator->setShaderData(var);
     if (!success) throw std::runtime_error("Failed to bind sample generator");
 }

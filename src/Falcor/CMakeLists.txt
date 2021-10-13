@@ -20,7 +20,6 @@ file( GLOB SOURCES
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
     ./Scene/Volume/*.cpp
-    ./Scene/Importers/*.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
