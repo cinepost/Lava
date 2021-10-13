@@ -116,12 +116,12 @@ void GBufferRaster::compile(RenderContext* pContext, const CompileData& compileD
     mpDepthPrePassGraph->markOutput("DepthPrePass.depth");
     mpDepthPrePassGraph->setScene(mpScene);
 
-    mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), mGBufferParams.frameSize, ResourceFormat::RGBA16Float , "Sparse textures resolve Pre-Pass");
-    mpTexturesResolvePass = TexturesResolvePass::create(pContext);
-    mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
-    //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
-    mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.debugColor");
-    mpTexturesResolvePassGraph->setScene(mpScene);
+    //mpTexturesResolvePassGraph = RenderGraph::create(pContext->device(), mGBufferParams.frameSize, ResourceFormat::RGBA16Float , "Sparse textures resolve Pre-Pass");
+    //mpTexturesResolvePass = TexturesResolvePass::create(pContext);
+    //mpTexturesResolvePassGraph->addPass(mpTexturesResolvePass, "SparseTexturesResolvePrePass");
+    // //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    //mpTexturesResolvePassGraph->markOutput("SparseTexturesResolvePrePass.debugColor");
+    //mpTexturesResolvePassGraph->setScene(mpScene);
 }
 
 void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -149,8 +149,8 @@ void GBufferRaster::resolvePerFrameSparseResources(RenderContext* pRenderContext
     mpDepthPrePassGraph->execute(pRenderContext);
     
     // Execute sparse textures resolve pass
-    mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
-    mpTexturesResolvePassGraph->execute(pRenderContext);
+    //mpTexturesResolvePassGraph->setInput("SparseTexturesResolvePrePass.depth", mpDepthPrePassGraph->getOutput("DepthPrePass.depth"));
+    //mpTexturesResolvePassGraph->execute(pRenderContext);
 }
 
 void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {

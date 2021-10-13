@@ -45,7 +45,6 @@
 #include "Falcor/Core/API/Sampler.h"
 
 #include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
-#include "RadeonRays_SDK/src/core/include/radeonrays_vlk.h"
 
 namespace Falcor {
 
@@ -315,8 +314,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures{};
 
     VmaAllocator    mAllocator;
-    RRContext       mRRcontext = nullptr; 
-
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 };
 

@@ -355,8 +355,6 @@ void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIn
 [shader("raygeneration")]
 void rayGen()
 {
-    huybla
-
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 
@@ -425,5 +423,8 @@ void rayGen()
         outColor = kUseEnvBackground ? gScene.envMap.eval(rayDir) : kDefaultBackgroundColor;
     }
 
+    outColor.r = (float)launchDim.x / (float)launchIndex.x;
+    outColor.g = (float)launchDim.y / (float)launchIndex.y;
+    outColor.b = 1.0;
     gOutputColor[launchIndex] = float4(outColor, 1);
 }

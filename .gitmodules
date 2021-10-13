@@ -64,3 +64,6 @@
 [submodule "third_party/lz4_stream"]
 	path = third_party/lz4_stream
 	url = https://github.com/laudrup/lz4_stream.git
+[submodule "third_party/slang"]
+	path = third_party/slang
+	url = https://github.com/shader-slang/slang.git

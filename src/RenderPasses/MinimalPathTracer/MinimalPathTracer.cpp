@@ -216,8 +216,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     // Set new scene.
     mpScene = pScene;
 
-    if (mpScene)
-    {
+    if (mpScene) {
         if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
         {
             logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");

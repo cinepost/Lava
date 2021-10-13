@@ -354,7 +354,7 @@ void Renderer::createRenderGraph() {
 
 
     mpRenderGraph->addEdge("GBufferRasterPass.posW", "MinimalPathTracerPass.posW");
-    mpRenderGraph->addEdge("GBufferRasterPass.normalW", "MinimalPathTracerPass.normalW");
+    mpRenderGraph->addEdge("GBufferRasterPass.normW", "MinimalPathTracerPass.normalW");
     mpRenderGraph->addEdge("GBufferRasterPass.faceNormalW", "MinimalPathTracerPass.faceNormalW");
 
     mpRenderGraph->addEdge("GBufferRasterPass.diffuseOpacity", "MinimalPathTracerPass.mtlDiffOpacity");

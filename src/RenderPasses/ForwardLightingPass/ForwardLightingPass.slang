@@ -29,7 +29,6 @@
 
 import Scene.Raster;
 import Scene.Shading;
-import Utils.Helpers;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
@@ -47,8 +46,6 @@ cbuffer PerFrameCB {
 
   float2            gRenderTargetDim; // frame dimension
   uint              gSamplesPerFrame;
-  
-  EnvMapSampler     gEnvMapSampler;
 
   float4x4          gViewInvMat;
 };
@@ -86,11 +83,11 @@ struct PsOut
 };
 
 [earlydepthstencil]
-PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
+PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
 
     // pixel position
-    int2 ipos = int2(vOut.posH.xy);
+    int2 ipos = int2(vsOut.posH.xy);
 
     // pseudo-random sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
@@ -99,12 +96,12 @@ PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
     float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
 
     // screen space texture coordinates gradient
-    float2 gradX = ddx_fine(vOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
-    float2 gradY = ddy_fine(vOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
+    float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY = ddy_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
     
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
     
-    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir, gradX, gradY);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     StandardMaterial mtl;
 
     float4 finalColor = float4(0, 0, 0, 1);

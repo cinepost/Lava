@@ -20,6 +20,7 @@ file( GLOB SOURCES
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
     ./Scene/Volume/*.cpp
+    ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
