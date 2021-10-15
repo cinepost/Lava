@@ -24,6 +24,8 @@
 #ifndef EXTRAS_IMAGING_EXAMPLES_HD_TINY_RENDER_DELEGATE_H
 #define EXTRAS_IMAGING_EXAMPLES_HD_TINY_RENDER_DELEGATE_H
 
+#include "renderThread.h"
+
 #include "pxr/pxr.h"
 #include "pxr/imaging/hd/renderDelegate.h"
 #include "pxr/imaging/hd/resourceRegistry.h"
@@ -106,6 +108,10 @@ private:
     Falcor::DeviceManager::SharedPtr pDeviceManager;
     Falcor::Device::SharedPtr pDevice;
     lava::Renderer::SharedPtr pRenderer;
+
+    std::unique_ptr<HdLavaApi> m_lavaApi;
+    std::unique_ptr<HdLavaRenderParam> m_renderParam;
+    HdLavaRenderThread m_renderThread;
 
     HdResourceRegistrySharedPtr _resourceRegistry;
 

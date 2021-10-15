@@ -36,6 +36,8 @@
 
 PXR_NAMESPACE_OPEN_SCOPE
 
+static HdLavaApi* g_lavaApi = nullptr;
+
 const TfTokenVector HdLavaTinyRenderDelegate::SUPPORTED_RPRIM_TYPES =
 {
     HdPrimTypeTokens->mesh,
@@ -114,6 +116,19 @@ HdLavaTinyRenderDelegate::_Initialize()
     std::cout << "Creating LavaTiny RenderDelegate" << std::endl;
     _resourceRegistry = std::make_shared<HdResourceRegistry>();
 
+    m_lavaApi.reset(new HdLavaApi(this));
+    g_lavaApi = m_lavaApi.get();
+
+    m_renderParam.reset(new HdLavaRenderParam(m_lavaApi.get(), &m_renderThread));
+
+    m_renderThread.SetRenderCallback([this]() {
+        m_lavaApi->Render(&m_renderThread);
+    });
+    m_renderThread.SetStopCallback([this]() {
+        m_lavaApi->AbortRender();
+    });
+    m_renderThread.StartThread();
+
      try {
         // listGPUs();
         _InitRender();
@@ -143,6 +158,8 @@ HdLavaTinyRenderDelegate::~HdLavaTinyRenderDelegate()
         pDeviceManager.reset();
         std::cout << "pDeviceManager.reset(); complete" << std::endl;
     }
+
+    g_lavaApi = nullptr;
 }
 
 TfTokenVector const&
@@ -280,7 +297,8 @@ HdLavaTinyRenderDelegate::DestroyInstancer(HdInstancer *instancer)
 HdRenderParam *
 HdLavaTinyRenderDelegate::GetRenderParam() const
 {
-    return nullptr;
+    // return nullptr;
+    return m_renderParam.get();
 }
 
 PXR_NAMESPACE_CLOSE_SCOPE
