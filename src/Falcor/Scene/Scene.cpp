@@ -267,6 +267,8 @@ uint32_t Scene::getRaytracingMaxAttributeSize() const {
 }
 
 void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims) {
+    logWarning("!!!!!!!!!!!!!!!!Scene::raytrace");
+    
     PROFILE(mpDevice, "raytraceScene");
 
     assert(pContext && pProgram && pVars);
@@ -2532,6 +2534,7 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
 
 void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount)
 {
+    logWarning("!!!!!!!!!!!!!!!!setRaytracingShaderData");
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (mBlasData.empty())
     {

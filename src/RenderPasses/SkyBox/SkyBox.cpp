@@ -53,7 +53,7 @@ const char* SkyBox::kDesc = "Render an environment-map. The map can be provided 
 namespace {
 
     const std::string kTarget = "target";
-    const std::string kDepth = "depthS";
+    const std::string kDepth = "depth";
 
     // Dictionary keys
     const std::string kTexName = "texName";

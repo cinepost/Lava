@@ -354,7 +354,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     			pSceneBuilder->setEnvMap(pEnvMap);
     		}
     	}
-    	
     	return;
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";

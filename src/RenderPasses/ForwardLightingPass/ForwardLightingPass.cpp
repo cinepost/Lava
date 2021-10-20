@@ -45,7 +45,7 @@ const char* ForwardLightingPass::kDesc = "The pass computes the lighting results
 "The pass can output the world-space normals and screen-space motion vectors, both are optional";
 
 namespace {
-    const std::string kDepth = "depthL";
+    const std::string kDepth = "depth";
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
     const std::string kNormals = "normals";

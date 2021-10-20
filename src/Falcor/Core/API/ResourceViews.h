@@ -126,6 +126,7 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
     static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
     static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
+    static SharedPtr getNullAccelerationStructureView(std::shared_ptr<Device> pDevice);
 
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}

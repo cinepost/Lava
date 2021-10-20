@@ -346,8 +346,8 @@ void Renderer::createRenderGraph() {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depthL");
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depthS");
+    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
     
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     //mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
@@ -362,7 +362,8 @@ void Renderer::createRenderGraph() {
     mpRenderGraph->addEdge("GBufferRasterPass.emissive", "MinimalPathTracerPass.mtlEmissive");
     mpRenderGraph->addEdge("GBufferRasterPass.matlExtra", "MinimalPathTracerPass.mtlParams");
 
-    mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
+    //mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
+    mpRenderGraph->addEdge("SkyBoxPass.target", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
     

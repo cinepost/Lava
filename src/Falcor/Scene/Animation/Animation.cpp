@@ -38,8 +38,7 @@ namespace {
 const double kEpsilonTime = 1e-5f;
 
 // Bezier form hermite spline
-static float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t)
-{
+static float3 interpolateHermite(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t) {
     float3 v1 = (p2 - p0) * 0.5f;
     float3 v2 = (p3 - p1) * 0.5f;
 
@@ -59,8 +58,7 @@ static float3 interpolateHermite(const float3& p0, const float3& p1, const float
 }
 
 // Bezier hermite slerp
-static glm::quat interpolateHermite(const glm::quat& r0, const glm::quat& r1, const glm::quat& r2, const glm::quat& r3, float t)
-{
+static glm::quat interpolateHermite(const glm::quat& r0, const glm::quat& r1, const glm::quat& r2, const glm::quat& r3, float t) {
     glm::quat b0 = r1;
     glm::quat b1 = r1 + (r2 - r0) * 0.5f / 3.0f;
     glm::quat b2 = r2 - (r3 - r1) * 0.5f / 3.0f;
@@ -76,8 +74,7 @@ static glm::quat interpolateHermite(const glm::quat& r0, const glm::quat& r1, co
     return slerp(qq0, qq1, t);
 }
 
-static Animation::Keyframe interpolateLinear(const Animation::Keyframe& k0, const Animation::Keyframe& k1, float t)
-{
+static Animation::Keyframe interpolateLinear(const Animation::Keyframe& k0, const Animation::Keyframe& k1, float t) {
     assert(t >= 0.f && t <= 1.f);
     Animation::Keyframe result;
     result.translation = lerp(k0.translation, k1.translation, t);
@@ -86,8 +83,7 @@ static Animation::Keyframe interpolateLinear(const Animation::Keyframe& k0, cons
     return result;
 }
 
-static Animation::Keyframe interpolateHermite(const Animation::Keyframe& k0, const Animation::Keyframe& k1, const Animation::Keyframe& k2, const Animation::Keyframe& k3, float t)
-{
+static Animation::Keyframe interpolateHermite(const Animation::Keyframe& k0, const Animation::Keyframe& k1, const Animation::Keyframe& k2, const Animation::Keyframe& k3, float t) {
     assert(t >= 0.f && t <= 1.f);
     Animation::Keyframe result;
     result.translation = interpolateHermite(k0.translation, k1.translation, k2.translation, k3.translation, t);

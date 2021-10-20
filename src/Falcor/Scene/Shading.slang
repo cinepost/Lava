@@ -372,3 +372,4 @@ void adjustShadingNormal(inout ShadingData sd, VertexData v)
         computeTangentSpace(sd, v.tangentW);
     }
 }
+

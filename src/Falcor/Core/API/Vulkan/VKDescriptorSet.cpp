@@ -68,22 +68,36 @@ namespace Falcor {
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
+        VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
 
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
 
             //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
 
-            if (pBuffer->isTyped()) {
-                texelBufferView = pBuffer->getUAV()->getApiHandle();
-                write.pTexelBufferView = &texelBufferView;
-                write.pBufferInfo = nullptr;
+            if (pBuffer) {
+
+                if (pBuffer->isTyped()) {
+                    texelBufferView = pBuffer->getUAV()->getApiHandle();
+                    write.pTexelBufferView = &texelBufferView;
+                    write.pBufferInfo = nullptr;
+                } else {
+                    buffer.buffer = pBuffer->getApiHandle();
+                    buffer.offset = pBuffer->getGpuAddressOffset();
+                    buffer.range = pBuffer->getSize();
+                    write.pBufferInfo = &buffer;
+                    write.pTexelBufferView = nullptr;
+                }
             } else {
-                buffer.buffer = pBuffer->getApiHandle();
-                buffer.offset = pBuffer->getGpuAddressOffset();
-                buffer.range = pBuffer->getSize();
-                write.pBufferInfo = &buffer;
-                write.pTexelBufferView = nullptr;
+                if (type == DescriptorPool::Type::AccelerationStructureSrv ) {
+                    // Empty acceleration structure view
+                    descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+                    descriptorSetAccelerationStructure.pNext = NULL;
+                    descriptorSetAccelerationStructure.accelerationStructureCount = 0;
+                    descriptorSetAccelerationStructure.pAccelerationStructures = VK_NULL_HANDLE;
+
+                    write.pNext = &descriptorSetAccelerationStructure;
+                }
             }
             write.pImageInfo = nullptr;
         } else {

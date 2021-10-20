@@ -1265,10 +1265,16 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                         break;
                     case DescriptorSet::Type::RawBufferSrv:
                     case DescriptorSet::Type::StructuredBufferSrv:
-                    case DescriptorSet::Type::AccelerationStructureSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView(mpDevice);
+                            pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
+                        }
+                        break;
+                    case DescriptorSet::Type::AccelerationStructureSrv:
+                        {
+                            auto pView = mSRVs[flatIndex].pView;
+                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullAccelerationStructureView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;

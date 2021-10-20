@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -306,15 +306,6 @@ struct VertexData
     float2 texC;            ///< Texture coordinate.
     float3 faceNormalW;     ///< Face normal in world space (normalized).
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
-};
-
-struct ProceduralPrimitiveData
-{
-    uint typeID;        ///< Type ID corresponding to how it was defined during Scene creation.
-    uint instanceIdx;   ///< Of custom primitives of this type, what instance index it is, in the order of addition to the scene.
-
-    uint AABBOffset;    ///< Offset into global AABB buffer.
-    uint AABBCount;     ///< Number of AABBs within a custom primitive.
 };
 
 struct CurveDesc
