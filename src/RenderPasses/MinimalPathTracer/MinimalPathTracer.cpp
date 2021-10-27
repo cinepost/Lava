@@ -121,7 +121,7 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
 
 void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
- // Update refresh flag if options that affect the output have changed.
+    // Update refresh flag if options that affect the output have changed.
     auto& dict = renderData.getDictionary();
     if (mOptionsChanged)
     {

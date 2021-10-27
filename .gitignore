@@ -36,6 +36,8 @@ build/
 venv
 venv/
 third_party/*/build/
+third_party/external
+third_party/external/
 third_party/FreeImage/Dist
 third_party/FreeImage/Dist/
 third_party/slang/bin

@@ -96,6 +96,10 @@ void releaseNullTypedBufferViews(Device::SharedPtr pDevice) {
     gNullTypedBufferViews[pDevice->uid()] = {};
 }
 
+void releaseNullAccelerationStructureViews(Device::SharedPtr pDevice) {
+    gNullAccelerationStructureViews[pDevice->uid()] = {};
+}
+
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }
 DepthStencilView::SharedPtr    DepthStencilView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].dsv; }
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(std::shared_ptr<Device> pDevice) { return gNullViews[pDevice->uid()].uav; }

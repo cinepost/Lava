@@ -28,15 +28,6 @@ set( CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/defaults
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm/cmake
-  ${CMAKE_INSTALL_PREFIX}/3rdparty/lib/cmake/assimp-5.0
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenEXR/cmake
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/oneTBB/cmake
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/OpenImageIO/src/cmake
-  /opt/lava/3rdparty/lib/cmake/OpenVDB
-
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/cmake
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/nanovdb/cmake
 )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
@@ -59,18 +50,24 @@ endif()
 
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
-  set( CMAKE_INSTALL_PREFIX "/Applications/Falcor/Falcor" )
+  set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
 elseif(UNIX)
   set( CMAKE_INSTALL_PREFIX "/opt/lava/" )
 endif()
 
-# Handle build mode
-if( NOT CMAKE_BUILD_TYPE )
-  SET( CMAKE_BUILD_TYPE "DEBUG" )
-  #SET(CMAKE_BUILD_TYPE "RELEASE")
-  #SET(CMAKE_BUILD_TYPE "RELWITHDEBINFO")
-  #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
-  message("CMAKE_BUILD_TYPE not set! Using default ${CMAKE_BUILD_TYPE} mode.")
+#### Handle build mode
+# Set a default build type if none was specified
+set(default_build_type "Release")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  set(default_build_type "Debug")
+endif()
+
+if( NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES )
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
+
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
 # Specify build paths
@@ -90,7 +87,6 @@ if (WIN32 OR APPLE)
   endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(WIN32 OR APPLE)
 
-
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -105,7 +101,8 @@ else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
 
-set ( FALCOR_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src )
+set( FALCOR_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src )
+set( CMAKE_THIRD_PARTY_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 include_directories(
   ${FALCOR_INCLUDE_ROOT}
   ${FALCOR_INCLUDE_ROOT}/Falcor
@@ -115,11 +112,7 @@ include_directories(
   ${CMAKE_INSTALL_PREFIX}/3rdparty/include
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidjson
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/openvdb
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/openvdb/openvdb
-  #${CMAKE_CURRENT_SOURCE_DIR}/third_party/openvdb/nanovdb
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Externals/GLM
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/rapidjson
 )
 
 # use, i.e. don't skip the full RPATH for the build tree
@@ -139,27 +132,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # External Projects
 #------------------------------------------
 
-#file(
-#  DOWNLOAD https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true premake5
-#)
-
-#file( 
-#  CHMOD premake5
-#  FILE_PERMISSIONS OWNER_EXECUTE
-#)
-
-#find_program(MAKE_EXE NAMES gmake)
-#include(ExternalProject)
-#ExternalProject_Add(slang
-#  GIT_REPOSITORY    https://github.com/shader-slang/slang.git
-#  GIT_TAG           0ab4d044896ad3d8c5c9cedbb7bd7ec94be81d69 # v0.18.6
-#  SOURCE_DIR        "${CMAKE_BINARY_DIR}/slang-src"
-#  BINARY_DIR        "${CMAKE_BINARY_DIR}/slang-build"
-#  #STEP_TARGETS      build
-#  BUILD_COMMAND     premake5 ${MAKE_EXE} 
-#)
-
-
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # Now setup targets
@@ -170,8 +142,10 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 #add_subdirectory( third_party/openvdb )
 
 # Our stuff
-add_subdirectory( src )
-add_subdirectory( contrib )
+add_subdirectory( third_party )
+add_subdirectory( src/lava_utils_lib )
+#add_subdirectory( src )
+#add_subdirectory( contrib )
 
 
 #install(
