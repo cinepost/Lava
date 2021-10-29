@@ -1,154 +1,127 @@
+###########################################################################
+# OpenImageIO   https://www.openimageio.org
+# Copyright 2008-present Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: BSD-3-Clause
+# https://github.com/OpenImageIO/oiio/blob/master/LICENSE.md
 #
-# Copyright 2016 Pixar
+# For an up-to-date version of this file, see:
+#   https://github.com/OpenImageIO/oiio/blob/master/src/cmake/Modules/FindOpenImageIO.cmake
 #
-# Licensed under the Apache License, Version 2.0 (the "Apache License")
-# with the following modification; you may not use this file except in
-# compliance with the Apache License and the following modification to it:
-# Section 6. Trademarks. is deleted and replaced with:
+###########################################################################
 #
-# 6. Trademarks. This License does not grant permission to use the trade
-#    names, trademarks, service marks, or product names of the Licensor
-#    and its affiliates, except as required to comply with Section 4(c) of
-#    the License and to reproduce the content of the NOTICE file.
+# CMake module to find OpenImageIO
 #
-# You may obtain a copy of the Apache License at
+# This module will set
+#   OpenImageIO_FOUND          True, if found
+#   OPENIMAGEIO_INCLUDES       directory where headers are found
+#   OPENIMAGEIO_LIBRARIES      libraries for OIIO
+#   OPENIMAGEIO_LIBRARY_DIRS   library dirs for OIIO
+#   OPENIMAGEIO_VERSION        Version ("major.minor.patch.tweak")
+#   OPENIMAGEIO_VERSION_MAJOR  Version major number
+#   OPENIMAGEIO_VERSION_MINOR  Version minor number
+#   OPENIMAGEIO_VERSION_PATCH  Version minor patch
+#   OPENIMAGEIO_VERSION_TWEAK  Version minor tweak
+#   OIIOTOOL_BIN               Path to oiiotool executable
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Imported targets:
+#   OpenImageIO::OpenImageIO   The libOpenImageIO library.
+#   OpenImageIO::oiiotool      The oiiotool executable.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the Apache License with the above modification is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied. See the Apache License for the specific
-# language governing permissions and limitations under the Apache License.
+# Special inputs:
+#   OpenImageIO_ROOT - if using CMake >= 3.12, will automatically search
+#                          this area for OIIO components.
+#   OPENIMAGEIO_ROOT_DIR - custom "prefix" location of OIIO installation
+#                          (expecting bin, lib, include subdirectories)
+#                          This is deprecated, but will work for a while.
+#   OpenImageIO_FIND_QUIETLY - if set, print minimal console output
+#   OIIO_LIBNAME_SUFFIX - if set, optional nonstandard library suffix
 #
+###########################################################################
+#
+# NOTE: This file is deprecated.
+#
+# In OIIO 2.1+, we generate OpenImageIOConfig.cmake files that are now the
+# preferred way for downstream projecs to find an installed OIIO. There
+# should be no need to copy this FindOpenImageIO.cmake file into downstream
+# projects, *unless* they need to work with a range of OIIO vesions that
+# may include <2.1, which would lack the generated config files.
+#
+###########################################################################
 
-if(UNIX)
-    find_path(OIIO_BASE_DIR
-            include/OpenImageIO/oiioversion.h
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-            "/opt/oiio"
+
+# If 'OPENIMAGE_HOME' not set, use the env variable of that name if available
+if (NOT OPENIMAGEIO_ROOT_DIR AND NOT $ENV{OPENIMAGEIO_ROOT_DIR} STREQUAL "")
+    set (OPENIMAGEIO_ROOT_DIR $ENV{OPENIMAGEIO_ROOT_DIR})
+endif ()
+
+
+find_library ( OPENIMAGEIO_LIBRARY
+               NAMES OpenImageIO${OIIO_LIBNAME_SUFFIX}
+               HINTS ${OPENIMAGEIO_ROOT_DIR}
+               PATH_SUFFIXES lib64 lib )
+find_path ( OPENIMAGEIO_INCLUDE_DIR
+            NAMES OpenImageIO/imageio.h
+            HINTS ${OPENIMAGEIO_ROOT_DIR} )
+find_program ( OIIOTOOL_BIN
+               NAMES oiiotool
+               HINTS ${OPENIMAGEIO_ROOT_DIR} )
+
+# Try to figure out version number
+set (OIIO_VERSION_HEADER "${OPENIMAGEIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h")
+if (EXISTS "${OIIO_VERSION_HEADER}")
+    file (STRINGS "${OIIO_VERSION_HEADER}" TMP REGEX "^#define OIIO_VERSION_MAJOR .*$")
+    string (REGEX MATCHALL "[0-9]+" OPENIMAGEIO_VERSION_MAJOR ${TMP})
+    file (STRINGS "${OIIO_VERSION_HEADER}" TMP REGEX "^#define OIIO_VERSION_MINOR .*$")
+    string (REGEX MATCHALL "[0-9]+" OPENIMAGEIO_VERSION_MINOR ${TMP})
+    file (STRINGS "${OIIO_VERSION_HEADER}" TMP REGEX "^#define OIIO_VERSION_PATCH .*$")
+    string (REGEX MATCHALL "[0-9]+" OPENIMAGEIO_VERSION_PATCH ${TMP})
+    file (STRINGS "${OIIO_VERSION_HEADER}" TMP REGEX "^#define OIIO_VERSION_TWEAK .*$")
+    if (TMP)
+        string (REGEX MATCHALL "[0-9]+" OPENIMAGEIO_VERSION_TWEAK ${TMP})
+    else ()
+        set (OPENIMAGEIO_VERSION_TWEAK 0)
+    endif ()
+    set (OPENIMAGEIO_VERSION "${OPENIMAGEIO_VERSION_MAJOR}.${OPENIMAGEIO_VERSION_MINOR}.${OPENIMAGEIO_VERSION_PATCH}.${OPENIMAGEIO_VERSION_TWEAK}")
+endif ()
+
+
+include (FindPackageHandleStandardArgs)
+find_package_handle_standard_args (OpenImageIO
+    FOUND_VAR     OpenImageIO_FOUND
+    REQUIRED_VARS OPENIMAGEIO_INCLUDE_DIR OPENIMAGEIO_LIBRARY
+                  OPENIMAGEIO_VERSION
+    VERSION_VAR   OPENIMAGEIO_VERSION
     )
-    find_path(OIIO_LIBRARY_DIR
-            libOpenImageIO.so
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-            "${OIIO_BASE_DIR}"
-        PATH_SUFFIXES
-            lib/
-        DOC
-            "OpenImageIO library path"
+set (OPENIMAGEIO_FOUND ${OpenImageIO_FOUND})  # Old name
+
+if (OpenImageIO_FOUND)
+    set (OPENIMAGEIO_INCLUDES ${OPENIMAGEIO_INCLUDE_DIR})
+    set (OPENIMAGEIO_LIBRARIES ${OPENIMAGEIO_LIBRARY})
+    get_filename_component (OPENIMAGEIO_LIBRARY_DIRS "${OPENIMAGEIO_LIBRARY}" DIRECTORY)
+    if (NOT OpenImageIO_FIND_QUIETLY)
+        message ( STATUS "OpenImageIO includes     = ${OPENIMAGEIO_INCLUDE_DIR}" )
+        message ( STATUS "OpenImageIO libraries    = ${OPENIMAGEIO_LIBRARIES}" )
+        message ( STATUS "OpenImageIO library_dirs = ${OPENIMAGEIO_LIBRARY_DIRS}" )
+        message ( STATUS "OpenImageIO oiiotool     = ${OIIOTOOL_BIN}" )
+    endif ()
+
+    if (NOT TARGET OpenImageIO::OpenImageIO)
+        add_library(OpenImageIO::OpenImageIO UNKNOWN IMPORTED)
+        set_target_properties(OpenImageIO::OpenImageIO PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${OPENIMAGEIO_INCLUDES}")
+
+        set_property(TARGET OpenImageIO::OpenImageIO APPEND PROPERTY
+            IMPORTED_LOCATION "${OPENIMAGEIO_LIBRARIES}")
+    endif ()
+
+    if (NOT TARGET OpenImageIO::oiiotool AND EXISTS "${OIIOTOOL_BIN}")
+        add_executable(OpenImageIO::oiiotool IMPORTED)
+        set_target_properties(OpenImageIO::oiiotool PROPERTIES
+            IMPORTED_LOCATION "${OIIOTOOL_BIN}")
+    endif ()
+endif ()
+
+mark_as_advanced (
+    OPENIMAGEIO_INCLUDE_DIR
+    OPENIMAGEIO_LIBRARY
     )
-elseif(WIN32)
-    find_path(OIIO_BASE_DIR
-            include/OpenImageIO/oiioversion.h
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-    )
-    find_path(OIIO_LIBRARY_DIR
-            OpenImageIO.lib
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-            "${OIIO_BASE_DIR}"
-        PATH_SUFFIXES
-            lib/
-        DOC
-            "OpenImageIO library path"
-    )
-endif()
-
-find_path(OIIO_INCLUDE_DIR
-        OpenImageIO/oiioversion.h
-    HINTS
-        "${OIIO_LOCATION}"
-        "$ENV{OIIO_LOCATION}"
-        "${OIIO_BASE_DIR}"
-    PATH_SUFFIXES
-        include/
-    DOC
-        "OpenImageIO headers path"
-)
-
-list(APPEND OIIO_INCLUDE_DIRS ${OIIO_INCLUDE_DIR})
-
-foreach(OIIO_LIB
-    OpenImageIO
-    OpenImageIO_Util
-    )
-
-    find_library(OIIO_${OIIO_LIB}_LIBRARY
-            ${OIIO_LIB}
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-            "${OIIO_BASE_DIR}"
-        PATH_SUFFIXES
-            lib/
-        DOC
-            "OIIO's ${OIIO_LIB} library path"
-    )
-
-    if(OIIO_${OIIO_LIB}_LIBRARY)
-        list(APPEND OIIO_LIBRARIES ${OIIO_${OIIO_LIB}_LIBRARY})
-    endif()
-endforeach(OIIO_LIB)
-
-foreach(OIIO_BIN
-        iconvert
-        idiff
-        igrep
-        iinfo
-        iv
-        maketx
-        oiiotool)
-
-    find_program(OIIO_${OIIO_BIN}_BINARY
-            ${OIIO_BIN}
-        HINTS
-            "${OIIO_LOCATION}"
-            "$ENV{OIIO_LOCATION}"
-            "${OIIO_BASE_DIR}"
-        PATH_SUFFIXES
-            bin/
-        DOC
-            "OIIO's ${OIIO_BIN} binary"
-    )
-    if(OIIO_${OIIO_BIN}_BINARY)
-        list(APPEND OIIO_BINARIES ${OIIO_${OIIO_BIN}_BINARY})
-    endif()
-endforeach(OIIO_BIN)
-
-if(OIIO_INCLUDE_DIRS AND EXISTS "${OIIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h")
-    file(STRINGS ${OIIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h
-        MAJOR
-        REGEX
-        "#define OIIO_VERSION_MAJOR.*$")
-    file(STRINGS ${OIIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h
-        MINOR
-        REGEX
-        "#define OIIO_VERSION_MINOR.*$")
-    file(STRINGS ${OIIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h
-        PATCH
-        REGEX
-        "#define OIIO_VERSION_PATCH.*$")
-    string(REGEX MATCHALL "[0-9]+" MAJOR ${MAJOR})
-    string(REGEX MATCHALL "[0-9]+" MINOR ${MINOR})
-    string(REGEX MATCHALL "[0-9]+" PATCH ${PATCH})
-    set(OIIO_VERSION "${MAJOR}.${MINOR}.${PATCH}")
-endif()
-
-# handle the QUIETLY and REQUIRED arguments and set OIIO_FOUND to TRUE if
-# all listed variables are TRUE
-include(FindPackageHandleStandardArgs)
-
-find_package_handle_standard_args(OpenImageIO
-    REQUIRED_VARS
-        OIIO_LIBRARIES
-        OIIO_INCLUDE_DIRS
-    VERSION_VAR
-        OIIO_VERSION
-)

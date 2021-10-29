@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.5 )
+cmake_minimum_required( VERSION 3.12 )
 
 set(CMAKE_C_COMPILER gcc-7)
 set(CMAKE_CXX_COMPILER g++-7)
@@ -11,9 +11,20 @@ set( PROJECT_VERSION_MAJOR 0 )
 set( PROJECT_VERSION_MINOR 0 )
 set( PROJECT_VERSION_PATCH 001 )
 
-# Basic information about project
-set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} )
-project( Falcor VERSION ${PROJECT_VERSION} )
+# Handle superbuild first
+option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
+
+if(USE_SUPERBUILD)
+  project (SUPERBUILD NONE)
+  # execute the superbuild (this script will be invoked again without the
+  # USE_SUPERBUILD option this time)
+  include (cmake/SuperBuild.cmake)
+  return()
+else()
+  # Basic information about project
+  set( PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH} )
+  project( Falcor VERSION ${PROJECT_VERSION} )
+endif()
 
 # Set up houdini hdk and installation paths
 set(HOUDINI_HOME "/opt/houdini18.5")
@@ -109,7 +120,7 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Falcor/Core
   ${FALCOR_INCLUDE_ROOT}/Externals
 
-  ${CMAKE_INSTALL_PREFIX}/3rdparty/include
+  #${CMAKE_INSTALL_PREFIX}/3rdparty/include
 
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/rapidjson
@@ -134,17 +145,9 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
-# Now setup targets
-
-# thirt party libs
-#add_subdirectory( third_party )
-#add_subdirectory( third_party/tbb )
-#add_subdirectory( third_party/openvdb )
-
 # Our stuff
-add_subdirectory( third_party )
 add_subdirectory( src/lava_utils_lib )
-#add_subdirectory( src )
+add_subdirectory( src )
 #add_subdirectory( contrib )
 
 
