@@ -33,6 +33,8 @@
 # folders
 build
 build/
+build_external
+build_external/
 venv
 venv/
 

@@ -146,7 +146,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
 # Our stuff
-add_subdirectory( src/lava_utils_lib )
+#add_subdirectory( src/lava_utils_lib )
 add_subdirectory( src )
 #add_subdirectory( contrib )
 
