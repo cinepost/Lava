@@ -81,8 +81,10 @@ endif()
 # Blosc2
 #######################
 
+set(EXTERNAL_BLOSC_VERSION 1.21.0)
+
 set(Blosc_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(Blosc)
+find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT)
 
 if( Blosc_FOUND )
 
@@ -104,7 +106,7 @@ else()
   ExternalProject_Add( Blosc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BLOSC_PREFIX}
     GIT_REPOSITORY https://github.com/Blosc/c-blosc.git
-    GIT_TAG v1.21.0
+    GIT_TAG v${EXTERNAL_BLOSC_VERSION}
     UPDATE_DISCONNECTED true
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_BUILD_DIR}
     CMAKE_ARGS -D BUILD_STATIC:BOOL=${BLOSC_BUILD_STATIC}
@@ -302,8 +304,10 @@ endif()
 # OpenVDB
 #######################
 
+set(EXTERNAL_OPENVDB_VERSION 9.0.0)
+
 set(OpenVDB_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(OpenVDB)
+find_package(OpenVDB ${EXTERNAL_OPENVDB_VERSION} EXACT)
 
 if( OpenVDB_FOUND )
 
@@ -326,7 +330,7 @@ else()
   ExternalProject_Add ( OpenVDB
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OPENVDB_PREFIX}
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
-    GIT_REMOTE_NAME origin/feature/nanovdb
+    GIT_TAG v${EXTERNAL_OPENVDB_VERSION}
     UPDATE_DISCONNECTED true
     CMAKE_ARGS -D OPENVDB_BUILD_NANOVDB:BOOL=ON
     CMAKE_ARGS -D DISABLE_CMAKE_SEARCH_PATHS:BOOL=ON
@@ -334,21 +338,32 @@ else()
     CMAKE_ARGS -D OPENVDB_BUILD_BINARIES:BOOL=OFF
     CMAKE_ARGS -D OPENVDB_ENABLE_UNINSTALL:BOOL=OFF
     CMAKE_ARGS -D OPENVDB_CORE_SHARED:BOOL=${OPENVDB_BUILD_CORE_SHARED} 
+    
+    CMAKE_ARGS -D Blosc_ROOT:PATH=${EXTERNALS_BUILD_DIR} 
+
+    CMAKE_ARGS -D Tbb_ROOT:PATH=${EXTERNALS_BUILD_DIR}
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_BUILD_DIR}
-    CMAKE_ARGS -D BLOSC_ROOT:PATH=${EXTERNALS_BUILD_DIR}
+    CMAKE_ARGS -D TBB_INCLUDEDIR:PATH=${EXTERNALS_BUILD_DIR}/include/
+    CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_BUILD_DIR}/lib/
+
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_BUILD_DIR}
     CMAKE_ARGS <SOURCE_DIR>
   )
 
+  ExternalProject_Get_property(OpenVDB SOURCE_DIR)
+
 endif()
+
 add_dependencies(OpenVDB Tbb Blosc Boost)
 
 #######################
 # OpenImageIO
 #######################
 
+set(EXTERNAL_OIIO_VERSION 2.2.18.0)
+
 set(OpenImageIO_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(OpenImageIO 2.2.18.0 EXACT)
+find_package(OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT)
 
 if(OpenImageIO_FOUND)
 
@@ -363,7 +378,7 @@ else()
   ExternalProject_Add ( OpenImageIO
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OIIO_PREFIX}
     GIT_REPOSITORY https://github.com/OpenImageIO/oiio.git
-    GIT_TAG v2.2.18.0
+    GIT_TAG v${EXTERNAL_OIIO_VERSION}
     UPDATE_DISCONNECTED true
     CMAKE_ARGS -D CMAKE_CXX_STANDARD=14
     CMAKE_ARGS -D OIIO_BUILD_TESTS:BOOL=OFF
@@ -380,6 +395,29 @@ else()
 
 endif()
 add_dependencies(OpenImageIO PyBind OpenEXR OpenVDB)
+
+#######################
+# VulkanMemoryAllocator
+#######################
+
+set(EXTERNAL_VMA_VERSION 2.3.0)
+
+
+  message("OpenImageIO not found! Running external build ...")
+  set(VMA_PREFIX vulkan_memory_allocator)
+
+  ExternalProject_Add ( VMA
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${VMA_PREFIX}
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG v${EXTERNAL_VMA_VERSION}
+    UPDATE_DISCONNECTED true
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D VMA_INST_DIR=${EXTERNALS_BUILD_DIR}/include/
+      -D VMA_SRC_DIR=<SOURCE_DIR>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/vma_install_files.cmake
+  )
 
 ########################
 # Slang section
@@ -463,5 +501,6 @@ add_dependencies( dummy_target
   OpenEXR
   OpenVDB
   OpenImageIO
+  VMA
   Slang
 )
