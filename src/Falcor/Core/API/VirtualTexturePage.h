@@ -7,7 +7,7 @@
 
 #include "Falcor/Core/Framework.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 

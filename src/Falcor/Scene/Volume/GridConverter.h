@@ -33,7 +33,7 @@
 
 #pragma warning(disable:4244 4267)
 //#include <nanovdb/NanoVDB.h>
-#include "openvdb/nanovdb/nanovdb/NanoVDB.h"
+#include "nanovdb/NanoVDB.h"
 //#include "openvdb/nanovdb/nanovdb/util/GridHandle.h"
 //#include "openvdb/nanovdb/nanovdb/util/HostBuffer.h"
 #pragma warning(default:4244 4267)
@@ -149,7 +149,7 @@ void NanoVDBToBricksConverter<TexelType, kBitsPerTexel>::convertSlice(int z) {
             if (leaf)
             {
                 // Nanovdb only stores minorant/majorant for active voxels, but we need all of them... Grab the central 8x8x8 first the quick way.
-                const float* data = leaf->voxels();
+                const float* data;// = leaf->voxels();
                 for (int i = 0; i < kBrickSize * kBrickSize * kBrickSize; ++i) expandMinorantMajorant(data[i], minorant, majorant);
                 // We also need the 1-halo from neighbouring bricks. Fetch them in an order that maximises nanovdb's internal cache reuse.
                 for (int j = -1; j <= kBrickSize; ++j) for (int i = 0; i < kBrickSize; ++i) expandMinorantMajorant(a.getValue(ijk + nanovdb::Coord(i, j, -1)), minorant, majorant);
@@ -170,7 +170,7 @@ void NanoVDBToBricksConverter<TexelType, kBitsPerTexel>::convertSlice(int z) {
                 *rangedst++ = f32tof16(majorant) + (f32tof16(majorant) << 16); // force identical major and minor
                 *ptrdst++ = 0;
             } else {
-                const float* data = leaf->voxels();
+                const float* data; // = leaf->voxels();
                 majorant = f16tof32(f32tof16(majorant) + 1);
                 minorant = f16tof32(f32tof16(minorant));
                 *rangedst++ = f32tof16(majorant) + (f32tof16(minorant) << 16);

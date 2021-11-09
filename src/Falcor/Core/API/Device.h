@@ -44,7 +44,7 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/Sampler.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 

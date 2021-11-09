@@ -332,7 +332,9 @@ else()
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
     GIT_TAG v${EXTERNAL_OPENVDB_VERSION}
     UPDATE_DISCONNECTED true
+    CMAKE_ARGS -D USE_NANOVDB:BOOL=ON
     CMAKE_ARGS -D OPENVDB_BUILD_NANOVDB:BOOL=ON
+    
     CMAKE_ARGS -D DISABLE_CMAKE_SEARCH_PATHS:BOOL=ON
     CMAKE_ARGS -D Boost_USE_STATIC_RUNTIME:BOOL=${OPENVDB_USE_BOOST_STATIC_RUNTIME}
     CMAKE_ARGS -D OPENVDB_BUILD_BINARIES:BOOL=OFF
@@ -402,22 +404,46 @@ add_dependencies(OpenImageIO PyBind OpenEXR OpenVDB)
 
 set(EXTERNAL_VMA_VERSION 2.3.0)
 
+set(VMA_PREFIX vulkan_memory_allocator)
 
-  message("OpenImageIO not found! Running external build ...")
-  set(VMA_PREFIX vulkan_memory_allocator)
+ExternalProject_Add ( VMA
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${VMA_PREFIX}
+  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+  GIT_TAG v${EXTERNAL_VMA_VERSION}
+  UPDATE_DISCONNECTED true
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ${CMAKE_COMMAND}
+    -D VMA_INST_DIR=${EXTERNALS_BUILD_DIR}/include/VulkanMemoryAllocator/
+    -D VMA_SRC_DIR=<SOURCE_DIR>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/vma_install_files.cmake
+)
 
-  ExternalProject_Add ( VMA
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${VMA_PREFIX}
-    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-    GIT_TAG v${EXTERNAL_VMA_VERSION}
+#######################
+# LZ4 Stream
+#######################
+
+set(LZ4_STREAM_PREFIX lz4_stream)
+set(LZ4_INSTALL_DIR ${EXTERNALS_BUILD_DIR}/include/lz4_stream)
+
+if(EXISTS "${LZ4_INSTALL_DIR}/lz4_stream.h")
+
+  message("LZ4_Stream found ...")
+  add_custom_target( LZ4_Stream COMMAND echo "LZ4_Stream found, skipping download ...")
+
+else()
+
+  message("Downloading LZ4_Stream ...")
+  ExternalProject_Add ( LZ4_Stream
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${LZ4_STREAM_PREFIX}
+    GIT_REPOSITORY https://github.com/laudrup/lz4_stream.git
     UPDATE_DISCONNECTED true
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND ${CMAKE_COMMAND}
-      -D VMA_INST_DIR=${EXTERNALS_BUILD_DIR}/include/
-      -D VMA_SRC_DIR=<SOURCE_DIR>
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/vma_install_files.cmake
+    INSTALL_COMMAND 
+      ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/include/lz4_stream.h ${LZ4_INSTALL_DIR}/lz4_stream.h
   )
+endif()
 
 ########################
 # Slang section
@@ -431,7 +457,7 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-set(EXTERNAL_SLANG_VERSION 0.19.14) # last working version 0.18.6
+set(EXTERNAL_SLANG_VERSION 0.19.14) # last tested version was 0.18.6
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
 set(SLANG_BUILD_LIBS "slang slang-glslang")
@@ -492,11 +518,14 @@ ExternalProject_Add_Step(
 
 endif()
 
+#######################
+
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
 add_dependencies( dummy_target 
   Tbb 
   Blosc
   PyBind
+  LZ4_Stream
   Assimp
   OpenEXR
   OpenVDB

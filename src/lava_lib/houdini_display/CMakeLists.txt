@@ -7,8 +7,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 # find boost libs
-find_package( Boost COMPONENTS log python REQUIRED )
-find_package( Boost COMPONENTS python27 )
+find_package( Boost COMPONENTS log REQUIRED )
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 

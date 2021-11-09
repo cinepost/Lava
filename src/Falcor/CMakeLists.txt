@@ -1,4 +1,4 @@
-set(EXTERNALS_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../../third_party/external/)
+set(EXTERNALS_BUILD_DIR ${PROJECT_SOURCE_DIR}/build_external/)
 
 file( GLOB SOURCES
     #./*.cpp
@@ -36,10 +36,14 @@ file( GLOB SOURCES
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
 
-    ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
+    ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 )
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+
+# Blosc
+set(Blosc_ROOT ${EXTERNALS_BUILD_DIR})
+find_package(Blosc 1.21.0 REQUIRED)
 
 # PyBind11
 find_package(pybind11 REQUIRED CONFIG)
@@ -49,12 +53,8 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
-find_package(assimp REQUIRED)
-if(assimp_FOUND)
-    set(ASSIMP_LIBRARY "assimp")
-    add_library(${ASSIMP_LIBRARY} SHARED IMPORTED)
-    set_target_properties(${ASSIMP_LIBRARY} PROPERTIES IMPORTED_LOCATION "${ASSIMP_LIBRARY_DIRS}/libassimp.so")
-endif(assimp_FOUND)
+set(Assimp_ROOT ${EXTERNALS_BUILD_DIR})
+find_package(Assimp REQUIRED)
 
 # ZLIB
 find_package( ZLIB REQUIRED )
@@ -77,16 +77,15 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
 endif()
 
 # Imath
-find_package( Imath REQUIRED CONFIG )
+#find_package( Imath REQUIRED CONFIG )
 
 # OpenEXR
 set(OpenEXR_ROOT ${EXTERNALS_BUILD_DIR})
-message("OpenEXR root ${OpenEXR_ROOT}")
 find_package( OpenEXR REQUIRED CONFIG )
 
 # OpenImageIO
 set(OpenImageIO_ROOT ${EXTERNALS_BUILD_DIR})
-find_package( OpenImageIO REQUIRED CONFIG )
+find_package( OpenImageIO REQUIRED )
 if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
@@ -143,12 +142,8 @@ find_library( SLANG_LIBRARY slang PATHS ${EXTERNALS_BUILD_DIR}/lib )
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 # OpenVDB/NanoVDB
-find_package(OpenVDB REQUIRED openvdb nanovdb)
-include_directories( /usr/local/ )
-
-find_library(OpenVDB_LIBRARY openvdb HINTS /opt/lava/3drparty/lib)
-find_library(NanoVDB_LIBRARY nanovdb HINTS /usr/local/lib)
-
+set(OpenVDB_ROOT ${EXTERNALS_BUILD_DIR})
+find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
 message("OpenVDB ${OpenVDB_LIBRARY}")
@@ -164,8 +159,8 @@ target_link_libraries(
     avformat
     swscale
     stdc++fs
-    blosc2
-    ${ASSIMP_LIBRARY}
+    Blosc::blosc
+    ${ASSIMP_LIBRARIES}
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
@@ -176,7 +171,7 @@ target_link_libraries(
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
     OpenImageIO::OpenImageIO
-    ${OpenVDB_LIBRARY}
+    OpenVDB::openvdb
 )
 
 # Copy/install all needed shaders
@@ -199,6 +194,9 @@ if(UNIX)
         TARGETS falcor_lib
         DESTINATION lib 
     )
+
+    # third party libs
+    install(DIRECTORY ${EXTERNALS_BUILD_DIR}/lib/ DESTINATION 3rdparty/lib)
 
     # Install all needed shaders
     install(

@@ -32,9 +32,9 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
-//#include "Falcor/Core/API/Device.h"
+//#include "Falcor/Core/API/Devie.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 

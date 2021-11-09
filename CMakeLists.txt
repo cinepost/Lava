@@ -30,7 +30,8 @@ endif()
 set(HOUDINI_HOME "/opt/houdini18.5")
 set(HOUDINI_USER "$ENV{HOME}/houdini18.5")
 
-list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
+# TODO move to houdini related subproject
+#list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
 
 
 # Add folder where are supportive functions
@@ -120,10 +121,8 @@ include_directories(
   ${FALCOR_INCLUDE_ROOT}/Falcor/Core
   ${FALCOR_INCLUDE_ROOT}/Externals
 
-  #${CMAKE_INSTALL_PREFIX}/3rdparty/include
-
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/external/rapidjson
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm
 )
 
 # use, i.e. don't skip the full RPATH for the build tree
@@ -145,7 +144,11 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
+#------------------------------------------
 # Our stuff
+#------------------------------------------
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build_external")
+
 #add_subdirectory( src/lava_utils_lib )
 add_subdirectory( src )
 #add_subdirectory( contrib )

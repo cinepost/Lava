@@ -37,7 +37,7 @@
 #include "Falcor.h"
 
 #define VMA_IMPLEMENTATION
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 #include "VKDevice.h"
 

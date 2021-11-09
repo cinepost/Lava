@@ -13,17 +13,17 @@ ExternalProject_Add( third_party
 )
 
 # Main project
-#ExternalProject_Add( ep_src
-#  DEPENDS third_party
-#  SOURCE_DIR ${PROJECT_SOURCE_DIR}
-#  CMAKE_ARGS -DUSE_SUPERBUILD=OFF
-#  INSTALL_COMMAND ""
-#  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}
-#)
-#add_dependencies(ep_src third_party)
+ExternalProject_Add( ep_src
+  DEPENDS third_party
+  SOURCE_DIR ${PROJECT_SOURCE_DIR}
+  CMAKE_ARGS -DUSE_SUPERBUILD=OFF
+  INSTALL_COMMAND ""
+  BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}
+)
+add_dependencies(ep_src third_party)
 
 add_custom_target(dummy COMMAND echo "Dummy main project target")
 add_dependencies(dummy 
   third_party
-  #ep_src
+  ep_src
 )

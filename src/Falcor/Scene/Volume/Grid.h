@@ -31,9 +31,9 @@
 #include "BrickedGrid.h"
 
 //#pragma warning(disable:4244 4267)
-#include "openvdb/nanovdb/nanovdb/NanoVDB.h"
-#include "openvdb/nanovdb/nanovdb/util/GridHandle.h"
-#include "openvdb/nanovdb/nanovdb/util/HostBuffer.h"
+#include "nanovdb/NanoVDB.h"
+#include "nanovdb/util/GridHandle.h"
+#include "nanovdb/util/HostBuffer.h"
 //#pragma warning(default:4244 4267)
 
 #include "Falcor/Core/Framework.h"

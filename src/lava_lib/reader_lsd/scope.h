@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "Externals/GLM/glm/mat4x4.hpp"
+#include "glm/glm/mat4x4.hpp"
 
 #include "../scene_reader_base.h"
 #include "properties_container.h"

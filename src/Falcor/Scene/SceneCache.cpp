@@ -30,7 +30,7 @@
 #include "SceneCacheStream.h"
 #include "Scene.h"
 
-#include "lz4_stream/include/lz4_stream.h"
+#include "lz4_stream/lz4_stream.h"
 
 namespace Falcor {
 

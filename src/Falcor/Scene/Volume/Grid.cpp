@@ -29,10 +29,10 @@
 #include "Grid.h"
 
 #pragma warning(disable:4146 4244 4267 4275 4996)
-#include <openvdb/nanovdb/nanovdb/util/IO.h>
-#include <openvdb/nanovdb/nanovdb/util/GridStats.h>
-#include <openvdb/nanovdb/nanovdb/util/GridBuilder.h>
-#include <openvdb/nanovdb/nanovdb/util/OpenToNanoVDB.h>
+#include <nanovdb/util/IO.h>
+#include <nanovdb/util/GridStats.h>
+#include <nanovdb/util/GridBuilder.h>
+#include <nanovdb/util/OpenToNanoVDB.h>
 #include <nanovdb/util/Primitives.h>
 #include <openvdb/openvdb.h>
 #pragma warning(default:4146 4244 4267 4275 4996)
@@ -57,12 +57,18 @@ namespace {
 }
 
 Grid::SharedPtr Grid::createSphere(Device::SharedPtr pDevice, float radius, float voxelSize, float blendRange) {
-    auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+    //auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+
+    //double          halfWidth = 3.0f;
+    //nanovdb::Vec3d  origin = nanovdb::Vec3d(0.0);
+    //auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, halfWidth, origin);
+    auto handle = nanovdb::createFogVolumeSphere(20.0f, nanovdb::Vec3f(50), 1.0, 3.0, nanovdb::Vec3d(0), "sphere_20");
     return SharedPtr(new Grid(pDevice, std::move(handle)));
 }
 
 Grid::SharedPtr Grid::createBox(Device::SharedPtr pDevice, float width, float height, float depth, float voxelSize, float blendRange) {
-    auto handle = nanovdb::createFogVolumeBox(width, height, depth, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+    //auto handle = nanovdb::createFogVolumeBox(width, height, depth, nanovdb::Vec3R(0.0), voxelSize, blendRange);
+    auto handle = nanovdb::createFogVolumeBox<float>(40.0f, 60.0f, 80.0f, nanovdb::Vec3f(50), 1.0, 3.0, nanovdb::Vec3d(0), "box");
     return SharedPtr(new Grid(pDevice, std::move(handle)));
 }
 
@@ -104,11 +110,13 @@ int3 Grid::getMaxIndex() const {
 }
 
 float Grid::getMinValue() const {
-    return mpFloatGrid->tree().root().valueMin();
+    //return mpFloatGrid->tree().root().valueMin();
+    return mpFloatGrid->tree().root().minimum();
 }
 
 float Grid::getMaxValue() const {
-    return mpFloatGrid->tree().root().valueMax();
+    // return mpFloatGrid->tree().root().valueMax();
+    return mpFloatGrid->tree().root().maximum();
 }
 
 uint64_t Grid::getVoxelCount() const {

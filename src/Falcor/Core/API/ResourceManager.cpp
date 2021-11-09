@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "c-blosc2/blosc/blosc2.h"
+#include "blosc.h"
 
 #include "Falcor/stdafx.h"
 #include "ResourceManager.h"

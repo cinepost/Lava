@@ -35,7 +35,7 @@
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-#include "c-blosc2/blosc/blosc2.h"
+#include "blosc.h"
 
 #include "stdafx.h"
 #include "Bitmap.h"
@@ -50,7 +50,7 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
-namespace oiio = OpenImageIO_v2_3;
+namespace oiio = OIIO;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 static const size_t kLtxPageSize = 65536;

@@ -39,7 +39,7 @@ namespace fs = boost::filesystem;
 #include "stdafx.h"
 #include "SceneBuilder.h"
 #include "SceneCache.h"
-#include "../Externals/mikktspace/mikktspace.h"
+#include "mikktspace/mikktspace.h"
 
 #include "Falcor/Utils/ConfigStore.h"
 #include "Importer.h"
