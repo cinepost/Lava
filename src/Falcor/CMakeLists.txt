@@ -7,7 +7,7 @@ file( GLOB SOURCES
     ./Core/API/Vulkan/*.cpp
     ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
-    ./Core/Platform/Linux/*.cpp
+    ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
@@ -53,8 +53,11 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
-set(Assimp_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(Assimp REQUIRED)
+set(assimp_ROOT ${EXTERNALS_BUILD_DIR})
+find_package(assimp 5.0.0 REQUIRED)
+
+# LZ4
+find_package( LZ4 REQUIRED )
 
 # ZLIB
 find_package( ZLIB REQUIRED )
@@ -76,12 +79,9 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
   )
 endif()
 
-# Imath
-#find_package( Imath REQUIRED CONFIG )
-
 # OpenEXR
 set(OpenEXR_ROOT ${EXTERNALS_BUILD_DIR})
-find_package( OpenEXR REQUIRED CONFIG )
+find_package( OpenEXR 2.5 REQUIRED )
 
 # OpenImageIO
 set(OpenImageIO_ROOT ${EXTERNALS_BUILD_DIR})
@@ -108,16 +108,16 @@ if (NOT Vulkan_FOUND)
 endif()
 
 # Use the package PkgConfig to detect GTK+ headers/library files
-FIND_PACKAGE(PkgConfig REQUIRED)
-PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
+#FIND_PACKAGE(PkgConfig REQUIRED)
+#PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
 # Setup CMake to use GTK+, tell the compiler where to look for headers
 # and to the linker where to look for libraries
-include_directories( ${GTK3_INCLUDE_DIRS} )
-link_directories( ${GTK3_LIBRARY_DIRS} )
+#include_directories( ${GTK3_INCLUDE_DIRS} )
+#link_directories( ${GTK3_LIBRARY_DIRS} )
 
 # Add other flags to the compiler
-add_definitions(${GTK3_CFLAGS_OTHER})
+#add_definitions(${GTK3_CFLAGS_OTHER})
 
 # FreeImage
 find_package( FreeImage REQUIRED )
@@ -160,7 +160,7 @@ target_link_libraries(
     swscale
     stdc++fs
     Blosc::blosc
-    ${ASSIMP_LIBRARIES}
+    ${assimp_LIBRARIES}
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
@@ -172,6 +172,7 @@ target_link_libraries(
     ${ZLIB_LIBRARY}
     OpenImageIO::OpenImageIO
     OpenVDB::openvdb
+    ${LZ4_LIBRARY}
 )
 
 # Copy/install all needed shaders

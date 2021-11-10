@@ -229,7 +229,7 @@ endif()
 
 set(EXTERNAL_OPENEXR_VERSION 2.5.7)
 set(OpenEXR_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(OpenEXR CONFIG)
+find_package(OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT)
 
 if( OpenEXR_FOUND )
 
@@ -265,12 +265,13 @@ endif()
 # Assimp
 #######################
 
-set(Assimp_ROOT ${EXTERNALS_BUILD_DIR})
-find_package(Assimp)
+set(EXTERNAL_ASSIMP_VERSION 5.0.0)
+set(assimp_ROOT ${EXTERNALS_BUILD_DIR})
+find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
 
-if(Assimp_FOUND)
+if(assimp_FOUND)
 
-  message("Assimp version ${Assimp_VERSION} found ...")
+  message("Assimp version ${assimp_VERSION} found ...")
   add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
 
 else()
@@ -287,13 +288,13 @@ else()
   ExternalProject_Add ( Assimp
     PREFIX ${EXTERNALS_SOURCE_DIR}/${ASSIMP_PREFIX}
     GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG v5.0.0
+    GIT_TAG v${EXTERNAL_ASSIMP_VERSION}
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${ASSIMP_BUILD_SHARED}
     CMAKE_ARGS -D ASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF
     CMAKE_ARGS -D ASSIMP_BUILD_TESTS:BOOL=OFF
-    CMAKE_ARGS -D ASSIMP_INSTALL:BOOL=OFF
+    CMAKE_ARGS -D ASSIMP_INSTALL:BOOL=ON
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_BUILD_DIR}
     CMAKE_ARGS <SOURCE_DIR>
   )
@@ -488,7 +489,11 @@ ExternalProject_Add( Slang
   USES_TERMINAL ON
   USES_TERMINAL_CONFIGURE ON
 
-  CONFIGURE_COMMAND 
+  CONFIGURE_COMMAND
+    COMMAND ${CMAKE_COMMAND}
+      -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+      -D OUTPUT_FILE=<SOURCE_DIR>/premake5
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake 
     COMMAND ${CMAKE_COMMAND}
       -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
       -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/slang-tag-version.h.in
@@ -505,16 +510,16 @@ ExternalProject_Add( Slang
     -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
 )
 
-ExternalProject_Add_Step(
-  Slang download_premake5
-  COMMENT "Downloading premake5 ..."
-  ALWAYS ON
-  COMMAND ${CMAKE_COMMAND}
-    -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
-    -D OUTPUT_FILE=<SOURCE_DIR>/premake5
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake
-  DEPENDERS configure build install
-)
+#ExternalProject_Add_Step(
+#  Slang download_premake5
+#  COMMENT "Downloading premake5 ..."
+#  ALWAYS ON
+#  COMMAND ${CMAKE_COMMAND}
+#    -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
+#    -D OUTPUT_FILE=<SOURCE_DIR>/premake5
+#    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake
+#  DEPENDERS configure build install
+#)
 
 endif()
 
