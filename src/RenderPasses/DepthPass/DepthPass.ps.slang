@@ -60,7 +60,6 @@ void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
 
     if (sd.opacity < sampleNext1D(sg)) discard;
-    if (0.5 < sampleNext1D(sg)) discard;
     
 #ifndef DISABLE_ALPHA_TEST
     // Calling prepareShadingData() to discard pixels that fail alpha test. The pixel shader has no other side effects.

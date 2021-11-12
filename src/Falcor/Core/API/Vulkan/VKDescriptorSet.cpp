@@ -63,12 +63,17 @@ namespace Falcor {
     template<bool isUav, typename ViewType>
     static void setSrvUavCommon(Device::SharedPtr device, VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
         //LOG_DBG("setSrvUavCommon descriptor type %s", to_string(type).c_str());
+        
+        assert(pView);
+
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
+
+        auto descriptorCount = 1;
 
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
@@ -97,6 +102,7 @@ namespace Falcor {
                     descriptorSetAccelerationStructure.pAccelerationStructures = VK_NULL_HANDLE;
 
                     write.pNext = &descriptorSetAccelerationStructure;
+                    descriptorCount = 0;
                 }
             }
             write.pImageInfo = nullptr;
@@ -117,17 +123,19 @@ namespace Falcor {
         write.dstSet = set;
         write.dstBinding = bindIndex;
         write.dstArrayElement = arrayIndex;
-        write.descriptorCount = 1;
+        write.descriptorCount = descriptorCount;
 
         //LOG_DBG("vkUpdateDescriptorSets 1");
         vkUpdateDescriptorSets(device->getApiHandle(), 1, &write, 0, nullptr);
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
+        assert(pSrv && "ShaderResourceView pointer is NULL");
         setSrvUavCommon<false>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
+        assert(pUav && "UnorderedAccessView pointer is NULL");
         setSrvUavCommon<true>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
@@ -153,6 +161,7 @@ namespace Falcor {
 
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
         //LOG_DBG("setCbv rangeIndex %u, descIndex %u, range type %s", rangeIndex, descIndex, to_string((DescriptorPool::Type)mLayout.getRange(rangeIndex).type).c_str());
+        assert(pView && "ConstantBufferView pointer is NULL");
         VkDescriptorBufferInfo info;
 
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());

@@ -112,8 +112,8 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
         float shadowFactor = 1;
         if (i == 0)
         {
-            shadowFactor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).r;
-            shadowFactor *= sd.opacity;
+            //shadowFactor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).r;
+            //shadowFactor *= sd.opacity;
         }
 
         AnalyticLightSample ls;
