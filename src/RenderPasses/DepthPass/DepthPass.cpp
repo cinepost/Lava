@@ -137,7 +137,10 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
-    if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+    if (mpScene) {
+        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
+    }
     mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 

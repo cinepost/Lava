@@ -84,7 +84,7 @@ GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict):
     parseDictionary(dict);
 
     // Create raster program
-    Program::DefineList defines = { { "_DEFAULT_ALPHA_TEST", "" } };
+    Program::DefineList defines = { { "_DEFAULT_ALPHA_TEST", "" }, {"DISABLE_RAYTRACING", ""} };
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     desc.setShaderModel(shaderModel);

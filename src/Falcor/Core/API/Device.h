@@ -81,7 +81,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
 
         static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
-        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 1 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
+        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 2 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
 
         std::vector<std::string> requiredExtensions;
 
@@ -305,16 +305,21 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
 
-    VkPhysicalDeviceFeatures                            mDeviceFeatures;
-    VkPhysicalDeviceRayTracingPipelinePropertiesKHR     mRayTracingPipelineProperties{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mAaccelerationStructureFeatures{};
-
-    VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures{};
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures{};
-
     VmaAllocator    mAllocator;
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
+
+ public:
+    VkPhysicalDeviceFeatures                            mDeviceFeatures;
+    VkPhysicalDeviceFeatures2                           mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR     mRayTracingPipelineProperties{};
+
+    VkPhysicalDeviceCoherentMemoryFeaturesAMD           mEnabledDeviceCoherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
+    VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+    VkPhysicalDeviceMemoryPriorityFeaturesEXT           mEnabledMemoryPriorityFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+    VkPhysicalDeviceSynchronization2FeaturesKHR         mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
+    VkPhysicalDeviceHostQueryResetFeatures              mEnabledHostQueryResetFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
 };
 
 enum_class_operators(Device::SupportedFeatures);

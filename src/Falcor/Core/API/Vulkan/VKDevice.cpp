@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <set>
+#include <thread>
 
 #include "Falcor/stdafx.h"
 #include "Falcor/Core/API/Device.h"
@@ -44,12 +45,47 @@
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
 
 
-PFN_vkGetBufferDeviceAddressKHR Falcor::vkGetBufferDeviceAddressKHR = 0;
-PFN_vkCmdTraceRaysKHR Falcor::vkCmdTraceRaysKHR = 0;
+PFN_vkGetBufferDeviceAddressKHR                     Falcor::vkGetBufferDeviceAddressKHR = nullptr;
+PFN_vkCmdTraceRaysKHR                               Falcor::vkCmdTraceRaysKHR = nullptr;
+PFN_vkCreateAccelerationStructureKHR                Falcor::vkCreateAccelerationStructureKHR = nullptr;
+PFN_vkDestroyAccelerationStructureKHR               Falcor::vkDestroyAccelerationStructureKHR = nullptr;
+PFN_vkGetAccelerationStructureBuildSizesKHR         Falcor::vkGetAccelerationStructureBuildSizesKHR = nullptr;
+PFN_vkGetAccelerationStructureDeviceAddressKHR      Falcor::vkGetAccelerationStructureDeviceAddressKHR = nullptr;
+PFN_vkCmdBuildAccelerationStructuresKHR             Falcor::vkCmdBuildAccelerationStructuresKHR = nullptr;
+PFN_vkBuildAccelerationStructuresKHR                Falcor::vkBuildAccelerationStructuresKHR = nullptr;
+PFN_vkGetRayTracingShaderGroupHandlesKHR            Falcor::vkGetRayTracingShaderGroupHandlesKHR = nullptr;
+
+PFN_vkWriteAccelerationStructuresPropertiesKHR      Falcor::vkWriteAccelerationStructuresPropertiesKHR = nullptr;
+PFN_vkCmdWriteAccelerationStructuresPropertiesKHR   Falcor::vkCmdWriteAccelerationStructuresPropertiesKHR = nullptr;
+PFN_vkCmdCopyAccelerationStructureKHR               Falcor::vkCmdCopyAccelerationStructureKHR = nullptr;
+
+PFN_vkDeferredOperationJoinKHR                      Falcor::vkDeferredOperationJoinKHR = nullptr;
+PFN_vkGetDeferredOperationResultKHR                 Falcor::vkGetDeferredOperationResultKHR = nullptr;
+
+PFN_vkCreateRayTracingPipelinesKHR                  Falcor::vkCreateRayTracingPipelinesKHR = nullptr;
 
 namespace Falcor {
 
 #define RR_FAILED(res) (res != RR_SUCCESS)
+
+template<typename MainT, typename NewT>
+inline void PnextChainPushFront(MainT* mainStruct, NewT* newStruct) {
+    newStruct->pNext = mainStruct->pNext;
+    mainStruct->pNext = newStruct;
+}
+template<typename MainT, typename NewT>
+inline void PnextChainPushBack(MainT* mainStruct, NewT* newStruct) {
+    struct VkAnyStruct {
+        VkStructureType sType;
+        void* pNext;
+    };
+    VkAnyStruct* lastStruct = (VkAnyStruct*)mainStruct;
+    while(lastStruct->pNext != nullptr) {
+        lastStruct = (VkAnyStruct*)lastStruct->pNext;
+    }
+    newStruct->pNext = nullptr;
+    lastStruct->pNext = newStruct;
+}
 
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
@@ -85,6 +121,84 @@ uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
     assert(device);
     return device->getPhysicalDeviceLimits().maxViewports;
 }
+
+static constexpr uint32_t getVulkanApiVersion() {
+#if VMA_VULKAN_VERSION == 1002000
+    return VK_API_VERSION_1_2;
+#elif VMA_VULKAN_VERSION == 1001000
+    return VK_API_VERSION_1_1;
+#elif VMA_VULKAN_VERSION == 1000000
+    return VK_API_VERSION_1_0;
+#else
+#error Invalid VMA_VULKAN_VERSION.
+    return UINT32_MAX;
+#endif
+}
+
+static const uint32_t VENDOR_ID_AMD = 0x1002;
+static const uint32_t VENDOR_ID_NVIDIA = 0x10DE;
+static const uint32_t VENDOR_ID_INTEL = 0x8086;
+
+const wchar_t* PhysicalDeviceTypeToStr(VkPhysicalDeviceType type) {
+    // Skipping common prefix VK_PHYSICAL_DEVICE_TYPE_
+    static const wchar_t* const VALUES[] = {
+        L"OTHER",
+        L"INTEGRATED_GPU",
+        L"DISCRETE_GPU",
+        L"VIRTUAL_GPU",
+        L"CPU",
+    };
+    return (uint32_t)type < std::size(VALUES) ? VALUES[(uint32_t)type] : L"";
+}
+
+const wchar_t* VendorIDToStr(uint32_t vendorID) {
+    switch(vendorID) {
+        // Skipping common prefix VK_VENDOR_ID_ for these:
+        case 0x10001: return L"VIV";
+        case 0x10002: return L"VSI";
+        case 0x10003: return L"KAZAN";
+        case 0x10004: return L"CODEPLAY";
+        case 0x10005: return L"MESA";
+        case 0x10006: return L"POCL";
+        // Others...
+        case VENDOR_ID_AMD: return L"AMD";
+        case VENDOR_ID_NVIDIA: return L"NVIDIA";
+        case VENDOR_ID_INTEL: return L"Intel";
+        case 0x1010: return L"ImgTec";
+        case 0x13B5: return L"ARM";
+        case 0x5143: return L"Qualcomm";
+    }
+    return L"";
+}
+
+static void PrintPhysicalDeviceProperties(const VkPhysicalDeviceProperties& properties) {
+    wprintf(L"physicalDeviceProperties:\n");
+    wprintf(L"    driverVersion: 0x%X\n", properties.driverVersion);
+    wprintf(L"    vendorID: 0x%X (%s)\n", properties.vendorID, VendorIDToStr(properties.vendorID));
+    wprintf(L"    deviceID: 0x%X\n", properties.deviceID);
+    wprintf(L"    deviceType: %u (%s)\n", properties.deviceType, PhysicalDeviceTypeToStr(properties.deviceType));
+    wprintf(L"    deviceName: %hs\n", properties.deviceName);
+    wprintf(L"    limits:\n");
+    wprintf(L"        maxMemoryAllocationCount: %u\n", properties.limits.maxMemoryAllocationCount);
+    wprintf(L"        bufferImageGranularity: %llu B\n", properties.limits.bufferImageGranularity);
+    wprintf(L"        nonCoherentAtomSize: %llu B\n", properties.limits.nonCoherentAtomSize);
+}
+
+#if VMA_VULKAN_VERSION >= 1002000
+static void PrintPhysicalDeviceVulkan11Properties(const VkPhysicalDeviceVulkan11Properties& properties) {
+    printf("physicalDeviceVulkan11Properties:\n");
+    //std::wstring sizeStr = SizeToStr(properties.maxMemoryAllocationSize);
+    //printf(L"    maxMemoryAllocationSize: %llu B (%s)\n", properties.maxMemoryAllocationSize, sizeStr.c_str());
+}
+
+static void PrintPhysicalDeviceVulkan12Properties(const VkPhysicalDeviceVulkan12Properties& properties) {
+    printf("physicalDeviceVulkan12Properties:\n");
+    //std::wstring str = DriverIDToStr(properties.driverID);
+    //printf("    driverID: %u (%s)\n", properties.driverID, str.c_str());
+    printf("    driverName: %hs\n", properties.driverName);
+    printf("    driverInfo: %hs\n", properties.driverInfo);
+}
+#endif // #if VMA_VULKAN_VERSION > 1002000
 
 
 static uint32_t getMemoryBits(VkPhysicalDevice physicalDevice, VkMemoryPropertyFlagBits memFlagBits) {
@@ -240,16 +354,18 @@ void enableLayerIfPresent(const char* layerName, const std::vector<VkLayerProper
 
 static std::vector<VkExtensionProperties> enumarateInstanceExtensions() {
     // Enumerate implicitly available extensions. The debug layers above just have VK_EXT_debug_report
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> supportedExtensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, supportedExtensions.data());
+    uint32_t availableInstanceExtensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &availableInstanceExtensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableInstanceExtensions(availableInstanceExtensionCount);
+    if (availableInstanceExtensionCount > 0) {
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableInstanceExtensionCount, availableInstanceExtensions.data());
+    }
 
-    for (const VkExtensionProperties& extension : supportedExtensions) {
+    for (const VkExtensionProperties& extension : availableInstanceExtensions) {
         logInfo("Available Instance Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
     }
 
-    return supportedExtensions;
+    return availableInstanceExtensions;
 }
 
 static void initDebugCallback(VkInstance instance, VkDebugReportCallbackEXT* pCallback) {
@@ -288,7 +404,11 @@ VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
     std::vector<const char*> requiredLayers;
 
     if (enableDebugLayer) {
-        enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
         enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
@@ -411,7 +531,7 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, VkPhysicalDevice physic
     // Determine which queue is what type
     uint32_t& graphicsQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Direct];
     uint32_t& computeQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Compute];
-    uint32_t& transferQueue = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Copy];
+    uint32_t& transferQueueIndex = pData->falcorToVulkanQueueType[(uint32_t)LowLevelContextData::CommandQueueType::Copy];
 
     for (uint32_t i = 0; i < (uint32_t)queueFamilyProperties.size(); i++) {
         VkQueueFlags flags = queueFamilyProperties[i].queueFlags;
@@ -420,8 +540,8 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, VkPhysicalDevice physic
             graphicsQueueIndex = i;
         } else if ((flags & VK_QUEUE_COMPUTE_BIT) != 0 && computeQueueIndex == (uint32_t)-1) {
             computeQueueIndex = i;
-        } else if ((flags & VK_QUEUE_TRANSFER_BIT) != 0 && transferQueue == (uint32_t)-1) {
-            transferQueue = i;
+        } else if ((flags & VK_QUEUE_TRANSFER_BIT) != 0 && transferQueueIndex == (uint32_t)-1) {
+            transferQueueIndex = i;
         }
     }
 
@@ -449,24 +569,204 @@ static void initDeviceQueuesInfo(const Device::Desc& desc, const DeviceApiData *
     }
 }
 
-VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount], 
-    VkPhysicalDeviceFeatures &deviceFeatures, VkPhysicalDeviceRayTracingPipelinePropertiesKHR &rayTracingPipelineProperties, VkPhysicalDeviceAccelerationStructureFeaturesKHR &accelerationStructureFeatures) {
+VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount], 
+    VkPhysicalDeviceFeatures &deviceFeatures) {
+
+    assert(pDevice);
+
+    bool sparseBindingEnabled = false;
+    bool VK_KHR_raytracing_pipeline_enabled = false;
+    bool VK_KHR_get_memory_requirements2_enabled = false;
+    bool VK_KHR_dedicated_allocation_enabled = false;
+    bool VK_AMD_device_coherent_memory_enabled = false;
+    bool VK_KHR_buffer_device_address_enabled = false;
+    bool VK_KHR_acceleration_structure_enabled = false;
+    bool VK_KHR_acceleration_structure_host_commands_enabled = true;
+    bool VK_KHR_bind_memory2_enabled = false;
+    bool VK_EXT_memory_priority_enabled = false;
+    bool VK_EXT_memory_budget_enabled = false;
+    bool VK_KHR_ray_query_enabled = false;
+    bool VK_KHR_synchronization2_enabled = false;
+    bool VK_EXT_host_query_reset_enabled = true;
+    // Query for device extensions
+
+    uint32_t physicalDeviceExtensionPropertyCount = 0;
+    if (VK_FAILED(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &physicalDeviceExtensionPropertyCount, nullptr))) {
+        std::runtime_error("Error enumerating device extension properties count !!!");
+    }
+
+    std::vector<VkExtensionProperties> physicalDeviceExtensionProperties{physicalDeviceExtensionPropertyCount};
+    if(physicalDeviceExtensionPropertyCount) {
+        if (VK_FAILED(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &physicalDeviceExtensionPropertyCount, physicalDeviceExtensionProperties.data()))) {
+            std::runtime_error("Error enumerating device extension properties !!!");
+        }
+    }
+
+    for(uint32_t i = 0; i < physicalDeviceExtensionPropertyCount; ++i) {
+        auto const& extensionName = physicalDeviceExtensionProperties[i].extensionName;
+
+        if(strcmp(extensionName, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) == 0) {
+            if(getVulkanApiVersion() == VK_API_VERSION_1_0) {
+                VK_KHR_get_memory_requirements2_enabled = true;
+            }
+        }
+        else if(strcmp(extensionName, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) == 0) {
+            if(getVulkanApiVersion() == VK_API_VERSION_1_0) {
+                VK_KHR_dedicated_allocation_enabled = true;
+            }
+        }
+        else if(strcmp(extensionName, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME) == 0) {
+            if(getVulkanApiVersion() == VK_API_VERSION_1_0) {
+                VK_KHR_bind_memory2_enabled = true;
+            }
+        }
+        else if(strcmp(extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
+            VK_KHR_acceleration_structure_enabled = true;
+            VK_KHR_acceleration_structure_host_commands_enabled = true;
+        }
+        else if(strcmp(extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
+            VK_KHR_raytracing_pipeline_enabled = true;
+        }
+        else if(strcmp(extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0) {
+            VK_KHR_ray_query_enabled = true;
+        }
+        else if(strcmp(extensionName, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) == 0) {
+            VK_KHR_synchronization2_enabled = true;
+        }
+        else if(strcmp(extensionName, VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME) == 0) {
+            VK_EXT_host_query_reset_enabled = true;
+        }
+
+        else if(strcmp(extensionName, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME) == 0) {
+            VK_EXT_memory_budget_enabled = true;
+        }
+        
+        else if(strcmp(extensionName, VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME) == 0) {
+            VK_AMD_device_coherent_memory_enabled = true;
+        }
+        
+        else if(strcmp(extensionName, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0) {
+            if(getVulkanApiVersion() < VK_API_VERSION_1_2) {
+                VK_KHR_buffer_device_address_enabled = true;
+            }
+        }
+        else if(strcmp(extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
+            VK_EXT_memory_priority_enabled = true;
+    }
+
+    if(getVulkanApiVersion() >= VK_API_VERSION_1_2)
+        VK_KHR_buffer_device_address_enabled = true; // Promoted to core Vulkan 1.2.
+
+    assert(VK_KHR_raytracing_pipeline_enabled == true);
+    assert(VK_KHR_ray_query_enabled == true);
+
     // Features
-    vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+    //vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
     // Get ray tracing pipeline properties, which will be used later on in the sample
-    rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-    VkPhysicalDeviceProperties2 deviceProperties2{};
-    deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    deviceProperties2.pNext = &rayTracingPipelineProperties;
-    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+    //rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+    //VkPhysicalDeviceProperties2 deviceProperties2{};
+    //deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    //deviceProperties2.pNext = &rayTracingPipelineProperties;
+    //vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
 
-    // Get acceleration structure properties, which will be used later on in the sample
-    accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-    VkPhysicalDeviceFeatures2 deviceFeatures2{};
-    deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    deviceFeatures2.pNext = &accelerationStructureFeatures;
-    vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+    // Query for features
+
+#if VMA_VULKAN_VERSION >= 1001000
+    VkPhysicalDeviceProperties2 physicalDeviceProperties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    
+#if VMA_VULKAN_VERSION >= 1002000
+    // Vulkan spec says structure VkPhysicalDeviceVulkan11Properties is "Provided by VK_VERSION_1_2" - is this a mistake? Assuming not...
+    VkPhysicalDeviceVulkan11Properties physicalDeviceVulkan11Properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES };
+    VkPhysicalDeviceVulkan12Properties physicalDeviceVulkan12Properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES };
+    PnextChainPushFront(&physicalDeviceProperties2, &physicalDeviceVulkan11Properties);
+    PnextChainPushFront(&physicalDeviceProperties2, &physicalDeviceVulkan12Properties);
+#endif
+
+    vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties2);
+
+    PrintPhysicalDeviceProperties(physicalDeviceProperties2.properties);
+#if VMA_VULKAN_VERSION >= 1002000
+    PrintPhysicalDeviceVulkan11Properties(physicalDeviceVulkan11Properties);
+    PrintPhysicalDeviceVulkan12Properties(physicalDeviceVulkan12Properties);
+#endif
+
+#else // #if VMA_VULKAN_VERSION >= 1001000
+    VkPhysicalDeviceProperties physicalDeviceProperties = {};
+    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+    PrintPhysicalDeviceProperties(physicalDeviceProperties);
+
+#endif // #if VMA_VULKAN_VERSION >= 1001000
+
+   // VkPhysicalDeviceProperties2 physicalDeviceProperties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    //vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties2);
+
+    //-----------------------
+    VkPhysicalDeviceFeatures2 physicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+
+    if(VK_AMD_device_coherent_memory_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledDeviceCoherentMemoryFeatures);
+    }
+
+    if(VK_KHR_buffer_device_address_enabled){
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledBufferDeviceAddresFeatures);
+    }
+
+    if(VK_EXT_memory_priority_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledMemoryPriorityFeatures);
+    }
+
+    if(VK_KHR_acceleration_structure_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledAccelerationStructureFeatures);
+    }
+
+    if(VK_KHR_raytracing_pipeline_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledRayTracingPipelineFeatures);
+    }
+
+    if(VK_EXT_host_query_reset_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledHostQueryResetFeatures);
+    }
+
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+    if(VK_KHR_ray_query_enabled) {
+        PnextChainPushFront(&physicalDeviceFeatures, &rayQueryFeatures);
+    }
+
+    //VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures
+
+    // Get acceleration structure properties, which will be used later on
+    //accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    //VkPhysicalDeviceFeatures2 deviceFeatures2{};
+    //deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    //deviceFeatures2.pNext = &accelerationStructureFeatures;
+    //vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+    
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &physicalDeviceFeatures);
+
+    sparseBindingEnabled = physicalDeviceFeatures.features.sparseBinding != 0;
+
+    // The extension is supported as fake with no real support for this feature? Don't use it.
+    if(VK_AMD_device_coherent_memory_enabled && !pDevice->mEnabledDeviceCoherentMemoryFeatures.deviceCoherentMemory)
+        VK_AMD_device_coherent_memory_enabled = false;
+    
+    if(VK_KHR_buffer_device_address_enabled && !pDevice->mEnabledBufferDeviceAddresFeatures.bufferDeviceAddress)
+        VK_KHR_buffer_device_address_enabled = false;
+    
+    if(VK_EXT_memory_priority_enabled && !pDevice->mEnabledMemoryPriorityFeatures.memoryPriority)
+        VK_EXT_memory_priority_enabled = false;
+    
+    if(VK_KHR_acceleration_structure_enabled && !pDevice->mEnabledAccelerationStructureFeatures.accelerationStructure)
+        VK_KHR_acceleration_structure_enabled = false;
+
+    if(VK_KHR_acceleration_structure_enabled && !pDevice->mEnabledAccelerationStructureFeatures.accelerationStructureHostCommands)
+        VK_KHR_acceleration_structure_host_commands_enabled = false;
+
+    if(VK_KHR_raytracing_pipeline_enabled && !pDevice->mEnabledRayTracingPipelineFeatures.rayTracingPipeline)
+        VK_KHR_raytracing_pipeline_enabled = false;
+
+    if(VK_EXT_host_query_reset_enabled && !pDevice->mEnabledHostQueryResetFeatures.hostQueryReset)
+        VK_EXT_host_query_reset_enabled = false;
 
     // Queues
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -483,7 +783,19 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
         logInfo("Available Device Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
     }
 
-    std::vector<const char*> extensionNames = { "VK_KHR_swapchain" };
+    std::vector<const char*> extensionNames = { 
+        //"VK_KHR_swapchain",
+        "VK_KHR_spirv_1_4",
+        "VK_KHR_ray_query",
+        "VK_KHR_ray_tracing_pipeline",
+        "VK_KHR_buffer_device_address",
+        "VK_KHR_acceleration_structure",
+        "VK_KHR_deferred_host_operations",
+        "VK_KHR_synchronization2",
+        //"VK_KHR_get_physical_device_properties2",
+        "VK_EXT_host_query_reset"
+    };
+
     assert(isExtensionSupported(extensionNames[0], pData->deviceExtensions));
 
     for (const auto& a : desc.requiredExtensions) {
@@ -495,13 +807,61 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
     }
 
     // Logical Device
-    VkDeviceCreateInfo deviceInfo = {};
-    deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    pDevice->mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    pDevice->mPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
+    pDevice->mPhysicalDeviceFeatures.features.sparseBinding = sparseBindingEnabled ? VK_TRUE : VK_FALSE;
+
+    if(VK_AMD_device_coherent_memory_enabled) {
+        pDevice->mEnabledDeviceCoherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
+        pDevice->mEnabledDeviceCoherentMemoryFeatures.deviceCoherentMemory = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledDeviceCoherentMemoryFeatures);
+    }
+
+    if(VK_KHR_buffer_device_address_enabled) {
+        pDevice->mEnabledBufferDeviceAddresFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR };
+        pDevice->mEnabledBufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledBufferDeviceAddresFeatures);
+    }
+
+    if(VK_KHR_acceleration_structure_enabled) {
+        pDevice->mEnabledAccelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+        pDevice->mEnabledAccelerationStructureFeatures.accelerationStructure = VK_TRUE;
+
+        if(VK_KHR_acceleration_structure_host_commands_enabled) {
+            pDevice->mEnabledAccelerationStructureFeatures.accelerationStructureHostCommands = VK_TRUE;
+        }
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledAccelerationStructureFeatures);
+    }
+
+    if(VK_KHR_raytracing_pipeline_enabled) {
+        pDevice->mEnabledRayTracingPipelineFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+        pDevice->mEnabledRayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledRayTracingPipelineFeatures);
+    }
+
+    if(VK_KHR_ray_query_enabled) {
+        rayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+        rayQueryFeatures.rayQuery = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &rayQueryFeatures);
+    }
+
+    if(VK_KHR_synchronization2_enabled) {
+        pDevice->mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
+        pDevice->mEnabledSynchronization2Features.synchronization2 = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledSynchronization2Features);
+    }
+
+    if(VK_EXT_host_query_reset_enabled) {
+        pDevice->mEnabledHostQueryResetFeatures.hostQueryReset = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledHostQueryResetFeatures);
+    }   
+
+    VkDeviceCreateInfo deviceInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    deviceInfo.pNext = &pDevice->mPhysicalDeviceFeatures;
     deviceInfo.queueCreateInfoCount = (uint32_t)queueInfos.size();
     deviceInfo.pQueueCreateInfos = queueInfos.data();
     deviceInfo.enabledExtensionCount = (uint32_t)extensionNames.size();
     deviceInfo.ppEnabledExtensionNames = extensionNames.data();
-    deviceInfo.pEnabledFeatures = &deviceFeatures;
 
     VkDevice device;
     if (VK_FAILED(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device))) {
@@ -509,10 +869,76 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pDa
         return nullptr;
     }
 
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rayTracingPipelineProperties{};
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+
+    // Get ray tracing pipeline properties, which will be used later on in the sample
+        rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        VkPhysicalDeviceProperties2 deviceProperties2{};
+        deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        deviceProperties2.pNext = &rayTracingPipelineProperties;
+        vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+
+        // Get acceleration structure properties, which will be used later on in the sample
+        accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        VkPhysicalDeviceFeatures2 deviceFeatures2{};
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.pNext = &accelerationStructureFeatures;
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+
     // Get the ray tracing and accelertion structure related function pointers required
     
-    PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR"));
-    PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+    if(VK_KHR_buffer_device_address_enabled) {
+        if(getVulkanApiVersion() >= VK_API_VERSION_1_2) {
+            vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddress"));
+        } else {
+            vkGetBufferDeviceAddressKHR =  reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR"));
+        }
+    
+        assert(vkGetBufferDeviceAddressKHR != nullptr);
+    }
+
+    vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+    assert(vkCmdTraceRaysKHR != nullptr);
+
+    vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
+    assert(vkGetAccelerationStructureBuildSizesKHR != nullptr);
+
+    vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
+    assert(vkCreateAccelerationStructureKHR != nullptr);
+
+    vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
+    assert(vkDestroyAccelerationStructureKHR != nullptr);
+
+    vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
+    assert(vkGetAccelerationStructureDeviceAddressKHR != nullptr);
+
+    vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
+    assert(vkCmdBuildAccelerationStructuresKHR != nullptr);
+
+    vkBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
+    assert(vkBuildAccelerationStructuresKHR != nullptr);
+
+    vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
+    assert(vkGetRayTracingShaderGroupHandlesKHR != nullptr);
+
+    vkCmdWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+    assert(vkCmdWriteAccelerationStructuresPropertiesKHR != nullptr);
+
+    vkWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkWriteAccelerationStructuresPropertiesKHR"));
+    assert(vkWriteAccelerationStructuresPropertiesKHR != nullptr);
+
+    vkCmdCopyAccelerationStructureKHR = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
+    assert(vkCmdCopyAccelerationStructureKHR != nullptr);
+
+    vkDeferredOperationJoinKHR = reinterpret_cast<PFN_vkDeferredOperationJoinKHR>(vkGetDeviceProcAddr(device, "vkDeferredOperationJoinKHR"));
+    assert(vkDeferredOperationJoinKHR != nullptr);
+
+    vkGetDeferredOperationResultKHR = reinterpret_cast<PFN_vkGetDeferredOperationResultKHR>(vkGetDeviceProcAddr(device, "vkGetDeferredOperationResultKHR"));
+    assert(vkGetDeferredOperationResultKHR != nullptr);
+
+    vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+    assert(vkCreateRayTracingPipelinesKHR != nullptr);
 
     // Get the queues we created
     for (uint32_t type = 0; type < arraysize(pData->falcorToVulkanQueueType); type++) {
@@ -576,9 +1002,8 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
     if (!physicalDevice) return false;
 
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-
-    VkDevice device = createLogicalDevice(physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures, mRayTracingPipelineProperties, mAaccelerationStructureFeatures);
+    VkSurfaceKHR surface = VK_NULL_HANDLE;    
+    VkDevice device = createLogicalDevice(this, physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures);
     if (!device) return false;
 
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
@@ -595,6 +1020,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
     vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaAllocatorCreateInfo.physicalDevice =physicalDevice;
     vmaAllocatorCreateInfo.device = device;
     vmaAllocatorCreateInfo.instance = instance;
@@ -677,4 +1103,129 @@ uint32_t Device::getDeviceVendorID() const {
     return mpApiData->properties.vendorID;
 }
 
+bool oneTimeCommandBuffer(Device::SharedPtr pDevice, VkCommandPool pool, const CommandQueueHandle& queue, OneTimeCommandFunc callback) {
+    if (!callback)
+        return false;
+
+    const VkDevice& vkDevice = pDevice->getApiHandle();
+
+    VkCommandBuffer cmdBuff = nullptr;
+
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = pool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+    
+    if (VK_FAILED(vkAllocateCommandBuffers(vkDevice, &allocInfo, &cmdBuff))) {
+        LOG_ERR("Error allocation command buffers");
+        return false;
+    }
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    
+    if (VK_FAILED(vkBeginCommandBuffer(cmdBuff, &beginInfo))) {
+        LOG_ERR("Error begin command buffer");
+        return false;
+    }
+
+    callback(cmdBuff);
+
+    if (VK_FAILED(vkEndCommandBuffer(cmdBuff))) {
+        LOG_ERR("Error end command buffer");
+        return false;
+    }
+
+    VkFence fence = VK_NULL_HANDLE;
+
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    
+    if (VK_FAILED(vkCreateFence(vkDevice, &fenceInfo, nullptr, &fence))) {
+        LOG_ERR("Error creating fence");
+        return false;
+    }
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmdBuff;
+
+    VkResult submit_result = vkQueueSubmit(queue, 1, &submitInfo, fence);
+
+    if (submit_result != VK_SUCCESS) {
+        LOG_ERR("Error submitting queue !!!");
+        vkDestroyFence(vkDevice, fence, nullptr);
+        return false;
+    }
+
+    vkDeviceWaitIdle(vkDevice);
+    VkResult result = vkWaitForFences(vkDevice, 1, &fence, VK_TRUE, ~0ULL);
+
+    if(result == VK_TIMEOUT) {
+        LOG_ERR("Error waiting fot the fence. VK_TIMEOUT !!!");
+        return false;
+    } else if (result == VK_ERROR_DEVICE_LOST) {
+        LOG_ERR("Error waiting fot the fence. VK_ERROR_DEVICE_LOST !!!");
+        return false;
+    }
+
+    if(result == VK_SUCCESS) {
+        vkDestroyFence(vkDevice, fence, nullptr);
+        vkFreeCommandBuffers(vkDevice, pool, 1, &cmdBuff);
+    }
+    //VkResult result = vkQueueWaitIdle(queue);
+    //if(result != VK_SUCCESS)
+    //{
+    //     LOG_ERR("Error vkQueueWaitIdle(queue) !!!");
+    //}
+
+    //vkFreeCommandBuffers(vkDevice, pool, 1, &cmdBuff);
+
+    return true;
+}
+
+VkResult finishDeferredOperation(Device::SharedPtr pDevice, VkDeferredOperationKHR hOp) {
+    // Attempt to join the operation until the implementation indicates that we should stop
+
+    const VkDevice& vkDevice = pDevice->getApiHandle();
+
+    VkResult result = vkDeferredOperationJoinKHR(vkDevice, hOp);
+    while( result == VK_THREAD_IDLE_KHR ) {
+        std::this_thread::yield();
+        result = vkDeferredOperationJoinKHR(vkDevice, hOp);
+    }
+
+    switch( result ) {
+        case VK_SUCCESS:
+            {
+                // deferred operation has finished.  Query its result
+                result = vkGetDeferredOperationResultKHR(vkDevice, hOp);
+            }
+            break;
+
+        case VK_THREAD_DONE_KHR:
+            {
+                // deferred operation is being wrapped up by another thread
+                //  wait for that thread to finish
+                do
+                {
+                    std::this_thread::yield();
+                    result = vkGetDeferredOperationResultKHR(vkDevice, hOp);
+                } while( result == VK_NOT_READY );
+            }
+            break;
+
+        default:
+            assert(false); // other conditions are illegal.
+            break;
+    }
+
+    return result;
+}
+
+
 }  // namespace Falcor
+

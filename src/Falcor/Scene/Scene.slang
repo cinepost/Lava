@@ -62,7 +62,9 @@ struct Scene
 #endif
 
     // Raytracing
-    //[root] RaytracingAccelerationStructure rtAccel;
+#ifndef DISABLE_RAYTRACING
+    [root] RaytracingAccelerationStructure rtAccel;
+#endif
 
     // Instance transforms
     [root] StructuredBuffer<float4> worldMatrices;

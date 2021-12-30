@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "MinimalPathTracer.h"
 #include "RenderGraph/RenderPassHelpers.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir()
@@ -77,13 +78,13 @@ namespace
     const char kComputeDirect[] = "computeDirect";
 };
 
-MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict) {
+    LOG_WARN("MinimalPathTracer::create");
+
     return SharedPtr(new MinimalPathTracer(pRenderContext->device(), dict));
 }
 
-MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice)
-{
+MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
     parseDictionary(dict);
 
     // Create a sample generator.
@@ -91,8 +92,7 @@ MinimalPathTracer::MinimalPathTracer(Device::SharedPtr pDevice, const Dictionary
     assert(mpSampleGenerator);
 }
 
-Dictionary MinimalPathTracer::getScriptingDictionary()
-{
+Dictionary MinimalPathTracer::getScriptingDictionary() {
     Dictionary d;
     d[kMaxBounces] = mMaxBounces;
     d[kComputeDirect] = mComputeDirect;
@@ -100,16 +100,16 @@ Dictionary MinimalPathTracer::getScriptingDictionary()
 }
 
 void MinimalPathTracer::parseDictionary(const Dictionary& dict) {
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kMaxBounces) mMaxBounces = value;
         else if (key == kComputeDirect) mComputeDirect = value;
         else logWarning("Unknown field '" + key + "' in MinimalPathTracer dictionary");
     }
 }
 
-RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
-{
+RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData) {
+    LOG_WARN("MinimalPathTracer::reflect");
+
     RenderPassReflection reflector;
 
     // Define our input/output channels.
@@ -119,43 +119,39 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    LOG_WARN("MinimalPathTracer::execute");
+
     // Update refresh flag if options that affect the output have changed.
     auto& dict = renderData.getDictionary();
-    if (mOptionsChanged)
-    {
+    
+    if (mOptionsChanged) {
         auto flags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
         dict[Falcor::kRenderPassRefreshFlags] = flags | Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         mOptionsChanged = false;
     }
 
     // If we have no scene, just clear the outputs and return.
-    if (!mpScene)
-    {
-        for (auto it : kOutputChannels)
-        {
+    if (!mpScene) {
+        for (auto it : kOutputChannels) {
             Texture* pDst = renderData[it.name]->asTexture().get();
             if (pDst) pRenderContext->clearTexture(pDst);
         }
         return;
     }
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
-    {
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged)) {
         throw std::runtime_error("This render pass does not support scene geometry changes. Aborting.");
     }
 
     // Request the light collection if emissive lights are enabled.
-    if (mpScene->getRenderSettings().useEmissiveLights)
-    {
-        mpScene->getLightCollection(pRenderContext);
+    if (mpScene->getRenderSettings().useEmissiveLights) {
+        //mpScene->getLightCollection(pRenderContext);
     }
 
     // Configure depth-of-field.
     const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (useDOF && renderData[kViewDirInput] == nullptr)
-    {
+    if (useDOF && renderData[kViewDirInput] == nullptr) {
         logWarning("Depth-of-field requires the '" + std::string(kViewDirInput) + "' input. Expect incorrect shading.");
     }
 
@@ -184,10 +180,8 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     var["CB"]["gPRNGDimension"] = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
     // Bind I/O buffers. These needs to be done per-frame as the buffers may change anytime.
-    auto bind = [&](const ChannelDesc& desc)
-    {
-        if (!desc.texname.empty())
-        {
+    auto bind = [&](const ChannelDesc& desc) {
+        if (!desc.texname.empty()) {
             var[desc.texname] = renderData[desc.name]->asTexture();
         }
     };
@@ -204,8 +198,9 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     mFrameCount++;
 }
 
-void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    LOG_WARN("MinimalPathTracer::setScene");
+
     // Clear data for previous scene.
     // After changing scene, the raytracing program should to be recreated.
     mTracer.pProgram = nullptr;
@@ -217,8 +212,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     mpScene = pScene;
 
     if (mpScene) {
-        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural))
-        {
+        if (mpScene->hasGeometryType(Scene::GeometryType::Procedural)) {
             logWarning("This render pass only supports triangles. Other types of geometry will be ignored.");
         }
 
@@ -242,8 +236,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     }
 }
 
-void MinimalPathTracer::prepareVars()
-{
+void MinimalPathTracer::prepareVars() {
     assert(mTracer.pProgram);
 
     // Configure program.

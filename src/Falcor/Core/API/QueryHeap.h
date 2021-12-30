@@ -46,7 +46,8 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
     enum class Type {
         Timestamp,
         Occlusion,
-        PipelineStats
+        PipelineStats,
+        AccelerationStructureCompactedSize
     };
 
     static const uint32_t kInvalidIndex = 0xffffffff;

@@ -77,7 +77,7 @@ namespace Falcor {
 
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
-
+            assert(pBuffer && "No resource buffer !!!");
             //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
 
             if (pBuffer) {
@@ -95,21 +95,23 @@ namespace Falcor {
                 }
             } else {
                 if (type == DescriptorPool::Type::AccelerationStructureSrv ) {
-                    // Empty acceleration structure view
-                    descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-                    descriptorSetAccelerationStructure.pNext = NULL;
-                    descriptorSetAccelerationStructure.accelerationStructureCount = 0;
-                    descriptorSetAccelerationStructure.pAccelerationStructures = VK_NULL_HANDLE;
+            //        // Empty acceleration structure view
+            //        descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            //        descriptorSetAccelerationStructure.pNext = NULL;
+            //        descriptorSetAccelerationStructure.accelerationStructureCount = 0;
+            //        descriptorSetAccelerationStructure.pAccelerationStructures = VK_NULL_HANDLE;
 
-                    write.pNext = &descriptorSetAccelerationStructure;
-                    descriptorCount = 0;
+            //        write.pNext = &descriptorSetAccelerationStructure;
+            //        descriptorCount = 0;
+                    return;
+        
                 }
             }
             write.pImageInfo = nullptr;
         } else {
             assert(handle.getType() == VkResourceType::Image);
             
-            Texture* pTexture = dynamic_cast<Texture*>(pView->getResource());
+            //Texture* pTexture = dynamic_cast<Texture*>(pView->getResource());
             //LOG_DBG("Texture %zu update descriptor set bindFlags %s", pTexture->id(),to_string(pTexture->getBindFlags()).c_str());
 
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

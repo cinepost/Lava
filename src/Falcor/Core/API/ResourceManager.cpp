@@ -75,6 +75,7 @@ ResourceManager::~ResourceManager() {
 }
 
 bool ResourceManager::checkDeviceFeatures(std::shared_ptr<Device> pDevice) {
+    /*
     VkPhysicalDeviceFeatures &deviceFeatures = pDevice->mDeviceFeatures;
 
     if (deviceFeatures.sparseBinding && deviceFeatures.sparseResidencyImage2D) {
@@ -86,7 +87,7 @@ bool ResourceManager::checkDeviceFeatures(std::shared_ptr<Device> pDevice) {
         LOG_ERR("Sparse binding not supported !!!");
         return false;
     }
-
+    */
     return true;
 }
 

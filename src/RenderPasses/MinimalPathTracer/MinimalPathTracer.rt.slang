@@ -355,6 +355,7 @@ void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIn
 [shader("raygeneration")]
 void rayGen()
 {
+
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 

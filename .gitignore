@@ -31,6 +31,10 @@
 *.pyc
 
 # folders
+deps
+deps/
+tmp
+tmp/
 build
 build/
 build_external

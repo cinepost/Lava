@@ -29,6 +29,7 @@
 #include "RtProgram.h"
 
 #include "Raytracing/RtProgramVars.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 #include <slang/slang.h>
 
@@ -36,7 +37,7 @@ namespace Falcor {
 
 void RtProgram::Desc::init() {
     //mBaseDesc.setShaderModel("6_2");
-    mBaseDesc.setShaderModel("460");
+    mBaseDesc.setShaderModel("450");
 }
 
 RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const std::string& filename) {
@@ -88,8 +89,10 @@ RtProgram::Desc& RtProgram::Desc::addDefines(const DefineList& defines) {
 }
 
 RtProgram::SharedPtr RtProgram::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+    LOG_WARN("MinimalPathTracer::execute");
+
     SharedPtr pProg = SharedPtr(new RtProgram(desc));
-        pProg->init(pDevice, desc.mBaseDesc, desc.mDefineList);
+    pProg->init(pDevice, desc.mBaseDesc, desc.mDefineList);
 
     return pProg;
 }

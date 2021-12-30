@@ -33,15 +33,22 @@ namespace Falcor {
 
 static VkQueryType getVkPoolType(QueryHeap::Type t) {
     switch (t) {
-    case QueryHeap::Type::Timestamp:
-        return VK_QUERY_TYPE_TIMESTAMP;
-    case QueryHeap::Type::Occlusion:
-        return VK_QUERY_TYPE_OCCLUSION;
-    case QueryHeap::Type::PipelineStats:
-        return VK_QUERY_TYPE_PIPELINE_STATISTICS;
-    default:
-        should_not_get_here();
-        return VK_QUERY_TYPE_MAX_ENUM;
+        case QueryHeap::Type::Timestamp:
+            return VK_QUERY_TYPE_TIMESTAMP;
+        
+        case QueryHeap::Type::Occlusion:
+            return VK_QUERY_TYPE_OCCLUSION;
+        
+        case QueryHeap::Type::PipelineStats:
+            return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+            
+        case QueryHeap::Type::AccelerationStructureCompactedSize:
+            return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+            //return VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR;
+        
+        default:
+            should_not_get_here();
+            return VK_QUERY_TYPE_MAX_ENUM;
     }
 }
 
@@ -50,7 +57,7 @@ QueryHeap::QueryHeap(std::shared_ptr<Device> pDevice, Type type, uint32_t count)
     info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     info.queryCount = count;
     info.queryType = getVkPoolType(type);
-    info.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
+    info.pipelineStatistics = 0x00000000;//VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
     VkQueryPool pool;
     vk_call(vkCreateQueryPool(pDevice->getApiHandle(), &info, nullptr, &pool));
     mApiHandle = ApiHandle::create(pDevice, pool);

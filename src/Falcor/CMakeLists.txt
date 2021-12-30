@@ -1,4 +1,4 @@
-set(EXTERNALS_BUILD_DIR ${PROJECT_SOURCE_DIR}/build_external/)
+set(DEPS_BINARY_DIR ${PROJECT_SOURCE_DIR}/deps/)
 
 file( GLOB SOURCES
     #./*.cpp
@@ -42,7 +42,7 @@ file( GLOB SOURCES
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
 # Blosc
-set(Blosc_ROOT ${EXTERNALS_BUILD_DIR})
+set(Blosc_ROOT ${DEPS_BINARY_DIR})
 find_package(Blosc 1.21.0 REQUIRED)
 
 # PyBind11
@@ -53,7 +53,7 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
-set(assimp_ROOT ${EXTERNALS_BUILD_DIR})
+set(assimp_ROOT ${DEPS_BINARY_DIR})
 find_package(assimp 5.0.0 REQUIRED)
 
 # LZ4
@@ -80,11 +80,11 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
 endif()
 
 # OpenEXR
-set(OpenEXR_ROOT ${EXTERNALS_BUILD_DIR})
+set(OpenEXR_ROOT ${DEPS_BINARY_DIR})
 find_package( OpenEXR 2.5 REQUIRED )
 
 # OpenImageIO
-set(OpenImageIO_ROOT ${EXTERNALS_BUILD_DIR})
+set(OpenImageIO_ROOT ${DEPS_BINARY_DIR})
 find_package( OpenImageIO REQUIRED )
 if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
@@ -129,7 +129,7 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
-set(BOOST_ROOT ${EXTERNALS_BUILD_DIR})
+set(BOOST_ROOT ${DEPS_BINARY_DIR})
 find_package( Boost COMPONENTS filesystem system REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
@@ -137,12 +137,12 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
-find_library( SLANG_LIBRARY slang PATHS ${EXTERNALS_BUILD_DIR}/lib )
+find_library( SLANG_LIBRARY slang PATHS ${DEPS_BINARY_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 # OpenVDB/NanoVDB
-set(OpenVDB_ROOT ${EXTERNALS_BUILD_DIR})
+set(OpenVDB_ROOT ${DEPS_BINARY_DIR})
 find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
@@ -197,7 +197,7 @@ if(UNIX)
     )
 
     # third party libs
-    install(DIRECTORY ${EXTERNALS_BUILD_DIR}/lib/ DESTINATION 3rdparty/lib)
+    install(DIRECTORY ${DEPS_BINARY_DIR}/lib/ DESTINATION 3rdparty/lib)
 
     # Install all needed shaders
     install(

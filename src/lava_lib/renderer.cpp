@@ -312,8 +312,10 @@ void Renderer::createRenderGraph() {
     // Test pathtracer pass
     Falcor::Dictionary minimalPathTracerPassDictionary;
     mpMinimalPathTracer = MinimalPathTracer::create(pRenderContext, minimalPathTracerPassDictionary);
+    mpMinimalPathTracer->setScene(pRenderContext, pScene);
 
     auto ptracer_pass = mpRenderGraph->addPass(mpMinimalPathTracer, "MinimalPathTracerPass");
+
 
     // Forward lighting
     Falcor::Dictionary lightingPassDictionary;
@@ -346,11 +348,11 @@ void Renderer::createRenderGraph() {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    //mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    //mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
     
-    mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
-    mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
+    //mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+    //mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
 
     mpRenderGraph->addEdge("GBufferRasterPass.posW", "MinimalPathTracerPass.posW");
@@ -362,7 +364,7 @@ void Renderer::createRenderGraph() {
     mpRenderGraph->addEdge("GBufferRasterPass.emissive", "MinimalPathTracerPass.mtlEmissive");
     mpRenderGraph->addEdge("GBufferRasterPass.matlExtra", "MinimalPathTracerPass.mtlParams");
 
-    //mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
+    mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
     //mpRenderGraph->addEdge("SkyBoxPass.target", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
@@ -628,6 +630,7 @@ if( 1 == 2) {
 
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
             //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
+            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
 
             assert(pOutTex);
 

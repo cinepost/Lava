@@ -108,12 +108,21 @@ namespace Falcor {
             return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
         case Resource::State::IndirectArg:
             return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        
         case Resource::State::ResolveDest:
         case Resource::State::CopyDest:
             return VK_ACCESS_TRANSFER_WRITE_BIT;
+        
         case Resource::State::ResolveSource:
         case Resource::State::CopySource:
             return VK_ACCESS_TRANSFER_READ_BIT;
+
+        case Resource::State::AccelerationStructureDest:
+            return VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+
+        case Resource::State::AccelerationStructureSource:
+            return VkAccessFlagBits(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT); // ????
+        
         default:
             should_not_get_here();
             return VkAccessFlagBits(-1);
@@ -147,6 +156,14 @@ namespace Falcor {
             return VK_PIPELINE_STAGE_TRANSFER_BIT;
         case Resource::State::Present:
             return src ? (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        
+        case Resource::State::AccelerationStructureInput:
+        case Resource::State::AccelerationStructureCopy:
+        case Resource::State::AccelerationStructureBuild:
+        case Resource::State::AccelerationStructureDest:
+        case Resource::State::AccelerationStructureSource:
+            return VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+        
         default:
             should_not_get_here();
             return VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;

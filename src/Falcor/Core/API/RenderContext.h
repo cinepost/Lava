@@ -98,7 +98,7 @@ class dlldecl RenderContext : public ComputeContext {
         \param[in] clearDepth Optional. Controls whether or not to clear the depth channel
         \param[in] clearStencil Optional. Controls whether or not to clear the stencil channel
     */
-    void clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth = true, bool clearStencil = true);
+    void clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth = true, bool clearStencil = false);
 
     /** Clear a texture. The function will use the bind-flags to find the optimal API call to make
         \param[in] pTexture The texture to clear

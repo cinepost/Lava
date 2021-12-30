@@ -58,6 +58,9 @@ class Device;
         DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
         IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
         Shared      = 0x200,    ///< The resource will be shared with a different adapter. Mostly useful for sharing resoures with CUDA
+        AccelerationStructureBuild = 0x400,
+        AccelerationStructureInput = 0x800,
+        AccelerationStructureScratch = 0x1000,
         AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
 
         AllColorViews = ShaderResource | UnorderedAccess | RenderTarget,

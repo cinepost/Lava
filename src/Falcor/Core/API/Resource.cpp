@@ -75,6 +75,12 @@ const std::string to_string(Resource::State state) {
     state_to_str(ResolveSource);
     state_to_str(Present);
     state_to_str(Predication);
+    state_to_str(AccelerationStructureSource);
+    state_to_str(AccelerationStructureDest);
+    state_to_str(AccelerationStructureInput);
+    state_to_str(AccelerationStructureBuild);
+    state_to_str(AccelerationStructureCopy);
+
     state_to_str(NonPixelShader);
 #ifdef FALCOR_D3D12
     state_to_str(AccelerationStructure);

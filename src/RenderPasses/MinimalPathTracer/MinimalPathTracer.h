@@ -74,8 +74,7 @@ private:
     bool                        mOptionsChanged = false;
 
     // Ray tracing program.
-    struct
-    {
+    struct {
         RtProgram::SharedPtr pProgram;
         RtBindingTable::SharedPtr pBindingTable;
         RtProgramVars::SharedPtr pVars;

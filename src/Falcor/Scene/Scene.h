@@ -52,6 +52,9 @@
 #include "SceneTypes.slang"
 #include "Falcor/Scene/HitInfo.h"
 
+#include "AccelerationStructure.h"
+
+
 // Indicating the implementation of curve back-face culling is in anyhit shaders or intersection shaders.
 // Currently, the performance numbers on BabyCheetah scene with 20 indirect bounces are 77ms (with anyhit) and 73ms (without anyhit).
 // It will be removed once we have conclusions on performance.
@@ -106,6 +109,7 @@ class RtProgramVars;
 class dlldecl Scene : public std::enable_shared_from_this<Scene> {
  public:
     using SharedPtr = std::shared_ptr<Scene>;
+    using SharedConstPtr = std::shared_ptr<const Scene>;
     using GeometryType = PrimitiveTypeFlags;
 
     using UpdateCallback = std::function<void(const Scene::SharedPtr& pScene, double currentTime)>;
@@ -1046,23 +1050,33 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     // Ray tracing acceleration structure
     struct TlasData {
+        TopLevelAccelerationStructure::SharedPtr pTLAS;
+
         Buffer::SharedPtr pTlas;
         ShaderResourceView::SharedPtr pSrv;             ///< Shader Resource View for binding the TLAS
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
         UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
+        VkAccelerationStructureKHR handle;
     };
 
     std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
                                                         ///< Number of ray types in program affects Shader Table indexing
     Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
-    //D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
+    VkAccelerationStructureBuildSizesInfoKHR mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
 
     /** Describes one BLAS.
     */
     struct BlasData {
         VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
         VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
-        std::vector<VkAccelerationStructureGeometryKHR> geomDescs;
+        
+        std::vector<VkAccelerationStructureGeometryKHR>         geomDescs;
+        std::vector<VkAccelerationStructureBuildRangeInfoKHR>   ranges;
+
+        //VkAccelerationStructureKHR                      handle;
+        //VkAccelerationStructureKHR                      blasHandle;
+
+        //BottomLevelAccelerationStructure::SharedPtr     pBLAS;
 
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 
@@ -1090,6 +1104,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         uint64_t scratchByteSize = 0;                   ///< Maximum scratch data size for all BLASes in the group, including padding.
         uint64_t finalByteSize = 0;                     ///< Size of the final BLASes in the group post-compaction, including padding.
 
+        BottomLevelAccelerationStructure::SharedPtr     pBLAS;
         Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
     };
 

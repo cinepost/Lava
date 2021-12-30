@@ -31,6 +31,10 @@
 #include "Utils/StringUtils.h"
 #include "Core/API/Device.h"
 #include "Core/API/RootSignature.h"
+
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Utils/Debug/debug.h"
+
 #include "ShaderTable.h"
 
 namespace Falcor {
@@ -43,6 +47,8 @@ bool RtStateObject::Desc::operator==(const RtStateObject::Desc& other) const {
 }
 
 RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const Desc& desc) {
+    LOG_DBG("RtStateObject::create");
+
     SharedPtr pState = SharedPtr(new RtStateObject(pDevice, desc));
 
     //RtStateObjectHelper rtsoHelper;
@@ -60,24 +66,24 @@ RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const 
 
             case EntryPointGroupKernels::Type::RtHitGroup: 
             {
-                    const Shader* pIntersection = pEntryPointGroup->getShader(ShaderType::Intersection);
+                    const Shader* pIss = pEntryPointGroup->getShader(ShaderType::Intersection);
                     const Shader* pAhs = pEntryPointGroup->getShader(ShaderType::AnyHit);
                     const Shader* pChs = pEntryPointGroup->getShader(ShaderType::ClosestHit);
 
-                    ISlangBlob* pIntersectionBlob = pIntersection ? pIntersection->getISlangBlob() : nullptr;
+                    ISlangBlob* pIssBlob = pIss ? pIss->getISlangBlob() : nullptr;
                     ISlangBlob* pAhsBlob = pAhs ? pAhs->getISlangBlob() : nullptr;
                     ISlangBlob* pChsBlob = pChs ? pChs->getISlangBlob() : nullptr;
 
                     const std::wstring& exportName = string_2_wstring(pEntryPointGroup->getExportName());
-                    const std::wstring& intersectionExport = pIntersection ? string_2_wstring(pIntersection->getEntryPoint()) : L"";
+                    const std::wstring& issExport = pIss ? string_2_wstring(pIss->getEntryPoint()) : L"";
                     const std::wstring& ahsExport = pAhs ? string_2_wstring(pAhs->getEntryPoint()) : L"";
                     const std::wstring& chsExport = pChs ? string_2_wstring(pChs->getEntryPoint()) : L"";
 
-                    //rtsoHelper.addHitProgramDesc(pAhsBlob, ahsExport, pChsBlob, chsExport, pIntersectionBlob, intersectionExport, exportName);
+                    //rtsoHelper.addHitProgramDesc(pAhsBlob, ahsExport, pChsBlob, chsExport, pIssBlob, issExport, exportName);
 
-                    //if (intersectionExport.size()) {
-                    //    rtsoHelper.addLocalRootSignature(&intersectionExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-                    //    rtsoHelper.addShaderConfig(&intersectionExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
+                    //if (issExport.size()) {
+                    //    rtsoHelper.addLocalRootSignature(&issExport, 1, pEntryPointGroup->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                    //    rtsoHelper.addShaderConfig(&issExport, 1, pEntryPointGroup->getMaxPayloadSize(), pEntryPointGroup->getMaxAttributesSize());
                     //}
 
                     //if (ahsExport.size()) {
@@ -114,7 +120,101 @@ RtStateObject::SharedPtr RtStateObject::create(Device::SharedPtr pDevice, const 
     //rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
 
     // Create the state
+/*
+    VkDescriptorSetLayoutBinding accelerationStructureLayoutBinding{};
+    accelerationStructureLayoutBinding.binding = 0;
+    accelerationStructureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    accelerationStructureLayoutBinding.descriptorCount = 1;
+    accelerationStructureLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
+    VkDescriptorSetLayoutBinding resultImageLayoutBinding{};
+    resultImageLayoutBinding.binding = 1;
+    resultImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    resultImageLayoutBinding.descriptorCount = 1;
+    resultImageLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    VkDescriptorSetLayoutBinding uniformBufferBinding{};
+    uniformBufferBinding.binding = 2;
+    uniformBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uniformBufferBinding.descriptorCount = 1;
+    uniformBufferBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings({
+        accelerationStructureLayoutBinding,
+        resultImageLayoutBinding,
+        uniformBufferBinding
+    });
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetlayoutCI{};
+    descriptorSetlayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetlayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
+    descriptorSetlayoutCI.pBindings = bindings.data();
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(pDevice->getApiHandle(), &descriptorSetlayoutCI, nullptr, &descriptorSetLayout));
+
+    VkPipelineLayoutCreateInfo pipelineLayoutCI{};
+    pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCI.setLayoutCount = 1;
+    pipelineLayoutCI.pSetLayouts = &descriptorSetLayout;
+    VK_CHECK_RESULT(vkCreatePipelineLayout(device->getApiHandle(), &pipelineLayoutCI, nullptr, &pipelineLayout));
+
+    // Setup ray tracing shader groups
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
+    // Ray generation group
+    {
+        shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/raygen.rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR));
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+        shaderGroups.push_back(shaderGroup);
+    }
+
+    // Miss group
+    {
+        shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/miss.rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR));
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+        shaderGroups.push_back(shaderGroup);
+    }
+
+    // Closest hit group
+    {
+        shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/closesthit.rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR));
+        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+        shaderGroup.generalShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+        shaderGroups.push_back(shaderGroup);
+    }
+
+    
+    // Create the ray tracing pipeline
+    VkPipeline pipeline;
+
+    VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCI{};
+    rayTracingPipelineCI.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+    rayTracingPipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+    rayTracingPipelineCI.pStages = shaderStages.data();
+    rayTracingPipelineCI.groupCount = static_cast<uint32_t>(shaderGroups.size());
+    rayTracingPipelineCI.pGroups = shaderGroups.data();
+    rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
+    rayTracingPipelineCI.layout = pipelineLayout;
+    VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rayTracingPipelineCI, nullptr, &pipeline));
+
+    mApiHandle = ApiHandle::create(mpDevice, pipeline);
+*/
     // .... todo ....
 
     for( const auto& pBaseEntryPointGroup : pKernels->getUniqueEntryPointGroups() ) {

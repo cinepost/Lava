@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,84 +25,91 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Attributes;
 __exported import Scene.Scene;
-__exported import Scene.ShadingData;
-__exported import Utils.Helpers;
+__exported import Scene.Shading;
 
 import Experimental.Scene.Material.TexLODHelpers;
 
-RaytracingAccelerationStructure gRtScene;
-
 cbuffer DxrPerFrame
 {
-    uint hitProgramCount;
+    uint rayTypeCount;
 };
 
-struct HitShaderParams
+/** Convenience wrapper for TraceRay() that sets the Scene parameters internally.
+    \param[in] rayFlags Ray flags. Set to RAY_FLAG_NONE if not used.
+    \param[in] instanceInclusionMask Instance inclusion mask. Set to 0xff if not needed.
+    \param[in] rayType The ray type index.
+    \param[in] missIndex The miss shader index.
+    \param[in] ray The ray description.
+    \param[in,out] payload The payload struct.
+*/
+void TraceRayScene<payload_t>(
+    uint rayFlags,
+    uint instanceInclusionMask,
+    uint rayType,
+    uint missIndex,
+    RayDesc ray,
+    inout payload_t payload)
 {
-    uint geometryIndex;
+    TraceRay(gScene.rtAccel, rayFlags, instanceInclusionMask, rayType, rayTypeCount, missIndex, ray, payload);
+}
 
-    /** Returns the global hit ID (= mesh instance ID in the scene).
-        This function can only be called from a ray tracing hit program.
-        \return Global hit ID.
-    */
-    uint getGlobalHitID()
-    {
-        return InstanceID() + geometryIndex;
-    }
-};
+/** Return the global geometry instance ID in the scene from a DXR 1.0 hit group shader.
+    This is just a convenience function that internally uses the DXR system values.
+    Note: This function can only be called from a closestHit, anyHit, or intersection shader.
+    \return Global geometry instance ID.
+*/
+GeometryInstanceID getGeometryInstanceID()
+{
+    return GeometryInstanceID(InstanceID(), GeometryIndex());
+}
 
 /** Returns interpolated vertex attributes in a ray tracing hit program.
+    \param[in] instanceID Global geometry instance ID.
     \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
     \param[in] attribs Intersection attributes provided by DXR.
     \return Interpolated vertex attributes.
 */
-VertexData getVertexData(HitShaderParams hitParams, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
+VertexData getVertexData(GeometryInstanceID instanceID, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
 {
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    return gScene.getVertexData(hitParams.getGlobalHitID(), triangleIndex, barycentrics);
+    return gScene.getVertexData(instanceID, triangleIndex, barycentrics);
+}
+
+/** Returns interpolated vertex attributes in a ray tracing hit program.
+    \param[in] instanceID Global geometry instance ID.
+    \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
+    \param[in] attribs Intersection attributes provided by DXR.
+    \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
+    \return Interpolated vertex attributes.
+*/
+VertexData getVertexData(GeometryInstanceID instanceID, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs, out float3 barycentrics, out StaticVertexData vertices[3])
+{
+    barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
+    return gScene.getVertexData(instanceID, triangleIndex, barycentrics, vertices);
 }
 
 /** Returns interpolated vertex attributes in a ray tracing hit program when ray cones are used for texture LOD.
-    \param[in] hitParams Parmaters for hit shader
+    \param[in] instanceID Global geometry instance ID.
     \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
     \param[in] attribs Intersection attributes provided by DXR.
     \return Interpolated vertex attributes.
 */
-VertexData getVertexDataRayCones(HitShaderParams hitParams, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
+VertexData getVertexDataRayCones(GeometryInstanceID instanceID, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
 {
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    return gScene.getVertexDataRayCones(hitParams.getGlobalHitID(), triangleIndex, barycentrics);
-}
-
-/** Returns interpolated vertex attributes in a ray tracing hit program when ray differentials are used for texture LOD.
-    \param[in] hitParams Parmaters for hit shader
-    \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
-    \param[in] attribs Intersection attributes provided by DXR.
-    \param[in] rayDir Ray direction.
-    \param[in] hitT Distance to hit point.
-    \param[in,out] rayDiff The ray differential used as input and output.
-    \param[out] dUVdx The differential of the texture coordinates in pixel coordinate x.
-    \param[out] dUVdy The differential of the texture coordinates in pixel coordinate y.
-    \return Interpolated vertex attributes.
-*/
-VertexData getVertexDataRayDiff(HitShaderParams hitParams, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs, in float3 rayDir, in float hitT,
-    inout RayDiff rayDiff, out float2 dUVdx, out float2 dUVdy)
-{
-    float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    return gScene.getVertexDataRayDiff(hitParams.getGlobalHitID(), triangleIndex, barycentrics, rayDir, hitT, rayDiff, dUVdx, dUVdy);
+    return gScene.getVertexDataRayCones(instanceID, triangleIndex, barycentrics);
 }
 
 /** Returns interpolated position on a triangle in world space for the previous frame.
+    \param[in] instanceID Global geometry instance ID.
     \param[in] triangleIndex Index of the triangle in the current mesh (= PrimitiveIndex()).
     \param[in] attribs Intersection attributes provided by DXR.
     \return Interpolated position in world space for the previous frame.
 */
-float3 getPrevPosW(
-    HitShaderParams hitParams,
-    uint triangleIndex,
-    BuiltInTriangleIntersectionAttributes attribs)
+float3 getPrevPosW(GeometryInstanceID instanceID, uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
 {
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    return gScene.getPrevPosW(hitParams.getGlobalHitID(), triangleIndex, barycentrics);
+    return gScene.getPrevPosW(instanceID, triangleIndex, barycentrics);
 }

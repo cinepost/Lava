@@ -18,7 +18,8 @@
       "${project_path}/third_party/",
       "${project_path}/third_party/openvdb/nanovdb/",
       "${project_path}/third_party/glm/",
-      "${project_path}/third_party/imgui/", 
+      "${project_path}/third_party/imgui/",
+      "${project_path}/deps/include/", 
       "${file_path}", 
       "/usr/include/python3.7"],
 
@@ -32,6 +33,7 @@
       "${project_path}/third_party/openvdb/nanovdb/", 
       "${project_path}/third_party/glm/", 
       "${project_path}/third_party/imgui/",
+      "${project_path}/deps/include/", 
       "${file_path}", 
       "/usr/include/python3.7"],
 
@@ -44,7 +46,8 @@
       "${project_path}/third_party/",
       "${project_path}/third_party/openvdb/nanovdb/", 
       "${project_path}/third_party/glm/",
-      "${project_path}/third_party/imgui/", 
+      "${project_path}/third_party/imgui/",
+      "${project_path}/deps/include/", 
       "${file_path}", 
       "/usr/include/python3.7"],
 
@@ -80,6 +83,7 @@
               "${project_path}/third_party/openvdb/nanovdb/",
               "${project_path}/third_party/glm/",
               "${project_path}/third_party/imgui/",
+              "${project_path}/deps/include/", 
           ],
           "excludes": [],
       },
@@ -96,6 +100,7 @@
               "${project_path}/third_party/openvdb/nanovdb/",
               "${project_path}/third_party/glm/",
               "${project_path}/third_party/imgui/",
+              "${project_path}/deps/include/", 
               "/usr/local/include",
           ],
           "excludes": [],

@@ -84,7 +84,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-        AccelerationStructure,
+        //AccelerationStructure,
+        AccelerationStructureSource,
+        AccelerationStructureDest,
+        AccelerationStructureInput,
+        AccelerationStructureBuild,
+        AccelerationStructureCopy,
     };
 
     using SharedPtr = std::shared_ptr<Resource>;
