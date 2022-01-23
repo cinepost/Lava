@@ -117,11 +117,20 @@ namespace Falcor {
         case Resource::State::CopySource:
             return VK_ACCESS_TRANSFER_READ_BIT;
 
-        case Resource::State::AccelerationStructureDest:
+        case Resource::State::AccelStructRead:
+            return VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+
+        case Resource::State::AccelStructWrite:
             return VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 
-        case Resource::State::AccelerationStructureSource:
-            return VkAccessFlagBits(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT); // ????
+        case Resource::State::AccelStructBuildInput:
+            return VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+
+        case Resource::State::AccelStructBuildBlas:
+            return VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+
+        //case Resource::State::AccelerationStructureSource:
+        //    return VkAccessFlagBits(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT); // ????
         
         default:
             should_not_get_here();
@@ -157,12 +166,20 @@ namespace Falcor {
         case Resource::State::Present:
             return src ? (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         
-        case Resource::State::AccelerationStructureInput:
-        case Resource::State::AccelerationStructureCopy:
-        case Resource::State::AccelerationStructureBuild:
-        case Resource::State::AccelerationStructureDest:
-        case Resource::State::AccelerationStructureSource:
+        case Resource::State::AccelStructRead:
+            return VkPipelineStageFlagBits(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+        case Resource::State::AccelStructWrite:
+        case Resource::State::AccelStructBuildInput:
+        case Resource::State::AccelStructBuildBlas:
             return VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+
+        //case Resource::State::AccelerationStructureInput:
+        //case Resource::State::AccelerationStructureCopy:
+        //case Resource::State::AccelerationStructureBuild:
+        //case Resource::State::AccelerationStructureDest:
+        //case Resource::State::AccelerationStructureSource:
+        //    return VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
         
         default:
             should_not_get_here();

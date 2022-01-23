@@ -1,5 +1,13 @@
 set(DEPS_BINARY_DIR ${PROJECT_SOURCE_DIR}/deps/)
 
+include_directories( 
+    ${PROJECT_SOURCE_DIR}/deps
+    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
+    ${PROJECT_SOURCE_DIR}/deps/nvvk
+    ${PROJECT_SOURCE_DIR}/deps/nvp
+    ${PROJECT_SOURCE_DIR}/deps/nvh
+)
+
 file( GLOB SOURCES
     #./*.cpp
     ./Core/*.cpp
@@ -37,6 +45,25 @@ file( GLOB SOURCES
     ./Experimental/Scene/Lights/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
+
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/raytraceKHR_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/resourceallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/commands_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/buffersuballocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/stagingmemorymanager_vk.cpp
+    
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memorymanagement_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_dedicated_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/samplers_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/images_vk.cpp
+    
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/extensions_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/error_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/debug_util_vk.cpp
+
+    ${PROJECT_SOURCE_DIR}/deps/nvh/nvprint.cpp
+
 )
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )

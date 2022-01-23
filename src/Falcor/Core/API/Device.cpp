@@ -40,8 +40,6 @@ void releaseNullBufferViews(Device::SharedPtr pDevice);
 void createNullTypedBufferViews(Device::SharedPtr pDevice);
 void releaseNullTypedBufferViews(Device::SharedPtr pDevice);
 void releaseStaticResources(Device::SharedPtr pDevice);
-void createNullAccelerationStructureViews(Device::SharedPtr pDevice);
-void releaseNullAccelerationStructureViews(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
@@ -114,7 +112,6 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
     createNullViews(shared_from_this());
     createNullBufferViews(shared_from_this());
     createNullTypedBufferViews(shared_from_this());
-    createNullAccelerationStructureViews(shared_from_this());
 
     // create default sampler
     Sampler::Desc desc;
@@ -280,7 +277,6 @@ void Device::cleanup() {
     releaseNullViews(shared_from_this());
     releaseNullBufferViews(shared_from_this());
     releaseNullTypedBufferViews(shared_from_this());
-    releaseNullAccelerationStructureViews(shared_from_this());
     releaseStaticResources(shared_from_this());
 
     mpRenderContext.reset();

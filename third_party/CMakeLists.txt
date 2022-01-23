@@ -410,6 +410,28 @@ endif()
 add_dependencies(OpenImageIO PyBind OpenEXR OpenVDB)
 
 #######################
+# NVPro_Core
+#######################
+
+set(EXTERNAL_NVPro_Core_VERSION master)
+
+set(NVPro_Core_PREFIX NVPro_Core)
+
+ExternalProject_Add ( NVPro_Core
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${NVPro_Core_PREFIX}
+  GIT_REPOSITORY https://github.com/nvpro-samples/nvpro_core.git
+  GIT_TAG ${EXTERNAL_NVPro_Core_VERSION}
+  UPDATE_DISCONNECTED true
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ${CMAKE_COMMAND}
+    -E copy_directory <SOURCE_DIR>/nvvk ${EXTERNALS_INSTALL_DIR}/nvvk
+    -E copy_directory <SOURCE_DIR>/nvp ${EXTERNALS_INSTALL_DIR}/nvp
+    -E copy_directory <SOURCE_DIR>/nvh ${EXTERNALS_INSTALL_DIR}/nvh
+    -E copy_directory <SOURCE_DIR>/nvmath ${EXTERNALS_INSTALL_DIR}/nvmath
+)
+
+#######################
 # VulkanMemoryAllocator
 #######################
 

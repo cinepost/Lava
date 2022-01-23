@@ -196,6 +196,13 @@ struct dlldecl ShaderVar {
     */
     Texture::SharedPtr getTexture() const;
 
+    /** Set the acceleration structure that this variable points to.
+        Logs an error and returns `false` if this variable doesn't point at an acceleration structure.
+    */
+    bool setAS(VkAccelerationStructureKHR accel) const;
+
+    VkAccelerationStructureKHR getAS() const;
+
     /** Set the sampler that this variable points to.
         Logs an error and returns `false` if this variable doesn't point at a sampler.
     */
@@ -336,6 +343,8 @@ struct dlldecl ShaderVar {
     */
     operator Buffer::SharedPtr() const;
 
+    operator VkAccelerationStructureKHR() const;
+
     /** Get access to the underlying bytes of the variable.
 
         This operation must be used with caution; the caller takes all responsibility for validation.
@@ -379,6 +388,7 @@ struct dlldecl ShaderVar {
     bool setImpl(const Sampler::SharedPtr& pSampler) const;
     bool setImpl(const Buffer::SharedPtr& pBuffer) const;
     bool setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const;
+    bool setImpl(VkAccelerationStructureKHR accel) const;
         
     template<typename T>
     bool setImpl(const ParameterBlockSharedPtr<T>& pBlock) const

@@ -348,13 +348,13 @@ void Renderer::createRenderGraph() {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    //mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
-    //mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
     
-    //mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
-    //mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
+    mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+    mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
-
+/*
     mpRenderGraph->addEdge("GBufferRasterPass.posW", "MinimalPathTracerPass.posW");
     mpRenderGraph->addEdge("GBufferRasterPass.normW", "MinimalPathTracerPass.normalW");
     mpRenderGraph->addEdge("GBufferRasterPass.faceNormalW", "MinimalPathTracerPass.faceNormalW");
@@ -365,6 +365,7 @@ void Renderer::createRenderGraph() {
     mpRenderGraph->addEdge("GBufferRasterPass.matlExtra", "MinimalPathTracerPass.mtlParams");
 
     mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
+*/
     //mpRenderGraph->addEdge("SkyBoxPass.target", "AccumulatePass.input");
 
     mpRenderGraph->markOutput("AccumulatePass.output");
@@ -639,19 +640,19 @@ if( 1 == 2) {
             
             {
             
-            Falcor::ResourceFormat resourceFormat;
-            uint32_t channels;
-            std::vector<uint8_t> textureData;
-            LLOG_DBG << "readTextureData";
-            pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-            LLOG_DBG << "readTextureData done";
+                Falcor::ResourceFormat resourceFormat;
+                uint32_t channels;
+                std::vector<uint8_t> textureData;
+                LLOG_DBG << "readTextureData";
+                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+                LLOG_DBG << "readTextureData done";
 
-            LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-            
-            assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
+                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+                
+                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
 
-            mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-            mpDisplay->closeImage(image1);
+                mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+                mpDisplay->closeImage(image1);
             
             }
 

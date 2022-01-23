@@ -41,7 +41,6 @@ using DeviceUID = uint8_t;
 static NullResourceViews gNullViews[FALCOR_MAX_DEVICES];
 static NullResourceViews gNullBufferViews[FALCOR_MAX_DEVICES];
 static NullResourceViews gNullTypedBufferViews[FALCOR_MAX_DEVICES];
-static NullResourceViews gNullAccelerationStructureViews[FALCOR_MAX_DEVICES];
 
 Buffer::SharedPtr getEmptyBuffer(std::shared_ptr<Device> pDevice);
 Buffer::SharedPtr getEmptyTypedBuffer(std::shared_ptr<Device> pDevice);
@@ -79,11 +78,6 @@ void createNullTypedBufferViews(std::shared_ptr<Device> pDevice) {
     gNullTypedBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
 }
 
-void createNullAccelerationStructureViews(std::shared_ptr<Device> pDevice) {
-    assert(pDevice);
-    gNullAccelerationStructureViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, nullptr, 0, 0);
-}
-
 void releaseNullViews(Device::SharedPtr pDevice) {
     gNullViews[pDevice->uid()] = {};
 }
@@ -96,9 +90,6 @@ void releaseNullTypedBufferViews(Device::SharedPtr pDevice) {
     gNullTypedBufferViews[pDevice->uid()] = {};
 }
 
-void releaseNullAccelerationStructureViews(Device::SharedPtr pDevice) {
-    gNullAccelerationStructureViews[pDevice->uid()] = {};
-}
 
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }
 DepthStencilView::SharedPtr    DepthStencilView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].dsv; }
@@ -112,7 +103,6 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView(std::share
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView(std::shared_ptr<Device> pDevice)  { return gNullTypedBufferViews[pDevice->uid()].srv; }
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView(std::shared_ptr<Device> pDevice) { return gNullTypedBufferViews[pDevice->uid()].uav; }
 
-ShaderResourceView::SharedPtr ShaderResourceView::getNullAccelerationStructureView(std::shared_ptr<Device> pDevice) { return gNullAccelerationStructureViews[pDevice->uid()].srv; }
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(ResourceView) {

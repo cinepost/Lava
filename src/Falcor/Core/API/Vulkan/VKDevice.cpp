@@ -37,6 +37,8 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
+#include "nvvk/extensions_vk.hpp"
+
 #define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
@@ -65,6 +67,8 @@ PFN_vkGetDeferredOperationResultKHR                 Falcor::vkGetDeferredOperati
 PFN_vkCreateRayTracingPipelinesKHR                  Falcor::vkCreateRayTracingPipelinesKHR = nullptr;
 
 namespace Falcor {
+
+#define NVVK_DEFAULT_STAGING_BLOCKSIZE (VkDeviceSize(64) * 1024 * 1024)
 
 #define RR_FAILED(res) (res != RR_SUCCESS)
 
@@ -1006,6 +1010,12 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     VkDevice device = createLogicalDevice(this, physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures);
     if (!device) return false;
 
+    assert(vkGetInstanceProcAddr);
+    assert(vkGetDeviceProcAddr);
+    load_VK_EXTENSIONS(instance, vkGetInstanceProcAddr, device, vkGetDeviceProcAddr);
+    //nvvk::load_VK_EXTENSIONS(VkInstance instance, PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddr);
+
+
     if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
     mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);
@@ -1028,6 +1038,8 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     vmaAllocatorCreateInfo.pRecordSettings = nullptr;
  
     vk_call(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mAllocator));
+
+    mNvvkResourceAllocator.init(instance, mApiHandle, physicalDevice, NVVK_DEFAULT_STAGING_BLOCKSIZE, mAllocator);
 
     return true;
 }

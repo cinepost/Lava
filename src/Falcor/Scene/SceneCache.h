@@ -31,6 +31,7 @@
 #include "Falcor/Core/API/Device.h"
 #include "Material/MaterialTextureLoader.h"
 #include "Utils/CryptoUtils.h"
+#include "Scene.h"
 
 #ifdef _WIN32
 #include <filesystem>

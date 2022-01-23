@@ -36,9 +36,10 @@ namespace Falcor {
 VkDescriptorType falcorToVkDescType(DescriptorPool::Type type) {
     switch (type) {
 // AS
-        case DescriptorPool::Type::AccelerationStructureSrv:
+        case DescriptorPool::Type::AccelerationStructure:
+            LOG_DBG("DescriptorPool::Type::AccelerationStructure");
             return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-
+// Texture
         case DescriptorPool::Type::TextureSrv:
             return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         

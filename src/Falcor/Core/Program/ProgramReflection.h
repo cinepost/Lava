@@ -865,6 +865,7 @@ public:
         uint32_t srvCount = 0;
         uint32_t uavCount = 0;
         uint32_t samplerCount = 0;
+        uint32_t asCount = 0;
     };
 
     /** Add a new member
@@ -1620,6 +1621,7 @@ inline const std::string to_string(ReflectionResourceType::Type type)
         type_2_string(RawBuffer);
         type_2_string(TypedBuffer);
         type_2_string(Sampler);
+        type_2_string(AccelerationStructure);
     default:
         should_not_get_here();
         return "";

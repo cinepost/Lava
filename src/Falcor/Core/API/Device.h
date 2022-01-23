@@ -45,6 +45,7 @@
 #include "Falcor/Core/API/Sampler.h"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
+#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
 
 namespace Falcor {
 
@@ -128,6 +129,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** VMA allocator
     */
     const VmaAllocator& allocator() const { return mAllocator; }
+
+    /** NVVK allocator
+    */
+    nvvk::LavaResourceAllocatorVma* nvvkAllocator() { return &mNvvkResourceAllocator; }
 
     /** Check if the window is occluded
     */
@@ -306,6 +311,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static std::atomic<std::uint8_t> UID;
 
     VmaAllocator    mAllocator;
+    nvvk::LavaResourceAllocatorVma mNvvkResourceAllocator;
+
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 
  public:

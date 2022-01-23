@@ -28,14 +28,16 @@
 #ifndef FALCOR_RENDERGRAPH_RENDERPASS_H_
 #define FALCOR_RENDERGRAPH_RENDERPASS_H_
 
+#include <memory>
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/InternalDictionary.h"
-#include "Falcor/Scene/Scene.h" 
 #include "ResourceCache.h"
 
 namespace Falcor {
+
+class Scene;
 
 /** Helper class that's passed to the user during `RenderPass::execute()`
 */
@@ -132,7 +134,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Set a scene into the render-pass
     */
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {}
+    virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
 
     /** Called upon hot reload (by pressing F5).
         \param[in] reloaded Resources that have been reloaded.

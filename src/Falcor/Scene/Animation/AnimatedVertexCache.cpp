@@ -28,6 +28,7 @@
 #include "stdafx.h"
 #include "Animation.h"
 #include "AnimatedVertexCache.h"
+#include "Falcor/Scene/Scene.h"
 
 namespace Falcor
 {

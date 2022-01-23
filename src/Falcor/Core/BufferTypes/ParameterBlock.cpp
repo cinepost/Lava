@@ -109,6 +109,19 @@ bool verifySamplerVar(const ShaderVar& var, const std::string& varName, const ch
     return true;
 }
 
+bool verifyASVar(const ShaderVar& var, const std::string& varName, const char* funcName) {
+    auto pType = getResourceReflection(var, nullptr, varName, funcName);
+    if (!pType) return false;
+
+    #if _LOG_ENABLED
+    if (pType->getType() != ReflectionResourceType::Type::AccelerationStructure) {
+        logError(getErrorPrefix(funcName, varName) + ", but the variable was declared in the shader as a " + to_string(pType->getType()) + " and not as a acceleration structure");
+        return false;
+    }
+    #endif
+    return true;
+}
+
 bool verifyBufferVar(const ShaderVar& var, const Buffer* pBuffer, const std::string& varName, const char* funcName) {
     auto pType = getResourceReflection(var, pBuffer, varName, funcName);
     if (!pType) return false;
@@ -152,7 +165,7 @@ const std::array<DescriptorSet::Type, 4> kRootSrvDescriptorTypes = {
     DescriptorSet::Type::RawBufferSrv,
     DescriptorSet::Type::TypedBufferSrv,
     DescriptorSet::Type::StructuredBufferSrv,
-    DescriptorSet::Type::AccelerationStructureSrv,
+    DescriptorSet::Type::AccelerationStructure,
 };
 
 const std::array<DescriptorSet::Type, 3> kRootUavDescriptorTypes = {
@@ -166,7 +179,7 @@ const std::array<DescriptorSet::Type, 5> kSrvDescriptorTypes = {
     DescriptorSet::Type::RawBufferSrv,
     DescriptorSet::Type::TypedBufferSrv,
     DescriptorSet::Type::StructuredBufferSrv,
-    DescriptorSet::Type::AccelerationStructureSrv,
+    DescriptorSet::Type::AccelerationStructure,
 };
 
 const std::array<DescriptorSet::Type, 4> kUavDescriptorTypes = {
@@ -178,6 +191,7 @@ const std::array<DescriptorSet::Type, 4> kUavDescriptorTypes = {
 
 const std::array<DescriptorSet::Type, 1> kCbvDescriptorType = { DescriptorSet::Type::Cbv };
 const std::array<DescriptorSet::Type, 1> kSamplerDescriptorType = { DescriptorSet::Type::Sampler };
+const std::array<DescriptorSet::Type, 1> kAccelerationStructureDescriptorType = { DescriptorSet::Type::AccelerationStructure };
 
 template<size_t N>
 bool isSetType(DescriptorSet::Type type, const std::array<DescriptorSet::Type, N>& allowedTypes) {
@@ -273,7 +287,6 @@ ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::share
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
-            case DescriptorSet::Type::AccelerationStructureSrv:
                 state.srvCount += range.count;
                 break;
             case DescriptorSet::Type::TextureUav:
@@ -284,6 +297,9 @@ ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::share
                 break;
             case DescriptorSet::Type::Sampler:
                 state.samplerCount += range.count;
+                break;
+            case DescriptorSet::Type::AccelerationStructure:
+                state.asCount += range.count;
                 break;
             case DescriptorSet::Type::Dsv:
             case DescriptorSet::Type::Rtv:
@@ -298,6 +314,7 @@ ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::share
     mSRVs.resize(state.srvCount);
     mUAVs.resize(state.uavCount);
     mSamplers.resize(state.samplerCount);
+    mAccels.resize(state.asCount);
     mSets.resize(pReflection->getDescriptorSetCount());
 
     createConstantBuffers(getRootVar());
@@ -729,6 +746,48 @@ Texture::SharedPtr ParameterBlock::getTexture(const std::string& name) const {
 
 Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) const {
     return getResourceSrvUavCommon(bindLocation, "getTexture()")->asTexture();
+}
+
+bool ParameterBlock::setAS(const std::string& name, VkAccelerationStructureKHR accel) {
+    auto var = getRootVar()[name];
+#if _LOG_ENABLED
+    if (!verifyASVar(var, name, "setAS()")) return false;
+#endif
+    return var.setAS(accel);
+}
+
+bool ParameterBlock::setAS(const BindLocation& bindLocation, VkAccelerationStructureKHR accel) {
+    printf("!!!! ParameterBlock::setAS\n");
+    assert(accel != VK_NULL_HANDLE);
+
+    if (!checkResourceIndices(bindLocation, "setAS()")) return false;
+    if (!checkDescriptorType(bindLocation, kAccelerationStructureDescriptorType, "setAS()")) return false;
+
+    size_t flatIndex = getFlatIndex(bindLocation);
+    auto &assignedAS = mAccels[flatIndex];
+
+    assignedAS = accel;
+
+    markDescriptorSetDirty(bindLocation);
+
+    printf("!!!! ParameterBlock::setAS done !!!!\n");
+
+    return true;
+}
+
+VkAccelerationStructureKHR ParameterBlock::getAS(const BindLocation& bindLocation) {
+    if (!checkResourceIndices(bindLocation, "getAS()")) return VK_NULL_HANDLE;
+    if (!checkDescriptorType(bindLocation, kAccelerationStructureDescriptorType, "getAS()")) return VK_NULL_HANDLE;
+    size_t flatIndex = getFlatIndex(bindLocation);
+    return mAccels[flatIndex];
+}
+
+VkAccelerationStructureKHR ParameterBlock::getAS(const std::string& name) const {
+    auto var = getRootVar()[name];
+#if _LOG_ENABLED
+    if (!verifyASVar(var, name, "getAS()")) return nullptr;
+#endif
+    return var.getAS();
 }
 
 bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv) {
@@ -1271,11 +1330,10 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
                         break;
-                    case DescriptorSet::Type::AccelerationStructureSrv:
+                    case DescriptorSet::Type::AccelerationStructure:
                         {
-                            auto pView = mSRVs[flatIndex].pView;
-                            if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullAccelerationStructureView(mpDevice);
-                            pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
+                            printf("!!!!!!!!!!!! DescriptorSet::Type::AccelerationStructure \n");
+                            pDescSet->setAS(destRangeIndex, descriptorIndex, mAccels[flatIndex]);
                         }
                         break;
                     case DescriptorSet::Type::TextureUav:

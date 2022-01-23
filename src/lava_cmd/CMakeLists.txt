@@ -1,6 +1,12 @@
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+include_directories( 
+    ${PROJECT_SOURCE_DIR}/deps
+    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
+    ${PROJECT_SOURCE_DIR}/deps/nvp
+)
+
 set (SOURCES 
 	./lava_cmd.cpp
 )

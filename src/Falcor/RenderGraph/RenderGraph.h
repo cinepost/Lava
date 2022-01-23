@@ -28,9 +28,10 @@
 #ifndef SRC_FALCOR_RENDERGRAPH_RENDERGRAPH_H_
 #define SRC_FALCOR_RENDERGRAPH_RENDERGRAPH_H_
 
+#include <memory>
+
 #include "RenderPassReflection.h"
 #include "ResourceCache.h"
-#include "Falcor/Scene/Scene.h"
 #include "RenderPass.h"
 #include "Falcor/Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"
@@ -39,6 +40,7 @@
 namespace Falcor {
 
 class Device;
+class Scene;
 
 class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
  public:
@@ -62,7 +64,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Set a scene
     */
-    void setScene(const Scene::SharedPtr& pScene);
+    void setScene(const std::shared_ptr<Scene>& pScene);
 
     /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
     */
@@ -174,7 +176,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the attached scene
     */
-    const Scene::SharedPtr& getScene() const { return mpScene; }
+    const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
     /** Get an graph output name from the graph outputs
     */
@@ -243,7 +245,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
     void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const;
     void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
 
-    Scene::SharedPtr mpScene;
+    std::shared_ptr<Scene> mpScene;
     std::unordered_map<std::string, uint32_t> mNameToIndex;
     DirectedGraph::SharedPtr mpGraph;
     std::unordered_map<uint32_t, EdgeData> mEdgeData;

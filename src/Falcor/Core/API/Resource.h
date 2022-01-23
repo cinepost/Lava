@@ -85,11 +85,11 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         PixelShader,
         NonPixelShader,
         //AccelerationStructure,
-        AccelerationStructureSource,
-        AccelerationStructureDest,
-        AccelerationStructureInput,
-        AccelerationStructureBuild,
-        AccelerationStructureCopy,
+        AccelStructRead,
+        AccelStructWrite,
+        AccelStructBuildInput,
+        AccelStructBuildBlas,
+        //AccelStructCopy
     };
 
     using SharedPtr = std::shared_ptr<Resource>;

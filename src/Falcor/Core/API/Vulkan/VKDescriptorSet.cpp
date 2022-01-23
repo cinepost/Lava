@@ -71,7 +71,6 @@ namespace Falcor {
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
-        VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
 
         auto descriptorCount = 1;
 
@@ -79,34 +78,19 @@ namespace Falcor {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
             assert(pBuffer && "No resource buffer !!!");
             //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
-
-            if (pBuffer) {
-
-                if (pBuffer->isTyped()) {
-                    texelBufferView = pBuffer->getUAV()->getApiHandle();
-                    write.pTexelBufferView = &texelBufferView;
-                    write.pBufferInfo = nullptr;
-                } else {
-                    buffer.buffer = pBuffer->getApiHandle();
-                    buffer.offset = pBuffer->getGpuAddressOffset();
-                    buffer.range = pBuffer->getSize();
-                    write.pBufferInfo = &buffer;
-                    write.pTexelBufferView = nullptr;
-                }
+            
+            if (pBuffer->isTyped()) {
+                texelBufferView = pBuffer->getUAV()->getApiHandle();
+                write.pTexelBufferView = &texelBufferView;
+                write.pBufferInfo = nullptr;
             } else {
-                if (type == DescriptorPool::Type::AccelerationStructureSrv ) {
-            //        // Empty acceleration structure view
-            //        descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            //        descriptorSetAccelerationStructure.pNext = NULL;
-            //        descriptorSetAccelerationStructure.accelerationStructureCount = 0;
-            //        descriptorSetAccelerationStructure.pAccelerationStructures = VK_NULL_HANDLE;
-
-            //        write.pNext = &descriptorSetAccelerationStructure;
-            //        descriptorCount = 0;
-                    return;
-        
-                }
+                buffer.buffer = pBuffer->getApiHandle();
+                buffer.offset = pBuffer->getGpuAddressOffset();
+                buffer.range = pBuffer->getSize();
+                write.pBufferInfo = &buffer;
+                write.pTexelBufferView = nullptr;
             }
+    
             write.pImageInfo = nullptr;
         } else {
             assert(handle.getType() == VkResourceType::Image);
@@ -129,6 +113,28 @@ namespace Falcor {
 
         //LOG_DBG("vkUpdateDescriptorSets 1");
         vkUpdateDescriptorSets(device->getApiHandle(), 1, &write, 0, nullptr);
+    }
+
+    void DescriptorSet::setAS(uint32_t rangeIndex, uint32_t descIndex, VkAccelerationStructureKHR accel) {
+        printf("!!!! DescriptorSet::setAS\n");
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = mApiHandle;
+        write.dstBinding = mLayout.getRange(rangeIndex).baseRegIndex;
+        write.dstArrayElement = descIndex;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        write.descriptorCount = 1;
+
+        VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+        descASInfo.accelerationStructureCount = 1;
+        descASInfo.pAccelerationStructures    = &accel;
+
+        write.pNext = &descASInfo;
+
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
+
+        printf("!!!! DescriptorSet::setAS done !\n");
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {

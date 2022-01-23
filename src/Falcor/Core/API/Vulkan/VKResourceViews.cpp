@@ -239,32 +239,6 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device>
     return SharedPtr(new ShaderResourceView(pDevice, pBuffer, view, firstElement, elementCount));
 }
 
-ShaderResourceView::SharedPtr ShaderResourceView::createViewForAccelerationStructure(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer) {
-    // Views for acceleration structures pass the GPU VA as part of the view desc.
-    // Note that in the call to CreateShaderResourceView() the resource ptr should be nullptr.
-    assert(pBuffer);
-    
-    /*
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.RaytracingAccelerationStructure.Location = pBuffer->getGpuAddress();
-
-    DescriptorSet::Layout layout;
-    layout.addRange(DescriptorSet::Type::AccelerationStructureSrv, 0, 1);
-    ShaderResourceView::ApiHandle handle = DescriptorSet::create(pDevice->getCpuDescriptorPool(), layout);
-    pDevice->getApiHandle()->CreateShaderResourceView(nullptr, &srvDesc, handle->getCpuHandle(0));
-
-    return SharedPtr(new ShaderResourceView(pDevice, pBuffer, handle));
-    */
-
-    DescriptorSet::Layout layout;
-    layout.addRange(DescriptorSet::Type::AccelerationStructureSrv, 0, 1);
-    ShaderResourceView::ApiHandle handle;// = DescriptorSet::create(pDevice, pDevice->getCpuDescriptorPool(), layout);
-
-    return SharedPtr(new ShaderResourceView(pDevice, pBuffer, handle));
-}
-
 DepthStencilView::SharedPtr DepthStencilView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     if (!pTexture) {
         return getNullView(pDevice);

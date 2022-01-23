@@ -54,6 +54,8 @@
 
 #include "AccelerationStructure.h"
 
+#include "nvvk/raytraceKHR_vk.hpp" 
+
 
 // Indicating the implementation of curve back-face culling is in anyhit shaders or intersection shaders.
 // Currently, the performance numbers on BabyCheetah scene with 20 indirect bounces are 77ms (with anyhit) and 73ms (without anyhit).
@@ -584,6 +586,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
+    VkAccelerationStructureKHR getTlas() const { return mRtBuilder.getAccelerationStructure(); }
+
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
     */
@@ -806,6 +810,9 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
     static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
 
+    ~Scene();
+
+
   private:
 
     friend class SceneBuilder;
@@ -861,6 +868,10 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     void createDrawList();
 
+    /** Initialize raytracing
+    */
+    void initRayTracing();
+
     /** Initialize geometry descs for each BLAS
     */
     void initGeomDesc(RenderContext* pContext);
@@ -900,6 +911,14 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     bool updateAnimatable(Animatable& animatable, const AnimationController& controller, bool force = false);
 
+    /** Build 
+    */
+    nvvk::RaytracingBuilderKHR::BlasInput meshToVkGeometryKHR(const MeshDesc& mesh);
+
+    /** Just nvvk related testing stuff
+    */
+    void createBottomLevelAS();
+    void createTopLevelAS();
 
     UpdateFlags updateSelectedCamera(bool forceUpdate);
     UpdateFlags updateLights(bool forceUpdate);
@@ -1048,6 +1067,14 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     std::vector<VkAccelerationStructureInstanceKHR> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
 
+    nvvk::DebugUtil                 mDebug;  // Utility to name objects
+    nvvk::RaytracingBuilderKHR      mRtBuilder;
+
+    std::vector<uint32_t>           mMeshIdToBlasId;
+
+    bool mBlasBuilt = false;
+    bool mTlasBuilt = false;
+
     // Ray tracing acceleration structure
     struct TlasData {
         TopLevelAccelerationStructure::SharedPtr pTLAS;
@@ -1063,6 +1090,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
                                                         ///< Number of ray types in program affects Shader Table indexing
     Buffer::SharedPtr mpTlasScratch;                    ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
     VkAccelerationStructureBuildSizesInfoKHR mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
+    bool mRayTraceInitialized = false;
 
     /** Describes one BLAS.
     */

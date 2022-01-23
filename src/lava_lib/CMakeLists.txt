@@ -1,3 +1,9 @@
+include_directories( 
+    ${PROJECT_SOURCE_DIR}/deps
+    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
+    ${PROJECT_SOURCE_DIR}/deps/nvp
+)
+
 file( GLOB SOURCES
     ./*.cpp
 )

@@ -278,38 +278,35 @@ namespace Falcor
         return ShaderVar();
     }
 
-    bool ShaderVar::isValid() const
-    {
+    bool ShaderVar::isValid() const {
         return mOffset.isValid();
     }
 
-    bool ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const
-    {
+    bool ShaderVar::setAS(VkAccelerationStructureKHR accel) const {
+        return mpBlock->setAS(mOffset, accel);
+    }
+
+    bool ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const {
         return mpBlock->setTexture(mOffset, pTexture);
     }
 
-    bool ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const
-    {
+    bool ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const {
         return mpBlock->setSampler(mOffset, pSampler);
     }
 
-    bool ShaderVar::setBuffer(Buffer::ConstSharedPtrRef pBuffer) const
-    {
+    bool ShaderVar::setBuffer(Buffer::ConstSharedPtrRef pBuffer) const {
         return mpBlock->setBuffer(mOffset, pBuffer);
     }
 
-    bool ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const
-    {
+    bool ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const {
         return mpBlock->setSrv(mOffset, pSrv);
     }
 
-    bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const
-    {
+    bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const {
         return mpBlock->setUav(mOffset, pUav);
     }
 
-    bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const
-    {
+    bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const {
         return mpBlock->setParameterBlock(mOffset, pBlock);
     }
 
@@ -328,6 +325,10 @@ namespace Falcor
         return mpBlock->setBuffer(mOffset, pBuffer);
     }
 
+    bool ShaderVar::setImpl(VkAccelerationStructureKHR accel) const {
+        return mpBlock->setAS(mOffset, accel);
+    }
+    
     bool ShaderVar::setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const
     {
         return mpBlock->setParameterBlock(mOffset, pBlock);
@@ -368,6 +369,11 @@ namespace Falcor
         return mpBlock->getSampler(mOffset);
     }
 
+    ShaderVar::operator VkAccelerationStructureKHR() const
+    {
+        return mpBlock->getAS(mOffset);
+    }
+
     ShaderVar::operator UniformShaderVarOffset() const
     {
         return mOffset.getUniform();
@@ -391,6 +397,10 @@ namespace Falcor
     Sampler::SharedPtr ShaderVar::getSampler() const
     {
         return mpBlock->getSampler(mOffset);
+    }
+
+    VkAccelerationStructureKHR ShaderVar::getAS() const {
+        return mpBlock->getAS(mOffset);
     }
 
     ShaderResourceView::SharedPtr ShaderVar::getSrv() const

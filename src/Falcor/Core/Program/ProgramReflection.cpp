@@ -867,6 +867,7 @@ namespace Falcor
     {
         assert(pSlangType);
         auto kind = pSlangType->getType()->getKind();
+
         switch (kind) {
             case TypeReflection::Kind::ParameterBlock:
                 kind = kind;
@@ -875,20 +876,27 @@ namespace Falcor
             case TypeReflection::Kind::ConstantBuffer:
             case TypeReflection::Kind::ShaderStorageBuffer:
             case TypeReflection::Kind::TextureBuffer:
+                //printf("!!! reflectResourceType \n");
                 return reflectResourceType(pSlangType, pBlock, pPath, pProgramVersion);
             case TypeReflection::Kind::Struct:
+                //printf("!!! reflectStructType \n");
                 return reflectStructType(pSlangType, pBlock, pPath, pProgramVersion);
             case TypeReflection::Kind::Array:
+                //printf("!!! reflectArrayType \n");
                 return reflectArrayType(pSlangType, pBlock, pPath, pProgramVersion);
             case TypeReflection::Kind::Interface:
+                //printf("!!! reflectInterfaceType \n");
                 return reflectInterfaceType(pSlangType, pBlock, pPath, pProgramVersion);
             case TypeReflection::Kind::Specialized:
+                //printf("!!! reflectSpecializedType \n");
                 return reflectSpecializedType(pSlangType, pBlock, pPath, pProgramVersion);
             case TypeReflection::Kind::Scalar:
             case TypeReflection::Kind::Matrix:
             case TypeReflection::Kind::Vector:
+                //printf("!!! reflectBasicType \n");
                 return reflectBasicType(pSlangType);
             case TypeReflection::Kind::None:
+                //printf("!!! nullptr \n");
                 return nullptr;
             case TypeReflection::Kind::GenericTypeParameter:
                 // TODO: How to handle this type? Let it generate an error for now.
@@ -1295,7 +1303,6 @@ namespace Falcor
             case DescriptorSet::Type::RawBufferSrv:
             case DescriptorSet::Type::TypedBufferSrv:
             case DescriptorSet::Type::StructuredBufferSrv:
-            case DescriptorSet::Type::AccelerationStructureSrv:
                 fieldRange.baseIndex = ioBuildState.srvCount;
                 ioBuildState.srvCount += fieldRange.count;
                 break;
@@ -1311,6 +1318,11 @@ namespace Falcor
             case DescriptorSet::Type::Sampler:
                 fieldRange.baseIndex = ioBuildState.samplerCount;
                 ioBuildState.samplerCount += fieldRange.count;
+                break;
+
+            case DescriptorSet::Type::AccelerationStructure:
+                fieldRange.baseIndex = ioBuildState.asCount;
+                ioBuildState.asCount += fieldRange.count;
                 break;
 
             case DescriptorSet::Type::Dsv:
@@ -1488,45 +1500,42 @@ namespace Falcor
     }
 
 
-    static DescriptorSet::Type getDescriptorSetType(
-        const ReflectionResourceType* pType)
-    {
+    static DescriptorSet::Type getDescriptorSetType( const ReflectionResourceType* pType) {
         auto shaderAccess = pType->getShaderAccess();
-        switch (pType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return DescriptorSet::Type::Cbv;
-            break;
-        case ReflectionResourceType::Type::Texture:
-            return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::TextureSrv
-                : DescriptorSet::Type::TextureUav;
-            break;
-        case ReflectionResourceType::Type::RawBuffer:
-            return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::RawBufferSrv
-                : DescriptorSet::Type::RawBufferUav;
-            break;
-        case ReflectionResourceType::Type::StructuredBuffer:
-            return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::StructuredBufferSrv
-                : DescriptorSet::Type::StructuredBufferUav;
-            break;
-        case ReflectionResourceType::Type::TypedBuffer:
-            return shaderAccess == ReflectionResourceType::ShaderAccess::Read
-                ? DescriptorSet::Type::TypedBufferSrv
-                : DescriptorSet::Type::TypedBufferUav;
-            break;
-        case ReflectionResourceType::Type::AccelerationStructure:
-            assert(shaderAccess == ReflectionResourceType::ShaderAccess::Read);
-            return DescriptorSet::Type::AccelerationStructureSrv;
-            break;
-        case ReflectionResourceType::Type::Sampler:
-            return DescriptorSet::Type::Sampler;
-            break;
-        default:
-            should_not_get_here();
-            return DescriptorSet::Type::Count;
+        switch (pType->getType()) {
+            case ReflectionResourceType::Type::ConstantBuffer:
+                return DescriptorSet::Type::Cbv;
+                break;
+            case ReflectionResourceType::Type::Texture:
+                return shaderAccess == ReflectionResourceType::ShaderAccess::Read
+                    ? DescriptorSet::Type::TextureSrv
+                    : DescriptorSet::Type::TextureUav;
+                break;
+            case ReflectionResourceType::Type::RawBuffer:
+                return shaderAccess == ReflectionResourceType::ShaderAccess::Read
+                    ? DescriptorSet::Type::RawBufferSrv
+                    : DescriptorSet::Type::RawBufferUav;
+                break;
+            case ReflectionResourceType::Type::StructuredBuffer:
+                return shaderAccess == ReflectionResourceType::ShaderAccess::Read
+                    ? DescriptorSet::Type::StructuredBufferSrv
+                    : DescriptorSet::Type::StructuredBufferUav;
+                break;
+            case ReflectionResourceType::Type::TypedBuffer:
+                return shaderAccess == ReflectionResourceType::ShaderAccess::Read
+                    ? DescriptorSet::Type::TypedBufferSrv
+                    : DescriptorSet::Type::TypedBufferUav;
+                break;
+            case ReflectionResourceType::Type::AccelerationStructure:
+                assert(shaderAccess == ReflectionResourceType::ShaderAccess::Read);
+                return DescriptorSet::Type::AccelerationStructure;
+                break;
+            case ReflectionResourceType::Type::Sampler:
+                return DescriptorSet::Type::Sampler;
+                break;
+            default:
+                should_not_get_here();
+                return DescriptorSet::Type::Count;
         }
     }
 

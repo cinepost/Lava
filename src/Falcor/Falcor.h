@@ -104,7 +104,7 @@
 #include "Falcor/RenderGraph/BasePasses/FullScreenPass.h"
 
 // Scene
-#include "Falcor/Scene/Scene.h"
+//#include "Falcor/Scene/Scene.h"
 //#include "Falcor/Scene/Importer.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Camera/CameraController.h"
@@ -143,12 +143,6 @@
 #include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Utils/Debug/DebugConsole.h"
 #include "Falcor/Utils/Debug/PixelDebug.h"
-
-// #ifdef FALCOR_D3D12
-// #include "Falcor/Raytracing/RtProgramVars.h"
-// #include "Falcor/Raytracing/RtStateObject.h"
-// #include "Falcor/Raytracing/RtProgram/RtProgram.h"
-// #endif
 
 #define FALCOR_MAJOR_VERSION 4
 #define FALCOR_REVISION 1

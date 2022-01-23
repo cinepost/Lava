@@ -31,6 +31,7 @@
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Scene/Scene.h"
 
 using namespace Falcor;
 

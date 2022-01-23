@@ -43,9 +43,6 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "SceneBuilder.h"
 
-#include <glm/gtc/type_ptr.hpp>
-#include "nvvk/buffers_vk.hpp"
-
 namespace Falcor {
 
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
@@ -135,9 +132,6 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
 
 Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
-    mRayTraceInitialized = false;
-    mDebug.setup(mpDevice->getApiHandle()); 
-
     // Copy/move scene data to member variables.
     mFilename = sceneData.filename;
     mRenderSettings = sceneData.renderSettings;
@@ -201,14 +195,6 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 
     // Finalize scene.
     finalize();
-
-    // Init ray tracing. 
-    // TODO: Init only if needed...
-    initRayTracing();
-}
-
-Scene::~Scene() {
-    mRtBuilder.destroy();
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -251,17 +237,6 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
 
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
-
-    // nvvk testing stuff
-    initRayTracing();
-    createBottomLevelAS();
-    
-    printf("TLAS handle before %p \n", (void*)mRtBuilder.getAccelerationStructure());
-    createTopLevelAS();
-    printf("TLAS handle after %p \n", (void*)mRtBuilder.getAccelerationStructure());
-
-    // Bind TLAS.
-    mpSceneBlock["rtAccel"].setAS(mRtBuilder.getAccelerationStructure());
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
@@ -326,13 +301,6 @@ VkShaderModule loadShader(const char *fileName, VkDevice device) {
 void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims) {
     logWarning("!!!!!!!!!!!!!!!!Scene::raytrace");
     
-
-    printf("initRayTracing\n");
-    initRayTracing();
-    printf("initRayTracing done\n");
-
-    return;
-
     PROFILE(mpDevice, "raytraceScene");
     assert(pContext && pProgram && pVars);
 
@@ -1927,56 +1895,6 @@ void Scene::createDrawList() {
     }
 }
 
-nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc& mesh) {
-    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
-
-    VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-    auto vertexStride = pVbLayout->getStride();
-
-    // BLAS builder requires raw device addresses.
-    size_t indexStride = mesh.use16BitIndices() ? sizeof(uint16_t) : sizeof(uint32_t); // index tride in bytes
-    VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pVb->getApiHandle()) + (mesh.vbOffset * vertexStride);
-    VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pIb->getApiHandle()) + (mesh.ibOffset * indexStride);
-
-    uint32_t maxPrimitiveCount = mesh.indexCount / 3;
-
-    // Describe buffer as array of VertexObj.
-    VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
-    triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;  // vec3 vertex position data.
-    triangles.vertexData.deviceAddress = vertexAddress;
-    triangles.vertexStride             = vertexStride;
-    
-    // Describe index data (32-bit unsigned int)
-    triangles.indexType               = indexType;
-    triangles.indexData.deviceAddress = indexAddress;
-    
-    // Indicate identity transform by setting transformData to null device pointer.
-    //triangles.transformData = {};
-    triangles.maxVertex = mesh.vertexCount;
-
-
-    // Identify the above data as containing opaque triangles.
-    VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-    asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
-    asGeom.geometry.triangles = triangles;
-
-    // The entire array will be used to build the BLAS.
-    VkAccelerationStructureBuildRangeInfoKHR offset;
-    offset.firstVertex     = 0;
-    offset.primitiveCount  = maxPrimitiveCount;
-    offset.primitiveOffset = 0;
-    offset.transformOffset = 0;
-
-    nvvk::RaytracingBuilderKHR::BlasInput input;
-    input.asGeometry.emplace_back(asGeom);
-    input.asBuildOffsetInfo.emplace_back(offset);
-
-    return input;
-}
-
 void Scene::initGeomDesc(RenderContext* pContext) {
     assert(mBlasData.empty());
 
@@ -2206,202 +2124,6 @@ void Scene::initGeomDesc(RenderContext* pContext) {
     for (const auto& blas : mBlasData) totalGeometries += blas.geomDescs.size();
     if (totalGeometries != getGeometryCount()) throw std::logic_error("Total geometry count mismatch");
 }
-
-
-void Scene::createBottomLevelAS() {
-    if (mBlasBuilt) return;
-
-    uint32_t blasID = 0;
-    mMeshIdToBlasId.clear();
-
-
-    uint32_t totalMeshCount = 0;
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        for (size_t j = 0; j <  mMeshGroups[i].meshList.size(); j++) {
-            totalMeshCount++;
-        }
-    }
-    mMeshIdToBlasId.resize(totalMeshCount);
-
-    // BLAS - Storing each primitive in a geometry
-    std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
-    allBlas.reserve(totalMeshCount);
-
-    // Iterate over the mesh groups. One BLAS will be created for each group.
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-            const MeshDesc& mesh = mMeshDesc[meshID];
-
-            printf("Converting mesh id %u to VkGeometryKHR...\n", meshID);
-            auto blas = meshToVkGeometryKHR(mesh);
-
-            // We could add more geometry in each BLAS, but we add only one for now
-            allBlas.emplace_back(blas);
-            mMeshIdToBlasId[meshID] = blasID;
-            blasID++;
-        }
-    }
-
-    mRtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
-    mBlasBuilt = true;
-}
-
-/*
-
-struct MeshInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint meshID;
-    uint flags;         ///< See MeshInstanceFlags.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    bool hasDynamicData() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
-    }
-
-    bool isWorldFrontFaceCW() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
-    }
-};
-
-*/
-
-void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
-
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    
-    uint32_t instanceID = 0;
-
-    for (const auto& instance : mMeshInstanceData) {
-        auto meshID = instance.meshID;
-        nvmath::mat4f transform = nvmath::translation_mat4(nvmath::vec3f{0, 0.0, 0}); //(1);
-
-        VkAccelerationStructureInstanceKHR rayInst{};
-
-        rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-        rayInst.instanceCustomIndex = instanceID++;
-        rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
-        rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-        rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-        tlas.emplace_back(rayInst);
-    }
-
-
-    /*
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                instanceID += 1;
-
-                auto const& instanceData = mMeshInstanceData[rayInst.instanceCustomIndex];
-
-                nvmath::mat4f transform(1);
-
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-                rayInst.instanceCustomIndex = instanceID;
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    */
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-
-
-/*
-void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
-
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    //tlas.reserve(m_instances.size());
-
-    uint32_t instanceID = 0;
-
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-         // Validate that the ordering is matching our expectations:
-        // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-        for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-            const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
-            assert(instances.size() == instanceCount);
-            assert(instances[instanceIdx] == instanceID + geometryIndex);
-        }
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.instanceCustomIndex = instanceID;
-                instanceID += (uint32_t)meshList.size();
-
-                nvmath::mat4f transform(1);
-
-                if (!isStatic) {
-                    // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
-                    // Just pick the matrix from the first mesh.
-                    const uint32_t matrixId = mMeshInstanceData[rayInst.instanceCustomIndex].globalMatrixID;
-                    transform = nvmath::matrix4<float>((const float*)glm::value_ptr(mpAnimationController->getGlobalMatrices()[matrixId]));
-
-                    // Verify that all meshes have matching tranforms.
-                    for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                        assert(matrixId == mMeshInstanceData[rayInst.instanceCustomIndex + geometryIndex].globalMatrixID);
-                    }
-                }
-                
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-*/
 
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
 
@@ -2975,21 +2697,13 @@ vkDestroyCommandPool(mpDevice->getApiHandle(), commandPool, nullptr);
 
 
     // Create TLAS SRV
-    //LOG_WARN("Create TLAS SRV");
-    //if (tlas.pSrv == nullptr) {
-    //    tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
-   // }
+    LOG_WARN("Create TLAS SRV");
+    if (tlas.pSrv == nullptr) {
+        tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
+    }
 
     mTlasCache[rayCount] = tlas;
     updateRaytracingTLASStats();
-}
-
-void Scene::initRayTracing() {
-    if (mRayTraceInitialized) return;
-
-    auto graphicsQueueIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
-    mRtBuilder.setup(mpDevice->getApiHandle(), mpDevice->nvvkAllocator(), graphicsQueueIndex);
-    mRayTraceInitialized = true;
 }
 
 void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount)

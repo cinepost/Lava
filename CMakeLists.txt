@@ -26,6 +26,15 @@ else()
   project( Falcor VERSION ${PROJECT_VERSION} )
 endif()
 
+# ccache
+include(cmake/CPM.cmake)
+
+CPMAddPackage(
+  NAME Ccache.cmake
+  GITHUB_REPOSITORY TheLartians/Ccache.cmake
+  VERSION 1.2
+)
+
 # Set up houdini hdk and installation paths
 set(HOUDINI_HOME "/opt/houdini18.5")
 set(HOUDINI_USER "$ENV{HOME}/houdini18.5")

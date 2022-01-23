@@ -104,6 +104,7 @@ class dlldecl DescriptorSet {
     const ApiHandle& getApiHandle() const { return mApiHandle; }
     const ApiData* getApiData() const { return mpApiData.get(); }
 
+    void setAS(uint32_t rangeIndex, uint32_t descIndex, VkAccelerationStructureKHR accel);
     void setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv);
     void setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav);
     void setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler);

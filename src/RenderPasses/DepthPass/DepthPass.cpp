@@ -139,7 +139,7 @@ void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     mpScene = pScene;
     if (mpScene) {
         mpState->getProgram()->addDefines(mpScene->getSceneDefines());
-        mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
+        //mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
     }
     mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }

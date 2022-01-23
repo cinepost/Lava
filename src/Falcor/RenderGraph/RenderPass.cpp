@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 #include "RenderPass.h"
+#include "Falcor/Scene/Scene.h"
 
 namespace Falcor {
 

@@ -73,6 +73,8 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
 
     setBit(Buffer::BindFlags::AccelerationStructureInput, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
 
+    //setBit(Buffer::BindFlags::ShaderBindingTable, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR);
+
     return flags;
 }
 

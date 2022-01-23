@@ -29,9 +29,13 @@
 import Utils.Math.MathHelpers;
 import Utils.Sampling.LowDiscrepancy.HammersleySequence;
 
+[[vk::binding(0, 0)]]
 SamplerState gSampler : register(s0);
+
+[[vk::binding(1, 0)]]
 Texture2D gInputTex : register(t1);
 
+[[vk::binding(0, 1)]]
 cbuffer DataCB : register(b0)
 {
     float gRoughness;

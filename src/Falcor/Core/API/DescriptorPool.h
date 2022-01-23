@@ -63,7 +63,7 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
         Cbv,
         StructuredBufferUav,
         StructuredBufferSrv,
-        AccelerationStructureSrv,
+        AccelerationStructure,
         Dsv,
         Rtv,
         Sampler,

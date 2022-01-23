@@ -26,9 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-#include <sstream>
-#include <numeric>
-
 //#include "Falcor/stdafx.h"
 #include "Scene.h"
 #include "ScenePrimitiveDefines.slangh"
@@ -36,15 +33,15 @@
 //#include "Importer.h"
 
 #include "Falcor/Core/API/Vulkan/VKDevice.h"
-
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
+
 
 #include "Falcor/Utils/Debug/debug.h"
 #include "SceneBuilder.h"
 
-#include <glm/gtc/type_ptr.hpp>
-#include "nvvk/buffers_vk.hpp"
+#include <sstream>
+#include <numeric>
 
 namespace Falcor {
 
@@ -135,9 +132,6 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
 
 Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
-    mRayTraceInitialized = false;
-    mDebug.setup(mpDevice->getApiHandle()); 
-
     // Copy/move scene data to member variables.
     mFilename = sceneData.filename;
     mRenderSettings = sceneData.renderSettings;
@@ -201,14 +195,6 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 
     // Finalize scene.
     finalize();
-
-    // Init ray tracing. 
-    // TODO: Init only if needed...
-    initRayTracing();
-}
-
-Scene::~Scene() {
-    mRtBuilder.destroy();
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -252,17 +238,6 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
-    // nvvk testing stuff
-    initRayTracing();
-    createBottomLevelAS();
-    
-    printf("TLAS handle before %p \n", (void*)mRtBuilder.getAccelerationStructure());
-    createTopLevelAS();
-    printf("TLAS handle after %p \n", (void*)mRtBuilder.getAccelerationStructure());
-
-    // Bind TLAS.
-    mpSceneBlock["rtAccel"].setAS(mRtBuilder.getAccelerationStructure());
-
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
     auto pCurrentRS = pState->getRasterizerState();
@@ -293,177 +268,12 @@ uint32_t Scene::getRaytracingMaxAttributeSize() const {
     return hasDisplacedMesh ? 12 : 8;
 }
 
-VkShaderModule loadShader(const char *fileName, VkDevice device) {
-    std::ifstream is(fileName, std::ios::binary | std::ios::in | std::ios::ate);
-
-    if (is.is_open()) {
-        size_t size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        char* shaderCode = new char[size];
-        is.read(shaderCode, size);
-        is.close();
-
-        assert(size > 0);
-
-        VkShaderModule shaderModule;
-        VkShaderModuleCreateInfo moduleCreateInfo{};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.codeSize = size;
-        moduleCreateInfo.pCode = (uint32_t*)shaderCode;
-
-        vk_call(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
-
-        delete[] shaderCode;
-
-        return shaderModule;
-    } else {
-        std::cerr << "Error: Could not open shader file \"" << fileName << "\"" << "\n";
-        return VK_NULL_HANDLE;
-    }
-}
-
-
 void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims) {
     logWarning("!!!!!!!!!!!!!!!!Scene::raytrace");
     
-
-    printf("initRayTracing\n");
-    initRayTracing();
-    printf("initRayTracing done\n");
-
-    return;
-
     PROFILE(mpDevice, "raytraceScene");
+
     assert(pContext && pProgram && pVars);
-
-////////////////
-    std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups{};
-
-    VkPipeline pipeline;
-    VkPipelineLayout pipelineLayout;
-    VkDescriptorSet descriptorSet;
-    VkDescriptorSetLayout descriptorSetLayout;
-
-    VkDescriptorSetLayoutBinding accelerationStructureLayoutBinding{};
-    accelerationStructureLayoutBinding.binding = 0;
-    accelerationStructureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    accelerationStructureLayoutBinding.descriptorCount = 1;
-    accelerationStructureLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding resultImageLayoutBinding{};
-    resultImageLayoutBinding.binding = 1;
-    resultImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    resultImageLayoutBinding.descriptorCount = 1;
-    resultImageLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding uniformBufferBinding{};
-    uniformBufferBinding.binding = 2;
-    uniformBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uniformBufferBinding.descriptorCount = 1;
-    uniformBufferBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    std::vector<VkDescriptorSetLayoutBinding> bindings({
-        accelerationStructureLayoutBinding,
-        resultImageLayoutBinding,
-        uniformBufferBinding
-    });
-
-    VkDescriptorSetLayoutCreateInfo descriptorSetlayoutCI{};
-    descriptorSetlayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetlayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
-    descriptorSetlayoutCI.pBindings = bindings.data();
-    vk_call(vkCreateDescriptorSetLayout(mpDevice->getApiHandle(), &descriptorSetlayoutCI, nullptr, &descriptorSetLayout));
-
-    VkPipelineLayoutCreateInfo pipelineLayoutCI{};
-    pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCI.setLayoutCount = 1;
-    pipelineLayoutCI.pSetLayouts = &descriptorSetLayout;
-    vk_call(vkCreatePipelineLayout(mpDevice->getApiHandle(), &pipelineLayoutCI, nullptr, &pipelineLayout));
-
-    /*
-        Setup ray tracing shader groups
-    */
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-
-    // Ray generation group
-    {
-        auto shader = loadShader("/home/max/raygen.rgen.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/raygen.rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    // Miss group
-    {
-        auto shader = loadShader("/home/max/miss.rmiss.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/miss.rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    // Closest hit group
-    {
-        auto shader = loadShader("/home/max/closesthit.rchit.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/closesthit.rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-        shaderGroup.generalShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    /*
-        Create the ray tracing pipeline
-    */
-    VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCI{};
-    rayTracingPipelineCI.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    rayTracingPipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-    rayTracingPipelineCI.pStages = shaderStages.data();
-    rayTracingPipelineCI.groupCount = static_cast<uint32_t>(shaderGroups.size());
-    rayTracingPipelineCI.pGroups = shaderGroups.data();
-    rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
-    rayTracingPipelineCI.layout = pipelineLayout;
-    vk_call(vkCreateRayTracingPipelinesKHR(mpDevice->getApiHandle(), VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rayTracingPipelineCI, nullptr, &pipeline));
-
-
-////////////////
-
 
     if (pVars->getGeometryCount() != getGeometryCount()) {
         throw std::runtime_error("Scene::raytrace() - RtProgramVars geometry count mismatch");
@@ -482,13 +292,15 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
 {
     // Create the index buffer.
     size_t ibSize = sizeof(uint32_t) * indexData.size();
-    if (ibSize > std::numeric_limits<uint32_t>::max()) {
+    if (ibSize > std::numeric_limits<uint32_t>::max())
+    {
         throw std::runtime_error("Index buffer size exceeds 4GB");
     }
 
     Buffer::SharedPtr pIB = nullptr;
-    if (ibSize > 0) {
-        ResourceBindFlags ibBindFlags = Resource::BindFlags::Index;// | ResourceBindFlags::ShaderResource;
+    if (ibSize > 0)
+    {
+        ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
         pIB = Buffer::create(mpDevice, ibSize, ibBindFlags, Buffer::CpuAccess::None, indexData.data());
     }
 
@@ -500,7 +312,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         throw std::runtime_error("Vertex buffer size exceeds 4GB");
     }
 
-    ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex; // | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
+    ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
     Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
 
     Vao::BufferVec pVBs(kVertexBufferCount);
@@ -553,17 +365,20 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     mpVao16Bit = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R16Uint);
 }
 
-void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData) {
+void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData)
+{
     if (indexData.empty() || staticData.empty()) return;
 
     // Create the index buffer.
     size_t ibSize = sizeof(uint32_t) * indexData.size();
-    if (ibSize > std::numeric_limits<uint32_t>::max()) {
+    if (ibSize > std::numeric_limits<uint32_t>::max())
+    {
         throw std::runtime_error("Curve index buffer size exceeds 4GB");
     }
 
     Buffer::SharedPtr pIB = nullptr;
-    if (ibSize > 0) {
+    if (ibSize > 0)
+    {
         ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
         pIB = Buffer::create(mpDevice, ibSize, ibBindFlags, Buffer::CpuAccess::None, indexData.data());
     }
@@ -571,7 +386,8 @@ void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::ve
     // Create the vertex data as structured buffers.
     const size_t vertexCount = (uint32_t)staticData.size();
     size_t staticVbSize = sizeof(StaticCurveVertexData) * vertexCount;
-    if (staticVbSize > std::numeric_limits<uint32_t>::max()) {
+    if (staticVbSize > std::numeric_limits<uint32_t>::max())
+    {
         throw std::runtime_error("Curve vertex buffer exceeds 4GB");
     }
 
@@ -1247,8 +1063,10 @@ void Scene::updateRaytracingTLASStats() {
     s.tlasMemoryInBytes = 0;
     s.tlasScratchMemoryInBytes = 0;
 
-    for (const auto& [i, tlas] : mTlasCache) {
-        if (tlas.pTlas) {
+    for (const auto& [i, tlas] : mTlasCache)
+    {
+        if (tlas.pTlas)
+        {
             s.tlasMemoryInBytes += tlas.pTlas->getSize();
             s.tlasCount++;
         }
@@ -1927,56 +1745,6 @@ void Scene::createDrawList() {
     }
 }
 
-nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc& mesh) {
-    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
-
-    VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-    auto vertexStride = pVbLayout->getStride();
-
-    // BLAS builder requires raw device addresses.
-    size_t indexStride = mesh.use16BitIndices() ? sizeof(uint16_t) : sizeof(uint32_t); // index tride in bytes
-    VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pVb->getApiHandle()) + (mesh.vbOffset * vertexStride);
-    VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pIb->getApiHandle()) + (mesh.ibOffset * indexStride);
-
-    uint32_t maxPrimitiveCount = mesh.indexCount / 3;
-
-    // Describe buffer as array of VertexObj.
-    VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
-    triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;  // vec3 vertex position data.
-    triangles.vertexData.deviceAddress = vertexAddress;
-    triangles.vertexStride             = vertexStride;
-    
-    // Describe index data (32-bit unsigned int)
-    triangles.indexType               = indexType;
-    triangles.indexData.deviceAddress = indexAddress;
-    
-    // Indicate identity transform by setting transformData to null device pointer.
-    //triangles.transformData = {};
-    triangles.maxVertex = mesh.vertexCount;
-
-
-    // Identify the above data as containing opaque triangles.
-    VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-    asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
-    asGeom.geometry.triangles = triangles;
-
-    // The entire array will be used to build the BLAS.
-    VkAccelerationStructureBuildRangeInfoKHR offset;
-    offset.firstVertex     = 0;
-    offset.primitiveCount  = maxPrimitiveCount;
-    offset.primitiveOffset = 0;
-    offset.transformOffset = 0;
-
-    nvvk::RaytracingBuilderKHR::BlasInput input;
-    input.asGeometry.emplace_back(asGeom);
-    input.asBuildOffsetInfo.emplace_back(offset);
-
-    return input;
-}
-
 void Scene::initGeomDesc(RenderContext* pContext) {
     assert(mBlasData.empty());
 
@@ -1991,8 +1759,10 @@ void Scene::initGeomDesc(RenderContext* pContext) {
     // Since glm uses column-major format we lazily create a buffer with the transposed matrices.
     // Note that this is sufficient to do once only as the transforms for static meshes can't change.
     // TODO: Use AnimationController's matrix buffer directly when we've switched to a row-major matrix library.
-    auto getStaticMatricesBuffer = [&]() {
-        if (!mpBlasStaticWorldMatrices) {
+    auto getStaticMatricesBuffer = [&]()
+    {
+        if (!mpBlasStaticWorldMatrices)
+        {
             std::vector<glm::mat4> transposedMatrices;
             transposedMatrices.reserve(globalMatrices.size());
             for (const auto& m : globalMatrices) transposedMatrices.push_back(glm::transpose(m));
@@ -2002,7 +1772,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
             mpBlasStaticWorldMatrices->setName("Scene::mpBlasStaticWorldMatrices");
 
             // Transition the resource to non-pixel shader state as expected by DXR.
-            pContext->resourceBarrier(mpBlasStaticWorldMatrices.get(), Resource::State::AccelStructBuildInput);// NonPixelShader);
+            pContext->resourceBarrier(mpBlasStaticWorldMatrices.get(), Resource::State::NonPixelShader);
         }
         return mpBlasStaticWorldMatrices;
     };
@@ -2022,13 +1792,11 @@ void Scene::initGeomDesc(RenderContext* pContext) {
         const bool isStatic = mMeshGroups[i].isStatic;
         const bool isDisplaced = mMeshGroups[i].isDisplaced;
 
-        auto& blasData = mBlasData[i];
-        auto& geomDescs = blasData.geomDescs;
-        auto& ranges = blasData.ranges;
+        auto& blas = mBlasData[i];
+        auto& geomDescs = blas.geomDescs;
 
         geomDescs.resize(meshList.size());
-        ranges.resize(meshList.size());
-        blasData.hasProceduralPrimitives = false;
+        blas.hasProceduralPrimitives = false;
 
         // Track what types of triangle winding exist in the final BLAS.
         // The SceneBuilder should have ensured winding is consistent, but keeping the check here as a safeguard.
@@ -2038,10 +1806,9 @@ void Scene::initGeomDesc(RenderContext* pContext) {
             const uint32_t meshID = meshList[j];
             const MeshDesc& mesh = mMeshDesc[meshID];
             bool frontFaceCW = mesh.isFrontFaceCW();
-            blasData.hasSkinnedMesh |= mesh.hasDynamicData();
+            blas.hasSkinnedMesh |= mesh.hasDynamicData();
 
             VkAccelerationStructureGeometryKHR& desc = geomDescs[j];
-            VkAccelerationStructureBuildRangeInfoKHR& range = ranges[j];
             desc.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 
             if (!isDisplaced) {
@@ -2072,30 +1839,15 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                 }
 
                 // Set the position data
-                LOG_WARN("Set position data");
-                printf("Mesh vertex count %u\n", mesh.vertexCount);
-                printf("pVb deviceAddress: %zu\n", pVb->getGpuAddress());
-                printf("pVb deviceAddress: %zu\n", pVb->getGpuAddress());
-
                 desc.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
                 desc.geometry.triangles.vertexData.deviceAddress = pVb->getGpuAddress() + (mesh.vbOffset * pVbLayout->getStride());
                 desc.geometry.triangles.vertexData.hostAddress = nullptr;
                 desc.geometry.triangles.vertexStride = pVbLayout->getStride();
-                desc.geometry.triangles.maxVertex = mesh.vertexCount;
+                desc.geometry.triangles.maxVertex = mesh.vertexCount - 1;
                 desc.geometry.triangles.vertexFormat = getVkFormat(pVbLayout->getElementFormat(0));
 
                 // Set index data
                 if (pIb) {
-                    printf("Using indices\n");
-                    if (mesh.use16BitIndices()) {
-                        printf("Using 16 bit indices\n");
-                    }
-
-                    printf("Mesh ibOffset %u\n", mesh.ibOffset);
-                    printf("Mesh index count %u\n", mesh.indexCount);
-                    printf("pIb deviceAddress: %zu\n", pIb->getGpuAddress());
-                    printf("pIb deviceAddress: %zu\n", pIb->getGpuAddress());
-
                     // The global index data is stored in a dword array.
                     // Each mesh specifies whether its indices are in 16-bit or 32-bit format.
                     VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
@@ -2103,14 +1855,9 @@ void Scene::initGeomDesc(RenderContext* pContext) {
                     desc.geometry.triangles.indexData.hostAddress = nullptr;
                     //desc.geometry.triangles.IndexCount = mesh.indexCount;
                     desc.geometry.triangles.indexType = indexType;
-
-                    range.firstVertex = 0;
-                    range.primitiveCount = mesh.indexCount / 3;
-                    range.primitiveOffset = 0;
-                    range.transformOffset = 0;
                 } else {
                     assert(mesh.indexCount == 0);
-                    desc.geometry.triangles.indexData.deviceAddress = 0;
+                    desc.geometry.triangles.indexData.deviceAddress = NULL;
                     desc.geometry.triangles.indexData.hostAddress = nullptr;
                     //desc.geometry.triangles.IndexCount = 0;
                     desc.geometry.triangles.indexType = VK_INDEX_TYPE_NONE_KHR;
@@ -2129,7 +1876,7 @@ void Scene::initGeomDesc(RenderContext* pContext) {
             }
         }
 
-        mHasSkinnedMesh |= blasData.hasSkinnedMesh;
+        mHasSkinnedMesh |= blas.hasSkinnedMesh;
         assert(!(isStatic && mHasSkinnedMesh));
 
         if (triangleWindings == 0x3) {
@@ -2207,269 +1954,67 @@ void Scene::initGeomDesc(RenderContext* pContext) {
     if (totalGeometries != getGeometryCount()) throw std::logic_error("Total geometry count mismatch");
 }
 
-
-void Scene::createBottomLevelAS() {
-    if (mBlasBuilt) return;
-
-    uint32_t blasID = 0;
-    mMeshIdToBlasId.clear();
-
-
-    uint32_t totalMeshCount = 0;
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        for (size_t j = 0; j <  mMeshGroups[i].meshList.size(); j++) {
-            totalMeshCount++;
-        }
-    }
-    mMeshIdToBlasId.resize(totalMeshCount);
-
-    // BLAS - Storing each primitive in a geometry
-    std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
-    allBlas.reserve(totalMeshCount);
-
-    // Iterate over the mesh groups. One BLAS will be created for each group.
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-            const MeshDesc& mesh = mMeshDesc[meshID];
-
-            printf("Converting mesh id %u to VkGeometryKHR...\n", meshID);
-            auto blas = meshToVkGeometryKHR(mesh);
-
-            // We could add more geometry in each BLAS, but we add only one for now
-            allBlas.emplace_back(blas);
-            mMeshIdToBlasId[meshID] = blasID;
-            blasID++;
-        }
-    }
-
-    mRtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
-    mBlasBuilt = true;
-}
-
-/*
-
-struct MeshInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint meshID;
-    uint flags;         ///< See MeshInstanceFlags.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    bool hasDynamicData() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
-    }
-
-    bool isWorldFrontFaceCW() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
-    }
-};
-
-*/
-
-void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
-
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    
-    uint32_t instanceID = 0;
-
-    for (const auto& instance : mMeshInstanceData) {
-        auto meshID = instance.meshID;
-        nvmath::mat4f transform = nvmath::translation_mat4(nvmath::vec3f{0, 0.0, 0}); //(1);
-
-        VkAccelerationStructureInstanceKHR rayInst{};
-
-        rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-        rayInst.instanceCustomIndex = instanceID++;
-        rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
-        rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-        rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-        tlas.emplace_back(rayInst);
-    }
-
-
-    /*
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                instanceID += 1;
-
-                auto const& instanceData = mMeshInstanceData[rayInst.instanceCustomIndex];
-
-                nvmath::mat4f transform(1);
-
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-                rayInst.instanceCustomIndex = instanceID;
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    */
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-
-
-/*
-void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
-
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    //tlas.reserve(m_instances.size());
-
-    uint32_t instanceID = 0;
-
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-         // Validate that the ordering is matching our expectations:
-        // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-        for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-            const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
-            assert(instances.size() == instanceCount);
-            assert(instances[instanceIdx] == instanceID + geometryIndex);
-        }
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.instanceCustomIndex = instanceID;
-                instanceID += (uint32_t)meshList.size();
-
-                nvmath::mat4f transform(1);
-
-                if (!isStatic) {
-                    // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
-                    // Just pick the matrix from the first mesh.
-                    const uint32_t matrixId = mMeshInstanceData[rayInst.instanceCustomIndex].globalMatrixID;
-                    transform = nvmath::matrix4<float>((const float*)glm::value_ptr(mpAnimationController->getGlobalMatrices()[matrixId]));
-
-                    // Verify that all meshes have matching tranforms.
-                    for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                        assert(matrixId == mMeshInstanceData[rayInst.instanceCustomIndex + geometryIndex].globalMatrixID);
-                    }
-                }
-                
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-*/
-
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
 
-    for (auto& blasData : mBlasData) {
+    for (auto& blas : mBlasData) {
+        printf("Prebuild info blas geomDescs size is: %zu", blas.geomDescs.size());
+
         // Determine how BLAS build/update should be done.
         // The default choice is to compact all static BLASes and those that don't need to be rebuilt every frame.
         // For all other BLASes, compaction just adds overhead.
         // TODO: Add compaction on/off switch for profiling.
         // TODO: Disable compaction for skinned meshes if update performance becomes a problem.
-        blasData.updateMode = mBlasUpdateMode;
-        blasData.useCompaction = (!blasData.hasSkinnedMesh && !blasData.hasAnimatedVertexCache) || blasData.updateMode != UpdateMode::Rebuild;
+        blas.updateMode = mBlasUpdateMode;
+        blas.useCompaction = (!blas.hasSkinnedMesh && !blas.hasAnimatedVertexCache) || blas.updateMode != UpdateMode::Rebuild;
 
         // Setup build parameters.
-        VkAccelerationStructureBuildGeometryInfoKHR& inputs = blasData.buildInputs;
+        VkAccelerationStructureBuildGeometryInfoKHR& inputs = blas.buildInputs;
 
         inputs.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        inputs.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         inputs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
-        inputs.pNext = NULL;
-        inputs.geometryCount = (uint32_t)blasData.geomDescs.size();
-        inputs.pGeometries = blasData.geomDescs.data();
+        inputs.geometryCount = static_cast<uint32_t>(blas.geomDescs.size());
+        inputs.pGeometries = blas.geomDescs.data();
         
         // Add necessary flags depending on settings.
-        if (blasData.useCompaction) {
-            //printf("Scene::preparePrebuildInfo useCompaction !\n");
-            //inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        if (blas.useCompaction) {
+            printf("BLAS USE COMPACTION\n");
+            inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
         }
 
-        if ((blasData.hasSkinnedMesh || blasData.hasProceduralPrimitives) && blasData.updateMode == UpdateMode::Refit) {
+        if ((blas.hasSkinnedMesh || blas.hasProceduralPrimitives) && blas.updateMode == UpdateMode::Refit) {
             inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
         }
 
         // Set optional performance hints.
         // TODO: Set FAST_BUILD for skinned meshes if update/rebuild performance becomes a problem.
         // TODO: Add FAST_TRACE on/off switch for profiling. It is disabled by default as it is scene-dependent.
-        if (!blasData.hasSkinnedMesh) {
+        if (!blas.hasSkinnedMesh) {
             inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
         }
+
+        inputs.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
 
         // Get prebuild info.
        //GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
        //pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &blas.prebuildInfo);
 
-        const VkAccelerationStructureBuildTypeKHR buildType = VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR;
-
-        std::vector<uint32_t> maxPrimCounts(blasData.ranges.size());
-        std::transform(blasData.ranges.begin(), blasData.ranges.end(), maxPrimCounts.begin(), [](const VkAccelerationStructureBuildRangeInfoKHR& r) { return r.primitiveCount; });
-
-        size_t i = 0;
-        printf("Scene::preparePrebuildInfo maxPrimCounts\n");
-        for(i = 0; i < maxPrimCounts.size(); i++) {
-            printf("%zu - %u\n", i, maxPrimCounts[i]);
+        std::vector<uint32_t> maxPrimCounts(inputs.geometryCount);
+        for(int i = 0; i < inputs.geometryCount; i++) {
+            const auto& geomDesc = blas.geomDescs[i];
         }
 
-        blasData.prebuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-        vkGetAccelerationStructureBuildSizesKHR(mpDevice->getApiHandle(), buildType, &inputs, maxPrimCounts.data(), &blasData.prebuildInfo);
-
-        printf("prebuildInfo.accelerationStructureSize is: %zu bytes\n", blasData.prebuildInfo.accelerationStructureSize);
-        printf("prebuildInfo.buildScratchSize is: %zu bytes\n", blasData.prebuildInfo.buildScratchSize);
-        printf("prebuildInfo.updateScratchSize is: %zu bytes\n", blasData.prebuildInfo.updateScratchSize);
+        blas.prebuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        vkGetAccelerationStructureBuildSizesKHR(mpDevice->getApiHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &inputs, maxPrimCounts.data(), &blas.prebuildInfo);
 
         // Figure out the padded allocation sizes to have proper alignment.
-        assert(blasData.prebuildInfo.accelerationStructureSize > 0);
+        assert(blas.prebuildInfo.accelerationStructureSize > 0);
         //blas.resultByteSize = align_to(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, blas.prebuildInfo.accelerationStructureSize);
-        blasData.resultByteSize = blasData.prebuildInfo.accelerationStructureSize;
+        blas.resultByteSize = blas.prebuildInfo.accelerationStructureSize;
 
-        uint64_t scratchByteSize = std::max(blasData.prebuildInfo.buildScratchSize, blasData.prebuildInfo.updateScratchSize);
+        uint64_t scratchByteSize = std::max(blas.prebuildInfo.buildScratchSize, blas.prebuildInfo.updateScratchSize);
         //blas.scratchByteSize = align_to(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, scratchByteSize);
-        blasData.scratchByteSize = scratchByteSize;
+        blas.scratchByteSize = scratchByteSize;
     }
 }
 
@@ -2478,8 +2023,8 @@ void Scene::computeBlasGroups() {
     uint64_t groupSize = 0;
 
     for (uint32_t blasId = 0; blasId < mBlasData.size(); blasId++) {
-        auto& blasData = mBlasData[blasId];
-        size_t blasSize = blasData.resultByteSize + blasData.scratchByteSize;
+        auto& blas = mBlasData[blasId];
+        size_t blasSize = blas.resultByteSize + blas.scratchByteSize;
 
         // Start new BLAS group on first iteration or if group size would exceed the target.
         if (groupSize == 0 || groupSize + blasSize > kMaxBLASBuildMemory) {
@@ -2491,13 +2036,13 @@ void Scene::computeBlasGroups() {
         assert(mBlasGroups.size() > 0);
         auto& group = mBlasGroups.back();
         group.blasIndices.push_back(blasId);
-        blasData.blasGroupIndex = (uint32_t)mBlasGroups.size() - 1;
+        blas.blasGroupIndex = (uint32_t)mBlasGroups.size() - 1;
 
         // Update data offsets and sizes.
-        blasData.resultByteOffset = group.resultByteSize;
-        blasData.scratchByteOffset = group.scratchByteSize;
-        group.resultByteSize += blasData.resultByteSize;
-        group.scratchByteSize += blasData.scratchByteSize;
+        blas.resultByteOffset = group.resultByteSize;
+        blas.scratchByteOffset = group.scratchByteSize;
+        group.resultByteSize += blas.resultByteSize;
+        group.scratchByteSize += blas.scratchByteSize;
 
         groupSize += blasSize;
     }
@@ -2516,21 +2061,21 @@ void Scene::computeBlasGroups() {
 
         for (auto blasId : group.blasIndices) {
             assert(blasId < mBlasData.size());
-            const auto& blasData = mBlasData[blasId];
+            const auto& blas = mBlasData[blasId];
 
             assert(blasIDs.insert(blasId).second);
-            assert(blasData.blasGroupIndex == blasGroupIndex);
+            assert(blas.blasGroupIndex == blasGroupIndex);
 
-            assert(blasData.resultByteSize > 0);
-            assert(blasData.resultByteOffset == resultSize);
-            resultSize += blasData.resultByteSize;
+            assert(blas.resultByteSize > 0);
+            assert(blas.resultByteOffset == resultSize);
+            resultSize += blas.resultByteSize;
 
-            assert(blasData.scratchByteSize > 0);
-            assert(blasData.scratchByteOffset == scratchSize);
-            scratchSize += blasData.scratchByteSize;
+            assert(blas.scratchByteSize > 0);
+            assert(blas.scratchByteOffset == scratchSize);
+            scratchSize += blas.scratchByteSize;
 
-            assert(blasData.blasByteOffset == 0);
-            assert(blasData.blasByteSize == 0);
+            assert(blas.blasByteOffset == 0);
+            assert(blas.blasByteSize == 0);
         }
 
         assert(resultSize == group.resultByteSize);
@@ -2550,26 +2095,25 @@ void Scene::buildBlas(RenderContext* pContext) {
     const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
     const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
     
-    LOG_WARN("_1");
-    pContext->resourceBarrier(pVb.get(), Resource::State::AccelStructBuildInput);
+    printf("1a\n");
+   // pContext->resourceBarrier(pVb.get(), Resource::State::AccelerationStructureInput);
     
     if (pIb) {
-        LOG_WARN("_2");
-        pContext->resourceBarrier(pIb.get(), Resource::State::AccelStructBuildInput);
+        printf("1b\n");
+        //pContext->resourceBarrier(pIb.get(), Resource::State::AccelerationStructureInput);
     }
 
     if (mpRtAABBBuffer) {
-        LOG_WARN("_3");
-        pContext->resourceBarrier(mpRtAABBBuffer.get(), Resource::State::AccelStructBuildInput);
+        printf("1c\n");
+        //pContext->resourceBarrier(mpRtAABBBuffer.get(), Resource::State::AccelerationStructureInput);
     }
 
     if (mpCurveVao) {
+        printf("1d\n");
         const Buffer::SharedPtr& pCurveVb = mpCurveVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pCurveIb = mpCurveVao->getIndexBuffer();
-        LOG_WARN("_4");
-        pContext->resourceBarrier(pCurveVb.get(), Resource::State::AccelStructBuildInput);
-        LOG_WARN("_5");
-        pContext->resourceBarrier(pCurveIb.get(), Resource::State::AccelStructBuildInput);
+        //pContext->resourceBarrier(pCurveVb.get(), Resource::State::AccelerationStructureInput);
+        //pContext->resourceBarrier(pCurveIb.get(), Resource::State::AccelerationStructureInput);
     }
 
     // On the first time, or if a full rebuild is necessary we will:
@@ -2580,7 +2124,6 @@ void Scene::buildBlas(RenderContext* pContext) {
     // - Calculate total compacted buffer size
     // - Compact/clone all BLASes to their final location
 
-    pContext->flush(true);
 
     if (mRebuildBlas) {
 
@@ -2597,55 +2140,275 @@ void Scene::buildBlas(RenderContext* pContext) {
         logInfo("BLAS build split into " + std::to_string(mBlasGroups.size()) + " groups");
 
         // Compute the required maximum size of the result and scratch buffers.
+        uint64_t resultByteSize = 0;
+        uint64_t scratchByteSize = 0;
         size_t maxBlasCount = 0;
 
-        //for (const auto& group : mBlasGroups) {
-        //    resultByteSize = std::max(resultByteSize, group.resultByteSize);
-        //    scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
-        //    maxBlasCount = std::max(maxBlasCount, group.blasIndices.size());
-        //}
-        //assert(resultByteSize > 0);
-        //assert(scratchByteSize > 0);
+        for (const auto& group : mBlasGroups) {
+            resultByteSize = std::max(resultByteSize, group.resultByteSize);
+            scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
+            maxBlasCount = std::max(maxBlasCount, group.blasIndices.size());
+        }
+        assert(resultByteSize > 0);
+        assert(scratchByteSize > 0);
 
+        logInfo("BLAS build result buffer size: " + formatByteSize(resultByteSize));
+        logInfo("BLAS build scratch buffer size: " + formatByteSize(scratchByteSize));
 
+        // Allocate result and scratch buffers.
+        // The scratch buffer we'll retain because it's needed for subsequent rebuilds and updates.
+        // TODO: Save memory by reducing the scratch buffer to the minimum required for the dynamic objects.
+        if (mpBlasScratch == nullptr || mpBlasScratch->getSize() < scratchByteSize) {
+            mpBlasScratch = Buffer::create(mpDevice, scratchByteSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+            mpBlasScratch->setName("Scene::mpBlasScratch");
+        }
+
+        Buffer::SharedPtr pResultBuffer = Buffer::create(mpDevice, resultByteSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+        assert(pResultBuffer && mpBlasScratch);
+
+        // Allocate post-build info buffer and staging resource for readback.
+        //const size_t postBuildInfoCompactedSize = sizeof(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE_DESC);
+        //static_assert(postBuildInfoCompactedSize == sizeof(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE_DESC));
+        
+        const size_t postBuildInfoCompactedSize = sizeof(VkDeviceSize);
+        Buffer::SharedPtr pPostbuildInfoBuffer = Buffer::create(mpDevice, maxBlasCount * postBuildInfoCompactedSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        Buffer::SharedPtr pPostbuildInfoStagingBuffer = Buffer::create(mpDevice, maxBlasCount * postBuildInfoCompactedSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read);
+
+        assert(pPostbuildInfoBuffer->getGpuAddress() % postBuildInfoCompactedSize == 0); // Check alignment expected by DXR
+
+        bool hasSkinnedMesh = false;
+        bool hasProceduralPrimitives = false;
 
         // Iterate over BLAS groups. For each group build and compact all BLASes.
         for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
             auto& group = mBlasGroups[blasGroupIndex];
 
-            bool useCompaction =false;// true;
+            // Insert barriers. The buffers are now ready to be written.
+            pContext->uavBarrier(pResultBuffer.get());
+            pContext->uavBarrier(mpBlasScratch.get());
 
-            group.scratchByteSize = 0;
-            
-            group.pBLAS = BottomLevelAccelerationStructure::create(mpDevice);
+            // Transition the post-build info buffer to unoredered access state as expected by DXR.
+            pContext->resourceBarrier(pPostbuildInfoBuffer.get(), Resource::State::UnorderedAccess);
 
-            for (uint32_t blasId : group.blasIndices) {
-                const auto& blasData = mBlasData[blasId];
+//
 
-                for (size_t i = 0; i < blasData.geomDescs.size(); i++) {
+            // command pool for one-time command buffers
+            VkCommandPool oneTimeCmdPool;
 
-                    auto const& geometry = blasData.geomDescs[i].geometry;
-                    auto const& range = blasData.ranges[i];
+            uint32_t queueFamilyIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
 
-                    group.pBLAS->addGeometry(geometry.triangles, range, VK_GEOMETRY_OPAQUE_BIT_KHR);
-                }
-            }
-
-            if (!group.pBLAS->createAccelerationStructure(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | (useCompaction ? VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR : 0))) {
-                throw std::runtime_error("Error creating BLAS !!!");
-            } else {
-                logWarning("Group BLAS created.");
-            }
+            VkCommandPoolCreateInfo cmdPoolCreateInfo = {}; 
+            cmdPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            cmdPoolCreateInfo.queueFamilyIndex = uint32_t(queueFamilyIndex);
         
-            group.scratchByteSize = std::max(group.scratchByteSize, group.pBLAS->scratchBufferSize());
-    
+            if (VK_FAILED(vkCreateCommandPool(mpDevice->getApiHandle(), &cmdPoolCreateInfo, nullptr, &oneTimeCmdPool))) {
+                throw std::runtime_error("Error creating ont-time command pool !!!");
+            }
+
+            auto queryCount = 1;
+            
+            VkQueryPoolCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+            info.queryCount = queryCount;
+            info.queryType = VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR;
+            info.pipelineStatistics = 0x00000000;//VK_QUERY_PIPELINE_STATISTIC_FLAG_BITS_MAX_ENUM;
+            
+            VkQueryPool queryPool;
+            vk_call(vkCreateQueryPool(mpDevice->getApiHandle(), &info, nullptr, &queryPool));
+
+//
+
+            // Build the BLASes into the intermediate result buffer.
+            // We output post-build info in order to find out the final size requirements.
+            uint64_t postBuildInfoOffset = 0;
+            for (uint32_t blasId : group.blasIndices) {
+                const auto& blas = mBlasData[blasId];
+
+                hasSkinnedMesh |= blas.hasSkinnedMesh;
+                hasProceduralPrimitives |= blas.hasProceduralPrimitives;
+
+                VkAccelerationStructureCreateInfoKHR accelerationStructureCreateInfo{};
+                accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+                accelerationStructureCreateInfo.buffer = pResultBuffer->getApiHandle();
+                accelerationStructureCreateInfo.offset = blas.resultByteOffset;
+                accelerationStructureCreateInfo.size = blas.prebuildInfo.accelerationStructureSize;
+                accelerationStructureCreateInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                vkCreateAccelerationStructureKHR(mpDevice->getApiHandle(), &accelerationStructureCreateInfo, nullptr, &mBlasData[blasId].handle);
+
+                //D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
+                //asDesc.Inputs = blas.buildInputs;
+                //asDesc.ScratchAccelerationStructureData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
+                //asDesc.DestAccelerationStructureData = pResultBuffer->getGpuAddress() + blas.resultByteOffset;
+
+               // VkAccelerationStructureBuildGeometryInfoKHR accelerationBuildGeometryInfo{};
+               // accelerationBuildGeometryInfo = blas.buildInputs;
+
+                VkAccelerationStructureBuildGeometryInfoKHR accelerationBuildGeometryInfo = mBlasData[blasId].buildInputs;
+
+                accelerationBuildGeometryInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+                accelerationBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                accelerationBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+                accelerationBuildGeometryInfo.srcAccelerationStructure = VK_NULL_HANDLE; //mBuilt ? mHandle : VK_NULL_HANDLE;
+                accelerationBuildGeometryInfo.dstAccelerationStructure = blas.handle;
+                accelerationBuildGeometryInfo.scratchData.deviceAddress = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
+
+                // Need to find out the post-build compacted BLAS size to know the final allocation size.
+                //D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC postbuildInfoDesc = {};
+                //postbuildInfoDesc.InfoType = blas.useCompaction ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE;
+                //postbuildInfoDesc.DestBuffer = pPostbuildInfoBuffer->getGpuAddress() + postBuildInfoOffset;
+                
+                //vkWriteAccelerationStructuresPropertiesKHR(mpDevice->getApiHandle(), 1, &mBlasData[blasId].handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+                //    sizeof(VkDeviceSize), pPostbuildInfoBuffer->getGpuAddress() + postBuildInfoOffset, sizeof(VkDeviceSize));
+
+                /*
+                VkDeviceSize compactedSize = 0;
+
+                vkWriteAccelerationStructuresPropertiesKHR(mpDevice->getApiHandle(), 1, &mBlasData[blasId].handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+                    sizeof(VkDeviceSize), &compactedSize, sizeof(VkDeviceSize));
+                printf("Blas compacted size: %zu\n", compactedSize);
+                */
+
+                postBuildInfoOffset += postBuildInfoCompactedSize;
+
+                //GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+                //pList4->BuildRaytracingAccelerationStructure(&asDesc, 1, &postbuildInfoDesc);
+
+                auto numTriangles = 1;
+
+                VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfo{};
+                accelerationStructureBuildRangeInfo.primitiveCount = numTriangles;
+                accelerationStructureBuildRangeInfo.primitiveOffset = 0;
+                accelerationStructureBuildRangeInfo.firstVertex = 0;
+                accelerationStructureBuildRangeInfo.transformOffset = 0;
+                const std::vector<VkAccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &accelerationStructureBuildRangeInfo };
+                
+//bool oneTimeCommandBuffer(Device::SharedPtr pDevice, VkCommandPool pool, const CommandQueueHandle& queue, OneTimeCommandFunc callback) {
+
+pContext->setPendingCommands(true);
+pContext->flush(true);
+
+vkResetQueryPool(mpDevice->getApiHandle(), queryPool, 0, 1);
+
+auto cmdPool = pContext->getLowLevelData()->getCommandAllocator();
+
+oneTimeCommandBuffer(mpDevice, cmdPool, mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0), [&](VkCommandBuffer cmdBuff) {
+            // barrier to wait for build to finish
+
+                vkCmdBuildAccelerationStructuresKHR(cmdBuff, 
+                    1,
+                    &accelerationBuildGeometryInfo,
+                    accelerationBuildStructureRangeInfos.data()
+                );
+
+                
+                VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+                barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+                barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+                
+                //vkCmdPipelineBarrier(cmdBuff, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                //         VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+
+                //vkWriteAccelerationStructuresPropertiesKHR(mpDevice->getApiHandle(), 1, &mBlasData[blasId].handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR,
+                //    sizeof(VkDeviceSize), &compactedSize, sizeof(VkDeviceSize));
+                //printf("Blas compacted size: %zu\n", compactedSize);
+
+                printf("Resetting query pool\n");
+
+                //vkCmdResetQueryPool(cmdBuff, pool, 0, 1);
+                
+                printf("Getting blas compacted size\n");
+                vkCmdWriteAccelerationStructuresPropertiesKHR(cmdBuff, 1, &blas.handle, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool, 0);
+                printf("Getting blas compacted size done\n");    
+ });
+//
+
+                //pContext->setPendingCommands(true);
+                //pContext->flush(true);
+                //vk_call(vkQueueWaitIdle(pContext->getLowLevelData()->getCommandQueue()));
+
+                VkDeviceSize compactedSize = 0;
+
+                printf("Querying blas compacted size\n");
+                vk_call(vkGetQueryPoolResults(mpDevice->getApiHandle(), queryPool, 0, 1, sizeof(VkDeviceSize), &compactedSize, sizeof(VkDeviceSize), 
+                    VK_QUERY_RESULT_WAIT_BIT
+                ));
+                printf("Blas compacted size: %zu\n", compactedSize);
+            }
+
+            // Copy post-build info to staging buffer and flush.
+            // TODO: Wait on a GPU fence for when it's ready instead of doing a full flush.
+            pContext->copyResource(pPostbuildInfoStagingBuffer.get(), pPostbuildInfoBuffer.get());
+            pContext->flush(true);
+
+            // Read back the calculated final size requirements for each BLAS.
+            // The byte offset of each final BLAS is computed here.
+            const VkDeviceSize* postBuildCompactedSizeInfo = (const VkDeviceSize*)pPostbuildInfoStagingBuffer->map(Buffer::MapType::Read);
+
+            group.finalByteSize = 0;
+            for (size_t i = 0; i < group.blasIndices.size(); i++) {
+                const uint32_t blasId = group.blasIndices[i];
+                auto& blas = mBlasData[blasId];
+
+                // Check the size. Upon failure a zero size may be reported.
+               //const uint64_t byteSize = postBuildInfo[i].CompactedSizeInBytes;
+                const uint64_t byteSize = postBuildCompactedSizeInfo[i];
+                
+               //assert(byteSize <= blas.prebuildInfo.ResultDataMaxSizeInBytes);
+                
+                if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index " + std::to_string(blasId));
+
+                //blas.blasByteSize = align_to(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, byteSize);
+                blas.blasByteSize = byteSize;
+                blas.blasByteOffset = group.finalByteSize;
+                group.finalByteSize += blas.blasByteSize;
+            }
+            assert(group.finalByteSize > 0);
+            pPostbuildInfoBuffer->unmap();
+
+            logInfo("BLAS group " + std::to_string(blasGroupIndex) + " final size: " + formatByteSize(group.finalByteSize));
+
+            // Allocate final BLAS buffer.
+            auto& pBlas = group.pBlas;
+            if (pBlas == nullptr || pBlas->getSize() < group.finalByteSize) {
+                pBlas = Buffer::create(mpDevice, group.finalByteSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+                pBlas->setName("Scene::mBlasGroups[" + std::to_string(blasGroupIndex) + "].pBlas");
+            } else {
+                // If we didn't need to reallocate, just insert a barrier so it's safe to use.
+                pContext->uavBarrier(pBlas.get());
+            }
+
+            // Insert barrier. The result buffer is now ready to be consumed.
+            // TOOD: This is probably not necessary since we flushed above, but it's not going to hurt.
+            pContext->uavBarrier(pResultBuffer.get());
+
+            // Compact/clone all BLASes to their final location.
+            for (uint32_t blasId : group.blasIndices) {
+                auto& blas = mBlasData[blasId];
+
+                //GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+                //pList4->CopyRaytracingAccelerationStructure(
+                //    pBlas->getGpuAddress() + blas.blasByteOffset,
+                //    pResultBuffer->getGpuAddress() + blas.resultByteOffset,
+                //    blas.useCompaction ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT : D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE);
+            
+                /*
+                VkCopyAccelerationStructureInfoKHR blasCopyInfo = {};
+                blasCopyInfo.dst = pBlas->getGpuAddress() + blas.blasByteOffset;
+                blasCopyInfo.src = pResultBuffer->getGpuAddress() + blas.resultByteOffset;
+                blasCopyInfo.mode = blas.useCompaction ? VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR : VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+
+                vkCopyAccelerationStructureKHR(mpDevice->getApiHandle(), VK_NULL_HANDLE, &blasCopyInfo);
+                */
+                LOG_WARN("COMPACTION NOT READY !!!!");
+            }
 
             // Insert barrier. The BLAS buffer is now ready for use.
-            //pContext->uavBarrier(pBlas.get());
+            pContext->uavBarrier(pBlas.get());
         }
 
         // Release scratch buffer if there is no animated content. We will not need it.
-        //if (!hasSkinnedMesh && !hasProceduralPrimitives) mpBlasScratch.reset();
+        if (!hasSkinnedMesh && !hasProceduralPrimitives) mpBlasScratch.reset();
 
         updateRaytracingBLASStats();
         mRebuildBlas = false;
@@ -2722,16 +2485,12 @@ void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& in
         const bool isStatic = mMeshGroups[i].isStatic;
 
         assert(mBlasData[i].blasGroupIndex < mBlasGroups.size());
-        
-        const auto& pBlas = mBlasGroups[mBlasData[i].blasGroupIndex].pBLAS;// pBlas;
+        const auto& pBlas = mBlasGroups[mBlasData[i].blasGroupIndex].pBlas;
         assert(pBlas);
 
         VkAccelerationStructureInstanceKHR desc = {};
 
-        assert(pBlas->getVkHandle() != VK_NULL_HANDLE);
-        assert(pBlas->getVkAddress() != 0);
-
-        desc.accelerationStructureReference = pBlas->getVkAddress();//getGpuAddress() + mBlasData[i].blasByteOffset;
+        desc.accelerationStructureReference = pBlas->getGpuAddress() + mBlasData[i].blasByteOffset;
         desc.mask = 0xFF;
         desc.instanceShaderBindingTableRecordOffset = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
@@ -2800,12 +2559,12 @@ void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& in
         assert(mBlasData.size() == mMeshGroups.size() + 1);
 
         assert(mBlasData.back().blasGroupIndex < mBlasGroups.size());
-        const auto& pBlas = mBlasGroups[mBlasData.back().blasGroupIndex].pBLAS; //pBlas;
+        const auto& pBlas = mBlasGroups[mBlasData.back().blasGroupIndex].pBlas;
         assert(pBlas);
 
         VkAccelerationStructureInstanceKHR desc = {};
 
-        desc.accelerationStructureReference = pBlas->getVkAddress(); //getGpuAddress() + mBlasData.back().blasByteOffset;
+        desc.accelerationStructureReference = pBlas->getGpuAddress() + mBlasData.back().blasByteOffset;
         desc.mask = 0xFF;
         desc.instanceCustomIndex = instanceID;
         instanceID++;
@@ -2828,140 +2587,80 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
 
     fillInstanceDesc(mInstanceDescs, rayCount, perMeshHitEntry);
 
-    tlas.updateMode = mTlasUpdateMode;
+    // Buffer for instance data
+    auto pInstancesBuffer = Buffer::create(mpDevice, sizeof(VkAccelerationStructureInstanceKHR) * mInstanceDescs.size(), Buffer::BindFlags::AccelerationStructureBuild,
+        Buffer::CpuAccess::Read, mInstanceDescs.data());
 
-    uint64_t scratchByteSize = 0;
-    for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-        auto& group = mBlasGroups[blasGroupIndex];
-        scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
+    VkDeviceOrHostAddressConstKHR instancesDataDeviceAddress{};
+    instancesDataDeviceAddress.deviceAddress = pInstancesBuffer->getGpuAddress();
+
+    VkAccelerationStructureGeometryKHR accelerationStructureGeometry{};
+    accelerationStructureGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+    accelerationStructureGeometry.pNext = NULL;
+    accelerationStructureGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    accelerationStructureGeometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    
+    accelerationStructureGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    accelerationStructureGeometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+    accelerationStructureGeometry.geometry.instances.pNext = NULL;
+    accelerationStructureGeometry.geometry.instances.arrayOfPointers = VK_FALSE;
+    accelerationStructureGeometry.geometry.instances.data = instancesDataDeviceAddress;
+
+    // Get size info
+    /*
+    The pSrcAccelerationStructure, dstAccelerationStructure, and mode members of pBuildInfo are ignored. Any VkDeviceOrHostAddressKHR members of pBuildInfo are ignored by this command, except that the hostAddress member of VkAccelerationStructureGeometryTrianglesDataKHR::transformData will be examined to check if it is NULL.*
+    */
+    VkAccelerationStructureBuildGeometryInfoKHR accelerationStructureBuildGeometryInfo{};
+    accelerationStructureBuildGeometryInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+    accelerationStructureBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    accelerationStructureBuildGeometryInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+    accelerationStructureBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR; // ???????
+    accelerationStructureBuildGeometryInfo.geometryCount = 1;
+    accelerationStructureBuildGeometryInfo.pGeometries = &accelerationStructureGeometry;
+
+    // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
+    if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == UpdateMode::Refit) {
+        accelerationStructureBuildGeometryInfo.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+
+        // If TLAS has been built already and it was built with ALLOW_UPDATE
+        if (tlas.pTlas != nullptr && tlas.updateMode == UpdateMode::Refit) accelerationStructureBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
     }
 
+    tlas.updateMode = mTlasUpdateMode;
+
+    // On first build for the scene, create scratch buffer and cache prebuild info. As long as INSTANCE_DESC count doesn't change, we can reuse these
+    if (mpTlasScratch == nullptr) {
+        // Prebuild
+        uint32_t primitive_count = 1;
+
+        mTlasPrebuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+
+        vkGetAccelerationStructureBuildSizesKHR(mpDevice->getApiHandle(), VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+            &accelerationStructureBuildGeometryInfo, &primitive_count, &mTlasPrebuildInfo);
+
+        mpTlasScratch = Buffer::create(mpDevice, mTlasPrebuildInfo.buildScratchSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        mpTlasScratch->setName("Scene::mpTlasScratch");
+
+        // #SCENE This isn't guaranteed according to the spec, and the scratch buffer being stored should be sized differently depending on update mode
+        assert(mTlasPrebuildInfo.updateScratchSize <= mTlasPrebuildInfo.buildScratchSize);
+    }
+
+    // Setup GPU buffers
+    VkAccelerationStructureCreateInfoKHR accelerationStructureCreateInfo{};
+    accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    accelerationStructureCreateInfo.buffer = tlas.pTlas->getApiHandle();
+    accelerationStructureCreateInfo.size = mTlasPrebuildInfo.accelerationStructureSize;
+    accelerationStructureCreateInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    vkCreateAccelerationStructureKHR(mpDevice->getApiHandle(), &accelerationStructureCreateInfo, nullptr, &tlas.handle);
+
     // If first time building this TLAS
-    if (tlas.pTLAS == nullptr) {
-        LOG_WARN("first time building this TLAS");
-        tlas.pTLAS = TopLevelAccelerationStructure::create(mpDevice);
-        printf("1\n");
-        tlas.pTLAS->addInstances(mInstanceDescs);
-        printf("2\n");
-        if (!tlas.pTLAS->createAccelerationStructure(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)) {
-            throw std::runtime_error("Error creating TLAS !!!");
-        }
-        printf("3\n");
-        scratchByteSize =  std::max(scratchByteSize, tlas.pTLAS->scratchBufferSize());
-        printf("4\n");
-        mpTlasScratch = Buffer::create(mpDevice, scratchByteSize * 5, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-
-
-        VkResult result = vkQueueWaitIdle(mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0));
-        if(result != VK_SUCCESS) {
-            LOG_ERR("Error vkQueueWaitIdle(queue) main!!!");
-        }
-
-pContext->flush(true);
-pContext->getLowLevelData()->flush();
-
-auto queueFamilyIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
-VkQueue queue = mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 1);
-
-VkCommandPoolCreateInfo poolInfo{};
-poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-poolInfo.queueFamilyIndex = queueFamilyIndex;
-poolInfo.flags = 0; // Optional
-
-VkCommandPool commandPool;
-
-//if (vkCreateCommandPool(mpDevice->getApiHandle(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-//    throw std::runtime_error("failed to create command pool!");
-//}
-commandPool = pContext->getLowLevelData()->getCommandAllocator();
-
-//vkGetDeviceQueue(mpDevice->getApiHandle(), queueFamilyIndex, 2, &queue);
-
-
-VkDeviceSize scratch_buffer_size = 0;
-for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-    auto& group = mBlasGroups[blasGroupIndex];
-    scratch_buffer_size = std::max(scratch_buffer_size, group.pBLAS->scratchBufferSize());
-}
-
-printf("Scratch buffer size: %zu\n", scratch_buffer_size);
-auto pScratchBuffer = Buffer::create(mpDevice, scratch_buffer_size, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-
-oneTimeCommandBuffer(mpDevice, commandPool, queue, [&](VkCommandBuffer cmdBuff) {
-
-        // barrier to wait for build to finish
-        VkMemoryBarrier barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        const VkPipelineStageFlags src = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-        const VkPipelineStageFlags dst = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-
-        for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-            auto& group = mBlasGroups[blasGroupIndex];
-
-            LOG_WARN("Build blas....");
-
-            //auto pScratchBuffer = Buffer::create(mpDevice, scratch_buffer_size, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-            if(!group.pBLAS->build(cmdBuff, pScratchBuffer->getGpuAddress())) {
-                LOG_ERR("pBLAS not built!!!");
-            }
-            vkCmdPipelineBarrier(cmdBuff, src, dst, 0, 1, &barrier, 0, 0, 0, 0);
-        }
-
-
-        LOG_WARN("Build tlas....");
-        assert(mpTlasScratch);
-        //tlas.pTLAS->build(cmdBuff, mpTlasScratch->getGpuAddress());
-        LOG_WARN("22");
-        vkCmdPipelineBarrier(cmdBuff, src, dst | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, &barrier, 0, 0, 0, 0);
-});
-        // compact BLAS
-        // building must be finished to retrieve the compacted size, or vkGetQueryPoolResults will time out
-
-        bool COMPACT_BLAS = false;//true;
-
-        if (COMPACT_BLAS) {
-            LOG_WARN("COMPACT_BLAS");
-            std::vector<BottomLevelAccelerationStructure::SharedPtr> compacted_bottom_as_list;
-
-oneTimeCommandBuffer(mpDevice, commandPool, queue, [&](VkCommandBuffer cmdBuff) {
-            // one_time_command_buffer {
-            VkMemoryBarrier barrier = {};
-            barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-            barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-            
-            const VkPipelineStageFlags src = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-            const VkPipelineStageFlags dst = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-
-            for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-                auto& group = mBlasGroups[blasGroupIndex];
-                printf("blasGroupIndex %zu\n", blasGroupIndex);
-                AccelerationStructure::SharedPtr pCompactedBLAS = group.pBLAS->compact(cmdBuff);
-                printf("updateInstance\n");
-                tlas.pTLAS->updateInstance(blasGroupIndex, std::dynamic_pointer_cast<BottomLevelAccelerationStructure>(pCompactedBLAS));
-
-                //compacted_bottom_as_list.push_back(std::dynamic_pointer_cast<BottomLevelAccelerationStructure>(pCompactedBLAS));
-                // update the TLAS with references to the new compacted BLAS since their handles changed
-                //tlas.pTLAS->updateInstance(blasGroupIndex, compacted_bottom_as_list[blasGroupIndex]);
-            }
-            
-            LOG_WARN("33");
-            vkCmdPipelineBarrier(cmdBuff, src, dst, 0, 1, &barrier, 0, 0, 0, 0);
-            tlas.pTLAS->update(cmdBuff, mpTlasScratch->getGpuAddress());
-            vkCmdPipelineBarrier(cmdBuff, src, dst | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, &barrier, 0, 0, 0, 0);
-});
-            //}
-
-vkDestroyCommandPool(mpDevice->getApiHandle(), commandPool, nullptr);
-
-             for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-                auto& group = mBlasGroups[blasGroupIndex];
-                group.pBLAS = compacted_bottom_as_list[blasGroupIndex];
-            }
-        }
-
+    if (tlas.pTlas == nullptr) {
+        assert(tlas.pInstanceDescs == nullptr); // Instance desc should also be null if no TLAS
+        tlas.pTlas = Buffer::create(mpDevice, mTlasPrebuildInfo.accelerationStructureSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+        tlas.pTlas->setName("Scene TLAS buffer");
+        tlas.pInstanceDescs = Buffer::create(mpDevice, (uint32_t)mInstanceDescs.size() * sizeof(VkAccelerationStructureInstanceKHR), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
+        tlas.pInstanceDescs->setName("Scene instance descs buffer");
+    
     } else {
     // Updateing TLAS
         // Else update instance descs and barrier TLAS buffers
@@ -2973,34 +2672,57 @@ vkDestroyCommandPool(mpDevice->getApiHandle(), commandPool, nullptr);
         //asDesc.SourceAccelerationStructureData = tlas.pTlas->getGpuAddress(); // Perform the update in-place
     }
 
+    //assert((inputs.NumDescs != 0) && tlas.pInstanceDescs->getApiHandle() && tlas.pTlas->getApiHandle() && mpTlasScratch->getApiHandle());
+
+    VkAccelerationStructureBuildGeometryInfoKHR accelerationBuildGeometryInfo{};
+    accelerationBuildGeometryInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+    accelerationBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    accelerationBuildGeometryInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+    accelerationBuildGeometryInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    accelerationBuildGeometryInfo.dstAccelerationStructure = tlas.handle;
+    accelerationBuildGeometryInfo.geometryCount = 1;
+    accelerationBuildGeometryInfo.pGeometries = &accelerationStructureGeometry;
+    accelerationBuildGeometryInfo.scratchData.deviceAddress = mpTlasScratch->getGpuAddress();
+
+    //asDesc.Inputs.InstanceDescs = tlas.pInstanceDescs->getGpuAddress();
+    //asDesc.ScratchAccelerationStructureData = mpTlasScratch->getGpuAddress();
+    //asDesc.DestAccelerationStructureData = tlas.pTlas->getGpuAddress();
+
+    // Set the source buffer to update in place if this is an update
+    //if ((inputs.Flags & D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE) > 0) asDesc.srcAccelerationStructure = asDesc.dstAccelerationStructure;
+
+    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfo{};
+    accelerationStructureBuildRangeInfo.primitiveCount = 1;
+    accelerationStructureBuildRangeInfo.primitiveOffset = 0;
+    accelerationStructureBuildRangeInfo.firstVertex = 0;
+    accelerationStructureBuildRangeInfo.transformOffset = 0;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &accelerationStructureBuildRangeInfo };
+
+    // Create TLAS
+    pContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
+
+    vkCmdBuildAccelerationStructuresKHR(
+            pContext->getLowLevelData()->getCommandList(),
+            1,
+            &accelerationBuildGeometryInfo,
+            accelerationBuildStructureRangeInfos.data());
+
+    pContext->uavBarrier(tlas.pTlas.get());
 
     // Create TLAS SRV
-    //LOG_WARN("Create TLAS SRV");
-    //if (tlas.pSrv == nullptr) {
-    //    tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
-   // }
+    if (tlas.pSrv == nullptr) {
+        tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
+    }
 
     mTlasCache[rayCount] = tlas;
     updateRaytracingTLASStats();
 }
 
-void Scene::initRayTracing() {
-    if (mRayTraceInitialized) return;
-
-    auto graphicsQueueIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
-    mRtBuilder.setup(mpDevice->getApiHandle(), mpDevice->nvvkAllocator(), graphicsQueueIndex);
-    mRayTraceInitialized = true;
-}
-
-void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount)
-{
+void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
     logWarning("!!!!!!!!!!!!!!!!setRaytracingShaderData");
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
-    if (mBlasData.empty())
-    {
-        LOG_WARN("initGeomDesc");
+    if (mBlasData.empty()) {
         initGeomDesc(pContext);
-        LOG_WARN("buildBlas");
         buildBlas(pContext);
     }
 
@@ -3010,10 +2732,8 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
     //
     auto tlasIt = mTlasCache.find(rayTypeCount);
-    if (tlasIt == mTlasCache.end())
-    {
+    if (tlasIt == mTlasCache.end()) {
         // We need a hit entry per mesh right now to pass GeometryIndex()
-        LOG_WARN("buildTlas");
         buildTlas(pContext, rayTypeCount, true);
 
         // If new TLAS was just created, get it so the iterator is valid
@@ -3031,15 +2751,12 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     var["gScene"] = mpSceneBlock;
 }
 
-std::vector<uint32_t> Scene::getMeshBlasIDs() const
-{
+std::vector<uint32_t> Scene::getMeshBlasIDs() const {
     const uint32_t invalidID = uint32_t(-1);
     std::vector<uint32_t> blasIDs(mMeshDesc.size(), invalidID);
 
-    for (uint32_t blasID = 0; blasID < (uint32_t)mMeshGroups.size(); blasID++)
-    {
-        for (auto meshID : mMeshGroups[blasID].meshList)
-        {
+    for (uint32_t blasID = 0; blasID < (uint32_t)mMeshGroups.size(); blasID++) {
+        for (auto meshID : mMeshGroups[blasID].meshList) {
             assert(meshID < blasIDs.size());
             blasIDs[meshID] = blasID;
         }
@@ -3049,8 +2766,7 @@ std::vector<uint32_t> Scene::getMeshBlasIDs() const
     return blasIDs;
 }
 
-uint32_t Scene::getParentNodeID(uint32_t nodeID) const
-{
+uint32_t Scene::getParentNodeID(uint32_t nodeID) const {
     if (nodeID >= mSceneGraph.size()) throw std::runtime_error("Scene::getParentNodeID() - nodeID is out of range");
     return mSceneGraph[nodeID].parent;
 }

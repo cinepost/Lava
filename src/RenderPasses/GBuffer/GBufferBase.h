@@ -29,6 +29,7 @@
 #define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_
 
 #include "Falcor/Falcor.h"
+#include "Falcor/Scene/Scene.h"
 
 using namespace Falcor;
 

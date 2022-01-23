@@ -29,6 +29,7 @@
 
 import Scene.Raster;
 import Scene.Shading;
+//import Scene.RaytracingInline;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
@@ -49,6 +50,8 @@ cbuffer PerFrameCB {
 
   float4x4          gViewInvMat;
 };
+
+RaytracingAccelerationStructure gTlas;
 
 EnvMapLighting gEnvMapLighting;
 
@@ -82,6 +85,7 @@ struct PsOut
 #endif
 };
 
+
 [earlydepthstencil]
 PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
@@ -109,15 +113,43 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
-        float shadowFactor = 1;
-        if (i == 0)
-        {
+        float shadowFactor = 1.0;
+        //if (i == 0)
+        //{
             //shadowFactor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).r;
             //shadowFactor *= sd.opacity;
-        }
+        //}
 
         AnalyticLightSample ls;
         evalLightApproximate(sd.posW, gScene.getLight(i), ls);
+
+        // Test visibility by tracing a shadow ray.
+        float3 rayOrigin = sd.posW;
+        
+        //bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
+        //traceVisibilityRay(const RayDesc ray, uint rayFlags, uint instanceInclusionMask)
+
+        LightData light = gScene.getLight(i);
+
+
+        RayDesc ray;
+        ray.Origin = rayOrigin;
+        ray.Direction = normalize(light.posW - sd.posW);
+        ray.TMin = 0.001f;
+        ray.TMax = 1e4f;
+
+      //  RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
+
+        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+
+        let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
+
+        rayQuery.TraceRayInline(gTlas, rayFlags, 0xff, ray);
+        rayQuery.Proceed();
+        shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+
+        //shadowFactor = V ? 1.0 : 0.0;
+
         finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
     }
 
