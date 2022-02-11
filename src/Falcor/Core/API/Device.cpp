@@ -95,15 +95,13 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
         .setDescCount(DescriptorPool::Type::RawBufferSrv, 2 * 1024)
         .setDescCount(DescriptorPool::Type::RawBufferUav, 2 * 1024);
 #endif
+
     mpFrameFence = GpuFence::create(shared_from_this());
     mpGpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
     poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
     mpCpuDescPool = DescriptorPool::create(shared_from_this(), poolDesc, mpFrameFence);
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-
-    //mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
-
     assert(mpRenderContext);
 
     mpResourceManager = ResourceManager::create(shared_from_this());

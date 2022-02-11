@@ -28,6 +28,7 @@
 #pragma once
 
 #include "Falcor/Falcor.h"
+#include "Falcor/Scene/Scene.h"
 
 using namespace Falcor;
 

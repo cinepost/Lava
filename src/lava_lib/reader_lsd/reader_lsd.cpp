@@ -88,6 +88,8 @@ bool ReaderLSD::parseStream(std::istream& in) {
 
         begin = str.begin(); end = str.end();
         
+        std::cout << str << std::endl;
+
         std::vector<lsd::ast::Command> commands; // ast tree
         bool result = x3::phrase_parse(begin, end, lsd::parser::input, lsd::parser::skipper, commands); 
 
@@ -101,6 +103,7 @@ bool ReaderLSD::parseStream(std::istream& in) {
         }
 
         for (auto& cmd : commands) {
+
             if (!mpVisitor->ignoreCommands()) {
                 //try {
                     boost::apply_visitor(*mpVisitor, cmd);
@@ -117,8 +120,15 @@ bool ReaderLSD::parseStream(std::istream& in) {
                 //    return false;
                 //}
             }
+
+            if(mpVisitor->readyToQuit()) {
+                eof = true;
+                break;
+            } 
         }
     }
+
+    printf("ReaderLSD done!\n");
 
     return true;
 }

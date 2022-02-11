@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 #include "PathTracer.h"
+#include "Experimental/Scene/Material/TexLODTypes.slang"
 #include <sstream>
 
 namespace Falcor
@@ -37,31 +38,41 @@ namespace Falcor
         // TODO: Figure out a cleaner design for this. Should we have enums for all the channels?
         const std::string kViewDirInput = "viewW";
 
+        const std::string kRayCountOutput = "rayCount";
+        const std::string kPathLengthOutput = "pathLength";
+
         const Falcor::ChannelList kGBufferInputChannels =
         {
             { "posW",           "gWorldPosition",             "World-space position (xyz) and foreground flag (w)"       },
             { "normalW",        "gWorldShadingNormal",        "World-space shading normal (xyz)"                         },
-            { "bitangentW",     "gWorldShadingBitangent",     "World-space shading bitangent (xyz)", true /* optional */ },
+            { "tangentW",       "gWorldShadingTangent",       "World-space shading tangent (xyz) and sign (w)", true /* optional */ },
             { "faceNormalW",    "gWorldFaceNormal",           "Face normal in world space (xyz)",                        },
             { kViewDirInput,    "gWorldView",                 "World-space view direction (xyz)", true /* optional */    },
             { "mtlDiffOpacity", "gMaterialDiffuseOpacity",    "Material diffuse color (xyz) and opacity (w)"             },
             { "mtlSpecRough",   "gMaterialSpecularRoughness", "Material specular color (xyz) and roughness (w)"          },
             { "mtlEmissive",    "gMaterialEmissive",          "Material emissive color (xyz)"                            },
             { "mtlParams",      "gMaterialExtraParams",       "Material parameters (IoR, flags etc)"                     },
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format",  true /* optional */, ResourceFormat::RG32Uint },
+            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format",  true /* optional */, ResourceFormat::Unknown },
         };
 
         const Falcor::ChannelList kVBufferInputChannels =
         {
-            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed 64-bit format", false, ResourceFormat::RG32Uint },
+            { "vbuffer",        "gVBuffer",                   "Visibility buffer in packed format", false, ResourceFormat::Unknown },
         };
+
+        const Falcor::ChannelList kPixelStatsOutputChannels =
+        {
+            { kRayCountOutput,  "",                           "Per-pixel ray count", true /* optional */, ResourceFormat::R32Uint    },
+            { kPathLengthOutput,"",                           "Per-pixel path length", true /* optional */, ResourceFormat::R32Uint  },
+        };
+
     };
 
     static_assert(has_vtable<PathTracerParams>::value == false, "PathTracerParams must be non-virtual");
     static_assert(sizeof(PathTracerParams) % 16 == 0, "PathTracerParams size should be a multiple of 16");
     static_assert(kMaxPathLength > 0 && ((kMaxPathLength & (kMaxPathLength + 1)) == 0), "kMaxPathLength should be 2^N-1");
 
-    PathTracer::PathTracer(const Dictionary& dict, const ChannelList& outputs)
+    PathTracer::PathTracer(Device::SharedPtr pDevice, const Dictionary& dict, const ChannelList& outputs)
         : mOutputChannels(outputs)
     {
         // Deserialize pass from dictionary.
@@ -77,7 +88,7 @@ namespace Falcor
         // Stats and debugging utils.
         mpPixelStats = PixelStats::create();
         assert(mpPixelStats);
-        mpPixelDebug = PixelDebug::create();
+        mpPixelDebug = PixelDebug::create(pDevice);
         assert(mpPixelDebug);
     }
 
@@ -94,6 +105,7 @@ namespace Falcor
 
         addRenderPassInputs(reflector, mInputChannels);
         addRenderPassOutputs(reflector, mOutputChannels);
+        addRenderPassOutputs(reflector, kPixelStatsOutputChannels);
 
         return reflector;
     }
@@ -102,7 +114,6 @@ namespace Falcor
     {
         mSharedParams.frameDim = compileData.defaultTexDims;
     }
-
 
     void PathTracer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
     {
@@ -129,41 +140,29 @@ namespace Falcor
             logError("'maxBounces' exceeds the maximum supported path length. Clamping to " + std::to_string(kMaxPathLength));
             mSharedParams.maxBounces = kMaxPathLength;
         }
+
+        if (mSharedParams.maxNonSpecularBounces > mSharedParams.maxBounces)
+        {
+            logWarning("'maxNonSpecularBounces' exceeds 'maxBounces'. Clamping to " + std::to_string(mSharedParams.maxBounces));
+            mSharedParams.maxNonSpecularBounces = mSharedParams.maxBounces;
+        }
+
+        if (mSharedParams.specularRoughnessThreshold < 0.f || mSharedParams.specularRoughnessThreshold > 1.f)
+        {
+            logError("'specularRoughnessThreshold' has invalid value. Clamping to the range [0,1].");
+            mSharedParams.specularRoughnessThreshold = std::clamp(mSharedParams.specularRoughnessThreshold, 0.f, 1.f);
+        }
     }
 
     bool PathTracer::initLights(RenderContext* pRenderContext)
     {
         // Clear lighting data for previous scene.
+        mpEnvMapSampler = nullptr;
         mpEmissiveSampler = nullptr;
         mUseEmissiveLights = mUseEmissiveSampler = mUseAnalyticLights = mUseEnvLight = false;
-        mSharedParams.lightCountPoint = 0;
-        mSharedParams.lightCountDirectional = 0;
-        mSharedParams.lightCountAnalyticArea = 0;
 
         // If we have no scene, we're done.
         if (mpScene == nullptr) return true;
-
-        // Setup for analytic lights.
-        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-        {
-            switch (mpScene->getLight(i)->getType())
-            {
-            case LightType::Point:
-                mSharedParams.lightCountPoint++;
-                break;
-            case LightType::Directional:
-                mSharedParams.lightCountDirectional++;
-                break;
-            case LightType::Rect:
-            case LightType::Sphere:
-            case LightType::Disc:
-                mSharedParams.lightCountAnalyticArea++;
-                break;
-            default:
-                logError("Scene has invalid light types. Aborting.");
-                return false;
-            }
-        }
 
         return true;
     }
@@ -181,8 +180,42 @@ namespace Falcor
         }
 
         bool lightingChanged = false;
-        
-        if (!mSharedParams.useEmissiveLights)
+
+        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::EnvMapChanged))
+        {
+            mpEnvMapSampler = nullptr;
+            lightingChanged = true;
+        }
+
+        // Configure light sampling.
+        mUseAnalyticLights = mpScene->useAnalyticLights();
+
+        // Configure env map sampling.
+        if (mpScene->useEnvLight())
+        {
+            if (!mpEnvMapSampler)
+            {
+                mpEnvMapSampler = EnvMapSampler::create(pRenderContext, mpScene->getEnvMap());
+                lightingChanged = true;
+            }
+        }
+        else
+        {
+            if (mpEnvMapSampler)
+            {
+                mpEnvMapSampler = nullptr;
+                lightingChanged = true;
+            }
+        }
+        mUseEnvLight = mpScene->useEnvLight() && mpEnvMapSampler != nullptr;
+
+        // Request the light collection if emissive lights are enabled.
+        if (mpScene->getRenderSettings().useEmissiveLights)
+        {
+            mpScene->getLightCollection(pRenderContext);
+        }
+
+        if (!mpScene->useEmissiveLights())
         {
             mUseEmissiveLights = mUseEmissiveSampler = false;
             mpEmissiveSampler = nullptr;
@@ -190,14 +223,11 @@ namespace Falcor
         else
         {
             mUseEmissiveLights = true;
-            mUseEmissiveSampler = mSharedParams.useEmissiveLightSampling;
+            mUseEmissiveSampler = mSharedParams.useNEE;
 
             if (!mUseEmissiveSampler)
             {
                 mpEmissiveSampler = nullptr;
-
-                // Update shared parameters.
-                mSharedParams.lightCountTriangle = 0;
             }
             else
             {
@@ -212,6 +242,9 @@ namespace Falcor
                     case EmissiveLightSamplerType::LightBVH:
                         mpEmissiveSampler = LightBVHSampler::create(pRenderContext, mpScene, mLightBVHSamplerOptions);
                         break;
+                    case EmissiveLightSamplerType::Power:
+                        mpEmissiveSampler = EmissivePowerSampler::create(pRenderContext, mpScene);
+                        break;
                     default:
                         logError("Unknown emissive light sampler type");
                     }
@@ -223,17 +256,6 @@ namespace Falcor
                 // Update the emissive sampler to the current frame.
                 assert(mpEmissiveSampler);
                 lightingChanged = mpEmissiveSampler->update(pRenderContext);
-
-                const auto& lightCollection = mpScene->getLightCollection(pRenderContext);
-
-                // Update shared parameters.
-                mSharedParams.lightCountTriangle = lightCollection ? lightCollection->getActiveLightCount() : 0;
-
-                // Disable emissive for the current frame if there are no active lights.
-                if (!lightCollection || lightCollection->getActiveLightCount() == 0)
-                {
-                    mUseEmissiveLights = mUseEmissiveSampler = false;
-                }
             }
         }
 
@@ -250,7 +272,8 @@ namespace Falcor
         bool traceShadowRays = mUseAnalyticLights || mUseEnvLight || mUseEmissiveSampler;
         bool traceScatterRayFromLastPathVertex =
             (mUseEnvLight && mSharedParams.useMIS) ||
-            (mUseEmissiveLights && (!mUseEmissiveSampler || mSharedParams.useMIS));
+            (mUseEmissiveLights && (!mSharedParams.useNEE || mSharedParams.useMIS)) ||
+            (mSharedParams.useLegacyBSDF == false); // New BSDF supports delta and transmission events, requiring an extra scatter ray.
 
         uint32_t shadowRays = traceShadowRays ? mSharedParams.lightSamplesPerVertex * (mSharedParams.maxBounces + 1) : 0;
         uint32_t scatterRays = mSharedParams.maxBounces + (traceScatterRayFromLastPathVertex ? 1 : 0);
@@ -270,12 +293,15 @@ namespace Falcor
         auto& dict = renderData.getDictionary();
         if (mOptionsChanged || lightingChanged)
         {
-            auto flags = (Falcor::RenderPassRefreshFlags)(dict.keyExists(kRenderPassRefreshFlags) ? dict[Falcor::kRenderPassRefreshFlags] : 0u);
+            auto flags = dict.getValue(kRenderPassRefreshFlags, Falcor::RenderPassRefreshFlags::None);
             if (mOptionsChanged) flags |= Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
             if (lightingChanged) flags |= Falcor::RenderPassRefreshFlags::LightingChanged;
-            dict[Falcor::kRenderPassRefreshFlags] = (uint32_t)flags;
+            dict[Falcor::kRenderPassRefreshFlags] = flags;
             mOptionsChanged = false;
         }
+
+        // Check if GBuffer has adjusted shading normals enabled.
+        mGBufferAdjustShadingNormals = dict.getValue(Falcor::kRenderPassGBufferAdjustShadingNormals, false);
 
         // If we have no scene, just clear the outputs and return.
         if (!mpScene)
@@ -306,6 +332,22 @@ namespace Falcor
         // Get the PRNG start dimension from the dictionary as preceeding passes may have used some dimensions for lens sampling.
         mSharedParams.prngDimension = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
+        // Enable pixel stats if rayCount or pathLength outputs are connected.
+        if (renderData[kRayCountOutput] != nullptr || renderData[kPathLengthOutput] != nullptr) mpPixelStats->setEnabled(true);
+
+        // Check a vBuffer is attached for ray footprint.
+        if (mIsRayFootprintSupported && renderData["vbuffer"] == nullptr)
+        {
+            logWarning("Disabling ray footprint since it requires a vbuffer input.");
+            mIsRayFootprintSupported = false;
+            mSharedParams.rayFootprintMode = 0;
+        }
+
+        // Update the spread angle parameter for ray footprint.
+        const uint2 targetDim = renderData.getDefaultTextureDims();
+        assert(targetDim.x > 0 && targetDim.y > 0);
+        mSharedParams.screenSpacePixelSpreadAngle = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(targetDim.y);
+
         mpPixelDebug->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
         mpPixelStats->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
 
@@ -317,23 +359,24 @@ namespace Falcor
         mpPixelDebug->endFrame(pRenderContext);
         mpPixelStats->endFrame(pRenderContext);
 
-        // Generate ray count output if it is exists.
-        Texture* pDstRayCount = renderData["rayCount"]->asTexture().get();
-        if (pDstRayCount)
+        auto copyTexture = [pRenderContext](Texture* pDst, const Texture* pSrc)
         {
-            Texture* pSrcRayCount = mpPixelStats->getRayCountBuffer().get();
-            if (pSrcRayCount == nullptr)
+            if (pDst && pSrc)
             {
-                pRenderContext->clearUAV(pDstRayCount->getUAV().get(), uint4(0, 0, 0, 0));
+                assert(pDst && pSrc);
+                assert(pDst->getFormat() == pSrc->getFormat());
+                assert(pDst->getWidth() == pSrc->getWidth() && pDst->getHeight() == pSrc->getHeight());
+                pRenderContext->copyResource(pDst, pSrc);
             }
-            else
+            else if (pDst)
             {
-                assert(pDstRayCount && pSrcRayCount);
-                assert(pDstRayCount->getFormat() == pSrcRayCount->getFormat());
-                assert(pDstRayCount->getWidth() == pSrcRayCount->getWidth() && pDstRayCount->getHeight() == pSrcRayCount->getHeight());
-                pRenderContext->copyResource(pDstRayCount, pSrcRayCount);
+                pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0, 0, 0, 0));
             }
-        }
+        };
+
+        // Copy pixel stats to outputs if available.
+        copyTexture(renderData[kRayCountOutput]->asTexture().get(), mpPixelStats->getRayCountTexture(pRenderContext).get());
+        copyTexture(renderData[kPathLengthOutput]->asTexture().get(), mpPixelStats->getPathLengthTexture().get());
 
         mSharedParams.frameCount++;
     }
@@ -346,22 +389,33 @@ namespace Falcor
         defines.add("SAMPLES_PER_PIXEL", std::to_string(mSharedParams.samplesPerPixel));
         defines.add("LIGHT_SAMPLES_PER_VERTEX", std::to_string(mSharedParams.lightSamplesPerVertex));
         defines.add("MAX_BOUNCES", std::to_string(mSharedParams.maxBounces));
+        defines.add("MAX_NON_SPECULAR_BOUNCES", std::to_string(mSharedParams.maxNonSpecularBounces));
+        defines.add("USE_ALPHA_TEST", mSharedParams.useAlphaTest ? "1" : "0");
+        defines.add("ADJUST_SHADING_NORMALS", mSharedParams.adjustShadingNormals ? "1" : "0");
         defines.add("FORCE_ALPHA_ONE", mSharedParams.forceAlphaOne ? "1" : "0");
         defines.add("USE_ANALYTIC_LIGHTS", mUseAnalyticLights ? "1" : "0");
         defines.add("USE_EMISSIVE_LIGHTS", mUseEmissiveLights ? "1" : "0");
-        defines.add("USE_EMISSIVE_SAMPLER", mUseEmissiveSampler ? "1" : "0");
         defines.add("USE_ENV_LIGHT", mUseEnvLight ? "1" : "0");
         defines.add("USE_ENV_BACKGROUND", mpScene->useEnvBackground() ? "1" : "0");
         defines.add("USE_BRDF_SAMPLING", mSharedParams.useBRDFSampling ? "1" : "0");
+        defines.add("USE_NEE", mSharedParams.useNEE ? "1" : "0");
         defines.add("USE_MIS", mSharedParams.useMIS ? "1" : "0");
         defines.add("MIS_HEURISTIC", std::to_string(mSharedParams.misHeuristic));
         defines.add("USE_RUSSIAN_ROULETTE", mSharedParams.useRussianRoulette ? "1" : "0");
         defines.add("USE_VBUFFER", mSharedParams.useVBuffer ? "1" : "0");
         defines.add("USE_NESTED_DIELECTRICS", mSharedParams.useNestedDielectrics ? "1" : "0");
-        defines.add("USE_LIGHT_SAMPLES_IN_VOLUMES", mSharedParams.useLightSamplesInVolumes ? "1" : "0");
+        defines.add("USE_LIGHTS_IN_DIELECTRIC_VOLUMES", mSharedParams.useLightsInDielectricVolumes ? "1" : "0");
+        defines.add("DISABLE_CAUSTICS", mSharedParams.disableCaustics ? "1" : "0");
 
-        // Defines in MaterialShading.slang
+        // Defines in MaterialShading.slang.
         defines.add("_USE_LEGACY_SHADING_CODE", mSharedParams.useLegacyBSDF ? "1" : "0");
+
+        defines.add("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
+
+        // Defines for ray footprint.
+        defines.add("RAY_FOOTPRINT_MODE", std::to_string(mSharedParams.rayFootprintMode));
+        defines.add("RAY_CONE_MODE", std::to_string(mSharedParams.rayConeMode));
+        defines.add("RAY_FOOTPRINT_USE_MATERIAL_ROUGHNESS", std::to_string(mSharedParams.rayFootprintUseRoughness));
 
         pProgram->addDefines(defines);
     }
@@ -370,39 +424,45 @@ namespace Falcor
     SCRIPT_BINDING(PathTracer)
     {
         // Register our parameters struct.
-        auto params = m.regClass(PathTracerParams);
-#define field(f_) rwField(#f_, &PathTracerParams::f_)
+        ScriptBindings::SerializableStruct<PathTracerParams> params(m, "PathTracerParams");
+#define field(f_) field(#f_, &PathTracerParams::f_)
         // General
         params.field(samplesPerPixel);
         params.field(lightSamplesPerVertex);
         params.field(maxBounces);
+        params.field(maxNonSpecularBounces);
+
         params.field(useVBuffer);
+        params.field(useAlphaTest);
+        params.field(adjustShadingNormals);
         params.field(forceAlphaOne);
+
         params.field(clampSamples);
         params.field(clampThreshold);
-
-        // Lighting
-        params.field(useAnalyticLights);
-        params.field(useEmissiveLights);
-        params.field(useEnvLight);
-        params.field(useEnvBackground);
+        params.field(specularRoughnessThreshold);
 
         // Sampling
         params.field(useBRDFSampling);
+        params.field(useNEE);
         params.field(useMIS);
         params.field(misHeuristic);
-        params.field(misPowerExponent);
 
-        params.field(useEmissiveLightSampling);
+        params.field(misPowerExponent);
         params.field(useRussianRoulette);
         params.field(probabilityAbsorption);
         params.field(useFixedSeed);
 
         params.field(useLegacyBSDF);
         params.field(useNestedDielectrics);
-        params.field(useLightSamplesInVolumes);
+        params.field(useLightsInDielectricVolumes);
+        params.field(disableCaustics);
 
+        // Ray footprint
+        params.field(rayFootprintMode);
+        params.field(rayConeMode);
+        params.field(rayFootprintUseRoughness);
 #undef field
     }
 #endif  // SCRIPTING
+
 }

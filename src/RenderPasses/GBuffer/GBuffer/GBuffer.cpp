@@ -30,8 +30,7 @@
 // List of primary GBuffer channels. These correspond to the render targets
 // used in the GBufferRaster pixel shader. Note that channel order should
 // correspond to SV_TARGET index order.
-const ChannelList GBuffer::kGBufferChannels =
-{
+const ChannelList GBuffer::kGBufferChannels = {
     { "posW",           "gPosW",            "world space position",         true /* optional */, ResourceFormat::RGBA32Float },
     { "normW",          "gNormW",           "world space normal",           true /* optional */, ResourceFormat::RGBA32Float },
     { "tangentW",       "gTangentW",        "world space tangent",          true /* optional */, ResourceFormat::RGBA32Float },

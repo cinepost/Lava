@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ struct EnvMapSampler
 
     /** Importance sampling of the environment map.
     */
-    bool sample(const float2 rnd, inout EnvMapSample result)
+    bool sample(const float2 rnd, out EnvMapSample result)
     {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.
@@ -126,7 +126,7 @@ struct EnvMapSampler
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap[pos] / avg_w;
 
-        result.dir = gScene.envMap.toWorld(dir);
+        result.dir = normalize(gScene.envMap.toWorld(dir));
         result.pdf = pdf * M_1_4PI;
         result.Le = gScene.envMap.eval(result.dir);
 

@@ -42,15 +42,12 @@ DeviceManager::DeviceManager() {
 }
 
 DeviceManager::~DeviceManager() {
-    LOG_DBG("DeviceManager::~DeviceManager");
     for( auto& [id, pDevice]: mRenderingDevices ) {
         if (pDevice) {
             pDevice->cleanup();
             pDevice.reset();
         }
     }
-    
-    LOG_DBG("DeviceManager::~DeviceManager done");
 }
 
 //static

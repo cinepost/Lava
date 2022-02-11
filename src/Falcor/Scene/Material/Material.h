@@ -32,6 +32,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Scene/Transform.h"
+#include "Falcor/Utils/Image/TextureAnalyzer.h"
 
 #include "MaterialData.slang"
 #include "MaterialDefines.slangh"
@@ -60,6 +61,16 @@ namespace Falcor {
             - RGB - Specular Color
             - A   - Gloss
 
+    ShadingModelHairChiang16
+        BaseColor
+            - RGB - Absorption coefficient, sigmaA
+            - A   - Unused
+        Specular
+            - R   - Longitudinal roughness, betaM
+            - G   - Azimuthal roughness, betaN
+            - B   - The angle that the small scales on the surface of hair are offset from the base cylinder (in degrees).
+            - A   - Unused
+
     Common for all shading models
         Emissive
             - RGB - Emissive Color
@@ -81,6 +92,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
         None                = 0x0,  ///< Nothing updated
         DataChanged         = 0x1,  ///< Material data (properties) changed
         ResourcesChanged    = 0x2,  ///< Material resources (textures, sampler) changed
+        DisplacementChanged = 0x4,  ///< Displacement changed
     };
 
     /** Texture slots available in the material
@@ -91,11 +103,16 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
         Roughness,
         Emissive,
         Normal,
-        Occlusion,
-        SpecularTransmission,
+        Transmission,
         Displacement,
 
         Count // Must be last
+    };
+
+    struct TextureOptimizationStats {
+        std::array<size_t, (size_t)TextureSlot::Count> texturesRemoved = {};
+        size_t disabledAlpha = 0;
+        size_t constantNormalMaps = 0;
     };
 
     /** Create a new material.
@@ -129,6 +146,14 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     const std::string& getName() const { return mName; }
 
+    /** Set the material type.
+    */
+    void setType(MaterialType type);
+
+    /** Get the material type.
+    */
+    MaterialType getType() const { return static_cast<MaterialType>(mData.type); }
+
     /** Set one of the available texture slots.
     */
     void setTexture(TextureSlot slot, Texture::SharedPtr pTexture);
@@ -144,6 +169,18 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     /** Get one of the available texture slots.
     */
     Texture::SharedPtr getTexture(TextureSlot slot) const;
+
+    /** Optimize texture usage for the given texture slot.
+        This function may replace constant textures by uniform material parameters etc.
+        \param[in] slot The texture slot.
+        \param[in] texInfo Information about the texture bound to this slot.
+        \param[out] stats Optimization stats passed back to the caller.
+    */
+    void optimizeTexture(TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats);
+
+    /** If present, prepares the displacement maps in order to match the format required for rendering.
+    */
+    void prepareDisplacementMapForRendering();
 
     /** Return the maximum dimensions of the bound textures.
     */
@@ -188,11 +225,11 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 
     /** Set the specular transmission texture
     */
-    void setSpecularTransmissionTexture(const Texture::SharedPtr& pTransmission);
+    void setTransmissionTexture(const Texture::SharedPtr& pTransmission) { setTexture(TextureSlot::Transmission, pTransmission); }
 
     /** Get the specular transmission texture
     */
-    Texture::SharedPtr getSpecularTransmissionTexture() const { return mResources.specularTransmission; }
+    Texture::SharedPtr getTransmissionTexture() const { return getTexture(TextureSlot::Transmission); }
 
     /** Set the shading model
     */
@@ -210,13 +247,29 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     Texture::SharedPtr getNormalMap() const { return mResources.normalMap; }
 
-    /** Set the occlusion map
+    /** Set the displacement map
     */
-    void setOcclusionMap(Texture::SharedPtr pOcclusionMap);
+    void setDisplacementMap(Texture::SharedPtr pDisplacementMap) { setTexture(TextureSlot::Displacement, pDisplacementMap); }
 
-    /** Get the occlusion map
+    /** Get the displacement map
     */
-    Texture::SharedPtr getOcclusionMap() const { return mResources.occlusionMap; }
+    Texture::SharedPtr getDisplacementMap() const { return getTexture(TextureSlot::Displacement); }
+
+    /** Set the displacement scale
+    */
+    void setDisplacementScale(float scale);
+
+    /** Get the displacement scale
+    */
+    float getDisplacementScale() const { return mData.displacementScale; }
+
+    /** Set the displacement offset
+    */
+    void setDisplacementOffset(float offset);
+
+    /** Get the displacement offset
+    */
+    float getDisplacementOffset() const { return mData.displacementOffset; }
 
     /** Set the base color
     */
@@ -254,6 +307,22 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     float getMetallic() const { return getShadingModel() == ShadingModelMetalRough ? mData.specular.b : 0.f; }
 
+    /** Set the transmission color
+    */
+    void setTransmissionColor(const float3& transmissionColor);
+
+    /** Get the transmission color
+    */
+    const float3& getTransmissionColor() const { return mData.transmission; }
+
+    /** Set the diffuse transmission
+    */
+    void setDiffuseTransmission(float diffuseTransmission);
+
+    /** Get the diffuse transmission
+    */
+    float getDiffuseTransmission() const { return mData.diffuseTransmission; }
+
     /** Set the specular transmission
     */
     void setSpecularTransmission(float specularTransmission);
@@ -261,6 +330,7 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     /** Get the specular transmission
     */
     float getSpecularTransmission() const { return mData.specularTransmission; }
+
 
     /** Set the volume absorption (absorption coefficient).
     */
@@ -293,6 +363,14 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     /** Get the alpha mode
     */
     uint32_t getAlphaMode() const { return EXTRACT_ALPHA_MODE(mData.flags); }
+
+    /** Returns true if the material is opaque.
+    */
+    bool isOpaque() const { return getAlphaMode() == AlphaModeOpaque; }
+
+    /** Get the normal map type.
+    */
+    uint32_t getNormalMapType() const { return EXTRACT_NORMAL_MAP_TYPE(mData.flags); }
 
     /** Set the double-sided flag. This flag doesn't affect the rasterizer state, just the shading
     */
@@ -374,31 +452,60 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
     */
     const Transform& getTextureTransform() const { return mTextureTransform; }
 
+    std::shared_ptr<Device> device() const { return mpDevice; }
+
 private:
-    void markUpdates(UpdateFlags updates);
-
-    void setFlags(uint32_t flags);
-        void updateBaseColorType();
-        void updateSpecularType();
-        void updateEmissiveType();
-        void updateRoughnessType();
-        void updateSpecularTransmissionType();
-        void updateAlphaMode();
-        void updateNormalMapMode();
-        void updateOcclusionFlag();
-        void updateDisplacementFlag();
-
     Material(std::shared_ptr<Device> pDevice, const std::string& name);
+
+    void markUpdates(UpdateFlags updates);
+    void setFlags(uint32_t flags);
+    void updateBaseColorType();
+    void updateSpecularType();
+    void updateEmissiveType();
+    void updateRoughnessType();
+    void updateTransmissionType();
+    void updateAlphaMode();
+    void updateNormalMapMode();
+    void updateDoubleSidedFlag();
+    void updateDisplacementFlag();
+
     std::string mName;
     MaterialData mData;
     MaterialResources mResources;
     Transform mTextureTransform;
+    bool mDoubleSided = false;
+
+    // Additional data to optimize texture access.
+    float2 mAlphaRange = float2(0.f, 1.f);      ///< Conservative range of opacity (alpha) values for the material.
+    bool mIsTexturedBaseColorConstant = false;  ///< Flag indicating if the color channels of the base color texture are constant.
+    bool mIsTexturedAlphaConstant = false;      ///< Flag indicating if the alpha channel of the base color texture is constant.
+
     bool mOcclusionMapEnabled = false;
     mutable UpdateFlags mUpdates = UpdateFlags::None;
     static UpdateFlags sGlobalUpdates;
 
     std::shared_ptr<Device> mpDevice;
+
+    friend class SceneCache;
 };
+
+inline std::string to_string(Material::TextureSlot slot)
+    {
+#define type_2_string(a) case Material::TextureSlot::a: return #a;
+        switch (slot)
+        {
+            type_2_string(BaseColor);
+            type_2_string(Specular);
+            type_2_string(Emissive);
+            type_2_string(Normal);
+            type_2_string(Transmission);
+            type_2_string(Displacement);
+        default:
+            should_not_get_here();
+            return "";
+        }
+#undef type_2_string
+    }
 
 enum_class_operators(Material::UpdateFlags);
 }

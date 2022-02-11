@@ -14,9 +14,7 @@ RendererIface::RendererIface(std::shared_ptr<Renderer> pRenderer): mpRenderer(pR
 }
 
 RendererIface::~RendererIface() {
-	LLOG_DBG << "RendererIface::~RendererIface";
-	//if (mpRenderer) delete mpRenderer;
-	LLOG_DBG << "RendererIface::~RendererIface done";
+	//if (mpRenderer) mpRenderer = nullptr;
 }
 
 void RendererIface::setEnvVariable(const std::string& key, const std::string& value){

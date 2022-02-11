@@ -8,7 +8,7 @@
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
 
-#include "Falcor/Experimental/Scene/Lights/EnvMap.h"
+#include "Falcor/Scene/Lights/EnvMap.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -113,8 +113,6 @@ void Renderer::initGlobalData(const RendererIface::GlobalData& global_data) {
 }
 
 Renderer::~Renderer() {
-    LLOG_DBG << "Renderer::~Renderer";
-
     if(!mInited)
         return;
 
@@ -141,8 +139,6 @@ Renderer::~Renderer() {
     mpDevice.reset();
 
     Falcor::OSServices::stop();
-
-    LLOG_DBG << "Renderer::~Renderer done";
 }
 
 std::unique_ptr<RendererIface> Renderer::aquireInterface() {
@@ -167,6 +163,7 @@ bool Renderer::addPlane(const RendererIface::PlaneData plane_data) {
         return false;
     }
     mPlanes[plane_data.channel] = plane_data;
+    LLOG_DBG << "Output plane " << plane_data.name << " added !";
 
     return true;
 }
@@ -226,23 +223,35 @@ void Renderer::createRenderGraph() {
         }
     }
 
-    //// create env map stuff
+    //// EnvMapSampler stuff
     Texture::SharedPtr pEnvTexture = nullptr;
     if (pEnvTexture) {
         auto pEnvMap = Falcor::EnvMap::create(mpDevice, pEnvTexture);
         //pEnvMap->setTint(...);
         pScene->setEnvMap(pEnvMap);
     }
+
+    //EnvMapSampler::SharedPtr pEnvMapSampler = nullptr;
+    auto pEnvMap = pScene->getEnvMap();
+
+    //if (pEnvMap) {
+    //    pEnvMapSampler = EnvMapSampler::create(pRenderContext, pEnvMap);
+    //}
+
     ////
 
     // Rasterizer state
+    RasterizerState::CullMode cullMode;
     Falcor::RasterizerState::Desc rsDesc;
     const std::string& cull_mode = confgStore.get<std::string>("cull_mode", "none");
     if (cull_mode == "back") {
+        cullMode = RasterizerState::CullMode::Back;
         rsDesc.setCullMode(RasterizerState::CullMode::Back);
     } else if (cull_mode == "front") {
+        cullMode = RasterizerState::CullMode::Front;
         rsDesc.setCullMode(RasterizerState::CullMode::Front);
     } else {
+        cullMode = RasterizerState::CullMode::None;
         rsDesc.setCullMode(RasterizerState::CullMode::None);
     }
     rsDesc.setFillMode(RasterizerState::FillMode::Solid);
@@ -255,12 +264,11 @@ void Renderer::createRenderGraph() {
         // Depth pre-pass
         Falcor::Dictionary depthPrePassDictionary;
         depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
-        depthPrePassDictionary["buildHiZ"] = false;
 
         auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
         pDepthPrePass->setDepthBufferFormat(ResourceFormat::D32Float);
         pDepthPrePass->setScene(pRenderContext, pScene);
-        pDepthPrePass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+        pDepthPrePass->setCullMode(cullMode);
         mpTexturesResolvePassGraph->addPass(pDepthPrePass, "DepthPrePass");
 
         // Vitrual textures resolve pass
@@ -280,53 +288,49 @@ void Renderer::createRenderGraph() {
     // Main render graph
     auto mainChannelOutputFormat = ResourceFormat::RGBA16Float;
     mpRenderGraph = RenderGraph::create(mpDevice, imageSize, mainChannelOutputFormat, "MainImageRenderGraph");
-    //mpRenderGraph->compile(pRenderContext);
-
+    
     // Depth pass
     Falcor::Dictionary depthPassDictionary;
     depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
     depthPassDictionary["maxMipLevels"] = (uint8_t)5;
 
-    if(mGlobalData.use_ssao) {
-        depthPassDictionary["buildHiZ"] = true;
-    }
 
-    LOG_ERR("DepthPass 0");
     mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
     mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPass->setScene(pRenderContext, pScene);
-    mpDepthPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
-    LOG_ERR("DepthPass 1");
+    mpDepthPass->setCullMode(cullMode);
     mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-    LOG_ERR("DepthPass 2");
 
-    // HBAO pass
-    if(mGlobalData.use_ssao) {
-        Falcor::Dictionary hbaoPassDictionary;
-        hbaoPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
+    // Test GBuffer pass
+    mpGBufferRasterPass = GBufferRaster::create(pRenderContext);
+    auto gbuffer_pass = mpRenderGraph->addPass(mpGBufferRasterPass, "GBufferRasterPass");
 
-        LOG_ERR("HBAOPass 0");
-        mpHBAOpass = HBAO::create(pRenderContext, hbaoPassDictionary);
-        mpHBAOpass->setScene(pRenderContext, pScene);
-        auto hbao_pass = mpRenderGraph->addPass(mpHBAOpass, "HBAOPass");
-    }
+    // Test pathtracer pass
+    Falcor::Dictionary minimalPathTracerPassDictionary;
+    mpMinimalPathTracer = MinimalPathTracer::create(pRenderContext, minimalPathTracerPassDictionary);
+    mpMinimalPathTracer->setScene(pRenderContext, pScene);
+
+    auto ptracer_pass = mpRenderGraph->addPass(mpMinimalPathTracer, "MinimalPathTracerPass");
+
 
     // Forward lighting
     Falcor::Dictionary lightingPassDictionary;
 
     lightingPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
-    lightingPassDictionary["USE_SSAO"] =  mGlobalData.use_ssao;
 
-    LOG_ERR("LightingPass 0");
     mpLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
     mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
     mpLightingPass->setScene(pRenderContext, pScene);
     mpLightingPass->setColorFormat(mainChannelOutputFormat);
+
+    //if (pEnvMapSampler) {
+    //    mpLightingPass->setEnvMapSampler(pEnvMapSampler);
+    //}
+
     auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
 
 
     // SkyBox
-    LOG_ERR("SkyBoxPass 0");
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
@@ -340,25 +344,28 @@ void Renderer::createRenderGraph() {
     mpAccumulatePass->enableAccumulation(true);
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
-    if(mpHBAOpass) {
-        LOG_ERR("HBAOPass addEdge 0");
-        mpRenderGraph->addEdge("DepthPass.depth", "HBAOPass.depthH");
-        mpRenderGraph->addEdge("DepthPass.hiMaxZ", "HBAOPass.hiMaxZ");
-        mpRenderGraph->addEdge("HBAOPass.aoHorizons", "LightingPass.aoHorizons");
-    }
-
-
-    LOG_ERR("LightingPass addEdge 0");
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depthL");
-    LOG_ERR("SkyBoxPass addEdge 0");
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depthS");
+    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
     
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
-    mpRenderGraph->markOutput("AccumulatePass.output");
-    //mpRenderGraph->markOutput("LightingPass.color");
+/*
+    mpRenderGraph->addEdge("GBufferRasterPass.posW", "MinimalPathTracerPass.posW");
+    mpRenderGraph->addEdge("GBufferRasterPass.normW", "MinimalPathTracerPass.normalW");
+    mpRenderGraph->addEdge("GBufferRasterPass.faceNormalW", "MinimalPathTracerPass.faceNormalW");
 
+    mpRenderGraph->addEdge("GBufferRasterPass.diffuseOpacity", "MinimalPathTracerPass.mtlDiffOpacity");
+    mpRenderGraph->addEdge("GBufferRasterPass.specRough", "MinimalPathTracerPass.mtlSpecRough");
+    mpRenderGraph->addEdge("GBufferRasterPass.emissive", "MinimalPathTracerPass.mtlEmissive");
+    mpRenderGraph->addEdge("GBufferRasterPass.matlExtra", "MinimalPathTracerPass.mtlParams");
+
+    mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
+*/
+    //mpRenderGraph->addEdge("SkyBoxPass.target", "AccumulatePass.input");
+
+    mpRenderGraph->markOutput("AccumulatePass.output");
+    
     LOG_ERR("createRenderGraph done");
 
 }
@@ -550,7 +557,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     // test
     uint image2;
 
-if( 1== 2) {
+if( 1 == 2) {
     std::vector<Display::Channel> channels2;
     channels2.push_back({"albedo.000.r", Display::TypeFormat::UNSIGNED16});
     channels2.push_back({"albedo.000.g", Display::TypeFormat::UNSIGNED16});
@@ -580,14 +587,6 @@ if( 1== 2) {
         auto pRenderContext = mpDevice->getRenderContext();
 
         // TODO: set passes parameters in a more unified way
-        
-        if(mpHBAOpass) {
-            mpHBAOpass->setAoDistance(frame_data.ssao_distance);
-            mpHBAOpass->setAoTracePrecision(frame_data.ssao_precision);
-            if(mpLightingPass) {
-                mpLightingPass->setAoFactor(frame_data.ssao_factor);
-            }
-        }
 
         uint32_t frameNumber = 0; // for now
 
@@ -628,6 +627,7 @@ if( 1== 2) {
 
             Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
             //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
+            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
 
             assert(pOutTex);
 
@@ -636,19 +636,19 @@ if( 1== 2) {
             
             {
             
-            Falcor::ResourceFormat resourceFormat;
-            uint32_t channels;
-            std::vector<uint8_t> textureData;
-            LLOG_DBG << "readTextureData";
-            pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-            LLOG_DBG << "readTextureData done";
+                Falcor::ResourceFormat resourceFormat;
+                uint32_t channels;
+                std::vector<uint8_t> textureData;
+                LLOG_DBG << "readTextureData";
+                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+                LLOG_DBG << "readTextureData done";
 
-            LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-            
-            assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
+                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+                
+                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
 
-            mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-            mpDisplay->closeImage(image1);
+                mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+                mpDisplay->closeImage(image1);
             
             }
 

@@ -88,6 +88,11 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
     
     auto pProgram = GraphicsProgram::create(pDevice, desc);
 
+    // Create a GPU sample generator.
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    assert(mpSampleGenerator);
+    pProgram->addDefines(mpSampleGenerator->getDefines());
+
     mpState = GraphicsState::create(pDevice);
     mpState->setProgram(pProgram);
     mpFbo = Fbo::create(pDevice);
@@ -100,6 +105,8 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
       .setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Border);
   
     mpDepthSampler = Sampler::create(pDevice, depthSamplerDesc);  // depth sampler
+
+    mSampleNumber = 0;
 
     parseDictionary(dict);
 }
@@ -130,7 +137,10 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
-    if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+    if (mpScene) {
+        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        //mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
+    }
     mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
@@ -144,22 +154,18 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpState->setFbo(mpFbo);
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), Scene::RenderFlags::UserRasterizerState);
+    mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
+    mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
+
+    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
 
     // caclulate hierarchical z buffers
     auto pHiMaxZ = renderData[kHiMaxZ]->asTexture();
     
     if (pHiMaxZ) {
-        //LOG_DBG("Depth-pass HiZ enabled");
-        //LOG_DBG("Depth-pass HiZ mip levels %u", pHiMaxZ->getMipCount());
-
         uint prevMipWidth, prevMipHeight, currMipWidth, currMipHeight;
 
         mpDownSampleDepthPass["gDepthSampler"] = mpDepthSampler;
-
-        //auto t1 = std::chrono::high_resolution_clock::now();
-
-        //LOG_DBG("Executing depth-pass down copy");
 
         mpDownSampleDepthPass["CB"]["gMipLevel"] = 0;
         mpDownSampleDepthPass["CB"]["prevMipDim"] = int2({pDepth->getWidth(0), pDepth->getHeight(0)});
@@ -194,14 +200,8 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
             mpDownSampleDepthPass["gSourceBuffer"].setSrv(pHiMaxZ->getSRV(mipLevel - 1, 1, 0, 1));
             mpDownSampleDepthPass["gOutputBuffer"].setUav(pHiMaxZ->getUAV(mipLevel, 0, 1));
             
-            //LOG_DBG("Executing depth-pass HiZ mip level %u", mipLevel);
             mpDownSampleDepthPass->execute(pRenderContext, currMipWidth, currMipHeight);
         }
-
-        //auto t2 = std::chrono::high_resolution_clock::now();
-        //auto ms_int = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-        //std::cout << ms_int.count() << "ms\n";
-
     }
 }
 
@@ -220,12 +220,6 @@ DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& p
     return *this;
 }
 
-DepthPass& DepthPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState) {
-    mpRsState = pRsState;
-    mpState->setRasterizerState(mpRsState);
-    return *this;
-}
-
 void DepthPass::setHiZEnabled(bool value) { 
     if(mHiZenabled == value) return;
 
@@ -240,4 +234,17 @@ void DepthPass::setAlphaTestDisabled(bool value) {
     } else {
         mpState->getProgram()->removeDefine("DISABLE_ALPHA_TEST");
     }
+}
+
+void DepthPass::prepareVars() {
+    assert(mpVars);
+
+    if (!mDirty) return;
+
+    mpState->getProgram()->addDefines(mpSampleGenerator->getDefines());
+
+    bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
+    if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
+
+    mDirty = false;
 }

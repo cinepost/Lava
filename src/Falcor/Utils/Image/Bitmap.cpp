@@ -37,7 +37,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/StringUtils.h"
 
-namespace oiio = OpenImageIO_v2_3;
+namespace oiio = OIIO;
 
 namespace Falcor {
 

@@ -52,7 +52,6 @@ class GBufferRaster : public GBuffer {
 
  private:
     GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
-    void setCullMode(RasterizerState::CullMode mode) override;
 
     // Internal state
     DepthPass::SharedPtr            mpDepthPrePass;
@@ -64,7 +63,6 @@ class GBufferRaster : public GBuffer {
 
     // Rasterization resources
     struct {
-        RasterizerState::SharedPtr pRsState;
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;

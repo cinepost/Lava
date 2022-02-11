@@ -29,13 +29,15 @@
 #include "RtProgram.h"
 
 #include "Raytracing/RtProgramVars.h"
+#include "Falcor/Utils/Debug/debug.h"
 
 #include <slang/slang.h>
 
 namespace Falcor {
 
 void RtProgram::Desc::init() {
-    mBaseDesc.setShaderModel("6_2");
+    //mBaseDesc.setShaderModel("6_2");
+    mBaseDesc.setShaderModel("450");
 }
 
 RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const std::string& filename) {
@@ -43,60 +45,37 @@ RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const std::string& filename) 
     return *this;
 }
 
-RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen) {
-    return addRayGen(raygen);
-}
 
-RtProgram::Desc& RtProgram::Desc::addRayGen(const std::string& raygen) {
+RtProgram::ShaderID RtProgram::Desc::addRayGen(const std::string& raygen) {
     mBaseDesc.beginEntryPointGroup();
     mBaseDesc.entryPoint(ShaderType::RayGeneration, raygen);
 
-    DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
-    mRayGenEntryPoints.push_back(info);
-    return *this;
+    mRayGenCount++;
+    return { mBaseDesc.mActiveGroup };
 }
 
-RtProgram::Desc& RtProgram::Desc::addMiss(uint32_t missIndex, const std::string& miss) {
-    if(missIndex >= mMissEntryPoints.size()) {
-        mMissEntryPoints.resize(missIndex+1);
-    } else if(mMissEntryPoints[missIndex].groupIndex >= 0) {
-        logError("already have a miss shader at that index");
-    }
-
-    auto entryPointIndex = int32_t(mBaseDesc.mEntryPoints.size());
+RtProgram::ShaderID RtProgram::Desc::addMiss(const std::string& miss) {
     mBaseDesc.beginEntryPointGroup();
     mBaseDesc.entryPoint(ShaderType::Miss, miss);
 
-    DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
-    mMissEntryPoints[missIndex] = info;
-    return *this;
+    return { mBaseDesc.mActiveGroup };
 }
 
-RtProgram::Desc& RtProgram::Desc::addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection /* = "" */) {
-    if(hitIndex >= mHitGroups.size()) {
-        mHitGroups.resize(hitIndex+1);
-    } else if(mHitGroups[hitIndex].groupIndex >= 0) {
-        logError("already have a hit group at that index");
-    }
-
-    auto groupIndex = int32_t(mBaseDesc.mGroups.size());
+RtProgram::ShaderID RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection) {
     mBaseDesc.beginEntryPointGroup();
-    
-    if(closestHit.length()) {
+    if (!closestHit.empty()) {
         mBaseDesc.entryPoint(ShaderType::ClosestHit, closestHit);
     }
 
-    if(anyHit.length()) {
+    if (!anyHit.empty()) {
         mBaseDesc.entryPoint(ShaderType::AnyHit, anyHit);
     }
 
-    if(intersection.length()) {
+    if (!intersection.empty()) {
         mBaseDesc.entryPoint(ShaderType::Intersection, intersection);
     }
 
-    DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
-    mHitGroups[hitIndex] = info;
-    return *this;
+    return { mBaseDesc.mActiveGroup };
 }
 
 RtProgram::Desc& RtProgram::Desc::addDefine(const std::string& name, const std::string& value) {
@@ -109,32 +88,28 @@ RtProgram::Desc& RtProgram::Desc::addDefines(const DefineList& defines) {
     return *this;
 }
 
-RtProgram::SharedPtr RtProgram::create(std::shared_ptr<Device> pDevice, const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize) {
-    size_t rayGenCount = desc.mRayGenEntryPoints.size();
-    if (rayGenCount == 0) {
-        throw std::runtime_error("Can't create an RtProgram without a ray generation shader");
-    } else if(rayGenCount > 1) {
-        throw std::runtime_error("Can't create an RtProgram with more than one ray generation shader");
-    }
+RtProgram::SharedPtr RtProgram::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+    LOG_WARN("MinimalPathTracer::execute");
 
-    SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
-    pProg->init(pDevice, desc);
-    pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
-    pProg->addDefine("_DEFAULT_ALPHA_TEST");
+    SharedPtr pProg = SharedPtr(new RtProgram(desc));
+    pProg->init(pDevice, desc.mBaseDesc, desc.mDefineList);
 
     return pProg;
 }
 
-void RtProgram::init(std::shared_ptr<Device> pDevice, const RtProgram::Desc& desc) {
-    Program::init(pDevice, desc.mBaseDesc, desc.mDefineList);
-    mDescExtra = desc;
-}
 
-RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
-    : Program()
-    , mMaxPayloadSize(maxPayloadSize)
-    , mMaxAttributesSize(maxAttributesSize)
-{
+RtProgram::RtProgram(const Desc& desc): Program(), mRtDesc(desc) {
+    if (desc.mRayGenCount == 0) {
+        throw std::runtime_error("Can't create an RtProgram without a ray generation shader!");
+    }
+    
+    if (desc.mMaxTraceRecursionDepth == -1) {
+        throw std::runtime_error("Can't create an RtProgram without specifying maximum trace recursion depth");
+    }
+
+    if (desc.mMaxPayloadSize == -1) {
+        throw std::runtime_error("Can't create an RtProgram without specifying maximum ray payload size");
+    }
 }
 
 static uint64_t sHitGroupID = 0;
@@ -153,11 +128,11 @@ EntryPointGroupKernels::SharedPtr RtProgram::createEntryPointGroupKernels(
         case ShaderType::Intersection:
             {
                 std::string exportName = "HitGroup" + std::to_string(sHitGroupID++);
-                return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtHitGroup, shaders, exportName, localRootSignature, mMaxPayloadSize, mMaxAttributesSize);
+                return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtHitGroup, shaders, exportName, localRootSignature, mRtDesc.mMaxPayloadSize, mRtDesc.mMaxAttributeSize);
             }
 
         default:
-            return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtSingleShader, shaders, shaders[0]->getEntryPoint(), localRootSignature, mMaxPayloadSize, mMaxAttributesSize);
+            return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtSingleShader, shaders, shaders[0]->getEntryPoint(), localRootSignature, mRtDesc.mMaxPayloadSize, mRtDesc.mMaxAttributeSize);
     }
 }
 
@@ -172,7 +147,8 @@ RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars) {
     if (pRtso == nullptr) {
         RtStateObject::Desc desc;
         desc.setKernels(pProgramKernels);
-        desc.setMaxTraceRecursionDepth(mDescExtra.mMaxTraceRecursionDepth);
+        desc.setMaxTraceRecursionDepth(mRtDesc.mMaxTraceRecursionDepth);
+        desc.setPipelineFlags(mRtDesc.mPipelineFlags);    
         desc.setGlobalRootSignature(pProgramKernels->getRootSignature());
 
         StateGraph::CompareFunc cmpFunc = [&desc](RtStateObject::SharedPtr pRtso) -> bool
@@ -189,11 +165,6 @@ RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars) {
     }
 
     return pRtso;
-}
-
-void RtProgram::setScene(Scene::SharedPtr pScene) {
-    if (mpScene == pScene) return;
-    mpScene = pScene;
 }
 
 }  // namespace Falcor

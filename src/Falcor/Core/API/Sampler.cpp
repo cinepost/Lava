@@ -61,6 +61,11 @@ Sampler::Desc& Sampler::Desc::setComparisonMode(ComparisonMode mode) {
     return *this;
 }
 
+Sampler::Desc& Sampler::Desc::setReductionMode(ReductionMode mode) {
+    mReductionMode = mode;
+    return *this;
+}
+
 Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW) {
     mModeU = modeU;
     mModeV = modeV;

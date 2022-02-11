@@ -65,6 +65,15 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         MirrorOnce          ///< Same as Mirror, but mirrors only once around 0
     };
 
+    /** Reduction mode
+    */
+    enum class ReductionMode {
+        Standard,
+        Comparison,
+        Min,
+        Max,
+    };
+
     /** Comparison mode for the sampler.
     */
     using ComparisonMode = ComparisonFunc;
@@ -97,6 +106,10 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         */
         Desc& setComparisonMode(ComparisonMode mode);
 
+        /** Set the sampler reduction mode.
+        */
+        Desc& setReductionMode(ReductionMode mode);
+
         /** Set the sampler addressing mode
             \param[in] modeU Addressing mode for U texcoord channel
             \param[in] modeV Addressing mode for V texcoord channel
@@ -117,6 +130,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         float mMinLod = -1000;
         float mLodBias = 0;
         ComparisonMode mComparisonMode = ComparisonMode::Disabled;
+        ReductionMode mReductionMode = ReductionMode::Standard;
         AddressMode mModeU = AddressMode::Clamp; //Wrap;
         AddressMode mModeV = AddressMode::Clamp; //Wrap;
         AddressMode mModeW = AddressMode::Clamp; //Wrap;
@@ -166,6 +180,10 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     /** Get the comparison mode
     */
     ComparisonMode getComparisonMode() const { return mDesc.mComparisonMode; }
+
+    /** Get the reduction mode
+    */
+    ReductionMode getReductionMode() const { return mDesc.mReductionMode; }
 
     /** Get the addressing mode for the U texcoord
     */

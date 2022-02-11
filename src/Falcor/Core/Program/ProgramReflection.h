@@ -865,6 +865,7 @@ public:
         uint32_t srvCount = 0;
         uint32_t uavCount = 0;
         uint32_t samplerCount = 0;
+        uint32_t asCount = 0;
     };
 
     /** Add a new member
@@ -1008,7 +1009,10 @@ public:
         Texture2DMS,
         Texture2DMSArray,
         TextureCubeArray,
+        AccelerationStructure,
         Buffer,
+
+        Count
     };
 
     /** For structured-buffers, describes the type of the buffer
@@ -1031,7 +1035,8 @@ public:
         RawBuffer,
         TypedBuffer,
         Sampler,
-        ConstantBuffer
+        ConstantBuffer,
+        AccelerationStructure,
     };
 
     /** Create a new object
@@ -1278,6 +1283,7 @@ public:
         };
 
         Flavor flavor = Flavor::Simple;
+        ReflectionResourceType::Dimensions dimension = ReflectionResourceType::Dimensions::Unknown;
 
         uint32_t regIndex = 0;          ///< The register index
         uint32_t regSpace = 0;          ///< The register space
@@ -1615,6 +1621,7 @@ inline const std::string to_string(ReflectionResourceType::Type type)
         type_2_string(RawBuffer);
         type_2_string(TypedBuffer);
         type_2_string(Sampler);
+        type_2_string(AccelerationStructure);
     default:
         should_not_get_here();
         return "";

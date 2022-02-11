@@ -4,7 +4,7 @@
 #include <memory>
 #include <map>
 
-#include "Externals/GLM/glm/mat4x4.hpp"
+#include "glm/glm/mat4x4.hpp"
 
 #include "display.h"
 

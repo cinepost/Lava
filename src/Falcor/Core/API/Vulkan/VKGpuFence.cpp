@@ -208,7 +208,9 @@ namespace Falcor {
 
         auto& activeFences = mpApiData->fenceQueue->getActiveObjects();
         std::vector<VkFence> fenceVec(activeFences.begin(), activeFences.end());
+        
         vk_call(vkWaitForFences(mpDevice->getApiHandle(), (uint32_t)fenceVec.size(), fenceVec.data(), true, UINT64_MAX));
+        
         mpApiData->gpuValue += fenceVec.size();
         mpApiData->fenceQueue->popAllObjects();
         releaseSemaphores(mpApiData);  // Call this after popping the fences

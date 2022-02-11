@@ -31,9 +31,10 @@
 #include <string>
 #include <memory>
 
+#include <vulkan/vulkan.h>
+
 #include "Resource.h"
 #include "GpuMemoryHeap.h"
-
 
 namespace Falcor {
 

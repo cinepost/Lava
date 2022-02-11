@@ -291,6 +291,11 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
+    void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
+    { 
+        // TODO: Implement complex blit here...
+    }
+
     void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst) {
         // Just blit. It will work
         blit(pSrc->getSRV(), pDst->getRTV());
@@ -312,7 +317,15 @@ namespace Falcor {
         auto pRtso = pProgram->getRtso(pVars);
         pVars->apply(this, pRtso.get());
 
+        const auto& pShaderTable = pVars->getShaderTable();
+        resourceBarrier(pShaderTable->getBuffer().get(), Resource::State::NonPixelShader);
+
+        VkDeviceAddress startAddress = pShaderTable->getBuffer()->getGpuAddress();
+
         VkStridedDeviceAddressRegionKHR      raygenShaderBindingTable;
+        raygenShaderBindingTable.deviceAddress = startAddress + pShaderTable->getRayGenTableOffset();
+        raygenShaderBindingTable.size = pShaderTable->getRayGenRecordSize();
+
         VkStridedDeviceAddressRegionKHR      missShaderBindingTable;
         VkStridedDeviceAddressRegionKHR      hitShaderBindingTable;
         VkStridedDeviceAddressRegionKHR      callableShaderBindingTable;

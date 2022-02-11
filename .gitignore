@@ -31,16 +31,20 @@
 *.pyc
 
 # folders
+deps
+deps/
+tmp
+tmp/
 build
 build/
+build_external
+build_external/
 venv
 venv/
-third_party/*/build/
-third_party/FreeImage/Dist
-third_party/FreeImage/Dist/
-third_party/slang/bin
-third_party/slang/bin/
-third_party/boost_1_75_0/bin.v2
+
+third_party/null.cpp
+third_party/external
+third_party/external/
 
 # lava textures
 *.ltx

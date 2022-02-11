@@ -2,6 +2,7 @@
 #include <ostream>
 #include <iomanip>
 
+#include <boost/filesystem.hpp>
 //#include <boost/log/sources/severity_logger.hpp>
 
 #include "lava_utils_lib/logging.h"
@@ -14,8 +15,15 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(line_id,    "LineID",       unsigned int)
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp,  "TimeStamp",    boost::posix_time::ptime)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity,   "Severity",     boost::log::trivial::severity_level)
 
+static void init_log_common() {
+    g_log_stop_functions.clear();
+    boost::filesystem::path::imbue(std::locale("C"));
+}
+
 // Initialize console logger
 void init_log() {
+    init_log_common();
+
     // create sink to stdout
     boost::shared_ptr<text_sink> sink = boost::make_shared<text_sink>();
 
@@ -47,14 +55,19 @@ void init_log() {
 }
 
 void shutdown_log() {
-    for (auto& stop : g_log_stop_functions)
-        stop();
-
+    if (g_log_stop_functions.size() > 0) {
+        for (auto& stop : g_log_stop_functions) {
+            stop();
+        }
+    }
+    boost::log::core::get()->flush();
     boost::log::core::get()->remove_all_sinks();
 }
 
 // Initialize file logger
 void init_file_log(const std::string& logfilename) {
+    init_log_common();
+
     // create sink to logfile
     boost::shared_ptr<text_sink> sink = boost::make_shared<text_sink>();
     sink->locked_backend()->add_stream(

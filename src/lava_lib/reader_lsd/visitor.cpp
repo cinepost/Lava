@@ -100,7 +100,7 @@ bool readInlineBGEO(std::istream* pParserStream, ika::bgeo::Bgeo::SharedPtr pBge
     return true;
 }
 
-Visitor::Visitor(std::unique_ptr<Session>& pSession): mpSession(std::move(pSession)), mpParserStream(nullptr), mIgnoreCommands(false) { } 
+Visitor::Visitor(std::unique_ptr<Session>& pSession): mpSession(std::move(pSession)), mpParserStream(nullptr), mIgnoreCommands(false), mQuit(false) { } 
 
 void Visitor::setParserStream(std::istream& in) {
     if (!mpParserStream) {
@@ -131,6 +131,9 @@ void Visitor::operator()(ast::cmd_image const& c) const {
 
 void Visitor::operator()(ast::cmd_quit const& c) const { 
     std::cout << "LSDVisitor cmd_quit\n";
+    //mpSession->cmdQuit();
+    //mQuit = true;
+    //printf("mQuit set to true\n");
 }
 
 void Visitor::operator()(ast::cmd_start const& c) const {

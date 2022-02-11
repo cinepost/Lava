@@ -137,7 +137,7 @@ private:
     Keyframe interpolate(InterpolationMode mode, double time) const;
     double calcSampleTime(double currentTime);
 
-    const std::string mName;
+    std::string mName;
     uint32_t mNodeID;
     double mDuration; // Includes any time before the first keyframe. May be Assimp or FBX specific.
 
@@ -149,6 +149,8 @@ private:
 
     std::vector<Keyframe> mKeyframes;
     mutable size_t mCachedFrameIndex = 0;
+
+    friend class SceneCache;
 };
 
 }  // namespace Falcor

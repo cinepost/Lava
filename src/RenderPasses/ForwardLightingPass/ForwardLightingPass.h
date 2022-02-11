@@ -31,6 +31,10 @@
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Scene/Scene.h"
+#include "Experimental/Scene/Lights/EnvMapLighting.h"
+#include "Experimental/Scene/Lights/EnvMapSampler.h"
 
 using namespace Falcor;
 
@@ -48,6 +52,8 @@ class ForwardLightingPass : public RenderPass {
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
+
+    void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
     /** Set samples per frame count
     */
@@ -81,10 +87,6 @@ class ForwardLightingPass : public RenderPass {
     */
     ForwardLightingPass& setSampler(const Sampler::SharedPtr& pSampler);
 
-    /** Set SSAO factor
-    */
-    void setAoFactor(float factor);
-
     /** Get a description of the pass
     */
     std::string getDesc() override { return kDesc; }
@@ -97,22 +99,30 @@ class ForwardLightingPass : public RenderPass {
     void initDepth(RenderContext* pContext, const RenderData& renderData);
     void initFbo(RenderContext* pContext, const RenderData& renderData);
 
-    Fbo::SharedPtr mpFbo;
-    GraphicsState::SharedPtr mpState;
-    DepthStencilState::SharedPtr mpDsNoDepthWrite;
-    Scene::SharedPtr mpScene;
-    GraphicsVars::SharedPtr mpVars;
-    RasterizerState::SharedPtr mpRsState;
-    GraphicsProgram::SharedPtr mpProgram;
+    void prepareVars(RenderContext* pContext);
+
+    Fbo::SharedPtr                  mpFbo;
+    GraphicsState::SharedPtr        mpState;
+    DepthStencilState::SharedPtr    mpDsNoDepthWrite;
+    Scene::SharedPtr                mpScene;
+    GraphicsVars::SharedPtr         mpVars;
+    RasterizerState::SharedPtr      mpRsState;
+    GraphicsProgram::SharedPtr      mpProgram;
+    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;
 
     uint2 mFrameDim = { 0, 0 };
     uint32_t mFrameSampleCount = 16;
     uint32_t mSuperSampleCount = 1;  // MSAA stuff
-    float mAoFactor = 0;
+
+    uint32_t mSampleNumber = 0;
 
     Sampler::SharedPtr                  mpNoiseSampler;
     Texture::SharedPtr                  mpBlueNoiseTexture;
     CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
+    SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
+    
+    EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
+    EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 
     ResourceFormat mColorFormat = ResourceFormat::RGBA16Float; //Default color rendering format;
     ResourceFormat mNormalMapFormat = ResourceFormat::RGBA16Float;
@@ -121,8 +131,10 @@ class ForwardLightingPass : public RenderPass {
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
     bool mUseSSAO = false;
-
-    bool mDirty = false;
+    bool mUseSimplifiedEnvLighting = false;
+    
+    bool mDirty = true;
+    bool mEnvMapDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_

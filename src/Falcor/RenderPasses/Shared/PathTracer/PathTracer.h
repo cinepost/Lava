@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,12 +28,14 @@
 #pragma once
 
 #include "Falcor.h"
+#include "Falcor/Core/API/Device.h"
 #include "FalcorExperimental.h"
 #include "Utils/Sampling/SampleGenerator.h"
 #include "Utils/Debug/PixelDebug.h"
 #include "Experimental/Scene/Lights/EnvMapSampler.h"
 #include "Experimental/Scene/Lights/EmissiveUniformSampler.h"
 #include "Experimental/Scene/Lights/LightBVHSampler.h"
+#include "Experimental/Scene/Lights/EmissivePowerSampler.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "PathTracerParams.slang"
 #include "PixelStats.h"
@@ -42,7 +44,7 @@ namespace Falcor
 {
     /** Base class for path tracers.
     */
-    class dlldecl PathTracer : public RenderPass, public inherit_shared_from_this<RenderPass, PathTracer>
+    class dlldecl PathTracer : public RenderPass
     {
     public:
         using SharedPtr = std::shared_ptr<PathTracer>;
@@ -53,7 +55,7 @@ namespace Falcor
         virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
     protected:
-        PathTracer(const Dictionary& dict, const ChannelList& outputs);
+        PathTracer(Device::SharedPtr pDevice, const Dictionary& dict, const ChannelList& outputs);
 
         virtual void recreateVars() {}
 
@@ -73,8 +75,8 @@ namespace Falcor
         EmissiveLightSampler::SharedPtr     mpEmissiveSampler;              ///< Emissive light sampler or nullptr if disabled.
         EnvMapSampler::SharedPtr            mpEnvMapSampler;                ///< Environment map sampler or nullptr if disabled.
 
-        PixelStats::SharedPtr               mpPixelStats;                   ///< Utility class for collecting pixel stats.
-        PixelDebug::SharedPtr               mpPixelDebug;                   ///< Utility class for pixel debugging (print in shaders).
+        PixelStats::SharedPtr               mpPixelStats;                    ///< Utility class for collecting pixel stats.
+        PixelDebug::SharedPtr               mpPixelDebug;                    ///< Utility class for pixel debugging (print in shaders).
 
         ChannelList                         mInputChannels;                 ///< Render pass inputs.
         const ChannelList                   mOutputChannels;                ///< Render pass outputs.
@@ -94,6 +96,8 @@ namespace Falcor
         bool                                mUseEmissiveLights = false;     ///< True if emissive lights should be taken into account. See compile-time constant in StaticParams.slang.
         bool                                mUseEmissiveSampler = false;    ///< True if emissive light sampler should be used for the current frame. See compile-time constant in StaticParams.slang.
         uint32_t                            mMaxRaysPerPixel = 0;           ///< Maximum number of rays per pixel that will be traced. This is computed based on the current configuration.
+        bool                                mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
+        bool                                mIsRayFootprintSupported = true;///< Globally enable/disable ray footprint. Requires v-buffer. Set to false if any requirement is not met.
 
         // Scripting
     #define serialize(var) \
@@ -114,9 +118,9 @@ namespace Falcor
 
             if constexpr (loadFromDict)
             {
-                for (const auto& v : dict)
+                for (const auto& [key, value] : dict)
                 {
-                    if (vars.find(v.key()) == vars.end()) logWarning("Unknown field `" + v.key() + "` in a PathTracer dictionary");
+                    if (vars.find(key) == vars.end()) logWarning("Unknown field '" + key + "' in a PathTracer dictionary");
                 }
             }
         }

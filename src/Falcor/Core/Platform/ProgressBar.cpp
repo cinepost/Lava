@@ -39,7 +39,7 @@ namespace Falcor
         if (pBar) return pBar;
 
         pBar = SharedPtr(new ProgressBar());
-        pBar->platformInit(list, delayInMs);
+        //pBar->platformInit(list, delayInMs);
         spBar = pBar;
         return pBar;
     }
@@ -53,6 +53,6 @@ namespace Falcor
 
     ProgressBar::~ProgressBar()
     {
-        close();
+        //close();
     }
 }

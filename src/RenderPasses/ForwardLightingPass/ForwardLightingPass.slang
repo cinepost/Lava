@@ -29,208 +29,45 @@
 
 import Scene.Raster;
 import Scene.Shading;
-import Utils.Helpers;
 
-#define gCamera gScene.camera
-#define gFrameDim gRenderTargetDim
+import Utils.Math.MathHelpers;
+import Utils.Sampling.SampleGenerator;
+import Experimental.Scene.Lights.LightHelpers;
+//import Experimental.Scene.Lights.EnvMapLighting;
+import Experimental.Scene.Lights.EnvMapSampler;
 
-#define MAX_LOD 1.0
-#define MAX_SEARCH_ITER 8
+import Experimental.Scene.Material.Fresnel;
+import Experimental.Scene.Material.Microfacet;
+import Experimental.Scene.Material.StandardMaterial;
+import Experimental.Scene.Material.IBxDF;
 
-#include "RenderPasses/HBAO/HBAO.Common.slangh"
 
 cbuffer PerFrameCB {
+  uint2             gNoiseOffset;
+  uint              gSampleNumber;        // Interframe sample number.
+  int               useBrdfSampling = 1;  // Use BRDF importance sampling.
+  int               usePdf = 0;           // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
 
-  float2 gRenderTargetDim;
-  uint2  gNoiseOffset;
+  float2            gRenderTargetDim; // frame dimension
+  uint              gSamplesPerFrame;
 
-  float4x4 gViewInvMat;
-
-  int gUseAO;
-  float gAoFactor;
-  int gUseBentNormals;
-
-  // these values needed when deffered ao is not applicable. e.g. transparent objects rendering
-  float gAoQuality;
-  float gAoDistance;
-  int gHizMipOffset;  
+  float4x4          gViewInvMat;
+  EnvMapSampler     gEnvMapSampler;
 };
+
+//RaytracingAccelerationStructure gTlas;
+
+//EnvMapLighting gEnvMapLighting; 
 
 SamplerState gSampler;
 SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
 
-Buffer<float2> mipRatio; // to correct texel misalignment
 Texture2D gDepthTex;
-Texture2D gHiMaxZTex;
-
-Texture2D aoHorizons;
 Texture2D gNoiseTex;
-Texture2D visibilityBuffer;
 
 static VSOut vsData;
 
-void integrate_slice(float3 normal, float2 t_phi, float2 horizons, inout float visibility, inout float3 bent_normal) {
-  
-  /* Projecting Normal to Plane P defined by t_phi and omega_o */
-  float3 np = float3(t_phi.y, -t_phi.x, 0.0); /* Normal vector to Integration plane */
-  float3 t = float3(-t_phi, 0.0);
-  float3 n_proj = normal - np * dot(np, normal);
-  float n_proj_len = max(1e-16, length(n_proj));
-
-  float cos_n = clamp(n_proj.z / n_proj_len, -1.0, 1.0);
-  float n = sign(dot(n_proj, t)) * fast_acos(cos_n); /* Angle between view vec and normal */
-
-  /* (Slide 54) */
-  float2 h = fast_acos(horizons);
-  h.x = -h.x;
-
-  /* Clamping thetas (slide 58) */
-  h.x = n + max(h.x - n, -M_PI_2);
-  h.y = n + min(h.y - n, M_PI_2);
-
-  /* Solving inner integral */
-  float2 h_2 = 2.0 * h;
-  float2 vd = -cos(h_2 - n) + cos_n + h_2 * sin(n);
-  float vis = saturate((vd.x + vd.y) * 0.25 * n_proj_len);
-
-  visibility += vis;
-
-  /* O. Klehm, T. Ritschel, E. Eisemann, H.-P. Seidel
-   * Bent Normals and Cones in Screen-space
-   * Sec. 3.1 : Bent normals */
-  float b_angle = (h.x + h.y) * 0.5;
-  bent_normal += float3(sin(b_angle) * -t_phi, cos(b_angle)) * vis;
-}
-
-void gtao_deferred(float3 normal, float4 noise, int2 ipos, out float visibility, out float3 bent_normal) {
-  float grag_depth; // Unused !?
-
-  /* Fetch early, hide latency! */
-  float4 horizons = aoHorizons.Load(uint3(ipos, 0));
-
-  float4 dirs;
-  dirs.xy = getAoDir(noise.x * 0.5);
-  dirs.zw = getAoDir(noise.x * 0.5 + 0.5);
-
-  bent_normal = normal * 1e-8;
-  visibility = 1e-8;
-
-  horizons = unpackHorizons(horizons);
-
-  integrate_slice(normal, dirs.xy, horizons.xy, visibility, bent_normal);
-  integrate_slice(normal, dirs.zw, horizons.zw, visibility, bent_normal);
-
-  bent_normal = normalize(bent_normal / visibility);
-
-  visibility *= 0.5; /* We integrated 2 slices. */
-}
-
-void gtao(float3 normal, float3 posV, float4 noise, out float visibility, out float3 bent_normal) {
-  float2 uvs = getUVsFromView(posV);
-
-  float2 max_dir = getMaxDir(posV.z);
-  float2 dir = getAoDir(noise.x);
-
-  bent_normal = normal * 1e-8;
-  visibility = 1e-8;
-
-  /* Only trace in 2 directions. May lead to a darker result but since it's mostly for
-   * alpha blended objects that will have overdraw, we limit the performance impact. */
-  float2 horizons = search_horizon_sweep(dir, posV, uvs, noise.y, max_dir);
-  integrate_slice(normal, dir, horizons, visibility, bent_normal);
-
-  bent_normal = normalize(bent_normal / visibility);
-}
-
-/* Multibounce approximation base on surface albedo.
- * Page 78 in the .pdf version. */
-float gtao_multibounce(float visibility, float3 albedo) {
-  float aoBounceFac = 0.5;
-  if (aoBounceFac == 0.0) {
-    return visibility;
-  }
-
-  /* Median luminance. Because Colored multibounce looks bad. */
-  float lum = dot(albedo, float3(0.3333));
-
-  float a = 2.0404 * lum - 0.3324;
-  float b = -4.7951 * lum + 0.6417;
-  float c = 2.7552 * lum + 0.6903;
-
-  float x = visibility;
-  return max(x, ((x * a + b) * x + c) * x);
-}
-
-float specular_occlusion(float NV, float AO, float roughness) {
-  return saturate(pow(NV + AO, roughness) - 1.0 + AO);
-}
-
-/* Use the right occlusion  */
-float hbaoOcclusionCompute(float3 N, float3 posW, int2 ipos, float user_visibility, float4 noise, out float3 bent_normal) {
-  
-#ifndef USE_REFRACTION
-  if (gUseAO != 0) {
-    float visibility;
-    float3 vnor = mul(N, float3x3(gScene.camera.data.viewMat)) * float3(1, -1, 1);
-    
-#  ifdef ENABLE_DEFERED_AO
-    gtao_deferred(vnor, noise, ipos, visibility, bent_normal);
-#  else
-    float3 posV = mul(posW, gCamera.data.viewMat);
-    gtao(vnor, posV, noise, visibility, bent_normal);
-#  endif
-
-    /* Prevent some problems down the road. */
-    visibility = max(1e-3, visibility);
-
-    if (gUseBentNormals != 0) {
-      /* The bent normal will show the facet look of the mesh. Try to minimize this. */
-      float mix_fac = visibility * visibility * visibility;
-      bent_normal = normalize(lerp(bent_normal, vnor, mix_fac));
-
-      bent_normal = transformDirection(gScene.camera.data.viewProjMat, bent_normal);
-    }
-    else {
-      bent_normal = N;
-    }
-
-    /* Scale by user factor */
-    visibility = pow(visibility, gAoFactor);
-
-    return min(visibility, user_visibility);
-  }
-#endif
-
-  bent_normal = N;
-  return user_visibility;
-}
-
-// this one works strange
-float hbaoSpecularOcclusionCompute(float3 N, float3 bentNormal, float finalAO, int2 ipos, float roughness, inout float3 specularDir) {
-  specularDir = normalize(lerp(specularDir, bentNormal, roughness * (1.0 - finalAO)));
-
-  /* Visibility to cone angle (eq. 18). */
-  float vis_angle = fast_acos(sqrt(1 - finalAO));
-  
-  /* Roughness to cone angle (eq. 26). */
-  float spec_angle = max(0.001, fast_acos(cone_cosine(roughness)));
-  
-  /* Angle between cone axes. */
-  float cone_cone_dist = fast_acos(saturate(dot(bentNormal, specularDir)));
-  float cone_nor_dist = fast_acos(saturate(dot(N, specularDir)));
-
-  float isect_solid_angle = spherical_cap_intersection(vis_angle, spec_angle, cone_cone_dist);
-  float specular_solid_angle = spherical_cap_intersection(M_PI_2, spec_angle, cone_nor_dist);
-  float specular_occlusion = isect_solid_angle / specular_solid_angle;
-  
-  /* Mix because it is unstable in unoccluded areas. */
-  finalAO = lerp(isect_solid_angle / specular_solid_angle, 1.0, pow(finalAO, 8.0));
-
-  /* Scale by user factor */
-  finalAO = pow(saturate(finalAO), gAoFactor);
-  return finalAO;
-}
 
 VSOut vs(VSIn vIn)
 {
@@ -251,83 +88,246 @@ struct PsOut
 #endif
 };
 
+
+float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
+    uint txw, txh;
+    environmentMap.GetDimensions(txw, txh);
+    return log2(pdf * txh * M_1_PI);                                // From chapter 21 in Ray Tracing Gems.
+}
+
+
 [earlydepthstencil]
-PsOut ps(VSOut vOut, uint triangleIndex : SV_PrimitiveID) {
+PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
 
     // pixel position
-    int2 ipos = int2(vOut.posH.xy);
+    int2 ipos = int2(vsOut.posH.xy);
+
+    // pseudo-random sample generator
+    SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
+
+    // blue noise
+    float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
 
     // screen space texture coordinates gradient
+    float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY = ddy_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
+    
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+    
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
 
-    float2 gradX = ddx_fine(vOut.texC) * 0.5;// * gRenderTargetDim.x; ///< Gradient of texture coordinate in the screen-space X direction
-    float2 gradY = ddy_fine(vOut.texC) * 0.5;// * gRenderTargetDim.y; ///< Gradient of texture coordiante in teh screen-space Y direction
-    
-    float3 viewDir = normalize(gScene.camera.getPosition() - vOut.posW);
-    
-    //ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir);
-    ShadingData sd = prepareShadingData(vOut, triangleIndex, viewDir, gradX, gradY);
+    // Compute GGX alpha.
+    float alpha = sd.linearRoughness * sd.linearRoughness;
+
+    StandardMaterial mtl;
 
     float4 finalColor = float4(0, 0, 0, 1);
 
-    float diffuseAO = 1.0f;
-    float specularAO = 1.0f;
-
-#ifdef USE_SSAO
-    float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
-    float3 bentNormal;
-    float user_visibility = 1.0; // TODO: fetch matrial provided occlusion texture
+    // Direct lighting from analytic light sources
     
-    float3 faceNormal = gScene.getFaceNormalW(vOut.meshInstanceID, triangleIndex); // Maybe faceNormal should work better than shadingNormal ?
+    RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+    let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
-    diffuseAO = hbaoOcclusionCompute(sd.N, vOut.posW, ipos, user_visibility, noise, bentNormal);
-    specularAO = hbaoSpecularOcclusion(sd.NdotV, diffuseAO, 1.0f - sd.linearRoughness);
-#endif
+    float3 rayOrigin = sd.posW;
+    float3 shadowFactor;
 
-    for (uint l = 0; l < gScene.getLightCount(); l++) {
-        float shadowFactor = 1;
-        if (l == 0) {
-            //shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
-            //shadowFactor *= sd.opacity;
+    for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
+        shadowFactor = float3(1.0, 1.0, 1.0);
+
+        LightData light = gScene.getLight(lightIndex);
+
+        AnalyticLightSample ls;
+        bool valid = sampleLight(sd.posW, light, sg, ls);
+
+        // Reject sample if lower hemisphere.
+        if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
+
+        if (light.shadowType == uint(LightShadowType.RayTraced) ) {
+            
+            // Test visibility by tracing a shadow ray.
+            RayDesc ray;
+            ray.Origin = rayOrigin;// + viewDir * 0.0001;
+            ray.Direction = ls.dir;
+            ray.TMin = 0.0001f;
+            ray.TMax = 1e4f;
+
+            rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+            rayQuery.Proceed();
+            shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
-        finalColor.rgb += evalMaterial(sd, gScene.getLight(l), shadowFactor).color.rgb;
-    }
 
+        finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
+    }
 
     // Add the emissive component
     finalColor.rgb += sd.emissive;
-    
     finalColor.a = sd.opacity;
 
-    // World light probe (env light) 
-    ShadingResult env = evalMaterialIBL(sd, gScene.envMap, ipos);
-  
-    //env.diffuse *= diffuseAO;
-    //env.specular *= specularAO;
-    
-    finalColor.rgb += env.diffuse + env.specular;
-    finalColor.rgb = env.specular;
+#ifdef _USE_ENV_MAP
+    // Add lighting from environment map
 
-    // Final
+    #ifdef _USE_SIMPLIFIED_ENV_LIGHTING
+        finalColor.rgb += gEnvMapLighting.evalDiffuse(sd);
+        finalColor.rgb += gEnvMapLighting.evalSpecular(sd, reflect(-sd.V, sd.N));
+    #else
+
+
+        // Environment diffuse
+        float envSampleWeight = 1.0;
+        EnvMapSample envSample;
+        gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+
+/*
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.5;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.333333;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.25;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.2;
+        }
+*/
+
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            DiffuseReflectionFrostbite diffuseReflection;
+            diffuseReflection.albedo = sd.diffuse;
+            diffuseReflection.linearRoughness = sd.linearRoughness;
+
+            float pdf = 0.0;
+            float3 weight = float3(1.0, 1.0, 1.0);
+            uint lobe;
+            float3 wi;
+            float3 wo = sd.toLocal(sd.V);
+
+            bool result = diffuseReflection.sample(wo, wi, pdf, weight, lobe, sg);
+
+            float3 diffDir = normalize(sd.fromLocal(wi));
+
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = diffDir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+
+            float3 Le = gScene.envMap.eval(diffDir);
+            finalColor.rgb += (diffuseReflection.eval(wo, wi) * Le * shadowFactor);// / pdf;
+            //finalColor.rgb = float3(0,1,0);
+        } else {
+
+        
+        //if ( dot(envSample.dir, sd.N) > kMinCosTheta) {
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = envSample.dir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+            
+            if ( envSample.pdf > 0) {
+                DiffuseReflectionFrostbite diffuseReflection;
+                diffuseReflection.albedo = sd.diffuse;
+                diffuseReflection.linearRoughness = sd.linearRoughness;
+
+                float3 wi = sd.toLocal(envSample.dir);
+                float3 wo = sd.toLocal(sd.V);
+                float3 diffuse = diffuseReflection.eval(wo, wi);
+
+                finalColor.rgb += diffuse * (envSample.Le / envSample.pdf) * shadowFactor * envSampleWeight;
+            }
+        }
+
+
+        // Environment specular
+        SpecularReflectionMicrofacet specularReflection;
+
+        const uint activeLobes = sd.getActiveLobes();
+
+        specularReflection.albedo = sd.specular;
+        specularReflection.alpha = alpha;
+        specularReflection.activeLobes = (uint)LobeType::SpecularReflection; //activeLobes;
+
+        float pdf = 0.0;
+        float3 weight = float3(1.0, 1.0, 1.0);
+        uint lobe;
+        float3 wi;
+        float3 wo = sd.toLocal(sd.V);
+        
+        float3 reflDir;
+        bool valid = true;
+
+        if (alpha == 0.0) {
+            pdf = 0.0;
+            reflDir = normalize(sd.fromLocal(float3(-wo.x, -wo.y, wo.z)));
+            weight = evalFresnelSchlick(sd.specular, 1.f, wo.z);
+        } else {
+            specularReflection.sample(wo, wi,  pdf, weight, lobe, sg);
+            reflDir = normalize(sd.fromLocal(wi));
+        }
+
+
+        //finalColor.rgb = float3(0,0,0);
+
+        if ( valid && dot(reflDir, sd.N) > kMinCosTheta) {
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = reflDir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+
+            //float envReflPdf = gEnvMapSampler.evalPdf(reflDir);
+
+            float envLod = 1.0; //_computeEnvironmentMapLOD(envReflPdf, gScene.envMap.envMap);
+            finalColor.rgb += gScene.envMap.eval(reflDir, envLod) * weight * shadowFactor;
+
+            //finalColor.rgb = float3(1.0 / pdf, 0.1 / pdf, 0.01 / pdf);
+        }
+
+    #endif
+#endif
+
     psOut.color = finalColor;
-    psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);
+    psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
 
 #ifdef _OUTPUT_MOTION_VECTORS
-    // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
-    psOut.motion = calcMotionVector(vOut.posH.xy, vOut.prevPosH, gRenderTargetDim);
+    // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
+    psOut.motion = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
 #endif
 
-#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    float3 cascadeColor = visibilityBuffer.Load(int3(ipos, 0)).gba;
-    psOut.color.rgb *= cascadeColor;
-#endif
-
-    // DEBUG
-    //float4 horizons = aoHorizons.Load(uint3(ipos, 0));
-    //horizons = unpackHorizons(horizons);
-    //psOut.color.rgb = float3(horizons.r, horizons.g, horizons.b);
-    //psOut.color.rgb = float3(diffuseAO);
-
-    // Return
+//#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
+//    float3 cascadeColor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).gba;
+//    psOut.color.rgb *= cascadeColor;
+//#endif
     return psOut;
 }

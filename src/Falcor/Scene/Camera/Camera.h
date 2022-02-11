@@ -293,6 +293,7 @@ private:
     void setJitterInternal(float jitterX, float jitterY);
 
     friend class SceneBuilder;
+    friend class SceneCache;
 };
 
 enum_class_operators(Camera::Changes);

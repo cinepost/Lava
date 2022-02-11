@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
+#define FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
 
 #include "RenderPass.h"
 #include "Core/Program/Program.h"
@@ -105,4 +106,7 @@ namespace Falcor
             if (it.optional) buffer.flags(RenderPassReflection::Field::Flags::Optional);
         }
     }
-}
+
+}  // namespace Falcor
+
+#endif  // FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_

@@ -109,6 +109,19 @@ bool verifySamplerVar(const ShaderVar& var, const std::string& varName, const ch
     return true;
 }
 
+bool verifyASVar(const ShaderVar& var, const std::string& varName, const char* funcName) {
+    auto pType = getResourceReflection(var, nullptr, varName, funcName);
+    if (!pType) return false;
+
+    #if _LOG_ENABLED
+    if (pType->getType() != ReflectionResourceType::Type::AccelerationStructure) {
+        logError(getErrorPrefix(funcName, varName) + ", but the variable was declared in the shader as a " + to_string(pType->getType()) + " and not as a acceleration structure");
+        return false;
+    }
+    #endif
+    return true;
+}
+
 bool verifyBufferVar(const ShaderVar& var, const Buffer* pBuffer, const std::string& varName, const char* funcName) {
     auto pType = getResourceReflection(var, pBuffer, varName, funcName);
     if (!pType) return false;
@@ -148,10 +161,11 @@ Resource::SharedPtr getResourceFromView(const ViewType* pView) {
     return pResource->shared_from_this();
 }
 
-const std::array<DescriptorSet::Type, 3> kRootSrvDescriptorTypes = {
+const std::array<DescriptorSet::Type, 4> kRootSrvDescriptorTypes = {
     DescriptorSet::Type::RawBufferSrv,
     DescriptorSet::Type::TypedBufferSrv,
     DescriptorSet::Type::StructuredBufferSrv,
+    DescriptorSet::Type::AccelerationStructure,
 };
 
 const std::array<DescriptorSet::Type, 3> kRootUavDescriptorTypes = {
@@ -160,11 +174,12 @@ const std::array<DescriptorSet::Type, 3> kRootUavDescriptorTypes = {
     DescriptorSet::Type::StructuredBufferUav,
 };
 
-const std::array<DescriptorSet::Type, 4> kSrvDescriptorTypes = {
+const std::array<DescriptorSet::Type, 5> kSrvDescriptorTypes = {
     DescriptorSet::Type::TextureSrv,
     DescriptorSet::Type::RawBufferSrv,
     DescriptorSet::Type::TypedBufferSrv,
     DescriptorSet::Type::StructuredBufferSrv,
+    DescriptorSet::Type::AccelerationStructure,
 };
 
 const std::array<DescriptorSet::Type, 4> kUavDescriptorTypes = {
@@ -176,6 +191,7 @@ const std::array<DescriptorSet::Type, 4> kUavDescriptorTypes = {
 
 const std::array<DescriptorSet::Type, 1> kCbvDescriptorType = { DescriptorSet::Type::Cbv };
 const std::array<DescriptorSet::Type, 1> kSamplerDescriptorType = { DescriptorSet::Type::Sampler };
+const std::array<DescriptorSet::Type, 1> kAccelerationStructureDescriptorType = { DescriptorSet::Type::AccelerationStructure };
 
 template<size_t N>
 bool isSetType(DescriptorSet::Type type, const std::array<DescriptorSet::Type, N>& allowedTypes) {
@@ -282,6 +298,9 @@ ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::share
             case DescriptorSet::Type::Sampler:
                 state.samplerCount += range.count;
                 break;
+            case DescriptorSet::Type::AccelerationStructure:
+                state.asCount += range.count;
+                break;
             case DescriptorSet::Type::Dsv:
             case DescriptorSet::Type::Rtv:
                 break;
@@ -295,6 +314,7 @@ ParameterBlock::ParameterBlock(std::shared_ptr<Device> pDevice, const std::share
     mSRVs.resize(state.srvCount);
     mUAVs.resize(state.uavCount);
     mSamplers.resize(state.samplerCount);
+    mAccels.resize(state.asCount);
     mSets.resize(pReflection->getDescriptorSetCount());
 
     createConstantBuffers(getRootVar());
@@ -395,30 +415,34 @@ bool ParameterBlock::checkDescriptorType(const BindLocation& bindLocation, const
 }
 
 bool ParameterBlock::checkDescriptorSrvUavCommon(
-    const BindLocation& bindLocation,
-    const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
-    const char* funcName) const {
+        const BindLocation& bindLocation,
+        const Resource::SharedPtr& pResource,
+        const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
+        const char* funcName) const
+{
 #if _LOG_ENABLED
     if (!checkResourceIndices(bindLocation, funcName)) return false;
 
-    auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+    const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
     bool isUav = std::holds_alternative<UnorderedAccessView::SharedPtr>(pView);
 
-    if (bindingInfo.isDescriptorSet()) {
-        if (!checkDescriptorType(bindLocation, isUav ? kUavDescriptorTypes : kSrvDescriptorTypes, funcName)) return false;
+    if (bindingInfo.isDescriptorSet())
+    {
+        if (!(isUav ? checkDescriptorType(bindLocation, kUavDescriptorTypes, funcName) : checkDescriptorType(bindLocation, kSrvDescriptorTypes, funcName))) return false;
         // TODO: Check that resource type/dimension matches the descriptor type.
-    } else if (bindingInfo.isRootDescriptor()) {
-        if (!checkDescriptorType(bindLocation, isUav ? kRootUavDescriptorTypes : kRootSrvDescriptorTypes, funcName)) return false;
+    }
+    else if (bindingInfo.isRootDescriptor())
+    {
+        if (!(isUav ? checkDescriptorType(bindLocation, kRootUavDescriptorTypes, funcName) : checkDescriptorType(bindLocation, kRootSrvDescriptorTypes, funcName))) return false;
 
         // For root descriptors, also check that the resource is compatible.
-        auto pResource = isUav
-            ? getResourceFromView(std::get<UnorderedAccessView::SharedPtr>(pView).get())
-            : getResourceFromView(std::get<ShaderResourceView::SharedPtr>(pView).get());
         if (!checkRootDescriptorResourceCompatibility(pResource, funcName)) return false;
 
         // TODO: Check that view points to the start of the buffer.
         // We bind resources to root descriptor by base address, so an offset of zero is assumed.
-    } else {
+    }
+    else
+    {
         logError("Resource at range index " + std::to_string(bindLocation.getResourceRangeIndex()) + ", array index " + std::to_string(bindLocation.getResourceArrayIndex()) + " is not a descriptor. Ignoring " + funcName + " call.");
         return false;
     }
@@ -553,7 +577,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
     if (isUavType(bindLoc.getType())) {
         auto pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView(mpDevice);
         
-        if (!checkDescriptorSrvUavCommon(bindLoc, pUAV, funcName)) {
+        if (!checkDescriptorSrvUavCommon(bindLoc, pResource, pUAV, funcName)) {
             //if(pResource) LOG_ERR("isUavType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
@@ -566,7 +590,7 @@ bool ParameterBlock::setResourceSrvUavCommon(const BindLocation& bindLoc, const 
     } else if (isSrvType(bindLoc.getType())) {
         auto pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView(mpDevice);
         
-        if (!checkDescriptorSrvUavCommon(bindLoc, pSRV, funcName)) {
+        if (!checkDescriptorSrvUavCommon(bindLoc, pResource, pSRV, funcName)) {
             //if(pResource) LOG_ERR("isSrvType checkDescriptorSrvUavCommon failed resource id: %zu", pResource->id());
             return false;
         }
@@ -724,31 +748,78 @@ Texture::SharedPtr ParameterBlock::getTexture(const BindLocation& bindLocation) 
     return getResourceSrvUavCommon(bindLocation, "getTexture()")->asTexture();
 }
 
+bool ParameterBlock::setAS(const std::string& name, VkAccelerationStructureKHR accel) {
+    auto var = getRootVar()[name];
+#if _LOG_ENABLED
+    if (!verifyASVar(var, name, "setAS()")) return false;
+#endif
+    return var.setAS(accel);
+}
+
+bool ParameterBlock::setAS(const BindLocation& bindLocation, VkAccelerationStructureKHR accel) {
+    assert(accel != VK_NULL_HANDLE);
+
+    if (!checkResourceIndices(bindLocation, "setAS()")) return false;
+    if (!checkDescriptorType(bindLocation, kAccelerationStructureDescriptorType, "setAS()")) return false;
+
+    size_t flatIndex = getFlatIndex(bindLocation);
+    auto &assignedAS = mAccels[flatIndex];
+
+    assignedAS = accel;
+
+    markDescriptorSetDirty(bindLocation);
+    return true;
+}
+
+VkAccelerationStructureKHR ParameterBlock::getAS(const BindLocation& bindLocation) {
+    if (!checkResourceIndices(bindLocation, "getAS()")) return VK_NULL_HANDLE;
+    if (!checkDescriptorType(bindLocation, kAccelerationStructureDescriptorType, "getAS()")) return VK_NULL_HANDLE;
+    size_t flatIndex = getFlatIndex(bindLocation);
+    return mAccels[flatIndex];
+}
+
+VkAccelerationStructureKHR ParameterBlock::getAS(const std::string& name) const {
+    auto var = getRootVar()[name];
+#if _LOG_ENABLED
+    if (!verifyASVar(var, name, "getAS()")) return nullptr;
+#endif
+    return var.getAS();
+}
+
 bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv) {
-    if (!checkDescriptorSrvUavCommon(bindLocation, pSrv, "setSrv()")) return false;
+   auto pResource = getResourceFromView(pSrv.get());
+   if (!checkDescriptorSrvUavCommon(bindLocation, pResource, pSrv, "setSrv()")) return false;
 
     size_t flatIndex = getFlatIndex(bindLocation);
     auto& assignedSRV = mSRVs[flatIndex];
+
+    const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+    const ReflectionResourceType* pResouceReflection = bindLocation.getType()->asResourceType();
+    assert(pResouceReflection && pResouceReflection->getDimensions() == bindingInfo.dimension);
 
     const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView(mpDevice);
     if (assignedSRV.pView == pView) return true;
 
     assignedSRV.pView = pView;
-    assignedSRV.pResource = getResourceFromView(pView.get());
+    assignedSRV.pResource = pResource;
 
     markDescriptorSetDirty(bindLocation);
     return true;
 }
 
 bool ParameterBlock::setUav(const BindLocation& bindLocation, const UnorderedAccessView::SharedPtr& pUav) {
-    if (!checkDescriptorSrvUavCommon(bindLocation, pUav, "setUav()")) return false;
+    auto pResource = getResourceFromView(pUav.get());
+    if (!checkDescriptorSrvUavCommon(bindLocation, pResource, pUav, "setUav()")) return false;
 
     size_t flatIndex = getFlatIndex(bindLocation);
     auto& assignedUAV = mUAVs[flatIndex];
 
-    UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView(mpDevice);
+    const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
+    const ReflectionResourceType* pResouceReflection = bindLocation.getType()->asResourceType();
+    assert(pResouceReflection && pResouceReflection->getDimensions() == bindingInfo.dimension);
 
-    if (assignedUAV.pView == pView) return true;
+    UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView(mpDevice);
+    if (assignedUAV.pResource == pResource && assignedUAV.pView == pView) return true;
 
     assignedUAV.pView = pView;
     assignedUAV.pResource = getResourceFromView(pView.get());
@@ -1154,9 +1225,8 @@ static void prepareResource(CopyContext* pContext, Resource* pResource, bool isU
     }
 
     bool insertBarrier = true;
-#ifdef FALCOR_D3D12
+
     insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
-#endif
     if (insertBarrier) {
         insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
     }
@@ -1236,8 +1306,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TextureSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1246,8 +1314,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TypedBufferSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullTypedBufferView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1256,17 +1322,18 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::StructuredBufferSrv:
                         {
                             auto pView = mSRVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no pView at flat index %zu", flatIndex); } else { LOG_WARN("pView found at flat index %zu", flatIndex); }
-                            //if(!mSRVs[flatIndex].pResource) { LOG_WARN("no mSRVs pResource at flat index %zu", flatIndex); }
                             if(!pView || !mSRVs[flatIndex].pResource) pView = ShaderResourceView::getNullBufferView(mpDevice);
                             pDescSet->setSrv(destRangeIndex, descriptorIndex, pView.get());
+                        }
+                        break;
+                    case DescriptorSet::Type::AccelerationStructure:
+                        {
+                            pDescSet->setAS(destRangeIndex, descriptorIndex, mAccels[flatIndex]);
                         }
                         break;
                     case DescriptorSet::Type::TextureUav:
                         {
                             auto pView = mUAVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1274,8 +1341,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::TypedBufferUav:
                         {
                             auto pView = mUAVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullTypedBufferView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }
@@ -1284,8 +1349,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                     case DescriptorSet::Type::StructuredBufferUav:
                         {
                             auto pView = mUAVs[flatIndex].pView;
-                            //if(!pView) { LOG_WARN("no mUAVs pView at flat index %zu", flatIndex); } else { LOG_WARN("mUAVs pView found at flat index %zu", flatIndex); }
-                            //if(!mUAVs[flatIndex].pResource) { LOG_WARN("no mUAVs pResource at flat index %zu", flatIndex); }
                             if(!pView) pView = UnorderedAccessView::getNullBufferView(mpDevice);
                             pDescSet->setUav(destRangeIndex, descriptorIndex, pView.get());
                         }

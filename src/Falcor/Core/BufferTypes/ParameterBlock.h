@@ -224,6 +224,16 @@ class dlldecl ParameterBlock {
     */
     bool setSrv(const BindLocation& bindLocation, const ShaderResourceView::SharedPtr& pSrv);
 
+    /** Bind an acceleration structure.
+        \param[in] bindLocation The bind-location in the block
+        \param[in] pSrv The shader-resource-view object to bind
+    */
+    bool setAS(const std::string& name, VkAccelerationStructureKHR accel);
+    bool setAS(const BindLocation& bindLocation, VkAccelerationStructureKHR accel);
+
+    VkAccelerationStructureKHR getAS(const BindLocation& bindLocation);
+    VkAccelerationStructureKHR getAS(const std::string& name) const;
+
     /** Bind a UAV.
         \param[in] bindLocation The bind-location in the block
         \param[in] pSrv The unordered-access-view object to bind
@@ -407,6 +417,7 @@ class dlldecl ParameterBlock {
     std::vector<AssignedSRV>                mSRVs;              ///< All SRVs bound to descriptor sets or root descriptors.
     std::vector<AssignedUAV>                mUAVs;              ///< All UAVs bound to descriptor sets or root descriptors.
     std::vector<Sampler::SharedPtr>         mSamplers;
+    std::vector<VkAccelerationStructureKHR> mAccels;
 
     AssignedParameterBlock const& getAssignedParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
@@ -416,9 +427,10 @@ class dlldecl ParameterBlock {
     template<size_t N>
     bool checkDescriptorType(const BindLocation& bindLocation, const std::array<DescriptorSet::Type, N>& allowedTypes, const char* funcName) const;
     bool checkDescriptorSrvUavCommon(
-        const BindLocation& bindLocation,
-        const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
-        const char* funcName) const;
+            const BindLocation& bindLocation,
+            const Resource::SharedPtr& pResource,
+            const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
+            const char* funcName) const;
     bool checkRootDescriptorResourceCompatibility(const Resource::SharedPtr& pResource, const std::string& funcName) const;
 
     bool setResourceSrvUavCommon(const BindLocation& bindLoc, const Resource::SharedPtr& pResource, const char* funcName);

@@ -36,7 +36,7 @@
 #include "Falcor/Core/API/Vulkan/VKDevice.h"
 
 //#define VMA_IMPLEMENTATION
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);

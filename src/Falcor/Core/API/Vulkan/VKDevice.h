@@ -66,6 +66,12 @@ struct DeviceApiData {
 
 VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer);
 
+using OneTimeCommandFunc = std::function<void(VkCommandBuffer)>;
+bool oneTimeCommandBuffer(Device::SharedPtr pDevice, VkCommandPool pool, const CommandQueueHandle& queue, OneTimeCommandFunc callback);
+
+VkResult finishDeferredOperation(Device::SharedPtr pDevice, VkDeferredOperationKHR hOp);
+
+
 }  // namespace Falcor
 
 #endif  // SRC_FALCOR_CORE_API_VULKAN_VKDEVICE_H_

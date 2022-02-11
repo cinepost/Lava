@@ -31,6 +31,8 @@
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Scene/Scene.h"
 
 using namespace Falcor;
 
@@ -60,7 +62,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-    DepthPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+    void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
     void setAlphaTestDisabled(bool value);
     void setHiZEnabled(bool value);
@@ -70,25 +72,34 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
 
+    void prepareVars();
+
+    uint32_t mFrameSampleCount = 16;
+    uint32_t mSuperSampleCount = 1;  // MSAA stuff
+
+    uint32_t mSampleNumber = 0;
+
     // HiZ stuff
     bool        mHiZenabled = false;
     uint8_t     mHiZMaxMipLevels = 5;
 
-    ComputePass::SharedPtr  mpDownSampleDepthPass;
-    Sampler::SharedPtr      mpDepthSampler;
+    ComputePass::SharedPtr              mpDownSampleDepthPass;
+    Sampler::SharedPtr                  mpDepthSampler;
+    SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
 
 
     // Common stuff
     bool        mAlphaTestDisabled = true;
 
-    Fbo::SharedPtr mpFbo;
-    GraphicsState::SharedPtr mpState;
-    GraphicsVars::SharedPtr mpVars;
-    RasterizerState::SharedPtr mpRsState;
-    ResourceFormat mDepthFormat = ResourceFormat::D32Float;
-    Scene::SharedPtr mpScene;
+    Fbo::SharedPtr              mpFbo;
+    GraphicsState::SharedPtr    mpState;
+    GraphicsVars::SharedPtr     mpVars;
+    RasterizerState::SharedPtr  mpRsState;
+    ResourceFormat              mDepthFormat = ResourceFormat::D32Float;
+    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
+    Scene::SharedPtr            mpScene;
 
-
+    bool mDirty = false;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_

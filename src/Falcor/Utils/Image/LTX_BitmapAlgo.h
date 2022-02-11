@@ -13,7 +13,7 @@
 
 namespace Falcor {
 
-namespace oiio = OpenImageIO_v2_3;
+namespace oiio = OIIO;
 
 
 struct TLCInfo {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,23 +28,27 @@
 #include "Scene/VertexAttrib.slangh"
 
 import Scene.Raster;
-import Scene.Shading;
 import Scene.HitInfo;
-import Utils.Helpers;
+import Utils.Math.MathHelpers;
 import GBufferHelpers;
 import Experimental.Scene.Material.TexLODHelpers;
 
 // UAV output channels
-RWTexture2D<uint2>  gVBuffer;
-RWTexture2D<float2> gMotionVectors;
-RWTexture2D<float4> gFaceNormalW;
-RWTexture2D<float2> gPosNormalFwidth;
-RWTexture2D<float2> gLinearZAndDeriv;
-RWTexture2D<float>  gSurfaceSpreadAngle;
+RasterizerOrderedTexture2D<PackedHitInfo> gVBuffer;
+RasterizerOrderedTexture2D<float2> gMotionVectors;
+RasterizerOrderedTexture2D<float4> gRoughness;
+RasterizerOrderedTexture2D<float4> gMetallic;
+RasterizerOrderedTexture2D<float4> gFaceNormalW;
+RasterizerOrderedTexture2D<float4> gViewW;
+RasterizerOrderedTexture2D<float2> gPosNormalFwidth;
+RasterizerOrderedTexture2D<float2> gLinearZAndDeriv;
 
-SamplerState gSampler;
+cbuffer PerFrameCB
+{
+    uint2 gFrameDim;
+};
 
-#define isValid(name) (is_valid_##name != 0)
+#define is_valid(name) (is_valid_##name != 0)
 
 struct GBufferPSOut
 {
@@ -58,32 +62,30 @@ struct GBufferPSOut
     float4 matlExtra        : SV_TARGET7;
 };
 
-VSOut vsMain(VSIn vsIn)
-{
+VSOut vsMain(VSIn vsIn) {
     return defaultVS(vsIn);
 }
 
 [earlydepthstencil]
-#ifdef __D3D12__
-GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
-#else 
-GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
-#endif
-{
+GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     GBufferPSOut psOut;
 
     // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);
 
-    float3 faceNormal = gScene.getFaceNormalW(vsOut.meshInstanceID, triangleIndex);
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
 
-#if !DISABLE_ALPHA_TEST
+#if USE_ALPHA_TEST
     if (alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID])) discard;
 #endif
+
     float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
-    //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
     ShadingData sd = prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
+
+#if ADJUST_SHADING_NORMALS
+    adjustShadingNormal(sd, v);
+#endif
 
     GBuffer gbuf = storeGBufferOutput(sd, v);
 
@@ -98,28 +100,43 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     psOut.matlExtra      = gbuf.matlExtra;
 
     // Store UAV outputs.
-    if (isValid(gFaceNormalW))
+    if (is_valid(gFaceNormalW))
     {
         gFaceNormalW[ipos] = float4(sd.faceN, 0);
     }
 
+    if (is_valid(gViewW))
+    {
+        gViewW[ipos] = float4(sd.V, 0);
+    }
+
     // Compute motion vectors.
-    if (isValid(gMotionVectors))
+    if (is_valid(gMotionVectors))
     {
         const float2 pixelPos = ipos + float2(0.5, 0.5); // Current sample in pixel coords.
         const float4 prevPosH = vsOut.prevPosH; // Sample in previous frame in clip space coords, no jittering applied.
-        const float2 mv = calcMotionVector(pixelPos, prevPosH, gParams.frameSize) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+        const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         gMotionVectors[ipos] = mv;
     }
 
+    if (is_valid(gRoughness))
+    {
+        gRoughness[ipos] = float4(float3(sd.linearRoughness), 1.0f);
+    }
+
+    if (is_valid(gMetallic))
+    {
+        gMetallic[ipos] = float4(float3(sd.metallic), 1.0f);
+    }
+
     // Length of derivatives of position and normal
-    if (isValid(gPosNormalFwidth))
+    if (is_valid(gPosNormalFwidth))
     {
         gPosNormalFwidth[ipos] = float2(length(fwidth(sd.posW)), length(fwidth(sd.N)));
     }
 
     // Linear z and its derivative
-    if (isValid(gLinearZAndDeriv))
+    if (is_valid(gLinearZAndDeriv))
     {
         const float linearZ = vsOut.posH.z * vsOut.posH.w;
         gLinearZAndDeriv[ipos] = float2(linearZ, max(abs(ddx(linearZ)), abs(ddy(linearZ))));
@@ -133,27 +150,13 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID)
     // This is what we store in the hit info.
 
     // Store hit information.
-    if (isValid(gVBuffer)) {
-        HitInfo hit;
-        hit.meshInstanceID = vsOut.meshInstanceID;
-        hit.primitiveIndex = triangleIndex;
-        
-        #ifdef __D3D12__
-        hit.barycentrics = barycentrics.yz;
-        #endif
-        
-        gVBuffer[ipos] = hit.encode();
+    if (is_valid(gVBuffer))
+    {
+        TriangleHit triangleHit;
+        triangleHit.instanceID = vsOut.instanceID;
+        triangleHit.primitiveIndex = triangleIndex;
+        triangleHit.barycentrics = barycentrics.yz;
+        gVBuffer[ipos] = HitInfo(triangleHit).pack();
     }
-    // Store surface spread angle for texture LOD using ray cones.
-    if (isValid(gSurfaceSpreadAngle)) {
-        gSurfaceSpreadAngle[ipos] = computeScreenSpaceSurfaceSpreadAngle(sd.posW, sd.N) * sign(dot(viewDir, sd.N));
-    }
-
-    // test
-    Texture2D testTexture = gScene.materialResources[vsOut.materialID].baseColor;
-    //psOut.diffuseOpacity.a = 1.0;
-    //psOut.diffuseOpacity.rgb = testTexture.SampleLevel(gScene.materialResources[vsOut.materialID].samplerState, v.texC, 3).rgb;
-    //
-
     return psOut;
 }

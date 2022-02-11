@@ -1,316 +1,424 @@
-# Obtained from Justus Calvin:
-# https://github.com/justusc/FindTBB/blob/25ecdea817b3af4a26d74ddcd439642dbd706acb/FindTBB.cmake
+# Copyright Contributors to the OpenVDB Project
+# SPDX-License-Identifier: MPL-2.0
 #
-# With the following modifications:
-# * Move the "tbb" imported library target into a namespace as "TBB::tbb" to
-#   conform to modern CMake conventions.
-# * Append "lib" as a library path suffix on all platforms.
-#
-# The MIT License (MIT)
-#
-# Copyright (c) 2015 Justus Calvin
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+#[=======================================================================[.rst:
 
-#
-# FindTBB
-# -------
-#
-# Find TBB include directories and libraries.
-#
-# Usage:
-#
-#  find_package(TBB [major[.minor]] [EXACT]
-#               [QUIET] [REQUIRED]
-#               [[COMPONENTS] [components...]]
-#               [OPTIONAL_COMPONENTS components...]) 
-#
-# where the allowed components are tbbmalloc and tbb_preview. Users may modify 
-# the behavior of this module with the following variables:
-#
-# * TBB_ROOT_DIR          - The base directory the of TBB installation.
-# * TBB_INCLUDE_DIR       - The directory that contains the TBB headers files.
-# * TBB_LIBRARY           - The directory that contains the TBB library files.
-# * TBB_<library>_LIBRARY - The path of the TBB the corresponding TBB library. 
-#                           These libraries, if specified, override the 
-#                           corresponding library search results, where <library>
-#                           may be tbb, tbb_debug, tbbmalloc, tbbmalloc_debug,
-#                           tbb_preview, or tbb_preview_debug.
-# * TBB_USE_DEBUG_BUILD   - The debug version of tbb libraries, if present, will
-#                           be used instead of the release version.
-#
-# Users may modify the behavior of this module with the following environment
-# variables:
-#
-# * TBB_INSTALL_DIR 
-# * TBBROOT
-# * LIBRARY_PATH
-#
-# This module will set the following variables:
-#
-# * TBB_FOUND             - Set to false, or undefined, if we haven’t found, or
-#                           don’t want to use TBB.
-# * TBB_<component>_FOUND - If False, optional <component> part of TBB sytem is
-#                           not available.
-# * TBB_VERSION           - The full version string
-# * TBB_VERSION_MAJOR     - The major version
-# * TBB_VERSION_MINOR     - The minor version
-# * TBB_INTERFACE_VERSION - The interface version number defined in 
-#                           tbb/tbb_stddef.h.
-# * TBB_<library>_LIBRARY_RELEASE - The path of the TBB release version of 
-#                           <library>, where <library> may be tbb, tbb_debug,
-#                           tbbmalloc, tbbmalloc_debug, tbb_preview, or 
-#                           tbb_preview_debug.
-# * TBB_<library>_LIBRARY_DEGUG - The path of the TBB release version of 
-#                           <library>, where <library> may be tbb, tbb_debug,
-#                           tbbmalloc, tbbmalloc_debug, tbb_preview, or 
-#                           tbb_preview_debug.
-#
-# The following varibles should be used to build and link with TBB:
-#
-# * TBB_INCLUDE_DIRS        - The include directory for TBB.
-# * TBB_LIBRARIES           - The libraries to link against to use TBB.
-# * TBB_LIBRARIES_RELEASE   - The release libraries to link against to use TBB.
-# * TBB_LIBRARIES_DEBUG     - The debug libraries to link against to use TBB.
-# * TBB_DEFINITIONS         - Definitions to use when compiling code that uses
-#                             TBB.
-# * TBB_DEFINITIONS_RELEASE - Definitions to use when compiling release code that
-#                             uses TBB.
-# * TBB_DEFINITIONS_DEBUG   - Definitions to use when compiling debug code that
-#                             uses TBB.
-#
-# This module will also create the "TBB::tbb" target that may be used when
-# building executables and libraries.
+FindTBB
+-------
 
-include(FindPackageHandleStandardArgs)
+Find Tbb include dirs and libraries
 
-if(NOT TBB_FOUND)
+Use this module by invoking find_package with the form::
 
-  ##################################
-  # Check the build type
-  ##################################
-  
-  if(NOT DEFINED TBB_USE_DEBUG_BUILD)
-    if(CMAKE_BUILD_TYPE MATCHES "(Debug|DEBUG|debug|RelWithDebInfo|RELWITHDEBINFO|relwithdebinfo)")
-      set(TBB_BUILD_TYPE DEBUG)
-    else()
-      set(TBB_BUILD_TYPE RELEASE)
-    endif()
-  elseif(TBB_USE_DEBUG_BUILD)
-    set(TBB_BUILD_TYPE DEBUG)
-  else()
-    set(TBB_BUILD_TYPE RELEASE)
-  endif()
-  
-  ##################################
-  # Set the TBB search directories
-  ##################################
-  
-  # Define search paths based on user input and environment variables
-  set(TBB_SEARCH_DIR ${TBB_ROOT_DIR} $ENV{TBB_INSTALL_DIR} $ENV{TBBROOT})
-  
-  # Define the search directories based on the current platform
-  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(TBB_DEFAULT_SEARCH_DIR "C:/Program Files/Intel/TBB"
-                               "C:/Program Files (x86)/Intel/TBB")
+  find_package(TBB
+    [version] [EXACT]      # Minimum or EXACT version
+    [REQUIRED]             # Fail with error if Tbb is not found
+    [COMPONENTS <libs>...] # Tbb libraries by their canonical name
+                           # e.g. "tbb" for "libtbb"
+    )
 
-    # Set the target architecture
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-      set(TBB_ARCHITECTURE "intel64")
-    else()
-      set(TBB_ARCHITECTURE "ia32")
-    endif()
+IMPORTED Targets
+^^^^^^^^^^^^^^^^
 
-    # Set the TBB search library path search suffix based on the version of VC
-    if(WINDOWS_STORE)
-      set(TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc11_ui")
-    elseif(MSVC14)
-      set(TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc14")
-    elseif(MSVC12)
-      set(TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc12")
-    elseif(MSVC11)
-      set(TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc11")
-    elseif(MSVC10)
-      set(TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc10")
-    endif()
+``TBB::tbb``
+  The tbb library target.
+``TBB::tbbmalloc``
+  The tbbmalloc library target.
+``TBB::tbbmalloc_proxy``
+  The tbbmalloc_proxy library target.
 
-    # Add the library path search suffix for the VC independent version of TBB
-    list(APPEND TBB_LIB_PATH_SUFFIX "lib/${TBB_ARCHITECTURE}/vc_mt")
+Result Variables
+^^^^^^^^^^^^^^^^
 
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    # OS X
-    set(TBB_DEFAULT_SEARCH_DIR "/opt/intel/tbb")
-    
-    # TODO: Check to see which C++ library is being used by the compiler.
-    if(NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 13.0)
-      # The default C++ library on OS X 10.9 and later is libc++
-      set(TBB_LIB_PATH_SUFFIX "lib/libc++")
-    endif()
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Linux
-    set(TBB_DEFAULT_SEARCH_DIR "/opt/intel/tbb")
-    
-    # TODO: Check compiler version to see the suffix should be <arch>/gcc4.1 or
-    #       <arch>/gcc4.1. For now, assume that the compiler is more recent than
-    #       gcc 4.4.x or later.
-    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-      set(TBB_LIB_PATH_SUFFIX "lib/intel64/gcc4.4")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^i.86$")
-      set(TBB_LIB_PATH_SUFFIX "lib/ia32/gcc4.4")
-    endif()
-  endif()
-  
-  # The above TBB_LIB_PATH_SUFFIX is based on where Intel puts the libraries
-  # in the package of prebuilt libraries it distributes. However, users may
-  # install these shared libraries into the more conventional "lib" directory
-  # (especially when building from source), so we add that as an additional
-  # location to search.
-  list(APPEND TBB_LIB_PATH_SUFFIX "lib")
+This will define the following variables:
 
-  ##################################
-  # Find the TBB include dir
-  ##################################
-  
-  find_path(TBB_INCLUDE_DIRS tbb/tbb.h
-      HINTS ${TBB_INCLUDE_DIR} ${TBB_SEARCH_DIR}
-      PATHS ${TBB_DEFAULT_SEARCH_DIR}
-      PATH_SUFFIXES include)
+``Tbb_FOUND``
+  True if the system has the Tbb library.
+``Tbb_VERSION``
+  The version of the Tbb library which was found.
+``Tbb_INCLUDE_DIRS``
+  Include directories needed to use Tbb.
+``Tbb_RELEASE_LIBRARIES``
+  Libraries needed to link to the release version of Tbb.
+``Tbb_RELEASE_LIBRARY_DIRS``
+  Tbb release library directories.
+``Tbb_DEBUG_LIBRARIES``
+  Libraries needed to link to the debug version of Tbb.
+``Tbb_DEBUG_LIBRARY_DIRS``
+  Tbb debug library directories.
+``TBB_{COMPONENT}_FOUND``
+  True if the system has the named TBB component.
 
-  ##################################
-  # Set version strings
-  ##################################
+Deprecated - use [RELEASE|DEBUG] variants:
 
-  if(TBB_INCLUDE_DIRS)
-    file(READ "${TBB_INCLUDE_DIRS}/tbb/tbb_stddef.h" _tbb_version_file)
-    string(REGEX REPLACE ".*#define TBB_VERSION_MAJOR ([0-9]+).*" "\\1"
-        TBB_VERSION_MAJOR "${_tbb_version_file}")
-    string(REGEX REPLACE ".*#define TBB_VERSION_MINOR ([0-9]+).*" "\\1"
-        TBB_VERSION_MINOR "${_tbb_version_file}")
-    string(REGEX REPLACE ".*#define TBB_INTERFACE_VERSION ([0-9]+).*" "\\1"
-        TBB_INTERFACE_VERSION "${_tbb_version_file}")
-    set(TBB_VERSION "${TBB_VERSION_MAJOR}.${TBB_VERSION_MINOR}")
-  endif()
+``Tbb_LIBRARIES``
+  Libraries needed to link to Tbb.
+``Tbb_LIBRARY_DIRS``
+  Tbb library directories.
 
-  ##################################
-  # Find TBB components
-  ##################################
+Cache Variables
+^^^^^^^^^^^^^^^
 
-  if(TBB_VERSION VERSION_LESS 4.3)
-    set(TBB_SEARCH_COMPOMPONENTS tbb_preview tbbmalloc tbb)
-  else()
-    set(TBB_SEARCH_COMPOMPONENTS tbb_preview tbbmalloc_proxy tbbmalloc tbb)
-  endif()
+The following cache variables may also be set:
 
-  # Find each component
-  foreach(_comp ${TBB_SEARCH_COMPOMPONENTS})
-    if(";${TBB_FIND_COMPONENTS};tbb;" MATCHES ";${_comp};")
+``Tbb_INCLUDE_DIR``
+  The directory containing ``tbb/tbb_stddef.h``.
+``Tbb_{COMPONENT}_LIBRARY``
+  Individual component libraries for Tbb. may include target_link_libraries() debug/optimized keywords.
+``Tbb_{COMPONENT}_LIBRARY_RELEASE``
+  Individual component libraries for Tbb release
+``Tbb_{COMPONENT}_LIBRARY_DEBUG``
+  Individual debug component libraries for Tbb debug
 
-      # Search for the libraries
-      find_library(TBB_${_comp}_LIBRARY_RELEASE ${_comp}
-          HINTS ${TBB_LIBRARY} ${TBB_SEARCH_DIR}
-          PATHS ${TBB_DEFAULT_SEARCH_DIR} ENV LIBRARY_PATH
-          PATH_SUFFIXES ${TBB_LIB_PATH_SUFFIX})
+Hints
+^^^^^
 
-      find_library(TBB_${_comp}_LIBRARY_DEBUG ${_comp}_debug
-          HINTS ${TBB_LIBRARY} ${TBB_SEARCH_DIR}
-          PATHS ${TBB_DEFAULT_SEARCH_DIR} ENV LIBRARY_PATH
-          PATH_SUFFIXES ${TBB_LIB_PATH_SUFFIX})
+Instead of explicitly setting the cache variables, the following variables
+may be provided to tell this module where to look.
 
-      if(TBB_${_comp}_LIBRARY_DEBUG)
-        list(APPEND TBB_LIBRARIES_DEBUG "${TBB_${_comp}_LIBRARY_DEBUG}")
-      endif()
-      if(TBB_${_comp}_LIBRARY_RELEASE)
-        list(APPEND TBB_LIBRARIES_RELEASE "${TBB_${_comp}_LIBRARY_RELEASE}")
-      endif()
-      if(TBB_${_comp}_LIBRARY_${TBB_BUILD_TYPE} AND NOT TBB_${_comp}_LIBRARY)
-        set(TBB_${_comp}_LIBRARY "${TBB_${_comp}_LIBRARY_${TBB_BUILD_TYPE}}")
-      endif()
+``TBB_ROOT``
+  Preferred installation prefix.
+``TBB_INCLUDEDIR``
+  Preferred include directory e.g. <prefix>/include
+``TBB_LIBRARYDIR``
+  Preferred library directory e.g. <prefix>/lib
+``TBB_DEBUG_SUFFIX``
+  Suffix of the debug version of tbb. Defaults to "_debug".
+``SYSTEM_LIBRARY_PATHS``
+  Global list of library paths intended to be searched by and find_xxx call
+``TBB_USE_STATIC_LIBS``
+  Only search for static tbb libraries
+``DISABLE_CMAKE_SEARCH_PATHS``
+  Disable CMakes default search paths for find_xxx calls in this module
 
-      if(TBB_${_comp}_LIBRARY AND EXISTS "${TBB_${_comp}_LIBRARY}")
-        set(TBB_${_comp}_FOUND TRUE)
-      else()
-        set(TBB_${_comp}_FOUND FALSE)
-      endif()
+#]=======================================================================]
 
-      # Mark internal variables as advanced
-      mark_as_advanced(TBB_${_comp}_LIBRARY_RELEASE)
-      mark_as_advanced(TBB_${_comp}_LIBRARY_DEBUG)
-      mark_as_advanced(TBB_${_comp}_LIBRARY)
+cmake_minimum_required(VERSION 3.12)
+include(GNUInstallDirs)
 
+
+mark_as_advanced(
+  Tbb_INCLUDE_DIR
+  Tbb_LIBRARY
+)
+
+set(_FIND_TBB_ADDITIONAL_OPTIONS "")
+if(DISABLE_CMAKE_SEARCH_PATHS)
+  set(_FIND_TBB_ADDITIONAL_OPTIONS NO_DEFAULT_PATH)
+endif()
+
+set(_TBB_COMPONENT_LIST
+  tbb
+  tbbmalloc
+  tbbmalloc_proxy
+)
+
+if(TBB_FIND_COMPONENTS)
+  set(_TBB_COMPONENTS_PROVIDED TRUE)
+  set(_IGNORED_COMPONENTS "")
+  foreach(COMPONENT ${TBB_FIND_COMPONENTS})
+    if(NOT ${COMPONENT} IN_LIST _TBB_COMPONENT_LIST)
+      list(APPEND _IGNORED_COMPONENTS ${COMPONENT})
     endif()
   endforeach()
 
-  ##################################
-  # Set compile flags and libraries
-  ##################################
+  if(_IGNORED_COMPONENTS)
+    message(STATUS "Ignoring unknown components of TBB:")
+    foreach(COMPONENT ${_IGNORED_COMPONENTS})
+      message(STATUS "  ${COMPONENT}")
+    endforeach()
+    list(REMOVE_ITEM TBB_FIND_COMPONENTS ${_IGNORED_COMPONENTS})
+  endif()
+else()
+  set(_TBB_COMPONENTS_PROVIDED FALSE)
+  set(TBB_FIND_COMPONENTS ${_TBB_COMPONENT_LIST})
+endif()
 
-  set(TBB_DEFINITIONS_RELEASE "")
-  set(TBB_DEFINITIONS_DEBUG "-DTBB_USE_DEBUG=1")
-    
-  if(TBB_LIBRARIES_${TBB_BUILD_TYPE})
-    set(TBB_DEFINITIONS "${TBB_DEFINITIONS_${TBB_BUILD_TYPE}}")
-    set(TBB_LIBRARIES "${TBB_LIBRARIES_${TBB_BUILD_TYPE}}")
-  elseif(TBB_LIBRARIES_RELEASE)
-    set(TBB_DEFINITIONS "${TBB_DEFINITIONS_RELEASE}")
-    set(TBB_LIBRARIES "${TBB_LIBRARIES_RELEASE}")
-  elseif(TBB_LIBRARIES_DEBUG)
-    set(TBB_DEFINITIONS "${TBB_DEFINITIONS_DEBUG}")
-    set(TBB_LIBRARIES "${TBB_LIBRARIES_DEBUG}")
+if(TBB_ROOT)
+  set(_TBB_ROOT ${TBB_ROOT})
+elseif(DEFINED ENV{TBB_ROOT})
+  set(_TBB_ROOT $ENV{TBB_ROOT})
+endif()
+
+# Additionally try and use pkconfig to find Tbb
+if(USE_PKGCONFIG)
+  if(NOT DEFINED PKG_CONFIG_FOUND)
+    find_package(PkgConfig)
+  endif()
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_Tbb QUIET tbb)
+  endif()
+endif()
+
+# ------------------------------------------------------------------------
+#  Search for tbb include DIR
+# ------------------------------------------------------------------------
+
+set(_TBB_INCLUDE_SEARCH_DIRS "")
+list(APPEND _TBB_INCLUDE_SEARCH_DIRS
+  ${TBB_INCLUDEDIR}
+  ${_TBB_ROOT}
+  ${PC_Tbb_INCLUDE_DIRS}
+  ${SYSTEM_LIBRARY_PATHS}
+)
+
+# Look for a standard tbb header file.
+find_path(Tbb_INCLUDE_DIR tbb/tbb_stddef.h
+  ${_FIND_TBB_ADDITIONAL_OPTIONS}
+  PATHS ${_TBB_INCLUDE_SEARCH_DIRS}
+  PATH_SUFFIXES ${CMAKE_INSTALL_INCLUDEDIR} include
+)
+
+if(EXISTS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h")
+  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h"
+    _tbb_version_major_string REGEX "#define TBB_VERSION_MAJOR "
+  )
+  string(REGEX REPLACE "#define TBB_VERSION_MAJOR" ""
+    _tbb_version_major_string "${_tbb_version_major_string}"
+  )
+  string(STRIP "${_tbb_version_major_string}" Tbb_VERSION_MAJOR)
+
+  file(STRINGS "${Tbb_INCLUDE_DIR}/tbb/tbb_stddef.h"
+     _tbb_version_minor_string REGEX "#define TBB_VERSION_MINOR "
+  )
+  string(REGEX REPLACE "#define TBB_VERSION_MINOR" ""
+    _tbb_version_minor_string "${_tbb_version_minor_string}"
+  )
+  string(STRIP "${_tbb_version_minor_string}" Tbb_VERSION_MINOR)
+
+  unset(_tbb_version_major_string)
+  unset(_tbb_version_minor_string)
+
+  set(Tbb_VERSION ${Tbb_VERSION_MAJOR}.${Tbb_VERSION_MINOR})
+endif()
+
+# ------------------------------------------------------------------------
+#  Search for TBB lib DIR
+# ------------------------------------------------------------------------
+
+set(_TBB_LIBRARYDIR_SEARCH_DIRS "")
+
+# Append to _TBB_LIBRARYDIR_SEARCH_DIRS in priority order
+
+set(_TBB_LIBRARYDIR_SEARCH_DIRS "")
+list(APPEND _TBB_LIBRARYDIR_SEARCH_DIRS
+  ${TBB_LIBRARYDIR}
+  ${_TBB_ROOT}
+  ${PC_Tbb_LIBRARY_DIRS}
+  ${SYSTEM_LIBRARY_PATHS}
+)
+
+# Library suffix handling
+
+if(NOT DEFINED TBB_DEBUG_SUFFIX)
+  set(TBB_DEBUG_SUFFIX _debug)
+endif()
+set(_TBB_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+
+if(WIN32)
+  if(TBB_USE_STATIC_LIBS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+  endif()
+else()
+  if(TBB_USE_STATIC_LIBS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  endif()
+endif()
+
+set(Tbb_LIB_COMPONENTS "")
+list(APPEND TBB_BUILD_TYPES RELEASE DEBUG)
+
+foreach(COMPONENT ${TBB_FIND_COMPONENTS})
+  foreach(BUILD_TYPE ${TBB_BUILD_TYPES})
+
+    set(_TBB_LIB_NAME ${COMPONENT})
+    if(BUILD_TYPE STREQUAL DEBUG)
+      set(_TBB_LIB_NAME "${_TBB_LIB_NAME}${TBB_DEBUG_SUFFIX}")
+    endif()
+
+    find_library(Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE} ${_TBB_LIB_NAME}
+      ${_FIND_TBB_ADDITIONAL_OPTIONS}
+      PATHS ${_TBB_LIBRARYDIR_SEARCH_DIRS}
+      PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} lib64 lib
+    )
+
+    # On Unix, TBB sometimes uses linker scripts instead of symlinks, so parse the linker script
+    # and correct the library name if so
+    if(UNIX AND EXISTS ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}})
+      # Ignore files where the first four bytes equals the ELF magic number
+      file(READ ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}} Tbb_${COMPONENT}_HEX OFFSET 0 LIMIT 4 HEX)
+      if(NOT ${Tbb_${COMPONENT}_HEX} STREQUAL "7f454c46")
+        # Read the first 1024 bytes of the library and match against an "INPUT (file)" regex
+        file(READ ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}} Tbb_${COMPONENT}_ASCII OFFSET 0 LIMIT 1024)
+        if("${Tbb_${COMPONENT}_ASCII}" MATCHES "INPUT \\(([^(]+)\\)")
+          # Extract the directory and apply the matched text (in brackets)
+          get_filename_component(Tbb_${COMPONENT}_DIR "${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}}" DIRECTORY)
+          set(Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE} "${Tbb_${COMPONENT}_DIR}/${CMAKE_MATCH_1}")
+        endif()
+      endif()
+    endif()
+
+    if(EXISTS ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}})
+      list(APPEND Tbb_LIB_COMPONENTS ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}})
+      list(APPEND Tbb_LIB_COMPONENTS_${BUILD_TYPE} ${Tbb_${COMPONENT}_LIBRARY_${BUILD_TYPE}})
+    endif()
+  endforeach()
+
+  if(Tbb_${COMPONENT}_LIBRARY_DEBUG AND Tbb_${COMPONENT}_LIBRARY_RELEASE)
+    # if the generator is multi-config or if CMAKE_BUILD_TYPE is set for
+    # single-config generators, set optimized and debug libraries
+    get_property(_isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(_isMultiConfig OR CMAKE_BUILD_TYPE)
+      set(Tbb_${COMPONENT}_LIBRARY optimized ${Tbb_${COMPONENT}_LIBRARY_RELEASE} debug ${Tbb_${COMPONENT}_LIBRARY_DEBUG})
+    else()
+      # For single-config generators where CMAKE_BUILD_TYPE has no value,
+      # just use the release libraries
+      set(Tbb_${COMPONENT}_LIBRARY ${Tbb_${COMPONENT}_LIBRARY_RELEASE})
+    endif()
+    # FIXME: This probably should be set for both cases
+    set(Tbb_${COMPONENT}_LIBRARIES optimized ${Tbb_${COMPONENT}_LIBRARY_RELEASE} debug ${Tbb_${COMPONENT}_LIBRARY_DEBUG})
   endif()
 
-  find_package_handle_standard_args(TBB 
-      REQUIRED_VARS TBB_INCLUDE_DIRS TBB_LIBRARIES
-      HANDLE_COMPONENTS
-      VERSION_VAR TBB_VERSION)
+  # if only the release version was found, set the debug variable also to the release version
+  if(Tbb_${COMPONENT}_LIBRARY_RELEASE AND NOT Tbb_${COMPONENT}_LIBRARY_DEBUG)
+    set(Tbb_${COMPONENT}_LIBRARY_DEBUG ${Tbb_${COMPONENT}_LIBRARY_RELEASE})
+    set(Tbb_${COMPONENT}_LIBRARY       ${Tbb_${COMPONENT}_LIBRARY_RELEASE})
+    set(Tbb_${COMPONENT}_LIBRARIES     ${Tbb_${COMPONENT}_LIBRARY_RELEASE})
+  endif()
 
-  ##################################
-  # Create targets
-  ##################################
+  # if only the debug version was found, set the release variable also to the debug version
+  if(Tbb_${COMPONENT}_LIBRARY_DEBUG AND NOT Tbb_${COMPONENT}_LIBRARY_RELEASE)
+    set(Tbb_${COMPONENT}_LIBRARY_RELEASE ${Tbb_${COMPONENT}_LIBRARY_DEBUG})
+    set(Tbb_${COMPONENT}_LIBRARY         ${Tbb_${COMPONENT}_LIBRARY_DEBUG})
+    set(Tbb_${COMPONENT}_LIBRARIES       ${Tbb_${COMPONENT}_LIBRARY_DEBUG})
+  endif()
 
-  if(NOT CMAKE_VERSION VERSION_LESS 3.0 AND TBB_FOUND)
-    add_library(TBB::tbb SHARED IMPORTED)
-    set_target_properties(TBB::tbb PROPERTIES
-          INTERFACE_INCLUDE_DIRECTORIES  ${TBB_INCLUDE_DIRS}
-          IMPORTED_LOCATION              ${TBB_LIBRARIES})
-    if(TBB_LIBRARIES_RELEASE AND TBB_LIBRARIES_DEBUG)
-      set_target_properties(TBB::tbb PROPERTIES
-          INTERFACE_COMPILE_DEFINITIONS "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:TBB_USE_DEBUG=1>"
-          IMPORTED_LOCATION_DEBUG          ${TBB_LIBRARIES_DEBUG}
-          IMPORTED_LOCATION_RELWITHDEBINFO ${TBB_LIBRARIES_DEBUG}
-          IMPORTED_LOCATION_RELEASE        ${TBB_LIBRARIES_RELEASE}
-          IMPORTED_LOCATION_MINSIZEREL     ${TBB_LIBRARIES_RELEASE}
-          )
-    elseif(TBB_LIBRARIES_RELEASE)
-      set_target_properties(TBB::tbb PROPERTIES IMPORTED_LOCATION ${TBB_LIBRARIES_RELEASE})
-    else()
-      set_target_properties(TBB::tbb PROPERTIES
-          INTERFACE_COMPILE_DEFINITIONS "${TBB_DEFINITIONS_DEBUG}"
-          IMPORTED_LOCATION              ${TBB_LIBRARIES_DEBUG}
-          )
+  # If the debug & release library ends up being the same, omit the keywords
+  if("${Tbb_${COMPONENT}_LIBRARY_RELEASE}" STREQUAL "${Tbb_${COMPONENT}_LIBRARY_DEBUG}")
+    set(Tbb_${COMPONENT}_LIBRARY   ${Tbb_${COMPONENT}_LIBRARY_RELEASE} )
+    set(Tbb_${COMPONENT}_LIBRARIES ${Tbb_${COMPONENT}_LIBRARY_RELEASE} )
+  endif()
+
+  if(Tbb_${COMPONENT}_LIBRARY)
+    set(TBB_${COMPONENT}_FOUND TRUE)
+  else()
+    set(TBB_${COMPONENT}_FOUND FALSE)
+  endif()
+endforeach()
+
+# Reset library suffix
+
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${_TBB_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES})
+unset(_TBB_ORIG_CMAKE_FIND_LIBRARY_SUFFIXES)
+
+# ------------------------------------------------------------------------
+#  Cache and set TBB_FOUND
+# ------------------------------------------------------------------------
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(TBB
+  FOUND_VAR TBB_FOUND
+  REQUIRED_VARS
+    Tbb_INCLUDE_DIR
+    Tbb_LIB_COMPONENTS
+  VERSION_VAR Tbb_VERSION
+  HANDLE_COMPONENTS
+)
+
+if(NOT TBB_FOUND)
+  if(TBB_FIND_REQUIRED)
+    message(FATAL_ERROR "Unable to find TBB")
+  endif()
+  return()
+endif()
+
+# Partition release/debug lib vars
+
+set(Tbb_RELEASE_LIBRARIES "")
+set(Tbb_RELEASE_LIBRARY_DIRS "")
+set(Tbb_DEBUG_LIBRARIES "")
+set(Tbb_DEBUG_LIBRARY_DIRS "")
+foreach(LIB ${Tbb_LIB_COMPONENTS_RELEASE})
+  get_filename_component(_TBB_LIBDIR ${LIB} DIRECTORY)
+  list(APPEND Tbb_RELEASE_LIBRARIES ${LIB})
+  list(APPEND Tbb_RELEASE_LIBRARY_DIRS ${_TBB_LIBDIR})
+endforeach()
+
+foreach(LIB ${Tbb_LIB_COMPONENTS_DEBUG})
+  get_filename_component(_TBB_LIBDIR ${LIB} DIRECTORY)
+  list(APPEND Tbb_DEBUG_LIBRARIES ${LIB})
+  list(APPEND Tbb_DEBUG_LIBRARY_DIRS ${_TBB_LIBDIR})
+endforeach()
+
+list(REMOVE_DUPLICATES Tbb_RELEASE_LIBRARY_DIRS)
+list(REMOVE_DUPLICATES Tbb_DEBUG_LIBRARY_DIRS)
+
+set(Tbb_LIBRARIES ${Tbb_RELEASE_LIBRARIES})
+set(Tbb_LIBRARY_DIRS ${Tbb_RELEASE_LIBRARY_DIRS})
+set(Tbb_INCLUDE_DIRS ${Tbb_INCLUDE_DIR})
+
+# Configure imported targets
+
+foreach(COMPONENT ${TBB_FIND_COMPONENTS})
+  # Configure lib type. If XXX_USE_STATIC_LIBS, we always assume a static
+  # lib is in use. If win32, we can't mark the import .libs as shared, so
+  # these are always marked as UNKNOWN. Otherwise, infer from extension.
+  set(TBB_${COMPONENT}_LIB_TYPE UNKNOWN)
+  if(TBB_USE_STATIC_LIBS)
+    set(TBB_${COMPONENT}_LIB_TYPE STATIC)
+  elseif(UNIX)
+    get_filename_component(_TBB_${COMPONENT}_EXT ${Tbb_${COMPONENT}_LIBRARY_RELEASE} EXT)
+    if(_TBB_${COMPONENT}_EXT STREQUAL ".a")
+      set(TBB_${COMPONENT}_LIB_TYPE STATIC)
+    elseif(_TBB_${COMPONENT}_EXT STREQUAL ".so" OR
+           _TBB_${COMPONENT}_EXT STREQUAL ".dylib")
+      set(TBB_${COMPONENT}_LIB_TYPE SHARED)
     endif()
   endif()
 
-  mark_as_advanced(TBB_INCLUDE_DIRS TBB_LIBRARIES)
+  set(Tbb_${COMPONENT}_DEFINITIONS)
 
-  unset(TBB_ARCHITECTURE)
-  unset(TBB_BUILD_TYPE)
-  unset(TBB_LIB_PATH_SUFFIX)
-  unset(TBB_DEFAULT_SEARCH_DIR)
+  # Add the TBB linking defines if the library is static on WIN32
+  if(WIN32)
+    if(${COMPONENT} STREQUAL tbb)
+      if(Tbb_${COMPONENT}_LIB_TYPE STREQUAL STATIC)
+        list(APPEND Tbb_${COMPONENT}_DEFINITIONS __TBB_NO_IMPLICIT_LINKAGE=1)
+      endif()
+    else() # tbbmalloc
+      if(Tbb_${COMPONENT}_LIB_TYPE STREQUAL STATIC)
+        list(APPEND Tbb_${COMPONENT}_DEFINITIONS __TBB_MALLOC_NO_IMPLICIT_LINKAGE=1)
+      endif()
+    endif()
+  endif()
 
-endif()
+  if(NOT TARGET TBB::${COMPONENT})
+    add_library(TBB::${COMPONENT} ${TBB_${COMPONENT}_LIB_TYPE} IMPORTED)
+    set_target_properties(TBB::${COMPONENT} PROPERTIES
+      INTERFACE_COMPILE_OPTIONS "${PC_Tbb_CFLAGS_OTHER}"
+      INTERFACE_COMPILE_DEFINITIONS "${Tbb_${COMPONENT}_DEFINITIONS}"
+      INTERFACE_INCLUDE_DIRECTORIES "${Tbb_INCLUDE_DIR}")
+
+    # Standard location
+    set_target_properties(TBB::${COMPONENT} PROPERTIES
+      IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
+      IMPORTED_LOCATION "${Tbb_${COMPONENT}_LIBRARY}")
+
+    # Release location
+    if(EXISTS "${Tbb_${COMPONENT}_LIBRARY_RELEASE}")
+      set_property(TARGET TBB::${COMPONENT} APPEND PROPERTY
+        IMPORTED_CONFIGURATIONS RELEASE)
+      set_target_properties(TBB::${COMPONENT} PROPERTIES
+        IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+        IMPORTED_LOCATION_RELEASE "${Tbb_${COMPONENT}_LIBRARY_RELEASE}")
+    endif()
+
+    # Debug location
+    if(EXISTS "${Tbb_${COMPONENT}_LIBRARY_DEBUG}")
+      set_property(TARGET TBB::${COMPONENT} APPEND PROPERTY
+        IMPORTED_CONFIGURATIONS DEBUG)
+      set_target_properties(TBB::${COMPONENT} PROPERTIES
+        IMPORTED_LINK_INTERFACE_LANGUAGES_DEBUG "CXX"
+        IMPORTED_LOCATION_DEBUG "${Tbb_${COMPONENT}_LIBRARY_DEBUG}")
+    endif()
+  endif()
+endforeach()

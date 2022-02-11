@@ -33,8 +33,8 @@
 #define GLM_FORCE_CTOR_INIT
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_SWIZZLE
-#include "Externals/GLM/glm/glm.hpp"
-#include "Externals/GLM/glm/gtx/compatibility.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtx/compatibility.hpp"
 
 namespace Falcor {
 

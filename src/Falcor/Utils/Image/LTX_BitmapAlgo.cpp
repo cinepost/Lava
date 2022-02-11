@@ -5,7 +5,7 @@
 #include <OpenImageIO/filter.h>
 #include <OpenImageIO/color.h>
 
-#include "c-blosc2/blosc/blosc2.h"
+#include "blosc.h"
 
 namespace Falcor {
 

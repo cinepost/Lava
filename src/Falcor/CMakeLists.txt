@@ -1,3 +1,13 @@
+set(DEPS_BINARY_DIR ${PROJECT_SOURCE_DIR}/deps/)
+
+include_directories( 
+    ${PROJECT_SOURCE_DIR}/deps
+    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
+    ${PROJECT_SOURCE_DIR}/deps/nvvk
+    ${PROJECT_SOURCE_DIR}/deps/nvp
+    ${PROJECT_SOURCE_DIR}/deps/nvh
+)
+
 file( GLOB SOURCES
     #./*.cpp
     ./Core/*.cpp
@@ -5,7 +15,7 @@ file( GLOB SOURCES
     ./Core/API/Vulkan/*.cpp
     ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
-    ./Core/Platform/Linux/*.cpp
+    ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
     ./Core/State/*.cpp
     ./Core/BufferTypes/*.cpp
@@ -20,7 +30,7 @@ file( GLOB SOURCES
     ./Scene/Lights/*.cpp
     ./Scene/Material/*.cpp
     ./Scene/Volume/*.cpp
-    ./Scene/Importers/*.cpp
+    ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
@@ -34,33 +44,33 @@ file( GLOB SOURCES
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
 
-    #./Scene/ParticleSystem/*.cpp
-    #./Testing/*.cpp
+    ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/hlbvh_builder.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/radix_sort.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/restructure_hlbvh.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/scan.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/shader_manager.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.h
-    #${PROJECT_SOURCE_DIR}/third_party/RadeonRays_SDK/src/core/src/vlk/update_hlbvh.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/raytraceKHR_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/resourceallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/commands_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/buffersuballocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/stagingmemorymanager_vk.cpp
+    
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memorymanagement_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_dedicated_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/samplers_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/images_vk.cpp
+    
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/extensions_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/error_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/nvvk/debug_util_vk.cpp
 
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_draw.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_widgets.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/imgui_tables.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_glfw.cpp
-    #${PROJECT_SOURCE_DIR}/third_party/imgui/backends/imgui_impl_vulkan.cpp
-    #${PROJECT_SOURCE_DIR}/src/Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.cpp
-    ${PROJECT_SOURCE_DIR}/src/Externals/mikktspace/mikktspace.c
+    ${PROJECT_SOURCE_DIR}/deps/nvh/nvprint.cpp
+
 )
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+
+# Blosc
+set(Blosc_ROOT ${DEPS_BINARY_DIR})
+find_package(Blosc 1.21.0 REQUIRED)
 
 # PyBind11
 find_package(pybind11 REQUIRED CONFIG)
@@ -70,12 +80,11 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
-find_package(assimp REQUIRED)
-if(assimp_FOUND)
-    set(ASSIMP_LIBRARY "assimp")
-    add_library(${ASSIMP_LIBRARY} SHARED IMPORTED)
-    set_target_properties(${ASSIMP_LIBRARY} PROPERTIES IMPORTED_LOCATION "${ASSIMP_LIBRARY_DIRS}/libassimp.so")
-endif(assimp_FOUND)
+set(assimp_ROOT ${DEPS_BINARY_DIR})
+find_package(assimp 5.0.0 REQUIRED)
+
+# LZ4
+find_package( LZ4 REQUIRED )
 
 # ZLIB
 find_package( ZLIB REQUIRED )
@@ -97,16 +106,14 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
   )
 endif()
 
-# Imath
-find_package( Imath REQUIRED CONFIG )
-
 # OpenEXR
-find_package( OpenEXR REQUIRED CONFIG )
+set(OpenEXR_ROOT ${DEPS_BINARY_DIR})
+find_package( OpenEXR 2.5 REQUIRED )
 
 # OpenImageIO
-find_package( OpenImageIO REQUIRED CONFIG )
+set(OpenImageIO_ROOT ${DEPS_BINARY_DIR})
+find_package( OpenImageIO REQUIRED )
 if (OpenImageIO_FOUND)
-    message( "OpenImageIO found: ${OpenImageIO_FOUND}" ) 
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
     message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
@@ -128,16 +135,16 @@ if (NOT Vulkan_FOUND)
 endif()
 
 # Use the package PkgConfig to detect GTK+ headers/library files
-FIND_PACKAGE(PkgConfig REQUIRED)
-PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
+#FIND_PACKAGE(PkgConfig REQUIRED)
+#PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
 
 # Setup CMake to use GTK+, tell the compiler where to look for headers
 # and to the linker where to look for libraries
-include_directories( ${GTK3_INCLUDE_DIRS} )
-link_directories( ${GTK3_LIBRARY_DIRS} )
+#include_directories( ${GTK3_INCLUDE_DIRS} )
+#link_directories( ${GTK3_LIBRARY_DIRS} )
 
 # Add other flags to the compiler
-add_definitions(${GTK3_CFLAGS_OTHER})
+#add_definitions(${GTK3_CFLAGS_OTHER})
 
 # FreeImage
 find_package( FreeImage REQUIRED )
@@ -148,36 +155,22 @@ find_package( TIFF REQUIRED )
 include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
-find_package( Boost COMPONENTS system filesystem REQUIRED )
-message( "Boost include dirs: " ${Boost_INCLUDE_DIRS} )
+set(Boost_NO_SYSTEM_PATHS ON)
+set(BOOST_ROOT ${DEPS_BINARY_DIR})
+find_package( Boost COMPONENTS filesystem system REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # We use Boost static libs
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
-find_library( SLANG_LIBRARY_DEBUG slang PATHS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/debug )
-
-find_library( SLANG_LIBRARY_RELEASE slang PATHS ${PROJECT_SOURCE_DIR}/third_party/slang/bin/linux-x64/release )
-
-set( SLANG_LIBRARY
-  debug ${SLANG_LIBRARY_DEBUG}
-  optimized ${SLANG_LIBRARY_RELEASE}
-)
+find_library( SLANG_LIBRARY slang PATHS ${DEPS_BINARY_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
-# Embree
-find_package(embree 3.0 REQUIRED)
-
 # OpenVDB/NanoVDB
-find_package(OpenVDB REQUIRED openvdb nanovdb)
-include_directories( /usr/local/ )
-
-#list(APPEND SAMPLE_INCLUDE_DIR /usr/local/include)
-find_library(OpenVDB_LIBRARY openvdb HINTS /opt/lava/3drparty/lib)
-find_library(NanoVDB_LIBRARY nanovdb HINTS /usr/local/lib)
-
+set(OpenVDB_ROOT ${DEPS_BINARY_DIR})
+find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
 message("OpenVDB ${OpenVDB_LIBRARY}")
@@ -193,9 +186,8 @@ target_link_libraries(
     avformat
     swscale
     stdc++fs
-    blosc2
-    ${EMBREE_LIBRARY}
-    ${ASSIMP_LIBRARY}
+    Blosc::blosc
+    ${assimp_LIBRARIES}
     ${SLANG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
@@ -206,8 +198,8 @@ target_link_libraries(
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
     OpenImageIO::OpenImageIO
-    #OpenVDB::openvdb
-    ${OpenVDB_LIBRARY}
+    OpenVDB::openvdb
+    ${LZ4_LIBRARY}
 )
 
 # Copy/install all needed shaders
@@ -230,6 +222,9 @@ if(UNIX)
         TARGETS falcor_lib
         DESTINATION lib 
     )
+
+    # third party libs
+    install(DIRECTORY ${DEPS_BINARY_DIR}/lib/ DESTINATION 3rdparty/lib)
 
     # Install all needed shaders
     install(

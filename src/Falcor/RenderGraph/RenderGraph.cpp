@@ -31,6 +31,7 @@
 #include "RenderPassLibrary.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
+#include "Falcor/Scene/Scene.h"
 
 namespace Falcor {
 

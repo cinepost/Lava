@@ -44,8 +44,8 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/Sampler.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
-#include "RadeonRays_SDK/src/core/include/radeonrays_vlk.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
 
 namespace Falcor {
 
@@ -82,16 +82,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
 
         static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
-        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 1 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
+        std::array<uint32_t, kQueueTypeCount> cmdQueues = { 0, 0, 2 };  ///< Command queues to create. If no direct-queues are created, mpRenderContext will not be initialized
 
-#ifdef FALCOR_D3D12
-        // GUID list for experimental features
-        std::vector<UUID> experimentalFeatures;
-#endif
-
-#ifdef FALCOR_VK
         std::vector<std::string> requiredExtensions;
-#endif
 
         uint32_t width = 1280;                                          ///< Headless FBO width
         uint32_t height = 720;                                          ///< Headless FBO height
@@ -104,6 +97,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         Barycentrics = 0x4,                           // On D3D12, pixel shader barycentrics are supported.
         Raytracing = 0x8,                             // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
         RaytracingTier1_1 = 0x10,                     // On D3D12, DirectX Raytracing Tier 1.1 is supported.
+        ConservativeRasterizationTier1 = 0x20,        // On D3D12, conservative rasterization tier 1 is supported.
+        ConservativeRasterizationTier2 = 0x40,        // On D3D12, conservative rasterization tier 2 is supported.
+        ConservativeRasterizationTier3 = 0x80,        // On D3D12, conservative rasterization tier 3 is supported.
+        RasterizerOrderedViews = 0x100,               // On D3D12, rasterizer ordered views (ROVs) are supported.
     };
 
     using MemoryType = GpuMemoryHeap::Type;
@@ -132,6 +129,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** VMA allocator
     */
     const VmaAllocator& allocator() const { return mAllocator; }
+
+    /** NVVK allocator
+    */
+    nvvk::LavaResourceAllocatorVma* nvvkAllocator() { return &mNvvkResourceAllocator; }
 
     /** Check if the window is occluded
     */
@@ -309,18 +310,23 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
 
-    VkPhysicalDeviceFeatures                            mDeviceFeatures;
-    VkPhysicalDeviceRayTracingPipelinePropertiesKHR     mRayTracingPipelineProperties{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mAaccelerationStructureFeatures{};
-
-    VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures{};
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures{};
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures{};
-
     VmaAllocator    mAllocator;
-    RRContext       mRRcontext = nullptr; 
+    nvvk::LavaResourceAllocatorVma mNvvkResourceAllocator;
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
+
+ public:
+    VkPhysicalDeviceFeatures                            mDeviceFeatures;
+    VkPhysicalDeviceFeatures2                           mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR     mRayTracingPipelineProperties{};
+
+    VkPhysicalDeviceCoherentMemoryFeaturesAMD           mEnabledDeviceCoherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
+    VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+    VkPhysicalDeviceMemoryPriorityFeaturesEXT           mEnabledMemoryPriorityFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+    VkPhysicalDeviceSynchronization2FeaturesKHR         mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
+    VkPhysicalDeviceHostQueryResetFeatures              mEnabledHostQueryResetFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
 };
 
 enum_class_operators(Device::SupportedFeatures);

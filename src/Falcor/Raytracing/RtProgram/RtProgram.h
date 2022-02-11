@@ -35,115 +35,162 @@
 #include "Falcor/Scene/Scene.h"
 
 namespace Falcor {
+
 /** Ray tracing program. See GraphicsProgram and ComputeProgram to manage other types of programs.
 */
 
-class dlldecl RtProgram : public Program, public inherit_shared_from_this<Program, RtProgram> {
+class dlldecl RtProgram : public Program {
   public:
     using SharedPtr = std::shared_ptr<RtProgram>;
     using SharedConstPtr = std::shared_ptr<const RtProgram>;
-    using inherit_shared_from_this<Program, RtProgram>::shared_from_this;
 
     using DefineList = Program::DefineList;
 
-    struct dlldecl DescExtra {
-      public:
-        struct GroupInfo {
-            int32_t groupIndex = -1;
-        };
-
-        /** Set the max recursion depth
-        */
-        void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
-
-        std::vector<GroupInfo> mRayGenEntryPoints;
-        std::vector<GroupInfo> mMissEntryPoints;
-        std::vector<GroupInfo> mHitGroups;
-        uint32_t mMaxTraceRecursionDepth = 1;
+    struct ShaderID
+    {
+        int32_t groupIndex = -1;    ///< Entry point group index.
+        bool isValid() const { return groupIndex >= 0; }
     };
 
-    class dlldecl Desc : public DescExtra {
-      public:
+    /** Description of a raytracing program to be created.
+    */
+    class dlldecl Desc
+    {
+    public:
         Desc() { init(); }
         Desc(const std::string& filename) : mBaseDesc(filename) { init(); }
 
+        /** Add a file of source code to use.
+            This also sets the given file as the "active" source for subsequent entry points.
+            \param[in] filename Path to the source code.
+        */
         Desc& addShaderLibrary(const std::string& filename);
-        Desc& setRayGen(const std::string& raygen);
-        Desc& addRayGen(const std::string& raygen);
-        Desc& addMiss(uint32_t missIndex, const std::string& miss);
-        Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
-        Desc& addDefine(const std::string& define, const std::string& value);
-        Desc& addDefines(const DefineList& defines);
+
+        /** Add a raygen shader.
+            \param[in] raygen Entry point for the raygen shader.
+            \return Shader ID for raygen shader. This is used when building the binding table.
+        */
+        ShaderID addRayGen(const std::string& raygen);
+
+        /** Add a miss shader.
+            \param[in] miss Entry point for the miss shader.
+            \return Shader ID for miss shader. This is used when building the binding table.
+        */
+        ShaderID addMiss(const std::string& miss);
+
+        /** Add a hit group.
+            A hit group consists of any combination of closest hit, any hit, and intersection shaders.
+            Note that a hit group that contains an intersection shader only be used with procedural geometry.
+            A hit group that does not contain an intersection shader can only be used with triangle geometry.
+            It is valid to create a hit group entirely without entry points. Geometry using it will act
+            as an occluder blocking miss shader exuection, but hits will not spawn any shader executions.
+            \param[in] closestHit Entry point for the closest hit shader.
+            \param[in] anyHit Entry point for the any hit shader.
+            \param[in] intersection Entry point for the intersection shader.
+            \return Shader ID for hit group. This is used when building the binding table.
+        */
+        ShaderID addHitGroup(const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
+
+        /** Set the max recursion depth.
+            \param[in] maxDepth The maximum ray recursion depth (0 = raygen).
+        */
+        void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
+
+        /** Set the max payload size.
+            \param[in] maxPayloadSize The maximum ray payload size in bytes.
+        */
+        void setMaxPayloadSize(uint32_t maxPayloadSize) { mMaxPayloadSize = maxPayloadSize; }
+
+        /** Set the max attribute size.
+            \param[in] maxAttributeSize The maximum attribute size in bytes.
+        */
+        void setMaxAttributeSize(uint32_t maxAttributeSize) { mMaxAttributeSize = maxAttributeSize; }
+
+        /** Set raytracing pipeline flags.
+            These flags are added to any TraceRay() call within this pipeline, and may be used to
+            optimize the pipeline for particular primitives types. Requires Tier 1.1 support.
+            \param[in] flags Pipeline flags.
+        */
+        void setPipelineFlags(D3D12_RAYTRACING_PIPELINE_FLAGS flags) { mPipelineFlags = flags; }
 
         /** Set the compiler flags. Replaces any previously set flags.
         */
         Desc& setCompilerFlags(Shader::CompilerFlags flags) { mBaseDesc.setCompilerFlags(flags); return *this; }
 
-      private:
+        /** Set the shader model. The default is SM 6.5 for DXR Tier 1.1 support.
+        */
+        Desc& setShaderModel(const std::string& sm) { mBaseDesc.setShaderModel(sm); return *this; };
+
+        /** Add a macro definition. The definition is available to all shaders in the program.
+            \param[in] define Name of macro definition.
+            \param[in] value Value of macro definition.
+        */
+        Desc& addDefine(const std::string& define, const std::string& value);
+
+        /** Add a list of macro definitions. The definitions are available to all shaders in the program.
+            \param[in] defines List of macro defintitions, each consists of a name and a value.
+        */
+        Desc& addDefines(const DefineList& defines);
+
+        /** Get the max recursion depth.
+        */
+        uint32_t getMaxTraceRecursionDepth() const { return mMaxTraceRecursionDepth; }
+
+        /** Get the max payload size.
+        */
+        uint32_t getMaxPayloadSize() const { return mMaxPayloadSize; }
+
+        /** Get the max attribute size.
+        */
+        uint32_t getMaxAttributeSize() const { return mMaxAttributeSize; }
+
+        /** Get raytracing pipeline flags.
+        */
+        D3D12_RAYTRACING_PIPELINE_FLAGS getPipelineFlags() const { return mPipelineFlags; }
+
+    private:
         friend class RtProgram;
 
         void init();
 
         Program::Desc mBaseDesc;
         DefineList mDefineList;
+        uint32_t mRayGenCount = 0;
+
+        // These parameters impact performance and must be explicitly set.
+        uint32_t mMaxTraceRecursionDepth = -1;
+        uint32_t mMaxPayloadSize = -1;
+        uint32_t mMaxAttributeSize = FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES;
+        D3D12_RAYTRACING_PIPELINE_FLAGS mPipelineFlags = D3D12_RAYTRACING_PIPELINE_FLAG_NONE;
     };
 
     /** Create a new ray tracing program.
         \param[in] desc The program description.
-        \param[in] maxPayloadSize The maximum ray payload size in bytes.
-        \param[in] maxAttributesSize The maximum attributes size in bytes.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static RtProgram::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
-
-    /** Get the max recursion depth
-    */
-    uint32_t getMaxTraceRecursionDepth() const { return mDescExtra.mMaxTraceRecursionDepth; }
+    static RtProgram::SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     /** Get the raytracing state object for this program
     */
     RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
 
-    // Ray-gen
-    uint32_t getRayGenProgramCount() const { return (uint32_t) mDescExtra.mRayGenEntryPoints.size(); }
-    uint32_t getRayGenIndex(uint32_t index) const { return mDescExtra.mRayGenEntryPoints[index].groupIndex; }
+    Desc const& getRtDesc() const { return mRtDesc; }
 
-    // Hit
-    uint32_t getHitProgramCount() const { return (uint32_t) mDescExtra.mHitGroups.size(); }
-    uint32_t getHitIndex(uint32_t index) const { return mDescExtra.mHitGroups[index].groupIndex; }
+  protected:
+      EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
+          const std::vector<Shader::SharedPtr>& shaders,
+          EntryPointGroupReflection::SharedPtr const& pReflector) const override;
 
-    // Miss
-    uint32_t getMissProgramCount() const { return (uint32_t) mDescExtra.mMissEntryPoints.size(); }
-    uint32_t getMissIndex(uint32_t index) const { return mDescExtra.mMissEntryPoints[index].groupIndex; }
+  private:
+      RtProgram(RtProgram const&) = delete;
+      RtProgram& operator=(RtProgram const&) = delete;
 
-    /** Set the scene
-    */
-    void setScene(Scene::SharedPtr pScene);
+      RtProgram(const Desc& desc);
 
-    DescExtra const& getDescExtra() const { return mDescExtra; }
+      Desc mRtDesc;
 
-protected:
-    void init(std::shared_ptr<Device> pDevice, const Desc& desc);
-
-    EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
-        const std::vector<Shader::SharedPtr>& shaders,
-        EntryPointGroupReflection::SharedPtr const& pReflector) const override;
-
-private:
-    RtProgram(RtProgram const&) = delete;
-    RtProgram& operator=(RtProgram const&) = delete;
-
-    RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
-
-    DescExtra mDescExtra;
-
-    uint32_t mMaxPayloadSize;
-    uint32_t mMaxAttributesSize;
-
-    using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
-    StateGraph mRtsoGraph;
-
-    Scene::SharedPtr mpScene;
+      using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
+      StateGraph mRtsoGraph;
 };
 
 } // namespace Falcor

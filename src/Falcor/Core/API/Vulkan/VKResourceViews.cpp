@@ -217,12 +217,6 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device>
         return getNullBufferView(pDevice);
     }
 
-    if (!pBuffer) {
-        VkBufferView bufferView = {};
-        auto view = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);
-        return SharedPtr(new ShaderResourceView(pDevice, pBuffer, view, firstElement, elementCount));
-    }
-
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
         logWarning("Cannot create DepthStencilView from a texture!");
         return getNullBufferView(pDevice);

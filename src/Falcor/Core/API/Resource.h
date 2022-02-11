@@ -35,7 +35,7 @@
 
 #include "ResourceViews.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 
@@ -84,7 +84,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-        AccelerationStructure,
+        //AccelerationStructure,
+        AccelStructRead,
+        AccelStructWrite,
+        AccelStructBuildInput,
+        AccelStructBuildBlas,
+        //AccelStructCopy
     };
 
     using SharedPtr = std::shared_ptr<Resource>;

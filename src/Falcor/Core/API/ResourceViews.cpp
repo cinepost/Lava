@@ -90,6 +90,7 @@ void releaseNullTypedBufferViews(Device::SharedPtr pDevice) {
     gNullTypedBufferViews[pDevice->uid()] = {};
 }
 
+
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }
 DepthStencilView::SharedPtr    DepthStencilView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].dsv; }
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(std::shared_ptr<Device> pDevice) { return gNullViews[pDevice->uid()].uav; }
@@ -101,6 +102,7 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView(std::share
 
 ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView(std::shared_ptr<Device> pDevice)  { return gNullTypedBufferViews[pDevice->uid()].srv; }
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView(std::shared_ptr<Device> pDevice) { return gNullTypedBufferViews[pDevice->uid()].uav; }
+
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(ResourceView) {

@@ -9,7 +9,6 @@
 #include "Falcor/Scene/SceneBuilder.h" 
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Scene/Lights/LightProbe.h"
 
 #include "reader_bgeo/bgeo/Bgeo.h"
 

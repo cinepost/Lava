@@ -66,6 +66,8 @@ class dlldecl Transform {
 
     mutable bool mDirty = true;
     mutable glm::float4x4 mMatrix;
+
+    friend class SceneCache;
 };
 
 }  // namespace Falcor

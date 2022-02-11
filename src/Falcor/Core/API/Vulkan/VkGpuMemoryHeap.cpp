@@ -30,7 +30,7 @@
 #include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Device.h"
 
-#include "VulkanMemoryAllocator/src/vk_mem_alloc.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 

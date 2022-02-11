@@ -63,17 +63,22 @@ namespace Falcor {
     template<bool isUav, typename ViewType>
     static void setSrvUavCommon(Device::SharedPtr device, VkDescriptorSet set, uint32_t bindIndex, uint32_t arrayIndex, const ViewType* pView, DescriptorPool::Type type) {
         //LOG_DBG("setSrvUavCommon descriptor type %s", to_string(type).c_str());
+        
+        assert(pView);
+
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
         typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
 
+        auto descriptorCount = 1;
+
         if (handle.getType() == VkResourceType::Buffer) {
             Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
-
+            assert(pBuffer && "No resource buffer !!!");
             //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
-
+            
             if (pBuffer->isTyped()) {
                 texelBufferView = pBuffer->getUAV()->getApiHandle();
                 write.pTexelBufferView = &texelBufferView;
@@ -85,11 +90,12 @@ namespace Falcor {
                 write.pBufferInfo = &buffer;
                 write.pTexelBufferView = nullptr;
             }
+    
             write.pImageInfo = nullptr;
         } else {
             assert(handle.getType() == VkResourceType::Image);
             
-            Texture* pTexture = dynamic_cast<Texture*>(pView->getResource());
+            //Texture* pTexture = dynamic_cast<Texture*>(pView->getResource());
             //LOG_DBG("Texture %zu update descriptor set bindFlags %s", pTexture->id(),to_string(pTexture->getBindFlags()).c_str());
 
             image.imageLayout = isUav ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -103,17 +109,37 @@ namespace Falcor {
         write.dstSet = set;
         write.dstBinding = bindIndex;
         write.dstArrayElement = arrayIndex;
-        write.descriptorCount = 1;
+        write.descriptorCount = descriptorCount;
 
         //LOG_DBG("vkUpdateDescriptorSets 1");
         vkUpdateDescriptorSets(device->getApiHandle(), 1, &write, 0, nullptr);
     }
 
+    void DescriptorSet::setAS(uint32_t rangeIndex, uint32_t descIndex, VkAccelerationStructureKHR accel) {
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = mApiHandle;
+        write.dstBinding = mLayout.getRange(rangeIndex).baseRegIndex;
+        write.dstArrayElement = descIndex;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        write.descriptorCount = 1;
+
+        VkWriteDescriptorSetAccelerationStructureKHR descASInfo{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+        descASInfo.accelerationStructureCount = 1;
+        descASInfo.pAccelerationStructures    = &accel;
+
+        write.pNext = &descASInfo;
+
+        vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
+    }
+
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {
+        assert(pSrv && "ShaderResourceView pointer is NULL");
         setSrvUavCommon<false>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pSrv, mLayout.getRange(rangeIndex).type);
     }
 
     void DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav) {
+        assert(pUav && "UnorderedAccessView pointer is NULL");
         setSrvUavCommon<true>(mpPool->device(), mApiHandle, mLayout.getRange(rangeIndex).baseRegIndex, descIndex, pUav, mLayout.getRange(rangeIndex).type);
     }
 
@@ -139,6 +165,7 @@ namespace Falcor {
 
     void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, ConstantBufferView* pView) {
         //LOG_DBG("setCbv rangeIndex %u, descIndex %u, range type %s", rangeIndex, descIndex, to_string((DescriptorPool::Type)mLayout.getRange(rangeIndex).type).c_str());
+        assert(pView && "ConstantBufferView pointer is NULL");
         VkDescriptorBufferInfo info;
 
         const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());

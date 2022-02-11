@@ -29,7 +29,7 @@
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVEUNIFORMSAMPLER_H_
 
 #include "EmissiveLightSampler.h"
-#include "LightCollection.h"
+#include "Falcor/Scene/Lights/LightCollection.h"
 
 namespace Falcor
 {

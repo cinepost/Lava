@@ -33,11 +33,7 @@
 
 namespace Falcor {
 
-#ifdef FALCOR_VK
 const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
-#elif defined FALCOR_D3D12
-const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3" };
-#endif
 
 static Program::DefineList sGlobalDefineList;
 
@@ -329,13 +325,7 @@ SlangStage getSlangStage(ShaderType type) {
 }
 
 static std::string getSlangProfileString(const std::string& shaderModel) {
-#if defined FALCOR_VK
     return "glsl_" + shaderModel;
-#elif defined FALCOR_D3D12
-    return "sm_" + shaderModel;
-#else
-#error unknown shader compilation target
-#endif
 }
 
 SlangCompileRequest* Program::createSlangCompileRequest(const DefineList&   defineList) const {
@@ -383,19 +373,8 @@ SlangCompileRequest* Program::createSlangCompileRequest(const DefineList&   defi
 
     const char* targetMacroName;
 
-    // Pick the right target based on the current graphics API
-#ifdef FALCOR_VK
     targetMacroName = "FALCOR_VK";
     targetDesc.format = SLANG_SPIRV;
-#elif defined FALCOR_D3D12
-    targetMacroName = "FALCOR_D3D";
-
-    // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
-    if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) targetDesc.format = SLANG_DXBC;
-    else                                                                            targetDesc.format = SLANG_DXIL;
-#else
-#error unknown shader compilation target
-#endif
 
 
     // Pass any `#define` flags along to Slang, since we aren't doing our
@@ -422,11 +401,7 @@ SlangCompileRequest* Program::createSlangCompileRequest(const DefineList&   defi
     std::string sm = "__SM_" + mDesc.mShaderModel + "__";
     addSlangDefine(sm.c_str(), "1");
 
-#ifdef FALCOR_VK
     addSlangDefine("__VULKAN__", "1");
-#else
-    addSlangDefine("__D3D12__", "1");
-#endif
 
     sessionDesc.preprocessorMacros = slangDefines.data();
     sessionDesc.preprocessorMacroCount = (SlangInt) slangDefines.size();

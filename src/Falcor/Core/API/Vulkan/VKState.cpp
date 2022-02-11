@@ -52,6 +52,20 @@ namespace Falcor {
                 return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
             case ShaderType::Compute:
                 return VK_SHADER_STAGE_COMPUTE_BIT;
+
+            case ShaderType::RayGeneration:
+                return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            case ShaderType::Intersection:
+                return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+            case ShaderType::AnyHit:
+                return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+            case ShaderType::ClosestHit:
+                return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            case ShaderType::Miss:
+                return VK_SHADER_STAGE_MISS_BIT_KHR;
+            case ShaderType::Callable:
+                return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+
             default:
                 should_not_get_here();
                 return (VkShaderStageFlagBits)0;

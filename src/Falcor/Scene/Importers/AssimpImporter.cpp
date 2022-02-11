@@ -110,14 +110,12 @@ namespace
             { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
             { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
-            { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
         },
         // OBJ mappings
         {
             { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
             { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
-            { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
             // OBJ does not offer a normal map, thus we use the bump map instead.
             { aiTextureType_HEIGHT, 0, Material::TextureSlot::Normal },
             { aiTextureType_DISPLACEMENT, 0, Material::TextureSlot::Normal },
@@ -127,7 +125,6 @@ namespace
             { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
             { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
-            { aiTextureType_AMBIENT, 0, Material::TextureSlot::Occlusion },
             // GLTF2 exposes metallic roughness texture.
             { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureSlot::Specular },
         }
