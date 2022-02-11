@@ -139,6 +139,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         This is used primarily by the path tracer renderers.
     */
     struct RenderSettings {
+        bool useRayTracing = true;      ///< Enable hardware ray tracing
         bool useEnvLight = true;        ///< Enable distant lighting from environment map.
         bool useAnalyticLights = true;  ///< Enable lighting from analytic lights.
         bool useEmissiveLights = true;  ///< Enable lighting from emissive lights.
@@ -311,6 +312,10 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Set the render settings.
     */
     void setRenderSettings(const RenderSettings& renderSettings) { mRenderSettings = renderSettings; }
+
+    /** Returns true if ray tracing is enabled for this scene.
+    */
+    bool useRayTracing() const;
 
     /** Returns true if environment map is available and should be used as the background.
     */

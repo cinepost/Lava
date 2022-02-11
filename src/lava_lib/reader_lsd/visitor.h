@@ -47,7 +47,8 @@ struct Visitor: public boost::static_visitor<> {
 
     void setParserStream(std::istream& in);
 
-    bool ignoreCommands() { return mIgnoreCommands; };
+    bool ignoreCommands() const { return mIgnoreCommands; };
+    bool readyToQuit() const { return mQuit; };
 
  protected:
     std::unique_ptr<Session> mpSession;
@@ -55,6 +56,7 @@ struct Visitor: public boost::static_visitor<> {
  private:
     std::istream*   mpParserStream; // used for inline bgeo reading
     bool mIgnoreCommands;
+    bool mQuit;
 };
 
 

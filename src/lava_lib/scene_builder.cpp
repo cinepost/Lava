@@ -42,8 +42,8 @@ namespace lava {
 
 SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags), mUniqueTrianglesCount(0) {
     mpDefaultMaterial = Material::create(pDevice, "default");
-    mpDefaultMaterial->setBaseColor({0.2, 0.2, 0.2, 1.0});
-    mpDefaultMaterial->setRoughness(0.3);
+    mpDefaultMaterial->setBaseColor({0.4, 0.4, 0.4, 1.0});
+    mpDefaultMaterial->setRoughness(0.33);
     mpDefaultMaterial->setIndexOfRefraction(1.5);
     mpDefaultMaterial->setEmissiveFactor(0.0);
 }

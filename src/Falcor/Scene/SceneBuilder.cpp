@@ -2250,8 +2250,9 @@ void SceneBuilder::createMeshInstanceData() {
 
                 instanceData.push_back({});
                 auto& meshInstance = instanceData.back();
+                const auto& instance = mesh.instances[instanceIdx];
                 meshInstance.globalMatrixID = nodeID;
-                meshInstance.materialID = mesh.materialId;
+                meshInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
                 meshInstance.meshID = meshID;
                 meshInstance.vbOffset = mesh.staticVertexOffset;
                 meshInstance.ibOffset = mesh.indexOffset;

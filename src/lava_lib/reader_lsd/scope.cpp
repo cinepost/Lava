@@ -237,15 +237,25 @@ Light::SharedPtr Light::create(ScopeBase::SharedPtr pParent) {
 	if(!pLight->declareProperty(Style::LIGHT, Type::VECTOR2, "zoom", lsd::Vector2{0.01, 1000.0}, Property::Owner::SYS)) return nullptr;
 
 	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shader", std::string(), Property::Owner::SYS)) return nullptr;	
+	if(!pLight->declareProperty(Style::LIGHT, Type::STRING, "shadow", std::string(), Property::Owner::SYS)) return nullptr;	
 	
-	auto pProp = pLight->getProperty(Style::LIGHT, "shader");
-	if(!pProp) return nullptr;
-	
-	auto pSubContainer = pProp->createSubContainer();
-	if(!pSubContainer) return nullptr;
+	auto pShaderProp = pLight->getProperty(Style::LIGHT, "shader");
+	if(!pShaderProp) return nullptr;
 
-	pSubContainer->declareProperty(Style::LIGHT, Type::VECTOR3, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
-	pSubContainer->declareProperty(Style::LIGHT, Type::STRING, "type", std::string("point"), Property::Owner::SYS);
+	auto pShadowProp = pLight->getProperty(Style::LIGHT, "shadow");
+	if(!pShadowProp) return nullptr;
+	
+	auto pShaderSubContainer = pShaderProp->createSubContainer();
+	if(!pShaderSubContainer) return nullptr;
+
+	auto pShadowSubContainer = pShadowProp->createSubContainer();
+	if(!pShadowSubContainer) return nullptr;
+
+	pShaderSubContainer->declareProperty(Style::LIGHT, Type::VECTOR3, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
+	pShaderSubContainer->declareProperty(Style::LIGHT, Type::STRING, "type", std::string("point"), Property::Owner::SYS);
+
+	pShadowSubContainer->declareProperty(Style::LIGHT, Type::STRING, "shadowtype", std::string(""), Property::Owner::SYS);
+	pShadowSubContainer->declareProperty(Style::LIGHT, Type::VECTOR3, "shadow_color", lsd::Vector3{0.0, 0.0, 0.0}, Property::Owner::SYS);
 
 	return std::move(pLight);
 }

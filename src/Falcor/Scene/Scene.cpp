@@ -133,6 +133,13 @@ typedef struct D3D12_DRAW_ARGUMENTS {
 
 #endif
 
+static inline VkTransformMatrixKHR toTransformMatrixKHR(const glm::mat4& m) {
+    VkTransformMatrixKHR out_matrix;
+    
+    auto temp = glm::transpose(m);
+    memcpy(&out_matrix, glm::value_ptr(temp), sizeof(VkTransformMatrixKHR));
+    return out_matrix;
+}
 
 Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
     mRayTraceInitialized = false;
@@ -224,6 +231,7 @@ Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, SceneData&& scen
 
 Shader::DefineList Scene::getSceneDefines() const {
     Shader::DefineList defines;
+    defines.add("SCENE_RAYTRACING_ENABLED", mRenderSettings.useRayTracing ? "1" : "0");
     defines.add("SCENE_MATERIAL_COUNT", std::to_string(mMaterials.size()));
     defines.add("SCENE_GRID_COUNT", std::to_string(mGrids.size()));
     defines.add("SCENE_HAS_INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
@@ -255,10 +263,7 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     // nvvk testing stuff
     initRayTracing();
     createBottomLevelAS();
-    
-    printf("TLAS handle before %p \n", (void*)mRtBuilder.getAccelerationStructure());
     createTopLevelAS();
-    printf("TLAS handle after %p \n", (void*)mRtBuilder.getAccelerationStructure());
 
     // Bind TLAS.
     mpSceneBlock["rtAccel"].setAS(mRtBuilder.getAccelerationStructure());
@@ -694,27 +699,23 @@ void Scene::updateBounds() {
     const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
 
     mSceneBB = AABB();
-    for (const auto& inst : mMeshInstanceData)
-    {
+    for (const auto& inst : mMeshInstanceData) {
         const AABB& meshBB = mMeshBBs[inst.meshID];
         const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
         mSceneBB |= meshBB.transform(transform);
     }
 
-    for (const auto& aabb : mCustomPrimitiveAABBs)
-    {
+    for (const auto& aabb : mCustomPrimitiveAABBs) {
         mSceneBB |= aabb;
     }
 
-    for (const auto& inst : mCurveInstanceData)
-    {
+    for (const auto& inst : mCurveInstanceData) {
         const AABB& curveBB = mCurveBBs[inst.curveID];
         const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
         mSceneBB |= curveBB.transform(transform);
     }
 
-    for (const auto& volume : mVolumes)
-    {
+    for (const auto& volume : mVolumes) {
         mSceneBB |= volume->getBounds();
     }
 }
@@ -723,8 +724,7 @@ void Scene::updateMeshInstances(bool forceUpdate) {
     bool dataChanged = false;
     const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
 
-    for (auto& inst : mMeshInstanceData)
-    {
+    for (auto& inst : mMeshInstanceData) {
         uint32_t prevFlags = inst.flags;
 
         const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
@@ -744,24 +744,20 @@ void Scene::updateMeshInstances(bool forceUpdate) {
         dataChanged |= (inst.flags != prevFlags);
     }
 
-    if (forceUpdate || dataChanged)
-    {
+    if (forceUpdate || dataChanged) {
         // Make sure the scene data fits in the packed format.
         size_t maxMatrices = 1 << PackedMeshInstanceData::kMatrixBits;
-        if (globalMatrices.size() > maxMatrices)
-        {
+        if (globalMatrices.size() > maxMatrices) {
             throw std::runtime_error(("Number of transform matrices (" + std::to_string(globalMatrices.size()) + ") exceeds the maximum (" + std::to_string(maxMatrices) + ").").c_str());
         }
 
         size_t maxMeshes = 1 << PackedMeshInstanceData::kMeshBits;
-        if (getMeshCount() > maxMeshes)
-        {
+        if (getMeshCount() > maxMeshes) {
             throw std::runtime_error(("Number of meshes (" + std::to_string(getMeshCount()) + ") exceeds the maximum (" + std::to_string(maxMeshes) + ").").c_str());
         }
 
         size_t maxMaterials = 1 << PackedMeshInstanceData::kMaterialBits;
-        if (mMaterials.size() > maxMaterials)
-        {
+        if (mMaterials.size() > maxMaterials) {
             throw std::runtime_error(("Number of materials (" + std::to_string(mMaterials.size()) + ") exceeds the maximum (" + std::to_string(maxMaterials) + ").").c_str());
         }
 
@@ -769,8 +765,7 @@ void Scene::updateMeshInstances(bool forceUpdate) {
         assert(mMeshInstanceData.size() > 0);
         mPackedMeshInstanceData.resize(mMeshInstanceData.size());
 
-        for (size_t i = 0; i < mMeshInstanceData.size(); i++)
-        {
+        for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
             mPackedMeshInstanceData[i].pack(mMeshInstanceData[i]);
         }
 
@@ -780,8 +775,7 @@ void Scene::updateMeshInstances(bool forceUpdate) {
     }
 }
 
-Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
-{
+Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     // This function updates the global list of AABBs for all procedural primitives.
     // TODO: Move this code to the GPU. Then the CPU copies of some buffers won't be needed anymore.
     Scene::UpdateFlags flags = Scene::UpdateFlags::None;
@@ -792,15 +786,13 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
     size_t customAABBCount = mCustomPrimitiveAABBs.size();
     size_t totalAABBCount = curveAABBCount + customAABBCount;
 
-    if (totalAABBCount > std::numeric_limits<uint32_t>::max())
-    {
+    if (totalAABBCount > std::numeric_limits<uint32_t>::max()) {
         throw std::runtime_error("Procedural primitive count exceeds the maximum");
     }
 
     // If there are no procedural primitives, clear the CPU buffer and return.
     // We'll leave the GPU buffer to be lazily re-allocated when needed.
-    if (totalAABBCount == 0)
-    {
+    if (totalAABBCount == 0) {
         mRtAABBRaw.clear();
         return flags;
     }
@@ -811,11 +803,9 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
     size_t firstUpdated = std::numeric_limits<size_t>::max();
     size_t lastUpdated = 0;
 
-    if (forceUpdate)
-    {
+    if (forceUpdate) {
         // Compute AABBs of curve segments.
-        for (const auto& curve : mCurveDesc)
-        {
+        for (const auto& curve : mCurveDesc) {
             // Track range of updated AABBs.
             // TODO: Per-curve flag to indicate changes. For now assume all curves need updating.
             firstUpdated = std::min(firstUpdated, (size_t)offset);
@@ -824,13 +814,11 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
             const auto* indexData = &mCurveIndexData[curve.ibOffset];
             const auto* staticData = &mCurveStaticData[curve.vbOffset];
 
-            for (uint32_t j = 0; j < curve.indexCount; j++)
-            {
+            for (uint32_t j = 0; j < curve.indexCount; j++) {
                 AABB curveSegBB;
                 uint32_t v = indexData[j];
 
-                for (uint32_t k = 0; k <= curve.degree; k++)
-                {
+                for (uint32_t k = 0; k <= curve.degree; k++) {
                     curveSegBB.include(staticData[v + k].position - float3(staticData[v + k].radius));
                     curveSegBB.include(staticData[v + k].position + float3(staticData[v + k].radius));
                 }
@@ -849,16 +837,14 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
     }
     offset = (uint32_t)curveAABBCount;
 
-    if (forceUpdate || mCustomPrimitivesChanged || mCustomPrimitivesMoved)
-    {
+    if (forceUpdate || mCustomPrimitivesChanged || mCustomPrimitivesMoved) {
         mCustomPrimitiveAABBOffset = offset;
 
         // Track range of updated AABBs.
         firstUpdated = std::min(firstUpdated, (size_t)offset);
         lastUpdated = std::max(lastUpdated, (size_t)offset + customAABBCount);
 
-        for (auto& aabb : mCustomPrimitiveAABBs)
-        {
+        for (auto& aabb : mCustomPrimitiveAABBs) {
             auto& rtAabb = mRtAABBRaw[offset++];
             rtAabb.MinX = aabb.minPoint.x;
             rtAabb.MinY = aabb.minPoint.y;
@@ -873,8 +859,7 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
 
     // Create/update GPU buffer. This is used in BLAS creation and also bound to the scene for lookup in shaders.
     // Requires unordered access and will be in Non-Pixel Shader Resource state.
-    if (mpRtAABBBuffer == nullptr || mpRtAABBBuffer->getElementCount() < (uint32_t)mRtAABBRaw.size())
-    {
+    if (mpRtAABBBuffer == nullptr || mpRtAABBBuffer->getElementCount() < (uint32_t)mRtAABBRaw.size()) {
         mpRtAABBBuffer = Buffer::createStructured(mpDevice, sizeof(D3D12_RAYTRACING_AABB), (uint32_t)mRtAABBRaw.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mRtAABBRaw.data(), false);
         mpRtAABBBuffer->setName("Scene::mpRtAABBBuffer");
 
@@ -896,25 +881,21 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate)
     return flags;
 }
 
-Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate)
-{
+Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate) {
     if (!is_set(mPrimitiveTypes, PrimitiveTypeFlags::DisplacedTriangleMesh)) return UpdateFlags::None;
 
     // For now we assume that displaced meshes are static.
     // Create AABB and AABB update task buffers.
-    if (!mDisplacement.pAABBBuffer)
-    {
+    if (!mDisplacement.pAABBBuffer) {
         mDisplacement.meshData.resize(mMeshDesc.size());
         mDisplacement.updateTasks.clear();
 
         uint32_t AABBOffset = 0;
 
-        for (uint32_t meshID = 0; meshID < mMeshDesc.size(); ++meshID)
-        {
+        for (uint32_t meshID = 0; meshID < mMeshDesc.size(); ++meshID) {
             const auto& mesh = mMeshDesc[meshID];
 
-            if (!mesh.isDisplaced())
-            {
+            if (!mesh.isDisplaced()) {
                 mDisplacement.meshData[meshID] = {};
                 continue;
             }
@@ -943,14 +924,12 @@ Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate)
     if (!mFinalized) return UpdateFlags::None;
 
     // Update the AABB data.
-    if (!mDisplacement.pUpdatePass)
-    {
+    if (!mDisplacement.pUpdatePass) {
         mDisplacement.pUpdatePass = ComputePass::create(mpDevice, "Scene/Displacement/DisplacementUpdate.cs.slang", "main", getSceneDefines());
         mDisplacement.needsUpdate = true;
     }
 
-    if (mDisplacement.needsUpdate)
-    {
+    if (mDisplacement.needsUpdate) {
         // TODO: Only update objects with modified materials.
 
         PROFILE(mpDevice, "updateDisplacement");
@@ -972,29 +951,23 @@ Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate)
     return UpdateFlags::None;
 }
 
-Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate)
-{
+Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate) {
     // Update the AABB buffer.
     // The bounds are updated if any primitive has moved or been added/removed.
     Scene::UpdateFlags flags = updateRaytracingAABBData(forceUpdate);
 
     // Update the procedural primitives metadata.
-    if (forceUpdate || mCustomPrimitivesChanged)
-    {
+    if (forceUpdate || mCustomPrimitivesChanged) {
         // Update the custom primitives buffer.
-        if (!mCustomPrimitiveDesc.empty())
-        {
-            if (mpCustomPrimitivesBuffer == nullptr || mpCustomPrimitivesBuffer->getElementCount() < (uint32_t)mCustomPrimitiveDesc.size())
-            {
+        if (!mCustomPrimitiveDesc.empty()) {
+            if (mpCustomPrimitivesBuffer == nullptr || mpCustomPrimitivesBuffer->getElementCount() < (uint32_t)mCustomPrimitiveDesc.size()) {
                 mpCustomPrimitivesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCustomPrimitiveBufferName], (uint32_t)mCustomPrimitiveDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mCustomPrimitiveDesc.data(), false);
                 mpCustomPrimitivesBuffer->setName("Scene::mpCustomPrimitivesBuffer");
 
                 // Bind the buffer to the scene.
                 assert(mpSceneBlock);
                 mpSceneBlock->setBuffer(kCustomPrimitiveBufferName, mpCustomPrimitivesBuffer);
-            }
-            else
-            {
+            } else {
                 size_t bytes = sizeof(CustomPrimitiveDesc) * mCustomPrimitiveDesc.size();
                 assert(mpCustomPrimitivesBuffer && mpCustomPrimitivesBuffer->getSize() >= bytes);
                 mpCustomPrimitivesBuffer->setBlob(mCustomPrimitiveDesc.data(), 0, bytes);
@@ -1054,8 +1027,7 @@ void Scene::finalize() {
 
     updateBounds();
     createDrawList();
-    if (mCameras.size() == 0)
-    {
+    if (mCameras.size() == 0) {
         // Create a new camera to use in the event of a scene with no cameras
         mCameras.push_back(Camera::create());
         resetCamera();
@@ -1153,8 +1125,7 @@ void Scene::updateGeometryStats() {
     s.curveIndexMemoryInBytes = 0;
     s.curveVertexMemoryInBytes = 0;
 
-    if (mpCurveVao != nullptr)
-    {
+    if (mpCurveVao != nullptr) {
         const auto& pCurveIB = mpCurveVao->getIndexBuffer();
         const auto& pCurveVB = mpCurveVao->getVertexBuffer(kStaticDataBufferIndex);
 
@@ -1167,11 +1138,12 @@ void Scene::updateGeometryStats() {
     s.geometryMemoryInBytes += mpCustomPrimitivesBuffer ? mpCustomPrimitivesBuffer->getSize() : 0;
     s.geometryMemoryInBytes += mpRtAABBBuffer ? mpRtAABBBuffer->getSize() : 0;
     s.geometryMemoryInBytes += pDrawID ? pDrawID->getSize() : 0;
-    for (const auto& draw : mDrawArgs)
-    {
+    
+    for (const auto& draw : mDrawArgs) {
         assert(draw.pBuffer);
         s.geometryMemoryInBytes += draw.pBuffer->getSize();
     }
+    
     s.geometryMemoryInBytes += mpCurvesBuffer ? mpCurvesBuffer->getSize() : 0;
     s.geometryMemoryInBytes += mpCurveInstancesBuffer ? mpCurveInstancesBuffer->getSize() : 0;
 
@@ -1186,10 +1158,8 @@ void Scene::updateMaterialStats() {
     s.materialMemoryInBytes = mpMaterialsBuffer ? mpMaterialsBuffer->getSize() : 0;
 
     std::set<Texture::SharedPtr> textures;
-    for (const auto& m : mMaterials)
-    {
-        for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::Count; i++)
-        {
+    for (const auto& m : mMaterials) {
+        for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::Count; i++) {
             const auto& t = m->getTexture((Material::TextureSlot)i);
             if (t) textures.insert(t);
         }
@@ -1202,8 +1172,7 @@ void Scene::updateMaterialStats() {
     s.textureTexelCount = 0;
     s.textureMemoryInBytes = 0;
 
-    for (const auto& t : textures)
-    {
+    for (const auto& t : textures) {
         s.textureTexelCount += t->getTexelCount();
         s.textureMemoryInBytes += t->getTextureSizeInBytes();
         if (isCompressedFormat(t->getFormat())) s.textureCompressedCount++;
@@ -1268,25 +1237,23 @@ void Scene::updateLightStats() {
     s.sphereLightCount = 0;
     s.distantLightCount = 0;
 
-    for (const auto& light : mLights)
-    {
-        switch (light->getType())
-        {
-        case LightType::Point:
-            s.pointLightCount++;
-            break;
-        case LightType::Directional:
-            s.directionalLightCount++;
-            break;
-        case LightType::Rect:
-            s.rectLightCount++;
-            break;
-        case LightType::Sphere:
-            s.sphereLightCount++;
-            break;
-        case LightType::Distant:
-            s.distantLightCount++;
-            break;
+    for (const auto& light : mLights) {
+        switch (light->getType()) {
+            case LightType::Point:
+                s.pointLightCount++;
+                break;
+            case LightType::Directional:
+                s.directionalLightCount++;
+                break;
+            case LightType::Rect:
+                s.rectLightCount++;
+                break;
+            case LightType::Sphere:
+                s.sphereLightCount++;
+                break;
+            case LightType::Distant:
+                s.distantLightCount++;
+                break;
         }
     }
 
@@ -1303,8 +1270,7 @@ void Scene::updateVolumeStats() {
     s.gridVoxelCount = 0;
     s.gridMemoryInBytes = 0;
 
-    for (const auto& g : mGrids)
-    {
+    for (const auto& g : mGrids) {
         s.gridVoxelCount += g->getVoxelCount();
         s.gridMemoryInBytes += g->getGridSizeInBytes();
     }
@@ -1318,8 +1284,7 @@ bool Scene::updateAnimatable(Animatable& animatable, const AnimationController& 
     // matrices for a non-existent node.
     if (nodeID == kInvalidNode) return false;
 
-    if (force || (animatable.hasAnimation() && animatable.isAnimated()))
-    {
+    if (force || (animatable.hasAnimation() && animatable.isAnimated())) {
         if (!controller.isMatrixChanged(nodeID) && !force) return false;
 
         glm::mat4 transform = controller.getGlobalMatrices()[nodeID];
@@ -1355,10 +1320,8 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     Light::Changes combinedChanges = Light::Changes::None;
 
     // Animate lights and get list of changes.
-    for (const auto& light : mLights)
-    {
-        if (light->isActive())
-        {
+    for (const auto& light : mLights) {
+        if (light->isActive()) {
             updateAnimatable(*light, *mpAnimationController, forceUpdate);
         }
 
@@ -1369,13 +1332,11 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     // Update changed lights.
     mActiveLightCount = 0;
 
-    for (const auto& light : mLights)
-    {
+    for (const auto& light : mLights) {
         if (!light->isActive()) continue;
 
         auto changes = light->getChanges();
-        if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate)
-        {
+        if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate) {
             // TODO: This is slow since the buffer is not CPU writable. Copy into CPU buffer and upload once instead.
             mpLightsBuffer->setElement(mActiveLightCount, light->getData());
         }
@@ -1383,8 +1344,7 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
         mActiveLightCount++;
     }
 
-    if (combinedChanges != Light::Changes::None || forceUpdate)
-    {
+    if (combinedChanges != Light::Changes::None || forceUpdate) {
         mpSceneBlock["lightCount"] = mActiveLightCount;
         updateLightStats();
     }
@@ -1405,8 +1365,7 @@ Scene::UpdateFlags Scene::updateVolumes(bool forceUpdate) {
     Volume::UpdateFlags combinedUpdates = Volume::UpdateFlags::None;
 
     // Update animations and get combined updates.
-    for (const auto& volume : mVolumes)
-    {
+    for (const auto& volume : mVolumes) {
         updateAnimatable(*volume, *mpAnimationController, forceUpdate);
         combinedUpdates |= volume->getUpdates();
     }
@@ -1415,29 +1374,25 @@ Scene::UpdateFlags Scene::updateVolumes(bool forceUpdate) {
     if (!forceUpdate && combinedUpdates == Volume::UpdateFlags::None) return UpdateFlags::None;
 
     // Upload grids.
-    if (forceUpdate)
-    {
+    if (forceUpdate) {
         auto var = mpSceneBlock["grids"];
-        for (size_t i = 0; i < mGrids.size(); ++i)
-        {
+        for (size_t i = 0; i < mGrids.size(); ++i) {
             mGrids[i]->setShaderData(var[i]);
         }
     }
 
     // Upload volumes and clear updates.
     uint32_t volumeIndex = 0;
-    for (const auto& volume : mVolumes)
-    {
-        if (forceUpdate || volume->getUpdates() != Volume::UpdateFlags::None)
-        {
+    for (const auto& volume : mVolumes) {
+        if (forceUpdate || volume->getUpdates() != Volume::UpdateFlags::None) {
             // Fetch copy of volume data.
             auto data = volume->getData();
             data.densityGrid = volume->getDensityGrid() ? mGridIDs.at(volume->getDensityGrid()) : kInvalidGrid;
             data.emissionGrid = volume->getEmissionGrid() ? mGridIDs.at(volume->getEmissionGrid()) : kInvalidGrid;
             // Merge grid and volume transforms.
             const auto& densityGrid = volume->getDensityGrid();
-            if (densityGrid)
-            {
+            
+            if (densityGrid) {
                 data.transform = data.transform * densityGrid->getTransform();
                 data.invTransform = densityGrid->getInvTransform() * data.invTransform;
             }
@@ -1484,33 +1439,28 @@ Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
     // Early out if no materials have changed.
     if (!forceUpdate && Material::getGlobalUpdates() == Material::UpdateFlags::None) return flags;
 
-    for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId)
-    {
+    for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId) {
         auto& material = mMaterials[materialId];
         auto materialUpdates = material->getUpdates();
 
-        if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
-        {
+        if (forceUpdate || materialUpdates != Material::UpdateFlags::None) {
             material->clearUpdates();
             uploadMaterial(materialId);
             flags |= UpdateFlags::MaterialsChanged;
 
             // If displacement parameters have changed, we need to trigger displacement update.
-            if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged))
-            {
+            if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged)) {
                 mDisplacement.needsUpdate = true;
             }
         }
     }
 
     // Update material counts.
-    if (forceUpdate || flags != UpdateFlags::None)
-    {
+    if (forceUpdate || flags != UpdateFlags::None) {
         mMaterialCountByType.resize((size_t)MaterialType::Count);
         std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
 
-        for (const auto& material : mMaterials)
-        {
+        for (const auto& material : mMaterials) {
             size_t index = (size_t)material->getType();
             assert(index < mMaterialCountByType.size());
             mMaterialCountByType[index]++;
@@ -1523,13 +1473,11 @@ Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
     return flags;
 }
 
-Scene::UpdateFlags Scene::updateGeometry(bool forceUpdate)
-{
+Scene::UpdateFlags Scene::updateGeometry(bool forceUpdate) {
     UpdateFlags flags = updateProceduralPrimitives(forceUpdate);
     flags |= updateDisplacement(forceUpdate);
 
-    if (forceUpdate || mCustomPrimitivesChanged)
-    {
+    if (forceUpdate || mCustomPrimitivesChanged) {
         updatePrimitiveTypes();
         updateGeometryStats();
 
@@ -1549,13 +1497,10 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
 
     mUpdates = UpdateFlags::None;
 
-    if (mpAnimationController->animate(pContext, currentTime))
-    {
+    if (mpAnimationController->animate(pContext, currentTime)) {
         mUpdates |= UpdateFlags::SceneGraphChanged;
-        for (const auto& inst : mMeshInstanceData)
-        {
-            if (mpAnimationController->isMatrixChanged(inst.globalMatrixID))
-            {
+        for (const auto& inst : mMeshInstanceData) {
+            if (mpAnimationController->isMatrixChanged(inst.globalMatrixID)) {
                 mUpdates |= UpdateFlags::MeshesMoved;
             }
         }
@@ -1563,8 +1508,7 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
         if (mpAnimationController->hasAnimatedVertexCaches()) mUpdates |= UpdateFlags::CurvesMoved;
     }
 
-    for (const auto& pVolume : mVolumes)
-    {
+    for (const auto& pVolume : mVolumes) {
         pVolume->updatePlayback(currentTime);
     }
 
@@ -1576,8 +1520,7 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
     mUpdates |= updateGeometry(false);
     pContext->flush();
 
-    if (is_set(mUpdates, UpdateFlags::MeshesMoved))
-    {
+    if (is_set(mUpdates, UpdateFlags::MeshesMoved)) {
         mTlasCache.clear();
         updateMeshInstances(false);
     }
@@ -1587,30 +1530,30 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
     bool updateProcedural = is_set(mUpdates, UpdateFlags::CurvesMoved) || is_set(mUpdates, UpdateFlags::CustomPrimitivesMoved);
     bool blasUpdateRequired = skinnedAnimation || updateProcedural;
 
-    if (!mBlasData.empty() && blasUpdateRequired)
-    {
+    if (!mBlasData.empty() && blasUpdateRequired) {
         mTlasCache.clear();
         buildBlas(pContext);
     }
 
     // Update light collection
-    if (mpLightCollection && mpLightCollection->update(pContext))
-    {
+    if (mpLightCollection && mpLightCollection->update(pContext)) {
         mUpdates |= UpdateFlags::LightCollectionChanged;
         mSceneStats.emissiveMemoryInBytes = mpLightCollection->getMemoryUsageInBytes();
     }
-    else if (!mpLightCollection)
-    {
+    else if (!mpLightCollection) {
         mSceneStats.emissiveMemoryInBytes = 0;
     }
 
-    if (mRenderSettings != mPrevRenderSettings)
-    {
+    if (mRenderSettings != mPrevRenderSettings) {
         mUpdates |= UpdateFlags::RenderSettingsChanged;
         mPrevRenderSettings = mRenderSettings;
     }
 
     return mUpdates;
+}
+
+bool Scene::useRayTracing() const {
+    return mRenderSettings.useRayTracing;
 }
 
 bool Scene::useEnvBackground() const {
@@ -1708,8 +1651,7 @@ void Scene::selectViewpoint(uint32_t index) {
     mCurrentViewpoint = index;
 }
 
-uint32_t Scene::getGeometryCount() const
-{
+uint32_t Scene::getGeometryCount() const {
     // The BLASes currently hold the geometries in the order: meshes, curves, custom primitives.
     // We calculate the total number of geometries as the sum of the respective kind.
     size_t totalGeometries = mMeshDesc.size() + mCurveDesc.size() + mCustomPrimitiveDesc.size();
@@ -1717,8 +1659,7 @@ uint32_t Scene::getGeometryCount() const
     return (uint32_t)totalGeometries;
 }
 
-Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const
-{
+Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const {
     // Map global geometry ID to which type of geometry it represents.
     if (geometryID < mMeshDesc.size()) return mMeshDesc[geometryID].isDisplaced() ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh;
     else if (geometryID < mMeshDesc.size() + mCurveDesc.size()) return GeometryType::Curve;
@@ -1726,10 +1667,8 @@ Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const
     else throw std::runtime_error("Invalid geometryID");
 }
 
-uint32_t Scene::getCustomPrimitiveIndex(uint32_t geometryID) const
-{
-    if (getGeometryType(geometryID) != GeometryType::Custom)
-    {
+uint32_t Scene::getCustomPrimitiveIndex(uint32_t geometryID) const {
+    if (getGeometryType(geometryID) != GeometryType::Custom) {
         throw std::runtime_error("Geometry ID is not a custom primitive");
     }
 
@@ -1738,30 +1677,24 @@ uint32_t Scene::getCustomPrimitiveIndex(uint32_t geometryID) const
     return geometryID - (uint32_t)customPrimitiveOffset;
 }
 
-const CustomPrimitiveDesc& Scene::getCustomPrimitive(uint32_t index) const
-{
-    if (index >= getCustomPrimitiveCount())
-    {
+const CustomPrimitiveDesc& Scene::getCustomPrimitive(uint32_t index) const {
+    if (index >= getCustomPrimitiveCount()) {
         throw std::runtime_error("Custom primitive index " + std::to_string(index) + " is out of range");
     }
     return mCustomPrimitiveDesc[index];
 }
 
-const AABB& Scene::getCustomPrimitiveAABB(uint32_t index) const
-{
-    if (index >= getCustomPrimitiveCount())
-    {
+const AABB& Scene::getCustomPrimitiveAABB(uint32_t index) const {
+    if (index >= getCustomPrimitiveCount()) {
         throw std::runtime_error("Custom primitive index " + std::to_string(index) + " is out of range");
     }
     return mCustomPrimitiveAABBs[index];
 }
 
-uint32_t Scene::addCustomPrimitive(uint32_t userID, const AABB& aabb)
-{
+uint32_t Scene::addCustomPrimitive(uint32_t userID, const AABB& aabb) {
     // Currently each custom primitive has exactly one AABB. This may change in the future.
     assert(mCustomPrimitiveDesc.size() == mCustomPrimitiveAABBs.size());
-    if (mCustomPrimitiveAABBs.size() > std::numeric_limits<uint32_t>::max())
-    {
+    if (mCustomPrimitiveAABBs.size() > std::numeric_limits<uint32_t>::max()) {
         throw std::runtime_error("Custom primitive count exceeds the maximum");
     }
 
@@ -1778,10 +1711,8 @@ uint32_t Scene::addCustomPrimitive(uint32_t userID, const AABB& aabb)
     return index;
 }
 
-void Scene::removeCustomPrimitives(uint32_t first, uint32_t last)
-{
-    if (first > last || last > getCustomPrimitiveCount())
-    {
+void Scene::removeCustomPrimitives(uint32_t first, uint32_t last) {
+    if (first > last || last > getCustomPrimitiveCount()) {
         throw std::runtime_error("Invalid custom primitive index range [" + std::to_string(first) + ", " + std::to_string(last) + ")");
     }
 
@@ -1792,23 +1723,19 @@ void Scene::removeCustomPrimitives(uint32_t first, uint32_t last)
 
     // Update AABB offsets for all subsequent primitives.
     // The offset is currently redundant since there is one AABB per primitive. This may change in the future.
-    for (uint32_t i = first; i < mCustomPrimitiveDesc.size(); i++)
-    {
+    for (uint32_t i = first; i < mCustomPrimitiveDesc.size(); i++) {
         mCustomPrimitiveDesc[i].aabbOffset = i;
     }
 
     mCustomPrimitivesChanged = true;
 }
 
-void Scene::updateCustomPrimitive(uint32_t index, const AABB& aabb)
-{
-    if (index >= getCustomPrimitiveCount())
-    {
+void Scene::updateCustomPrimitive(uint32_t index, const AABB& aabb) {
+    if (index >= getCustomPrimitiveCount()) {
         throw std::runtime_error("Custom primitive index " + std::to_string(index) + " is out of range");
     }
 
-    if (mCustomPrimitiveAABBs[index] != aabb)
-    {
+    if (mCustomPrimitiveAABBs[index] != aabb) {
         mCustomPrimitiveAABBs[index] = aabb;
         mCustomPrimitivesMoved = true;
     }
@@ -1862,10 +1789,8 @@ void Scene::createDrawList() {
     mDrawArgs.clear();
 
     // Helper to create the draw-indirect buffer.
-    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown)
-    {
-        if (drawMeshes.size() > 0)
-        {
+    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
+        if (drawMeshes.size() > 0) {
             DrawArgs draw;
             draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
             draw.pBuffer->setName("Scene draw buffer");
@@ -1877,13 +1802,11 @@ void Scene::createDrawList() {
         }
     };
 
-    if (hasIndexBuffer())
-    {
+    if (hasIndexBuffer()) {
         std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
 
         uint32_t instanceID = 0;
-        for (const auto& instance : mMeshInstanceData)
-        {
+        for (const auto& instance : mMeshInstanceData) {
             const auto& mesh = mMeshDesc[instance.meshID];
             bool use16Bit = mesh.use16BitIndices();
 
@@ -1902,14 +1825,11 @@ void Scene::createDrawList() {
         createDrawBuffer(drawClockwiseMeshes[1], false, ResourceFormat::R32Uint);
         createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
         createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
-    }
-    else
-    {
+    } else {
         std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
         uint32_t instanceID = 0;
-        for (const auto& instance : mMeshInstanceData)
-        {
+        for (const auto& instance : mMeshInstanceData) {
             const auto& mesh = mMeshDesc[instance.meshID];
             assert(mesh.indexCount == 0);
 
@@ -1936,15 +1856,15 @@ nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc
     auto vertexStride = pVbLayout->getStride();
 
     // BLAS builder requires raw device addresses.
-    size_t indexStride = mesh.use16BitIndices() ? sizeof(uint16_t) : sizeof(uint32_t); // index tride in bytes
+    size_t indexStride = mesh.use16BitIndices() ? sizeof(uint16_t) : sizeof(uint32_t); // index stride in bytes
     VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pVb->getApiHandle()) + (mesh.vbOffset * vertexStride);
-    VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pIb->getApiHandle()) + (mesh.ibOffset * indexStride);
+    VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pIb->getApiHandle()) + (mesh.ibOffset * sizeof(uint32_t));
 
     uint32_t maxPrimitiveCount = mesh.indexCount / 3;
 
     // Describe buffer as array of VertexObj.
     VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
-    triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;  // vec3 vertex position data.
+    triangles.vertexFormat             = getVkFormat(pVbLayout->getElementFormat(0));;  // vec3 vertex position data.
     triangles.vertexData.deviceAddress = vertexAddress;
     triangles.vertexStride             = vertexStride;
     
@@ -2276,17 +2196,21 @@ struct MeshInstanceData
 void Scene::createTopLevelAS() {
     if (mTlasBuilt) return;
 
+    const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
     
     uint32_t instanceID = 0;
 
     for (const auto& instance : mMeshInstanceData) {
         auto meshID = instance.meshID;
-        nvmath::mat4f transform = nvmath::translation_mat4(nvmath::vec3f{0, 0.0, 0}); //(1);
+
+        printf("Adding instance to TLAS with meshID %u\n", meshID);
+
+        //nvmath::mat4f transform = nvmath::translation_mat4(nvmath::vec3f{0, 0.0, 0}); //(1);
 
         VkAccelerationStructureInstanceKHR rayInst{};
 
-        rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
+        rayInst.transform = toTransformMatrixKHR(globalMatrices[instance.globalMatrixID]);  // Position of the instance
         rayInst.instanceCustomIndex = instanceID++;
         rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
         rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;

@@ -96,7 +96,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
     ResourceFormat              mDepthFormat = ResourceFormat::D32Float;
-    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::Back;
+    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
     Scene::SharedPtr            mpScene;
 
     bool mDirty = false;

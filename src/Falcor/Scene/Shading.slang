@@ -168,7 +168,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     sd.posW = v.posW;
     sd.uv = v.texC;
     sd.V = viewDir;
-    sd.N = v.normalW;
+    sd.N = normalize(v.normalW);
 
     sd.faceN = v.faceNormalW;
     sd.frontFacing = dot(sd.V, sd.faceN) >= 0.f;
@@ -195,6 +195,11 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     // Depending on the shading model this encodes the material parameters differently.
     float4 spec = sampleTexture(mr.specular, mr.samplerState, v.texC, md.specular, EXTRACT_SPECULAR_TYPE(md.flags), lod);
 
+    float3 specular = sampleTexture(mr.specular, mr.samplerState, v.texC, float4(1), EXTRACT_SPECULAR_TYPE(md.flags), lod).rgb; // metallic component stored in B channel of MaterialData
+    float metallic = pow(specular.r, 1.0/2.2) * md.specular.b;
+
+    float rough = sampleTexture(mr.roughness, mr.samplerState, v.texC, float4(1), EXTRACT_ROUGHNESS_TYPE(md.flags), lod).r * md.roughness;
+
 #if SCENE_HAS_SPEC_GLOSS_MATERIALS
     if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelMetalRough)
 #endif
@@ -207,16 +212,16 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
         float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
         float F0 = f * f;
 
-        sd.specular = lerp(float3(F0), baseColor, spec.b);
-        sd.linearRoughness = spec.g;
-        sd.metallic = spec.b;
+        sd.specular = lerp(float3(F0), baseColor, metallic);
+        sd.linearRoughness = rough; //spec.g;
+        sd.metallic = metallic;
     }
 #if SCENE_HAS_SPEC_GLOSS_MATERIALS
     else // if (EXTRACT_SHADING_MODEL(md.flags) == ShadingModelSpecGloss)
     {
         sd.diffuse = baseColor;
         sd.specular = spec.rgb;
-        sd.linearRoughness = 1 - spec.a;
+        sd.linearRoughness =  1 - rough; //1 - spec.a;
         sd.metallic = getMetallic(sd.diffuse, sd.specular);
     }
 #endif

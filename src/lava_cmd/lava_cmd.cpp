@@ -84,7 +84,7 @@ int main(int argc, char** argv){
     bool vtoff_flag = false; // virtual texturing enabled by default
     bool fconv_flag = false; // force virtual textures (re)conversion
 
-    //std::atexit(atexitHandler);
+    std::atexit(atexitHandler);
 
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalTraceHandler);
@@ -254,7 +254,7 @@ int main(int argc, char** argv){
       }
     }
 
-    pDeviceManager = nullptr;
+    //pDeviceManager = nullptr;
 
     exit(EXIT_SUCCESS);
 }

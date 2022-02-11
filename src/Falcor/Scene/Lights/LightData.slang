@@ -47,6 +47,20 @@ enum class LightType
     Sphere,         ///< Spherical area light source
 };
 
+
+/** Types of light shadows. Used in LightData structure.
+*/
+enum class LightShadowType
+// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
+#ifdef HOST_CODE
+    : uint32_t
+#endif
+{
+    None,
+    RayTraced,
+    ShadowMap,
+};
+
 /** This is a host/device structure that describes analytic light sources.
 */
 struct LightData {
@@ -63,6 +77,9 @@ struct LightData {
 
     float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of th light source
     float    _pad2;
+
+    float3   shadowColor        = float3(0, 0, 0);
+    uint32_t shadowType         = uint(LightShadowType::None); ///< Type of the light shadow (see above)
 
     float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
     float    surfaceArea        = 0.f;              ///< Surface area of the light shape

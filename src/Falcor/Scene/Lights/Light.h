@@ -96,6 +96,19 @@ class dlldecl Light : public Animatable {
     */
     const float3& getIntensity() const { return mData.intensity; }
 
+    /** Set the light shadow color
+    */
+    void setShadowColor(const float3& shadowColor);
+
+    /** Get the light shadow color
+    */
+    const float3& getShadowColor() const { return mData.shadowColor; }
+
+    void setShadowType(LightShadowType shadowType);
+
+    LightShadowType getShadowType() const { return (LightShadowType)mData.shadowType; }
+
+
     enum class Changes {
         None = 0x0,
         Active = 0x1,
@@ -103,6 +116,7 @@ class dlldecl Light : public Animatable {
         Direction = 0x4,
         Intensity = 0x8,
         SurfaceArea = 0x10,
+        Shadow = 0x20
     };
 
     /** Begin a new frame. Returns the changes from the previous frame

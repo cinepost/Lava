@@ -57,12 +57,16 @@ struct ShadingData
     // Pre-loaded material properties
     float3  diffuse;                ///< Diffuse albedo.
     float   opacity;
+    
     float3  specular;               ///< Specular albedo.
     float   linearRoughness;        ///< This is the original roughness, before re-mapping.
+    
     float3  transmission;           ///< Transmission color.
     float   ggxAlpha;               ///< DEPRECATED: This is the re-mapped roughness value, which should be used for GGX computations. It equals `roughness^2`
+    
     float3  emissive;
     float   IoR;                    ///< Index of refraction of the medium "behind" the surface.
+    
     float   metallic;               ///< Metallic parameter, blends between dielectric and conducting BSDFs. It is used for storing the curve sphere radius when it refers to shading curves.
     float   diffuseTransmission;    ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
     float   specularTransmission;   ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.

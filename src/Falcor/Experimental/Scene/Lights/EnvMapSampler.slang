@@ -126,7 +126,7 @@ struct EnvMapSampler
         float avg_w = importanceMap.Load(int3(0, 0, importanceBaseMip)); // 1x1 mip holds integral over importance map. TODO: Replace by constant or rescale in setup so that the integral is 1.0
         float pdf = importanceMap[pos] / avg_w;
 
-        result.dir = gScene.envMap.toWorld(dir);
+        result.dir = normalize(gScene.envMap.toWorld(dir));
         result.pdf = pdf * M_1_4PI;
         result.Le = gScene.envMap.eval(result.dir);
 

@@ -29,15 +29,18 @@
 
 import Scene.Raster;
 import Scene.Shading;
-//import Scene.RaytracingInline;
+
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
-import Experimental.Scene.Lights.EnvMapLighting;
-import Experimental.Scene.Material.StandardMaterial;
+//import Experimental.Scene.Lights.EnvMapLighting;
+import Experimental.Scene.Lights.EnvMapSampler;
 
-#define gCamera gScene.camera
-#define gFrameDim gRenderTargetDim
+import Experimental.Scene.Material.Fresnel;
+import Experimental.Scene.Material.Microfacet;
+import Experimental.Scene.Material.StandardMaterial;
+import Experimental.Scene.Material.IBxDF;
+
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
@@ -49,11 +52,12 @@ cbuffer PerFrameCB {
   uint              gSamplesPerFrame;
 
   float4x4          gViewInvMat;
+  EnvMapSampler     gEnvMapSampler;
 };
 
-RaytracingAccelerationStructure gTlas;
+//RaytracingAccelerationStructure gTlas;
 
-EnvMapLighting gEnvMapLighting;
+//EnvMapLighting gEnvMapLighting; 
 
 SamplerState gSampler;
 SamplerState gNoiseSampler;
@@ -61,7 +65,6 @@ SamplerState gDepthSampler;
 
 Texture2D gDepthTex;
 Texture2D gNoiseTex;
-Texture2D visibilityBuffer;
 
 static VSOut vsData;
 
@@ -86,6 +89,13 @@ struct PsOut
 };
 
 
+float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
+    uint txw, txh;
+    environmentMap.GetDimensions(txw, txh);
+    return log2(pdf * txh * M_1_PI);                                // From chapter 21 in Ray Tracing Gems.
+}
+
+
 [earlydepthstencil]
 PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     PsOut psOut;
@@ -106,49 +116,46 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
     
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
+
+    // Compute GGX alpha.
+    float alpha = sd.linearRoughness * sd.linearRoughness;
+
     StandardMaterial mtl;
 
     float4 finalColor = float4(0, 0, 0, 1);
 
     // Direct lighting from analytic light sources
-    for (int i = 0; i < gScene.getLightCount(); i++)
-    {
-        float shadowFactor = 1.0;
-        //if (i == 0)
-        //{
-            //shadowFactor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).r;
-            //shadowFactor *= sd.opacity;
-        //}
+    
+    RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+    let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
+
+    float3 rayOrigin = sd.posW;
+    float3 shadowFactor;
+
+    for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
+        shadowFactor = float3(1.0, 1.0, 1.0);
+
+        LightData light = gScene.getLight(lightIndex);
 
         AnalyticLightSample ls;
-        evalLightApproximate(sd.posW, gScene.getLight(i), ls);
+        bool valid = sampleLight(sd.posW, light, sg, ls);
 
-        // Test visibility by tracing a shadow ray.
-        float3 rayOrigin = sd.posW;
-        
-        //bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-        //traceVisibilityRay(const RayDesc ray, uint rayFlags, uint instanceInclusionMask)
+        // Reject sample if lower hemisphere.
+        if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
 
-        LightData light = gScene.getLight(i);
+        if (light.shadowType == uint(LightShadowType.RayTraced) ) {
+            
+            // Test visibility by tracing a shadow ray.
+            RayDesc ray;
+            ray.Origin = rayOrigin;// + viewDir * 0.0001;
+            ray.Direction = ls.dir;
+            ray.TMin = 0.0001f;
+            ray.TMax = 1e4f;
 
-
-        RayDesc ray;
-        ray.Origin = rayOrigin;
-        ray.Direction = normalize(light.posW - sd.posW);
-        ray.TMin = 0.001f;
-        ray.TMax = 1e4f;
-
-      //  RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
-
-        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-
-        let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
-
-        rayQuery.TraceRayInline(gTlas, rayFlags, 0xff, ray);
-        rayQuery.Proceed();
-        shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
-
-        //shadowFactor = V ? 1.0 : 0.0;
+            rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+            rayQuery.Proceed();
+            shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
+        }
 
         finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
     }
@@ -159,8 +166,155 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
 
 #ifdef _USE_ENV_MAP
     // Add lighting from environment map
-    finalColor.rgb += gEnvMapLighting.evalDiffuse(sd);
-    finalColor.rgb += gEnvMapLighting.evalSpecular(sd, reflect(-sd.V, sd.N));
+
+    #ifdef _USE_SIMPLIFIED_ENV_LIGHTING
+        finalColor.rgb += gEnvMapLighting.evalDiffuse(sd);
+        finalColor.rgb += gEnvMapLighting.evalSpecular(sd, reflect(-sd.V, sd.N));
+    #else
+
+
+        // Environment diffuse
+        float envSampleWeight = 1.0;
+        EnvMapSample envSample;
+        gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+
+/*
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.5;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.333333;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.25;
+        }
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
+           // envSampleWeight = 0.2;
+        }
+*/
+
+        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
+            DiffuseReflectionFrostbite diffuseReflection;
+            diffuseReflection.albedo = sd.diffuse;
+            diffuseReflection.linearRoughness = sd.linearRoughness;
+
+            float pdf = 0.0;
+            float3 weight = float3(1.0, 1.0, 1.0);
+            uint lobe;
+            float3 wi;
+            float3 wo = sd.toLocal(sd.V);
+
+            bool result = diffuseReflection.sample(wo, wi, pdf, weight, lobe, sg);
+
+            float3 diffDir = normalize(sd.fromLocal(wi));
+
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = diffDir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+
+            float3 Le = gScene.envMap.eval(diffDir);
+            finalColor.rgb += (diffuseReflection.eval(wo, wi) * Le * shadowFactor);// / pdf;
+            //finalColor.rgb = float3(0,1,0);
+        } else {
+
+        
+        //if ( dot(envSample.dir, sd.N) > kMinCosTheta) {
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = envSample.dir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+            
+            if ( envSample.pdf > 0) {
+                DiffuseReflectionFrostbite diffuseReflection;
+                diffuseReflection.albedo = sd.diffuse;
+                diffuseReflection.linearRoughness = sd.linearRoughness;
+
+                float3 wi = sd.toLocal(envSample.dir);
+                float3 wo = sd.toLocal(sd.V);
+                float3 diffuse = diffuseReflection.eval(wo, wi);
+
+                finalColor.rgb += diffuse * (envSample.Le / envSample.pdf) * shadowFactor * envSampleWeight;
+            }
+        }
+
+
+        // Environment specular
+        SpecularReflectionMicrofacet specularReflection;
+
+        const uint activeLobes = sd.getActiveLobes();
+
+        specularReflection.albedo = sd.specular;
+        specularReflection.alpha = alpha;
+        specularReflection.activeLobes = (uint)LobeType::SpecularReflection; //activeLobes;
+
+        float pdf = 0.0;
+        float3 weight = float3(1.0, 1.0, 1.0);
+        uint lobe;
+        float3 wi;
+        float3 wo = sd.toLocal(sd.V);
+        
+        float3 reflDir;
+        bool valid = true;
+
+        if (alpha == 0.0) {
+            pdf = 0.0;
+            reflDir = normalize(sd.fromLocal(float3(-wo.x, -wo.y, wo.z)));
+            weight = evalFresnelSchlick(sd.specular, 1.f, wo.z);
+        } else {
+            specularReflection.sample(wo, wi,  pdf, weight, lobe, sg);
+            reflDir = normalize(sd.fromLocal(wi));
+        }
+
+
+        //finalColor.rgb = float3(0,0,0);
+
+        if ( valid && dot(reflDir, sd.N) > kMinCosTheta) {
+            shadowFactor = 1.0;
+
+            {
+                RayDesc ray;
+                ray.Origin = rayOrigin;
+                ray.Direction = reflDir;
+                ray.TMin = 0.001f;
+                ray.TMax = 1e4f;
+            
+                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+                rayQuery.Proceed();
+                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
+            }
+
+            //float envReflPdf = gEnvMapSampler.evalPdf(reflDir);
+
+            float envLod = 1.0; //_computeEnvironmentMapLOD(envReflPdf, gScene.envMap.envMap);
+            finalColor.rgb += gScene.envMap.eval(reflDir, envLod) * weight * shadowFactor;
+
+            //finalColor.rgb = float3(1.0 / pdf, 0.1 / pdf, 0.01 / pdf);
+        }
+
+    #endif
 #endif
 
     psOut.color = finalColor;
@@ -171,9 +325,9 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
     psOut.motion = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
 #endif
 
-#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    float3 cascadeColor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).gba;
-    psOut.color.rgb *= cascadeColor;
-#endif
+//#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
+//    float3 cascadeColor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).gba;
+//    psOut.color.rgb *= cascadeColor;
+//#endif
     return psOut;
 }

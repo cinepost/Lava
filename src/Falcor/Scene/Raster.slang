@@ -113,7 +113,7 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
     VertexData v;
     v.posW = vsOut.posW;
     v.texC = vsOut.texC;
-    v.normalW = normalize(vsOut.normalW);
+    v.normalW = vsOut.normalW;
     v.faceNormalW = faceNormalW;
     v.tangentW.xyz = normalize(vsOut.tangentW.xyz);
     v.tangentW.w = sign(vsOut.tangentW.w); // Preserve zero to indicate invalid tangent.

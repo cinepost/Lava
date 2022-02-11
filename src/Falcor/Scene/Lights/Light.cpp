@@ -52,6 +52,14 @@ void Light::setIntensity(const float3& intensity) {
     mData.intensity = intensity;
 }
 
+void Light::setShadowColor(const float3& shadowColor) {
+    mData.shadowColor = shadowColor;
+}
+
+void Light::setShadowType(LightShadowType shadowType) { 
+    mData.shadowType = (uint32_t)shadowType; 
+}
+
 Light::Changes Light::beginFrame() {
     mChanges = Changes::None;
     if (mActiveChanged) mChanges |= Changes::Active;
@@ -63,6 +71,9 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
+
+    if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
+    if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
 
     assert(mPrevData.tangent == mData.tangent);
     assert(mPrevData.bitangent == mData.bitangent);

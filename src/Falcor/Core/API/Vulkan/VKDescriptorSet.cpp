@@ -116,8 +116,6 @@ namespace Falcor {
     }
 
     void DescriptorSet::setAS(uint32_t rangeIndex, uint32_t descIndex, VkAccelerationStructureKHR accel) {
-        printf("!!!! DescriptorSet::setAS\n");
-
         VkWriteDescriptorSet write = {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = mApiHandle;
@@ -133,8 +131,6 @@ namespace Falcor {
         write.pNext = &descASInfo;
 
         vkUpdateDescriptorSets(mpPool->device()->getApiHandle(), 1, &write, 0, nullptr);
-
-        printf("!!!! DescriptorSet::setAS done !\n");
     }
 
     void DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv) {

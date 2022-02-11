@@ -1,5 +1,6 @@
 #include <utility>
 #include <mutex>
+#include <limits>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
@@ -89,9 +90,7 @@ Session::Session(std::unique_ptr<RendererIface> pRendererIface):mFirstRun(true) 
 }
 
 Session::~Session() {
-	LLOG_DBG << "Session::~Session";
 	mpRendererIface.reset(nullptr);
-	LLOG_DBG << "Session::~Session done";
 }
 
 void Session::cmdSetEnv(const std::string& key, const std::string& value) {
@@ -224,6 +223,10 @@ bool Session::prepareFrameData() {
 	return true;
 }
 
+void Session::cmdQuit() {
+	mpRendererIface = nullptr;
+}
+
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
 	mpGlobal->printSummary(std::cout);
@@ -311,7 +314,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	Falcor::Light::SharedPtr pLight = nullptr;
 
-	if( light_type == "distant") {
+	if( (light_type == "distant") || (light_type == "sun") ) {
 		auto pDistantLight = Falcor::DistantLight::create("noname_distant");
 		pDistantLight->setWorldDirection(light_dir);
 		
@@ -365,6 +368,27 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		pLight->setName(light_name);
 		pLight->setHasAnimation(false);
+
+		Property* pShadowProp = pLightScope->getProperty(ast::Style::LIGHT, "shadow");
+		
+		// set shadow parameters
+		if (pShadowProp) {
+			auto pShadowProps = pShadowProp->subContainer();
+			if (pShadowProps) {
+				const std::string shadow_type_name = pShadowProps->getPropertyValue(ast::Style::LIGHT, "shadowtype", std::string(""));
+				if (shadow_type_name == "filter") {
+					// alpha aware ray traced shadows
+					pLight->setShadowType(LightShadowType::RayTraced);
+				} else if (shadow_type_name == "fast") {
+					// opaque ray traced shadows
+					pLight->setShadowType(LightShadowType::RayTraced);
+				} else if (shadow_type_name == "deep") {
+					pLight->setShadowType(LightShadowType::ShadowMap);
+				}
+				const Falcor::float3 shadow_color = to_float3(pShadowProps->getPropertyValue(ast::Style::LIGHT, "shadow_color", lsd::Vector3{0.0, 0.0, 0.0}));
+				pLight->setShadowColor(shadow_color);
+			}
+		}
 
 		pLight->setIntensity(light_color);
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
@@ -578,7 +602,8 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
 
-	uint32_t mesh_id;
+	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
+
 	try {
 		LLOG_DBG << "getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
 		mesh_id = std::get<uint32_t>(it->second);	
@@ -589,12 +614,17 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 		try {
 			mesh_id = f.get();	
 		} catch(const std::exception& e) {
-        	std::cout << "Exception from the thread: " << e.what() << '\n';
+        	std::cerr << "Exception from the thread: " << e.what() << '\n';
+        	return false;
     	}
 	} catch (...) {
-		LLOG_ERR << "Unable to get mesh id for object " << obj_name;
+		logError("Unable to get mesh id for object: " + obj_name);
+	}
+
+	if (mesh_id == std::numeric_limits<uint32_t>::max()) {
 		return false;
 	}
+
 	LLOG_DBG << "mesh_id " << mesh_id;
 
 	Falcor::SceneBuilder::Node node = {};

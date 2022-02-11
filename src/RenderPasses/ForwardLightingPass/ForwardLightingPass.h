@@ -34,7 +34,7 @@
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
 #include "Experimental/Scene/Lights/EnvMapLighting.h"
-
+#include "Experimental/Scene/Lights/EnvMapSampler.h"
 
 using namespace Falcor;
 
@@ -108,7 +108,7 @@ class ForwardLightingPass : public RenderPass {
     GraphicsVars::SharedPtr         mpVars;
     RasterizerState::SharedPtr      mpRsState;
     GraphicsProgram::SharedPtr      mpProgram;
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;
+    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;
 
     uint2 mFrameDim = { 0, 0 };
     uint32_t mFrameSampleCount = 16;
@@ -120,7 +120,9 @@ class ForwardLightingPass : public RenderPass {
     Texture::SharedPtr                  mpBlueNoiseTexture;
     CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
     SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
-    EnvMapLighting::SharedPtr           mpEnvMapLighting;
+    
+    EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
+    EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 
     ResourceFormat mColorFormat = ResourceFormat::RGBA16Float; //Default color rendering format;
     ResourceFormat mNormalMapFormat = ResourceFormat::RGBA16Float;
@@ -129,8 +131,10 @@ class ForwardLightingPass : public RenderPass {
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
     bool mUseSSAO = false;
-
-    bool mDirty = false;
+    bool mUseSimplifiedEnvLighting = false;
+    
+    bool mDirty = true;
+    bool mEnvMapDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_

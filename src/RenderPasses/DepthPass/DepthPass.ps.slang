@@ -35,8 +35,7 @@ cbuffer PerFrameCB {
 
 }
 
-float checker(float2 uv, float repeats) 
-{
+float checker(float2 uv, float repeats)  {
   float cx = floor(repeats * uv.x);
   float cy = floor(repeats * uv.y); 
   float result = fmod(cx + cy, 2.0);
@@ -44,6 +43,10 @@ float checker(float2 uv, float repeats)
 }
 
 void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
+
+}
+
+void mainOld(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
 
     // pixel position
     int2 ipos = int2(vsOut.posH.xy);

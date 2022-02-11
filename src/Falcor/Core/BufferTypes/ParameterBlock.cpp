@@ -757,7 +757,6 @@ bool ParameterBlock::setAS(const std::string& name, VkAccelerationStructureKHR a
 }
 
 bool ParameterBlock::setAS(const BindLocation& bindLocation, VkAccelerationStructureKHR accel) {
-    printf("!!!! ParameterBlock::setAS\n");
     assert(accel != VK_NULL_HANDLE);
 
     if (!checkResourceIndices(bindLocation, "setAS()")) return false;
@@ -769,9 +768,6 @@ bool ParameterBlock::setAS(const BindLocation& bindLocation, VkAccelerationStruc
     assignedAS = accel;
 
     markDescriptorSetDirty(bindLocation);
-
-    printf("!!!! ParameterBlock::setAS done !!!!\n");
-
     return true;
 }
 
@@ -1332,7 +1328,6 @@ bool ParameterBlock::bindIntoDescriptorSet(const ParameterBlockReflection* pRefl
                         break;
                     case DescriptorSet::Type::AccelerationStructure:
                         {
-                            printf("!!!!!!!!!!!! DescriptorSet::Type::AccelerationStructure \n");
                             pDescSet->setAS(destRangeIndex, descriptorIndex, mAccels[flatIndex]);
                         }
                         break;

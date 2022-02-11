@@ -260,26 +260,24 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
     \param[out] ls Sampled point on the light and associated sample data, only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
-{
+bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls) {
     // Sample the light based on its type: point, directional, or area.
-    switch (light.type)
-    {
-    case LightType::Point:
-        return samplePointLight(shadingPosW, light, ls);
-    case LightType::Directional:
-        return sampleDirectionalLight(shadingPosW, light, ls);
-    case LightType::Rect:
-        return sampleRectAreaLight(shadingPosW, light, sg, ls);
-    case LightType::Sphere:
-        return sampleSphereAreaLight(shadingPosW, light, sg, ls);
-    case LightType::Disc:
-        return sampleDiscAreaLight(shadingPosW, light, sg, ls);
-    case LightType::Distant:
-        return sampleDistantLight(shadingPosW, light, sg, ls);
-    default:
-        ls = {};
-        return false; // Should not happen
+    switch (light.type) {
+        case LightType::Point:
+            return samplePointLight(shadingPosW, light, ls);
+        case LightType::Directional:
+            return sampleDirectionalLight(shadingPosW, light, ls);
+        case LightType::Rect:
+            return sampleRectAreaLight(shadingPosW, light, sg, ls);
+        case LightType::Sphere:
+            return sampleSphereAreaLight(shadingPosW, light, sg, ls);
+        case LightType::Disc:
+            return sampleDiscAreaLight(shadingPosW, light, sg, ls);
+        case LightType::Distant:
+            return sampleDistantLight(shadingPosW, light, sg, ls);
+        default:
+            ls = {};
+            return false; // Should not happen
     }
 }
 
@@ -290,16 +288,14 @@ bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData
     \param[out] ls Sampled point on the light and associated sample data (zero initialized if no sample is generated).
     \return True if a sample was generated, false otherwise.
 */
-bool evalLightApproximate(const float3 shadingPosW, const LightData light, out AnalyticLightSample ls)
-{
+bool evalLightApproximate(const float3 shadingPosW, const LightData light, out AnalyticLightSample ls) {
     ls = {};
 
-    switch (light.type)
-    {
-    case LightType::Point:
-        return samplePointLight(shadingPosW, light, ls);
-    case LightType::Directional:
-        return sampleDirectionalLight(shadingPosW, light, ls);
+    switch (light.type) {
+        case LightType::Point:
+            return samplePointLight(shadingPosW, light, ls);
+        case LightType::Directional:
+            return sampleDirectionalLight(shadingPosW, light, ls);
     }
 
     // All other light types are not supported.

@@ -113,8 +113,6 @@ void Renderer::initGlobalData(const RendererIface::GlobalData& global_data) {
 }
 
 Renderer::~Renderer() {
-    LLOG_DBG << "Renderer::~Renderer";
-
     if(!mInited)
         return;
 
@@ -141,8 +139,6 @@ Renderer::~Renderer() {
     mpDevice.reset();
 
     Falcor::OSServices::stop();
-
-    LLOG_DBG << "Renderer::~Renderer done";
 }
 
 std::unique_ptr<RendererIface> Renderer::aquireInterface() {

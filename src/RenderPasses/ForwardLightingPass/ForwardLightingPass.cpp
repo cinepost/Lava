@@ -213,29 +213,37 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
 void ForwardLightingPass::prepareVars(RenderContext* pContext) {
     assert(mpVars);
 
-    if (!mDirty) return;
+    if (!mEnvMapDirty) return;
 
     // Update env map lighting
     const auto& pEnvMap = mpScene->getEnvMap();
-    if (pEnvMap && (!mpEnvMapLighting || mpEnvMapLighting->getEnvMap() != pEnvMap)) {
-        mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
-        mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
+
+    if (pEnvMap) {
         mpState->getProgram()->addDefine("_USE_ENV_MAP");
-    } else if (!pEnvMap) {
-        mpEnvMapLighting = nullptr;
+        if (mUseSimplifiedEnvLighting) {
+            mpState->getProgram()->addDefine("_USE_SIMPLIFIED_ENV_LIGHTING");
+            mpEnvMapLighting = EnvMapLighting::create(pContext, pEnvMap);
+            mpEnvMapLighting->setShaderData(mpVars["gEnvMapLighting"]);
+        } else {
+            mpEnvMapSampler = EnvMapSampler::create(pContext, pEnvMap);
+            mpEnvMapSampler->setShaderData(mpVars["PerFrameCB"]["gEnvMapSampler"]);
+        }
+    } else {
         mpState->getProgram()->removeDefine("_USE_ENV_MAP");
+        mpEnvMapLighting = nullptr;
+        mpEnvMapSampler = nullptr;
     }
 
     mpState->getProgram()->addDefines(mpSampleGenerator->getDefines());
 
     mpVars["gNoiseSampler"]     = mpNoiseSampler;
     mpVars["gNoiseTex"]         = mpBlueNoiseTexture;
-    mpVars["gTlas"] = mpScene->getTlas();
+    //mpVars["gTlas"] = mpScene->getTlas();
 
     bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
     if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
 
-    mDirty = false;
+    mEnvMapDirty = false;
 }
 
 ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) {
