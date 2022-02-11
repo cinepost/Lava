@@ -1,12 +1,14 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.20)
 
 project("ThirdParty_External")
 
 include(ExternalProject)
+include(ProcessorCount)
+#ProcessorCount(N)
 
 message("Running third party dependencies build...")
 
-set(NCPU 2)
+set(N 4)
 
 set( CMAKE_MODULE_PATH 
   ${PROJECT_SOURCE_DIR}/../cmake/modules
@@ -16,6 +18,8 @@ set(EXTRA_CMAKE_ARGS)
 set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 
 set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/external)
+set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/stamp)
+set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/tmp)
 set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps)
 
 
@@ -37,6 +41,7 @@ find_package(Git)
 if(Git_FOUND)
   message("Git found: ${GIT_EXECUTABLE}")
 endif()
+
 
 #######################
 # TBB
@@ -60,15 +65,11 @@ else()
     GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
     GIT_TAG v${EXTERNAL_TBB_VERSION}
     UPDATE_DISCONNECTED true
-    #BINARY_DIR ${EXTERNALS_BINARY_DIR}/tbb
     BUILD_IN_SOURCE 1
     
     CONFIGURE_COMMAND ""
     
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${NCPU} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
-    
-    #INSTALL_COMMAND ${CMAKE_COMMAND}
-    #  -E copy_directory <SOURCE_DIR>/include/tbb ${EXTERNALS_INSTALL_DIR}/include/tbb
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j ${N} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
 
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
     
@@ -77,9 +78,14 @@ else()
       -D TBB_INCL_DIR=<SOURCE_DIR>/include/tbb
       -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/tbb_install_files.cmake
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/tbb
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/tbb
   )
 
 endif()
+
+
 
 #######################
 # Blosc2
@@ -92,11 +98,12 @@ find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT)
 
 if( Blosc_FOUND )
 
-  message("Blosc version ${Blosc_VERSION} found ...")
+  message("Blosc version ${EXTERNAL_BLOSC_VERSION} found ...")
   add_custom_target( Blosc COMMAND echo "Blosc build exists, skipping rebuild ...")
 
 else()
 
+  message("Blosc version ${EXTERNAL_BLOSC_VERSION} not found! Running external build ...")
   set(BLOSC_PREFIX blosc)
 
   if( LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -112,7 +119,7 @@ else()
     GIT_REPOSITORY https://github.com/Blosc/c-blosc.git
     GIT_TAG v${EXTERNAL_BLOSC_VERSION}
     UPDATE_DISCONNECTED true
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/blosc
+    
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D BUILD_STATIC:BOOL=${BLOSC_BUILD_STATIC}
     CMAKE_ARGS -D BUILD_SHARED:BOOL=${BLOSC_BUILD_SHARED}
@@ -120,39 +127,16 @@ else()
     CMAKE_ARGS -D BUILD_FUZZERS:BOOL=OFF
     CMAKE_ARGS -D BUILD_BENCHMARKS:BOOL=OFF
     CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/blosc
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/blosc
+
   )
 endif()
 
-#######################
-# Pybind11
-#######################
-
-set(pybind11_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(pybind11 2.5.0 EXACT)
-
-if( pybind11_FOUND )
-
-  message("pybind11 version ${pybind11_VERSION} found ...")
-  add_custom_target( PyBind COMMAND echo "PyBind11 build exists, skipping rebuild ...")
-
-else()
-
-  set(PYBIND_PREFIX pybind11)
-
-  ExternalProject_Add ( PyBind
-    PREFIX ${EXTERNALS_SOURCE_DIR}/${PYBIND_PREFIX}
-    GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG v2.5.0
-    UPDATE_DISCONNECTED true
-    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D PYBIND11_TEST:BOOL=OFF
-    CMAKE_ARGS -D OIIO_BUILD_TOOLS:BOOL=OFF
-    CMAKE_ARGS -D BUILD_DOCS:BOOL=OFF
-    CMAKE_ARGS <SOURCE_DIR>
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/pybind
-  )
-
-endif()
 
 #######################
 # Boost
@@ -169,7 +153,7 @@ if(Boost_FOUND)
 
 else()
   
-  message("Boost not found! Running external build ...")
+  message("Boost version ${EXTERNAL_BOOST_VERSION} not found! Running external build ...")
   set(BOOST_PREFIX boost)
 
   if( LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -193,41 +177,58 @@ else()
       --with-libraries=log 
       --with-libraries=thread
       --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=release threading=multi runtime-link=${BOOST_LINK_STYLE}
+    BUILD_COMMAND ./b2 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=release threading=multi runtime-link=${BOOST_LINK_STYLE} -j ${N}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
+    TMP_DIR ${EXTERNALS_TMP_DIR}/boost
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
+  )
+
+
+endif()
+
+
+#######################
+# Pybind11
+#######################
+
+set(EXTERNAL_PYBIND_VERSION 2.5.0)
+
+set(pybind11_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT)
+
+if( pybind11_FOUND )
+
+  message("pybind11 version ${pybind11_VERSION} found ...")
+  add_custom_target( PyBind COMMAND echo "PyBind11 build exists, skipping rebuild ...")
+
+else()
+
+  message("pybind11 version ${EXTERNAL_PYBIND_VERSION} not found! Running external build ...")
+  set(PYBIND_PREFIX pybind11)
+
+  ExternalProject_Add ( PyBind
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${PYBIND_PREFIX}
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG v${EXTERNAL_PYBIND_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D PYBIND11_TEST:BOOL=OFF
+    CMAKE_ARGS -D OIIO_BUILD_TOOLS:BOOL=OFF
+    CMAKE_ARGS -D BUILD_DOCS:BOOL=OFF
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/pybind
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/pybind
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/pybind
   )
 
 endif()
 
-#######################
-# Imath
-#######################
-
-#set(Imath_ROOT ${EXTERNALS_INSTALL_DIR})
-#find_package(Imath)
-
-#if( Imath_FOUND )
-
-#  message("Imath version ${Imath_VERSION} found ...")
-#  add_custom_target( Imath COMMAND echo "Imath build exists, skipping rebuild ...")
-
-#else()
-
-#  message("Imath not found! Running external build ...")
-#  set(IMATH_PREFIX imath)
-
-#  ExternalProject_Add( Imath
-#    PREFIX ${EXTERNALS_SOURCE_DIR}/${IMATH_PREFIX}
-#    GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/Imath.git
-#    GIT_TAG v3.1.3
-#    UPDATE_DISCONNECTED true
-#    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-#    CMAKE_ARGS <SOURCE_DIR>
-#  )
-
-#endif()
 
 #######################
 # OpenEXR
@@ -258,15 +259,22 @@ else()
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openexr.git
     GIT_TAG v${EXTERNAL_OPENEXR_VERSION}
     UPDATE_DISCONNECTED true
+    
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D BUILD_TESTING:BOOL=OFF
     CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${OPENEXR_BUILD_SHARED}
     CMAKE_ARGS -D PYILMBASE_ENABLE:BOOL=OFF
     CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/openexr
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openexr
   )
 endif()
-#add_dependencies(OpenEXR Imath)
+add_dependencies(OpenEXR Blosc)
+
 
 #######################
 # Assimp
@@ -283,7 +291,7 @@ if(assimp_FOUND)
 
 else()
 
-  message("Assimp not found! Running external build ...")
+  message("Assimp version ${EXTERNAL_ASSIMP_VERSION} not found! Running external build ...")
   set(ASSIMP_PREFIX assimp)
 
   if( LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -297,17 +305,23 @@ else()
     GIT_REPOSITORY https://github.com/assimp/assimp.git
     GIT_TAG v${EXTERNAL_ASSIMP_VERSION}
     UPDATE_DISCONNECTED true
-
+    
     CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${ASSIMP_BUILD_SHARED}
     CMAKE_ARGS -D ASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF
     CMAKE_ARGS -D ASSIMP_BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D ASSIMP_INSTALL:BOOL=ON
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/assimp
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
 
 endif()
+
 
 #######################
 # OpenVDB
@@ -325,7 +339,7 @@ if( OpenVDB_FOUND )
 
 else()
 
-  message("OpenVDB not found! Running external build ...")
+  message("OpenVDB version ${EXTERNAL_OPENVDB_VERSION} not found! Running external build ...")
   set(OPENVDB_PREFIX openvdb)
 
   if( LAVA_3RD_LIB_LINK_WITH_STATIC)
@@ -341,7 +355,9 @@ else()
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
     GIT_TAG v${EXTERNAL_OPENVDB_VERSION}
     UPDATE_DISCONNECTED true
+
     CMAKE_ARGS -D USE_NANOVDB:BOOL=ON
+    CMAKE_ARGS -D USE_BLOSC:BOOL=OFF
     CMAKE_ARGS -D OPENVDB_BUILD_NANOVDB:BOOL=ON
     
     CMAKE_ARGS -D DISABLE_CMAKE_SEARCH_PATHS:BOOL=ON
@@ -350,7 +366,9 @@ else()
     CMAKE_ARGS -D OPENVDB_ENABLE_UNINSTALL:BOOL=OFF
     CMAKE_ARGS -D OPENVDB_CORE_SHARED:BOOL=${OPENVDB_BUILD_CORE_SHARED} 
     
-    CMAKE_ARGS -D Blosc_ROOT:PATH=${EXTERNALS_INSTALL_DIR} 
+    CMAKE_ARGS -D Blosc_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D Blosc_LIBRARY:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D Blosc_INCLUDE_DIR:PATH=${EXTERNALS_INSTALL_DIR}/include/ 
 
     CMAKE_ARGS -D Tbb_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
@@ -359,14 +377,20 @@ else()
 
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/openvdb
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/openvdb
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openvdb
   )
-
   ExternalProject_Get_property(OpenVDB SOURCE_DIR)
 
 endif()
 
 add_dependencies(OpenVDB Tbb Blosc Boost)
+
+
 
 #######################
 # OpenImageIO
@@ -392,6 +416,7 @@ else()
     GIT_REPOSITORY https://github.com/OpenImageIO/oiio.git
     GIT_TAG v${EXTERNAL_OIIO_VERSION}
     UPDATE_DISCONNECTED true
+
     CMAKE_ARGS -D CMAKE_CXX_STANDARD=14
     CMAKE_ARGS -D OIIO_BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D OIIO_BUILD_TOOLS:BOOL=OFF
@@ -403,11 +428,18 @@ else()
     CMAKE_ARGS -D USE_PYTHON:BOOL=OFF
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/oiio
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
 
 endif()
-add_dependencies(OpenImageIO PyBind OpenEXR OpenVDB)
+add_dependencies(OpenImageIO Blosc PyBind OpenEXR OpenVDB)
+
+
 
 #######################
 # NVPro_Core
@@ -422,14 +454,20 @@ ExternalProject_Add ( NVPro_Core
   GIT_REPOSITORY https://github.com/nvpro-samples/nvpro_core.git
   GIT_TAG ${EXTERNAL_NVPro_Core_VERSION}
   UPDATE_DISCONNECTED true
+  
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
+
   INSTALL_COMMAND ${CMAKE_COMMAND}
-    -E copy_directory <SOURCE_DIR>/nvvk ${EXTERNALS_INSTALL_DIR}/nvvk
-    -E copy_directory <SOURCE_DIR>/nvp ${EXTERNALS_INSTALL_DIR}/nvp
-    -E copy_directory <SOURCE_DIR>/nvh ${EXTERNALS_INSTALL_DIR}/nvh
-    -E copy_directory <SOURCE_DIR>/nvmath ${EXTERNALS_INSTALL_DIR}/nvmath
+    -D NVPRO_INST_DIR=${EXTERNALS_INSTALL_DIR}/include/NVPro_Core/
+    -D NVPRO_SRC_DIR=<SOURCE_DIR>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/nvpro_install_files.cmake
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/nvpro_core
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/nvpro_core
 )
+
+
 
 #######################
 # VulkanMemoryAllocator
@@ -441,16 +479,26 @@ set(VMA_PREFIX vulkan_memory_allocator)
 
 ExternalProject_Add ( VMA
   PREFIX ${EXTERNALS_SOURCE_DIR}/${VMA_PREFIX}
-  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-  GIT_TAG ${EXTERNAL_VMA_VERSION}
+  #GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+  #GIT_TAG ${EXTERNAL_VMA_VERSION}
   UPDATE_DISCONNECTED true
+  
+  #URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v2.3.0.zip
+  #DOWNLOAD_NAME VulkanMemoryAllocator
+  DOWNLOAD_COMMAND ""
+
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D VMA_INST_DIR=${EXTERNALS_INSTALL_DIR}/include/VulkanMemoryAllocator/
-    -D VMA_SRC_DIR=<SOURCE_DIR>
+    -D VMA_SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/vma
     -P ${CMAKE_CURRENT_SOURCE_DIR}/vma_install_files.cmake
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/vma
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/vma
 )
+
+
 
 #######################
 # LZ4 Stream
@@ -475,8 +523,13 @@ else()
     BUILD_COMMAND ""
     INSTALL_COMMAND 
       ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/include/lz4_stream.h ${LZ4_INSTALL_DIR}/lz4_stream.h
+  
+    TMP_DIR ${EXTERNALS_TMP_DIR}/lz4_stream
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/lz4_stream
+
   )
 endif()
+
 
 ########################
 # Slang section
@@ -533,40 +586,35 @@ ExternalProject_Add( Slang
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
-  BUILD_COMMAND ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
+  BUILD_COMMAND ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
     -D SOURCE_DIR=<SOURCE_DIR>
     -D BIN_DIR=<SOURCE_DIR>/${SLANG_BIN_DIR}/
     -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_install_files.cmake
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/slang
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/slang
 )
 
-#ExternalProject_Add_Step(
-#  Slang download_premake5
-#  COMMENT "Downloading premake5 ..."
-#  ALWAYS ON
-#  COMMAND ${CMAKE_COMMAND}
-#    -D PREMAKE_URL=https://github.com/shader-slang/slang-binaries/blob/master/premake/premake-5.0.0-alpha16/bin/linux-64/premake5?raw=true
-#    -D OUTPUT_FILE=<SOURCE_DIR>/premake5
-#    -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_download_premake.cmake
-#  DEPENDERS configure build install
-#)
-
 endif()
+
+
 
 #######################
 
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
 add_dependencies( dummy_target 
-  Tbb 
+  Tbb
   Blosc
+  Boost
   PyBind
-  LZ4_Stream
-  Assimp
   OpenEXR
+  Assimp
   OpenVDB
   OpenImageIO
+  NVPro_Core
   VMA
   Slang
 )

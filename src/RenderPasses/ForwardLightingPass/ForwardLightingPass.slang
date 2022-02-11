@@ -181,19 +181,19 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
 /*
         if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
             gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-           // envSampleWeight = 0.5;
+            envSampleWeight = 0.5;
         }
         if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
             gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-           // envSampleWeight = 0.333333;
+            envSampleWeight = 0.333333;
         }
         if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
             gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-           // envSampleWeight = 0.25;
+            envSampleWeight = 0.25;
         }
         if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
             gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-           // envSampleWeight = 0.2;
+            envSampleWeight = 0.2;
         }
 */
 
@@ -226,13 +226,12 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
                 shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
             }
 
-            float3 Le = gScene.envMap.eval(diffDir);
-            finalColor.rgb += (diffuseReflection.eval(wo, wi) * Le * shadowFactor);// / pdf;
-            //finalColor.rgb = float3(0,1,0);
+            float diffLod = 6.0; // TODO: calculate based on pdf
+            float3 Le = gScene.envMap.eval(diffDir, diffLod);
+            finalColor.rgb += (diffuseReflection.eval(wo, wi) * Le * shadowFactor);
+
         } else {
 
-        
-        //if ( dot(envSample.dir, sd.N) > kMinCosTheta) {
             shadowFactor = 1.0;
 
             {

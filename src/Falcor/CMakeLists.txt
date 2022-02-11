@@ -3,9 +3,10 @@ set(DEPS_BINARY_DIR ${PROJECT_SOURCE_DIR}/deps/)
 include_directories( 
     ${PROJECT_SOURCE_DIR}/deps
     ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/nvvk
-    ${PROJECT_SOURCE_DIR}/deps/nvp
-    ${PROJECT_SOURCE_DIR}/deps/nvh
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvh
 )
 
 file( GLOB SOURCES
@@ -46,23 +47,23 @@ file( GLOB SOURCES
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/raytraceKHR_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/resourceallocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/commands_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/buffersuballocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/stagingmemorymanager_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/raytraceKHR_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/resourceallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/commands_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/buffersuballocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/stagingmemorymanager_vk.cpp
     
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/memorymanagement_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_dedicated_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/memallocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/samplers_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/images_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memorymanagement_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_dedicated_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/samplers_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/images_vk.cpp
     
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/extensions_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/error_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/nvvk/debug_util_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/extensions_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/error_vk.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/debug_util_vk.cpp
 
-    ${PROJECT_SOURCE_DIR}/deps/nvh/nvprint.cpp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvh/nvprint.cpp
 
 )
 

@@ -7,7 +7,8 @@ add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 include_directories( 
     ${PROJECT_SOURCE_DIR}/deps
     ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/nvp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
 )
 # external passes (can also be made built-in)
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)

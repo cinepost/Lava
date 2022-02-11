@@ -4,7 +4,8 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 include_directories( 
     ${PROJECT_SOURCE_DIR}/deps
     ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/nvp
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
+    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
 )
 
 set (SOURCES 
