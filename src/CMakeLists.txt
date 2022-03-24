@@ -7,4 +7,4 @@ add_subdirectory( lava_cmd ) # command line renderer
 
 #add_subdirectory( houdini ) # SOHO
 
-add_subdirectory( pxr ) # usd hydra renderer plugin
+#add_subdirectory( pxr ) # usd hydra renderer plugin
