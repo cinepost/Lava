@@ -69,6 +69,7 @@ class Display {
     DisplayType mDisplayType = DisplayType::NONE;
 
     std::string mDriverName = "";
+    void* mLibHandle = nullptr;
 
     //std::string mImageName = "";
     //uint mImageWidth, mImageHeight;
@@ -77,9 +78,9 @@ class Display {
 
     std::vector<UserParameter>      mUserParameters;
 
-    //PtDspyImageHandle   mImage;
-    std::vector<ImageData>  mImages;
-    PtFlagStuff             mFlagstuff;
+    //PtDspyImageHandle             mImage;
+    std::vector<ImageData>          mImages;
+    PtFlagStuff                     mFlagstuff;
 
     PtDspyOpenFuncPtr               mOpenFunc = nullptr;
     PtDspyWriteFuncPtr              mWriteFunc = nullptr;

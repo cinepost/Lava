@@ -124,6 +124,10 @@ def cmd_start(objecttype):
 def cmd_end():
     soho.indent(-1, 'cmd_end')
 
+def cmd_edge(src_path, dst_path):
+    soho.indent()
+    print 'cmd_edge', src_path, dst_path
+
 def cmd_delete(type, name):
     print 'cmd_delete', type, name
 
@@ -153,11 +157,16 @@ def cmd_shader(style, name, orgshader, shoptype = soho.ShopTypeDefault):
     # Processing  the shader may generate VEX code or COP maps and
     # will return the value in the second element of the tuple.  This
     # should be printed before the shader string.
-    shader = soho.processShader(orgshader, ForceEmbedVex, False, shoptype)
-    if len(shader[1]):
-        print shader[1]
-    soho.indent()
-    print 'cmd_property', style, name, shader[0]
+    
+    #shader = soho.processShader(orgshader, ForceEmbedVex, False, shoptype)
+    # TODO: output lava shading network here
+    shader = None
+
+    if shader:
+        if len(shader[1]):
+            print shader[1]
+        soho.indent()
+        print 'cmd_property', style, name, shader[0]
 
 def cmd_textblock(name, value, encoding=None):
     soho.indent()

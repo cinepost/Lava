@@ -28,7 +28,7 @@
 using namespace boost;
 using namespace std;
 
-#define h_shared_ptr boost::shared_ptr
+#define h_shared_ptr std::shared_ptr
 
 class H_Image;
 class H_MultiRes;
@@ -91,20 +91,14 @@ public:
     int		getOrigYres() const	{return myOrigYres; }
     
     // returns 1 for success.
-	static int
-    openPipe(void);
+	static int openPipe(void);
 
 	void	parseOptions(const int paramCount, const UserParameter *parameters);
 	const string& getIMDisplayOptions() const {return myIMDisplayOptions;}
 
-    char const*
-    getDisplayOptions(void) const
-    {
-        return myIMDisplayOptions.c_str();
-    }
+    char const* getDisplayOptions(void) const { return myIMDisplayOptions.c_str(); }
     
-    IMDisplayPtr
-    getIMDisplay(void) { return myIMD; }
+    IMDisplayPtr getIMDisplay(void) { return myIMD; }
     
     char const* getName(void) const { return myName.c_str(); }
     

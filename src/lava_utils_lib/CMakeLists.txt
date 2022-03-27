@@ -8,7 +8,10 @@ set(EXTERNALS_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../../third_party/external/)
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${EXTERNALS_BUILD_DIR})
 find_package( Boost 1.73.0 COMPONENTS log thread filesystem system REQUIRED )
-include_directories( ${Boost_INCLUDE_DIRS} )
+
+include_directories( 
+    ${Boost_INCLUDE_DIRS} 
+)
 
 # we will use static libs
 #add_definitions(-DBOOST_LOG_DYN_LINK=1)

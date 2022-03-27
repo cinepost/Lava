@@ -21,6 +21,7 @@ namespace scope {
 
 class Instance;
 class Material;
+class Node;
 class Global;
 class Light;
 class Plane;
@@ -32,7 +33,8 @@ class Segment;
 using EmbeddedData = std::vector<unsigned char>;
 
 class ScopeBase: public PropertiesContainer {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const ScopeBase>;
     using SharedPtr = std::shared_ptr<ScopeBase>;
 
     ScopeBase(SharedPtr pParent);
@@ -44,14 +46,15 @@ class ScopeBase: public PropertiesContainer {
 
     EmbeddedData& getEmbeddedData(const std::string& name);
 
- protected:
+  protected:
     //SharedPtr mpParent;
     std::vector<SharedPtr> mChildren;
     std::unordered_map<std::string, EmbeddedData> mEmbeddedDataMap;
 };
 
 class Transformable: public ScopeBase {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const Transformable>;
     using SharedPtr = std::shared_ptr<Transformable>;
     using TransformList = std::vector<glm::mat4x4>;
 
@@ -61,6 +64,7 @@ class Transformable: public ScopeBase {
     void setTransform(const lsd::Matrix4& mat);
     void addTransform(const lsd::Matrix4& mat);
     const TransformList getTransformList() { return mTransformList; };
+    const TransformList getTransformList() const { return mTransformList; };
     uint transformSamples() { return mTransformList.size(); };
 
  private:
@@ -68,7 +72,8 @@ class Transformable: public ScopeBase {
 };
 
 class Global: public Transformable {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const Global>;
     using SharedPtr = std::shared_ptr<Global>;
     static SharedPtr create();
 
@@ -88,7 +93,7 @@ class Global: public Transformable {
     const std::vector<std::shared_ptr<Segment>>&    segments() { return mSegments; };
     const std::vector<std::shared_ptr<Material>>&   materials() { return mMaterials; };
 
- private:
+  private:
     Global():Transformable(nullptr) {};
     std::vector<std::shared_ptr<Geo>>       mGeos;
     std::vector<std::shared_ptr<Plane>>     mPlanes;
@@ -100,6 +105,7 @@ class Global: public Transformable {
 
 class Geo: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Geo>;
     using SharedPtr = std::shared_ptr<Geo>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -125,19 +131,45 @@ class Geo: public ScopeBase {
     bool            mIsInline = false;
 };
 
-class Material: public ScopeBase {
+
+class Node: public ScopeBase {
   public:
+    using SharedConstPtr = std::shared_ptr<const Node>;
+    using SharedPtr = std::shared_ptr<Node>;
+    using EdgePair  = std::pair<std::string, std::string>;
+    static SharedPtr create(ScopeBase::SharedPtr pParent);
+
+    ast::Style type() const override { return ast::Style::NODE; };
+
+    std::shared_ptr<Node>       addChildNode();
+    void                        addChildEdge(const std::string& src, const std::string& dst);
+    const std::vector<std::shared_ptr<Node>>&       childNodes() { return mChildNodes; };
+
+    virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
+
+  protected:
+    Node(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+
+  private:
+    std::vector<std::shared_ptr<Node>>      mChildNodes;
+    std::vector<EdgePair>                   mChildEdges;
+};
+
+class Material: public Node {
+  public:
+    using SharedConstPtr = std::shared_ptr<const Material>;
     using SharedPtr = std::shared_ptr<Material>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
     ast::Style type() const override { return ast::Style::MATERIAL; };
 
   private:
-    Material(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+    Material(ScopeBase::SharedPtr pParent): Node(pParent) {};
 };
 
 class Object: public Transformable {
  public:
+    using SharedConstPtr = std::shared_ptr<const Object>;
     using SharedPtr = std::shared_ptr<Object>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -155,6 +187,7 @@ class Object: public Transformable {
 
 class Plane: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Plane>;
     using SharedPtr = std::shared_ptr<Plane>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -166,6 +199,7 @@ class Plane: public ScopeBase {
 
 class Light: public Transformable {
  public:
+    using SharedConstPtr = std::shared_ptr<const Light>;
     using SharedPtr = std::shared_ptr<Light>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -177,6 +211,7 @@ class Light: public Transformable {
 
 class Segment: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Segment>;
     using SharedPtr = std::shared_ptr<Segment>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -185,6 +220,7 @@ class Segment: public ScopeBase {
  private:
     Segment(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 };
+
 
 }  // namespace scope
 

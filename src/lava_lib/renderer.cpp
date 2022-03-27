@@ -9,6 +9,7 @@
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "Falcor/Scene/Lights/EnvMap.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -91,6 +92,12 @@ bool Renderer::init() {
         //sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
     }
 
+    bool use_raytracing = confgStore.get<bool>("rton", true);;
+    if (use_raytracing) {
+        sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
+    }
+
+
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
@@ -117,14 +124,19 @@ Renderer::~Renderer() {
         return;
 
     mpDevice->resourceManager()->printStats();
+
+    mpRenderGraph = nullptr;
+
+    Falcor::Threading::shutdown();
+
     mpDevice->flushAndSync();
 
     mGraphs.clear();
 
     mpSceneBuilder = nullptr;
+    
     mpSampler = nullptr;
 
-    Falcor::Threading::shutdown();
     //Falcor::Scripting::shutdown();
     //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
@@ -133,10 +145,9 @@ Renderer::~Renderer() {
 
     mpTargetFBO.reset();
 
-    if(mpDevice)
-        mpDevice->cleanup();
+    //mpDevice->cleanup();
 
-    mpDevice.reset();
+    //mpDevice.reset();
 
     Falcor::OSServices::stop();
 }
@@ -189,6 +200,9 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str) 
 }
 
 void Renderer::createRenderGraph() {
+    if (mpRenderGraph) 
+        return; 
+
     assert(mpDevice);
 
     auto pRenderContext = mpDevice->getRenderContext();
@@ -513,6 +527,7 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
 }
 
 void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
+
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return;
@@ -569,114 +584,120 @@ if( 1 == 2) {
 
     finalizeScene(frame_data);
 
-    if (!mpRenderGraph) 
-        createRenderGraph();
+    createRenderGraph();
 
+    if (!mpRenderGraph) {
+        LLOG_ERR << "Renderer global data not initialized !!!";
+        return; 
+    }
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    if (mpRenderGraph) {    
-        LLOG_DBG << "process render graph(s)";
-        
-        auto pScene = mpSceneBuilder->getScene();
-        if (!pScene) {
-            LLOG_ERR << "Unable to get scene from scene builder !!!";
-            return;
-        }
+    LLOG_DBG << "process render graph(s)";
+    
+    auto pScene = mpSceneBuilder->getScene();
+    if (!pScene) {
+        LLOG_ERR << "Unable to get scene from scene builder !!!";
+        return;
+    }
 
-        auto pRenderContext = mpDevice->getRenderContext();
+    auto pRenderContext = mpDevice->getRenderContext();
 
-        // TODO: set passes parameters in a more unified way
+    // TODO: set passes parameters in a more unified way
 
-        uint32_t frameNumber = 0; // for now
+    uint32_t frameNumber = 0; // for now
 
-        // render image samples
-        double shutter_length = 0.5;
-        double fps = 25.0;
-        double time = frame_data.time;
-        double sample_time_duration = (1.0 * shutter_length) / mGlobalData.imageSamples;
-        
-        //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
-        pScene->update(pRenderContext, time);
+    // render image samples
+    double shutter_length = 0.5;
+    double fps = 25.0;
+    double time = frame_data.time;
+    double sample_time_duration = (1.0 * shutter_length) / mGlobalData.imageSamples;
+    
+    //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
+    pScene->update(pRenderContext, time);
 
-        if(mpTexturesResolvePassGraph) {
-            mpTexturesResolvePassGraph->execute(pRenderContext);
-        }
+    if(mpTexturesResolvePassGraph) {
+        mpTexturesResolvePassGraph->execute(pRenderContext);
+    }
 
-        mpRenderGraph->execute(pRenderContext, frameNumber, 0);
+    mpRenderGraph->execute(pRenderContext, frameNumber, 0);
 
-        if ( mGlobalData.imageSamples > 1 ) {
-            for (uint sampleNumber = 1; sampleNumber < mGlobalData.imageSamples; sampleNumber++) {
-                LLOG_DBG << "Rendering sample no " << sampleNumber << " of " << mGlobalData.imageSamples;
-                
-                // Update scene and camera.
-                time += sample_time_duration;
-                pScene->update(pRenderContext, time);
-                
-                mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
-            }
-        }
-
-        LLOG_DBG << "Rendering done.";
-        
-
-        // capture graph(s) ouput(s).
-        if (mpRenderGraph) {    
-            LLOG_DBG << "Reading rendered image data...";
-            auto& pGraph = mGraphs[mActiveGraph].pGraph;
-
-            Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
-            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
-            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
-
-            assert(pOutTex);
-
-            Falcor::Texture* pTex = pOutTex.get();
-            assert(pTex);
+    if ( mGlobalData.imageSamples > 1 ) {
+        for (uint sampleNumber = 1; sampleNumber < mGlobalData.imageSamples; sampleNumber++) {
+            LLOG_DBG << "Rendering sample no " << sampleNumber << " of " << mGlobalData.imageSamples;
             
-            {
+            // Update scene and camera.
+            time += sample_time_duration;
+            pScene->update(pRenderContext, time);
             
-                Falcor::ResourceFormat resourceFormat;
-                uint32_t channels;
-                std::vector<uint8_t> textureData;
-                LLOG_DBG << "readTextureData";
-                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-                LLOG_DBG << "readTextureData done";
+            mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
+        }
+    }
 
-                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-                
-                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
+    LLOG_DBG << "Rendering done.";
 
-                mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-                mpDisplay->closeImage(image1);
-            
+    // capture graph(s) ouput(s).
+    LLOG_DBG << "Reading rendered image data...";
+    auto& pGraph = mGraphs[mActiveGraph].pGraph;
+
+    Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
+    //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
+    //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
+
+    assert(pOutTex);
+
+    Falcor::Texture* pTex = pOutTex.get();
+    assert(pTex);
+
+    {
+    
+        Falcor::ResourceFormat resourceFormat;
+        uint32_t channels;
+        std::vector<uint8_t> textureData;
+        textureData.resize(1920*1080*4*sizeof(float));
+        
+        LLOG_DBG << "readTextureData";
+        pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+        LLOG_DBG << "readTextureData done";
+
+        LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+        
+        //assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
+
+        try {
+            bool sendImageResult = mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+            if (!sendImageResult) {
+                printf("\nError sending image to display!\n");
+            } else {
+                printf("\nImage sent to display!\n");
             }
-
-            if( 1 == 2) {
-                Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
-                Falcor::Texture* pTex = pOutTex.get();
-
-                Falcor::ResourceFormat resourceFormat;
-                uint32_t channels;
-                std::vector<uint8_t> textureData;
-                LLOG_DBG << "readTextureData";
-                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-                LLOG_DBG << "readTextureData done";
-
-                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-                
-                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 8bit RGBA for now
-
-                mpDisplay->sendImage(image2, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-                mpDisplay->closeImage(image2);
-            }
-
-        } else {
-        	LLOG_WRN << "Invalid active graph output!";
+        } catch (std::exception& e) {
+            std::cout << "FAILURE: " << e.what() << std::endl;
         }
 
-    } else {
-    	LLOG_WRN << "No graphs to render!";
+        mpDisplay->closeImage(image1);
+    
+    }
+
+    return;
+
+    if( 1 == 2) {
+        Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
+        Falcor::Texture* pTex = pOutTex.get();
+
+        Falcor::ResourceFormat resourceFormat;
+        uint32_t channels;
+        std::vector<uint8_t> textureData;
+        LLOG_DBG << "readTextureData";
+        pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
+        LLOG_DBG << "readTextureData done";
+
+        LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+        
+        assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 8bit RGBA for now
+
+        mpDisplay->sendImage(image2, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
+        mpDisplay->closeImage(image2);
     }
 
     //endFrame(pRenderContext, mpTargetFBO);
@@ -688,6 +709,18 @@ void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::F
 
 void Renderer::endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
     //for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
+}
+
+bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
+    std::string materialName = pMaterialX->name();
+    if (mMaterialXs.find(materialName) == mMaterialXs.end() ) {
+        mMaterialXs.insert(make_pair(materialName, std::move(pMaterialX)));
+    } else {
+        // MaterialX with this name already exist !
+        LLOG_ERR << "MaterialX with name " << materialName << " already exist !!!";
+        return false;
+    }
+    //mpSceneBuilder->addMaterialX(std::move(pMaterial));
 }
 
 }  // namespace lava

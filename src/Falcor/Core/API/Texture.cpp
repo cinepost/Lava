@@ -269,6 +269,8 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vecto
         uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
         pContext->readTextureSubresource(this, subresource, textureData);
     }
+
+    pContext->flush(true);
 }
 
 void Texture::uploadInitData(const void* pData, bool autoGenMips) {
@@ -350,6 +352,10 @@ uint64_t Texture::getTexelCount() const {
     count *= getArraySize();
     assert(count > 0);
     return count;
+}
+
+void Texture::setUDIMTileInfo(const UDIMTileInfo& tileInfo) {
+    mUDIMTileInfo = tileInfo;
 }
 
 #ifdef FLACOR_D3D12

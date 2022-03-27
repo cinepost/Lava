@@ -154,12 +154,6 @@ std::shared_ptr<Material> Global::addMaterial() {
 	return nullptr;
 }
 
-/* Material */
-Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
-	auto pMat = Material::SharedPtr(new Material(pParent));
-	return std::move(pMat);
-}
-
 
 /* Geo */
 
@@ -269,6 +263,61 @@ Segment::SharedPtr Segment::create(ScopeBase::SharedPtr pParent) {
 	if(!pSegment->declareProperty(Style::IMAGE, Type::VECTOR4, "window", lsd::Vector4{0.0, 1.0, 0.0, 1.0}, Property::Owner::SYS)) return nullptr;
 
 	return std::move(pSegment);
+}
+
+/* Material */
+
+Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
+	auto pMat = Material::SharedPtr(new Material(pParent));
+
+	if(!pMat->declareProperty(Style::OBJECT, Type::STRING, "material_name", std::string(""), Property::Owner::SYS)) return nullptr;
+	
+	return std::move(pMat);
+}
+
+/* Node */
+
+Node::SharedPtr Node::create(ScopeBase::SharedPtr pParent) {
+	auto pNode = Node::SharedPtr(new Node(pParent));
+
+	if(!pNode->declareProperty(Style::OBJECT, Type::BOOL, "is_subnet", bool(false), Property::Owner::SYS)) return nullptr;
+	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_namespace", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_name", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_type", std::string(""), Property::Owner::SYS)) return nullptr;
+	if(!pNode->declareProperty(Style::OBJECT, Type::STRING, "node_path", std::string(""), Property::Owner::SYS)) return nullptr;
+
+	return std::move(pNode);
+}
+
+Node::SharedPtr Node::addChildNode() {
+	auto pNode = Node::create(std::dynamic_pointer_cast<ScopeBase>(shared_from_this()));
+	if (pNode) {
+		mChildren.push_back(pNode);
+		mChildNodes.push_back(pNode);
+		return mChildNodes.back();
+	}
+	return nullptr;
+}
+
+void Node::addChildEdge(const std::string& src, const std::string& dst) {
+	mChildEdges.push_back(EdgePair(src, dst));
+}
+
+const void Node::printSummary(std::ostream& os, uint indent) const {
+	indentStream(os, indent) << this->type() << " {\n";
+	PropertiesContainer::printSummary(os, indent);
+
+	for( auto const& child: mChildren) {
+		child->printSummary(os, indent + 4); 
+	}
+
+	for( auto const& edge: mChildEdges) {
+		for(uint i = 0; i < indent; i++) {
+        	os << " ";
+    	}
+    	os << "Edge: " << edge.first << " " << edge.second << std::endl;
+	}
+	indentStream(os, indent) << "}\n";
 }
 
 }  // namespace scope

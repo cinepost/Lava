@@ -757,8 +757,6 @@ bool ParameterBlock::setAS(const std::string& name, VkAccelerationStructureKHR a
 }
 
 bool ParameterBlock::setAS(const BindLocation& bindLocation, VkAccelerationStructureKHR accel) {
-    assert(accel != VK_NULL_HANDLE);
-
     if (!checkResourceIndices(bindLocation, "setAS()")) return false;
     if (!checkDescriptorType(bindLocation, kAccelerationStructureDescriptorType, "setAS()")) return false;
 

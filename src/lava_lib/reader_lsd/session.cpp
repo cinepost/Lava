@@ -438,6 +438,14 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 	}
 }
 
+void Session::cmdEdge(const std::string& src, const std::string& dst) {
+	LLOG_DBG << "cmdEdge";
+	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+	if(pNode) {
+		pNode->addChildEdge(src, dst);
+	}
+}
+
 void Session::cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value) {
 	LLOG_DBG << "cmdDeclare";
 	if(mpCurrentScope) {
@@ -486,31 +494,78 @@ void Session::cmdIPRmode(const std::string& mode) {
 
 bool Session::cmdStart(lsd::ast::Style object_type) {
 	LLOG_DBG << "cmdStart";
-	auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
-	if(!pGlobal) {
-		LLOG_FTL << "Objects creation allowed only inside global scope !!!";
-		return false;
-	}
 
 	switch (object_type) {
-		case lsd::ast::Style::GEO: 
-			mpCurrentScope = pGlobal->addGeo();
-			break;
-		case lsd::ast::Style::OBJECT: 
-			mpCurrentScope = pGlobal->addObject();
-			break;
+		case lsd::ast::Style::GEO:
+			{ 
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Geometries creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addGeo();
+				break;
+			}
+		case lsd::ast::Style::OBJECT:
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Objects creation allowed only inside global scope !!!";
+					return false;
+				} 
+				mpCurrentScope = pGlobal->addObject();
+				break;
+			}
 		case lsd::ast::Style::LIGHT:
-			mpCurrentScope = pGlobal->addLight();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Lights creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addLight();
+				break;
+			}
 		case lsd::ast::Style::PLANE:
-			mpCurrentScope = pGlobal->addPlane();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Planes creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addPlane();
+				break;
+			}
 		case lsd::ast::Style::SEGMENT:
-			mpCurrentScope = pGlobal->addSegment();
-			break;
-		case lsd::ast::Style::MATERIAL: 
-			mpCurrentScope = pGlobal->addMaterial();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Segments creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addSegment();
+				break;
+			}
+		case lsd::ast::Style::MATERIAL:
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope); 
+				if(!pGlobal) {
+					LLOG_FTL << "Materials creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addMaterial();
+				break;
+			}
+		case lsd::ast::Style::NODE:
+			{ 
+				auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+				if(!pNode) {
+					LLOG_FTL << "Nodes creation allowed only inside material/node scope !!!";
+					return false;
+				}
+				mpCurrentScope = pNode->addChildNode();
+				break;
+			}
 		default:
 			LLOG_FTL << "Unsupported cmd_start style: " << to_string(object_type);
 			return false;
@@ -542,7 +597,8 @@ bool Session::cmdEnd() {
 	scope::Object::SharedPtr pObj;
 	scope::Plane::SharedPtr pPlane;
 	scope::Light::SharedPtr pLight;
-	scope::Material::SharedPtr pMaterial;
+	scope::Material::SharedPtr pMaterialScope;
+	scope::Node::SharedPtr pNode;
 
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
@@ -570,13 +626,23 @@ bool Session::cmdEnd() {
 			pushLight(pLight);
 			break;
 		case ast::Style::MATERIAL:
-			pMaterial = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
+			pMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
+			if(pMaterialScope) {
+				auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
+				if (pMaterialX)
+					mpRendererIface->addMaterialX(std::move(pMaterialX));
+			} else {
+				return false;
+			}
+			break;
+		case ast::Style::NODE:
+			pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 			break;
 		case ast::Style::SEGMENT:
 		case ast::Style::GLOBAL:
 			break;
 		default:
-			LLOG_ERR << "cmd_end makes no sence. Current scope type is " << to_string(mpCurrentScope->type()) << " !!!";
+			LLOG_ERR << "cmd_end makes no sense. Current scope type is " << to_string(mpCurrentScope->type()) << " !!!";
 			break;
 	}
 
@@ -584,7 +650,11 @@ bool Session::cmdEnd() {
 	return result;
 }
 
-bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
+Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::SharedConstPtr pMaterialLSD) {
+	return nullptr;
+}
+
+bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
 	auto it = mMeshMap.find(pObj->geometryName());
 	if(it == mMeshMap.end()) {
@@ -642,7 +712,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 	uint32_t node_id = pSceneBuilder->addNode(node);
 
 	// TODO: this is naive test. fetch basic material data
-	Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
+	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
     
     Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
     std::string 	surface_base_color_texture = "";

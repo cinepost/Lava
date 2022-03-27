@@ -148,6 +148,11 @@ void Visitor::operator()(ast::cmd_end const& c) const {
         throw std::runtime_error("Error ending current scope !!!");
 }
 
+void Visitor::operator()(ast::cmd_edge const& c) const { 
+    std::cout << "LSDVisitor cmd_edge\n";
+    mpSession->cmdEdge(c.src_path, c.dst_path);
+}
+
 void Visitor::operator()(ast::cmd_time const& c) const {
     mpSession->cmdTime(c.time);
 }

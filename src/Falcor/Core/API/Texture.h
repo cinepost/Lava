@@ -64,6 +64,12 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         bool alignedMipSize;
     };
 
+    struct UDIMTileInfo {
+        bool isUDIMTile = false;
+        uint32_t u = 0;
+        uint32_t v = 0;
+    };
+
     ~Texture();
 
     /** Get a mip-level width
@@ -295,6 +301,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
     const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
 
+    void setUDIMTileInfo(const UDIMTileInfo& tileInfo);
+
+    bool isUDIMTile() const { return mUDIMTileInfo.isUDIMTile; }
+
  protected:
     static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
 
@@ -314,7 +324,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     uint32_t mArraySize = 0;
     ResourceFormat mFormat = ResourceFormat::Unknown;
 
+    UDIMTileInfo mUDIMTileInfo;
+
     bool mIsSparse = false;
+    
     uint3 mSparsePageRes = int3(0);
     uint32_t mSparsePagesCount = 0;
     std::atomic<size_t> mSparseResidentMemSize = 0;

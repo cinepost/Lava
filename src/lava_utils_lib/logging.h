@@ -1,6 +1,7 @@
 #ifndef LAVA_UTILS_LOGGING_H_
 #define LAVA_UTILS_LOGGING_H_
 
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -20,10 +21,9 @@
 #include <boost/log/support/date_time.hpp>
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
-//#include <boost/make_shared.hpp>
-//#include <boost/shared_ptr.hpp>
 
 // Logging macro or static inline to stay within namespace boundaries
+
 #define LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
 #define LLOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
 #define LLOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)

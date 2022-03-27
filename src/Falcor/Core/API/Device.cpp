@@ -259,8 +259,8 @@ void Device::toggleVSync(bool enable) {
 }
 
 void Device::cleanup() {
-    std::cout << "Device cleanup \n";
     toggleFullScreen(false);
+
     mpRenderContext->flush(true);
 
     // Release all the bound resources. Need to do that before deleting the RenderContext

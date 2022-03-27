@@ -7,11 +7,13 @@
 #include "glm/glm/mat4x4.hpp"
 
 #include "display.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 
 namespace lava {
 
 class Renderer;
 class SceneBuilder;
+
 
 class RendererIface {
  public:
@@ -111,6 +113,10 @@ class RendererIface {
     /**
     */
     bool addPlane(const PlaneData& plane_data);
+
+    /**
+    */
+    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
 
     /** load and execute python script file
      */

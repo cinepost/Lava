@@ -3,13 +3,15 @@
 #include <iomanip>
 
 #include <boost/filesystem.hpp>
-//#include <boost/log/sources/severity_logger.hpp>
+#include <boost/log/sources/severity_logger.hpp>
 
 #include "lava_utils_lib/logging.h"
 
-namespace lava { namespace ut { namespace log { 
 
 std::vector< std::function< void() > > g_log_stop_functions;
+
+
+namespace lava { namespace ut { namespace log { 
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(line_id,    "LineID",       unsigned int)
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp,  "TimeStamp",    boost::posix_time::ptime)
@@ -49,8 +51,8 @@ void init_log() {
 
     // add sink stop functions
     g_log_stop_functions.emplace_back([sink]() {
-        sink->flush();
         sink->stop();   
+        sink->flush();
     });
 }
 
@@ -60,8 +62,8 @@ void shutdown_log() {
             stop();
         }
     }
-    boost::log::core::get()->flush();
-    boost::log::core::get()->remove_all_sinks();
+    //boost::log::core::get()->flush();
+    //boost::log::core::get()->remove_all_sinks();
 }
 
 // Initialize file logger

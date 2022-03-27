@@ -38,6 +38,7 @@
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Camera/Camera.h"
 #include "Falcor/Scene/Material/Material.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/Volume/Volume.h"
 #include "Falcor/Scene/Volume/Grid.h"
 #include "Falcor/Utils/Math/AABB.h"
@@ -139,7 +140,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         This is used primarily by the path tracer renderers.
     */
     struct RenderSettings {
-        bool useRayTracing = true;      ///< Enable hardware ray tracing
+        bool useRayTracing = false;     ///< Enable hardware accelerated ray tracing
         bool useEnvLight = true;        ///< Enable distant lighting from environment map.
         bool useAnalyticLights = true;  ///< Enable lighting from analytic lights.
         bool useEmissiveLights = true;  ///< Enable lighting from emissive lights.
@@ -149,6 +150,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
             return (useEnvLight == other.useEnvLight) &&
                 (useAnalyticLights == other.useAnalyticLights) &&
                 (useEmissiveLights == other.useEmissiveLights) &&
+                (useRayTracing == other.useRayTracing) &&
                 (useVolumes == other.useVolumes);
         }
 
@@ -171,31 +173,31 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     /** Flags indicating if and what was updated in the scene
     */
     enum class UpdateFlags {
-            None                        = 0x0,      ///< Nothing happened
-            MeshesMoved                 = 0x1,      ///< Meshes moved
-            CameraMoved                 = 0x2,      ///< The camera moved
-            CameraPropertiesChanged     = 0x4,      ///< Some camera properties changed, excluding position
-            CameraSwitched              = 0x8,      ///< Selected a different camera
-            LightsMoved                 = 0x10,     ///< Lights were moved
-            LightIntensityChanged       = 0x20,     ///< Light intensity changed
-            LightPropertiesChanged      = 0x40,     ///< Other light changes not included in LightIntensityChanged and LightsMoved
-            SceneGraphChanged           = 0x80,     ///< Any transform in the scene graph changed.
-            LightCollectionChanged      = 0x100,    ///< Light collection changed (mesh lights)
-            MaterialsChanged            = 0x200,    ///< Materials changed
-            EnvMapChanged               = 0x400,    ///< Environment map changed
-            EnvMapPropertiesChanged     = 0x800,    ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
-            LightCountChanged           = 0x1000,   ///< Number of active lights changed
-            RenderSettingsChanged       = 0x2000,   ///< Render settings changed
-            VolumesMoved                = 0x4000,   ///< Volumes were moved
-            VolumePropertiesChanged     = 0x8000,   ///< Volume properties changed
-            VolumeGridsChanged          = 0x10000,  ///< Volume grids changed
-            VolumeBoundsChanged         = 0x20000,  ///< Volume bounds changed
-            CurvesMoved                 = 0x40000,  ///< Curves moved.
-            CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
-            GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
-            DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
+        None                        = 0x0,      ///< Nothing happened
+        MeshesMoved                 = 0x1,      ///< Meshes moved
+        CameraMoved                 = 0x2,      ///< The camera moved
+        CameraPropertiesChanged     = 0x4,      ///< Some camera properties changed, excluding position
+        CameraSwitched              = 0x8,      ///< Selected a different camera
+        LightsMoved                 = 0x10,     ///< Lights were moved
+        LightIntensityChanged       = 0x20,     ///< Light intensity changed
+        LightPropertiesChanged      = 0x40,     ///< Other light changes not included in LightIntensityChanged and LightsMoved
+        SceneGraphChanged           = 0x80,     ///< Any transform in the scene graph changed.
+        LightCollectionChanged      = 0x100,    ///< Light collection changed (mesh lights)
+        MaterialsChanged            = 0x200,    ///< Materials changed
+        EnvMapChanged               = 0x400,    ///< Environment map changed
+        EnvMapPropertiesChanged     = 0x800,    ///< Environment map properties changed (check EnvMap::getChanges() for more specific information)
+        LightCountChanged           = 0x1000,   ///< Number of active lights changed
+        RenderSettingsChanged       = 0x2000,   ///< Render settings changed
+        VolumesMoved                = 0x4000,   ///< Volumes were moved
+        VolumePropertiesChanged     = 0x8000,   ///< Volume properties changed
+        VolumeGridsChanged          = 0x10000,  ///< Volume grids changed
+        VolumeBoundsChanged         = 0x20000,  ///< Volume bounds changed
+        CurvesMoved                 = 0x40000,  ///< Curves moved.
+        CustomPrimitivesMoved       = 0x80000,  ///< Custom primitives moved.
+        GeometryChanged             = 0x100000, ///< Scene geometry changed (added/removed).
+        DisplacementChanged         = 0x200000, ///< Displacement mapping parameters changed.
 
-            All                         = -1
+        All                         = -1
     };
 
     /** Settings for how the scene is updated
@@ -591,7 +593,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     const EnvMap::SharedPtr& getEnvMap() const { return mpEnvMap; }
 
-    VkAccelerationStructureKHR getTlas() const { return mRtBuilder.getAccelerationStructure(); }
+    VkAccelerationStructureKHR getTlas() const;
 
     /** Set how the scene's TLASes are updated when raytracing.
         TLASes are REBUILT by default
@@ -631,6 +633,15 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
 
+    /** Render the scene using the rasterizer. MaterialX shading mode
+        Note the rasterizer state bound to 'pState' is ignored.
+        \param[in] pContext Render context.
+        \param[in] pState Graphics state.
+        \param[in] pVars Graphics vars.
+        \param[in] cullMode Optional rasterizer cull mode. The default is to cull back-facing primitives.
+    */
+    void rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
+
     /** Render the scene using the rasterizer.
         This overload uses the supplied rasterizer states.
         \param[in] pContext Render context.
@@ -640,6 +651,17 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
     */
     void rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+
+    /** Render the scene using the rasterizer. MaterialX shading mode
+        This overload uses the supplied rasterizer states.
+        \param[in] pContext Render context.
+        \param[in] pState Graphics state.
+        \param[in] pVars Graphics vars.
+        \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
+        \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
+    */
+    void rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW);
+
 
     /** Get the required raytracing maximum attribute size for this scene.
         Note: This depends on what types of geometry are used in the scene.
@@ -772,6 +794,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         float cameraSpeed = 1.f;                                ///< Camera speed.
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
         std::vector<Material::SharedPtr> materials;             ///< List of materials.
+        std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
         std::vector<Volume::SharedPtr> volumes;                 ///< List of heterogeneous volumes.
         std::vector<Grid::SharedPtr> grids;                     ///< List of volume grids.
         EnvMap::SharedPtr pEnvMap;                              ///< Environment map.
@@ -946,6 +969,11 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     // Scene Geometry
     
+    struct DrawInstance {
+        size_t instanceID;
+        MeshInstanceData* instance;
+    };
+
     struct DrawArgs {
         Buffer::SharedPtr pBuffer;      ///< Buffer holding the draw-indirect arguments.
         uint32_t count = 0;             ///< Number of draws.
@@ -962,6 +990,9 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     Vao::SharedPtr mpVao16Bit;                                  ///< VAO for drawing meshes with 16-bit vertex indices.
     Vao::SharedPtr mpCurveVao;                                  ///< Vertex array object for the global curve vertex/index buffers.
     std::vector<DrawArgs> mDrawArgs;                            ///< List of draw arguments for rasterizing the meshes in the scene.
+
+    //std::map<Material::SharedPtr, size_t> mMaterialDrawArgs;
+    std::vector<std::vector<size_t>> mMaterialDrawArgs;
 
     std::vector<MeshDesc> mMeshDesc;                            ///< Copy of mesh data GPU buffer (mpMeshesBuffer).
     std::vector<MeshInstanceData> mMeshInstanceData;            ///< Mesh instance data.
@@ -1003,6 +1034,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     // Materials
     std::vector<Material::SharedPtr> mMaterials;                ///< Bound to parameter block.
+    std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
     std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.
     bool mSortMaterialsByName = false;                          ///< If true, display materials sorted by name, rather than by ID.
@@ -1073,7 +1105,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     std::vector<VkAccelerationStructureInstanceKHR> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
 
     nvvk::DebugUtil                 mDebug;  // Utility to name objects
-    nvvk::RaytracingBuilderKHR      mRtBuilder;
+    nvvk::RaytracingBuilderKHR*     mpRtBuilder = nullptr;
 
     std::vector<uint32_t>           mMeshIdToBlasId;
 
@@ -1106,11 +1138,6 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         std::vector<VkAccelerationStructureGeometryKHR>         geomDescs;
         std::vector<VkAccelerationStructureBuildRangeInfoKHR>   ranges;
 
-        //VkAccelerationStructureKHR                      handle;
-        //VkAccelerationStructureKHR                      blasHandle;
-
-        //BottomLevelAccelerationStructure::SharedPtr     pBLAS;
-
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 
         uint64_t resultByteSize = 0;                    ///< Maximum result data size for the BLAS build, including padding.
@@ -1137,8 +1164,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         uint64_t scratchByteSize = 0;                   ///< Maximum scratch data size for all BLASes in the group, including padding.
         uint64_t finalByteSize = 0;                     ///< Size of the final BLASes in the group post-compaction, including padding.
 
-        BottomLevelAccelerationStructure::SharedPtr     pBLAS;
-        Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
+        //Buffer::SharedPtr pBlas;                        ///< Buffer containing all final BLASes in the group.
     };
 
     // BLAS Data is ordered as all mesh BLAS's first, followed by one BLAS containing all AABBs.

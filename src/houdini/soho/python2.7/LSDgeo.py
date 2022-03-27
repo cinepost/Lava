@@ -24,9 +24,12 @@ import LSDmisc
 import LSDapi
 import LSDsettings
 import LSDframe
+import LSDmaterialx
 from LSDapi import *
 from soho import SohoParm
 from sohog import SohoGeometry
+
+reload(LSDmaterialx)
 
 theDetailRefs = {}
 theDetailRefsInv = {}
@@ -41,6 +44,7 @@ theMaterialOverrideRefs = {}
 theMaterialOverrideRefsInv = {}
 
 theOverrideFormatStr='<<%s>>'
+
 
 def _SohoGeometry(soppath, time = 0.0):
     geo = SohoGeometry(soppath, time)
@@ -356,16 +360,19 @@ def saveMaterial(now, fullpath):
                 gdp = _SohoGeometry(detail, now)
                 if gdp.Handle >= 0:
                     saveProperties(None, detail, gdp, now)
+                    pass
+
     # It's possible that we don't need to output the base material
     # (ie. not an override) when only overrides are used; however,
     # we ignore this and always output the base material.  Note that
     # this could affect the computed displacement bound.
     if theSavedProperties.get(fullpath, None) == None:
-        shop = soho.getObject(fullpath)
+        #shop = soho.getObject(fullpath)
         cmd_start('material')
-        LSDsettings.outputObject(shop, now)
+        #LSDsettings.outputObject(shop, now)
+        LSDmaterialx.outputNetwork(fullpath, now)
         if LSDsettings._Settings.GenerateMaterialname:
-            cmd_property('object', 'materialname', [fullpath])
+            cmd_property('object', 'material_name', [fullpath])
         theSavedProperties[fullpath] = True
         cmd_end()
     return

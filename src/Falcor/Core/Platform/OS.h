@@ -31,6 +31,7 @@
 #include <thread>
 #include <functional>
 #include <string>
+#include <regex>
 
 #include "Falcor/Core/Framework.h"
 
@@ -131,6 +132,14 @@ dlldecl void msgBoxTitle(const std::string& title);
     \return true if the file was found, otherwise false
 */
 dlldecl bool findFileInDataDirectories(const std::string& filename, std::string& fullPath);
+
+/** Finds all files in a directory. The arguments must not alias.
+    \param[in] searchPath The directory path to search in
+    \param[in] regex Search pattern.
+    \param[in] filenames List of found files
+    \return true if files was found, otherwise false
+*/
+dlldecl bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames);
 
 /** Finds a shader file. If in development mode (see isDevelopmentMode()), shaders are searched
     within the source directories. Otherwise, shaders are searched in the Shaders directory

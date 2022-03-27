@@ -35,6 +35,7 @@
 #include "Transform.h"
 #include "TriangleMesh.h"
 #include "Material/MaterialTextureLoader.h"
+#include "MaterialX/MaterialX.h"
 #include "VertexAttrib.slangh"
 
 
@@ -67,6 +68,7 @@ class dlldecl SceneBuilder {
         DontOptimizeGraph           = 0x1000, ///< Don't optimize the scene graph to remove unnecessary nodes.
         DontOptimizeMaterials       = 0x2000, ///< Don't optimize materials by removing constant textures. The optimizations are lossless so should generally be enabled.
         DontUseDisplacement         = 0x4000, ///< Don't use displacement mapping.
+        UseRaytracing               = 0x8000, ///< Use raytracing
 
         UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                = 0x20000000, ///< Rebuild scene cache.
@@ -408,6 +410,12 @@ class dlldecl SceneBuilder {
     */
     uint32_t addMaterial(const Material::SharedPtr& pMaterial);
 
+    /** Add a node based material.
+        \param pMaterial The material.
+        \return The ID of the material in the scene.
+    */
+    uint32_t addMaterialX(const MaterialX::SharedPtr& pMaterial);
+
     /** Request loading a material texture.
         \param[in] pMaterial Material to load texture into.
         \param[in] slot Slot to load texture into.
@@ -647,6 +655,7 @@ protected:
     GpuFence::SharedPtr mpFence;
 
     std::vector<Material::SharedPtr> mMaterials;
+    std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::unordered_map<const Material*, uint32_t> mMaterialToId;
 
     // Mesh helpers

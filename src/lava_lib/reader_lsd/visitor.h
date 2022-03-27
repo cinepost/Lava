@@ -18,7 +18,7 @@ namespace lsd {
 class Session;
 
 struct Visitor: public boost::static_visitor<> {
- public:
+  public:
     Visitor(std::unique_ptr<Session>& pSession);
 
     virtual void operator()(ast::NoValue const& c) const {};
@@ -28,6 +28,7 @@ struct Visitor: public boost::static_visitor<> {
     virtual void operator()(ast::cmd_image const& c) const;
     virtual void operator()(ast::cmd_iprmode const& c) const;
     virtual void operator()(ast::cmd_end const& c) const;
+    virtual void operator()(ast::cmd_edge const& c) const;
     virtual void operator()(ast::cmd_quit const& c) const;
     virtual void operator()(ast::cmd_start const& c) const;
     virtual void operator()(ast::cmd_time const& c) const;
@@ -50,10 +51,10 @@ struct Visitor: public boost::static_visitor<> {
     bool ignoreCommands() const { return mIgnoreCommands; };
     bool readyToQuit() const { return mQuit; };
 
- protected:
+  protected:
     std::unique_ptr<Session> mpSession;
 
- private:
+  private:
     std::istream*   mpParserStream; // used for inline bgeo reading
     bool mIgnoreCommands;
     bool mQuit;
@@ -61,7 +62,7 @@ struct Visitor: public boost::static_visitor<> {
 
 
 struct EchoVisitor: public Visitor {
- public:
+  public:
     EchoVisitor(std::unique_ptr<Session>& pSession);
     EchoVisitor(std::unique_ptr<Session>& pSession, std::ostream& os);
 
@@ -72,6 +73,7 @@ struct EchoVisitor: public Visitor {
     void operator()(ast::cmd_image const& c) const override;
     void operator()(ast::cmd_iprmode const& c) const override;
     void operator()(ast::cmd_end const& c) const override;
+    void operator()(ast::cmd_edge const& c) const override;
     void operator()(ast::cmd_quit const& c) const override;
     void operator()(ast::cmd_start const& c) const override;
     void operator()(ast::cmd_time const& c) const override;
@@ -89,7 +91,7 @@ struct EchoVisitor: public Visitor {
     void operator()(ast::cmd_reset const& c) const override;
     void operator()(ast::ray_embeddedfile const& c) const override;
 
- //private:
+  //private:
     void operator()(std::vector<PropValue> const& v) const;
     void operator()(int v) const;
     void operator()(double v) const;

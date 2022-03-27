@@ -147,7 +147,7 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
             
             // Test visibility by tracing a shadow ray.
             RayDesc ray;
-            ray.Origin = rayOrigin;// + viewDir * 0.0001;
+            ray.Origin = rayOrigin;// + viewDir * 0.0001f;
             ray.Direction = ls.dir;
             ray.TMin = 0.0001f;
             ray.TMax = 1e4f;
@@ -155,6 +155,7 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
             rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
+            shadowFactor = 1.0f;
         }
 
         finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
@@ -255,7 +256,10 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
                 float3 wo = sd.toLocal(sd.V);
                 float3 diffuse = diffuseReflection.eval(wo, wi);
 
-                finalColor.rgb += diffuse * (envSample.Le / envSample.pdf) * shadowFactor * envSampleWeight;
+                float envLod = _computeEnvironmentMapLOD(envSample.pdf, gScene.envMap.envMap);
+                float3 Le = envSample.Le; //gEnvMapSampler.eval(envSample.dir, 4.0); //envSample.Le
+
+                finalColor.rgb += diffuse * (Le / envSample.pdf) * shadowFactor * envSampleWeight;
             }
         }
 

@@ -5,6 +5,6 @@ add_subdirectory( lava_utils_lib ) # lava utility library
 add_subdirectory( lava_lib ) # rendering library
 add_subdirectory( lava_cmd ) # command line renderer
 
-#add_subdirectory( houdini ) # SOHO
+add_subdirectory( houdini ) # SOHO
 
 #add_subdirectory( pxr ) # usd hydra renderer plugin

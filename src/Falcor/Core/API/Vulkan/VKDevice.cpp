@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <set>
+#include <chrono>
 #include <thread>
 
 #include "Falcor/stdafx.h"
@@ -121,9 +122,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 }
 #endif
 
-uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
-    assert(device);
-    return device->getPhysicalDeviceLimits().maxViewports;
+uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) {
+    assert(pDevice);
+    return pDevice->getPhysicalDeviceLimits().maxViewports;
 }
 
 static constexpr uint32_t getVulkanApiVersion() {
@@ -246,7 +247,7 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 }
 
 Device::~Device() {
-    LOG_DBG("Device::~Device");
+    printf("Device::~Device");
     vmaDestroyAllocator(mAllocator);
 }
 
@@ -408,12 +409,12 @@ VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
     std::vector<const char*> requiredLayers;
 
     if (enableDebugLayer) {
-        //enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
     // Initialize the extensions
@@ -577,6 +578,10 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     VkPhysicalDeviceFeatures &deviceFeatures) {
 
     assert(pDevice);
+
+    //printf("Logical device create start\n");
+    //std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
 
     bool sparseBindingEnabled = false;
     bool VK_KHR_raytracing_pipeline_enabled = false;
@@ -787,6 +792,9 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         logInfo("Available Device Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
     }
 
+    //printf("sleep\n");
+    //std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
     std::vector<const char*> extensionNames = { 
         //"VK_KHR_swapchain",
         "VK_KHR_spirv_1_4",
@@ -812,6 +820,8 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
 
     // Logical Device
     pDevice->mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    pDevice->mPhysicalDeviceFeatures.features.multiViewport = VK_TRUE;
+    pDevice->mPhysicalDeviceFeatures.features.multiDrawIndirect = VK_TRUE;
     pDevice->mPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
     pDevice->mPhysicalDeviceFeatures.features.sparseBinding = sparseBindingEnabled ? VK_TRUE : VK_FALSE;
 
@@ -867,11 +877,16 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     deviceInfo.enabledExtensionCount = (uint32_t)extensionNames.size();
     deviceInfo.ppEnabledExtensionNames = extensionNames.data();
 
+
+    //printf("vkdevice create\n");
+
     VkDevice device;
     if (VK_FAILED(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device))) {
         logError("Could not create Vulkan logical device.");
         return nullptr;
     }
+
+    //printf("vkdevice create done!\n");
 
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rayTracingPipelineProperties{};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
@@ -950,6 +965,8 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
             vkGetDeviceQueue(device, pData->falcorToVulkanQueueType[type], i, &cmdQueues[type][i]);
         }
     }
+
+    //printf("Logical device create done\n");
 
     return device;
 }

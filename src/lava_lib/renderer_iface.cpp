@@ -6,6 +6,9 @@
 #include "lava_utils_lib/ut_string.h"
 #include "lava_utils_lib/logging.h"
 
+#include "Falcor/Scene/MaterialX/MaterialX.h"
+
+
 namespace lava {
 
 RendererIface::RendererIface(std::shared_ptr<Renderer> pRenderer): mpRenderer(pRenderer) {
@@ -116,6 +119,10 @@ void RendererIface::renderFrame(const FrameData& frame_data) {
 
 	mpRenderer->renderFrame(frame_data);
 	mpRenderer->closeDisplay();
+}
+
+bool RendererIface::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
+	return mpRenderer->addMaterialX(std::move(pMaterialX));
 }
 
 }  // namespace lava

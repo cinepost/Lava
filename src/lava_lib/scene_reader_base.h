@@ -7,10 +7,10 @@
 #include <fstream>
 #include <memory>
 
-#include "renderer_iface.h"
-
 
 namespace lava {
+
+class RendererIface;
 
 class ReaderBase {
  public:

@@ -107,6 +107,7 @@ struct Scene
     // Materials
     StructuredBuffer<MaterialData> materials;
     MaterialResources materialResources[SCENE_MATERIAL_COUNT];
+    //StructuredBuffer<Texture2D> materialTextures;
 
     // Lights and camera
     uint lightCount;

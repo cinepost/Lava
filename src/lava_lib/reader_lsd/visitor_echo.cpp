@@ -128,6 +128,11 @@ void EchoVisitor::operator()(ast::cmd_end const& c) const {
     _os << "\x1b[32m" << "> cmd_end: " << "\x1b[0m\n";
 }
 
+void EchoVisitor::operator()(ast::cmd_edge const& c) const { 
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_edge: " << c.src_path << " " << c.dst_path << "\x1b[0m\n";
+}
+
 void EchoVisitor::operator()(ast::cmd_quit const& c) const { 
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_quit: " << "\x1b[0m\n";

@@ -46,7 +46,7 @@ class Settings:
 
         self.GenerateOpId = False
         self.ShadowMap = False
-        self.GenerateMaterialname = False
+        self.GenerateMaterialname = True
         self.MatteOverrides = {}        # Objects forced to be matte
         self.PhantomOverrides = {}      # Objects forced to be phantom
 
@@ -351,8 +351,7 @@ def _outputShaderList(objtype, obj, wrangler, now, shaderParms, skipParms):
                 if _Settings.GenerateMaterialname:
                     cmd_property('object', parm.Key, [parm.Value[0]])
             else:
-                cmd_shader(objtype, parm.Key, parm.Value[0],
-                        getattr(parm, "ShopType", soho.ShopTypeDefault))
+                cmd_shader(objtype, parm.Key, parm.Value[0], getattr(parm, "ShopType", soho.ShopTypeDefault))
 
 def _getObjectStyleSheets( obj, wrangler, now):
     stylesheets = []
@@ -628,9 +627,11 @@ def outputObject(obj, now, name=None, wrangler=None, output_shader=True, check_r
     LSDmisc.ouputMotionBlurInfo(obj,now)
 
     if output_shader:
+        #TODO: output material network here ?
+
         _outputShaderList('object', obj, wrangler, now, oshaderParms, oshaderSkipParms)
         _outputObjectStylesheet('object', obj, wrangler, now)
-
+        pass
     
     # We return the displacement bound so that geometry with multiple
     # displacement bounds could

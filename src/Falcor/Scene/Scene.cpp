@@ -119,6 +119,7 @@ typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
     unsigned int StartIndexLocation;
     int BaseVertexLocation;
     unsigned int StartInstanceLocation;
+    uint32_t     MaterialID;
 } D3D12_DRAW_INDEXED_ARGUMENTS;
 
 
@@ -127,6 +128,7 @@ typedef struct D3D12_DRAW_ARGUMENTS {
     unsigned int InstanceCount;
     unsigned int StartVertexLocation;
     unsigned int StartInstanceLocation;
+    uint32_t     MaterialID;
 } D3D12_DRAW_ARGUMENTS;
 
 #define D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT 256
@@ -153,6 +155,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mCameraSpeed = sceneData.cameraSpeed;
     mLights = std::move(sceneData.lights);
     mMaterials = std::move(sceneData.materials);
+    mMaterialXs = std::move(sceneData.materialxs);
     mVolumes = std::move(sceneData.volumes);
     mGrids = std::move(sceneData.grids);
     mpEnvMap = sceneData.pEnvMap;
@@ -215,7 +218,10 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 }
 
 Scene::~Scene() {
-    mRtBuilder.destroy();
+    if (mpRtBuilder) {
+        mpRtBuilder->destroy();
+        delete mpRtBuilder;
+    }
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -257,6 +263,11 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     rasterize(pContext, pState, pVars, mFrontClockwiseRS[cullMode], mFrontCounterClockwiseRS[cullMode]);
 }
 
+void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode) {
+    rasterizeX(pContext, pState, pVars, mFrontClockwiseRS[cullMode], mFrontCounterClockwiseRS[cullMode]);
+}
+
+
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
@@ -266,14 +277,17 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     createTopLevelAS();
 
     // Bind TLAS.
-    mpSceneBlock["rtAccel"].setAS(mRtBuilder.getAccelerationStructure());
+    mpSceneBlock["rtAccel"].setAS(getTlas());
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
+    size_t i = 0;
+
     for (const auto& draw : mDrawArgs) {
+        printf("Rasterizer draw %zu\n", i);
         assert(draw.count > 0);
 
         // Set state.
@@ -287,6 +301,66 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
             pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
         } else {
             pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+        }
+
+        i+=1;
+    }
+
+    pState->setRasterizerState(pCurrentRS);
+}
+
+void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
+    PROFILE(mpDevice, "rasterizeXScene");
+
+    printf("RasterizerX !!!\n");
+
+    // nvvk testing stuff
+    initRayTracing();
+    createBottomLevelAS();
+    createTopLevelAS();
+
+    // Bind TLAS.
+    mpSceneBlock["rtAccel"].setAS(getTlas());
+
+    pVars->setParameterBlock("gScene", mpSceneBlock);
+
+    auto pCurrentRS = pState->getRasterizerState();
+    bool isIndexed = hasIndexBuffer();
+
+    for (size_t materialID = 0; materialID < mMaterialDrawArgs.size(); materialID++) {
+
+        Material::SharedConstPtr pMaterial = mMaterials[materialID];
+        printf("RasterizerX drawing meshes with materialX id %zu\n", materialID);
+
+        for (size_t draw_id : mMaterialDrawArgs[materialID]) {
+            size_t i = 0;
+            printf("RasterizerX draw %zu\n", i);
+
+            const auto& draw = mDrawArgs[draw_id];
+
+            if (draw.count > 0) {
+
+                // Set state.
+                pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpVao16Bit : mpVao);
+
+                if (draw.ccw) pState->setRasterizerState(pRasterizerStateCCW);
+                else pState->setRasterizerState(pRasterizerStateCW);
+
+                // ProgramVars
+                //auto _pVars = GraphicsVars::create(mpDevice, pVars->getReflection());
+                //_pVars->setParameterBlock("gScene", mpSceneBlock);
+
+
+
+                // Draw the primitives.
+                if (isIndexed) {
+                    pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+                } else {
+                    pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+                }
+                pContext->flush();
+                i+=1;
+            }
         }
     }
 
@@ -500,8 +574,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     // Create the vertex data structured buffer.
     const size_t vertexCount = (uint32_t)staticData.size();
     size_t staticVbSize = sizeof(PackedStaticVertexData) * vertexCount;
-    if (staticVbSize > std::numeric_limits<uint32_t>::max())
-    {
+    if (staticVbSize > std::numeric_limits<uint32_t>::max()) {
         throw std::runtime_error("Vertex buffer size exceeds 4GB");
     }
 
@@ -614,8 +687,7 @@ void Scene::initResources() {
     mpMeshInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     mpMeshInstancesBuffer->setName("Scene::mpMeshInstancesBuffer");
 
-    if (!mCurveDesc.empty())
-    {
+    if (!mCurveDesc.empty()) {
         mpCurvesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCurveBufferName], (uint32_t)mCurveDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpCurvesBuffer->setName("Scene::mpCurvesBuffer");
         mpCurveInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCurveInstanceBufferName], (uint32_t)mCurveInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
@@ -625,14 +697,12 @@ void Scene::initResources() {
     mpMaterialsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
     mpMaterialsBuffer->setName("Scene::mpMaterialsBuffer");
 
-    if (!mLights.empty())
-    {
+    if (!mLights.empty()) {
         mpLightsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpLightsBuffer->setName("Scene::mpLightsBuffer");
     }
 
-    if (!mVolumes.empty())
-    {
+    if (!mVolumes.empty()) {
         mpVolumesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kVolumesBufferName], (uint32_t)mVolumes.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpVolumesBuffer->setName("Scene::mpVolumesBuffer");
     }
@@ -656,8 +726,7 @@ void Scene::uploadResources() {
     mpSceneBlock->setBuffer(kVertexBufferName, mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
     mpSceneBlock->setBuffer(kPrevVertexBufferName, mpAnimationController->getPrevVertexData()); // Can be nullptr
 
-    if (mpCurveVao != nullptr)
-    {
+    if (mpCurveVao != nullptr) {
         mpSceneBlock->setBuffer(kCurveIndexBufferName, mpCurveVao->getIndexBuffer());
         mpSceneBlock->setBuffer(kCurveVertexBufferName, mpCurveVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
         mpSceneBlock->setBuffer(kPrevCurveVertexBufferName, mpAnimationController->getPrevCurveVertexData());
@@ -1776,6 +1845,7 @@ void Scene::setBlasUpdateMode(UpdateMode mode) {
     mBlasUpdateMode = mode;
 }
     
+/*
 void Scene::createDrawList() {
     // This function creates argument buffers for draw indirect calls to rasterize the scene.
     // The updateMeshInstances() function must have been called before so that the flags are accurate.
@@ -1787,6 +1857,10 @@ void Scene::createDrawList() {
     // TODO: Update the draw args if a mesh undergoes animation that flips the winding.
 
     mDrawArgs.clear();
+    mMaterialDrawArgs.clear();
+    mMaterialDrawArgs.resize(mMaterials.size());
+
+    for( auto& draws: mMaterialDrawArgs) draws.clear();
 
     // Helper to create the draw-indirect buffer.
     auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
@@ -1799,10 +1873,22 @@ void Scene::createDrawList() {
             draw.ccw = ccw;
             draw.ibFormat = ibFormat;
             mDrawArgs.push_back(draw);
+
+            //mMaterialDrawArgs[draw.materialID].push_back(mDrawArgs.size());
         }
     };
 
+    // Sort all instances by their materials
+    std::vector<std::vector<MeshInstanceData>> instancesByMaterial;
+    instancesByMaterial.resize(mMaterials.size());
+
+    for for (const auto& instance : mMeshInstanceData) {
+
     if (hasIndexBuffer()) {
+        printf("Index buffer!\n");
+        size_t i;
+        scanf("%zu", &i);;
+
         std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
 
         uint32_t instanceID = 0;
@@ -1816,6 +1902,7 @@ void Scene::createDrawList() {
             draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
             draw.BaseVertexLocation = mesh.vbOffset;
             draw.StartInstanceLocation = instanceID++;
+            draw.MaterialID = instance.materialID;
 
             int i = use16Bit ? 0 : 1;
             (instance.isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
@@ -1826,6 +1913,10 @@ void Scene::createDrawList() {
         createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
         createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
     } else {
+        printf("No index buffer!\n");
+        size_t i;
+        scanf("%zu", &i);;
+        
         std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
         uint32_t instanceID = 0;
@@ -1838,6 +1929,7 @@ void Scene::createDrawList() {
             draw.InstanceCount = 1;
             draw.StartVertexLocation = mesh.vbOffset;
             draw.StartInstanceLocation = instanceID++;
+            draw.MaterialID = instance.materialID;
 
             (instance.isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
         }
@@ -1845,6 +1937,116 @@ void Scene::createDrawList() {
         createDrawBuffer(drawClockwiseMeshes, false);
         createDrawBuffer(drawCounterClockwiseMeshes, true);
     }
+}
+
+*/
+
+void Scene::createDrawList() {
+    // This function creates argument buffers for draw indirect calls to rasterize the scene.
+    // The updateMeshInstances() function must have been called before so that the flags are accurate.
+    //
+    // Note that we create four draw buffers to handle all combinations of:
+    // 1) mesh is using 16- or 32-bit indices,
+    // 2) mesh triangle winding is CW or CCW after transformation.
+    //
+    // TODO: Update the draw args if a mesh undergoes animation that flips the winding.
+
+    printf("createDrawList(...) ...\n");
+
+    mDrawArgs.clear();
+    mMaterialDrawArgs.clear();
+    mMaterialDrawArgs.resize(mMaterials.size());
+
+    for( auto& draws: mMaterialDrawArgs) draws.clear();
+
+    // Helper to create the draw-indirect buffer.
+    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
+        if (drawMeshes.size() > 0) {
+            DrawArgs draw;
+            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
+            draw.pBuffer->setName("Scene draw buffer");
+            assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
+            draw.count = (uint32_t)drawMeshes.size();
+            draw.ccw = ccw;
+            draw.ibFormat = ibFormat;
+            mDrawArgs.push_back(draw);
+
+            //mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(&mDrawArgs.back());
+            mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(mDrawArgs.size() - 1);
+        }
+    };
+
+    // Sort all instances by their materials
+    std::vector<std::vector<DrawInstance>> instancesByMaterial;
+    instancesByMaterial.resize(mMaterials.size());
+
+    printf("Number of materials to draw: %zu\n", mMaterials.size());
+
+    uint32_t instanceID = 0;
+    for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
+        instancesByMaterial[mMeshInstanceData[i].materialID].push_back({instanceID++, &mMeshInstanceData[i]});
+    }
+
+
+    // Now prepare draws
+    for (size_t materialID = 0; materialID < instancesByMaterial.size(); materialID++) {
+        const auto& instances = instancesByMaterial[materialID];
+    
+
+        if (hasIndexBuffer()) {
+            std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
+
+            uint32_t instanceID = 0;
+            for (const auto& drawInstance : instances) {
+                const auto instance = drawInstance.instance;
+                const auto& mesh = mMeshDesc[instance->meshID];
+                bool use16Bit = mesh.use16BitIndices();
+
+                D3D12_DRAW_INDEXED_ARGUMENTS draw;
+                draw.IndexCountPerInstance = mesh.indexCount;
+                draw.InstanceCount = 1;
+                draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
+                draw.BaseVertexLocation = mesh.vbOffset;
+                draw.StartInstanceLocation = drawInstance.instanceID;
+                draw.MaterialID = materialID; //instance->materialID;
+
+                int i = use16Bit ? 0 : 1;
+                (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
+            }
+
+            createDrawBuffer(drawClockwiseMeshes[0], false, ResourceFormat::R16Uint);
+            createDrawBuffer(drawClockwiseMeshes[1], false, ResourceFormat::R32Uint);
+            createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
+            createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
+        } else {
+            std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
+
+            uint32_t instanceID = 0;
+            for (const auto& drawInstance : instances) {
+                const auto instance = drawInstance.instance;
+                const auto& mesh = mMeshDesc[instance->meshID];
+                assert(mesh.indexCount == 0);
+
+                D3D12_DRAW_ARGUMENTS draw;
+                draw.VertexCountPerInstance = mesh.vertexCount;
+                draw.InstanceCount = 1;
+                draw.StartVertexLocation = mesh.vbOffset;
+                draw.StartInstanceLocation = drawInstance.instanceID;
+                draw.MaterialID = materialID; //instance->materialID;
+
+                (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
+            }
+
+            createDrawBuffer(drawClockwiseMeshes, false);
+            createDrawBuffer(drawCounterClockwiseMeshes, true);
+        }
+    }
+
+    printf("createDrawList(...) done. \n");
+}
+
+VkAccelerationStructureKHR Scene::getTlas() const { 
+    return mpRtBuilder ? mpRtBuilder->getAccelerationStructure() : VK_NULL_HANDLE;
 }
 
 nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc& mesh) {
@@ -2129,11 +2331,12 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 
 
 void Scene::createBottomLevelAS() {
-    if (mBlasBuilt) return;
+    PROFILE(mpDevice, "createBottomLevelAS");
+
+    if (mBlasBuilt || !mpRtBuilder) return;
 
     uint32_t blasID = 0;
     mMeshIdToBlasId.clear();
-
 
     uint32_t totalMeshCount = 0;
     for (size_t i = 0; i < mMeshGroups.size(); i++) {
@@ -2165,36 +2368,14 @@ void Scene::createBottomLevelAS() {
         }
     }
 
-    mRtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
+    mpRtBuilder->buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
     mBlasBuilt = true;
 }
 
-/*
-
-struct MeshInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint meshID;
-    uint flags;         ///< See MeshInstanceFlags.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    bool hasDynamicData() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
-    }
-
-    bool isWorldFrontFaceCW() CONST_FUNCTION
-    {
-        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
-    }
-};
-
-*/
-
 void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
+    PROFILE(mpDevice, "createTopLevelAS");
+
+    if (mTlasBuilt || !mpRtBuilder) return;
 
     const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
@@ -2212,7 +2393,7 @@ void Scene::createTopLevelAS() {
 
         rayInst.transform = toTransformMatrixKHR(globalMatrices[instance.globalMatrixID]);  // Position of the instance
         rayInst.instanceCustomIndex = instanceID++;
-        rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
+        rayInst.accelerationStructureReference = mpRtBuilder->getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
         rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
         rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
@@ -2220,112 +2401,11 @@ void Scene::createTopLevelAS() {
         tlas.emplace_back(rayInst);
     }
 
-
-    /*
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                instanceID += 1;
-
-                auto const& instanceData = mMeshInstanceData[rayInst.instanceCustomIndex];
-
-                nvmath::mat4f transform(1);
-
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-                rayInst.instanceCustomIndex = instanceID;
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    */
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+    mpRtBuilder->buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 
     mTlasBuilt = true;
 }
 
-
-/*
-void Scene::createTopLevelAS() {
-    if (mTlasBuilt) return;
-
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    //tlas.reserve(m_instances.size());
-
-    uint32_t instanceID = 0;
-
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-
-        assert(!meshList.empty());
-
-         // Validate that the ordering is matching our expectations:
-        // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-        for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-            const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
-            assert(instances.size() == instanceCount);
-            assert(instances[instanceIdx] == instanceID + geometryIndex);
-        }
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-
-            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
-
-            assert(instanceCount > 0);
-            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-                VkAccelerationStructureInstanceKHR rayInst{};
-
-                rayInst.instanceCustomIndex = instanceID;
-                instanceID += (uint32_t)meshList.size();
-
-                nvmath::mat4f transform(1);
-
-                if (!isStatic) {
-                    // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
-                    // Just pick the matrix from the first mesh.
-                    const uint32_t matrixId = mMeshInstanceData[rayInst.instanceCustomIndex].globalMatrixID;
-                    transform = nvmath::matrix4<float>((const float*)glm::value_ptr(mpAnimationController->getGlobalMatrices()[matrixId]));
-
-                    // Verify that all meshes have matching tranforms.
-                    for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                        assert(matrixId == mMeshInstanceData[rayInst.instanceCustomIndex + geometryIndex].globalMatrixID);
-                    }
-                }
-                
-                rayInst.transform  = nvvk::toTransformMatrixKHR(transform);  // Position of the instance
-
-                rayInst.accelerationStructureReference = mRtBuilder.getBlasDeviceAddress(inst.objIndex);
-                rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-                rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-                rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-                tlas.emplace_back(rayInst);
-            }
-        }
-    }
-    mRtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-*/
 
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
 
@@ -2470,29 +2550,26 @@ void Scene::buildBlas(RenderContext* pContext) {
         throw std::runtime_error("Raytracing is not supported by the current device");
     }
 
+/*
+
     // Add barriers for the VB and IB which will be accessed by the build.
     const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
     const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
     
-    LOG_WARN("_1");
     pContext->resourceBarrier(pVb.get(), Resource::State::AccelStructBuildInput);
     
     if (pIb) {
-        LOG_WARN("_2");
         pContext->resourceBarrier(pIb.get(), Resource::State::AccelStructBuildInput);
     }
 
     if (mpRtAABBBuffer) {
-        LOG_WARN("_3");
         pContext->resourceBarrier(mpRtAABBBuffer.get(), Resource::State::AccelStructBuildInput);
     }
 
     if (mpCurveVao) {
         const Buffer::SharedPtr& pCurveVb = mpCurveVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pCurveIb = mpCurveVao->getIndexBuffer();
-        LOG_WARN("_4");
         pContext->resourceBarrier(pCurveVb.get(), Resource::State::AccelStructBuildInput);
-        LOG_WARN("_5");
         pContext->resourceBarrier(pCurveIb.get(), Resource::State::AccelStructBuildInput);
     }
 
@@ -2576,7 +2653,7 @@ void Scene::buildBlas(RenderContext* pContext) {
 
         return;
     }
-/*
+
     // If we get here, all BLASes have previously been built and compacted. We will:
     // - Skip the ones that have no animated geometries.
     // - Update or rebuild in-place the ones that are animated.
@@ -2637,6 +2714,8 @@ void Scene::buildBlas(RenderContext* pContext) {
 }
 
 void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const {
+
+/*
     instanceDescs.clear();
     uint32_t instanceContributionToHitGroupIndex = 0;
     uint32_t instanceID = 0;
@@ -2741,9 +2820,11 @@ void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& in
         std::memcpy(&desc.transform, &identityMat, sizeof(desc.transform));
         instanceDescs.push_back(desc);
     }
+*/
 }
 
 void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry) {
+/*
     PROFILE(mpDevice, "buildTlas");
 
     TlasData tlas;
@@ -2762,17 +2843,12 @@ void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHi
 
     // If first time building this TLAS
     if (tlas.pTLAS == nullptr) {
-        LOG_WARN("first time building this TLAS");
         tlas.pTLAS = TopLevelAccelerationStructure::create(mpDevice);
-        printf("1\n");
         tlas.pTLAS->addInstances(mInstanceDescs);
-        printf("2\n");
         if (!tlas.pTLAS->createAccelerationStructure(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)) {
             throw std::runtime_error("Error creating TLAS !!!");
         }
-        printf("3\n");
         scratchByteSize =  std::max(scratchByteSize, tlas.pTLAS->scratchBufferSize());
-        printf("4\n");
         mpTlasScratch = Buffer::create(mpDevice, scratchByteSize * 5, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
 
 
@@ -2834,10 +2910,8 @@ oneTimeCommandBuffer(mpDevice, commandPool, queue, [&](VkCommandBuffer cmdBuff) 
         }
 
 
-        LOG_WARN("Build tlas....");
         assert(mpTlasScratch);
         //tlas.pTLAS->build(cmdBuff, mpTlasScratch->getGpuAddress());
-        LOG_WARN("22");
         vkCmdPipelineBarrier(cmdBuff, src, dst | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, &barrier, 0, 0, 0, 0);
 });
         // compact BLAS
@@ -2902,29 +2976,31 @@ vkDestroyCommandPool(mpDevice->getApiHandle(), commandPool, nullptr);
     //LOG_WARN("Create TLAS SRV");
     //if (tlas.pSrv == nullptr) {
     //    tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
-   // }
+    //}
 
     mTlasCache[rayCount] = tlas;
     updateRaytracingTLASStats();
+
+*/
 }
 
 void Scene::initRayTracing() {
-    if (mRayTraceInitialized) return;
+    if (!mRenderSettings.useRayTracing || mRayTraceInitialized) return;
 
+    
     auto graphicsQueueIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
-    mRtBuilder.setup(mpDevice->getApiHandle(), mpDevice->nvvkAllocator(), graphicsQueueIndex);
+    
+    mpRtBuilder = new nvvk::RaytracingBuilderKHR();
+    mpRtBuilder->setup(mpDevice->getApiHandle(), mpDevice->nvvkAllocator(), graphicsQueueIndex);
+
     mRayTraceInitialized = true;
 }
 
-void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount)
-{
+void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
     logWarning("!!!!!!!!!!!!!!!!setRaytracingShaderData");
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
-    if (mBlasData.empty())
-    {
-        LOG_WARN("initGeomDesc");
+    if (mBlasData.empty()) {
         initGeomDesc(pContext);
-        LOG_WARN("buildBlas");
         buildBlas(pContext);
     }
 
@@ -2934,10 +3010,8 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
     //
     auto tlasIt = mTlasCache.find(rayTypeCount);
-    if (tlasIt == mTlasCache.end())
-    {
+    if (tlasIt == mTlasCache.end()) {
         // We need a hit entry per mesh right now to pass GeometryIndex()
-        LOG_WARN("buildTlas");
         buildTlas(pContext, rayTypeCount, true);
 
         // If new TLAS was just created, get it so the iterator is valid
@@ -2955,15 +3029,12 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     var["gScene"] = mpSceneBlock;
 }
 
-std::vector<uint32_t> Scene::getMeshBlasIDs() const
-{
+std::vector<uint32_t> Scene::getMeshBlasIDs() const {
     const uint32_t invalidID = uint32_t(-1);
     std::vector<uint32_t> blasIDs(mMeshDesc.size(), invalidID);
 
-    for (uint32_t blasID = 0; blasID < (uint32_t)mMeshGroups.size(); blasID++)
-    {
-        for (auto meshID : mMeshGroups[blasID].meshList)
-        {
+    for (uint32_t blasID = 0; blasID < (uint32_t)mMeshGroups.size(); blasID++) {
+        for (auto meshID : mMeshGroups[blasID].meshList) {
             assert(meshID < blasIDs.size());
             blasIDs[meshID] = blasID;
         }
@@ -2973,8 +3044,7 @@ std::vector<uint32_t> Scene::getMeshBlasIDs() const
     return blasIDs;
 }
 
-uint32_t Scene::getParentNodeID(uint32_t nodeID) const
-{
+uint32_t Scene::getParentNodeID(uint32_t nodeID) const {
     if (nodeID >= mSceneGraph.size()) throw std::runtime_error("Scene::getParentNodeID() - nodeID is out of range");
     return mSceneGraph[nodeID].parent;
 }
@@ -3219,6 +3289,7 @@ std::string Scene::getScript(const std::string& sceneVar) {
         // RenderSettings
         ScriptBindings::SerializableStruct<Scene::RenderSettings> renderSettings(m, "SceneRenderSettings");
 #define field(f_) field(#f_, &Scene::RenderSettings::f_)
+        renderSettings.field(useRayTracing);
         renderSettings.field(useEnvLight);
         renderSettings.field(useAnalyticLights);
         renderSettings.field(useEmissiveLights);

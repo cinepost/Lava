@@ -249,6 +249,10 @@ Scene::SharedPtr SceneBuilder::getScene() {
         timeReport.measure("Writing cache");
     }
 
+    if (is_set(mFlags, Flags::UseRaytracing)) {
+        mSceneData.renderSettings.useRayTracing = true;
+    }
+
     // Create the scene object.
     mpScene = Scene::create(mpDevice, std::move(mSceneData));
     mSceneData = {};
@@ -325,7 +329,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     if (mesh.faceCount == 0) throw_on_missing_element("faces");
     if (mesh.vertexCount == 0) throw_on_missing_element("vertices");
     if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
-    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
+//    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
 
     if (mesh.positions.pData == nullptr) throw_on_missing_element("positions");
     if (mesh.normals.pData == nullptr) missing_element_warning("normals");

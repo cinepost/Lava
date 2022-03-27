@@ -67,7 +67,7 @@ controlParameters = {
     'photon'  : SohoParm('render_any_photonmap', 'int', [1], False, key='photon'),
     'pointcloud'  : SohoParm('render_any_pointcloud', 'int', [1], False, key='pointcloud'),
     'main'    : SohoParm('render_viewcamera','int', [1], False, key='main'),
-    'decl'    : SohoParm('declare_all_shops', 'int', [0], False, key='decl'),
+    'decl'    : SohoParm('declare_all_shops', 'int', [1], False, key='decl'),
     'engine'  : SohoParm('lv_renderengine',  'string', ['micropoly'],
                                             False, key='engine'),
 
