@@ -70,7 +70,7 @@ FILE* openLogFile() {
     }
 
     // If we got here, we couldn't create a log file
-    should_not_get_here();
+    // should_not_get_here();
     return pFile;
 }
 
