@@ -207,7 +207,8 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
         mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
     
     mpState->setFbo(mpFbo);
-    mpScene->rasterizeX(pContext, mpState.get(), mpVars.get(), mCullMode);
+    mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
+    //mpScene->rasterizeX(pContext, mpState.get(), mpVars.get(), mCullMode);
 }
 
 void ForwardLightingPass::prepareVars(RenderContext* pContext) {

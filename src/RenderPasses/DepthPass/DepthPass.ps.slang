@@ -66,8 +66,7 @@ void mainOld(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
     
 #ifndef DISABLE_ALPHA_TEST
     // Calling prepareShadingData() to discard pixels that fail alpha test. The pixel shader has no other side effects.
-    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-    prepareShadingData(vsOut, triangleIndex, viewDir);
+    //prepareShadingData(vsOut, triangleIndex, viewDir);
 #endif
 
 }

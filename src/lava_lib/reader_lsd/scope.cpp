@@ -275,6 +275,25 @@ Material::SharedPtr Material::create(ScopeBase::SharedPtr pParent) {
 	return std::move(pMat);
 }
 
+bool Material::insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode) {
+	if ( mNodesMap.find(uuid) == mNodesMap.end() ) {
+  		// node not exist
+  		mNodesMap.insert({uuid, pNode});
+		return true;
+	} 
+	// node already exist
+	return false;
+}
+
+Falcor::MxNode::SharedPtr Material::node(const NodeUUID& uuid) {
+	if ( mNodesMap.find(uuid) == mNodesMap.end() ) {
+		// node not found
+		return nullptr;
+	}
+
+	return mNodesMap[uuid];
+}
+
 /* Node */
 
 Node::SharedPtr Node::create(ScopeBase::SharedPtr pParent) {
@@ -299,8 +318,21 @@ Node::SharedPtr Node::addChildNode() {
 	return nullptr;
 }
 
-void Node::addChildEdge(const std::string& src, const std::string& dst) {
-	mChildEdges.push_back(EdgePair(src, dst));
+void Node::addChildEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket) {
+	EdgeInfo edge = {};
+	edge.src_node_uuid = src_node_uuid;
+	edge.src_node_output_socket = src_node_output_socket;
+	edge.dst_node_uuid = dst_node_uuid;
+	edge.dst_node_input_socket = dst_node_input_socket;
+	mChildEdges.push_back(edge);
+}
+
+void Node::addDataSocketTemplate(const std::string& name, Falcor::MxSocketDataType dataType, Falcor::MxSocketDirection direction) {
+	DataSocketTemplate tmpl = {};
+	tmpl.name = name;
+	tmpl.dataType = dataType;
+	tmpl.direction = direction;
+	mSocketTemplates.push_back(tmpl);
 }
 
 const void Node::printSummary(std::ostream& os, uint indent) const {
@@ -315,7 +347,7 @@ const void Node::printSummary(std::ostream& os, uint indent) const {
 		for(uint i = 0; i < indent; i++) {
         	os << " ";
     	}
-    	os << "Edge: " << edge.first << " " << edge.second << std::endl;
+    	os << "Edge: " << edge.src_node_uuid << " " << edge.src_node_output_socket << " " << edge.dst_node_uuid << " " << edge.dst_node_input_socket << std::endl;
 	}
 	indentStream(os, indent) << "}\n";
 }

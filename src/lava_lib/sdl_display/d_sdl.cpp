@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-static std::vector< float > g_pixels;
+static std::vector< uint8_t > g_pixels;
 static std::unique_ptr<SDLOpenGLWindow> window;
 static std::chrono::time_point<std::chrono::system_clock> g_start, g_end;
 
@@ -26,6 +26,23 @@ static PtDspyUnsigned32 g_height;
 
 
 PtDspyError processEvents();
+
+static size_t sizeInBytes(GLenum type) {
+  switch (type) {
+    case GL_UNSIGNED_INT:
+    case GL_INT:
+    case GL_FLOAT:
+      return 4;
+    case GL_SHORT:
+    case GL_UNSIGNED_SHORT:
+    case GL_HALF_FLOAT:
+      return 2;
+    case GL_UNSIGNED_BYTE:
+    case GL_BYTE:
+    default:
+      return 1;
+  }
+}
 
 PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
   const char *,const char *filename,
@@ -50,7 +67,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
   g_width = width;
   g_height = height;
   g_channels = formatCount;
-  g_pixels.resize(width*height*g_channels,0.4f);
+  g_pixels.resize(width*height*g_channels*sizeInBytes(GL_UNSIGNED_SHORT),0);
 
   // shuffle format so we always write out RGB[A]
   std::array<std::string,4> chan = { {"r", "g", "b", "a"} };
@@ -127,23 +144,25 @@ PtDspyError DspyImageQuery(PtDspyImageHandle,PtDspyQueryType querytype, int data
   return ret;
 }
 
-PtDspyError DspyImageData(PtDspyImageHandle ,int xmin,int xmax,int ymin,int ymax,int entrysize,const unsigned char *data) {
+PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int ymax, int entrysize,const unsigned char *data) {
   int oldx;
   oldx = xmin;
 
   for (;ymin < ymax; ++ymin) {
     for (xmin = oldx; xmin < xmax; ++xmin) {
-      const float *ptr = reinterpret_cast<const float*>(data);
-      size_t offset =  g_width * g_channels * ymin  + xmin * g_channels;
+      const void *ptr = reinterpret_cast<const void*>(data);
+      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(GL_HALF_FLOAT);
       if(g_channels == 4) {
-        g_pixels[ offset + 0 ]=ptr[0];
-        g_pixels[ offset + 1 ]=ptr[1];
-        g_pixels[ offset + 2 ]=ptr[2];
-        g_pixels[ offset + 3 ]=ptr[3];
+        //g_pixels[ offset + 0 ]=ptr[0];
+        //g_pixels[ offset + 1 ]=ptr[1];
+        //g_pixels[ offset + 2 ]=ptr[2];
+        //g_pixels[ offset + 3 ]=ptr[3];
+        memcpy(&g_pixels[offset], ptr, entrysize);
       } else {
-        g_pixels[ offset + 0 ]=ptr[0];
-        g_pixels[ offset + 1 ]=ptr[1];
-        g_pixels[ offset + 2 ]=ptr[2];
+        //g_pixels[ offset + 0 ]=ptr[0];
+        //g_pixels[ offset + 1 ]=ptr[1];
+        //g_pixels[ offset + 2 ]=ptr[2];
+        //memcpy((void*)g_pixels[offset], (void *)ptr, entrysize);
       }
     data += entrysize;
     }

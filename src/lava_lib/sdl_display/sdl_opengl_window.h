@@ -36,7 +36,7 @@ class SDLOpenGLWindow {
     void resizeWindow(int width, int height);
     int pollEvent(SDL_Event &_event);
     void createSurface();
-    void updateImage(const float* _image);
+    void updateImage(const void* _image);
     void draw();
     void setScale(float _f);
     float scale() const {return m_scale;}

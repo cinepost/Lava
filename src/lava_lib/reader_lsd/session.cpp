@@ -5,6 +5,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Utils/ConfigStore.h"
 
 #include "session.h"
@@ -438,11 +439,11 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 	}
 }
 
-void Session::cmdEdge(const std::string& src, const std::string& dst) {
+void Session::cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket) {
 	LLOG_DBG << "cmdEdge";
 	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 	if(pNode) {
-		pNode->addChildEdge(src, dst);
+		pNode->addChildEdge(src_node_uuid, src_node_output_socket, dst_node_uuid, dst_node_input_socket);
 	}
 }
 
@@ -554,6 +555,7 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 					return false;
 				}
 				mpCurrentScope = pGlobal->addMaterial();
+				mpMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
 				break;
 			}
 		case lsd::ast::Style::NODE:
@@ -614,7 +616,8 @@ bool Session::cmdEnd() {
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
 			if(!pushGeometryInstance(pObj)) {
-				return false;
+				//return false;
+				result = false;
 			}
 			break;
 		case ast::Style::PLANE:
@@ -629,11 +632,13 @@ bool Session::cmdEnd() {
 			pMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
 			if(pMaterialScope) {
 				auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
-				if (pMaterialX)
+				if (pMaterialX) {
 					mpRendererIface->addMaterialX(std::move(pMaterialX));
+				}
 			} else {
-				return false;
+				result = false;
 			}
+			mpMaterialScope = nullptr;
 			break;
 		case ast::Style::NODE:
 			pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
@@ -650,8 +655,92 @@ bool Session::cmdEnd() {
 	return result;
 }
 
+void Session::addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD) {
+	return;
+	assert(pParent);
+
+	bool is_subnet = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "is_subnet", bool(false));
+	std::string node_name = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_name", std::string(""));
+	std::string node_type = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_type", std::string(""));
+	std::string node_uuid = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_uuid", std::string(""));
+	std::string node_namespace = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_namespace", std::string("houdini"));
+
+	MxNode::TypeCreateInfo info = {};
+    info.nameSpace = node_namespace;
+    info.typeName = node_type;
+    info.version = 0;
+
+	auto pNode = pParent->createNode(info, node_name);
+	if (pNode) {
+		if (mpMaterialScope->insertNode(node_uuid, pNode)) {
+
+			for( const auto& tmpl: pNodeLSD->socketTemplates()) {
+				auto pSocket = pNode->addDataSocket(tmpl.name, tmpl.dataType, tmpl.direction);
+				if (!pSocket) {
+					LLOG_ERR << "Error creating shading node data socket " << tmpl.name << " !!!";
+				} else {
+					LLOG_DBG << "Created node " << tmpl.direction << " socket " << pSocket->path(); 
+				}
+			}
+
+			if (is_subnet) {
+				// add child nodes
+				for( scope::Node::SharedConstPtr pChildNodeLSD: pNodeLSD->childNodes()) {
+					addMxNode(pNode, pChildNodeLSD);
+				}
+
+				// link sockets
+				for( const scope::Node::EdgeInfo& edge: pNodeLSD->childEdges()) {
+					Falcor::MxNode::SharedPtr pSrcNode = pNode->node(edge.src_node_uuid);
+					Falcor::MxNode::SharedPtr pDstNode = pNode->node(edge.dst_node_uuid);
+
+					if( pSrcNode && pDstNode) {
+						Falcor::MxSocket::SharedPtr pSrcSocket = pSrcNode->outputSocket(edge.src_node_output_socket);
+						Falcor::MxSocket::SharedPtr pDstSocket = pDstNode->inputSocket(edge.dst_node_input_socket);
+						if( pSrcSocket && pDstSocket) {
+							if (!pDstSocket->setInput(pDstSocket)) {
+								LLOG_ERR << "Error connecting socket " << edge.src_node_output_socket << " to " << edge.dst_node_input_socket;
+							}
+						} else {
+							if( !pSrcSocket) LLOG_ERR << "No socket named " << edge.src_node_output_socket << " at node " << pSrcNode->name();
+							if( !pDstSocket) LLOG_ERR << "No socket named " << edge.dst_node_input_socket << " at node " << pDstNode->name();
+						}
+					} else {
+						if( !pSrcNode) LLOG_ERR << "No shading node " << edge.src_node_uuid << " exist !!!";
+						if( !pDstNode) LLOG_ERR << "No shading node " << edge.dst_node_uuid << " exist !!!";
+					}
+				}
+			}
+		}
+	}
+}
+
 Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::SharedConstPtr pMaterialLSD) {
-	return nullptr;
+	
+	std::string material_name = pMaterialLSD->getPropertyValue(ast::Style::OBJECT, "material_name", std::string(""));
+
+	// We create material without device at this stage. Actual device would be set up for this material later by the
+	// renderer itself.
+	auto pMx = MaterialX::createUnique(nullptr, material_name);
+
+	for( scope::Node::SharedConstPtr pNodeLSD: pMaterialLSD->childNodes()) {
+		addMxNode(pMx->rootNode(), pNodeLSD);
+	}
+
+	return std::move(pMx);
+}
+
+bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name) {
+	assert(mpCurrentScope);
+
+	if (mpCurrentScope->type() != ast::Style::NODE) {
+		LLOG_ERR << "Error adding node socket. Current scope is not \"node\" !!!";
+		return false;
+	}
+
+	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+	pNode->addDataSocketTemplate(name, dataType, direction);
+	return true;
 }
 
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {

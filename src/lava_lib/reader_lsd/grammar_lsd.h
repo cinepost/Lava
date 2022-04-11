@@ -35,6 +35,7 @@
 #include "boost/container/static_vector.hpp"
 
 #include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Scene/MaterialX/MxTypes.h"
 
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
@@ -118,6 +119,7 @@ namespace ast {
     struct cmd_geometry;
     struct cmd_property;
     struct cmd_raytrace;
+    struct cmd_socket;
     struct cmd_image;
     struct cmd_declare;
     struct cmd_deviceoption;
@@ -149,6 +151,7 @@ namespace ast {
         cmd_geometry,
         cmd_property,
         cmd_raytrace,
+        cmd_socket,
         cmd_image,
         cmd_declare,
         cmd_deviceoption,
@@ -206,6 +209,12 @@ namespace ast {
         PropValue prop_value;
     };
 
+    struct cmd_socket {
+        Falcor::MxSocketDirection direction;
+        Falcor::MxSocketDataType  data_type;
+        std::string name;
+    };
+
     struct cmd_geometry {
         std::string geometry_name;
     };
@@ -224,8 +233,10 @@ namespace ast {
     };
 
     struct cmd_edge {
-        std::string src_path;
-        std::string dst_path;
+        std::string src_node_uuid;
+        std::string src_node_output_socket;
+        std::string dst_node_uuid;
+        std::string dst_node_input_socket;
     };
 
     struct cmd_property {
@@ -356,6 +367,7 @@ static inline std::string to_string(const lava::lsd::ast::Type& t) {
     }
 }
 
+
 using Style = lava::lsd::ast::Style;
 static inline std::string to_string(const lava::lsd::ast::Style& s) {
     switch(s) {
@@ -412,9 +424,10 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_detail, preblur, postblur, tempora
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_geometry, geometry_name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_property, style, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_deviceoption, type, name, values)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_socket, direction, data_type, name)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_declare, array_size, style, type, token, values)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_reset)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_edge, src_path, dst_path)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_edge, src_node_uuid, src_node_output_socket, dst_node_uuid, dst_node_input_socket)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::ray_embeddedfile, type, name, encoding, size)
 
 namespace lava { 
@@ -649,6 +662,13 @@ namespace parser {
         }
     } const declare_style;
 
+    struct MxSocketDirectionTable : x3::symbols<Falcor::MxSocketDirection> {
+        MxSocketDirectionTable() {
+            add ("input"   , Falcor::MxSocketDirection::INPUT)
+                ("output"  , Falcor::MxSocketDirection::OUTPUT);
+        }
+    } const socket_direction;
+
     struct PropTypesTable : x3::symbols<ast::Type> {
         PropTypesTable() {
             add ("float"    , ast::Type::FLOAT)
@@ -657,6 +677,7 @@ namespace parser {
                 ("int2"     , ast::Type::INT2)
                 ("int3"     , ast::Type::INT3)
                 ("int4"     , ast::Type::INT4)
+                ("vector"   , ast::Type::VECTOR3)
                 ("vector2"  , ast::Type::VECTOR2)
                 ("vector3"  , ast::Type::VECTOR3)
                 ("vector4"  , ast::Type::VECTOR4)
@@ -666,7 +687,30 @@ namespace parser {
         }
     } const prop_type;
 
-        struct DisplayTypesTable : x3::symbols<ast::DisplayType> {
+    struct MxSocketDataTypeTable : x3::symbols<Falcor::MxSocketDataType> {
+        MxSocketDataTypeTable() {
+            add ("float"        , Falcor::MxSocketDataType::FLOAT)
+                ("bool"         , Falcor::MxSocketDataType::BOOL)
+                ("int"          , Falcor::MxSocketDataType::INT)
+                ("int2"         , Falcor::MxSocketDataType::INT2)
+                ("int3"         , Falcor::MxSocketDataType::INT3)
+                ("int4"         , Falcor::MxSocketDataType::INT4)
+                ("vector"       , Falcor::MxSocketDataType::VECTOR3)
+                ("vector2"      , Falcor::MxSocketDataType::VECTOR2)
+                ("vector3"      , Falcor::MxSocketDataType::VECTOR3)
+                ("vector4"      , Falcor::MxSocketDataType::VECTOR4)
+                ("matrix3"      , Falcor::MxSocketDataType::MATRIX3)
+                ("matrix4"      , Falcor::MxSocketDataType::MATRIX4)
+                ("string"       , Falcor::MxSocketDataType::STRING)
+                ("surface"      , Falcor::MxSocketDataType::DISPLACEMENT)
+                ("displacement" , Falcor::MxSocketDataType::SURFACE)
+                ("bsdf"         , Falcor::MxSocketDataType::BSDF);
+                ;
+        }
+    } const socket_data_type;
+
+
+    struct DisplayTypesTable : x3::symbols<ast::DisplayType> {
         DisplayTypesTable() {
             add ("\"ip\""       , ast::DisplayType::IP)
                 ("\"md\""       , ast::DisplayType::MD)
@@ -746,6 +790,10 @@ namespace parser {
         = "cmd_declare" >> lit("-v") >> int_ >> declare_style >> prop_type >> prop_name >> prop_values |
           "cmd_declare" >> attr(0) >> declare_style >> prop_type >> prop_name >> prop_values;
 
+    auto const cmd_socket
+        = x3::rule<class cmd_socket, ast::cmd_socket>{"cmd_socket"}
+        = "cmd_socket" >> socket_direction >> socket_data_type >> any_string >> eps;
+
     auto const cmd_reset
         = x3::rule<class cmd_reset, ast::cmd_reset>{"cmd_reset"}
         = "cmd_reset" >> *(lit("-l")[reset_lights] | lit("-o")[reset_objects] | lit("-f")[reset_fogs]);
@@ -768,7 +816,7 @@ namespace parser {
 
     auto const cmd_edge
         = x3::rule<class cmd_edge, ast::cmd_edge>{"cmd_edge"}
-        = "cmd_edge" >> any_edge_path >> any_edge_path >> eps;
+        = "cmd_edge" >> any_string >> any_string >> any_string >> any_string >> eps;
 
     auto const cmd_version
         = x3::rule<class cmd_version, ast::cmd_version>{"cmd_version"}
@@ -829,6 +877,7 @@ namespace parser {
         = "ray_embeddedfile" >> embedded_data_type >> any_string >> embedded_data_encoding >> int_;
 
     auto const cmd = setenv | cmd_image | cmd_time | cmd_iprmode | cmd_version | cmd_config | cmd_defaults | cmd_end | cmd_quit | cmd_start | cmd_reset | cmd_edge |
+        cmd_socket |
         cmd_transform | cmd_mtransform | cmd_detail | cmd_geometry | cmd_property | cmd_raytrace | cmd_declare | cmd_deviceoption | ray_embeddedfile |
         ifthen | endif;
 

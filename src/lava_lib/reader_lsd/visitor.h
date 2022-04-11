@@ -44,6 +44,7 @@ struct Visitor: public boost::static_visitor<> {
     virtual void operator()(ast::cmd_declare const& c) const;
     virtual void operator()(ast::cmd_raytrace const& c) const;
     virtual void operator()(ast::cmd_reset const& c) const;
+    virtual void operator()(ast::cmd_socket const& c) const;
     virtual void operator()(ast::ray_embeddedfile const& c) const;
 
     void setParserStream(std::istream& in);
@@ -89,6 +90,7 @@ struct EchoVisitor: public Visitor {
     void operator()(ast::cmd_declare const& c) const override;
     void operator()(ast::cmd_raytrace const& c) const override;
     void operator()(ast::cmd_reset const& c) const override;
+    void operator()(ast::cmd_socket const& c) const override;
     void operator()(ast::ray_embeddedfile const& c) const override;
 
   //private:

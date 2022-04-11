@@ -9,6 +9,9 @@
 
 #include "glm/glm/mat4x4.hpp"
 
+#include "Falcor/Scene/MaterialX/MxNode.h"
+#include "Falcor/Scene/MaterialX/MxTypes.h"
+
 #include "../scene_reader_base.h"
 #include "properties_container.h"
 #include "../reader_bgeo/bgeo/Bgeo.h"
@@ -29,6 +32,8 @@ class Object;
 class Fog;
 class Geo;
 class Segment;
+
+class Session;
 
 using EmbeddedData = std::vector<unsigned char>;
 
@@ -136,14 +141,32 @@ class Node: public ScopeBase {
   public:
     using SharedConstPtr = std::shared_ptr<const Node>;
     using SharedPtr = std::shared_ptr<Node>;
-    using EdgePair  = std::pair<std::string, std::string>;
+    
+    struct DataSocketTemplate {
+      std::string name;
+      Falcor::MxSocketDataType  dataType;
+      Falcor::MxSocketDirection direction;
+    };
+
+    struct EdgeInfo {
+      std::string src_node_uuid;
+      std::string src_node_output_socket;
+      std::string dst_node_uuid;
+      std::string dst_node_input_socket;
+    };
+
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
     ast::Style type() const override { return ast::Style::NODE; };
 
     std::shared_ptr<Node>       addChildNode();
-    void                        addChildEdge(const std::string& src, const std::string& dst);
-    const std::vector<std::shared_ptr<Node>>&       childNodes() { return mChildNodes; };
+    void                        addChildEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket);
+    const std::vector<std::shared_ptr<Node>>& childNodes() const { return mChildNodes; };
+    const std::vector<EdgeInfo>&            childEdges() const { return mChildEdges; };
+
+    const std::vector<DataSocketTemplate>& socketTemplates() const { return mSocketTemplates; };
+
+    void addDataSocketTemplate(const std::string& name, Falcor::MxSocketDataType dataType, Falcor::MxSocketDirection direction);
 
     virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
 
@@ -152,19 +175,29 @@ class Node: public ScopeBase {
 
   private:
     std::vector<std::shared_ptr<Node>>      mChildNodes;
-    std::vector<EdgePair>                   mChildEdges;
+    std::vector<EdgeInfo>                   mChildEdges;
+
+    std::vector<DataSocketTemplate>         mSocketTemplates;
 };
 
 class Material: public Node {
   public:
+
+    using NodeUUID = std::string;
+
     using SharedConstPtr = std::shared_ptr<const Material>;
     using SharedPtr = std::shared_ptr<Material>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
     ast::Style type() const override { return ast::Style::MATERIAL; };
 
+    bool insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode);
+    Falcor::MxNode::SharedPtr node(const NodeUUID& uuid);
+
   private:
     Material(ScopeBase::SharedPtr pParent): Node(pParent) {};
+
+    std::map<NodeUUID, Falcor::MxNode::SharedPtr> mNodesMap; // uuid to shading node map
 };
 
 class Object: public Transformable {

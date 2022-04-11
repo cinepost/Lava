@@ -12,6 +12,7 @@
 #include "scope.h"
 
 #include "Falcor/Scene/MaterialX/MaterialX.h"
+#include "Falcor/Scene/MaterialX/MxTypes.h"
 
 //#include "../scene_builder.h" 
 
@@ -36,13 +37,14 @@ class Session {
     void cmdSetEnv(const std::string& key, const std::string& value);
     bool cmdRaytrace();
     void cmdIPRmode(const std::string& mode);
-    void cmdEdge(const std::string& src, const std::string& dst);
+    void cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket);
     void cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value);
     void cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value);
     void cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values);
     void cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value);
     void cmdImage(lsd::ast::DisplayType display_type, const std::string& filename);
     void cmdTransform(const Matrix4& transform);
+    bool cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name);
     void cmdMTransform(const Matrix4& transform);
     bool cmdGeometry(const std::string& name);
     void cmdTime(double time);
@@ -62,6 +64,7 @@ class Session {
     Falcor::MaterialX::UniquePtr createMaterialXFromLSD(lsd::scope::Material::SharedConstPtr pMaterialLSD);
 
  	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj);
+    void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 
   private:
     bool  mIPRmode = false;
@@ -73,6 +76,7 @@ class Session {
     RendererIface::FrameData		    mFrameData;
 
     scope::ScopeBase::SharedPtr		  mpCurrentScope;
+    scope::Material::SharedPtr      mpMaterialScope;
     scope::Global::SharedPtr		    mpGlobal;
 
     std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future

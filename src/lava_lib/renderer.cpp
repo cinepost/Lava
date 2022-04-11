@@ -551,10 +551,10 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
     mpDisplay->closeAll();
     
     std::vector<Display::Channel> channels;
-    channels.push_back({"r", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"g", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"b", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"a", Display::TypeFormat::UNSIGNED16});
+    channels.push_back({"r", Display::TypeFormat::FLOAT16});
+    channels.push_back({"g", Display::TypeFormat::FLOAT16});
+    channels.push_back({"b", Display::TypeFormat::FLOAT16});
+    channels.push_back({"a", Display::TypeFormat::FLOAT16});
     
     //channels.push_back({"z", Display::TypeFormat::FLOAT32});
     

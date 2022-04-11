@@ -150,7 +150,13 @@ void Visitor::operator()(ast::cmd_end const& c) const {
 
 void Visitor::operator()(ast::cmd_edge const& c) const { 
     std::cout << "LSDVisitor cmd_edge\n";
-    mpSession->cmdEdge(c.src_path, c.dst_path);
+    mpSession->cmdEdge(c.src_node_uuid, c.src_node_output_socket, c.dst_node_uuid, c.dst_node_input_socket);
+}
+
+void Visitor::operator()(ast::cmd_socket const& c) const { 
+    std::cout << "LSDVisitor cmd_socket\n";
+    if(!mpSession->cmdSocket(c.direction, c.data_type, c.name))
+        throw std::runtime_error("Error adding node socket !!!");
 }
 
 void Visitor::operator()(ast::cmd_time const& c) const {

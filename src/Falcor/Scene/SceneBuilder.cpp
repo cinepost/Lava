@@ -1979,6 +1979,8 @@ void SceneBuilder::createCurveGlobalBuffers() {
 }
 
 void SceneBuilder::optimizeMaterials() {
+    return;
+    
     // This passes optimizes the materials by analyzing the material textures
     // and replacing constant textures by uniform material parameters.
     // NOTE: This code has to be updated if the texture usage changes.

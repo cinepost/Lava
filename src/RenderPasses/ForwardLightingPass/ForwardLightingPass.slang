@@ -155,7 +155,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
             rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
-            shadowFactor = 1.0f;
         }
 
         finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
