@@ -68,8 +68,8 @@ class Transformable: public ScopeBase {
 
     void setTransform(const lsd::Matrix4& mat);
     void addTransform(const lsd::Matrix4& mat);
-    const TransformList getTransformList() { return mTransformList; };
-    const TransformList getTransformList() const { return mTransformList; };
+    TransformList& getTransformList() { return mTransformList; };
+    const TransformList& getTransformList() const { return mTransformList; };
     uint transformSamples() { return mTransformList.size(); };
 
  private:

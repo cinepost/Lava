@@ -55,6 +55,7 @@ import Experimental.Scene.Material.TexLODHelpers;
 */
 struct Scene
 {
+
 #ifdef SCENE_PRIMITIVE_TYPE_FLAGS
     static PrimitiveTypeFlags kPrimitiveTypeFlags = (PrimitiveTypeFlags)SCENE_PRIMITIVE_TYPE_FLAGS;
 #else
@@ -111,7 +112,9 @@ struct Scene
 
     // Lights and camera
     uint lightCount;
+
     StructuredBuffer<LightData> lights;
+    
     LightCollection lightCollection;
     EnvMap envMap;
     Camera camera;

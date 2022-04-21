@@ -33,7 +33,6 @@ import Scene.Shading;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
-//import Experimental.Scene.Lights.EnvMapLighting;
 import Experimental.Scene.Lights.EnvMapSampler;
 
 import Experimental.Scene.Material.Fresnel;
@@ -138,7 +137,7 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
         LightData light = gScene.getLight(lightIndex);
 
         AnalyticLightSample ls;
-        bool valid = sampleLight(sd.posW, light, sg, ls);
+        bool valid = sampleLight(sd.posW, light, sampleNext2D(sg), ls);
 
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;

@@ -17,6 +17,9 @@
 #include "lava_utils_lib/ut_string.h"
 #include "lava_utils_lib/logging.h"
 
+#include "glm/gtx/string_cast.hpp"
+
+
 
 namespace lava {
 
@@ -286,8 +289,7 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr 
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	LLOG_DBG << "pushLight";
-	static std::string unnamed = "unnamed"; // safety. in case light scope has no name specified
-
+	
     auto pSceneBuilder = mpRendererIface->getSceneBuilder();
 
     if (!pSceneBuilder) {
@@ -295,12 +297,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		return;
 	}
 
-	std::string light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
-	std::string light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
-	const auto& transform = pLightScope->getTransformList()[0];
+	const std::string& light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
+	const std::string& light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", std::string(""));
+	glm::mat4 transform = pLightScope->getTransformList()[0];
 
 	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
+	
+	bool singleSidedLight = true;
+	bool reverseLight = false;
 
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
@@ -309,6 +314,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	if(pShaderProp) {
 		auto pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
+		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -326,13 +333,29 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pPointLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
-	} else if( light_type == "grid" ) {
-		auto pAreaLight = Falcor::RectLight::create("noname_rect");
+	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
+		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
+
+		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
+
+		if( light_type == "grid") {
+			pAreaLight = Falcor::RectLight::create("noname_rect");
+			pAreaLight->setScaling({area_size[0], area_size[1], 1.0f});
+		} else if ( light_type == "disk") {
+			pAreaLight = Falcor::DiscLight::create("noname_disk");
+			pAreaLight->setScaling({area_size[0], area_size[1], 1.0f});
+		} else if ( light_type == "sphere") {
+			pAreaLight = Falcor::SphereLight::create("noname_sphere");
+			pAreaLight->setScaling({area_size[0], area_size[1], area_size[0]});
+		}
+
 		if (!pAreaLight) {
 			LLOG_ERR << "Error creating AnalyticAreaLight !!! Skipping...";
 			return;
 		}
 		pAreaLight->setTransformMatrix(transform);
+		pAreaLight->setSingleSided(singleSidedLight);
+		
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
 	} else if( light_type == "env") {
@@ -367,7 +390,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	if(pLight) {
 		LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
 
-		pLight->setName(light_name);
+		if (light_name != "") {
+			pLight->setName(light_name);
+		}
+
 		pLight->setHasAnimation(false);
 
 		Property* pShadowProp = pLightScope->getProperty(ast::Style::LIGHT, "shadow");
@@ -395,8 +421,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
 	}
-
-	unnamed += "_";
 }
 
 void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {

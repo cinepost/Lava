@@ -29,7 +29,11 @@
 
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
+
 #include "glm/gtc/random.hpp"
+
+#include "glm/gtx/string_cast.hpp"
+
 
 
 // Don't remove this. it's required for hot-reload to function properly
@@ -209,6 +213,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpState->setFbo(mpFbo);
     mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
     //mpScene->rasterizeX(pContext, mpState.get(), mpVars.get(), mCullMode);
+
 }
 
 void ForwardLightingPass::prepareVars(RenderContext* pContext) {

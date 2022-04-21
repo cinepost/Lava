@@ -314,6 +314,10 @@ class dlldecl AnalyticAreaLight : public Light {
     */
     void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
 
+    void setSingleSided(bool value) { mData.singleSided = value;}
+
+    bool isSingleSided() const { return mData.singleSided; }
+
     /** Get transform matrix
     */
     glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
