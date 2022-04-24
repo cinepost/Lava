@@ -55,7 +55,7 @@ void signalTraceHandler( int signum ){
 }
 
 void atexitHandler()  {
-  //lava::ut::log::shutdown_log();
+  lava::ut::log::shutdown_log();
 }
 
 void listGPUs() {
@@ -70,27 +70,15 @@ void listGPUs() {
 
 typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
 
-//INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char** argv){
 
-    try {
-
     int gpuID = -1; // automatic gpu selection
 
-    boost::log::trivial::severity_level logSeverity;
-#ifdef DEBUG
-    boost::log::trivial::severity_level logSeverityDefault = boost::log::trivial::debug;
-#else
-    boost::log::trivial::severity_level logSeverityDefault = boost::log::trivial::warning;
-#endif
     bool echo_input = true;
-    bool vtoff_flag = false; // virtual texturing enabled by default
-    bool fconv_flag = false; // force virtual textures (re)conversion
 
-/*
     std::atexit(atexitHandler);
-
+/*
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);
@@ -109,6 +97,8 @@ int main(int argc, char** argv){
       ;
 
     // Declare a group of options that will be allowed both on command line and in config file
+    bool vtoff_flag = false; // virtual texturing enabled by default
+    bool fconv_flag = false; // force virtual textures (re)conversion
     po::options_description config("Configuration");
     config.add_options()
       ("device,d", po::value<int>(&gpuID)->default_value(0), "Use specific device")
@@ -117,15 +107,23 @@ int main(int argc, char** argv){
       ("include-path,i", po::value< std::vector<std::string> >()->composing(), "Include path")
       ;
 
+    std::string logFilename = "";
+#ifdef DEBUG
+    boost::log::trivial::severity_level logSeverity = boost::log::trivial::debug;
+#else
+    boost::log::trivial::severity_level logSeverity = boost::log::trivial::warning;
+#endif
     po::options_description logging("Logging");
     logging.add_options()
-      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity)->default_value(logSeverityDefault),"log level to output")
+      ("log-level,l", po::value<boost::log::trivial::severity_level>(&logSeverity)->default_value(logSeverity),"Logging level")
+      ("log-file", po::value<std::string>(&logFilename), "Output log to file")
       ;
 
+    std::vector<std::string> inputFilenames;
     po::options_description input("Input");
     input.add_options()
       ("stdin,C", "stdin compatibility mode")
-      ("input-file,f", po::value< std::vector<std::string> >(), "Input file")
+      ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
       ;
 
     po::options_description cmdline_options;
@@ -137,22 +135,30 @@ int main(int argc, char** argv){
     po::options_description visible("Allowed options");
     visible.add(generic).add(config).add(input).add(logging);
 
-    po::positional_options_description p;
-    p.add("input-file", -1);
-
     po::variables_map vm;  
 
+    // Handle config file
+    std::ifstream ifs(config_file.c_str());
+    if (ifs) {
+      try {
+        po::store(parse_config_file(ifs, config_file_options), vm);
+      } catch ( po::error& e ) {
+        LLOG_ERR << e.what();
+      } 
+    }
+
     try {
-      po::store(po::command_line_parser(argc, argv).options(visible).positional(p).run(), vm); // can throw 
+      po::store(po::command_line_parser(argc, argv).options(visible).run(), vm); // can throw 
       po::notify(vm); // throws on error, so do after help in case there are any problems
     } catch ( po::error& e ) {
-      std::cout << e.what();
-      std::cout << generic << "\n";
-      std::cout << config << "\n";
-      std::cout << input << "\n";
-      std::cout << logging << "\n";
-      return EXIT_FAILURE;
+      LLOG_FTL << e.what();
+      exit(EXIT_FAILURE);
     } 
+
+    // Set up logging 
+    lava::ut::log::init_log();
+    if(logFilename != "") lava::ut::log::init_file_log(logFilename);
+    boost::log::core::get()->set_filter(  boost::log::trivial::severity >= logSeverity );
 
     /** --help option 
      */ 
@@ -161,30 +167,17 @@ int main(int argc, char** argv){
       std::cout << config << "\n";
       std::cout << input << "\n";
       std::cout << logging << "\n";
-      return EXIT_SUCCESS;
+      exit(EXIT_SUCCESS);
     }
-
-    // Set up logging 
-    //lava::ut::log::init_log();
-    //boost::log::core::get()->set_filter(  boost::log::trivial::severity >= logSeverity );
 
     if ( vm.count("list-devices")) {
       listGPUs();
-      return EXIT_SUCCESS;
+      exit(EXIT_SUCCESS);
     }
 
     if (vm.count("version")) {
       std::cout << "Lava, version 0.0\n";
-      return EXIT_SUCCESS;
-    }
-
-    // Handle config file
-    std::ifstream ifs(config_file.c_str());
-    if (!ifs) {
-        LLOG_DBG << "No config file provided but that's totally fine.";
-    } else {
-        store(parse_config_file(ifs, config_file_options), vm);
-        notify(vm);
+      exit(EXIT_SUCCESS);
     }
 
     auto& app_config = ConfigStore::instance();
@@ -203,11 +196,8 @@ int main(int argc, char** argv){
       ReaderLSD::myConstructor
     );
 
-
     auto pDeviceManager = DeviceManager::create();
-    if (!pDeviceManager)
-      return EXIT_FAILURE;
-
+    if (!pDeviceManager) exit(EXIT_FAILURE);
 
     pDeviceManager->setDefaultRenderingDevice(gpuID);
 
@@ -222,71 +212,45 @@ int main(int argc, char** argv){
 
     Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-/*
-//////////
-    pRenderer->init();
-
-    pRenderer = nullptr;
-    pDeviceManager = nullptr;
-    return EXIT_SUCCESS;
-//////////
-*/
-
     if(!pRenderer->init()) {
-      return EXIT_FAILURE;
+      exit(EXIT_FAILURE);
     }
 
-    if (vm.count("input-file")) {
-      // loading provided files
-      std::vector<std::string> files = vm["input-file"].as< std::vector<std::string> >();
-      //BOOST_LOG_TRIVIAL(debug) << "Input scene files are: "<< boost::algorithm::join(files, " ") << "\n";
-      for (std::vector<std::string>::const_iterator fi = files.begin(); fi != files.end(); ++fi) {
-        std::ifstream in_file(*fi, std::ifstream::binary);
-        
-        if ( in_file ) {
-          std::string file_extension = boost::filesystem::extension(*fi);
-          //BOOST_LOG_TRIVIAL(debug) << "ext " << file_extension;
-
-          auto reader = SceneReadersRegistry::getInstance().getReaderByExt(file_extension);
-          reader->init(pRenderer->aquireInterface(), echo_input);
-
-          LLOG_DBG << "Reading "<< *fi << " scene file with " << reader->formatName() << " reader";
-          if (!reader->readStream(in_file)) {
-            // error loading scene from file
-            LLOG_ERR << "Error loading scene from file: " << *fi;
-            return EXIT_FAILURE;
-          }
-        } else {
-          // error opening scene file
-          std::cerr << "Unable to open file " << *fi << " ! aborting..." << std::endl;
-          return EXIT_FAILURE;
+    if (vm.count("input-files")) {
+      for (const std::string& inputFilename: inputFilenames) {
+        std::ifstream in_file(inputFilename, std::ifstream::binary);
+        if(!in_file) {
+          LLOG_ERR << "Unable to open file " << inputFilename << " ! aborting...\n";
+          exit(EXIT_FAILURE);
         }
+        
+        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(boost::filesystem::extension(inputFilename));
+        reader->init(pRenderer->aquireInterface(), echo_input);
+
+        LLOG_DBG << "Reading "<< inputFilename << " scene file with " << reader->formatName() << " reader";
+        if (!reader->readStream(in_file)) {
+          LLOG_ERR << "Error reading scene from file: " << inputFilename;
+          exit(EXIT_FAILURE);
+        }
+
       }
     } else {
       // loading from stdin
-      //BOOST_LOG_TRIVIAL(debug) << "Reading scene from stdin ...\n";
+      LLOG_DBG << "Reading scene from stdin ...\n";
       auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
       reader->init(pRenderer->aquireInterface(), echo_input);
 
       if (!reader->readStream(std::cin)) {
         // error loading scene from stdin
         LLOG_ERR << "Error loading scene from stdin !";
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
       }
     }
 
     pRenderer = nullptr;
     pDeviceManager = nullptr;
 
-    //lava::ut::log::shutdown_log();
+    lava::ut::log::shutdown_log();
     std::cout << "Exiting lava. Bye :)\n";
-    return EXIT_SUCCESS;
-
-
-    }
-    catch (std::exception& e)
-    {
-        std::cout << "FAILURE: " << e.what() << std::endl;
-        return 1;
-    }
+    exit(EXIT_SUCCESS);
 }

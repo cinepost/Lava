@@ -1,5 +1,5 @@
-#ifndef SRC_FALCOR_SCENE_MATERIALX_MXSOCKET_H_
-#define SRC_FALCOR_SCENE_MATERIALX_MXSOCKET_H_
+#ifndef SRC_FALCOR_SCENE_MATERIALX_GENERATOR_CONTEXT_H_
+#define SRC_FALCOR_SCENE_MATERIALX_GENERATOR_CONTEXT_H_
 
 #include <memory>
 
@@ -14,24 +14,12 @@ namespace Falcor {
 
 class MxNode;
 
-class dlldecl MxSocket : public std::enable_shared_from_this<MxSocket> {
+class dlldecl MxContext : public std::enable_shared_from_this<MxSocket> {
   public:
 
-    enum class Direction {
-      Input,
-      Output,
-    };
-
-    enum class DataType {
-      Bool,
-      Int,
-      Float,
-      Double,
-      Vector2,
-      Vector3,
-      Vector4,
-
-      Count
+    enum class Type {
+      Surface,
+      Displacement,
     };
 
     using SharedPtr = std::shared_ptr<MxSocket>;
@@ -63,4 +51,4 @@ inline std::string to_string(MxSocket::Direction dir) {
 
 }  // namespace Falcor
 
-#endif  // SRC_FALCOR_SCENE_MATERIALX_MXSOCKET_H_
+#endif  // SRC_FALCOR_SCENE_MATERIALX_GENERATOR_CONTEXT_H_

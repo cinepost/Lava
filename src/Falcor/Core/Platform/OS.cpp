@@ -25,14 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-#endif
-
 #include <fstream>
 #include <regex>
 
@@ -189,6 +181,15 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
         }
     }
 
+    return false;
+}
+
+bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath) {
+    std::string file_path;
+    if (findFileInDataDirectories(filename, file_path)) {
+        fullPath = fs::path(file_path);
+        return true;
+    }
     return false;
 }
 

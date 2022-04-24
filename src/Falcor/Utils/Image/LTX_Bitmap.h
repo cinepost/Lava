@@ -49,7 +49,7 @@ struct LTX_Header {
         ZLIB,
         ZSTD
     } topLevelCompression = TopLevelCompression::NONE;
-    uint8_t topLevelCompressionLevel = 0;
+    uint8_t topLevelCompressionLevel = 0; // 0 - 9
 
     uint32_t dataOffset = sizeof(LTX_Header);
 };
@@ -68,7 +68,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
  public:
     struct TLCParms {
         std::string compressorName = "";
-        int compressionLevel = 1;   
+        uint8_t compressionLevel = 0;   
     };
 
     enum class ExportFlags : uint32_t {
@@ -144,20 +144,20 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     
  protected:
-    static void convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown, const TLCParms& compParms);
-
     void readPageData (size_t pageNum, void *pData) const;
     void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
     friend class ResourceManager;
 
+ public:
+    static bool convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown = true);
+    static LTX_Header::TopLevelCompression getTLCFromString(const std::string& name);
+    static bool checkFileMagic(const std::string filename, bool strict = false);
+
  private:
     LTX_Bitmap();
-
-    static bool checkMagic(const unsigned char* magic);
-    static void makeMagic(uint8_t minor, uint8_t major, unsigned char *magic);
-
+    
     uint8_t*    mpData = nullptr;
     size_t      mDataSize = 0;
     
@@ -180,6 +180,8 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 };
 
 enum_class_operators(LTX_Bitmap::ExportFlags);
+
+const std::string dlldecl to_string(LTX_Header::TopLevelCompression);
 
 }  // namespace Falcor
 

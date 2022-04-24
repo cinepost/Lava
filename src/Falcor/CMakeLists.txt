@@ -175,6 +175,9 @@ set(OpenVDB_ROOT ${DEPS_BINARY_DIR})
 find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
+# OpenSSL
+find_package(OpenSSL REQUIRED)
+
 message("OpenVDB ${OpenVDB_LIBRARY}")
 message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
 
@@ -202,6 +205,7 @@ target_link_libraries(
     OpenImageIO::OpenImageIO
     OpenVDB::openvdb
     ${LZ4_LIBRARY}
+    OpenSSL::SSL
 )
 
 # Copy/install all needed shaders

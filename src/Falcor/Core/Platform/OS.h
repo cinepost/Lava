@@ -33,7 +33,16 @@
 #include <string>
 #include <regex>
 
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
 #include "Falcor/Core/Framework.h"
+
 
 // #pragma warning (disable : 4251)
 
@@ -132,6 +141,8 @@ dlldecl void msgBoxTitle(const std::string& title);
     \return true if the file was found, otherwise false
 */
 dlldecl bool findFileInDataDirectories(const std::string& filename, std::string& fullPath);
+
+dlldecl bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath);
 
 /** Finds all files in a directory. The arguments must not alias.
     \param[in] searchPath The directory path to search in
