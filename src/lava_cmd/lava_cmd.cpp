@@ -204,6 +204,7 @@ int main(int argc, char** argv){
     Falcor::Device::Desc device_desc;
     device_desc.width = 1280;
     device_desc.height = 720;
+    device_desc.surface = VK_NULL_HANDLE;
 
     LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
     auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);

@@ -53,6 +53,7 @@ class dlldecl CopyContext {
         using SharedPtr = std::shared_ptr<ReadTextureTask>;
         static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
         std::vector<uint8_t> getData();
+        void getData(uint8_t* textureData);
         void getData(std::vector<uint8_t>& textureData);
 
      private:
@@ -152,6 +153,7 @@ class dlldecl CopyContext {
 
     /** Read texture data synchronously. Calling this command will flush the pipeline and wait for the GPU to finish execution
     */
+    void readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, uint8_t* textureData);
     void readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, std::vector<uint8_t>& textureData);
 
     /** Read texture data Asynchronously

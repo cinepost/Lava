@@ -36,6 +36,7 @@
 #include <atomic>
 #include <unordered_map>
 
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
@@ -56,7 +57,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     const std::unordered_map<uint8_t, std::string>& listDevices() { return mDeviceNames; }
     std::vector<Device::SharedPtr> renderingDevices() const;
 
-    Device::SharedPtr renderingDevice(uint8_t gpuId) const ;
+    Device::SharedPtr renderingDevice(uint8_t gpuId) const;
 
     Device::SharedPtr createRenderingDevice(uint8_t gpuId, const Device::Desc &desc);
 
@@ -72,12 +73,18 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     static SharedPtr create();
 
+    VkInstance vulkanInstance() const;
+
  private:
     DeviceManager();
+
+    static VkInstance createVulkanInstance(bool enableDebugLayer);
 
     bool init();
     bool deviceEnumerated(uint8_t gpuId) const;
     void enumerateDevices();
+
+    bool mInitialized = false;
 
     std::unordered_map<uint8_t, std::string> mDeviceNames;
     std::unordered_map<uint8_t, Device::SharedPtr> mRenderingDevices; 

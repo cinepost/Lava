@@ -259,6 +259,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[out] resourceFormat Texture data format
         \param[out] channels Texture data channels number
     */
+    void readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat& resourceFormat, uint32_t& channels);
     void readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels);
 
 

@@ -75,6 +75,10 @@ void RendererIface::initRendererGlobalData(const GlobalData& global_data) {
 }
 
 bool RendererIface::setDisplay(const DisplayData& display_data) {
+	mpRenderer->mDisplayData = display_data; // For __HYDRA__ virtual display testing
+
+	if(display_data.displayType == Display::DisplayType::__HYDRA__) return true;
+
 	if(!mpRenderer->loadDisplay(display_data.displayType)) {
 		return false;
 	}

@@ -380,12 +380,16 @@ namespace Falcor {
         return result;
     }
 
-    void CopyContext::ReadTextureTask::getData(std::vector<uint8_t>& textureData) {
+    void CopyContext::ReadTextureTask::getData(uint8_t* textureData) {
         mpFence->syncCpu();
         // Map and read the results
-        textureData.resize(mDataSize);
         uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
-        std::memcpy(textureData.data(), pData, mDataSize);
+        std::memcpy(textureData, pData, mDataSize);
+    }
+
+    void CopyContext::ReadTextureTask::getData(std::vector<uint8_t>& textureData) {
+        textureData.resize(mDataSize);
+        getData(textureData.data());
     }
 
     void CopyContext::uavBarrier(const Resource* pResource) {

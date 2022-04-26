@@ -43,9 +43,9 @@
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
-#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
 
 namespace Falcor {
 
@@ -88,6 +88,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
         uint32_t width = 1280;                                          ///< Headless FBO width
         uint32_t height = 720;                                          ///< Headless FBO height
+
+#ifdef FALCOR_VK
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
+#endif
+
     };
 
     enum class SupportedFeatures {
@@ -120,7 +125,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     void toggleVSync(bool enable);
 
-    bool isHeadless() { return headless; };
+    bool isHeadless() { return mHeadless; };
 
     /** Get physical device name
     */
@@ -224,6 +229,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     
     const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
     uint32_t  getDeviceVendorID() const;
+
+    VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
+    VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
+    VkDevice         getVkDevice() const { return mVkDevice; };
+    VkInstance       getVkInstance() const { return mVkInstance; };
 #endif
 
     DeviceApiData* apiData() const { return mpApiData; };
@@ -245,6 +255,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     Device(const Desc& desc);
     Device(uint32_t gpuId, const Desc& desc);
 
+
     void executeDeferredReleases();
     void releaseFboData();
     void release();
@@ -262,6 +273,13 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     Sampler::SharedPtr  mpDefaultSampler = nullptr;
 
+#ifdef FALCOR_VK
+    VkPhysicalDevice    mVkPhysicalDevice = VK_NULL_HANDLE;
+    VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
+    VkDevice            mVkDevice         = VK_NULL_HANDLE;
+    VkInstance          mVkInstance       = VK_NULL_HANDLE;
+#endif
+
     DeviceApiData* mpApiData;
     RenderContext::SharedPtr mpRenderContext;
     size_t mFrameID = 0;
@@ -269,7 +287,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     double mGpuTimestampFrequency;
     std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
-    bool headless = false;
+    bool mHeadless = false;
 
     SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
 
@@ -280,8 +298,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     void apiPresent();
     bool apiInit(std::shared_ptr<const DeviceManager> pDeviceManager);
 
+    bool createSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
     bool createOffscreenFBO(ResourceFormat colorFormat);
 
+    void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
     void apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat);
 
     void toggleFullScreen(bool fullscreen);
@@ -323,6 +343,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceCoherentMemoryFeaturesAMD           mEnabledDeviceCoherentMemoryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD };
     VkPhysicalDeviceBufferDeviceAddressFeatures         mEnabledBufferDeviceAddresFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR };
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+    VkPhysicalDeviceRayQueryFeaturesKHR                 mEnabledRayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
     VkPhysicalDeviceMemoryPriorityFeaturesEXT           mEnabledMemoryPriorityFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT };
     VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
     VkPhysicalDeviceSynchronization2FeaturesKHR         mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };

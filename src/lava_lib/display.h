@@ -13,7 +13,7 @@ namespace lava {
 
 class Display {
  public:
-    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
+    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type
     enum class TypeFormat { FLOAT32, FLOAT16, UNSIGNED32, SIGNED32, UNSIGNED16, SIGNED16, UNSIGNED8, SIGNED8 };
 
     struct Channel {

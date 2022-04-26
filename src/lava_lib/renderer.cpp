@@ -538,7 +538,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         return;
     }
 
-    if(!mpDisplay) {
+    if(!mpDisplay && (mDisplayData.displayType != Display::DisplayType::__HYDRA__)) {
         LLOG_ERR << "Renderer display not initialized !!!";
         return;
     }
@@ -547,40 +547,24 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_WRN << "Not enough image samples specified !!!";
     }
 
-    // close previous frame display images (if still opened)
-    mpDisplay->closeAll();
-    
-    std::vector<Display::Channel> channels;
-    channels.push_back({"r", Display::TypeFormat::FLOAT16});
-    channels.push_back({"g", Display::TypeFormat::FLOAT16});
-    channels.push_back({"b", Display::TypeFormat::FLOAT16});
-    channels.push_back({"a", Display::TypeFormat::FLOAT16});
-    
-    //channels.push_back({"z", Display::TypeFormat::FLOAT32});
-    
-    //channels.push_back({"albedo.000.r", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.000.g", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.000.b", Display::TypeFormat::FLOAT16});
-    
-    uint image1;
+    uint hImage;
 
-    if(!mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels, image1)) {
-        LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
+    if(mpDisplay) {
+        mpDisplay->closeAll(); // close previous frame display images (if still opened)
+
+        std::vector<Display::Channel> channels;
+        channels.push_back({"r", Display::TypeFormat::FLOAT16});
+        channels.push_back({"g", Display::TypeFormat::FLOAT16});
+        channels.push_back({"b", Display::TypeFormat::FLOAT16});
+        channels.push_back({"a", Display::TypeFormat::FLOAT16});
+        
+
+        if(!mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels, hImage)) {
+            LLOG_FTL << "Unable to open image " << frame_data.imageFileName << " !!!";
+            return;
+        }
     }
 
-
-    // test
-    uint image2;
-
-if( 1 == 2) {
-    std::vector<Display::Channel> channels2;
-    channels2.push_back({"albedo.000.r", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.g", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.b", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.a", Display::TypeFormat::UNSIGNED16});
-    mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels2, image2);
-    //
-}
 
     finalizeScene(frame_data);
 
@@ -640,67 +624,60 @@ if( 1 == 2) {
     LLOG_DBG << "Reading rendered image data...";
     auto& pGraph = mGraphs[mActiveGraph].pGraph;
 
-    Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
-    //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
-    //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
+    const auto pResource = mpRenderGraph->getOutput("AccumulatePass.output");
 
-    assert(pOutTex);
+    if(!pResource) {
+        LLOG_FTL << "No output resource found !";
+        return;
+    }
 
-    Falcor::Texture* pTex = pOutTex.get();
-    assert(pTex);
+    auto pOutputTexture = pResource->asTexture();
+    if(!pOutputTexture) {
+        LLOG_FTL << "Error getting output resource texture !";
+        return;
+    }
 
     {
-    
-        Falcor::ResourceFormat resourceFormat;
-        uint32_t channels;
-        std::vector<uint8_t> textureData;
-        textureData.resize(1920*1080*4*sizeof(float));
+        Falcor::ResourceFormat outputResourceFormat;
+        uint32_t outputChannelsCount = 0;
         
         LLOG_DBG << "readTextureData";
-        pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-        LLOG_DBG << "readTextureData done";
+        if( mpDisplay ) {
+            // PRman display
+            std::vector<uint8_t> textureData;
+            
+            assert(mGlobalData.imageWidth == pOutputTexture->getWidth(0));
+            assert(mGlobalData.imageHeight == pOutputTexture->getHeight(0));
 
-        LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-        
-        //assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
+            Falcor::ResourceFormat outputTextureFormat = pOutputTexture->getFormat();
 
-        try {
-            bool sendImageResult = mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-            if (!sendImageResult) {
-                printf("\nError sending image to display!\n");
-            } else {
-                printf("\nImage sent to display!\n");
+            textureData.resize( mGlobalData.imageWidth * mGlobalData.imageHeight * Falcor::getFormatBytesPerBlock(outputTextureFormat));
+            
+            pOutputTexture->readTextureData(0, 0, textureData, outputResourceFormat, outputChannelsCount);
+            LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+
+            try {
+                if (!mpDisplay->sendImage(hImage, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data())) {
+                    LLOG_ERR << "Error sending image to display !";
+                } else {
+                    LLOG_DBG << "Image sent to display succcessfuly!";
+                }
+            } catch (std::exception& e) {
+                LLOG_ERR << "Error: " << e.what();
             }
-        } catch (std::exception& e) {
-            std::cout << "FAILURE: " << e.what() << std::endl;
+
+            mpDisplay->closeImage(hImage);
+
+        } else {
+            // __HYDRA__ direct data copy
+            if(mDisplayData.pDstData) {
+                pOutputTexture->readTextureData(0, 0, mDisplayData.pDstData, outputResourceFormat, outputChannelsCount);
+            }
         }
 
-        mpDisplay->closeImage(image1);
-    
     }
 
     return;
-
-    if( 1 == 2) {
-        Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
-        Falcor::Texture* pTex = pOutTex.get();
-
-        Falcor::ResourceFormat resourceFormat;
-        uint32_t channels;
-        std::vector<uint8_t> textureData;
-        LLOG_DBG << "readTextureData";
-        pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-        LLOG_DBG << "readTextureData done";
-
-        LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-        
-        assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 8bit RGBA for now
-
-        mpDisplay->sendImage(image2, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-        mpDisplay->closeImage(image2);
-    }
-
-    //endFrame(pRenderContext, mpTargetFBO);
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
@@ -722,5 +699,35 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
     }
     //mpSceneBuilder->addMaterialX(std::move(pMaterial));
 }
+
+// HYDRA section begin
+
+bool  Renderer::queryAOVGeometry(const std::string& aov_name, AOVGeometry& aovGeometry) {
+    auto const pResource = mpRenderGraph->getOutput("AccumulatePass.output");
+    if (!pResource) {
+        LLOG_ERR << "No AOV named \"" << aov_name << "\" exist in rendering graph !";
+        return false;
+    }
+
+    auto const pTexture = pResource->asTexture();
+    if (!pTexture) {
+        LLOG_ERR << "Buffer AOV outputs not supported (yet) !";
+        return false;
+    }
+
+    auto resourceFormat = pTexture->getFormat();
+
+    aovGeometry.width = pTexture->getWidth(0);
+    aovGeometry.height = pTexture->getHeight(0);
+    aovGeometry.resourceFormat = resourceFormat;
+    aovGeometry.bytesPerPixel = Falcor::getFormatBytesPerBlock(resourceFormat);
+    aovGeometry.channelsCount = Falcor::getFormatChannelCount(resourceFormat);
+    aovGeometry.bitsPerComponent[0] = Falcor::getNumChannelBits(resourceFormat, 0);
+    aovGeometry.bitsPerComponent[1] = Falcor::getNumChannelBits(resourceFormat, 1);
+    aovGeometry.bitsPerComponent[2] = Falcor::getNumChannelBits(resourceFormat, 2);
+    aovGeometry.bitsPerComponent[3] = Falcor::getNumChannelBits(resourceFormat, 3);
+}
+
+// HYDRA section end
 
 }  // namespace lava

@@ -36,12 +36,21 @@ class MaterialX;
 class Renderer: public std::enable_shared_from_this<Renderer> {
 
 	struct GraphData {
-        Falcor::RenderGraph::SharedPtr pGraph;
-        std::string mainOutput;
-        bool showAllOutputs = false;
-        std::vector<std::string> originalOutputs;
-        std::unordered_map<std::string, uint32_t> graphOutputRefs;
+    Falcor::RenderGraph::SharedPtr pGraph;
+    std::string mainOutput;
+    bool showAllOutputs = false;
+    std::vector<std::string> originalOutputs;
+    std::unordered_map<std::string, uint32_t> graphOutputRefs;
 	};
+
+  struct AOVGeometry {
+    Falcor::ResourceFormat resourceFormat; // You can use bytesPerPixel, bitsPerComponent, channelsCount as well. They are the same.
+    uint32_t width;
+    uint32_t height;
+    uint32_t bytesPerPixel;         // Calculated from resourceFormat.
+    uint32_t bitsPerComponent[4];   // Calculated from resourceFormat.
+    uint32_t channelsCount;         // Calculated from resourceFormat.
+  };
 
   public:
  	  virtual ~Renderer();
@@ -69,6 +78,18 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
     bool addPlane(const RendererIface::PlaneData plane_data);
     bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+
+  // HYDRA related section begin ....
+  public:
+
+    /** Query AOV output (if exist) geometry
+      \param[in] AOV name/path. Example: "AccumulatePass.output"
+      \param[out] AOV geometry information.
+      \return True if AOV exist otherwise False.
+    */
+    bool queryAOVGeometry(const std::string& aov_name, AOVGeometry& aovGeometry);
+
+  // HYDRA related section end ....
 
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
@@ -105,6 +126,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     bool mGlobalDataInited = false;
 
     RendererIface::GlobalData   mGlobalData;
+    RendererIface::DisplayData  mDisplayData;
 
  	  Display::SharedPtr 			    mpDisplay;
     std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
