@@ -7,11 +7,13 @@
 #include "glm/glm/mat4x4.hpp"
 
 #include "display.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 
 namespace lava {
 
 class Renderer;
 class SceneBuilder;
+
 
 class RendererIface {
  public:
@@ -23,11 +25,13 @@ class RendererIface {
     };
 
     struct DisplayData {
-        Display::DisplayType                                            displayType;
+        Display::DisplayType                                            displayType;    // __HYDRA__ is a special virtual type
         Display::TypeFormat                                             typeFormat;
         std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
         std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
         std::vector<std::pair<std::string, std::vector<float>>>         displayFloatParameters;
+
+        uint8_t*                                                        pDstData = nullptr; // __HYDRA__ virtual display destination data pointer
     };
 
     /* GLobalData struct contains data that doesn't change between frames
@@ -112,6 +116,10 @@ class RendererIface {
     */
     bool addPlane(const PlaneData& plane_data);
 
+    /**
+    */
+    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+
     /** load and execute python script file
      */
     bool loadScriptFile(const std::string& file_name);
@@ -128,6 +136,13 @@ class RendererIface {
     void initRendererGlobalData(const GlobalData& global_data);
     bool isRendererInitialized() const;
     void renderFrame(const FrameData& frame_data);
+
+ public:
+    // HYDRA public section
+
+    /** Get renderer direct access
+     */
+    std::shared_ptr<Renderer>           renderer() const { return mpRenderer; }
 
  private:
     std::map<std::string, std::string>  mEnvmap;

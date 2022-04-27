@@ -5,6 +5,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Utils/ConfigStore.h"
 
 #include "session.h"
@@ -15,6 +16,9 @@
 #include "lava_utils_lib/ut_fsys.h"
 #include "lava_utils_lib/ut_string.h"
 #include "lava_utils_lib/logging.h"
+
+#include "glm/gtx/string_cast.hpp"
+
 
 
 namespace lava {
@@ -285,8 +289,7 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr 
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	LLOG_DBG << "pushLight";
-	static std::string unnamed = "unnamed"; // safety. in case light scope has no name specified
-
+	
     auto pSceneBuilder = mpRendererIface->getSceneBuilder();
 
     if (!pSceneBuilder) {
@@ -294,12 +297,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		return;
 	}
 
-	std::string light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
-	std::string light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", unnamed);
-	const auto& transform = pLightScope->getTransformList()[0];
+	const std::string& light_type = pLightScope->getPropertyValue(ast::Style::LIGHT, "type", std::string("point"));
+	const std::string& light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", std::string(""));
+	glm::mat4 transform = pLightScope->getTransformList()[0];
 
 	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
+	
+	bool singleSidedLight = true;
+	bool reverseLight = false;
 
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
@@ -308,6 +314,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	if(pShaderProp) {
 		auto pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
+		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -325,13 +333,29 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pPointLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
-	} else if( light_type == "grid" ) {
-		auto pAreaLight = Falcor::RectLight::create("noname_rect");
+	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
+		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
+
+		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
+
+		if( light_type == "grid") {
+			pAreaLight = Falcor::RectLight::create("noname_rect");
+			pAreaLight->setScaling({area_size[0], area_size[1], 1.0f});
+		} else if ( light_type == "disk") {
+			pAreaLight = Falcor::DiscLight::create("noname_disk");
+			pAreaLight->setScaling({area_size[0], area_size[1], 1.0f});
+		} else if ( light_type == "sphere") {
+			pAreaLight = Falcor::SphereLight::create("noname_sphere");
+			pAreaLight->setScaling({area_size[0], area_size[1], area_size[0]});
+		}
+
 		if (!pAreaLight) {
 			LLOG_ERR << "Error creating AnalyticAreaLight !!! Skipping...";
 			return;
 		}
 		pAreaLight->setTransformMatrix(transform);
+		pAreaLight->setSingleSided(singleSidedLight);
+		
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
 	} else if( light_type == "env") {
@@ -366,7 +390,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	if(pLight) {
 		LLOG_DBG << "Light " << light_name << "  type " << pLight->getData().type;
 
-		pLight->setName(light_name);
+		if (light_name != "") {
+			pLight->setName(light_name);
+		}
+
 		pLight->setHasAnimation(false);
 
 		Property* pShadowProp = pLightScope->getProperty(ast::Style::LIGHT, "shadow");
@@ -394,8 +421,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
 	}
-
-	unnamed += "_";
 }
 
 void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {
@@ -435,6 +460,14 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 
 	for(auto it = values.begin() + 1; it != values.end(); it++) {
 		pSubContainer->setProperty(style, it->first, it->second);
+	}
+}
+
+void Session::cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket) {
+	LLOG_DBG << "cmdEdge";
+	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+	if(pNode) {
+		pNode->addChildEdge(src_node_uuid, src_node_output_socket, dst_node_uuid, dst_node_input_socket);
 	}
 }
 
@@ -486,31 +519,79 @@ void Session::cmdIPRmode(const std::string& mode) {
 
 bool Session::cmdStart(lsd::ast::Style object_type) {
 	LLOG_DBG << "cmdStart";
-	auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
-	if(!pGlobal) {
-		LLOG_FTL << "Objects creation allowed only inside global scope !!!";
-		return false;
-	}
 
 	switch (object_type) {
-		case lsd::ast::Style::GEO: 
-			mpCurrentScope = pGlobal->addGeo();
-			break;
-		case lsd::ast::Style::OBJECT: 
-			mpCurrentScope = pGlobal->addObject();
-			break;
+		case lsd::ast::Style::GEO:
+			{ 
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Geometries creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addGeo();
+				break;
+			}
+		case lsd::ast::Style::OBJECT:
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Objects creation allowed only inside global scope !!!";
+					return false;
+				} 
+				mpCurrentScope = pGlobal->addObject();
+				break;
+			}
 		case lsd::ast::Style::LIGHT:
-			mpCurrentScope = pGlobal->addLight();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Lights creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addLight();
+				break;
+			}
 		case lsd::ast::Style::PLANE:
-			mpCurrentScope = pGlobal->addPlane();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Planes creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addPlane();
+				break;
+			}
 		case lsd::ast::Style::SEGMENT:
-			mpCurrentScope = pGlobal->addSegment();
-			break;
-		case lsd::ast::Style::MATERIAL: 
-			mpCurrentScope = pGlobal->addMaterial();
-			break;
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
+				if(!pGlobal) {
+					LLOG_FTL << "Segments creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addSegment();
+				break;
+			}
+		case lsd::ast::Style::MATERIAL:
+			{
+				auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope); 
+				if(!pGlobal) {
+					LLOG_FTL << "Materials creation allowed only inside global scope !!!";
+					return false;
+				}
+				mpCurrentScope = pGlobal->addMaterial();
+				mpMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
+				break;
+			}
+		case lsd::ast::Style::NODE:
+			{ 
+				auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+				if(!pNode) {
+					LLOG_FTL << "Nodes creation allowed only inside material/node scope !!!";
+					return false;
+				}
+				mpCurrentScope = pNode->addChildNode();
+				break;
+			}
 		default:
 			LLOG_FTL << "Unsupported cmd_start style: " << to_string(object_type);
 			return false;
@@ -542,7 +623,8 @@ bool Session::cmdEnd() {
 	scope::Object::SharedPtr pObj;
 	scope::Plane::SharedPtr pPlane;
 	scope::Light::SharedPtr pLight;
-	scope::Material::SharedPtr pMaterial;
+	scope::Material::SharedPtr pMaterialScope;
+	scope::Node::SharedPtr pNode;
 
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
@@ -558,7 +640,8 @@ bool Session::cmdEnd() {
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
 			if(!pushGeometryInstance(pObj)) {
-				return false;
+				//return false;
+				result = false;
 			}
 			break;
 		case ast::Style::PLANE:
@@ -570,13 +653,25 @@ bool Session::cmdEnd() {
 			pushLight(pLight);
 			break;
 		case ast::Style::MATERIAL:
-			pMaterial = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
+			pMaterialScope = std::dynamic_pointer_cast<scope::Material>(mpCurrentScope);
+			if(pMaterialScope) {
+				auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
+				if (pMaterialX) {
+					mpRendererIface->addMaterialX(std::move(pMaterialX));
+				}
+			} else {
+				result = false;
+			}
+			mpMaterialScope = nullptr;
+			break;
+		case ast::Style::NODE:
+			pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 			break;
 		case ast::Style::SEGMENT:
 		case ast::Style::GLOBAL:
 			break;
 		default:
-			LLOG_ERR << "cmd_end makes no sence. Current scope type is " << to_string(mpCurrentScope->type()) << " !!!";
+			LLOG_ERR << "cmd_end makes no sense. Current scope type is " << to_string(mpCurrentScope->type()) << " !!!";
 			break;
 	}
 
@@ -584,7 +679,95 @@ bool Session::cmdEnd() {
 	return result;
 }
 
-bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
+void Session::addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD) {
+	return;
+	assert(pParent);
+
+	bool is_subnet = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "is_subnet", bool(false));
+	std::string node_name = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_name", std::string(""));
+	std::string node_type = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_type", std::string(""));
+	std::string node_uuid = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_uuid", std::string(""));
+	std::string node_namespace = pNodeLSD->getPropertyValue(ast::Style::OBJECT, "node_namespace", std::string("houdini"));
+
+	MxNode::TypeCreateInfo info = {};
+    info.nameSpace = node_namespace;
+    info.typeName = node_type;
+    info.version = 0;
+
+	auto pNode = pParent->createNode(info, node_name);
+	if (pNode) {
+		if (mpMaterialScope->insertNode(node_uuid, pNode)) {
+
+			for( const auto& tmpl: pNodeLSD->socketTemplates()) {
+				auto pSocket = pNode->addDataSocket(tmpl.name, tmpl.dataType, tmpl.direction);
+				if (!pSocket) {
+					LLOG_ERR << "Error creating shading node data socket " << tmpl.name << " !!!";
+				} else {
+					LLOG_DBG << "Created node " << tmpl.direction << " socket " << pSocket->path(); 
+				}
+			}
+
+			if (is_subnet) {
+				// add child nodes
+				for( scope::Node::SharedConstPtr pChildNodeLSD: pNodeLSD->childNodes()) {
+					addMxNode(pNode, pChildNodeLSD);
+				}
+
+				// link sockets
+				for( const scope::Node::EdgeInfo& edge: pNodeLSD->childEdges()) {
+					Falcor::MxNode::SharedPtr pSrcNode = pNode->node(edge.src_node_uuid);
+					Falcor::MxNode::SharedPtr pDstNode = pNode->node(edge.dst_node_uuid);
+
+					if( pSrcNode && pDstNode) {
+						Falcor::MxSocket::SharedPtr pSrcSocket = pSrcNode->outputSocket(edge.src_node_output_socket);
+						Falcor::MxSocket::SharedPtr pDstSocket = pDstNode->inputSocket(edge.dst_node_input_socket);
+						if( pSrcSocket && pDstSocket) {
+							if (!pDstSocket->setInput(pDstSocket)) {
+								LLOG_ERR << "Error connecting socket " << edge.src_node_output_socket << " to " << edge.dst_node_input_socket;
+							}
+						} else {
+							if( !pSrcSocket) LLOG_ERR << "No socket named " << edge.src_node_output_socket << " at node " << pSrcNode->name();
+							if( !pDstSocket) LLOG_ERR << "No socket named " << edge.dst_node_input_socket << " at node " << pDstNode->name();
+						}
+					} else {
+						if( !pSrcNode) LLOG_ERR << "No shading node " << edge.src_node_uuid << " exist !!!";
+						if( !pDstNode) LLOG_ERR << "No shading node " << edge.dst_node_uuid << " exist !!!";
+					}
+				}
+			}
+		}
+	}
+}
+
+Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::SharedConstPtr pMaterialLSD) {
+	
+	std::string material_name = pMaterialLSD->getPropertyValue(ast::Style::OBJECT, "material_name", std::string(""));
+
+	// We create material without device at this stage. Actual device would be set up for this material later by the
+	// renderer itself.
+	auto pMx = MaterialX::createUnique(nullptr, material_name);
+
+	for( scope::Node::SharedConstPtr pNodeLSD: pMaterialLSD->childNodes()) {
+		addMxNode(pMx->rootNode(), pNodeLSD);
+	}
+
+	return std::move(pMx);
+}
+
+bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDataType dataType, const std::string& name) {
+	assert(mpCurrentScope);
+
+	if (mpCurrentScope->type() != ast::Style::NODE) {
+		LLOG_ERR << "Error adding node socket. Current scope is not \"node\" !!!";
+		return false;
+	}
+
+	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
+	pNode->addDataSocketTemplate(name, dataType, direction);
+	return true;
+}
+
+bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
 	auto it = mMeshMap.find(pObj->geometryName());
 	if(it == mMeshMap.end()) {
@@ -642,7 +825,7 @@ bool Session::pushGeometryInstance(const scope::Object::SharedPtr pObj) {
 	uint32_t node_id = pSceneBuilder->addNode(node);
 
 	// TODO: this is naive test. fetch basic material data
-	Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
+	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
     
     Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
     std::string 	surface_base_color_texture = "";

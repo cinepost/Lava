@@ -87,7 +87,12 @@ Display::Display() {
 }
 
 Display::~Display() {
-    closeAll();
+    if (!closeAll())
+        std::cerr << "Error closing images !" << std::endl;
+
+    if (mLibHandle) {
+        dlclose(mLibHandle);
+    }
 }
 
 
@@ -104,8 +109,8 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
 	boost::format libdspy_name("%1%/etc/d_%2%.so");
 	libdspy_name % lava_home % display_driver_name;
 
-	void* lib_handle = dlopen(libdspy_name.str().c_str(), RTLD_NOW);
-	if (!lib_handle) {
+	void* mLibHandle = dlopen(libdspy_name.str().c_str(), RTLD_NOW);
+	if (!mLibHandle) {
         printf("[%s] Unable to load display driver: %s\n", __FILE__, dlerror());
         return nullptr;
     }
@@ -114,28 +119,28 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
     
     /* Necessary function pointers */
 
-    pDisplay->mOpenFunc = (PtDspyOpenFuncPtr)dlsym(lib_handle, "DspyImageOpen");
+    pDisplay->mOpenFunc = (PtDspyOpenFuncPtr)dlsym(mLibHandle, "DspyImageOpen");
     if ((error = dlerror()) != NULL)  {
         fputs(error, stderr);
         delete pDisplay;
         return nullptr;
     }
 
-    pDisplay->mCloseFunc = (PtDspyCloseFuncPtr)dlsym(lib_handle, "DspyImageClose");
+    pDisplay->mCloseFunc = (PtDspyCloseFuncPtr)dlsym(mLibHandle, "DspyImageClose");
     if ((error = dlerror()) != NULL)  {
         fputs(error, stderr);
         delete pDisplay;
         return nullptr;
     }
 
-    pDisplay->mWriteFunc = (PtDspyWriteFuncPtr)dlsym(lib_handle, "DspyImageData");
+    pDisplay->mWriteFunc = (PtDspyWriteFuncPtr)dlsym(mLibHandle, "DspyImageData");
     if ((error = dlerror()) != NULL)  {
         fputs(error, stderr);
         delete pDisplay;
         return nullptr;
     }    
 
-    pDisplay->mQueryFunc = (PtDspyQueryFuncPtr)dlsym(lib_handle, "DspyImageQuery");
+    pDisplay->mQueryFunc = (PtDspyQueryFuncPtr)dlsym(mLibHandle, "DspyImageQuery");
     if ((error = dlerror()) != NULL)  {
         fputs(error, stderr);
         delete pDisplay;
@@ -144,7 +149,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
 
     /* Optional function pointers */
 
-    pDisplay->mActiveRegionFunc = (PtDspyActiveRegionFuncPtr)dlsym(lib_handle, "DspyImageActiveRegion");
+    pDisplay->mActiveRegionFunc = (PtDspyActiveRegionFuncPtr)dlsym(mLibHandle, "DspyImageActiveRegion");
     if ((error = dlerror()) != NULL)  {
         pDisplay->mActiveRegionFunc = nullptr;
     }  
@@ -228,9 +233,17 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
 
 bool Display::closeAll() {
     bool ret = true;
+
     for (uint i = 0; i < mImages.size(); i++) {
-        if(!close(i)) ret = false;
+        if (!closeImage(i)) {
+            ret = false;
+        }
     }
+
+    //for (uint i = 0; i < mImages.size(); i++) {
+    //    if(!close(i)) ret = false;
+    //}
+    
     mImages.clear();
     return ret;
 }
@@ -245,7 +258,7 @@ bool Display::closeImage(uint imageHandle) {
     LLOG_DBG << "Closing display " << mDriverName;
     PtDspyError err = mCloseFunc(mImages[imageHandle].handle);
     
-    if(err) {
+    if(err != PkDspyErrorNone ) {
         LLOG_ERR << "Unable to close display " << mDriverName;
         LLOG_ERR << getDspyErrorMessage(err);
         return false; 

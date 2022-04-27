@@ -41,6 +41,7 @@ struct ThreadingData {
 }  // namespace
 
 void Threading::start(uint32_t threadCount) {
+    printf("Threading start!\n");
     if (gData.initialized) return;
 
     gData.threads.resize(threadCount);
@@ -48,6 +49,7 @@ void Threading::start(uint32_t threadCount) {
 }
 
 void Threading::shutdown() {
+    printf("Threading shutdown %zu threads!\n", gData.threads.size());
     for (auto& t : gData.threads) {
         if (t.joinable()) t.join();
     }

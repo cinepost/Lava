@@ -128,9 +128,20 @@ void EchoVisitor::operator()(ast::cmd_end const& c) const {
     _os << "\x1b[32m" << "> cmd_end: " << "\x1b[0m\n";
 }
 
+void EchoVisitor::operator()(ast::cmd_edge const& c) const { 
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_edge: " << c.src_node_uuid << " " << c.src_node_output_socket << " " 
+        << c.dst_node_uuid << " " << c.dst_node_input_socket << "\x1b[0m\n";
+}
+
 void EchoVisitor::operator()(ast::cmd_quit const& c) const { 
     Visitor::operator()(c);
     _os << "\x1b[32m" << "> cmd_quit: " << "\x1b[0m\n";
+}
+
+void EchoVisitor::operator()(ast::cmd_socket const& c) const { 
+    Visitor::operator()(c);
+    _os << "\x1b[32m" << "> cmd_socket: " << c.direction << " " << c.data_type << " " << c.name << "\x1b[0m\n";
 }
 
 void EchoVisitor::operator()(ast::cmd_start const& c) const {

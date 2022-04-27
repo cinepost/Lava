@@ -32,113 +32,140 @@
 
 namespace lava {
 
+class MaterialX;
 class Renderer: public std::enable_shared_from_this<Renderer> {
 
 	struct GraphData {
-        Falcor::RenderGraph::SharedPtr pGraph;
-        std::string mainOutput;
-        bool showAllOutputs = false;
-        std::vector<std::string> originalOutputs;
-        std::unordered_map<std::string, uint32_t> graphOutputRefs;
+    Falcor::RenderGraph::SharedPtr pGraph;
+    std::string mainOutput;
+    bool showAllOutputs = false;
+    std::vector<std::string> originalOutputs;
+    std::unordered_map<std::string, uint32_t> graphOutputRefs;
 	};
 
- public:
- 	virtual ~Renderer();
+  struct AOVGeometry {
+    Falcor::ResourceFormat resourceFormat; // You can use bytesPerPixel, bitsPerComponent, channelsCount as well. They are the same.
+    uint32_t width;
+    uint32_t height;
+    uint32_t bytesPerPixel;         // Calculated from resourceFormat.
+    uint32_t bitsPerComponent[4];   // Calculated from resourceFormat.
+    uint32_t channelsCount;         // Calculated from resourceFormat.
+  };
+
+  public:
+ 	  virtual ~Renderer();
     using SharedPtr = std::shared_ptr<Renderer>;
- 	using UniquePtr = std::unique_ptr<Renderer>;
+ 	  using UniquePtr = std::unique_ptr<Renderer>;
 
-	std::unique_ptr<RendererIface> 	aquireInterface();
- 	void						 	releaseInterface(std::unique_ptr<RendererIface> pInterface);
+    std::unique_ptr<RendererIface> 	aquireInterface();
+ 	  void releaseInterface(std::unique_ptr<RendererIface> pInterface);
 
- public:
+  public:
     static SharedPtr create(Device::SharedPtr pDevice);
     bool init();
-    Falcor::Device::SharedPtr device() { return mpDevice; };
+    Falcor::Device::SharedPtr device() const { return mpDevice; };
 
- protected:
- 	bool isInited() const { return mInited; }
- 	void initGlobalData(const RendererIface::GlobalData& global_data);
+  protected:
+ 	  bool isInited() const { return mInited; }
+ 	  void initGlobalData(const RendererIface::GlobalData& global_data);
 
     Display::SharedPtr display() { return mpDisplay; };
     bool loadDisplay(Display::DisplayType display_type);
     bool closeDisplay();
 
- 	bool loadScript(const std::string& file_name);
- 	void renderFrame(const RendererIface::FrameData frame_data);
+ 	  bool loadScript(const std::string& file_name);
+ 	  void renderFrame(const RendererIface::FrameData frame_data);
 
     bool addPlane(const RendererIface::PlaneData plane_data);
+    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+
+  // HYDRA related section begin ....
+  public:
+
+    /** Query AOV output (if exist) geometry
+      \param[in] AOV name/path. Example: "AccumulatePass.output"
+      \param[out] AOV geometry information.
+      \return True if AOV exist otherwise False.
+    */
+    bool queryAOVGeometry(const std::string& aov_name, AOVGeometry& aovGeometry);
+
+  // HYDRA related section end ....
 
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
 #endif
 
- private:
- 	void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);
- 	void initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData* pData);
- 	std::vector<std::string> getGraphOutputs(const Falcor::RenderGraph::SharedPtr& pGraph);
+  private:
+ 	  void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);
+ 	  void initGraph(const Falcor::RenderGraph::SharedPtr& pGraph, GraphData* pData);
+ 	  std::vector<std::string> getGraphOutputs(const Falcor::RenderGraph::SharedPtr& pGraph);
 
     void resolvePerFrameSparseResourcesForActiveGraph(Falcor::RenderContext* pRenderContext);
- 	void executeActiveGraph(Falcor::RenderContext* pRenderContext);
+ 	  void executeActiveGraph(Falcor::RenderContext* pRenderContext);
  	
     void beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
- 	void endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
+ 	  void endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo);
 
- private:
+  private:
+    lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
     /** This should be called before any graph execution
     */
     void finalizeScene(const RendererIface::FrameData& frame_data);
 
     void createRenderGraph();
 
- private:
-	Renderer(Device::SharedPtr pDevice);
+  private:
+    Renderer(Device::SharedPtr pDevice);
     
- 	std::vector<std::string> 	mErrorMessages;
- 	Falcor::Device::SharedPtr 	mpDevice;
+ 	  std::vector<std::string> 	  mErrorMessages;
+ 	  Falcor::Device::SharedPtr 	mpDevice;
 
- 	int mGpuId;
+ 	  int mGpuId;
     
- 	bool mIfaceAquired = false;
-   bool mGlobalDataInited = false;
+ 	  bool mIfaceAquired = false;
+    bool mGlobalDataInited = false;
 
-   RendererIface::GlobalData   mGlobalData;
+    RendererIface::GlobalData   mGlobalData;
+    RendererIface::DisplayData  mDisplayData;
 
- 	Display::SharedPtr 			mpDisplay;
-   std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
+ 	  Display::SharedPtr 			    mpDisplay;
+    std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
 
-   Falcor::Camera::SharedPtr   mpCamera;
+    Falcor::Camera::SharedPtr   mpCamera;
 
- 	Falcor::Fbo::SharedPtr 		mpTargetFBO;		///< The FBO available to renderers
- 	Falcor::FrameRate*			mpFrameRate;
-   Falcor::Clock* 	   			mpClock;
-   Falcor::ArgList 			mArgList;
+ 	  Falcor::Fbo::SharedPtr 		  mpTargetFBO;		///< The FBO available to renderers
+ 	  Falcor::FrameRate*          mpFrameRate;
+    Falcor::Clock* 	            mpClock;
+    Falcor::ArgList 			      mArgList;
 
-   lava::SceneBuilder::SharedPtr   mpSceneBuilder;
-   Falcor::Sampler::SharedPtr      mpSampler;
-   std::vector<GraphData>          mGraphs;
-   uint32_t mActiveGraph = 0;
+    lava::SceneBuilder::SharedPtr   mpSceneBuilder;
+    Falcor::Sampler::SharedPtr      mpSampler;
+    std::vector<GraphData>          mGraphs;
+    uint32_t mActiveGraph = 0;
 
-   ///
-   float2 mInvFrameDim;
-   CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
+    ///
+    float2 mInvFrameDim;
+    CPUSampleGenerator::SharedPtr   mpSampleGenerator = nullptr;
     
-   Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
-   Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
+    Falcor::RenderGraph::SharedPtr  mpRenderGraph = nullptr;
+    Falcor::RenderGraph::SharedPtr  mpTexturesResolvePassGraph = nullptr;
 
-   AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
-   DepthPass::SharedPtr            mpDepthPrePass = nullptr;
-   DepthPass::SharedPtr            mpDepthPass = nullptr;
-   SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
-   ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
-   TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
+    AccumulatePass::SharedPtr       mpAccumulatePass = nullptr;
+    DepthPass::SharedPtr            mpDepthPrePass = nullptr;
+    DepthPass::SharedPtr            mpDepthPass = nullptr;
+    SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
+    ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
+    TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
 
-   GBufferRaster::SharedPtr        mpGBufferRasterPass = nullptr;
-   MinimalPathTracer::SharedPtr    mpMinimalPathTracer = nullptr;
-   ///
+    GBufferRaster::SharedPtr        mpGBufferRasterPass = nullptr;
+    MinimalPathTracer::SharedPtr    mpMinimalPathTracer = nullptr;
+    ///
 
-   bool mInited = false;
+    std::map<std::string, Falcor::MaterialX::SharedPtr> mMaterialXs; ///< Materialx materials map
 
-   friend class RendererIface;
+    bool mInited = false;
+
+    friend class RendererIface;
 }; 
 
 }  // namespace lava

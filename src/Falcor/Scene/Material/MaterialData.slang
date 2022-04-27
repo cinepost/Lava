@@ -31,6 +31,8 @@
 
 BEGIN_NAMESPACE_FALCOR
 
+#define MAX_UDIM_TILES_COUNT 64
+
 #ifdef HOST_CODE
 #define SamplerState std::shared_ptr<Sampler>
 #define Texture2D std::shared_ptr<Texture>

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <set>
+#include <chrono>
 #include <thread>
 
 #include "Falcor/stdafx.h"
@@ -46,6 +47,7 @@
 
 #define VK_REPORT_PERF_WARNINGS  // Uncomment this to see performance warnings
 
+#include "lava_utils_lib/logging.h"
 
 PFN_vkGetBufferDeviceAddressKHR                     Falcor::vkGetBufferDeviceAddressKHR = nullptr;
 PFN_vkCmdTraceRaysKHR                               Falcor::vkCmdTraceRaysKHR = nullptr;
@@ -65,6 +67,13 @@ PFN_vkDeferredOperationJoinKHR                      Falcor::vkDeferredOperationJ
 PFN_vkGetDeferredOperationResultKHR                 Falcor::vkGetDeferredOperationResultKHR = nullptr;
 
 PFN_vkCreateRayTracingPipelinesKHR                  Falcor::vkCreateRayTracingPipelinesKHR = nullptr;
+
+PFN_vkGetSwapchainImagesKHR                         Falcor::vkGetSwapchainImagesKHR = nullptr;
+PFN_vkDestroySwapchainKHR                           Falcor::vkDestroySwapchainKHR = nullptr;
+PFN_vkCreateSwapchainKHR                            Falcor::vkCreateSwapchainKHR = nullptr;
+PFN_vkAcquireNextImageKHR                           Falcor::vkAcquireNextImageKHR = nullptr;
+PFN_vkQueuePresentKHR                               Falcor::vkQueuePresentKHR = nullptr;
+
 
 namespace Falcor {
 
@@ -121,9 +130,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 }
 #endif
 
-uint32_t getMaxViewportCount(std::shared_ptr<Device> device) {
-    assert(device);
-    return device->getPhysicalDeviceLimits().maxViewports;
+uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) {
+    assert(pDevice);
+    return pDevice->getPhysicalDeviceLimits().maxViewports;
 }
 
 static constexpr uint32_t getVulkanApiVersion() {
@@ -246,7 +255,6 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
 }
 
 Device::~Device() {
-    LOG_DBG("Device::~Device");
     vmaDestroyAllocator(mAllocator);
 }
 
@@ -274,8 +282,6 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 
-    //auto result = vkCreateImage(mApiHandle, &imageInfo, nullptr, &image);
-
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     
@@ -291,16 +297,42 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
 bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex) {
     uint32_t imageCount = 0;
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, nullptr);
-    //assert(imageCount == apiHandles.size());
     assert(imageCount == kSwapChainBuffersCount);
 
     std::vector<VkImage> swapchainImages(imageCount);
     vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &imageCount, swapchainImages.data());
-    for (size_t i = 0; i < swapchainImages.size(); i++) {
-        VmaAllocationCreateInfo imageAllocCreateInfo = {};
-        imageAllocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-        //apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], nullptr);
+    VkImageCreateInfo imageInfo = {};
+
+    imageInfo.arrayLayers = 1;
+    imageInfo.extent.depth = 1;
+    imageInfo.extent.height = height;
+    imageInfo.extent.width = width;
+    imageInfo.format = getVkFormat(colorFormat);
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.mipLevels = 1;
+    imageInfo.pQueueFamilyIndices = nullptr;
+    imageInfo.queueFamilyIndexCount = 0;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+    for (size_t i = 0; i < swapchainImages.size(); i++) {
+        VmaAllocation allocation;
+
+        auto result = vmaCreateImage(mAllocator, &imageInfo, &allocInfo, &swapchainImages[i], &allocation, nullptr );   
+        if (VK_FAILED(result)) {
+            throw std::runtime_error("Failed to create swap chain image.");
+        }   
+
+        apiHandles[i] = ResourceHandle::create(shared_from_this(), swapchainImages[i], allocation);
     }
 
     // Get the back-buffer
@@ -315,7 +347,7 @@ void Device::destroyApiObjects() {
         DestroyDebugReportCallback(mApiHandle, mpApiData->debugReportCallbackHandle, nullptr);
     }
 
-    if(!headless) 
+    if(!mHeadless) 
         vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
 
     for (auto& f : mpApiData->presentFences.f) {
@@ -402,18 +434,18 @@ static bool isExtensionSupported(const std::string& str, const std::vector<VkExt
     return false;
 }
 
-VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
+VkInstance createInstance(bool enableDebugLayer) {
     // Initialize the layers
     const auto layerProperties = enumarateInstanceLayersProperties();
     std::vector<const char*> requiredLayers;
 
     if (enableDebugLayer) {
-        //enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
+        enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
         //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
-        enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
     }
 
     // Initialize the extensions
@@ -452,8 +484,14 @@ VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
     VkInstance instance;
     if (VK_FAILED(vkCreateInstance(&createInfo, nullptr, &instance))) {
         logError("Failed to create Vulkan instance");
-        return nullptr;
+        return VK_NULL_HANDLE;
     }
+
+    return instance;
+}
+
+VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer) {
+    VkInstance instance = createInstance(enableDebugLayer);
 
     // Hook up callbacks for VK_EXT_debug_report
     if (enableDebugLayer) {
@@ -578,6 +616,9 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
 
     assert(pDevice);
 
+    bool headless = false;
+    if(desc.surface == VK_NULL_HANDLE) headless = true;
+
     bool sparseBindingEnabled = false;
     bool VK_KHR_raytracing_pipeline_enabled = false;
     bool VK_KHR_get_memory_requirements2_enabled = false;
@@ -592,6 +633,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     bool VK_KHR_ray_query_enabled = false;
     bool VK_KHR_synchronization2_enabled = false;
     bool VK_EXT_host_query_reset_enabled = true;
+    bool VK_KHR_swapchain_enabled = false;
     // Query for device extensions
 
     uint32_t physicalDeviceExtensionPropertyCount = 0;
@@ -654,8 +696,12 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
                 VK_KHR_buffer_device_address_enabled = true;
             }
         }
-        else if(strcmp(extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0)
+        else if(strcmp(extensionName, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0) {
             VK_EXT_memory_priority_enabled = true;
+        }
+        else if(strcmp(extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
+            VK_KHR_swapchain_enabled = true;
+        }
     }
 
     if(getVulkanApiVersion() >= VK_API_VERSION_1_2)
@@ -732,9 +778,8 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledHostQueryResetFeatures);
     }
 
-    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
     if(VK_KHR_ray_query_enabled) {
-        PnextChainPushFront(&physicalDeviceFeatures, &rayQueryFeatures);
+        PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledRayQueryFeatures);
     }
 
     //VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures
@@ -787,7 +832,9 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         logInfo("Available Device Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
     }
 
-    std::vector<const char*> extensionNames = { 
+    std::vector<const char*> extensionNames; extensionNames.empty();
+
+    std::vector<std::string> defaultExtensionNames = { 
         //"VK_KHR_swapchain",
         "VK_KHR_spirv_1_4",
         "VK_KHR_ray_query",
@@ -800,18 +847,32 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         "VK_EXT_host_query_reset"
     };
 
-    assert(isExtensionSupported(extensionNames[0], pData->deviceExtensions));
+    if (desc.surface != VK_NULL_HANDLE) defaultExtensionNames.push_back("VK_KHR_swapchain");
 
-    for (const auto& a : desc.requiredExtensions) {
+
+    // check for default extensions availability
+    for (const std::string& a : defaultExtensionNames) {
         if (isExtensionSupported(a, pData->deviceExtensions)) {
             extensionNames.push_back(a.c_str());
         } else {
-            logWarning("The device doesn't support the requested '" + a + "` extension");
+            LLOG_ERR << "The device doesn't support the requested '" << a << "`default extension";
         }
     }
 
+    // check for additional extensions availability
+    for (const std::string& a : desc.requiredExtensions) {
+        if (isExtensionSupported(a, pData->deviceExtensions)) {
+            extensionNames.push_back(a.c_str());
+        } else {
+            LLOG_ERR << "The device doesn't support the requested '" << a << "`additional extension";
+        }
+    }
+
+
     // Logical Device
     pDevice->mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    pDevice->mPhysicalDeviceFeatures.features.multiViewport = VK_TRUE;
+    pDevice->mPhysicalDeviceFeatures.features.multiDrawIndirect = VK_TRUE;
     pDevice->mPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
     pDevice->mPhysicalDeviceFeatures.features.sparseBinding = sparseBindingEnabled ? VK_TRUE : VK_FALSE;
 
@@ -844,9 +905,9 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     }
 
     if(VK_KHR_ray_query_enabled) {
-        rayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
-        rayQueryFeatures.rayQuery = VK_TRUE;
-        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &rayQueryFeatures);
+        pDevice->mEnabledRayQueryFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+        pDevice->mEnabledRayQueryFeatures.rayQuery = VK_TRUE;
+        PnextChainPushBack(&pDevice->mPhysicalDeviceFeatures, &pDevice->mEnabledRayQueryFeatures);
     }
 
     if(VK_KHR_synchronization2_enabled) {
@@ -869,7 +930,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
 
     VkDevice device;
     if (VK_FAILED(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device))) {
-        logError("Could not create Vulkan logical device.");
+        LLOG_ERR << "Could not create Vulkan logical device !";
         return nullptr;
     }
 
@@ -891,7 +952,6 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
 
     // Get the ray tracing and accelertion structure related function pointers required
-    
     if(VK_KHR_buffer_device_address_enabled) {
         if(getVulkanApiVersion() >= VK_API_VERSION_1_2) {
             vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddress"));
@@ -902,38 +962,46 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         assert(vkGetBufferDeviceAddressKHR != nullptr);
     }
 
-    vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
-    assert(vkCmdTraceRaysKHR != nullptr);
+    if(VK_KHR_raytracing_pipeline_enabled) {
+        vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR"));
+        assert(vkCmdTraceRaysKHR != nullptr);
+    
+        vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+        assert(vkCreateRayTracingPipelinesKHR != nullptr);
 
-    vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
-    assert(vkGetAccelerationStructureBuildSizesKHR != nullptr);
+        vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
+        assert(vkGetRayTracingShaderGroupHandlesKHR != nullptr);
+    }
 
-    vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
-    assert(vkCreateAccelerationStructureKHR != nullptr);
+    if(VK_KHR_acceleration_structure_enabled) {
+        vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
+        assert(vkGetAccelerationStructureBuildSizesKHR != nullptr);
 
-    vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
-    assert(vkDestroyAccelerationStructureKHR != nullptr);
+        vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
+        assert(vkCreateAccelerationStructureKHR != nullptr);
 
-    vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
-    assert(vkGetAccelerationStructureDeviceAddressKHR != nullptr);
+        vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
+        assert(vkDestroyAccelerationStructureKHR != nullptr);
 
-    vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
-    assert(vkCmdBuildAccelerationStructuresKHR != nullptr);
+        vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR"));
+        assert(vkGetAccelerationStructureDeviceAddressKHR != nullptr);
 
-    vkBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
-    assert(vkBuildAccelerationStructuresKHR != nullptr);
+        vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR"));
+        assert(vkCmdBuildAccelerationStructuresKHR != nullptr);
 
-    vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR"));
-    assert(vkGetRayTracingShaderGroupHandlesKHR != nullptr);
+        vkBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
+        assert(vkBuildAccelerationStructuresKHR != nullptr);
 
-    vkCmdWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
-    assert(vkCmdWriteAccelerationStructuresPropertiesKHR != nullptr);
+        vkCmdWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+        assert(vkCmdWriteAccelerationStructuresPropertiesKHR != nullptr);
 
-    vkWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkWriteAccelerationStructuresPropertiesKHR"));
-    assert(vkWriteAccelerationStructuresPropertiesKHR != nullptr);
+        vkWriteAccelerationStructuresPropertiesKHR = reinterpret_cast<PFN_vkWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(device, "vkWriteAccelerationStructuresPropertiesKHR"));
+        assert(vkWriteAccelerationStructuresPropertiesKHR != nullptr);
 
-    vkCmdCopyAccelerationStructureKHR = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
-    assert(vkCmdCopyAccelerationStructureKHR != nullptr);
+        vkCmdCopyAccelerationStructureKHR = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCmdCopyAccelerationStructureKHR"));
+        assert(vkCmdCopyAccelerationStructureKHR != nullptr);
+    }
+
 
     vkDeferredOperationJoinKHR = reinterpret_cast<PFN_vkDeferredOperationJoinKHR>(vkGetDeviceProcAddr(device, "vkDeferredOperationJoinKHR"));
     assert(vkDeferredOperationJoinKHR != nullptr);
@@ -941,8 +1009,23 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     vkGetDeferredOperationResultKHR = reinterpret_cast<PFN_vkGetDeferredOperationResultKHR>(vkGetDeviceProcAddr(device, "vkGetDeferredOperationResultKHR"));
     assert(vkGetDeferredOperationResultKHR != nullptr);
 
-    vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
-    assert(vkCreateRayTracingPipelinesKHR != nullptr);
+
+    if (VK_KHR_swapchain_enabled && desc.surface != VK_NULL_HANDLE) {
+        vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddr(device, "vkGetSwapchainImagesKHR"));
+        assert(vkGetSwapchainImagesKHR != nullptr);
+
+        vkDestroySwapchainKHR =  reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddr(device, "vkDestroySwapchainKHR"));
+        assert(vkDestroySwapchainKHR != nullptr);
+
+        vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR"));
+        assert(vkCreateSwapchainKHR != nullptr);
+
+        vkAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(vkGetDeviceProcAddr(device, "vkAcquireNextImageKHR"));
+        assert(vkAcquireNextImageKHR != nullptr);
+
+        vkQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(vkGetDeviceProcAddr(device, "vkQueuePresentKHR"));
+        assert(vkQueuePresentKHR != nullptr);
+    }
 
     // Get the queues we created
     for (uint32_t type = 0; type < arraysize(pData->falcorToVulkanQueueType); type++) {
@@ -958,8 +1041,105 @@ bool Device::createOffscreenFBO(ResourceFormat colorFormat) {
     return true;
 }
 
+bool Device::createSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
+    // Select/Validate SwapChain creation settings
+    // Surface size
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(mApiHandle, mApiHandle, &surfaceCapabilities);
+    assert(surfaceCapabilities.supportedUsageFlags & (VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT));
+
+    VkExtent2D swapchainExtent = {};
+    if (surfaceCapabilities.currentExtent.width == (uint32_t)-1) {
+        swapchainExtent.width = width;
+        swapchainExtent.height = height;
+    } else {
+        swapchainExtent = surfaceCapabilities.currentExtent;
+    }
+
+    // Validate Surface format
+    if (isSrgbFormat(colorFormat) == false) {
+        LLOG_ERR << "Can't create a swap-chain with linear-space color format";
+        return false;
+    }
+
+    const VkFormat requestedFormat = getVkFormat(colorFormat);
+    const VkColorSpaceKHR requestedColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+
+    uint32_t formatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(mApiHandle, mApiHandle, &formatCount, nullptr);
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(mApiHandle, mApiHandle, &formatCount, surfaceFormats.data());
+
+    bool formatValid = false;
+    for (const VkSurfaceFormatKHR& format : surfaceFormats) {
+        if (format.format == requestedFormat && format.colorSpace == requestedColorSpace) {
+            formatValid = true;
+            break;
+        }
+    }
+
+    if (formatValid == false) {
+        logError("Requested Swapchain format is not available");
+        return false;
+    }
+
+    // Select present mode
+    uint32_t presentModeCount = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(mApiHandle, mApiHandle, &presentModeCount, nullptr);
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(mApiHandle, mApiHandle, &presentModeCount, presentModes.data());
+
+    // Select present mode, FIFO for VSync, otherwise preferring IMMEDIATE -> MAILBOX -> FIFO
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    
+    bool mVsyncOn = false; // TODO: make this configurable
+    
+    if (mVsyncOn == false) {
+        for (size_t i = 0; i < presentModeCount; i++) {
+            if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+                presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            } else if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+                presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                break;
+            }
+        }
+    }
+
+    // Swapchain Creation
+    VkSwapchainCreateInfoKHR info = {};
+    info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    info.surface = mApiHandle;
+    uint32_t maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
+    info.minImageCount = clamp(kSwapChainBuffersCount, surfaceCapabilities.minImageCount, maxImageCount);
+    info.imageFormat = requestedFormat;
+    info.imageColorSpace = requestedColorSpace;
+    info.imageExtent = { swapchainExtent.width, swapchainExtent.height };
+    info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    info.preTransform = surfaceCapabilities.currentTransform;
+    info.imageArrayLayers = 1;
+    info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.queueFamilyIndexCount = 0;     // Only needed if VK_SHARING_MODE_CONCURRENT
+    info.pQueueFamilyIndices = nullptr; // Only needed if VK_SHARING_MODE_CONCURRENT
+    info.presentMode = presentMode;
+    info.clipped = true;
+    info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    info.oldSwapchain = VK_NULL_HANDLE;
+
+    if (VK_FAILED(vkCreateSwapchainKHR(mApiHandle, &info, nullptr, &mpApiData->swapchain))) {
+        LLOG_ERR << "Could not create swapchain !!!";
+        return false;
+    }
+
+    uint32_t swapChainCount = 0;
+    vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &swapChainCount, nullptr);
+    LLOG_DBG << "Swapchain image count is" << swapChainCount;
+    assert(swapChainCount == kSwapChainBuffersCount);
+
+    return true;
+}
+
 void Device::apiPresent() {
-    assert(!headless);  // presenting makes no sense in headless mode
+    assert(!mHeadless);  // presenting makes no sense in headless mode
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.swapchainCount = 1;
     info.pSwapchains = &mpApiData->swapchain;
@@ -1000,52 +1180,73 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     const Desc desc;
 
     mpApiData = new DeviceApiData;
-    VkInstance instance = createInstance(mpApiData, desc.enableDebugLayer);
-    if (!instance) return false;
+    mVkInstance = pDeviceManager->vulkanInstance();
+    if (!mVkInstance) return false;
 
-    VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
-    if (!physicalDevice) return false;
+    // Hook up callbacks for VK_EXT_debug_report
+    if (mDesc.enableDebugLayer) {
+        initDebugCallback(mVkInstance, &mpApiData->debugReportCallbackHandle);
+    }
 
-    VkSurfaceKHR surface = VK_NULL_HANDLE;    
-    VkDevice device = createLogicalDevice(this, physicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures);
-    if (!device) return false;
+    mVkPhysicalDevice = initPhysicalDevice(mVkInstance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
+    if (!mVkPhysicalDevice) return false;
+
+    mVkDevice = createLogicalDevice(this, mVkPhysicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures);
+    if (!mVkDevice) return false;
 
     assert(vkGetInstanceProcAddr);
     assert(vkGetDeviceProcAddr);
-    load_VK_EXTENSIONS(instance, vkGetInstanceProcAddr, device, vkGetDeviceProcAddr);
+    load_VK_EXTENSIONS(mVkInstance, vkGetInstanceProcAddr, mVkDevice, vkGetDeviceProcAddr);
     //nvvk::load_VK_EXTENSIONS(VkInstance instance, PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddr);
 
 
-    if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
+    if (initMemoryTypes(mVkPhysicalDevice, mpApiData) == false) return false;
 
-    mApiHandle = DeviceHandle::create(shared_from_this(), instance, physicalDevice, device, surface);
+    mApiHandle = DeviceHandle::create(shared_from_this(), mVkInstance, mVkPhysicalDevice, mVkDevice, mVkSurface);
     mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
     mPhysicalDeviceName = std::string(mpApiData->properties.deviceName);
 
-    mSupportedFeatures = getSupportedFeatures(physicalDevice);
+    mSupportedFeatures = getSupportedFeatures(mVkPhysicalDevice);
 
-    if (createOffscreenFBO(desc.colorFormat) == false) {
-        return false;
+    if(!mHeadless) {
+        if (createSwapChain(desc.width, desc.height, desc.colorFormat) == false) return false;
+    
+        mpApiData->presentFences.f.resize(kSwapChainBuffersCount);
+        for (auto& f : mpApiData->presentFences.f) {
+            VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+            info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            vk_call(vkCreateFence(mVkDevice, &info, nullptr, &f));
+        }
+    } else {
+        if (createOffscreenFBO(desc.colorFormat) == false) {
+            return false;
+        }
     }
 
     VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
     vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-    vmaAllocatorCreateInfo.physicalDevice =physicalDevice;
-    vmaAllocatorCreateInfo.device = device;
-    vmaAllocatorCreateInfo.instance = instance;
+    vmaAllocatorCreateInfo.physicalDevice =mVkPhysicalDevice;
+    vmaAllocatorCreateInfo.device = mVkDevice;
+    vmaAllocatorCreateInfo.instance = mVkInstance;
     vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
     vmaAllocatorCreateInfo.pRecordSettings = nullptr;
  
     vk_call(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mAllocator));
 
-    mNvvkResourceAllocator.init(instance, mApiHandle, physicalDevice, NVVK_DEFAULT_STAGING_BLOCKSIZE, mAllocator);
+    mNvvkResourceAllocator.init(mVkInstance, mApiHandle, mVkPhysicalDevice, NVVK_DEFAULT_STAGING_BLOCKSIZE, mAllocator);
 
     return true;
 }
 
+void Device::apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
+    assert(!mHeadless);  // swapchain resize makes no sense in headless mode
+    vkDestroySwapchainKHR(mApiHandle, mpApiData->swapchain, nullptr);
+    createSwapChain(width, height, colorFormat);
+}
+
 void Device::apiResizeOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat) {
-    assert(headless);
+    assert(mHeadless);
     mpOffscreenFbo = nullptr;
     createOffscreenFBO(colorFormat);
 }

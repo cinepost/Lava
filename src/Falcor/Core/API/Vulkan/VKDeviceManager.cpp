@@ -42,21 +42,17 @@ VkInstance gVulkanInstance = VK_NULL_HANDLE;
 
 
 bool DeviceManager::init() {
-    //if (initialized)
-    //    return true;
+    if (mInitialized) return true;
 
-    const Device::Desc desc;
-
-    auto pApiData = new DeviceApiData;
-    gVulkanInstance = createInstance(pApiData, desc.enableDebugLayer);
+    bool enableDebugLayer = true;
+    gVulkanInstance = createVulkanInstance(enableDebugLayer);
     
-    if (!gVulkanInstance)
-        return false;
+    if (gVulkanInstance == VK_NULL_HANDLE) return false;
 
     enumerateDevices();
 
-    //initialized = true;
-    return true;//initialized;
+    mInitialized = true;
+    return mInitialized;
 }
 
 void DeviceManager::enumerateDevices() {
@@ -76,5 +72,7 @@ void DeviceManager::enumerateDevices() {
         id++;
     }
 }
+
+VkInstance DeviceManager::vulkanInstance() const { return gVulkanInstance; }
 
 }  // namespace Falcor

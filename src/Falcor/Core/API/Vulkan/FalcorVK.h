@@ -77,6 +77,12 @@ extern PFN_vkGetDeferredOperationResultKHR vkGetDeferredOperationResultKHR;
 
 extern PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
 
+extern PFN_vkGetSwapchainImagesKHR  vkGetSwapchainImagesKHR;
+extern PFN_vkDestroySwapchainKHR    vkDestroySwapchainKHR;
+extern PFN_vkCreateSwapchainKHR     vkCreateSwapchainKHR;
+extern PFN_vkAcquireNextImageKHR    vkAcquireNextImageKHR;
+extern PFN_vkQueuePresentKHR        vkQueuePresentKHR;
+
 struct VkFormatDesc {
     ResourceFormat falcorFormat;
     VkFormat vkFormat;

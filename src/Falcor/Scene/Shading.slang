@@ -162,7 +162,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
 
     // Load base color and opacity. These are sampled from the same texture but either one can be uniform parameters.
     // TODO: Rewrite as single texture fetch followed by extraction of color and opacity to make it easier to optimize.
-    float3 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_BASE_COLOR_TYPE(md.flags), lod).rgb;
+    float3 baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, float4(1,1,1,1), EXTRACT_BASE_COLOR_TYPE(md.flags), lod).rgb * md.baseColor.rgb;
     sd.opacity = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_ALPHA_TYPE(md.flags), lod).a;
 
     sd.posW = v.posW;

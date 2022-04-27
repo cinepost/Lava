@@ -48,9 +48,15 @@ namespace fs = boost::filesystem;
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+#include "lava_utils_lib/logging.h"
+
+
 namespace Falcor {
 
 namespace oiio = OIIO;
+
+static const uint8_t kLtxVersionMajor = 1;
+static const uint8_t kLtxVersionMinor = 1;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 static const size_t kLtxPageSize = 65536;
@@ -65,7 +71,7 @@ static struct {
     }   
 } pageSort;
 
-static LTX_Header::TopLevelCompression getTLCFromString(const std::string & name) {
+LTX_Header::TopLevelCompression LTX_Bitmap::getTLCFromString(const std::string& name) {
     if(name == "lz4") return LTX_Header::TopLevelCompression::LZ4;
     if(name == "lz4hc") return LTX_Header::TopLevelCompression::LZ4HC;
     if(name == "snappy") return LTX_Header::TopLevelCompression::SNAPPY;
@@ -94,43 +100,43 @@ static const char* getBloscCompressionName(LTX_Header::TopLevelCompression tlc) 
     }
 } 
 
-bool LTX_Bitmap::checkMagic(const unsigned char* magic) {
+static bool checkMagic(const unsigned char* magic, bool strict) {
     int match = 0;
     match += memcmp(&gLtxFileMagic[0], &magic[0], 4);
     match += memcmp(&gLtxFileMagic[7], &magic[7], 5);
-    if(match == 0 && 48 <= magic[5] && magic[5] <= 57 && 48 <= magic[6] && magic[6] <= 57)
-        return true;
+    if(!match) return false;
+
+    if (strict) {
+        if( magic[5] != 48 + kLtxVersionMajor) return false;
+        if( magic[6] != 48 + kLtxVersionMinor) return false;
+    }
+    if(48 <= magic[5] && magic[5] <= 57 && 48 <= magic[6] && magic[6] <= 57) return true;
 
     return false;
 }
 
-void LTX_Bitmap::makeMagic(uint8_t minor, uint8_t major, unsigned char *magic) {
-    if (minor > 9 || major > 9) {
-        LOG_ERR("Major and minor versions should be less than 10 !!!");
-        return;
-    }
-
-    memcpy(magic, gLtxFileMagic, 12);
-    magic[5] = 48 + static_cast<unsigned char>(major);
-    magic[6] = 48 + static_cast<unsigned char>(minor);
-}
-
-LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+bool LTX_Bitmap::checkFileMagic(const std::string filename, bool strict) {
     std::ifstream file (filename, std::ios::in | std::ios::binary);
     if (file.is_open()) {
         unsigned char magic[12];
         file.read((char *)&magic, 12);
-        
-        if (!checkMagic(magic)) {
-            LOG_ERR("Non LTX file provided (magic test failed) !!!");
-            return nullptr;
-        }
-
         file.seekg(0, file.beg);
-    } else {
-        LOG_ERR("Error opening file: %s !!!", filename.c_str());
-        return nullptr;
-    }
+        if (!checkMagic(magic, strict))return false;
+    }   
+    return false;
+}
+
+static void makeMagic(unsigned char *magic) {
+    static_assert(0 <= kLtxVersionMajor <= 9);
+    static_assert(0 <= kLtxVersionMinor <= 9);
+
+    memcpy(magic, gLtxFileMagic, 12);
+    magic[5] = 48 + static_cast<unsigned char>(kLtxVersionMajor);
+    magic[6] = 48 + static_cast<unsigned char>(kLtxVersionMinor);
+}
+
+LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+    if(!checkFileMagic(filename, true)) return nullptr;
 
     auto pLtxBitmap = new LTX_Bitmap();
     pLtxBitmap->mFilename = filename;
@@ -312,12 +318,15 @@ static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &forma
     return info;
 }
 
-void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, bool isTopDown, const TLCParms& compParms) {
+bool LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown) {
     auto in = oiio::ImageInput::open(srcFilename);
     if (!in) {
-        LOG_ERR("Error reading image file %s", srcFilename.c_str());
+        LLOG_ERR << "Error reading image file: " << srcFilename;
+        return false;
     }
     const oiio::ImageSpec &spec = in->spec();
+
+    LLOG_INF << "Converting texture \"" << srcFilename << "\" to LTX format using " << to_string(getTLCFromString(compParms.compressorName)) << " compressor.";
 
     LOG_DBG("OIIO channel formats size: %zu", spec.channelformats.size());
     LOG_DBG("OIIO is signed: %s", spec.format.is_signed() ? "YES" : "NO");
@@ -354,7 +363,7 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
     // make header
     LTX_Header header;
     unsigned char magic[12];
-    makeMagic(9, 8, &header.magic[0]);
+    makeMagic(&header.magic[0]);
 
     header.srcLastWriteTime = fs::last_write_time(srcFilename);
     header.width = dstDims.x;
@@ -412,9 +421,9 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
 
         const char *compname = getBloscCompressionName(header.topLevelCompression);
         if(blosc_set_compressor(compname) == -1) {
-            LOG_ERR("Error setting Blosc compressor type to %s", compname);
+            LLOG_ERR << "Error setting Blosc compressor type to " << to_string(header.topLevelCompression);
             fclose(pFile);
-            return;
+            return false;
         }
 
         LOG_WARN("LTX Tlc: %s clevel: %u", compname, compressionInfo.compressionLevel);
@@ -426,30 +435,34 @@ void LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
 
     LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
 
+    bool result = false;
 
-
-if( 1 == 1) {
-    if( isPowerOfTwo(srcDims.x) && isPowerOfTwo(srcDims.y) ) {
-        if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile, compressionInfo)) {
-            // re-write header as it might get modified ... 
-            // TODO: increment pagesCount ONLY upon successfull fwrite !
-            fseek(pFile, 0, SEEK_SET);
-            fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+    if( 1 == 1) {
+        if( isPowerOfTwo(srcDims.x) && isPowerOfTwo(srcDims.y) ) {
+            if(ltxCpuGenerateAndWriteMIPTilesPOT(header, mipInfo, srcBuff, pFile, compressionInfo)) {
+                // re-write header as it might get modified ... 
+                // TODO: increment pagesCount ONLY upon successfull fwrite !
+                fseek(pFile, 0, SEEK_SET);
+                fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+                result = true;
+            }
+        } else {
+            if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile, compressionInfo)) {
+                // re-write header as it might get modified ... 
+                // TODO: increment pagesCount ONLY upon successfull fwrite !
+                fseek(pFile, 0, SEEK_SET);
+                fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+                result = true;
+            }
         }
     } else {
-        if(ltxCpuGenerateAndWriteMIPTilesHQSlow(header, mipInfo, srcBuff, pFile, compressionInfo)) {
-            // re-write header as it might get modified ... 
-            // TODO: increment pagesCount ONLY upon successfull fwrite !
+        // debug tiles texture
+        if(ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile, compressionInfo)) {
             fseek(pFile, 0, SEEK_SET);
             fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+            result = true;
         }
     }
-} else {
-    // debug tiles texture
-    ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile, compressionInfo);
-    fseek(pFile, 0, SEEK_SET);
-    fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
-}
 
     if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
         // write updated compressed blocks table balesues. these valuse are going to rewriten after all pages compressed and written to disk
@@ -461,11 +474,12 @@ if( 1 == 1) {
     LOG_WARN("LTX post write pages count is: %u", header.pagesCount);
 
     fclose(pFile);
+    return result;
 }
 
 void LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
     if (pageNum >= mHeader.pagesCount ) {
-        logError("LTX_Bitmap::readPageData pageNum exceeds pages count !!!");
+        LLOG_ERR << "LTX_Bitmap::readPageData pageNum exceeds pages count !!!";
         return;
     }
 
@@ -479,7 +493,7 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
     assert(pFile);
 
     if (pageNum >= mHeader.pagesCount ) {
-        logError("LTX_Bitmap::readPageData pageNum exceeds pages count !!!");
+        LLOG_ERR << "LTX_Bitmap::readPageData pageNum exceeds pages count !!!";
         return;
     }
 
@@ -516,6 +530,22 @@ void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, boo
     }
     
     fclose(pFile);
+}
+
+const std::string to_string(LTX_Header::TopLevelCompression type) {
+    #define type_2_string(a) case LTX_Header::TopLevelCompression::a: return #a;
+    switch (type) {
+            type_2_string(NONE);
+            type_2_string(BLOSC_LZ);
+            type_2_string(LZ4);
+            type_2_string(LZ4HC);
+            type_2_string(SNAPPY);
+            type_2_string(ZLIB);
+        default:
+            should_not_get_here();
+            return "";
+    }
+#undef type_2_string
 }
 
 }  // namespace Falcor

@@ -27,17 +27,16 @@
 #include <stdio.h>
 #include <string.h>
 
-int _aiTypeLengths[] =
-{
+#include "third_party/prman/ndspy.h"
+
+int _aiTypeLengths[] = {
 	0,
 	4, 4, 4, 2, 2, 1, 1, -1, 4*16
 };
 
-int _aiTypeSigned[] =
-{ 0, 1, 0, 1, 0, 1, 0, 1 };
+int _aiTypeSigned[] = { 0, 1, 0, 1, 0, 1, 0, 1 };
 
-int _aiTypeClass[] =
-{
+int _aiTypeClass[] = {
 	0,
 	PkDspyClassFloat,
 	PkDspyClassInt,
@@ -57,28 +56,21 @@ DspyFindStringInParamList(const char *string,
 {
 	int i;
 
-	for (i = 0; i < paramCount; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
-		    if ('s' == parameters[i].vtype)
-			{
+	for (i = 0; i < paramCount; i++) {
+		if (!strcmp(string, parameters[i].name)) {
+		    if ('s' == parameters[i].vtype) {
 			    *result = *(char **)parameters[i].value;
 			    return PkDspyErrorNone;
 			}
   		}
-
 	}
 	return PkDspyErrorNoResource;
 }
 
 #if PkDspyByteOrderNative != PkDspyByteOrderHiLo
-void
-PRMANAPI DspyMemReverse(unsigned char *t, int len)
-{
+void PRMANAPI DspyMemReverse(unsigned char *t, int len) {
 	int i;
-	for (i = len / 2 - 1; i >= 0; i--)
-	{
+	for (i = len / 2 - 1; i >= 0; i--) {
 		t[i] ^= t[len - 1 - i];
 		t[len - 1 - i] ^= t[i];
 		t[i] ^= t[len - 1 - i];
@@ -86,12 +78,9 @@ PRMANAPI DspyMemReverse(unsigned char *t, int len)
 }
 #endif /* PkDspyByteOrderNative != PkDspyByteOrderHiLo */
 
-void
-PRMANAPI DspyMemReverseCopy(unsigned char *t, const unsigned char *s, int len)
-{
+void PRMANAPI DspyMemReverseCopy(unsigned char *t, const unsigned char *s, int len) {
 	int i;
-	for (i = 0; i < len; i++)
-	{
+	for (i = 0; i < len; i++) {
 		t[i] = s[len - 1 - i];
 	}
 }
@@ -104,8 +93,7 @@ DspyFindMatrixInParamList(const char *string,
 {
 	int i;
 
-	for (i = 0; i < paramCount; i++)
-	{
+	for (i = 0; i < paramCount; i++) {
 		if (('f' == parameters[i].vtype) 
 		    && (16 == parameters[i].vcount)
 			&& !strcmp(string, parameters[i].name))
@@ -128,27 +116,24 @@ DspyFindFloatInParamList(const char *string,
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    RtInt j ;
 
-		    switch (parameters[i].vtype)
-			{
-			case 'f' :
-			    memcpy(&f, ((float *)(parameters[i].value)), 4);
-			    ret = PkDspyErrorNone;
-			    break;
-			case 'i' :
-			    memcpy(&j, parameters[i].value, sizeof(j));
-			    f = j;
-			    ret = PkDspyErrorNone;
-			    break;
+		    switch (parameters[i].vtype) {
+				case 'f' :
+				    memcpy(&f, ((float *)(parameters[i].value)), 4);
+				    ret = PkDspyErrorNone;
+				    break;
+				case 'i' :
+				    memcpy(&j, parameters[i].value, sizeof(j));
+				    f = j;
+				    ret = PkDspyErrorNone;
+				    break;
 			}
-		    if (PkDspyErrorNone == ret)
-			{
+
+		    if (PkDspyErrorNone == ret) {
 			    *result = f;
 			}
   		}
@@ -167,10 +152,8 @@ DspyFindFloatsInParamList(const char *string,
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    int k;
 		    RtInt j ;
@@ -178,25 +161,24 @@ DspyFindFloatsInParamList(const char *string,
 		    if (parameters[i].vcount < *resultCount)
 			*resultCount = parameters[i].vcount;
 
-		    for (k = 0; k < *resultCount; k++)
-		    {
-			switch (parameters[i].vtype)
-			{
-			case 'f' :
-			    memcpy(&f, k + ((RtFloat *)(parameters[i].value)), 4);
-			    ret = PkDspyErrorNone;
-			    break;
-			case 'i' :
-			    memcpy(&j, k + ((RtInt *)parameters[i].value), sizeof(j));
-			    f = j;
-			    ret = PkDspyErrorNone;
-			    break;
-			}
-			if (PkDspyErrorNone == ret)
-			{
-			    *result = f;
-			}
-			result++;
+		    for (k = 0; k < *resultCount; k++) {
+				switch (parameters[i].vtype) {
+					case 'f' :
+					    memcpy(&f, k + ((RtFloat *)(parameters[i].value)), 4);
+					    ret = PkDspyErrorNone;
+					    break;
+					case 'i' :
+					    memcpy(&j, k + ((RtInt *)parameters[i].value), sizeof(j));
+					    f = j;
+					    ret = PkDspyErrorNone;
+					    break;
+				}
+				
+				if (PkDspyErrorNone == ret) {
+				    *result = f;
+				}
+
+				result++;
 		    }
   		}
 	}
@@ -213,27 +195,24 @@ DspyFindIntInParamList(const char *string,
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    RtInt j ;
 
-		    switch (parameters[i].vtype)
-			{
-			case 'f' :
-			    memcpy(&f, ((float *)(parameters[i].value)), 4);
-			    ret = PkDspyErrorNone;
-			    j = (int)f;
-			    break;
-			case 'i' :
-			    memcpy(&j, parameters[i].value, sizeof(j));
-			    ret = PkDspyErrorNone;
-			    break;
+		    switch (parameters[i].vtype) {
+				case 'f' :
+				    memcpy(&f, ((float *)(parameters[i].value)), 4);
+				    ret = PkDspyErrorNone;
+				    j = (int)f;
+				    break;
+				case 'i' :
+				    memcpy(&j, parameters[i].value, sizeof(j));
+				    ret = PkDspyErrorNone;
+				    break;
 			}
-		    if (PkDspyErrorNone == ret)
-			{
+
+		    if (PkDspyErrorNone == ret) {
 			    *result = j;
 			}
   		}
@@ -252,10 +231,8 @@ DspyFindIntsInParamList(const char *string,
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    int k;
 		    RtInt j ;
@@ -263,34 +240,31 @@ DspyFindIntsInParamList(const char *string,
 		    if (parameters[i].vcount < *resultCount)
 			*resultCount = parameters[i].vcount;
 
-		    for (k = 0; k < *resultCount; k++)
-		    {
-			switch (parameters[i].vtype)
-			{
-			case 'f' :
-			    memcpy(&f, k + ((RtFloat *)(parameters[i].value)), 4);
-			    j = (RtInt)f;
-			    ret = PkDspyErrorNone;
-			    break;
-			case 'i' :
-			    memcpy(&j, k + ((RtInt *)parameters[i].value), sizeof(j));
-			    ret = PkDspyErrorNone;
-			    break;
-			}
-			if (PkDspyErrorNone == ret)
-			{
-			    *result = j;
-			}
-			result++;
+		    for (k = 0; k < *resultCount; k++) {
+				switch (parameters[i].vtype) {
+					case 'f' :
+					    memcpy(&f, k + ((RtFloat *)(parameters[i].value)), 4);
+					    j = (RtInt)f;
+					    ret = PkDspyErrorNone;
+					    break;
+					case 'i' :
+					    memcpy(&j, k + ((RtInt *)parameters[i].value), sizeof(j));
+					    ret = PkDspyErrorNone;
+					    break;
+				}
+			
+				if (PkDspyErrorNone == ret)	{
+			    	*result = j;
+				}
+				
+				result++;
 		    }
   		}
 	}
 	return ret;
 }
 
-void
-VDspyError(const char *module, const char *fmt, va_list vap)
-{
+void VDspyError(const char *module, const char *fmt, va_list vap) {
     char buffer[256];
     char *buf = buffer;
 
@@ -303,9 +277,7 @@ VDspyError(const char *module, const char *fmt, va_list vap)
     vfprintf(stderr, buffer, vap);
 }
 
-void
-DspyError(const char *module, const char *fmt, ...)
-{
+void DspyError(const char *module, const char *fmt, ...) {
     va_list vap;
 
     va_start(vap, fmt);
@@ -326,14 +298,10 @@ DspyReorderFormatting(int formatCount,
 	if (outFormatCount > formatCount)
 		outFormatCount = formatCount;
 
-	for (i = 0; i < outFormatCount; i++)
-	{
-		for (j = i; j < formatCount; j++)
-		{
-			if (!strcmp(format[j].name, outFormat[i].name))
-			{
-				if (i != j)
-				{
+	for (i = 0; i < outFormatCount; i++) {
+		for (j = i; j < formatCount; j++) {
+			if (!strcmp(format[j].name, outFormat[i].name)) {
+				if (i != j) {
 					PtDspyDevFormat tmpFormat;
 
 					tmpFormat = format[i];
@@ -341,13 +309,13 @@ DspyReorderFormatting(int formatCount,
 					format[j] = tmpFormat;
 				}
 
-				if (outFormat[i].type)
-				{
+				if (outFormat[i].type) {
 					format[i].type = outFormat[i].type;
 				}
 				break;
 			}
 		}
+
 		if (j == formatCount)
 			ret = PkDspyErrorBadParams;
 	}

@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "third_party/prman/ndspy.h"
+
 int _aiTypeLengths[] =
 {
 	0,

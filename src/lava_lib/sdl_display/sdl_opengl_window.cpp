@@ -15,10 +15,10 @@ SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _w
   init();
   if(_ppp ==3) {
     m_pixelFormat = GL_RGB;
-    m_texFormat = GL_RGBA32F;
+    m_texFormat = GL_RGB16F;
   } else if(_ppp ==4) {
     m_pixelFormat = GL_RGBA;
-    m_texFormat = GL_RGBA32F;
+    m_texFormat = GL_RGBA16F;
   }
 }
 
@@ -56,8 +56,8 @@ void SDLOpenGLWindow::init() {
   glEnable(GL_FRAMEBUFFER_SRGB);
 }
 
-void SDLOpenGLWindow::updateImage(const float *_image) {
-  glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, GL_FLOAT, _image);
+void SDLOpenGLWindow::updateImage(const void *_image) {
+  glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, GL_HALF_FLOAT, _image);
 }
 
 void NGLCheckGLError( const std::string  &_file, const int _line ) noexcept {
@@ -285,7 +285,7 @@ void SDLOpenGLWindow::createSurface() {
 
   glGenTextures(1, &m_texture);
   glBindTexture(GL_TEXTURE_2D, m_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, m_pixelFormat, m_width, m_height, 0, m_pixelFormat, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, m_pixelFormat, m_width, m_height, 0, m_pixelFormat, GL_HALF_FLOAT, NULL);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

@@ -373,14 +373,6 @@ static FILE *my_popen (const char *cmd, const char *mode) {
     }
 }
 
-FILE* _popen(const std::string& name, const std::string& mode) {
-	return my_popen(name.c_str(), mode.c_str());
-}
-
-void _pclose(FILE* f) {
-	fclose(f);
-}
-
 #endif
 
 #define MAGIC (('h'<<24)+('M'<<16)+('P'<<8)+('0'))
@@ -410,7 +402,6 @@ public:
             fwrite(header, sizeof(int), 4, myPipe);
 
             ::pclose(myPipe);
-            //_pclose(myPipe);
 
             myPipe = (FILE*)0;
         }
@@ -436,9 +427,7 @@ private:
 
 
     	myPipe = ::popen(argv, "w");
-    	//myPipe = _popen(argv, "w");
     }
-    
     
     FILE* myPipe;
     
@@ -809,11 +798,11 @@ DspyImageData(PtDspyImageHandle pvImage,
     if (!img) {
         return PkDspyErrorNoResource;
     }
-    
+
     if (H_Image::openPipe() != 1) { // only opens one time.
         return PkDspyErrorNoResource;
     }
-    
+
 	log(0, "ImageData: %d %d %d %d Size=%d 0x%08x\n", xmin, xmax, ymin, ymax, entrysize, data);
 	if (img->writeData(xmin, xmax, ymin, ymax, (const char*)data, entrysize, multiRes->getXscale(), multiRes->getYscale()) ) {
 		log(0, "Done Image Write\n");

@@ -9,6 +9,9 @@
 
 #include "glm/glm/mat4x4.hpp"
 
+#include "Falcor/Scene/MaterialX/MxNode.h"
+#include "Falcor/Scene/MaterialX/MxTypes.h"
+
 #include "../scene_reader_base.h"
 #include "properties_container.h"
 #include "../reader_bgeo/bgeo/Bgeo.h"
@@ -21,6 +24,7 @@ namespace scope {
 
 class Instance;
 class Material;
+class Node;
 class Global;
 class Light;
 class Plane;
@@ -29,10 +33,13 @@ class Fog;
 class Geo;
 class Segment;
 
+class Session;
+
 using EmbeddedData = std::vector<unsigned char>;
 
 class ScopeBase: public PropertiesContainer {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const ScopeBase>;
     using SharedPtr = std::shared_ptr<ScopeBase>;
 
     ScopeBase(SharedPtr pParent);
@@ -44,14 +51,15 @@ class ScopeBase: public PropertiesContainer {
 
     EmbeddedData& getEmbeddedData(const std::string& name);
 
- protected:
+  protected:
     //SharedPtr mpParent;
     std::vector<SharedPtr> mChildren;
     std::unordered_map<std::string, EmbeddedData> mEmbeddedDataMap;
 };
 
 class Transformable: public ScopeBase {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const Transformable>;
     using SharedPtr = std::shared_ptr<Transformable>;
     using TransformList = std::vector<glm::mat4x4>;
 
@@ -60,7 +68,8 @@ class Transformable: public ScopeBase {
 
     void setTransform(const lsd::Matrix4& mat);
     void addTransform(const lsd::Matrix4& mat);
-    const TransformList getTransformList() { return mTransformList; };
+    TransformList& getTransformList() { return mTransformList; };
+    const TransformList& getTransformList() const { return mTransformList; };
     uint transformSamples() { return mTransformList.size(); };
 
  private:
@@ -68,7 +77,8 @@ class Transformable: public ScopeBase {
 };
 
 class Global: public Transformable {
- public:
+  public:
+    using SharedConstPtr = std::shared_ptr<const Global>;
     using SharedPtr = std::shared_ptr<Global>;
     static SharedPtr create();
 
@@ -88,7 +98,7 @@ class Global: public Transformable {
     const std::vector<std::shared_ptr<Segment>>&    segments() { return mSegments; };
     const std::vector<std::shared_ptr<Material>>&   materials() { return mMaterials; };
 
- private:
+  private:
     Global():Transformable(nullptr) {};
     std::vector<std::shared_ptr<Geo>>       mGeos;
     std::vector<std::shared_ptr<Plane>>     mPlanes;
@@ -100,6 +110,7 @@ class Global: public Transformable {
 
 class Geo: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Geo>;
     using SharedPtr = std::shared_ptr<Geo>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -125,19 +136,73 @@ class Geo: public ScopeBase {
     bool            mIsInline = false;
 };
 
-class Material: public ScopeBase {
+
+class Node: public ScopeBase {
   public:
+    using SharedConstPtr = std::shared_ptr<const Node>;
+    using SharedPtr = std::shared_ptr<Node>;
+    
+    struct DataSocketTemplate {
+      std::string name;
+      Falcor::MxSocketDataType  dataType;
+      Falcor::MxSocketDirection direction;
+    };
+
+    struct EdgeInfo {
+      std::string src_node_uuid;
+      std::string src_node_output_socket;
+      std::string dst_node_uuid;
+      std::string dst_node_input_socket;
+    };
+
+    static SharedPtr create(ScopeBase::SharedPtr pParent);
+
+    ast::Style type() const override { return ast::Style::NODE; };
+
+    std::shared_ptr<Node>       addChildNode();
+    void                        addChildEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket);
+    const std::vector<std::shared_ptr<Node>>& childNodes() const { return mChildNodes; };
+    const std::vector<EdgeInfo>&            childEdges() const { return mChildEdges; };
+
+    const std::vector<DataSocketTemplate>& socketTemplates() const { return mSocketTemplates; };
+
+    void addDataSocketTemplate(const std::string& name, Falcor::MxSocketDataType dataType, Falcor::MxSocketDirection direction);
+
+    virtual const void printSummary(std::ostream& os, uint indent = 0) const override;
+
+  protected:
+    Node(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+
+  private:
+    std::vector<std::shared_ptr<Node>>      mChildNodes;
+    std::vector<EdgeInfo>                   mChildEdges;
+
+    std::vector<DataSocketTemplate>         mSocketTemplates;
+};
+
+class Material: public Node {
+  public:
+
+    using NodeUUID = std::string;
+
+    using SharedConstPtr = std::shared_ptr<const Material>;
     using SharedPtr = std::shared_ptr<Material>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
     ast::Style type() const override { return ast::Style::MATERIAL; };
 
+    bool insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode);
+    Falcor::MxNode::SharedPtr node(const NodeUUID& uuid);
+
   private:
-    Material(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
+    Material(ScopeBase::SharedPtr pParent): Node(pParent) {};
+
+    std::map<NodeUUID, Falcor::MxNode::SharedPtr> mNodesMap; // uuid to shading node map
 };
 
 class Object: public Transformable {
  public:
+    using SharedConstPtr = std::shared_ptr<const Object>;
     using SharedPtr = std::shared_ptr<Object>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -155,6 +220,7 @@ class Object: public Transformable {
 
 class Plane: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Plane>;
     using SharedPtr = std::shared_ptr<Plane>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -166,6 +232,7 @@ class Plane: public ScopeBase {
 
 class Light: public Transformable {
  public:
+    using SharedConstPtr = std::shared_ptr<const Light>;
     using SharedPtr = std::shared_ptr<Light>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -177,6 +244,7 @@ class Light: public Transformable {
 
 class Segment: public ScopeBase {
  public:
+    using SharedConstPtr = std::shared_ptr<const Segment>;
     using SharedPtr = std::shared_ptr<Segment>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
@@ -185,6 +253,7 @@ class Segment: public ScopeBase {
  private:
     Segment(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
 };
+
 
 }  // namespace scope
 

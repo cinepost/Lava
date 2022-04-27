@@ -9,6 +9,7 @@
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "Falcor/Scene/Lights/EnvMap.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -91,6 +92,12 @@ bool Renderer::init() {
         //sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
     }
 
+    bool use_raytracing = confgStore.get<bool>("rton", true);;
+    if (use_raytracing) {
+        sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
+    }
+
+
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
@@ -117,14 +124,19 @@ Renderer::~Renderer() {
         return;
 
     mpDevice->resourceManager()->printStats();
+
+    mpRenderGraph = nullptr;
+
+    Falcor::Threading::shutdown();
+
     mpDevice->flushAndSync();
 
     mGraphs.clear();
 
     mpSceneBuilder = nullptr;
+    
     mpSampler = nullptr;
 
-    Falcor::Threading::shutdown();
     //Falcor::Scripting::shutdown();
     //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
@@ -133,10 +145,9 @@ Renderer::~Renderer() {
 
     mpTargetFBO.reset();
 
-    if(mpDevice)
-        mpDevice->cleanup();
+    //mpDevice->cleanup();
 
-    mpDevice.reset();
+    //mpDevice.reset();
 
     Falcor::OSServices::stop();
 }
@@ -189,6 +200,9 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str) 
 }
 
 void Renderer::createRenderGraph() {
+    if (mpRenderGraph) 
+        return; 
+
     assert(mpDevice);
 
     auto pRenderContext = mpDevice->getRenderContext();
@@ -513,6 +527,7 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
 }
 
 void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
+
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return;
@@ -523,7 +538,7 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         return;
     }
 
-    if(!mpDisplay) {
+    if(!mpDisplay && (mDisplayData.displayType != Display::DisplayType::__HYDRA__)) {
         LLOG_ERR << "Renderer display not initialized !!!";
         return;
     }
@@ -532,154 +547,137 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         LLOG_WRN << "Not enough image samples specified !!!";
     }
 
-    // close previous frame display images (if still opened)
-    mpDisplay->closeAll();
-    
-    std::vector<Display::Channel> channels;
-    channels.push_back({"r", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"g", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"b", Display::TypeFormat::UNSIGNED16});
-    channels.push_back({"a", Display::TypeFormat::UNSIGNED16});
-    
-    //channels.push_back({"z", Display::TypeFormat::FLOAT32});
-    
-    //channels.push_back({"albedo.000.r", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.000.g", Display::TypeFormat::FLOAT16});
-    //channels.push_back({"albedo.000.b", Display::TypeFormat::FLOAT16});
-    
-    uint image1;
+    uint hImage;
 
-    if(!mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels, image1)) {
-        LLOG_ERR << "Unable to open image " << frame_data.imageFileName << " !!!";
+    if(mpDisplay) {
+        mpDisplay->closeAll(); // close previous frame display images (if still opened)
+
+        std::vector<Display::Channel> channels;
+        channels.push_back({"r", Display::TypeFormat::FLOAT16});
+        channels.push_back({"g", Display::TypeFormat::FLOAT16});
+        channels.push_back({"b", Display::TypeFormat::FLOAT16});
+        channels.push_back({"a", Display::TypeFormat::FLOAT16});
+        
+
+        if(!mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels, hImage)) {
+            LLOG_FTL << "Unable to open image " << frame_data.imageFileName << " !!!";
+            return;
+        }
     }
 
-
-    // test
-    uint image2;
-
-if( 1 == 2) {
-    std::vector<Display::Channel> channels2;
-    channels2.push_back({"albedo.000.r", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.g", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.b", Display::TypeFormat::UNSIGNED16});
-    channels2.push_back({"albedo.000.a", Display::TypeFormat::UNSIGNED16});
-    mpDisplay->openImage(frame_data.imageFileName, mGlobalData.imageWidth, mGlobalData.imageHeight, channels2, image2);
-    //
-}
 
     finalizeScene(frame_data);
 
-    if (!mpRenderGraph) 
-        createRenderGraph();
+    createRenderGraph();
 
+    if (!mpRenderGraph) {
+        LLOG_ERR << "Renderer global data not initialized !!!";
+        return; 
+    }
 
     LLOG_DBG << "Renderer::renderFrame";
 
-    if (mpRenderGraph) {    
-        LLOG_DBG << "process render graph(s)";
-        
-        auto pScene = mpSceneBuilder->getScene();
-        if (!pScene) {
-            LLOG_ERR << "Unable to get scene from scene builder !!!";
-            return;
-        }
-
-        auto pRenderContext = mpDevice->getRenderContext();
-
-        // TODO: set passes parameters in a more unified way
-
-        uint32_t frameNumber = 0; // for now
-
-        // render image samples
-        double shutter_length = 0.5;
-        double fps = 25.0;
-        double time = frame_data.time;
-        double sample_time_duration = (1.0 * shutter_length) / mGlobalData.imageSamples;
-        
-        //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
-        pScene->update(pRenderContext, time);
-
-        if(mpTexturesResolvePassGraph) {
-            mpTexturesResolvePassGraph->execute(pRenderContext);
-        }
-
-        mpRenderGraph->execute(pRenderContext, frameNumber, 0);
-
-        if ( mGlobalData.imageSamples > 1 ) {
-            for (uint sampleNumber = 1; sampleNumber < mGlobalData.imageSamples; sampleNumber++) {
-                LLOG_DBG << "Rendering sample no " << sampleNumber << " of " << mGlobalData.imageSamples;
-                
-                // Update scene and camera.
-                time += sample_time_duration;
-                pScene->update(pRenderContext, time);
-                
-                mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
-            }
-        }
-
-        LLOG_DBG << "Rendering done.";
-        
-
-        // capture graph(s) ouput(s).
-        if (mpRenderGraph) {    
-            LLOG_DBG << "Reading rendered image data...";
-            auto& pGraph = mGraphs[mActiveGraph].pGraph;
-
-            Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("AccumulatePass.output"));
-            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("LightingPass.color"));
-            //Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpRenderGraph->getOutput("MinimalPathTracerPass.color"));
-
-            assert(pOutTex);
-
-            Falcor::Texture* pTex = pOutTex.get();
-            assert(pTex);
-            
-            {
-            
-                Falcor::ResourceFormat resourceFormat;
-                uint32_t channels;
-                std::vector<uint8_t> textureData;
-                LLOG_DBG << "readTextureData";
-                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-                LLOG_DBG << "readTextureData done";
-
-                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-                
-                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 16bit RGBA for now
-
-                mpDisplay->sendImage(image1, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-                mpDisplay->closeImage(image1);
-            
-            }
-
-            if( 1 == 2) {
-                Falcor::Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Falcor::Texture>(mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output"));
-                Falcor::Texture* pTex = pOutTex.get();
-
-                Falcor::ResourceFormat resourceFormat;
-                uint32_t channels;
-                std::vector<uint8_t> textureData;
-                LLOG_DBG << "readTextureData";
-                pTex->readTextureData(0, 0, textureData, resourceFormat, channels);
-                LLOG_DBG << "readTextureData done";
-
-                LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
-                
-                assert(textureData.size() == mGlobalData.imageWidth * mGlobalData.imageHeight * channels * 2); // testing only on 8bit RGBA for now
-
-                mpDisplay->sendImage(image2, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data());
-                mpDisplay->closeImage(image2);
-            }
-
-        } else {
-        	LLOG_WRN << "Invalid active graph output!";
-        }
-
-    } else {
-    	LLOG_WRN << "No graphs to render!";
+    LLOG_DBG << "process render graph(s)";
+    
+    auto pScene = mpSceneBuilder->getScene();
+    if (!pScene) {
+        LLOG_ERR << "Unable to get scene from scene builder !!!";
+        return;
     }
 
-    //endFrame(pRenderContext, mpTargetFBO);
+    auto pRenderContext = mpDevice->getRenderContext();
+
+    // TODO: set passes parameters in a more unified way
+
+    uint32_t frameNumber = 0; // for now
+
+    // render image samples
+    double shutter_length = 0.5;
+    double fps = 25.0;
+    double time = frame_data.time;
+    double sample_time_duration = (1.0 * shutter_length) / mGlobalData.imageSamples;
+    
+    //resolvePerFrameSparseResourcesForActiveGraph(pRenderContext);
+    pScene->update(pRenderContext, time);
+
+    if(mpTexturesResolvePassGraph) {
+        mpTexturesResolvePassGraph->execute(pRenderContext);
+    }
+
+    mpRenderGraph->execute(pRenderContext, frameNumber, 0);
+
+    if ( mGlobalData.imageSamples > 1 ) {
+        for (uint sampleNumber = 1; sampleNumber < mGlobalData.imageSamples; sampleNumber++) {
+            LLOG_DBG << "Rendering sample no " << sampleNumber << " of " << mGlobalData.imageSamples;
+            
+            // Update scene and camera.
+            time += sample_time_duration;
+            pScene->update(pRenderContext, time);
+            
+            mpRenderGraph->execute(pRenderContext, frameNumber, sampleNumber);
+        }
+    }
+
+    LLOG_DBG << "Rendering done.";
+
+    // capture graph(s) ouput(s).
+    LLOG_DBG << "Reading rendered image data...";
+    auto& pGraph = mGraphs[mActiveGraph].pGraph;
+
+    const auto pResource = mpRenderGraph->getOutput("AccumulatePass.output");
+
+    if(!pResource) {
+        LLOG_FTL << "No output resource found !";
+        return;
+    }
+
+    auto pOutputTexture = pResource->asTexture();
+    if(!pOutputTexture) {
+        LLOG_FTL << "Error getting output resource texture !";
+        return;
+    }
+
+    {
+        Falcor::ResourceFormat outputResourceFormat;
+        uint32_t outputChannelsCount = 0;
+        
+        LLOG_DBG << "readTextureData";
+        if( mpDisplay ) {
+            // PRman display
+            std::vector<uint8_t> textureData;
+            
+            assert(mGlobalData.imageWidth == pOutputTexture->getWidth(0));
+            assert(mGlobalData.imageHeight == pOutputTexture->getHeight(0));
+
+            Falcor::ResourceFormat outputTextureFormat = pOutputTexture->getFormat();
+
+            textureData.resize( mGlobalData.imageWidth * mGlobalData.imageHeight * Falcor::getFormatBytesPerBlock(outputTextureFormat));
+            
+            pOutputTexture->readTextureData(0, 0, textureData, outputResourceFormat, outputChannelsCount);
+            LLOG_DBG << "Texture read data size is: " << textureData.size() << " bytes";
+
+            try {
+                if (!mpDisplay->sendImage(hImage, mGlobalData.imageWidth, mGlobalData.imageHeight, textureData.data())) {
+                    LLOG_ERR << "Error sending image to display !";
+                } else {
+                    LLOG_DBG << "Image sent to display succcessfuly!";
+                }
+            } catch (std::exception& e) {
+                LLOG_ERR << "Error: " << e.what();
+            }
+
+            mpDisplay->closeImage(hImage);
+
+        } else {
+            // __HYDRA__ direct data copy
+            if(mDisplayData.pDstData) {
+                pOutputTexture->readTextureData(0, 0, mDisplayData.pDstData, outputResourceFormat, outputChannelsCount);
+            }
+        }
+
+    }
+
+    return;
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
@@ -689,5 +687,47 @@ void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::F
 void Renderer::endFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
     //for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
 }
+
+bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
+    std::string materialName = pMaterialX->name();
+    if (mMaterialXs.find(materialName) == mMaterialXs.end() ) {
+        mMaterialXs.insert(make_pair(materialName, std::move(pMaterialX)));
+    } else {
+        // MaterialX with this name already exist !
+        LLOG_ERR << "MaterialX with name " << materialName << " already exist !!!";
+        return false;
+    }
+    //mpSceneBuilder->addMaterialX(std::move(pMaterial));
+}
+
+// HYDRA section begin
+
+bool  Renderer::queryAOVGeometry(const std::string& aov_name, AOVGeometry& aovGeometry) {
+    auto const pResource = mpRenderGraph->getOutput("AccumulatePass.output");
+    if (!pResource) {
+        LLOG_ERR << "No AOV named \"" << aov_name << "\" exist in rendering graph !";
+        return false;
+    }
+
+    auto const pTexture = pResource->asTexture();
+    if (!pTexture) {
+        LLOG_ERR << "Buffer AOV outputs not supported (yet) !";
+        return false;
+    }
+
+    auto resourceFormat = pTexture->getFormat();
+
+    aovGeometry.width = pTexture->getWidth(0);
+    aovGeometry.height = pTexture->getHeight(0);
+    aovGeometry.resourceFormat = resourceFormat;
+    aovGeometry.bytesPerPixel = Falcor::getFormatBytesPerBlock(resourceFormat);
+    aovGeometry.channelsCount = Falcor::getFormatChannelCount(resourceFormat);
+    aovGeometry.bitsPerComponent[0] = Falcor::getNumChannelBits(resourceFormat, 0);
+    aovGeometry.bitsPerComponent[1] = Falcor::getNumChannelBits(resourceFormat, 1);
+    aovGeometry.bitsPerComponent[2] = Falcor::getNumChannelBits(resourceFormat, 2);
+    aovGeometry.bitsPerComponent[3] = Falcor::getNumChannelBits(resourceFormat, 3);
+}
+
+// HYDRA section end
 
 }  // namespace lava

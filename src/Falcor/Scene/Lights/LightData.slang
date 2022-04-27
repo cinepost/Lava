@@ -70,7 +70,7 @@ struct LightData {
     float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
 
     float3   posW               = float3(0, 0, 0);  ///< World-space position of the center of a light source
-    float    _pad0;
+    bool     singleSided        = false;            ///< Area light surface emission property.
 
     float3   dirW               = float3(0, -1, 0); ///< World-space orientation of the light source (normalized).
     float    _pad1;
@@ -86,10 +86,10 @@ struct LightData {
     float2   _pad3;
 
     // Extra parameters for analytic area lights
-    float3   tangent            = float3(0);        ///< Tangent vector of the light shape
+    float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape
     float    _pad4;
 
-    float3   bitangent          = float3(0);        ///< Bitangent vector of the light shape
+    float3   bitangent          = float3(0, 1 ,0);  ///< Bitangent vector of the light shape
     float    _pad5;
 
     float4x4 transMat           = {};               ///< Transformation matrix of the light shape, from local to world space.

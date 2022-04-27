@@ -1,5 +1,6 @@
 #include <chrono>
 
+#include "renderer_iface.h"
 #include "scene_reader_base.h"
 #include "lava_utils_lib/logging.h"
 

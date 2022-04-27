@@ -25,6 +25,18 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include <regex>
+
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
+#include <boost/format.hpp>
+
 #include "stdafx.h"
 #include "Material.h"
 
@@ -134,24 +146,21 @@ void Material::setSampler(Sampler::SharedPtr pSampler)
     }
 }
 
-void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture)
-{
+void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture) {
     if (pTexture == getTexture(slot)) return;
 
-    switch (slot)
-    {
-    case TextureSlot::BaseColor:
-        // Assume the texture is non-constant and has full alpha range.
-        // This may be changed later by optimizeTexture().
-        if (pTexture)
-        {
-            mAlphaRange = float2(0.f, 1.f);
-            mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
-        }
-        mResources.baseColor = pTexture;
-        updateBaseColorType();
-        updateAlphaMode();
-        break;
+    switch (slot) {
+        case TextureSlot::BaseColor:
+            // Assume the texture is non-constant and has full alpha range.
+            // This may be changed later by optimizeTexture().
+            if (pTexture) {
+                mAlphaRange = float2(0.f, 1.f);
+                mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
+            }
+            mResources.baseColor = pTexture;
+            updateBaseColorType();
+            updateAlphaMode();
+            break;
         case TextureSlot::Specular:
             mResources.specular = pTexture;
             updateSpecularType();
@@ -183,10 +192,8 @@ void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture)
     }
 }
 
-Texture::SharedPtr Material::getTexture(TextureSlot slot) const
-{
-    switch (slot)
-    {
+Texture::SharedPtr Material::getTexture(TextureSlot slot) const {
+    switch (slot) {
         case TextureSlot::BaseColor:
             return mResources.baseColor;
         case TextureSlot::Specular:
@@ -258,15 +265,53 @@ uint2 Material::getMaxTextureDimensions() const
 
 void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb) {
     assert(mpDevice);
-    std::string fullpath;
-    if (findFileInDataDirectories(filename, fullpath)) {
-        auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fullpath, true, useSrgb && isSrgbTextureRequired(slot));
-        if (pTexture) {
-            setTexture(slot, pTexture);
-            // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
-            // every texture creation is overly conservative, and will likely lead to performance issues
-            // due to the forced CPU/GPU sync.
-            mpDevice->flushAndSync();
+
+    std::string udimDelimiter = "<UDIM>";
+    size_t fullPathUdimPos = filename.find(udimDelimiter);
+
+    if (fullPathUdimPos!=std::string::npos) {
+        // UDIM texture
+        printf("UDIM texture load requested %s !!!!\n", filename.c_str());
+        std::vector<std::string> filenames;
+
+        fs::path filenamePath    = fs::path(filename);
+        std::string searchPath   = filenamePath.parent_path().string();
+        std::string filenamePart = filenamePath.filename().string();
+        
+        size_t fnameUdimPos = filenamePart.find(udimDelimiter);
+        std::string beforeUdimPart = filenamePart.substr(0, fnameUdimPos);
+        std::string afterUdimPart  = filenamePart.erase(0, fnameUdimPos + udimDelimiter.length());
+
+        boost::format fmt = boost::format("%1%\\d{4}%2%") % beforeUdimPart % afterUdimPart;
+        std::regex  regex(fmt.str()); 
+
+        if (findFilesInDataDirectories(searchPath, regex, filenames)) {
+            for(auto const& fname: filenames) {
+                printf("Loading UDIM texture tile: %s\n", fname.c_str());
+                auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fname, true, useSrgb && isSrgbTextureRequired(slot));
+                if (pTexture) {
+                    Texture::UDIMTileInfo tileInfo;
+                    tileInfo.isUDIMTile = true;
+                    tileInfo.u = 0;
+                    tileInfo.v = 0;
+                    pTexture->setUDIMTileInfo(tileInfo);
+                    setTexture(slot, pTexture);
+                }
+                mpDevice->flushAndSync();
+            }
+        }
+    } else {
+        std::string fullPath;
+        // Normal texture
+        if (findFileInDataDirectories(filename, fullPath)) {
+            auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fullPath, true, useSrgb && isSrgbTextureRequired(slot));
+            if (pTexture) {
+                setTexture(slot, pTexture);
+                // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
+                // every texture creation is overly conservative, and will likely lead to performance issues
+                // due to the forced CPU/GPU sync.
+                mpDevice->flushAndSync();
+            }
         }
     }
 }

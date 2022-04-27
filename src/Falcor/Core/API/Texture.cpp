@@ -251,7 +251,7 @@ void Texture::captureToFileBlocking(uint32_t mipLevel, uint32_t arraySlice, cons
     Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, resourceFormat, true, (void*)(textureData.data()));
 }
 
-void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
+void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
     assert(mType == Type::Texture2D);
     RenderContext* pContext = mpDevice->getRenderContext();
 
@@ -269,6 +269,12 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vecto
         uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
         pContext->readTextureSubresource(this, subresource, textureData);
     }
+
+    pContext->flush(true);
+}
+
+void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
+    readTextureData(mipLevel, arraySlice, textureData.data(), resourceFormat, channels);
 }
 
 void Texture::uploadInitData(const void* pData, bool autoGenMips) {
@@ -350,6 +356,10 @@ uint64_t Texture::getTexelCount() const {
     count *= getArraySize();
     assert(count > 0);
     return count;
+}
+
+void Texture::setUDIMTileInfo(const UDIMTileInfo& tileInfo) {
+    mUDIMTileInfo = tileInfo;
 }
 
 #ifdef FLACOR_D3D12

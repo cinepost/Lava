@@ -31,6 +31,7 @@
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+
 namespace Falcor {
     
 void createNullViews(Device::SharedPtr pDevice);
@@ -45,20 +46,24 @@ std::atomic<std::uint8_t> Device::UID = 0;
 
 Device::Device(const Device::Desc& desc) : mDesc(desc), mGpuId(0), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
-    headless = true;
-    LOG_DBG("GPU device id: %u type headless", mGpuId);
+
+#ifdef FALCOR_VK
+    mVkSurface = mDesc.surface;
+    if (mDesc.surface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
+#endif
 }
 
 Device::Device(uint32_t gpuId, const Device::Desc& desc) : mDesc(desc), mGpuId(gpuId), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
-    headless = true;
-    LOG_DBG("GPU device id: %u type headless", mGpuId);
+#ifdef FALCOR_VK
+    mVkSurface = mDesc.surface;
+    if (mDesc.surface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
+#endif
 }
-
 
 Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(desc));
-    if (pDevice->init(pDeviceManager) == false)
+    if (!pDevice->init(pDeviceManager))
         return nullptr;
 
     return pDevice;
@@ -66,7 +71,7 @@ Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceMan
 
 Device::SharedPtr Device::create(std::shared_ptr<const DeviceManager> pDeviceManager, uint32_t deviceId, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(deviceId, desc));  // headless device
-    if (pDevice->init(pDeviceManager) == false)
+    if (!pDevice->init(pDeviceManager))
         return nullptr;
 
     return pDevice;
@@ -125,8 +130,10 @@ bool Device::init(std::shared_ptr<const DeviceManager> pDeviceManager) {
     // TODO: Do we need to flush here or should RenderContext::create() bind the descriptor heaps automatically without flush? See #749.
 
     // Update the FBOs or offscreen buffer
-    if (!headless) {
-        return false;
+    if (!mHeadless) {
+        if (updateDefaultFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
+            return false;
+        }
     } else {
         // Update offscreen buffer
         if (updateOffscreenFBO(mDesc.width, mDesc.height, mDesc.colorFormat, mDesc.depthFormat) == false) {
@@ -142,7 +149,7 @@ std::string& Device::getPhysicalDeviceName() {
 
 void Device::releaseFboData() {
     // First, delete all FBOs
-    if (!headless) {
+    if (!mHeadless) {
         // Delete swapchain FBOs
         for (auto& pFbo : mpSwapChainFbos) {
             pFbo->attachColorTarget(nullptr, 0);
@@ -185,12 +192,10 @@ bool Device::updateOffscreenFBO(uint32_t width, uint32_t height, ResourceFormat 
 }
 
 bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat) {
-    if(headless){
-        return updateOffscreenFBO(width, height, colorFormat, depthFormat);
-    }
+    if(mVkSurface == VK_NULL_HANDLE) return false;
 
     ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
-    getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
+    if(!getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex)) return false;
 
     for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
@@ -210,15 +215,12 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
 }
 
 Fbo::SharedPtr Device::getSwapChainFbo() const {
-    assert(!headless);
+    assert(!mHeadless);
     return mpSwapChainFbos[mCurrentBackBufferIndex];
 }
 
 Fbo::SharedPtr Device::getOffscreenFbo() const {
-    if(!mpOffscreenFbo) {
-        LOG_ERR("No mpOffscreenFbo!!!");
-    }
-    assert(headless);
+    assert(mHeadless);
     assert(mpOffscreenFbo);
     return mpOffscreenFbo;
 }
@@ -266,12 +268,13 @@ void Device::cleanup() {
 
     std::cout << "Device cleanup \n";
     toggleFullScreen(false);
+
     mpRenderContext->flush(true);
 
     // Release all the bound resources. Need to do that before deleting the RenderContext
     for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
 
-    if(headless) {
+    if(mHeadless) {
         mpOffscreenFbo.reset();
     } else {
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) mpSwapChainFbos[i].reset();
@@ -296,7 +299,7 @@ void Device::cleanup() {
 }
 
 void Device::present() {
-    assert(!headless);
+    assert(!mHeadless);
     mpRenderContext->resourceBarrier(mpSwapChainFbos[mCurrentBackBufferIndex]->getColorTexture(0).get(), Resource::State::Present);
     mpRenderContext->flush();
     apiPresent();

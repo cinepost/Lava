@@ -76,7 +76,7 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
     // Compute incident radiance at shading point.
     // The area lights are single-sided by default, so radiance is zero when seen from the back-facing side.
     float cosTheta = dot(ls.normalW, -ls.dir);
-    if (cosTheta <= 0.f) return false;
+    if (cosTheta <= 0.f && (light.singleSided == true)) return false; // To match Houdini
     ls.Li = light.intensity * (light.surfaceArea * cosTheta / distSqr);
 
     // Compute the PDF with respect to solid angle. Note this may be +inf.
@@ -87,23 +87,22 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
 /** Samples a rectangular area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] float 2 random.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleRectAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Pick a random sample on the quad.
-    // The quad is from (-1,-1,0) to (1,1,0) in object space, but may be scaled by its transform matrix.
-    float2 u = sampleNext2D(sg);
-    float3 pos = float3(u.x * 2.f - 1.f, u.y * 2.f - 1.f, 0.f);
+    // The quad is from (-0.5,-0.5,0) to (0.5,0.5,0) in object space, but may be scaled by its transform matrix.
+    float3 pos = float3(rnd.x - .5f, rnd.y - .5f, 0.f);
 
     // Apply model to world transformation matrix.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
 
     // Setup world space normal.
     // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, 1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
@@ -111,16 +110,15 @@ bool sampleRectAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const L
 /** Samples a spherical area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] float 2 random.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSphereAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Sample a random point on the sphere.
     // TODO: We should pick a random point on the hemisphere facing the shading point.
-    float2 u = sampleNext2D(sg);
-    float3 pos = sample_sphere(u);
+    float3 pos = sample_sphere(rnd) * .5f; // To match Houdini
 
     // Apply model to world transformation matrix.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
@@ -134,22 +132,21 @@ bool sampleSphereAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const
 /** Samples disc area light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] float 2 random.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleDiscAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Sample a random point on the disk.
     // TODO: Fix spelling disagreement between disc vs disk.
-    float2 u = sampleNext2D(sg);
-    float3 pos = float3(sample_disk(u), 0.f);
+    float3 pos = float3(sample_disk(rnd) * 0.5f, 0.f);
 
     // Transform to world space.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
 
     // Setup world space normal.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, 1.f, 0.f), light.transMatIT).xyz);
+    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
     return finalizeAreaLightSample(shadingPosW, light, ls);
 }
@@ -157,17 +154,16 @@ bool sampleDiscAreaLight<S : ISampleGenerator>(const float3 shadingPosW, const L
 /** Samples a distant light source.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] float2 random.
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleDistantLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
+bool sampleDistantLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // A distant light doesn't have a position. Just clear to zero.
     ls.posW = float3(0.f, 0.f, 0.f);
 
-    float2 u = sampleNext2D(sg);
-    float3 dir = sample_cone(u, light.cosSubtendedAngle);
+    float3 dir = sample_cone(rnd, light.cosSubtendedAngle);
 
     // Transform sampled direction to world space
     ls.dir = normalize(mul(dir, (float3x3)light.transMat));
@@ -256,11 +252,11 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
     This function calls the correct sampling function depending on the type of light.
     \param[in] shadingPosW Shading point in world space.
     \param[in] light Light data.
-    \param[in,out] sg Sample generator.
+    \param[in] 2d random number.
     \param[out] ls Sampled point on the light and associated sample data, only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls) {
+bool sampleLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls) {
     // Sample the light based on its type: point, directional, or area.
     switch (light.type) {
         case LightType::Point:
@@ -268,13 +264,13 @@ bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData
         case LightType::Directional:
             return sampleDirectionalLight(shadingPosW, light, ls);
         case LightType::Rect:
-            return sampleRectAreaLight(shadingPosW, light, sg, ls);
+            return sampleRectAreaLight(shadingPosW, light, rnd, ls);
         case LightType::Sphere:
-            return sampleSphereAreaLight(shadingPosW, light, sg, ls);
+            return sampleSphereAreaLight(shadingPosW, light, rnd, ls);
         case LightType::Disc:
-            return sampleDiscAreaLight(shadingPosW, light, sg, ls);
+            return sampleDiscAreaLight(shadingPosW, light, rnd, ls);
         case LightType::Distant:
-            return sampleDistantLight(shadingPosW, light, sg, ls);
+            return sampleDistantLight(shadingPosW, light, rnd, ls);
         default:
             ls = {};
             return false; // Should not happen

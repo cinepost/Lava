@@ -65,6 +65,7 @@ struct DeviceApiData {
 };
 
 VkInstance createInstance(DeviceApiData* pData, bool enableDebugLayer);
+VkInstance createInstance(bool enableDebugLayer);
 
 using OneTimeCommandFunc = std::function<void(VkCommandBuffer)>;
 bool oneTimeCommandBuffer(Device::SharedPtr pDevice, VkCommandPool pool, const CommandQueueHandle& queue, OneTimeCommandFunc callback);

@@ -13,7 +13,7 @@ namespace lava {
 
 class Display {
  public:
-    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY };
+    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type
     enum class TypeFormat { FLOAT32, FLOAT16, UNSIGNED32, SIGNED32, UNSIGNED16, SIGNED16, UNSIGNED8, SIGNED8 };
 
     struct Channel {
@@ -69,6 +69,7 @@ class Display {
     DisplayType mDisplayType = DisplayType::NONE;
 
     std::string mDriverName = "";
+    void* mLibHandle = nullptr;
 
     //std::string mImageName = "";
     //uint mImageWidth, mImageHeight;
@@ -77,9 +78,9 @@ class Display {
 
     std::vector<UserParameter>      mUserParameters;
 
-    //PtDspyImageHandle   mImage;
-    std::vector<ImageData>  mImages;
-    PtFlagStuff             mFlagstuff;
+    //PtDspyImageHandle             mImage;
+    std::vector<ImageData>          mImages;
+    PtFlagStuff                     mFlagstuff;
 
     PtDspyOpenFuncPtr               mOpenFunc = nullptr;
     PtDspyWriteFuncPtr              mWriteFunc = nullptr;

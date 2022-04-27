@@ -158,9 +158,8 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 #------------------------------------------
 list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
-#add_subdirectory( src/lava_utils_lib )
 add_subdirectory( src )
-#add_subdirectory( contrib )
+add_subdirectory( contrib )
 
 
 #install(

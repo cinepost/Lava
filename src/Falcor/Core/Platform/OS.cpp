@@ -25,15 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-#endif
-
 #include <fstream>
+#include <regex>
 
 #include "stdafx.h"
 #include "Falcor/Utils/StringUtils.h"
@@ -189,6 +182,38 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
     }
 
     return false;
+}
+
+bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath) {
+    std::string file_path;
+    if (findFileInDataDirectories(filename, file_path)) {
+        fullPath = fs::path(file_path);
+        return true;
+    }
+    return false;
+}
+
+bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames) {
+    // Check if searchPath exists
+    if (!fs::exists(fs::path(searchPath))) {
+        logWarning("Search path \"" + searchPath + "\" does not exist !!!");
+        return false;
+    }
+
+    bool result = false;
+    const fs::directory_iterator end;
+    
+    for (fs::directory_iterator iter{searchPath}; iter != end; iter++) {
+        const std::string fileName = iter->path().filename().string();
+        if (fs::is_regular_file(*iter)) {
+            if (std::regex_match(fileName, regex)) {
+                filenames.push_back(iter->path().string());
+                result = true;
+            }
+        }
+    }
+    
+    return result;
 }
 
 const std::vector<std::string>& getShaderDirectoriesList() {

@@ -31,6 +31,9 @@
 
 namespace Falcor {
 
+static_assert(sizeof(LightData) % 16 == 0, "LightData struct size should be a multiple of 16");
+
+
 static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
     if (cbOffset.getByteOffset() != cppOffset) {
         logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset.getByteOffset()) + ", C++ data offset is " + std::to_string(cppOffset));
@@ -72,6 +75,8 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
+    if (mPrevData.singleSided != mData.singleSided) mChanges != Changes::Intensity;
+
     if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
 
@@ -85,13 +90,14 @@ Light::Changes Light::beginFrame() {
 }
 
 void Light::setShaderData(const ShaderVar& var) {
-#if _LOG_ENABLED
+//#if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
     check_offset(dirW);
     check_offset(intensity);
     check_offset(penumbraAngle);
+    check_offset(transMat);
 #undef check_offset
-#endif
+//#endif
 
     var.setBlob(mData);
 }
@@ -230,6 +236,7 @@ AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : 
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
     mData.surfaceArea = 4.0f;
+    mData.singleSided = true;
 
     mScaling = float3(1, 1, 1);
     update();
@@ -257,7 +264,7 @@ void RectLight::update() {
 
     float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    mData.surfaceArea = 4.0f * rx * ry;
+    mData.surfaceArea = 1.0f / ( rx * ry );
 }
 
 // DiscLight
@@ -272,7 +279,7 @@ void DiscLight::update() {
     float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
 
-    mData.surfaceArea = (float)M_PI * rx * ry;
+    mData.surfaceArea = 1.0f / (float)M_PI * rx * ry;
 }
 
 // SphereLight
@@ -288,7 +295,7 @@ void SphereLight::update() {
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
     float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
 
-    mData.surfaceArea = 4.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
+    mData.surfaceArea = 1.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
 }
 
 

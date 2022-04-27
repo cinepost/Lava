@@ -147,18 +147,25 @@ Texture::SharedPtr ResourceManager::createTextureFromFile(const std::string& fil
 }
 
 Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
-    const auto& configStore = ConfigStore::instance();
-    bool vtoff = configStore.get<bool>("vtoff", true);
-    if (!mSparseTexturesEnabled || vtoff)
-        return createTextureFromFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
-
-    std::string fullpath;
+    fs::path fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         logError("Error when loading image file. Can't find image file " + filename);
         return nullptr;
     }
 
-    std::string ltxFilename = fullpath + ".ltx";
+    std::string ext = fullpath.extension().string();
+
+    const auto& configStore = ConfigStore::instance();
+    bool vtoff = configStore.get<bool>("vtoff", true);
+    if (!mSparseTexturesEnabled || vtoff) {
+        if (ext == ".ltx") {
+            logWarning("Virtual texturing disabled. Unable to use LTX texture " + filename);
+            return nullptr;
+        }
+        return createTextureFromFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+    }
+
+    std::string ltxFilename = fullpath.string() + ".ltx";
 
     bool doCompression = false;
 
@@ -181,14 +188,21 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     //}
 
     if(!vtoff) {
-        if(configStore.get<bool>("fconv", true) || !fs::exists(ltxFilename)) {
+        bool ltxMagicMatch = false;
+
+        if(fs::exists(ltxFilename) && LTX_Bitmap::checkFileMagic(ltxFilename, true)) ltxMagicMatch = true;
+
+        if(configStore.get<bool>("fconv", true) || !fs::exists(ltxFilename) || !ltxMagicMatch ) {
             LOG_DBG("Converting texture %s to LTX format ...",  fullpath.c_str());
 
             LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
             tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
-            LTX_Bitmap::convertToKtxFile(mpDevice, fullpath, ltxFilename, true, tlcParms);
-            LOG_DBG("Conversion done %s", ltxFilename.c_str());
+            if (!LTX_Bitmap::convertToKtxFile(mpDevice, fullpath.string(), ltxFilename, tlcParms, true)) {
+                LOG_ERR("Error converting texture to %s", ltxFilename.c_str());
+            } else {
+                LOG_DBG("Conversion done %s", ltxFilename.c_str());
+            }
         }
     }
 

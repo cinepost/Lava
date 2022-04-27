@@ -9,7 +9,10 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 # find boost libs
 find_package( Boost COMPONENTS log REQUIRED )
 
-include_directories( ${Boost_INCLUDE_DIRS} )
+include_directories( 
+	${CMAKE_SOURCE_DIR}
+	${Boost_INCLUDE_DIRS} 
+)
 
 # define wrapper library
 add_library( d_houdini SHARED ${SOURCES} )

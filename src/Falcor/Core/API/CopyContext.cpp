@@ -71,9 +71,13 @@ std::vector<uint8_t> CopyContext::readTextureSubresource(const Texture* pTexture
     return pTask->getData();
 }
 
-void CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, std::vector<uint8_t>& textureData) {
+void CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, uint8_t* textureData) {
     CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
     pTask->getData(textureData);
+}
+
+void CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, std::vector<uint8_t>& textureData) {
+    readTextureSubresource(pTexture, subresourceIndex, textureData.data());
 }
 
 bool CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo) {

@@ -276,6 +276,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
         pagesStartOffset += texturePagesCount;
     }
+
     auto done = std::chrono::high_resolution_clock::now();
     std::cout << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << std::endl;
     std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
