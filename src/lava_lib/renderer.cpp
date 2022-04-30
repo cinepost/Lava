@@ -17,49 +17,10 @@ namespace Falcor {  IFramework* gpFramework = nullptr; } // TODO: probably it's 
 
 namespace lava {
 
-// TODO: handle requred channels (RGB/RGBA)
-static Falcor::ResourceFormat resolveShadingResourceFormat(Display::TypeFormat fmt, uint numchannels) {
-    assert(numchannels <= 4);
-
-    switch(fmt) {
-        case Display::TypeFormat::SIGNED8:
-            if( numchannels == 1) return Falcor::ResourceFormat::R8Snorm; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG8Snorm;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB8Snorm;
-            return Falcor::ResourceFormat::RGBA8Snorm;
-
-        case Display::TypeFormat::UNSIGNED8:
-            if( numchannels == 1) return Falcor::ResourceFormat::R8Unorm; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG8Unorm;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB8Unorm;
-            return Falcor::ResourceFormat::RGBA8Unorm;
-
-        case Display::TypeFormat::SIGNED16:
-            if( numchannels == 1) return Falcor::ResourceFormat::R16Int; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG16Int;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB16Int;
-            return Falcor::ResourceFormat::RGBA16Int;  // TODO: add RGBA16Snorm to Falcor formats
-        
-        case Display::TypeFormat::UNSIGNED16:
-            if( numchannels == 1) return Falcor::ResourceFormat::R16Unorm; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG16Unorm;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB16Unorm;
-            return Falcor::ResourceFormat::RGBA16Unorm;
-        
-        case Display::TypeFormat::FLOAT16:
-            if( numchannels == 1) return Falcor::ResourceFormat::R16Float; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG16Float;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB16Float;
-            return Falcor::ResourceFormat::RGBA16Float;
-        
-        case Display::TypeFormat::FLOAT32:
-        default:
-            if( numchannels == 1) return Falcor::ResourceFormat::R32Float; 
-            if( numchannels == 3) return Falcor::ResourceFormat::RG32Float;
-            if( numchannels == 3) return Falcor::ResourceFormat::RGB32Float;
-            return Falcor::ResourceFormat::RGBA32Float;
-    }
+static bool isInVector(const std::vector<std::string>& strVec, const std::string& str) {
+    return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
+
 
 Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
     assert(pDevice);
@@ -69,54 +30,41 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 
 Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
 	LLOG_DBG << "Renderer::Renderer";
-    mpDisplay = nullptr;
+    mMainAOVPlaneExist = false;
 }
 
-bool Renderer::init() {
+bool Renderer::init(const Config& config) {
 	if(mInited) return true;
 
 	LLOG_DBG << "Renderer::init";
 
-	Falcor::OSServices::start();
+    mCurrentConfig = config;
 
-	//Falcor::Scripting::start();
-    //Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
+    Falcor::OSServices::start();
+
+#ifdef SCRIPTING
+	Falcor::Scripting::start();
+    Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
+#endif
 
     Falcor::Threading::start();
 
-    auto const& confgStore = Falcor::ConfigStore::instance();
-    std::string tangentMode = confgStore.get<std::string>("geo_tangent_generation", "mikkt");
-
     auto sceneBuilderFlags = Falcor::SceneBuilder::Flags::DontMergeMeshes;
-    if( tangentMode == "mikkt" ) {
-        //sceneBuilderFlags |= SceneBuilder::Flags::MikkTSpaceTangets;
+    if( mCurrentConfig.tangentGenerationMode != "mikkt" ) {
+        sceneBuilderFlags |= SceneBuilder::Flags::UseOriginalTangentSpace;
     }
 
-    bool use_raytracing = confgStore.get<bool>("rton", true);;
-    if (use_raytracing) {
+    if (mCurrentConfig.useRaytracing) {
         sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
     }
-
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
     mpCamera->setName("main");
     mpSceneBuilder->addCamera(mpCamera);
-    //mpSceneBuilder->setCamera("main");
-
 
     mInited = true;
     return true;
-}
-
-void Renderer::initGlobalData(const RendererIface::GlobalData& global_data) {
-    if(mGlobalDataInited) {
-        LLOG_WRN << "Renderer global data already initialized !!!";
-        return;
-    }
-
-    mGlobalData = global_data;
-    mGlobalDataInited = true;
 }
 
 Renderer::~Renderer() {
@@ -137,11 +85,11 @@ Renderer::~Renderer() {
     
     mpSampler = nullptr;
 
-    //Falcor::Scripting::shutdown();
-    //Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
+#ifdef SCRIPTING
+    Falcor::Scripting::shutdown();
+#endif
 
-    if(mpDisplay)
-        mpDisplay=nullptr;
+    Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
     mpTargetFBO.reset();
 
@@ -152,54 +100,60 @@ Renderer::~Renderer() {
     Falcor::OSServices::stop();
 }
 
-std::unique_ptr<RendererIface> Renderer::aquireInterface() {
-	if (!mIfaceAquired) {
-		return std::move(std::make_unique<RendererIface>(shared_from_this()));
-	}
-	LLOG_ERR << "Сan't aquire renderer interface. Relase old first!";
-	return nullptr;
-}
-
-void Renderer::releaseInterface(std::unique_ptr<RendererIface> pInterface) {
-	if(mIfaceAquired) {
-		std::move(pInterface).reset();
-		mIfaceAquired = false;
-	}
-}
-
-bool Renderer::addPlane(const RendererIface::PlaneData plane_data) {
-    auto it = mPlanes.find(plane_data.channel);
-    if( it != mPlanes.end()) {
-        LLOG_ERR << "Output plane " << plane_data.name << " already exist !";
-        return false;
-    }
-    mPlanes[plane_data.channel] = plane_data;
-    LLOG_DBG << "Output plane " << plane_data.name << " added !";
-
-    return true;
-}
-
-bool Renderer::loadDisplay(Display::DisplayType display_type) {
-	mpDisplay = Display::create(display_type);
-	if(!mpDisplay) {
-        LLOG_ERR << "Unable to create display !!!";
-		return false;
+AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
+    if (mAOVPlanes.find(info.name) != mAOVPlanes.end()) {
+        LLOG_ERR << "AOV plane named \"" << info.name << "\" already exist !";
+        return nullptr;
     }
 
-	return true;
+    auto pAOVPlane = AOVPlane::create(info);
+    if (!pAOVPlane) {
+        LLOG_ERR << "Error creating AOV plane \"" << info.name << "\" !!!";
+        return nullptr;
+    }
+
+    mAOVPlanes[info.name] = pAOVPlane;
+    if (info.name == "MAIN") mMainAOVPlaneExist = true; 
+
+    return pAOVPlane;
 }
 
-bool Renderer::closeDisplay() {
-    if (!mpDisplay) return false;
-    return mpDisplay->closeAll();
+AOVPlane::SharedPtr Renderer::getAOVPlane(const std::string& aov_plane_name) {
+    if (mAOVPlanes.find(aov_plane_name) == mAOVPlanes.end()) {
+        LLOG_ERR << "No AOV plane named \"" << aov_plane_name << "\" exist !";
+        return nullptr;
+    }
+
+    return mAOVPlanes[aov_plane_name];
 }
 
+//std::unique_ptr<RendererIface> Renderer::aquireInterface() {
+//	if (!mIfaceAquired) {
+//		return std::move(std::make_unique<RendererIface>(shared_from_this()));
+//	}
+//	LLOG_ERR << "Сan't aquire renderer interface. Relase old first!";
+//	return nullptr;
+//}
 
-bool isInVector(const std::vector<std::string>& strVec, const std::string& str) {
-    return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
-}
+//void Renderer::releaseInterface(std::unique_ptr<RendererIface> pInterface) {
+//	if(mIfaceAquired) {
+//		std::move(pInterface).reset();
+//		mIfaceAquired = false;
+//	}
+//}
 
-void Renderer::createRenderGraph() {
+//bool Renderer::addPlane(const RendererIface::PlaneData plane_data) {
+//    auto it = mPlanes.find(plane_data.channel);
+//    if( it != mPlanes.end()) {
+//        LLOG_ERR << "Output plane " << plane_data.name << " already exist !";
+//        return false;
+//    }
+//    mPlanes[plane_data.channel] = plane_data;
+//    LLOG_DBG << "Output plane " << plane_data.name << " added !";
+//    return true;
+//}
+
+void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     if (mpRenderGraph) 
         return; 
 
@@ -209,51 +163,27 @@ void Renderer::createRenderGraph() {
     auto pScene = mpSceneBuilder->getScene();
 
     assert(pScene);
+
+    auto pMainAOV = getAOVPlane("MAIN");
+    assert(pMainAOV);
     
     auto const& confgStore = Falcor::ConfigStore::instance();
     bool vtoff = confgStore.get<bool>("vtoff", true);
 
-    Falcor::uint2 imageSize = {mGlobalData.imageWidth, mGlobalData.imageHeight};
+    Falcor::uint2 imageSize = {frame_info.imageWidth, frame_info.imageHeight};
 
-    LOG_ERR("createRenderGraph frame dim %u %u", mGlobalData.imageWidth, mGlobalData.imageHeight);
-
-    // Pick rendering resource format's according to required Display::TypeFormat
-    Falcor::ResourceFormat shadingResourceFormat;
-    Falcor::ResourceFormat auxAlbedoResourceFormat;
-
-    for(const auto& [channel, plane]: mPlanes) {
-        switch(channel) {
-            case RendererIface::PlaneData::Channel::COLOR:
-                shadingResourceFormat = resolveShadingResourceFormat(plane.format, 3);
-                break;
-            case RendererIface::PlaneData::Channel::COLOR_ALPHA:
-                shadingResourceFormat = resolveShadingResourceFormat(plane.format, 4);
-                break;
-            case RendererIface::PlaneData::Channel::ALBEDO:
-                auxAlbedoResourceFormat = resolveShadingResourceFormat(plane.format, 3);
-                break;
-            default:
-                break;
-        }
-    }
+    LLOG_DBG << "createRenderGraph frame dimensions: " << imageSize[0] << " " << imageSize[1];
 
     //// EnvMapSampler stuff
     Texture::SharedPtr pEnvTexture = nullptr;
     if (pEnvTexture) {
         auto pEnvMap = Falcor::EnvMap::create(mpDevice, pEnvTexture);
-        //pEnvMap->setTint(...);
         pScene->setEnvMap(pEnvMap);
     }
 
-    //EnvMapSampler::SharedPtr pEnvMapSampler = nullptr;
     auto pEnvMap = pScene->getEnvMap();
 
-    //if (pEnvMap) {
-    //    pEnvMapSampler = EnvMapSampler::create(pRenderContext, pEnvMap);
-    //}
-
-    ////
-
+    
     // Rasterizer state
     RasterizerState::CullMode cullMode;
     Falcor::RasterizerState::Desc rsDesc;
@@ -300,8 +230,7 @@ void Renderer::createRenderGraph() {
     }
 
     // Main render graph
-    auto mainChannelOutputFormat = ResourceFormat::RGBA16Float;
-    mpRenderGraph = RenderGraph::create(mpDevice, imageSize, mainChannelOutputFormat, "MainImageRenderGraph");
+    mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
     
     // Depth pass
     Falcor::Dictionary depthPassDictionary;
@@ -330,16 +259,12 @@ void Renderer::createRenderGraph() {
     // Forward lighting
     Falcor::Dictionary lightingPassDictionary;
 
-    lightingPassDictionary["frameSampleCount"] =  mGlobalData.imageSamples;
+    lightingPassDictionary["frameSampleCount"] =  frame_info.imageSamples;
 
     mpLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
     mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
     mpLightingPass->setScene(pRenderContext, pScene);
-    mpLightingPass->setColorFormat(mainChannelOutputFormat);
-
-    //if (pEnvMapSampler) {
-    //    mpLightingPass->setEnvMapSampler(pEnvMapSampler);
-    //}
+    mpLightingPass->setColorFormat(ResourceFormat::RGBA32Float);
 
     auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
 
@@ -356,6 +281,8 @@ void Renderer::createRenderGraph() {
     // Accumulaion
     mpAccumulatePass = AccumulatePass::create(pRenderContext);
     mpAccumulatePass->enableAccumulation(true);
+    mpAccumulatePass->setOutputFormat(pMainAOV->format());
+    
     mpRenderGraph->addPass(mpAccumulatePass, "AccumulatePass");
 
     mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
@@ -364,42 +291,22 @@ void Renderer::createRenderGraph() {
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     mpRenderGraph->addEdge("LightingPass.color", "AccumulatePass.input");
 
-/*
-    mpRenderGraph->addEdge("GBufferRasterPass.posW", "MinimalPathTracerPass.posW");
-    mpRenderGraph->addEdge("GBufferRasterPass.normW", "MinimalPathTracerPass.normalW");
-    mpRenderGraph->addEdge("GBufferRasterPass.faceNormalW", "MinimalPathTracerPass.faceNormalW");
-
-    mpRenderGraph->addEdge("GBufferRasterPass.diffuseOpacity", "MinimalPathTracerPass.mtlDiffOpacity");
-    mpRenderGraph->addEdge("GBufferRasterPass.specRough", "MinimalPathTracerPass.mtlSpecRough");
-    mpRenderGraph->addEdge("GBufferRasterPass.emissive", "MinimalPathTracerPass.mtlEmissive");
-    mpRenderGraph->addEdge("GBufferRasterPass.matlExtra", "MinimalPathTracerPass.mtlParams");
-
-    mpRenderGraph->addEdge("MinimalPathTracerPass.color", "AccumulatePass.input");
-*/
-    //mpRenderGraph->addEdge("SkyBoxPass.target", "AccumulatePass.input");
-
     mpRenderGraph->markOutput("AccumulatePass.output");
     
-    LOG_ERR("createRenderGraph done");
-
-}
-
-bool Renderer::loadScript(const std::string& file_name) {
-    return true;
-
-	try {
-        LLOG_DBG << "Loading frame graph configuration: " << file_name;
-        auto ctx = Falcor::Scripting::getGlobalContext();
-        ctx.setObject("renderer", this);
-        Falcor::Scripting::runScriptFromFile(file_name, ctx);
-    } catch (const std::exception& e) {
-        LLOG_ERR << "Error when loading configuration file: " << file_name << "\n" + std::string(e.what());
-    	return false;
+    // Bind AOVs
+    std::string log;
+    bool result = mpRenderGraph->compile(pRenderContext, log);
+    if(!result) {
+        LLOG_ERR << "Error compiling rendering graph !!!";
+        LLOG_ERR << log;
+        mpRenderGraph = nullptr;
     }
 
-    LLOG_DBG << "Frame graph configuration loaded!";
-    return true;
+    pMainAOV->bindToResource(mpRenderGraph->getOutput("AccumulatePass.output"));
+
+    LLOG_DBG << "createRenderGraph done";
 }
+
 
 std::vector<std::string> Renderer::getGraphOutputs(const Falcor::RenderGraph::SharedPtr& pGraph) {
     std::vector<std::string> outputs;
@@ -475,15 +382,17 @@ void Renderer::executeActiveGraph(Falcor::RenderContext* pRenderContext) {
     pGraph->execute(pRenderContext);
 }
 
-static CPUSampleGenerator::SharedPtr createSamplePattern(RendererIface::SamplePattern type, uint32_t sampleCount) {
+static CPUSampleGenerator::SharedPtr createSamplePattern(Renderer::SamplePattern type, uint32_t sampleCount) {
+    if (sampleCount == 0) sampleCount = 1024 * 4;
+
     switch (type) {
-        case RendererIface::SamplePattern::Center:
+        case Renderer::SamplePattern::Center:
             return nullptr;
-        case RendererIface::SamplePattern::DirectX:
+        case Renderer::SamplePattern::DirectX:
             return DxSamplePattern::create(sampleCount);
-        case RendererIface::SamplePattern::Halton:
+        case Renderer::SamplePattern::Halton:
             return HaltonSamplePattern::create(sampleCount);
-        case RendererIface::SamplePattern::Stratified:
+        case Renderer::SamplePattern::Stratified:
             return StratifiedSamplePattern::create(sampleCount);
         default:
             should_not_get_here();
@@ -491,28 +400,31 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(RendererIface::SamplePa
     }
 }
 
-void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
+void Renderer::finalizeScene(const FrameInfo& frame_info) {
     // finalize camera
-    mInvFrameDim = 1.f / float2({mGlobalData.imageWidth, mGlobalData.imageHeight});
+    mInvFrameDim = 1.f / float2({frame_info.imageWidth, frame_info.imageHeight});
 
-    mpSampleGenerator = createSamplePattern(mGlobalData.samplePattern, mGlobalData.imageSamples);
+    if(!mpSampleGenerator) {
+        mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_info.imageSamples);
+    }
+
     if (mpSampleGenerator) {
         mpCamera->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
     }
 
-    mpCamera->setAspectRatio(static_cast<float>(mGlobalData.imageWidth) / static_cast<float>(mGlobalData.imageHeight));
-    mpCamera->setNearPlane(frame_data.cameraNearPlane);
-    mpCamera->setFarPlane(frame_data.cameraFarPlane);
-    mpCamera->setViewMatrix(frame_data.cameraTransform);
-    mpCamera->setFocalLength(frame_data.cameraFocalLength);
-    mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
+    mpCamera->setAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
+    //mpCamera->setNearPlane(frame_data.cameraNearPlane);
+    //mpCamera->setFarPlane(frame_data.cameraFarPlane);
+    //mpCamera->setViewMatrix(frame_data.cameraTransform);
+    //mpCamera->setFocalLength(frame_data.cameraFocalLength);
+    //mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
     //mpCamera->beginFrame(true); // Not sure we need it
 
     // finalize scene
     auto pScene = mpSceneBuilder->getScene();
 
     if (pScene) {
-        pScene->setCameraAspectRatio(static_cast<float>(mGlobalData.imageWidth) / static_cast<float>(mGlobalData.imageHeight));
+        pScene->setCameraAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
 
         if (mpSampler == nullptr) {
             // create common texture sampler
@@ -526,8 +438,8 @@ void Renderer::finalizeScene(const RendererIface::FrameData& frame_data) {
     }
 }
 
+/*
 void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
-
 	if (!mInited) {
 		LLOG_ERR << "Renderer not initialized !!!";
 		return;
@@ -676,8 +588,78 @@ void Renderer::renderFrame(const RendererIface::FrameData frame_data) {
         }
 
     }
+}
+*/
 
-    return;
+
+bool Renderer::prepareFrame(const FrameInfo& frame_info) {
+    if (!mInited) {
+        LLOG_ERR << "Renderer not initialized !!!";
+        return false;
+    }
+
+    if (!mMainAOVPlaneExist) {
+        LLOG_ERR << "No main output plane specified !!!";
+        return false;
+    }
+
+    finalizeScene(frame_info);
+
+    if (!mpRenderGraph) {
+        createRenderGraph(frame_info);
+    } else if (
+            (mCurrentFrameInfo.imageWidth != frame_info.imageWidth) ||
+            (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) ||
+            (mCurrentFrameInfo.mainChannelOutputFormat != frame_info.mainChannelOutputFormat)
+        ) {
+        // Change rendering graph frame dimensions
+        mpRenderGraph->resize(frame_info.imageWidth, frame_info.imageHeight, frame_info.mainChannelOutputFormat);
+
+        std::string compilationLog;
+        if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
+            LLOG_ERR << "Error render graph compilation ! " << compilationLog;
+            return false;
+        }
+    }
+
+    mCurrentSampleNumber = 0;
+    mCurrentFrameInfo = frame_info;
+}
+
+void Renderer::renderSample() {
+    if (!mpRenderGraph) return;
+    if ((mCurrentFrameInfo.imageSamples > 0) && mCurrentSampleNumber >= mCurrentFrameInfo.imageSamples) return;
+
+    auto pScene = mpSceneBuilder->getScene();
+    if (!pScene) {
+        LLOG_ERR << "Unable to get scene from scene builder !!!";
+        return;
+    }
+
+    auto pRenderContext = mpDevice->getRenderContext();
+
+    if (mCurrentSampleNumber == 0) {
+        // First frame sample
+        if(mpTexturesResolvePassGraph) {
+            mpTexturesResolvePassGraph->execute(pRenderContext);
+        }
+    }
+
+    mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
+
+    double currentTime = 0;
+    pScene->update(pRenderContext, currentTime);
+
+    mCurrentSampleNumber++;
+}
+
+bool Renderer::getAOVPlaneImageData(const std::string& aov_plane_name, uint8_t* pData) {
+    assert(pData);
+
+    auto pAOVPlane = getAOVPlane(aov_plane_name);
+    if (!pAOVPlane) return false;
+
+    return pAOVPlane->getImageData(pData);
 }
 
 void Renderer::beginFrame(Falcor::RenderContext* pRenderContext, const Falcor::Fbo::SharedPtr& pTargetFbo) {
@@ -702,30 +684,13 @@ bool Renderer::addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX) {
 
 // HYDRA section begin
 
-bool  Renderer::queryAOVGeometry(const std::string& aov_name, AOVGeometry& aovGeometry) {
-    auto const pResource = mpRenderGraph->getOutput("AccumulatePass.output");
-    if (!pResource) {
-        LLOG_ERR << "No AOV named \"" << aov_name << "\" exist in rendering graph !";
+bool  Renderer::queryAOVPlaneGeometry(const std::string& aov_name, AOVPlaneGeometry& aov_plane_geometry) const {
+    auto pAOVPlane = getAOVPlane(aov_name);
+    if(!pAOVPlane) {
         return false;
-    }
+    }   
 
-    auto const pTexture = pResource->asTexture();
-    if (!pTexture) {
-        LLOG_ERR << "Buffer AOV outputs not supported (yet) !";
-        return false;
-    }
-
-    auto resourceFormat = pTexture->getFormat();
-
-    aovGeometry.width = pTexture->getWidth(0);
-    aovGeometry.height = pTexture->getHeight(0);
-    aovGeometry.resourceFormat = resourceFormat;
-    aovGeometry.bytesPerPixel = Falcor::getFormatBytesPerBlock(resourceFormat);
-    aovGeometry.channelsCount = Falcor::getFormatChannelCount(resourceFormat);
-    aovGeometry.bitsPerComponent[0] = Falcor::getNumChannelBits(resourceFormat, 0);
-    aovGeometry.bitsPerComponent[1] = Falcor::getNumChannelBits(resourceFormat, 1);
-    aovGeometry.bitsPerComponent[2] = Falcor::getNumChannelBits(resourceFormat, 2);
-    aovGeometry.bitsPerComponent[3] = Falcor::getNumChannelBits(resourceFormat, 3);
+    return pAOVPlane->getAOVPlaneGeometry(aov_plane_geometry);
 }
 
 // HYDRA section end

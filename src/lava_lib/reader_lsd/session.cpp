@@ -6,11 +6,15 @@
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/MaterialX/MxNode.h"
+#include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
 
 #include "session.h"
+#include "session_helpers.h"
+#include "display.h"
 
-#include "../display.h"
+#include "../aov.h"
+#include "../renderer.h"
 #include "../scene_builder.h" 
 
 #include "lava_utils_lib/ut_fsys.h"
@@ -27,57 +31,9 @@ namespace lsd {
 
 using DisplayType = Display::DisplayType;
 
-static DisplayType resolveDisplayTypeByFileName(const std::string& file_name) {
-	std::string ext = ut::fsys::getFileExtension(file_name);
 
-    if( ext == ".exr" ) return DisplayType::OPENEXR;
-    if( ext == ".jpg" ) return DisplayType::JPEG;
-    if( ext == ".jpeg" ) return DisplayType::JPEG;
-    if( ext == ".png" ) return DisplayType::PNG;
-    if( ext == ".tif" ) return DisplayType::TIFF;
-    if( ext == ".tiff" ) return DisplayType::TIFF;
-
-    return DisplayType::OPENEXR;
-}
-
-static Display::TypeFormat resolveDisplayTypeFormat(const std::string& fname) {
-	if( fname == "int8") return Display::TypeFormat::UNSIGNED8;
-	if( fname == "int16") return Display::TypeFormat::UNSIGNED16;
-	if( fname == "float16") return Display::TypeFormat::FLOAT16;	
-	if( fname == "float32") return Display::TypeFormat::FLOAT32;
-
-	return Display::TypeFormat::FLOAT32;
-}
-
-static RendererIface::SamplePattern samplePattern(const std::string& sample_pattern_name) {
-	if( sample_pattern_name == "stratified" ) return RendererIface::SamplePattern::Stratified;
-	if( sample_pattern_name == "halton" )  return RendererIface::SamplePattern::Halton;
-	return RendererIface::SamplePattern::Center;	
-}
-
-static RendererIface::PlaneData renderingPlaneFromLSD(scope::Plane::SharedPtr pPlane) {
-	RendererIface::PlaneData planeData;
-
-	std::string channel_name = pPlane->getPropertyValue(ast::Style::PLANE, "channel", std::string());
-	if(channel_name.size() == 0) {
-		LLOG_ERR << "No channel name specified for plane !!!";
-	}
-
-	std::string plane_variable = pPlane->getPropertyValue(ast::Style::PLANE, "variable", std::string());
-	if(plane_variable.size() == 0) {
-		LLOG_ERR << "No plane variable specified for plane !!!";
-	}
-
-	std::string quantize = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
-
-	planeData.name = channel_name;
-	planeData.format = resolveDisplayTypeFormat(quantize);
-
-	return planeData;
-}
-
-Session::UniquePtr Session::create(std::unique_ptr<RendererIface> pRendererIface) {
-	auto pSession = Session::UniquePtr(new Session(std::move(pRendererIface)));
+Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
+	auto pSession = Session::UniquePtr(new Session(pRenderer));
 	auto pGlobal = scope::Global::create();
 	if (!pGlobal) {
 		return nullptr;
@@ -89,20 +45,52 @@ Session::UniquePtr Session::create(std::unique_ptr<RendererIface> pRendererIface
 	return std::move(pSession);
 }
 
-Session::Session(std::unique_ptr<RendererIface> pRendererIface):mFirstRun(true) { 
-	mpRendererIface = std::move(pRendererIface);
+Session::Session(std::shared_ptr<Renderer> pRenderer):mFirstRun(true) { 
+	mpRenderer = pRenderer;
 }
 
 Session::~Session() {
-	mpRendererIface.reset(nullptr);
+	if(mpDisplay) mpDisplay = nullptr;
 }
 
 void Session::cmdSetEnv(const std::string& key, const std::string& value) {
-	mpRendererIface->setEnvVariable(key, value);
+	setEnvVariable(key, value);
 }
 
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
-	auto& configStore = Falcor::ConfigStore::instance();
+#define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
+
+	if (name == "vtoff") {
+		mRendererConfig.useVirtualTexturing = get_bool(value); return;
+	}
+	if (name == "fconv") {
+		mRendererConfig.forceVirtualTexturesReconversion = get_bool(value); return;
+	}
+	if (name == "async_geo") {
+		mRendererConfig.useAsyncGeometryProcessing = get_bool(value); return;
+	}
+	if (name == "cull_mode") {
+		mRendererConfig.cullMode = boost::get<std::string>(value); return;
+	}
+	if (name == "vtex_conv_quality") {
+		mRendererConfig.virtualTexturesCompressionQuality = boost::get<std::string>(value); return;
+	}
+	if (name == "vtex_tlc") {
+		mRendererConfig.virtualTexturesCompressorType = boost::get<std::string>(value); return;
+	}
+	if (name == "vtex_tlc_level") {
+		mRendererConfig.virtualTexturesCompressionLevel = (uint8_t)boost::get<int>(value); return;
+	}
+	if (name == "geo_tangent_generation") {
+		mRendererConfig.tangentGenerationMode = boost::get<std::string>(value); return;
+	}
+
+	LLOG_WRN << "Unsupported renderer configuration property: " << name << " of type:" << to_string(type);
+	return;
+
+#undef get_bool
+
+	/*auto& configStore = Falcor::ConfigStore::instance();
 
 	switch(type) {
 		case ast::Type::BOOL:
@@ -121,22 +109,32 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 			LLOG_WRN << "Unsupported config store property type: " << to_string(type);
 			break;
 	}
-
 	return;
+	*/
 }
 
-std::string Session::getExpandedString(const std::string& str) {
-	return mpRendererIface->getExpandedString(str);
+void Session::setEnvVariable(const std::string& key, const std::string& value){
+	LLOG_DBG << "setEnvVariable: " << key << " : " << value;
+	mEnvmap[key] = value;
+}
+
+std::string Session::getExpandedString(const std::string& s) {
+		std::string result = s;
+
+	for( auto const& [key, val] : mEnvmap )
+		result = ut::string::replace(result, '$' + key, val);
+
+	return result;
 }
 
 void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
 	LLOG_DBG << "cmdImage";
-	mFrameData.imageFileName = filename;
+	mCurrentDisplayInfo.outputFileName = filename;
 
 	if (display_type == lsd::ast::DisplayType::NONE ) {
-		mDisplayData.displayType = resolveDisplayTypeByFileName(filename);
+		mCurrentDisplayInfo.displayType = resolveDisplayTypeByFileName(filename);
 	} else {
-    	mDisplayData.displayType = display_type;
+    	mCurrentDisplayInfo.displayType = display_type;
     }
 }
 
@@ -153,14 +151,13 @@ bool Session::prepareDisplayData() {
 		const Property& prop = item.second;
 		switch(item.second.type()) {
 			case ast::Type::FLOAT:
-				//LLOG_DBG << "type: " << to_string(prop.type()) << " value: " << to_string(prop.value());
-				mDisplayData.displayFloatParameters.push_back(std::pair<std::string, std::vector<float>>( parm_name, {prop.get<float>()} ));
+				mCurrentDisplayInfo.displayFloatParameters.push_back(std::pair<std::string, std::vector<float>>( parm_name, {prop.get<float>()} ));
 				break;
 			case ast::Type::INT:
-				mDisplayData.displayIntParameters.push_back(std::pair<std::string, std::vector<int>>( parm_name, {prop.get<int>()} ));
+				mCurrentDisplayInfo.displayIntParameters.push_back(std::pair<std::string, std::vector<int>>( parm_name, {prop.get<int>()} ));
 				break;
 			case ast::Type::STRING:
-				mDisplayData.displayStringParameters.push_back(std::pair<std::string, std::vector<std::string>>( parm_name, {prop.get<std::string>()} ));
+				mCurrentDisplayInfo.displayStringParameters.push_back(std::pair<std::string, std::vector<std::string>>( parm_name, {prop.get<std::string>()} ));
 				break;
 			default:
 				break;
@@ -169,7 +166,7 @@ bool Session::prepareDisplayData() {
 
 	// quantization parameters
 	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float32"));
-	mDisplayData.typeFormat = resolveDisplayTypeFormat(typeFormatName);
+	mCurrentDisplayInfo.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 
 	return true;
 }
@@ -180,18 +177,15 @@ bool Session::prepareGlobalData() {
 
 	// set up frame resolution (as they don't have to be the same size)
 	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
-	mGlobalData.imageWidth = resolution[0];
-	mGlobalData.imageHeight = resolution[1];
+	mCurrentFrameInfo.imageWidth = resolution[0];
+	mCurrentFrameInfo.imageHeight = resolution[1];
 
 
 	// set up image sampling
-	mGlobalData.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 
 	std::string samplePatternName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samplingpattern", std::string("stratified"));
-	mGlobalData.samplePattern = samplePattern(samplePatternName);
-
-	// effects
-	mGlobalData.use_ssao = mpGlobal->getPropertyValue(ast::Style::RENDERER, "use_ssao", false);
+	mCurrentCameraInfo.samplePattern = resolveSamplePatternType(samplePatternName);
 
 	return true;
 }
@@ -203,69 +197,100 @@ bool Session::prepareFrameData() {
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 	
-	mFrameData.cameraNearPlane = camera_clip[0];
-	mFrameData.cameraFarPlane  = camera_clip[1];
-	mFrameData.cameraProjectionName = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
-	mFrameData.cameraTransform = mpGlobal->getTransformList()[0];
+	mCurrentCameraInfo.cameraNearPlane = camera_clip[0];
+	mCurrentCameraInfo.cameraFarPlane  = camera_clip[1];
+	mCurrentCameraInfo.cameraProjectionName = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
+	mCurrentCameraInfo.cameraTransform = mpGlobal->getTransformList()[0];
 
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
-		mFrameData.cameraFocalLength = 50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
+		mCurrentCameraInfo.cameraFocalLength = 50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
 		
-		double height_k = static_cast<double>(mGlobalData.imageHeight) / static_cast<double>(mGlobalData.imageWidth);
-		mFrameData.cameraFrameHeight = height_k * 50.0;
+		double height_k = static_cast<double>(mCurrentFrameInfo.imageHeight) / static_cast<double>(mCurrentFrameInfo.imageWidth);
+		mCurrentCameraInfo.cameraFrameHeight = height_k * 50.0;
 	}
-
-	// effects ssao
-	mFrameData.ssao_distance = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_distance", (float)0.5);
-    mFrameData.ssao_factor = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_factor", (float) 1.0);
-    mFrameData.ssao_precision = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_precision", (float)1.0);
-    mFrameData.ssao_bent_normals = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_bent_normals", false);
-    mFrameData.ssao_bounce_approx = mpGlobal->getPropertyValue(ast::Style::RENDERER, "ssao_bent_normals", false);
 
 	return true;
 }
 
 void Session::cmdQuit() {
-	mpRendererIface = nullptr;
+	//mpRendererIface = nullptr;
 }
 
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
-	mpGlobal->printSummary(std::cout);
-	
-	// push frame independent data to the rendering interface
-	if(mFirstRun) {
-		if(!mpRendererIface->initRenderer()) return false;
 
-		if(!prepareGlobalData()) {
-			LLOG_ERR << "Unable to prepare global data !!!";
-			return false;
-		}
-
-		mpRendererIface->initRendererGlobalData(mGlobalData);
-
-		// prepare display driver parameters
-		if(!prepareDisplayData()) {
-			LLOG_ERR << "Unable to prepare display data !!!";
-			return false;
-		}
-
-		if(!mpRendererIface->setDisplay(mDisplayData)) {
-			LLOG_ERR << "Error setting display data !!!";
-			return false;
-		}
-	}
-
-	if(!prepareFrameData()) {
-		LLOG_ERR << "Unable to prepare frame data !";
+	if(!mpMainAOVPlane) {
+		LLOG_ERR << "NO main AOV plane specified !!!";
 		return false;
 	}
 
-	mpRendererIface->renderFrame(mFrameData);
+	mpGlobal->printSummary(std::cout);
 
-	mFirstRun = false;
+	if(!mpDisplay) {
+		mpDisplay = createDisplay(mCurrentDisplayInfo);
+		if(!mpDisplay) {
+			return false;
+		}
+	}
+
+	// Prepare frame data
+	// Set up frame resolution (as they don't have to be the same size)
+	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
+	mCurrentFrameInfo.imageWidth = resolution[0];
+	mCurrentFrameInfo.imageHeight = resolution[1];
+
+
+	// Set up image sampling
+	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
+
+	// Open display image
+	uint hImage;
+
+    mpDisplay->closeAll(); // close previous frame display images (if still opened) 
+
+    if(!mpDisplay->openImage(mCurrentDisplayInfo.outputFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, mpMainAOVPlane->format(), hImage)) {
+        LLOG_FTL << "Unable to open image " << mCurrentDisplayInfo.outputFileName << " !!!";
+        return false;
+    }
+
+    // Frame rendeing
+    {  
+		mpRenderer->prepareFrame(mCurrentFrameInfo);
+
+		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
+			mpRenderer->renderSample();
+		}
+	}
+
+	LLOG_DBG << "Senging renderd data to display";    
+	AOVPlaneGeometry aov_geometry;
+	if(!mpMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
+		LLOG_FTL << "No AOV !!!";
+		return false;
+	}
+
+	Falcor::ResourceFormat outputResourceFormat;
+	uint32_t outputChannelsCount = 0;
+
+    std::vector<uint8_t> textureData;
+    textureData.resize( aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel);
+    
+    if(!mpMainAOVPlane->getImageData(textureData.data())) {
+    	LLOG_ERR << "Error reading AOV texture data !!!";
+    }
+    
+    try {
+        if (!mpDisplay->sendImage(hImage, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, textureData.data())) {
+            LLOG_ERR << "Error sending image to display !";
+        }
+    } catch (std::exception& e) {
+        LLOG_ERR << "Error: " << e.what();
+    }
+
+    mpDisplay->closeImage(hImage);
+
 	return true;
 }
 
@@ -273,7 +298,7 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr 
 	LLOG_DBG << "pushBgeo";
     //bgeo.printSummary(std::cout);
 
-    auto pSceneBuilder = mpRendererIface->getSceneBuilder();
+    auto pSceneBuilder = mpRenderer->sceneBuilder();
     if(pSceneBuilder) {
     	if (async) {
     		// async mesh add 
@@ -290,7 +315,7 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	LLOG_DBG << "pushLight";
 	
-    auto pSceneBuilder = mpRendererIface->getSceneBuilder();
+    auto pSceneBuilder = mpRenderer->sceneBuilder();
 
     if (!pSceneBuilder) {
 		LLOG_ERR << "Unable to push light. SceneBuilder not ready !!!";
@@ -520,6 +545,8 @@ void Session::cmdIPRmode(const std::string& mode) {
 bool Session::cmdStart(lsd::ast::Style object_type) {
 	LLOG_DBG << "cmdStart";
 
+	mpRenderer->init(mRendererConfig);
+
 	switch (object_type) {
 		case lsd::ast::Style::GEO:
 			{ 
@@ -640,13 +667,12 @@ bool Session::cmdEnd() {
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
 			if(!pushGeometryInstance(pObj)) {
-				//return false;
 				result = false;
 			}
 			break;
 		case ast::Style::PLANE:
 			pPlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
-			mpRendererIface->addPlane(renderingPlaneFromLSD(pPlane));
+			mpMainAOVPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pPlane));
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
@@ -657,7 +683,7 @@ bool Session::cmdEnd() {
 			if(pMaterialScope) {
 				auto pMaterialX = createMaterialXFromLSD(pMaterialScope);
 				if (pMaterialX) {
-					mpRendererIface->addMaterialX(std::move(pMaterialX));
+					//mpRenderer->addMaterialX(std::move(pMaterialX));
 				}
 			} else {
 				result = false;
@@ -745,7 +771,7 @@ Falcor::MaterialX::UniquePtr Session::createMaterialXFromLSD(scope::Material::Sh
 
 	// We create material without device at this stage. Actual device would be set up for this material later by the
 	// renderer itself.
-	auto pMx = MaterialX::createUnique(nullptr, material_name);
+	auto pMx = Falcor::MaterialX::createUnique(nullptr, material_name);
 
 	for( scope::Node::SharedConstPtr pNodeLSD: pMaterialLSD->childNodes()) {
 		addMxNode(pMx->rootNode(), pNodeLSD);
@@ -775,7 +801,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
-	auto pSceneBuilder = mpRendererIface->getSceneBuilder();
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if (!pSceneBuilder) {
 		LLOG_ERR << "Unable to push geometry instance. SceneBuilder not ready !!!";
 		return false;
@@ -907,7 +933,8 @@ bool Session::cmdGeometry(const std::string& name) {
 }
 
 void Session::cmdTime(double time) {
-	mFrameData.time = time;
+	mCurrentTime = time;
+	mpRenderer->init(mRendererConfig);
 }
 
 

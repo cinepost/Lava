@@ -58,6 +58,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Texture3D,              ///< 3D texture. Can be bound as render-target, shader-resource and UAV
         TextureCube,            ///< Texture-cube. Can be bound as render-target, shader-resource and UAV
         Texture2DMultisample,   ///< 2D multi-sampled texture. Can be bound as render-target, shader-resource and UAV
+        Undefined
     };
 
     /** Resource state. Keeps track of how the resource was last used
@@ -171,14 +172,17 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Conversions to derived classes
     */
-    std::shared_ptr<Texture> asTexture() { 
-        return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
-        //return std::dynamic_pointer_cast<Texture>(shared_from_this());
+    std::shared_ptr<Texture> asTexture() {
+        return this ? ((mType != Type::Buffer) ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr) : nullptr;
     }
-    
-    std::shared_ptr<Buffer> asBuffer() { 
-        return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
-        //return std::dynamic_pointer_cast<Buffer>(shared_from_this());
+
+    std::shared_ptr<const Texture> asTexture() const {
+        if (mType != Type::Buffer) return std::dynamic_pointer_cast<const Texture>(shared_from_this());
+        return nullptr;
+    }
+
+    std::shared_ptr<Buffer> asBuffer() {
+        return this ? ((mType == Type::Buffer) ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr) : nullptr;
     }
 
  private:
@@ -189,7 +193,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
-    Type mType;
+    Type mType = Type::Undefined;
     BindFlags mBindFlags;
 
     struct {

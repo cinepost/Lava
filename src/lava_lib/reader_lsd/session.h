@@ -4,17 +4,18 @@
 #include <memory>
 #include <variant>
 #include <future>
+#include <map>
 #include <unordered_map>
 
 #include "grammar_lsd.h"
 #include "../reader_bgeo/bgeo/Bgeo.h"
-#include "../renderer_iface.h"
+#include "../renderer.h"
 #include "scope.h"
+#include "display.h"
 
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
-//#include "../scene_builder.h" 
 
 namespace lava {
 
@@ -23,14 +24,40 @@ namespace lsd {
 class Session {
   public:
  	  using UniquePtr = std::unique_ptr<Session>;
-   static UniquePtr create(std::unique_ptr<RendererIface> pRendererIface);
-
-    
+    static UniquePtr create(std::shared_ptr<Renderer> pRenderer);    
     ~Session();
+
+    struct DisplayInfo {
+      Display::DisplayType                                            displayType;    // __HYDRA__ is a special virtual type
+      Display::TypeFormat                                             typeFormat;
+      std::vector<std::pair<std::string, std::vector<std::string>>>   displayStringParameters;
+      std::vector<std::pair<std::string, std::vector<int>>>           displayIntParameters;
+      std::vector<std::pair<std::string, std::vector<float>>>         displayFloatParameters;
+
+      std::string                                                     outputFileName;
+    };
+
+    struct CameraInfo {
+      double time = 0.0;
+
+      // camera section
+      std::string cameraProjectionName = "perspective";
+      double      cameraNearPlane = 0.01;
+      double      cameraFarPlane  = 1000.0;
+      glm::mat4   cameraTransform;
+      double      cameraFocalLength = 1.0;
+      double      cameraFrameHeight = 1.0;
+
+      Renderer::SamplePattern samplePattern = Renderer::SamplePattern::Stratified;
+    };
 
   public:
  	  scope::Geo::SharedPtr getCurrentGeo();
     scope::ScopeBase::SharedPtr getCurrentScope();
+
+    /** get string expanded with local env variables
+     */
+    std::string getExpandedString(const std::string& s);
 
     bool cmdStart(lsd::ast::Style object_type);
     bool cmdEnd();
@@ -52,15 +79,16 @@ class Session {
 
     void pushLight(const scope::Light::SharedPtr pLight);
     void pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async = false);
-    std::string getExpandedString(const std::string& str);
 
   private:
- 	  Session(std::unique_ptr<RendererIface> pRendererIface);
+ 	  Session(std::shared_ptr<Renderer> pRenderer);
  	
     bool prepareGlobalData();
     bool prepareFrameData();
  	  bool prepareDisplayData();
  	
+    void setEnvVariable(const std::string& key, const std::string& value);
+
     Falcor::MaterialX::UniquePtr createMaterialXFromLSD(lsd::scope::Material::SharedConstPtr pMaterialLSD);
 
  	  bool pushGeometryInstance(lsd::scope::Object::SharedConstPtr pObj);
@@ -69,15 +97,27 @@ class Session {
   private:
     bool  mIPRmode = false;
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
-    std::unique_ptr<RendererIface> 	mpRendererIface;
+    std::shared_ptr<Renderer> 	    mpRenderer = nullptr;
 
-    RendererIface::GlobalData       mGlobalData;
-    RendererIface::DisplayData		  mDisplayData;
-    RendererIface::FrameData		    mFrameData;
+    std::map<std::string, std::string>  mEnvmap;
+
+    Renderer::FrameInfo             mCurrentFrameInfo;
+
+    //RendererIface::GlobalData       mGlobalData;
+    DisplayInfo		                  mCurrentDisplayInfo;
+    CameraInfo                      mCurrentCameraInfo;
+    double                          mCurrentTime = 0;
+    //RendererIface::FrameData		    mFrameData;
 
     scope::ScopeBase::SharedPtr		  mpCurrentScope;
     scope::Material::SharedPtr      mpMaterialScope;
     scope::Global::SharedPtr		    mpGlobal;
+
+    Display::SharedPtr              mpDisplay;
+
+    Renderer::Config                mRendererConfig;
+
+    AOVPlane::SharedPtr             mpMainAOVPlane = nullptr;
 
     std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
     std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 

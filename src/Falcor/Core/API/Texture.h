@@ -211,6 +211,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
         \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
     */
     ShaderResourceView::SharedPtr getSRV(uint32_t mostDetailedMip, uint32_t mipCount = kMaxPossible, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
+    ShaderResourceView::SharedConstPtr getSRV(uint32_t mostDetailedMip, uint32_t mipCount = kMaxPossible, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
 
     /** Get a render-target view.
         \param[in] mipLevel The requested mip-level
@@ -261,7 +262,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
     */
     void readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat& resourceFormat, uint32_t& channels);
     void readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels);
-
+    void readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData);
 
     /** Generates mipmaps for a specified texture object.
     */

@@ -67,7 +67,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
   g_width = width;
   g_height = height;
   g_channels = formatCount;
-  g_pixels.resize(width*height*g_channels*sizeInBytes(GL_UNSIGNED_SHORT),0);
+  g_pixels.resize(width*height*g_channels*sizeInBytes(GL_UNSIGNED_BYTE),0);
 
   // shuffle format so we always write out RGB[A]
   std::array<std::string,4> chan = { {"r", "g", "b", "a"} };
@@ -151,7 +151,7 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
   for (;ymin < ymax; ++ymin) {
     for (xmin = oldx; xmin < xmax; ++xmin) {
       const void *ptr = reinterpret_cast<const void*>(data);
-      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(GL_HALF_FLOAT);
+      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(GL_UNSIGNED_BYTE);
       if(g_channels == 4) {
         //g_pixels[ offset + 0 ]=ptr[0];
         //g_pixels[ offset + 1 ]=ptr[1];

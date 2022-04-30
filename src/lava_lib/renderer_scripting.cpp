@@ -31,6 +31,7 @@
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "renderer.h"
+#include "lava_utils_lib/logging.h"
 
 
 namespace lava {
@@ -52,6 +53,23 @@ const std::string kScene = "scene";
 const std::string kRendererVar = "m";
 const std::string kTimeVar = "t";
 
+}
+
+bool Renderer::loadScript(const std::string& file_name) {
+    return true;
+
+    try {
+        LLOG_DBG << "Loading frame graph configuration: " << file_name;
+        auto ctx = Falcor::Scripting::getGlobalContext();
+        ctx.setObject("renderer", this);
+        Falcor::Scripting::runScriptFromFile(file_name, ctx);
+    } catch (const std::exception& e) {
+        LLOG_ERR << "Error when loading configuration file: " << file_name << "\n" + std::string(e.what());
+        return false;
+    }
+
+    LLOG_DBG << "Frame graph configuration loaded!";
+    return true;
 }
 
 #ifdef SCRIPTING

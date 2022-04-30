@@ -45,6 +45,7 @@ class Scene;
 class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
  public:
     using SharedPtr = std::shared_ptr<RenderGraph>;
+    using SharedConstPtr = std::shared_ptr<const RenderGraph>;
     static const FileDialogFilterVec kFileExtensionFilters;
 
     static const uint32_t kInvalidIndex = -1;
@@ -164,7 +165,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Force size for offscreen rendering
     */
-    void resize(uint width, uint height, const ResourceFormat& default_format = ResourceFormat::RGBA16Float);
+    void resize(uint width, uint height, const ResourceFormat& default_format = ResourceFormat::RGBA32Float);
 
     /** Get current render graph output dimensions
     */

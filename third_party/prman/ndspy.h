@@ -92,6 +92,7 @@ typedef PtDspyUnsigned32 PtDspyServerMessage;
 
 #define PkDspyNone		0
 #define PkDspyFloat32		1
+#define PkDspyFloat16       12
 #define PkDspyUnsigned32	2
 #define PkDspySigned32		3
 #define PkDspyUnsigned16	4
@@ -101,7 +102,7 @@ typedef PtDspyUnsigned32 PtDspyServerMessage;
 #define PkDspyString		8
 #define PkDspyMatrix		9
 #define PkDspyArrayBegin	10
-#define PkDspyArrayEnd	        11
+#define PkDspyArrayEnd	    11
 
 #define PkDspyMaskType		8191
 

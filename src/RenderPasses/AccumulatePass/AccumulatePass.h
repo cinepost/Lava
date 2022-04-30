@@ -48,7 +48,7 @@ class AccumulatePass : public RenderPass {
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Temporal accumulation pass"; }
+    virtual std::string getDesc() override { return "Accumulation pass"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
@@ -57,6 +57,8 @@ class AccumulatePass : public RenderPass {
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
     void enableAccumulation(bool enable = true);
+
+    void setOutputFormat(ResourceFormat format);
 
     // Scripting functions
     void reset() { mFrameCount = 0; }
@@ -89,6 +91,8 @@ class AccumulatePass : public RenderPass {
     bool                        mAutoReset = true;              ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
+
+    ResourceFormat              mOutputFormat = ResourceFormat::RGBA32Float;
 
 };
 

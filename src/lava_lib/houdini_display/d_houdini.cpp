@@ -20,7 +20,8 @@
 // This next bit is a hacky workaround to use prman's ndspy.h header while not
 // actually linking to the lib.
 #define PRMANBUILDINGAPI
-#include <prman/ndspy.h>
+//#include <prman/ndspy.h>
+#include "third_party/prman/ndspy.h"
 #if !defined(PRMANAPI)
 #  if defined(_MSC_VER)
 #    define PRMANAPI __declspec(dllexport)
@@ -494,6 +495,7 @@ addChanDef(const PtDspyDevFormat& def,
 	// Map the RIB types to the types expected by imdisplay
 	switch (def.type & PkDspyMaskType) {
 		case PkDspyFloat32:
+		case PkDspyFloat16:
 			format = 0;
 			break;
 		case PkDspyUnsigned32:
@@ -600,6 +602,9 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 		switch (format_type) {
 			case PkDspyFloat32:
 				type = "PkDspyFloat32";
+				break;
+			case PkDspyFloat16:
+				type = "PkDspyFloat16";
 				break;
 			case PkDspySigned16:
 				type = "PkDspySigned16";
