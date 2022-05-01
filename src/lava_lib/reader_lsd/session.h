@@ -83,6 +83,7 @@ class Session {
   private:
  	  Session(std::shared_ptr<Renderer> pRenderer);
  	
+    void setUpCamera(Falcor::Camera::SharedPtr pCamera);
     bool prepareGlobalData();
     bool prepareFrameData();
  	  bool prepareDisplayData();

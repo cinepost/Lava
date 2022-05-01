@@ -60,6 +60,7 @@ void SDLOpenGLWindow::init() {
 
 void SDLOpenGLWindow::updateImage(const void *_image) {
   glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, m_pixelType, _image);
+  glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, m_pixelType, NULL);
 }
 
 void NGLCheckGLError( const std::string  &_file, const int _line ) noexcept {

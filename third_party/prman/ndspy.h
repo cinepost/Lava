@@ -90,7 +90,7 @@ typedef PtDspyUnsigned32 PtDspyServerMessage;
 #define PkDspyClassFloat 1
 #define PkDspyClassInt 2
 
-#define PkDspyNone		0
+#define PkDspyNone		    0
 #define PkDspyFloat32		1
 #define PkDspyFloat16       12
 #define PkDspyUnsigned32	2

@@ -172,6 +172,7 @@ bool Session::prepareDisplayData() {
 }
 
 // initialize frame independent render data
+/*
 bool Session::prepareGlobalData() {
 	LLOG_DBG << "prepareGlobalData";
 
@@ -189,29 +190,40 @@ bool Session::prepareGlobalData() {
 
 	return true;
 }
+*/
 
-// initialize frame dependent render data
-bool Session::prepareFrameData() {
-	LLOG_DBG << "prepareFrameData";
+void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera) {
+	LLOG_DBG << "setUpCamera";
+	assert(pCamera);
 	
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
-	
-	mCurrentCameraInfo.cameraNearPlane = camera_clip[0];
-	mCurrentCameraInfo.cameraFarPlane  = camera_clip[1];
-	mCurrentCameraInfo.cameraProjectionName = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
-	mCurrentCameraInfo.cameraTransform = mpGlobal->getTransformList()[0];
+	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
+
+	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
+
+	pCamera->setAspectRatio(aspect_ratio);
+	pCamera->setNearPlane(camera_clip[0]);
+	pCamera->setFarPlane(camera_clip[1]);
+	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
-		mCurrentCameraInfo.cameraFocalLength = 50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0);
+		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
 		
-		double height_k = static_cast<double>(mCurrentFrameInfo.imageHeight) / static_cast<double>(mCurrentFrameInfo.imageWidth);
-		mCurrentCameraInfo.cameraFrameHeight = height_k * 50.0;
+		//double height_k = static_cast<double>(mCurrentFrameInfo.imageHeight) / static_cast<double>(mCurrentFrameInfo.imageWidth);
+		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
-
-	return true;
+/*
+    mpCamera->setAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
+    //mpCamera->setNearPlane(frame_data.cameraNearPlane);
+    //mpCamera->setFarPlane(frame_data.cameraFarPlane);
+    //mpCamera->setViewMatrix(frame_data.cameraTransform);
+    //mpCamera->setFocalLength(frame_data.cameraFocalLength);
+    //mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
+    //mpCamera->beginFrame(true); // Not sure we need it
+*/
 }
 
 void Session::cmdQuit() {
@@ -257,6 +269,8 @@ bool Session::cmdRaytrace() {
 
     // Frame rendeing
     {  
+
+    	setUpCamera(mpRenderer->currentCamera());
 		mpRenderer->prepareFrame(mCurrentFrameInfo);
 
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
