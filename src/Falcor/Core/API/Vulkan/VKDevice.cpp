@@ -616,9 +616,6 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
 
     assert(pDevice);
 
-    bool headless = false;
-    if(desc.surface == VK_NULL_HANDLE) headless = true;
-
     bool sparseBindingEnabled = false;
     bool VK_KHR_raytracing_pipeline_enabled = false;
     bool VK_KHR_get_memory_requirements2_enabled = false;
@@ -835,7 +832,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     std::vector<const char*> extensionNames; extensionNames.empty();
 
     std::vector<std::string> defaultExtensionNames = { 
-        //"VK_KHR_swapchain",
+        "VK_KHR_swapchain",
         "VK_KHR_spirv_1_4",
         "VK_KHR_ray_query",
         "VK_KHR_ray_tracing_pipeline",
@@ -847,7 +844,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         "VK_EXT_host_query_reset"
     };
 
-    if (desc.surface != VK_NULL_HANDLE) defaultExtensionNames.push_back("VK_KHR_swapchain");
+    //if (desc.surface != VK_NULL_HANDLE) defaultExtensionNames.push_back("VK_KHR_swapchain");
 
 
     // check for default extensions availability
@@ -1010,7 +1007,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     assert(vkGetDeferredOperationResultKHR != nullptr);
 
 
-    if (VK_KHR_swapchain_enabled && desc.surface != VK_NULL_HANDLE) {
+    if (VK_KHR_swapchain_enabled) {
         vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddr(device, "vkGetSwapchainImagesKHR"));
         assert(vkGetSwapchainImagesKHR != nullptr);
 
@@ -1079,7 +1076,7 @@ bool Device::createSwapChain(uint32_t width, uint32_t height, ResourceFormat col
     }
 
     if (formatValid == false) {
-        logError("Requested Swapchain format is not available");
+        LLOG_ERR << "Requested Swapchain format is not available";
         return false;
     }
 
@@ -1130,10 +1127,10 @@ bool Device::createSwapChain(uint32_t width, uint32_t height, ResourceFormat col
         return false;
     }
 
-    uint32_t swapChainCount = 0;
-    vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &swapChainCount, nullptr);
-    LLOG_DBG << "Swapchain image count is" << swapChainCount;
-    assert(swapChainCount == kSwapChainBuffersCount);
+    uint32_t mSwapChainImageCount = 0;
+    vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &mSwapChainImageCount, nullptr);
+    LLOG_DBG << "Swapchain image count is " << mSwapChainImageCount;
+    assert(mSwapChainImageCount == kSwapChainBuffersCount);
 
     return true;
 }
@@ -1191,7 +1188,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
     mVkPhysicalDevice = initPhysicalDevice(mVkInstance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
     if (!mVkPhysicalDevice) return false;
 
-    mVkDevice = createLogicalDevice(this, mVkPhysicalDevice, mpApiData, desc, mCmdQueues, mDeviceFeatures);
+    mVkDevice = createLogicalDevice(this, mVkPhysicalDevice, mpApiData, mDesc, mCmdQueues, mDeviceFeatures);
     if (!mVkDevice) return false;
 
     assert(vkGetInstanceProcAddr);

@@ -108,7 +108,7 @@ int main(int argc, char** argv){
       ;
 
     std::string logFilename = "";
-#ifdef DEBUG
+#ifdef _DEBUG
     boost::log::trivial::severity_level logSeverity = boost::log::trivial::debug;
 #else
     boost::log::trivial::severity_level logSeverity = boost::log::trivial::warning;
@@ -213,10 +213,6 @@ int main(int argc, char** argv){
 
     Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-    if(!pRenderer->init()) {
-      exit(EXIT_FAILURE);
-    }
-
     if (vm.count("input-files")) {
       for (const std::string& inputFilename: inputFilenames) {
         std::ifstream in_file(inputFilename, std::ifstream::binary);
@@ -226,7 +222,7 @@ int main(int argc, char** argv){
         }
         
         auto reader = SceneReadersRegistry::getInstance().getReaderByExt(boost::filesystem::extension(inputFilename));
-        reader->init(pRenderer->aquireInterface(), echo_input);
+        reader->init(pRenderer, echo_input);
 
         LLOG_DBG << "Reading "<< inputFilename << " scene file with " << reader->formatName() << " reader";
         if (!reader->readStream(in_file)) {
@@ -239,7 +235,7 @@ int main(int argc, char** argv){
       // loading from stdin
       LLOG_DBG << "Reading scene from stdin ...\n";
       auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
-      reader->init(pRenderer->aquireInterface(), echo_input);
+      reader->init(pRenderer, echo_input);
 
       if (!reader->readStream(std::cin)) {
         // error loading scene from stdin

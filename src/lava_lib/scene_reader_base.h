@@ -10,7 +10,7 @@
 
 namespace lava {
 
-class RendererIface;
+class Renderer;
 
 class ReaderBase {
  public:
@@ -20,7 +20,7 @@ class ReaderBase {
     virtual ~ReaderBase();
 
     bool                        readStream(std::istream &input);
-    virtual void                init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) = 0;
+    virtual void                init(std::shared_ptr<Renderer> pRenderer, bool echo) = 0;
 
  public:
     virtual const char*			formatName() const = 0;

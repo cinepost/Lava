@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERPASSES_ACCUMULATEPASS_ACCUMULATEPASS_H_
+#define SRC_FALCOR_RENDERPASSES_ACCUMULATEPASS_ACCUMULATEPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Scene/Scene.h"
@@ -44,11 +45,12 @@ using namespace Falcor;
 class AccumulatePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
+    using SharedConstPtr = std::shared_ptr<const AccumulatePass>;
     virtual ~AccumulatePass() = default;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Temporal accumulation pass"; }
+    virtual std::string getDesc() override { return "Accumulation pass"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
@@ -57,6 +59,8 @@ class AccumulatePass : public RenderPass {
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
     void enableAccumulation(bool enable = true);
+
+    void setOutputFormat(ResourceFormat format);
 
     // Scripting functions
     void reset() { mFrameCount = 0; }
@@ -90,6 +94,8 @@ class AccumulatePass : public RenderPass {
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
 
+    ResourceFormat              mOutputFormat = ResourceFormat::RGBA32Float;
+
 };
 
 #define enum2str(a) case  AccumulatePass::Precision::a: return #a
@@ -106,3 +112,5 @@ inline std::string to_string(AccumulatePass::Precision mode)
     }
 }
 #undef enum2str
+
+#endif  // SRC_FALCOR_RENDERPASSES_ACCUMULATEPASS_ACCUMULATEPASS_H_

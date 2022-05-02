@@ -211,6 +211,8 @@ UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t el
     return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
 }
 
+
+
 UnorderedAccessView::SharedPtr Buffer::getUAV() {
     return getUAV(0);
 }

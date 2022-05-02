@@ -25,8 +25,8 @@ ReaderLSD::ReaderLSD(): ReaderBase(), mInitialized(false) { }
 
 ReaderLSD::~ReaderLSD() {}
 
-void ReaderLSD::init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) {
-    auto pSession = lsd::Session::create(std::move(pRendererInterface));
+void ReaderLSD::init(std::shared_ptr<Renderer> pRenderer, bool echo) {
+    auto pSession = lsd::Session::create(pRenderer);
     if (!pSession) {
         LLOG_ERR << "Error initializing session !!!";
         return;

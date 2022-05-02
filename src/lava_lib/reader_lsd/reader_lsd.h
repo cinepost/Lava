@@ -19,7 +19,7 @@ class ReaderLSD: public ReaderBase {
  	ReaderLSD();
  	~ReaderLSD() override;
 
-    virtual void    init(std::unique_ptr<RendererIface> pRendererInterface, bool echo) override;
+    virtual void    init(std::shared_ptr<Renderer> pRenderer, bool echo) override;
 
     const char*     formatName() const override;
     bool            checkExtension(const char *name) override;
@@ -28,9 +28,9 @@ class ReaderLSD: public ReaderBase {
     // Method to check if the given magic number matches the magic number. Return true on a match.
     bool            checkMagicNumber(unsigned magic) override;
 
- private:
+  private:
     virtual bool    isInitialized() override;
- 	virtual bool    parseStream(std::istream& in) override;
+ 	  virtual bool    parseStream(std::istream& in) override;
 
  private:
     std::unique_ptr<lsd::Visitor>   mpVisitor;

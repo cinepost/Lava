@@ -77,7 +77,7 @@ class SDLOpenGLWindow {
     void ImGuiCleanup() const;
 
     SDL_Window *m_window;
-    GLenum m_pixelFormat, m_texFormat;
+    GLenum m_pixelFormat, m_texFormat, m_pixelType;
     float m_scale=1.0f;
     float m_xPos=0.0f;
     float m_yPos=0.0f;

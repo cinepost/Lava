@@ -124,7 +124,7 @@ class ForwardLightingPass : public RenderPass {
     EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
     EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 
-    ResourceFormat mColorFormat = ResourceFormat::RGBA16Float; //Default color rendering format;
+    ResourceFormat mColorFormat     = ResourceFormat::RGBA32Float; //Default color rendering format;
     ResourceFormat mNormalMapFormat = ResourceFormat::RGBA16Float;
     ResourceFormat mMotionVecFormat = ResourceFormat::RG8Snorm;
 

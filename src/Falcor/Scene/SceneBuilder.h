@@ -607,7 +607,7 @@ protected:
         }
 
         bool isDynamic() const {
-            assert(hasDynamicData == dynamicVertexCount > 0);
+            assert(hasDynamicData == (dynamicVertexCount > 0));
             return hasDynamicData;
         }
     };

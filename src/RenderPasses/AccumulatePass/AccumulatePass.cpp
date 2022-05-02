@@ -84,7 +84,8 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
     mpProgram[Precision::Double] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateDouble", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpProgram[Precision::Single] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
-    mpVars = ComputeVars::create(pDevice, mpProgram[Precision::Single]->getReflector());
+    
+    mpVars = ComputeVars::create(pDevice, mpProgram[mPrecisionMode]->getReflector());
 
     mpState = ComputeState::create(pDevice);
 }
@@ -102,8 +103,7 @@ RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kInputChannel, "Input data to be accumulated").bindFlags(ResourceBindFlags::ShaderResource);
     reflector.addOutput(kOutputChannel, "Output data that is accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource)
-        //.format(ResourceFormat::RGBA16Float);
-        .format(ResourceFormat::RGBA16Unorm);
+        .format(mOutputFormat);
     return reflector;
 }
 
@@ -236,4 +236,9 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
     prepareBuffer(mpLastFrameCorr, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::SingleCompensated);
     prepareBuffer(mpLastFrameSumLo, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
     prepareBuffer(mpLastFrameSumHi, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
+}
+
+void AccumulatePass::setOutputFormat(ResourceFormat format) {
+    mOutputFormat = format;
+    mPassChangedCB();
 }

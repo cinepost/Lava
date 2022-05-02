@@ -199,7 +199,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     // process faces
                     int32_t csi; // face current start index
                     int32_t nsi; // next face start index
-                    for( int32_t i = 0; i < (prim_start_indices.size() - 1); i++){
+                    for( uint32_t i = 0; i < (prim_start_indices.size() - 1); i++){
                         csi = prim_start_indices[i];
                         nsi = prim_start_indices[i+1];
                         switch(nsi-csi) { // number of face sides literally
