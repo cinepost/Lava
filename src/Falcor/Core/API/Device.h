@@ -234,6 +234,9 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
     VkDevice         getVkDevice() const { return mVkDevice; };
     VkInstance       getVkInstance() const { return mVkInstance; };
+
+    uint32_t         getSwapchainImageCount() const {return mSwapChainImageCount; }
+
 #endif
 
     DeviceApiData* apiData() const { return mpApiData; };
@@ -278,6 +281,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
     VkDevice            mVkDevice         = VK_NULL_HANDLE;
     VkInstance          mVkInstance       = VK_NULL_HANDLE;
+
+    uint32_t            mSwapChainImageCount = 0;
 #endif
 
     DeviceApiData* mpApiData;

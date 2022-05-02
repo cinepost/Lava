@@ -1,6 +1,7 @@
 #include <utility>
 #include <mutex>
 #include <limits>
+#include <fstream>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
@@ -129,7 +130,7 @@ std::string Session::getExpandedString(const std::string& s) {
 
 void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
 	LLOG_DBG << "cmdImage";
-	mCurrentDisplayInfo.outputFileName = filename;
+	mCurrentDisplayInfo.outputFileName = ((!filename.empty()) ? filename : std::string("unnamed"));
 
 	if (display_type == lsd::ast::DisplayType::NONE ) {
 		mCurrentDisplayInfo.displayType = resolveDisplayTypeByFileName(filename);
@@ -233,7 +234,9 @@ void Session::cmdQuit() {
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
 
-	if(!mpMainAOVPlane) {
+	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN");
+
+	if(!pMainAOVPlane) {
 		LLOG_ERR << "NO main AOV plane specified !!!";
 		return false;
 	}
@@ -262,8 +265,19 @@ bool Session::cmdRaytrace() {
 
     mpDisplay->closeAll(); // close previous frame display images (if still opened) 
 
-    if(!mpDisplay->openImage(mCurrentDisplayInfo.outputFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, mpMainAOVPlane->format(), hImage)) {
-        LLOG_FTL << "Unable to open image " << mCurrentDisplayInfo.outputFileName << " !!!";
+    // houdini display driver section
+	int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
+	std::string imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+
+    if (houdiniPortNum < 0) {
+    	// Negative port num is for IPR
+    	imageFileName = "socket:" + std::to_string(houdiniPortNum);
+    }
+
+    //
+
+    if(!mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage)) {
+        LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
         return false;
     }
 
@@ -280,7 +294,7 @@ bool Session::cmdRaytrace() {
 
 	LLOG_DBG << "Senging renderd data to display";    
 	AOVPlaneGeometry aov_geometry;
-	if(!mpMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
+	if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
 		LLOG_FTL << "No AOV !!!";
 		return false;
 	}
@@ -291,7 +305,7 @@ bool Session::cmdRaytrace() {
     std::vector<uint8_t> textureData;
     textureData.resize( aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel);
     
-    if(!mpMainAOVPlane->getImageData(textureData.data())) {
+    if(!pMainAOVPlane->getImageData(textureData.data())) {
     	LLOG_ERR << "Error reading AOV texture data !!!";
     }
     
@@ -686,7 +700,7 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::PLANE:
 			pPlane = std::dynamic_pointer_cast<scope::Plane>(mpCurrentScope);
-			mpMainAOVPlane = mpRenderer->addAOVPlane(aovInfoFromLSD(pPlane));
+			mpRenderer->addAOVPlane(aovInfoFromLSD(pPlane));
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);

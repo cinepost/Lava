@@ -49,7 +49,7 @@ Device::Device(const Device::Desc& desc) : mDesc(desc), mGpuId(0), mPhysicalDevi
 
 #ifdef FALCOR_VK
     mVkSurface = mDesc.surface;
-    if (mDesc.surface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
+    if (mVkSurface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
 #endif
 }
 
@@ -57,7 +57,7 @@ Device::Device(uint32_t gpuId, const Device::Desc& desc) : mDesc(desc), mGpuId(g
     _uid = UID++;
 #ifdef FALCOR_VK
     mVkSurface = mDesc.surface;
-    if (mDesc.surface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
+    if (mVkSurface == VK_NULL_HANDLE) { mHeadless = true; } else { mHeadless = false; };
 #endif
 }
 

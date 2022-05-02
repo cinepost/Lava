@@ -35,8 +35,10 @@
 #include "dspyhlpr.c"
 #include <stdarg.h>
 #include <sstream>
+#include <fstream>
+#include <cstdlib>
 
-#if 1
+#if 1 == 1
 	#define D_HOUDINI_DEBUG_LEVEL 3	// Debug logging
 #else
 	#define D_HOUDINI_DEBUG_LEVEL -1	// No logging
@@ -59,6 +61,9 @@ vector<ImagePtr> g_masterImages;
 // One multiRes per DspyOpen, prman may open the same image name multiple times
 // at different LOD's.
 vector<MultiResPtr> g_multiRes;
+
+int g_mplayPortNumber = 0;
+ 
 
 static void
 log(const int level, const char* fmt, ...) {
@@ -422,7 +427,6 @@ private:
     	std::string pth = "PATH=$PATH:";
 		if(env_p) {
 			pth.append(env_p);
-			std::cout << "Your PATH is: " << env_p << '\n';
 			//execl( "export", pth.c_str(), (char*)0 );
     	}
 
@@ -692,6 +696,28 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
 {
 
 	PtDspyError ret;
+
+	// Read port from .mplay_lock
+    const char* env_hih = std::getenv("HIH");
+    const char* env_hostname = std::getenv("HOSTNAME");
+
+    std::string mplay_lock_filename = "";
+    if ( env_hih && env_hostname ) mplay_lock_filename += std::string(env_hih) + "/.mplay_lock." + std::string(env_hostname);
+
+    std::ifstream mplay_lock_file(mplay_lock_filename);
+    if (mplay_lock_file.is_open()) {
+        mplay_lock_file >> g_mplayPortNumber;
+        mplay_lock_file >> g_mplayPortNumber; // We need second int value
+    } else {
+    	g_mplayPortNumber = 0;
+    }
+    log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
+    //
+
+	if (g_mplayPortNumber == 0) {
+		std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
+		int status = system(cmd.c_str());
+	}
 
 	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n",
 		"drivername", filename, width, height, paramCount, nformats);
@@ -1029,7 +1055,7 @@ H_Image::init(const std::string& filename, int xres, int yres)
 	myOrigYres = 0;
 	myXres = xres;
 	myYres = yres;
-	myPort = 0;
+	myPort = g_mplayPortNumber;
     myChannelOffset = 0;
 
 	if (!strncmp(myName.c_str(), "socket:", 7)) {
@@ -1040,6 +1066,7 @@ H_Image::init(const std::string& filename, int xres, int yres)
 		else
 			myPort = 0;
 	}
+
 	if (!strncmp(myName.c_str(), "iprsocket:", 10)) {
 		myPort = atoi(myName.c_str() + 10);
 		if (myPort > 0) {
@@ -1049,6 +1076,7 @@ H_Image::init(const std::string& filename, int xres, int yres)
 		else
 			myPort = 0;
 	}
+	
 	log(0, "H_Image init\n");
 }
 

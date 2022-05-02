@@ -84,7 +84,7 @@ class Session {
  	  Session(std::shared_ptr<Renderer> pRenderer);
  	
     void setUpCamera(Falcor::Camera::SharedPtr pCamera);
-    bool prepareGlobalData();
+    //bool prepareGlobalData();
     bool prepareFrameData();
  	  bool prepareDisplayData();
  	
@@ -117,8 +117,6 @@ class Session {
     Display::SharedPtr              mpDisplay;
 
     Renderer::Config                mRendererConfig;
-
-    AOVPlane::SharedPtr             mpMainAOVPlane = nullptr;
 
     std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
     std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
