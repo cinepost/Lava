@@ -6,13 +6,14 @@
 
 #include "sdl_opengl_window.h"
 
-SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _width, int _height, int _ppp) {
+SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _width, int _height, int _ppp, GLenum pixelType, GLenum pixelFormat, GLenum texFormat) {
   m_name=_name;
   m_x=_x;
   m_y=_y;
   m_width=_width;
   m_height=_height;
   init();
+/*
   if(_ppp ==3) {
     m_pixelFormat = GL_RGB;
     m_pixelType = GL_UNSIGNED_BYTE;
@@ -22,6 +23,10 @@ SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _w
     m_pixelType = GL_UNSIGNED_BYTE;
     m_texFormat = GL_RGBA16F;
   }
+*/
+  m_pixelFormat = pixelFormat;
+  m_pixelType = pixelType;
+  m_texFormat = texFormat;
 }
 
 SDLOpenGLWindow::~SDLOpenGLWindow() {
@@ -60,7 +65,6 @@ void SDLOpenGLWindow::init() {
 
 void SDLOpenGLWindow::updateImage(const void *_image) {
   glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, m_pixelType, _image);
-  glTexImage2D(GL_TEXTURE_2D, 0, m_texFormat, m_width, m_height, 0, m_pixelFormat, m_pixelType, NULL);
 }
 
 void NGLCheckGLError( const std::string  &_file, const int _line ) noexcept {
@@ -229,14 +233,12 @@ void SDLOpenGLWindow::createSurface() {
     void main() {
       vec4 baseColour=texture(tex,Coordinate);
       switch(displayMode) {
-        case 0 : outColor=baseColour; break; // full rgba image
         case 1 : outColor=vec4(baseColour.r,0,0,baseColour.a); break; // red
         case 2 : outColor=vec4(0,baseColour.g,0,baseColour.a); break; // green
         case 3 : outColor=vec4(0,0,baseColour.b,baseColour.a); break; // blue
-        case 4 : outColor=vec4(baseColour.a,baseColour.a,baseColour.a,1); // alpha are greyscale
-        case 5 :
-          outColor.rgb = vec3(dot(baseColour.rgb, vec3(0.299, 0.587, 0.114))); // monochrome image (lightness)
-        break;
+        case 4 : outColor=vec4(baseColour.a,baseColour.a,baseColour.a,1); break; // alpha are greyscale
+        case 5 : outColor.rgb = vec3(dot(baseColour.rgb, vec3(0.299, 0.587, 0.114))); break; // monochrome image (lightness)
+        case 0 : outColor=baseColour; break; // full rgba image
         }
         outColor.rgb = pow(outColor.rgb, vec3(1.0/gamma));
         outColor.rgb=exposure(outColor.rgb,exposureLevel);

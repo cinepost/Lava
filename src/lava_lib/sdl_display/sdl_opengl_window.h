@@ -27,7 +27,7 @@ class SDLOpenGLWindow {
     };
 
   public:
-    SDLOpenGLWindow(const std::string &_name, int _x, int _y, int _width, int _height, int _ppp);
+    SDLOpenGLWindow(const std::string &_name, int _x, int _y, int _width, int _height, int _ppp, GLenum pixelType, GLenum pixelFormat, GLenum texFormat);
     ~SDLOpenGLWindow();
 
     void makeCurrent() { SDL_GL_MakeCurrent(m_window,m_glContext);}

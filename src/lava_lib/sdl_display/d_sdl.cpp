@@ -24,10 +24,13 @@ static int g_channels;
 static PtDspyUnsigned32 g_width;
 static PtDspyUnsigned32 g_height;
 
+static GLenum g_pixelType = GL_FLOAT;
+static GLenum g_pixelFormat = GL_RGBA;
+static GLenum g_texFormat = GL_RGBA32F;
 
 PtDspyError processEvents();
 
-static size_t sizeInBytes(GLenum type) {
+static inline size_t sizeInBytes(GLenum type) {
   switch (type) {
     case GL_UNSIGNED_INT:
     case GL_INT:
@@ -44,30 +47,172 @@ static size_t sizeInBytes(GLenum type) {
   }
 }
 
-PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
-  const char *,const char *filename,
-  int width,int height,
-  int ,const UserParameter *,
-  int formatCount,PtDspyDevFormat *format, PtFlagStuff *flagstuff)
+static inline GLenum prmanToGLType(const PtDspyDevFormat& format) {
+  switch (format.type) {
+    case PkDspyFloat32:
+      return GL_FLOAT;
+    case PkDspySigned32:
+      return GL_INT;
+    case PkDspyUnsigned32:
+      return GL_UNSIGNED_INT;
+    case PkDspyFloat16:
+      return GL_HALF_FLOAT;
+    case PkDspyUnsigned16:
+      return GL_UNSIGNED_SHORT;
+    case PkDspySigned16:
+      return GL_SHORT;
+    case PkDspyUnsigned8:
+      return GL_UNSIGNED_BYTE;
+    case PkDspySigned8:
+    default:
+      return GL_BYTE;
+  }
+}
+
+static bool isFloatFormat(const PtDspyDevFormat& format) {
+  switch (format.type) {
+    case PkDspyFloat32:
+    case PkDspyFloat16:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static inline GLenum getPixelFormat(int channels) {
+  switch (channels) {
+    case 1:
+      return GL_R;
+    case 2:
+      return GL_RG;
+    case 3:
+      return GL_RGB;
+    default:
+      return GL_RGBA;
+  }
+}
+
+static inline GLenum getTexFormat(GLenum type, int channels) {
+  switch (channels) {
+    case 1:
+      switch (type) {
+         case GL_BYTE:
+          return GL_R8I;
+        case GL_UNSIGNED_BYTE:
+          return GL_R8UI;
+
+        case GL_SHORT:
+          return GL_R16I;
+        case GL_UNSIGNED_SHORT:
+          return GL_R16UI;
+        
+        case GL_INT:
+          return GL_R32I;
+        case GL_UNSIGNED_INT:
+          return GL_R32UI;
+
+        case GL_HALF_FLOAT:
+          return GL_R16F;
+        case GL_FLOAT:
+        default:
+          return GL_R32F;
+      }
+    case 2:
+      switch (type) {
+         case GL_BYTE:
+          return GL_RG8I;
+        case GL_UNSIGNED_BYTE:
+          return GL_RG8UI;
+
+        case GL_SHORT:
+          return GL_RG16I;
+        case GL_UNSIGNED_SHORT:
+          return GL_RG16UI;
+        
+        case GL_INT:
+          return GL_RG32I;
+        case GL_UNSIGNED_INT:
+          return GL_RG32UI;
+
+        case GL_HALF_FLOAT:
+          return GL_RG16F;
+        case GL_FLOAT:
+        default:
+          return GL_RG32F;         
+      }
+    case 3:
+      switch (type) {
+         case GL_BYTE:
+          return GL_RGB8I;
+        case GL_UNSIGNED_BYTE:
+          return GL_RGB8UI;
+
+        case GL_SHORT:
+          return GL_RGB16I;
+        case GL_UNSIGNED_SHORT:
+          return GL_RGB16UI;
+        
+        case GL_INT:
+          return GL_RGB32I;
+        case GL_UNSIGNED_INT:
+          return GL_RGB32UI;
+
+        case GL_HALF_FLOAT:
+          return GL_RGB16F;
+        case GL_FLOAT:
+        default:
+          return GL_RGB32F;       
+      }
+    default:
+      switch (type) {
+        case GL_BYTE:
+          return GL_RGBA8I;
+        case GL_UNSIGNED_BYTE:
+          return GL_RGBA8UI;
+
+        case GL_SHORT:
+          return GL_RGBA16I;
+        case GL_UNSIGNED_SHORT:
+          return GL_RGBA16UI;
+        
+        case GL_INT:
+          return GL_RGBA32I;
+        case GL_UNSIGNED_INT:
+          return GL_RGBA32UI;
+
+        case GL_HALF_FLOAT:
+          return GL_RGBA16F;
+        case GL_FLOAT:
+        default:
+          return GL_RGBA32F;
+      }
+  }
+}
+
+PtDspyError DspyImageOpen(PtDspyImageHandle *image_h, const char *, const char *filename, int width, int height,
+  int, const UserParameter *, int formatCount, PtDspyDevFormat *format, PtFlagStuff *flagstuff)
 {
+  assert((formatCount > 0) && (formatCount <= 4));
   PtDspyError ret;
-  
-  // MyImageType image;
   
   flagstuff->flags &= ~PkDspyFlagsWantsScanLineOrder;
   flagstuff->flags |= PkDspyBucketOrderSpaceFill;
   flagstuff->flags |= PkDspyFlagsWantsNullEmptyBuckets;
   
-  // stupidity checking
+  // stupidity check
   if (0 == width) g_width = 640;
   if (0 == height) g_height = 480;
+
+  g_pixelType = prmanToGLType(format[0]); // Assume all channel formats are the same 
+  g_pixelFormat = getPixelFormat(formatCount);
+  g_texFormat = getTexFormat(format[0].type, formatCount);
 
   ret = PkDspyErrorNone;
 
   g_width = width;
   g_height = height;
   g_channels = formatCount;
-  g_pixels.resize(width*height*g_channels*sizeInBytes(GL_UNSIGNED_BYTE),0);
+  g_pixels.resize(width * height * g_channels * sizeInBytes(g_pixelType), 0);
 
   // shuffle format so we always write out RGB[A]
   std::array<std::string,4> chan = { {"r", "g", "b", "a"} };
@@ -79,7 +224,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h,
   std::string name = "SDL Display: ";
   name += filename;
 
-  SDLOpenGLWindow *sdl_window = new SDLOpenGLWindow(name.c_str(), 0, 0, width, height, g_channels);
+  SDLOpenGLWindow *sdl_window = new SDLOpenGLWindow(name.c_str(), 0, 0, width, height, g_channels, g_pixelType, g_pixelFormat, g_texFormat);
   if(!sdl_window)
     return PkDspyErrorNoResource;
 
@@ -151,7 +296,8 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
   for (;ymin < ymax; ++ymin) {
     for (xmin = oldx; xmin < xmax; ++xmin) {
       const void *ptr = reinterpret_cast<const void*>(data);
-      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(GL_UNSIGNED_BYTE);
+      size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(g_pixelType);
+      /*
       if(g_channels == 4) {
         //g_pixels[ offset + 0 ]=ptr[0];
         //g_pixels[ offset + 1 ]=ptr[1];
@@ -164,7 +310,9 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
         //g_pixels[ offset + 2 ]=ptr[2];
         //memcpy((void*)g_pixels[offset], (void *)ptr, entrysize);
       }
-    data += entrysize;
+      */
+      memcpy(&g_pixels[offset], ptr, entrysize);
+      data += entrysize;
     }
   }
 
