@@ -11,61 +11,42 @@ AOVPlane::SharedPtr AOVPlane::create(const AOVPlaneInfo& info) {
 }
 
 
-AOVPlane::AOVPlane(const AOVPlaneInfo& info): mInfo(info) {
+AOVPlane::AOVPlane(const AOVPlaneInfo& info): mInfo(info) { }
 
-}
+bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
+    assert(pTexture);
 
-bool AOVPlane::bindToResource(Falcor::Resource::SharedPtr pResource) {
-    assert(pResource);
-
-    if(pResource->getType() != Falcor::Resource::Type::Texture2D) {
-        LLOG_ERR << "At this moment only Texture2D resources can be bound to AOV planes !!!";
+    if(pTexture->getFormat() != mInfo.format) {
+        LLOG_ERR << "Falcor resource format (" << to_string(pTexture->getFormat()) << ") and AOV plane format (" << to_string(mInfo.format) << ") mismatch !!!";
         return false;
     }
 
-    if(pResource->asTexture()->getFormat() != mInfo.format) {
-        LLOG_ERR << "Falcor resource format (" << to_string(pResource->asTexture()->getFormat()) << ") and AOV plane format (" << to_string(mInfo.format) << ") mismatch !!!";
-        return false;
-    }
-
-    mpResource = pResource;
+    mpTexture = pTexture;
     return true;
 }
 
 bool AOVPlane::getImageData(uint8_t* pData) const {
     assert(pData);
 
-    if(!mpResource) {
-        LLOG_ERR << "AOV plane \"" << mInfo.name << "\" is not bound to resource !!!";
+    if (!mpTexture) {
+        LLOG_ERR << "No texture associated to AOV plane " << mInfo.name << " !!!";
         return false;
     }
 
-    Falcor::Texture::SharedPtr pOutputTexture = mpResource->asTexture();
-    if (!pOutputTexture) {
-        LLOG_ERR << "Buffer AOV outputs not supported (yet) !";
-        return false;
-    }
-
-    pOutputTexture->readTextureData(0, 0, pData);
+    mpTexture->readTextureData(0, 0, pData);
     return true;
 }
 
 bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
-    if(!mpResource) {
-        LLOG_ERR << "AOV plane \"" << mInfo.name << "\" is not bound to resource !!!";
+    if (!mpTexture) {
+        LLOG_ERR << "No texture associated to AOV plane " << mInfo.name << " !!!";
         return false;
     }
 
-    auto const pTexture = mpResource->asTexture();
-    if (!pTexture) {
-        LLOG_ERR << "Buffer AOV outputs not supported (yet) !";
-        return false;
-    }
+    auto resourceFormat = mpTexture->getFormat();
 
-    auto resourceFormat = pTexture->getFormat();
-
-    aov_plane_geometry.width = pTexture->getWidth(0);
-    aov_plane_geometry.height = pTexture->getHeight(0);
+    aov_plane_geometry.width = mpTexture->getWidth(0);
+    aov_plane_geometry.height = mpTexture->getHeight(0);
     aov_plane_geometry.resourceFormat = resourceFormat;
     aov_plane_geometry.bytesPerPixel = Falcor::getFormatBytesPerBlock(resourceFormat);
     aov_plane_geometry.channelsCount = Falcor::getFormatChannelCount(resourceFormat);
@@ -77,6 +58,69 @@ bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
     return true;
 }
 
+void AOVPlane::setFormat(Falcor::ResourceFormat format) {
+    auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+    if(!pResource) {
+        LLOG_ERR << "AOV plane \"" << mInfo.name << "\" is not bound to resource !!!";
+        return;
+    }
+
+    auto pTexture = pResource->asTexture();
+    if (!pTexture) {
+        LLOG_ERR << "Unable to set format on non-texture resource!";
+        return;
+    }
+    if (format == pTexture->getFormat()) return;
+}
+
+AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph) {
+    assert(pGraph);
+
+    if (mpAccumulatePass) {
+        LLOG_ERR << "Acccumulation pass for AOV plane " << mInfo.name << " already created !!!";
+        return mpAccumulatePass;
+    }
+
+    mpRenderGraph = pGraph;
+    mpAccumulatePass = AccumulatePass::create(pContext);
+    if (!mpAccumulatePass) {
+        LLOG_ERR << "Error creating accumulation pass for AOV plane " << mInfo.name << " !!!";
+        return nullptr;
+    }
+
+    mpAccumulatePass->enableAccumulation(true);
+    mpAccumulatePass->setOutputFormat(format());
+
+    mAccumulatePassName = "AccumulatePass_" + mInfo.name;
+    mAccumulatePassInputName  = mAccumulatePassName + ".input";
+    mAccumulatePassOutputName = mAccumulatePassName + ".output";
+
+    mpRenderGraph->addPass(mpAccumulatePass, mAccumulatePassName);
+    mpRenderGraph->markOutput(mAccumulatePassOutputName);
+}
+
+bool AOVPlane::isBound() const {
+    if (!mpTexture) return false;
+    return true;
+}
+
+const std::string&  AOVPlane::accumulationPassInputName() const {
+    assert(mpAccumulatePass);
+    return mAccumulatePassInputName;
+}
+
+const std::string&  AOVPlane::accumulationPassOutputName() const {
+    assert(mpAccumulatePass);
+    return mAccumulatePassOutputName;
+}
+
+std::string aov_name_visitor::operator()(AOVBuiltinName name) const {
+    return to_string(name);
+}
+    
+const std::string& aov_name_visitor::operator()(const std::string& str) const {
+    return str;
+}
 
 // HYDRA section end
 

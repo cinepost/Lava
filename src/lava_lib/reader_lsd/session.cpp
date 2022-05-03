@@ -90,28 +90,6 @@ void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd:
 	return;
 
 #undef get_bool
-
-	/*auto& configStore = Falcor::ConfigStore::instance();
-
-	switch(type) {
-		case ast::Type::BOOL:
-			LLOG_WRN << "setting ConfigStore property " << name << " with value " << ((boost::get<int>(value) == 0) ? "false" : "true") << "\n";
-			configStore.set<bool>(name, (boost::get<int>(value) == 0) ? false : true );
-			break;	
-		case ast::Type::STRING:
-			LLOG_WRN << "setting ConfigStore property " << name << " with value " << boost::get<std::string>(value) << "\n";
-			configStore.set<std::string>(name, boost::get<std::string>(value));
-			break;
-		case ast::Type::INT:
-			LLOG_WRN << "setting ConfigStore property " << name << " with value " << boost::get<int>(value) << "\n";
-			configStore.set<int>(name, boost::get<int>(value));
-			break;
-		default:
-			LLOG_WRN << "Unsupported config store property type: " << to_string(type);
-			break;
-	}
-	return;
-	*/
 }
 
 void Session::setEnvVariable(const std::string& key, const std::string& value){
@@ -172,27 +150,6 @@ bool Session::prepareDisplayData() {
 	return true;
 }
 
-// initialize frame independent render data
-/*
-bool Session::prepareGlobalData() {
-	LLOG_DBG << "prepareGlobalData";
-
-	// set up frame resolution (as they don't have to be the same size)
-	Int2 resolution = mpGlobal->getPropertyValue(ast::Style::IMAGE, "resolution", Int2{640, 480});
-	mCurrentFrameInfo.imageWidth = resolution[0];
-	mCurrentFrameInfo.imageHeight = resolution[1];
-
-
-	// set up image sampling
-	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
-
-	std::string samplePatternName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samplingpattern", std::string("stratified"));
-	mCurrentCameraInfo.samplePattern = resolveSamplePatternType(samplePatternName);
-
-	return true;
-}
-*/
-
 void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera) {
 	LLOG_DBG << "setUpCamera";
 	assert(pCamera);
@@ -216,15 +173,6 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera) {
 		//double height_k = static_cast<double>(mCurrentFrameInfo.imageHeight) / static_cast<double>(mCurrentFrameInfo.imageWidth);
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
-/*
-    mpCamera->setAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
-    //mpCamera->setNearPlane(frame_data.cameraNearPlane);
-    //mpCamera->setFarPlane(frame_data.cameraFarPlane);
-    //mpCamera->setViewMatrix(frame_data.cameraTransform);
-    //mpCamera->setFocalLength(frame_data.cameraFocalLength);
-    //mpCamera->setFrameHeight(frame_data.cameraFrameHeight);
-    //mpCamera->beginFrame(true); // Not sure we need it
-*/
 }
 
 void Session::cmdQuit() {
@@ -285,6 +233,7 @@ bool Session::cmdRaytrace() {
     {  
 
     	setUpCamera(mpRenderer->currentCamera());
+
 		mpRenderer->prepareFrame(mCurrentFrameInfo);
 
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {

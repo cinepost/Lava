@@ -71,8 +71,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       uint32_t imageHeight = 0;
       uint32_t imageSamples = 16;         // 0 for continuous rendering
       uint32_t frameNumber = 0;
-
-      Falcor::ResourceFormat mainChannelOutputFormat = Falcor::ResourceFormat::RGBA32Float; // Main 'beauty' pass rendeing format
     };
 
   // __HYDRA__ oriented structs end .....
@@ -102,13 +100,13 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     bool isInited() const { return mInited; }
 
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
-    AOVPlane::SharedPtr getAOVPlane(const std::string& aov_plane_name);
-    AOVPlane::SharedConstPtr getAOVPlane(const std::string& aov_plane_name) const { return getAOVPlane(aov_plane_name); };
+    AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
+    AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
 
 
     bool prepareFrame(const FrameInfo& frame_info); // prepares/resets frame rendering
     void renderSample();
-    bool getAOVPlaneImageData(const std::string& aov_plane_name, uint8_t* pData);
+    bool getAOVPlaneImageData(const AOVName& name, uint8_t* pData);
 
     Falcor::Camera::SharedPtr currentCamera() { return mpCamera; };
 
@@ -117,7 +115,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       \param[out] AOV geometry information.
       \return True if AOV exist otherwise False.
     */
-    bool queryAOVPlaneGeometry(const std::string& aov_plane_name, AOVPlaneGeometry& aov_plane_geometry) const;
+    bool queryAOVPlaneGeometry(const AOVName& name, AOVPlaneGeometry& aov_plane_geometry) const;
 
   // HYDRA related section end ....
 
@@ -145,6 +143,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     void finalizeScene(const FrameInfo& frame_info);
 
     void createRenderGraph(const FrameInfo& frame_info);
+
+    void bindAOVPlanesToResources();
 
   private:
     Renderer(Device::SharedPtr pDevice);

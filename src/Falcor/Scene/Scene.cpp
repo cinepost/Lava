@@ -286,11 +286,8 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
-    size_t i = 0;
-
     for (const auto& draw : mDrawArgs) {
-        printf("Rasterizer draw %zu\n", i);
-        assert(draw.count > 0);
+        //assert(draw.count > 0);
 
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpVao16Bit : mpVao);
@@ -305,7 +302,6 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
             pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
         }
 
-        i+=1;
     }
 
     pState->setRasterizerState(pCurrentRS);
