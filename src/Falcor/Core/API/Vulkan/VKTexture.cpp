@@ -38,6 +38,8 @@
 //#define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
@@ -53,7 +55,7 @@ namespace Falcor {
     };
 
     Texture::~Texture() {
-        LOG_DBG("Deleting texture (resource id %zu )with source name %s", id(), mSourceFilename.c_str());
+        LLOG_DBG << "Deleting texture (resource id " << std::to_string(id()) << (mSourceFilename.empty() ? "" : (" )with source name: " + mSourceFilename));
 
         // #VKTODO the `if` is here because of the black texture in VkResourceView.cpp
         if (mpDevice ) {
@@ -282,7 +284,7 @@ namespace Falcor {
             std::cout << "Sparse address space size: " << mpDevice->apiData()->properties.limits.sparseAddressSpaceSize << std::endl;
             // Check requested image size against hardware sparse limit            
             if (mMemRequirements.size > mpDevice->apiData()->properties.limits.sparseAddressSpaceSize) {
-                LOG_ERR("Error: Requested sparse image size exceeds supports sparse address space size !!!");
+                LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";
                 return;
             };
 
@@ -293,7 +295,7 @@ namespace Falcor {
             vkGetImageSparseMemoryRequirements(mpDevice->getApiHandle(), mImage, &sparseMemoryReqsCount, sparseMemoryReqs.data());
             
             if (sparseMemoryReqsCount == 0) {
-                LOG_ERR("Error: No memory requirements for the sparse image !!!");
+                LLOG_ERR << "Error: No memory requirements for the sparse image !!!";
                 return;
             }
             sparseMemoryReqs.resize(sparseMemoryReqsCount);
@@ -323,7 +325,7 @@ namespace Falcor {
                 }
             }
             if (!colorAspectFound) {
-                LOG_ERR("Error: Could not find sparse image memory requirements for color aspect bit !!!");
+                LLOG_ERR << "Error: Could not find sparse image memory requirements for color aspect bit !!!";
                 return;
             }
 
@@ -425,7 +427,7 @@ namespace Falcor {
 
                     VkDeviceMemory deviceMemory;
                     if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &deviceMemory)) ) {
-                        LOG_ERR("Could not allocate memory !!!");
+                        LLOG_ERR << "Could not allocate memory !!!";
                         return;
                     }
 
@@ -455,7 +457,7 @@ namespace Falcor {
 
                 VkDeviceMemory deviceMemory;
                 if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &deviceMemory)) ) {
-                    LOG_ERR("Could not allocate memory !!!");
+                    LLOG_ERR << "Could not allocate memory !!!";
                     return;
                 }
 
@@ -482,7 +484,7 @@ namespace Falcor {
             semaphoreCreateInfo.flags = 0;
 
             if ( VK_FAILED(vkCreateSemaphore(mpDevice->getApiHandle(), &semaphoreCreateInfo, nullptr, &mBindSparseSemaphore)) ) {
-                LOG_ERR("Could not create semaphore !!!");
+                LLOG_ERR << "Could not create semaphore !!!";
                 return;
             }
 
