@@ -65,6 +65,7 @@
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Logger.h"
 #include "Falcor/Utils/Math/Vector.h"
+#include "lava_utils_lib/logging.h"
 
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
@@ -81,7 +82,7 @@
 #define assert(a) \
     if (!(a)) { \
         std::string str = "assertion failed(" + std::string(#a) + ")\nFile " + __FILE__ + ", line " + std::to_string(__LINE__);\
-        Falcor::logError(str);\
+        LLOG_FTL << str;\
     }
 
 #define should_not_get_here() assert(false);

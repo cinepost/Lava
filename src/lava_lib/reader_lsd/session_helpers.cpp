@@ -149,7 +149,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
 	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 
-	aovInfo.name = channel_name;
+	aovInfo.name = AOVName(channel_name);
 	aovInfo.format = resolveAOVResourceFormat(quantization_name, componentsCountFromLSDTypeName(type_name));
 	aovInfo.variableName = output_variable_name;
 

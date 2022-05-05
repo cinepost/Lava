@@ -298,7 +298,7 @@ int UnixPClose(const FILE* file) {
 
 	while(i < 64 && pipeArray[i].fileptr != file)
 		++i;
-	
+
 	if(i < 64) {
 		unsigned long retval;
 
@@ -314,7 +314,6 @@ int UnixPClose(const FILE* file) {
 		pipeArray[i].hPipe = NULL;
 		return (int)retval;
 	}
-
 	return -1;
 }
 
@@ -325,60 +324,6 @@ FILE* popen(const std::string& name, const std::string& mode) {
 int pclose(FILE* f) {
 	return UnixPClose(f);
 }
-#else // Linux
-
-static FILE *my_popen (const char *cmd, const char *mode) {
-    int fd[2];
-    int read_fd, write_fd;
-    int pid;               
-
-    /* First, create a pipe and a pair of file descriptors for its both ends */
-    pipe(fd);
-    read_fd = fd[0];
-    write_fd = fd[1];
-
-    /* Now fork in order to create process from we'll read from */
-    pid = fork();
-    if (pid == 0) {
-        /* Child process */
-
-    	if (strcmp(mode, "r")==0) {
-        /* Close "read" endpoint - child will only use write end */
-        close(read_fd);
-
-        /* Now "bind" fd 1 (standard output) to our "write" end of pipe */
-        dup2(write_fd,1);
-
-        /* Close original descriptor we got from pipe() */
-        close(write_fd);
-    } else {
-    	close(write_fd);
-        dup2(read_fd,1);
-        close(read_fd);
-    }
-
-        /* Execute command via shell - this will replace current process */
-        execl("/bin/sh", "sh", "-c", cmd, NULL);
-
-        /* Don't let compiler be angry with us */
-        return NULL;
-    } else {
-        /* Parent */
-
-    	if (strcmp(mode, "r")==0) {
-	        /* Close "write" end, not needed in this process */
-	        close(write_fd);
-
-	        /* Parent process is simpler - just create FILE* from file descriptor,
-	           for compatibility with popen() */
-	        return fdopen(read_fd, mode);
-    	} else {
-    		close(read_fd);
-    		return fdopen(write_fd, mode);
-    	}
-    }
-}
-
 #endif
 
 #define MAGIC (('h'<<24)+('M'<<16)+('P'<<8)+('0'))
@@ -400,24 +345,25 @@ public:
     }
     
     ~IMDisplay() {
-        log(0, "closing IMDisplay. Closing pipe:%s\n", myPipe ? "True" :"False");
+        log(0, "~IMDisplay\n");
         if (myPipe) {
+        	log(0, "closing IMDisplay pipe: %s\n", myPipe ? "True" :"False");
             int header[4];
             ::memset(header, 0, sizeof(header));
             header[0] = END_OF_IMAGE;
-            fwrite(header, sizeof(int), 4, myPipe);
+            fwrite((const void*)&header[0], sizeof(int), 4, myPipe);
 
-            ::pclose(myPipe);
-
+            //::pclose(myPipe);
+            // this makes zombie process
+            // TODO: find a better way to handle pipe opening and closing
+            
             myPipe = (FILE*)0;
         }
     }
     
-    bool
-    IsValid(void) { return myPipe != (FILE*)0; }
+    bool IsValid(void) { return myPipe != (FILE*)0; }
     
-    FILE*
-    GetFile(void) { return myPipe; }
+    FILE* GetFile(void) { return myPipe; }
     
 private:
 
@@ -432,6 +378,7 @@ private:
 
 
     	myPipe = ::popen(argv, "w");
+    	//myPipe = ::my_popen(argv, "w");
     }
     
     FILE* myPipe;
@@ -874,6 +821,8 @@ DspyImageClose(PtDspyImageHandle pvImage) {
 
 	return PkDspyErrorNone;
 }
+
+
 
 PtDspyError
 DspyImageQuery(PtDspyImageHandle pvImage,
