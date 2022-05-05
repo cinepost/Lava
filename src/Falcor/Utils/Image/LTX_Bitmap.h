@@ -110,7 +110,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     /** Get data size in bytes
     */
-    size_t getDataSize() const { return mDataSize; }
+    inline size_t getDataSize() const { return mDataSize; }
 
     /** Get resident data size in bytes
     */
@@ -118,29 +118,29 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     /** Get a pointer to the bitmap's data store
     */
-    uint8_t* getData() const { return mpData; }
+    inline uint8_t* getData() const { return mpData; }
 
     /** Get the width of the bitmap
     */
-    uint32_t getWidth() const { return mHeader.width; }
+    inline uint32_t getWidth() const { return mHeader.width; }
 
     /** Get the height of the bitmap
     */
-    uint32_t getHeight() const { return mHeader.height; }
+    inline uint32_t getHeight() const { return mHeader.height; }
 
     /** Get the depth of the bitmap
     */
-    uint32_t getDepth() const { return mHeader.depth; }
+    inline uint32_t getDepth() const { return mHeader.depth; }
 
     /** Get mip levels count of ltx bitmap
     */
-    uint8_t getMipLevelsCount() const { return mHeader.mipLevelsCount; }
+    inline uint8_t getMipLevelsCount() const { return mHeader.mipLevelsCount; }
 
     /** Get the number of bytes per pixel
     */
-    ResourceFormat getFormat() const { return mHeader.format; }
+    inline ResourceFormat getFormat() const { return mHeader.format; }
 
-    const std::string& getFilename() const { return mFilename; }
+    inline const std::string& getFilename() const { return mFilename; }
 
     
  protected:

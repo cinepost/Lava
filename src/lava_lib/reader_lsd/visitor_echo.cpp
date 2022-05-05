@@ -156,7 +156,7 @@ void EchoVisitor::operator()(ast::cmd_time const& c) const {
 
 void EchoVisitor::operator()(ast::cmd_iprmode const& c) const {
     Visitor::operator()(c);
-    _os << "\x1b[32m" << "> cmd_iprmode: " << c.mode << "\x1b[0m\n";
+    _os << "\x1b[32m" << "> cmd_iprmode: " << c.mode << " stash:" << c.stash <<"\x1b[0m\n";
 }
 
 void EchoVisitor::operator()(ast::cmd_detail const& c) {

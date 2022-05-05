@@ -69,8 +69,14 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     struct FrameInfo {
       uint32_t imageWidth = 0;
       uint32_t imageHeight = 0;
-      uint32_t imageSamples = 16;         // 0 for continuous rendering
+      uint32_t imageSamples = 16;           // 0 for continuous rendering. 16 is default, roughly equal to 
       uint32_t frameNumber = 0;
+      Falcor::uint4 renderRegion = {0, 0, 0, 0}; // default full frame
+
+      Falcor::uint2 renderRegionDims() const {
+        if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
+        return {std::min(imageWidth, renderRegion[2] - renderRegion[0]), std::min(imageHeight, renderRegion[3] - renderRegion[1])};
+      }
     };
 
   // __HYDRA__ oriented structs end .....
@@ -79,9 +85,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	  virtual ~Renderer();
     using SharedPtr = std::shared_ptr<Renderer>;
  	  using UniquePtr = std::unique_ptr<Renderer>;
-
-    //std::unique_ptr<RendererIface> 	aquireInterface();
- 	  //void releaseInterface(std::unique_ptr<RendererIface> pInterface);
 
   public:
     static SharedPtr create(Device::SharedPtr pDevice);
@@ -94,10 +97,9 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
 
   public:
-  // HYDRA / LSD common stuff begin ..
-    lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
+    inline lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
     bool init(const Config& config);
-    bool isInited() const { return mInited; }
+    inline bool isInited() const { return mInited; }
 
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
@@ -124,7 +126,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 #endif
 
   protected:
-    Falcor::RenderGraph::SharedConstPtr  renderGraph() const { return mpRenderGraph; };
+    inline Falcor::RenderGraph::SharedConstPtr  renderGraph() const { return mpRenderGraph; };
 
   private:
  	  void addGraph(const Falcor::RenderGraph::SharedPtr& pGraph);

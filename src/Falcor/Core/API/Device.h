@@ -156,7 +156,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Get the default render-context.
         The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
     */
-    RenderContext* getRenderContext() const { return mpRenderContext.get(); }
+    inline RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
     /** Get the command queue handle
     */
@@ -169,7 +169,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get the native API handle
     */
-    const DeviceHandle& getApiHandle() { return mApiHandle; }
+    inline const DeviceHandle& getApiHandle() { return mApiHandle; }
 
     /** Present the back-buffer to the window
     */
@@ -181,7 +181,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Check if vertical sync is enabled
     */
-    bool isVsyncEnabled() const { return mDesc.enableVsync; }
+    inline bool isVsyncEnabled() const { return mDesc.enableVsync; }
 
     /** Resize the swap-chain
         \return A new FBO object
@@ -190,11 +190,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** Get the desc
     */
-    const Desc& getDesc() const { return mDesc; }
+    inline const Desc& getDesc() const { return mDesc; }
 
     /** Get default sampler object
     */
-    const Sampler::SharedPtr& getDefaultSampler() const { return mpDefaultSampler; }
+    inline const Sampler::SharedPtr& getDefaultSampler() const { return mpDefaultSampler; }
 
     /** Create a new query heap.
         \param[in] type Type of queries.
@@ -239,7 +239,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
 #endif
 
-    DeviceApiData* apiData() const { return mpApiData; };
+    inline DeviceApiData* apiData() const { return mpApiData; };
 
  private:
     static constexpr uint32_t kSwapChainBuffersCount = 5;

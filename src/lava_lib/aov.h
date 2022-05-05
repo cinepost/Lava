@@ -55,15 +55,15 @@ struct AOVName : boost::variant< AOVBuiltinName, std::string > {
   AOVName(const std::string& name):  boost::variant< AOVBuiltinName, std::string >(name) {};
   AOVName(const AOVBuiltinName& name):  boost::variant< AOVBuiltinName, std::string >(name) {};
 
-  operator std::string() const { return boost::apply_visitor(aov_name_visitor(), *this); }
+  inline operator std::string() const { return boost::apply_visitor(aov_name_visitor(), *this); }
   
-  bool operator==(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) == str); }
-  bool operator==(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) == to_string(name)); }
+  inline bool operator==(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) == str); }
+  inline bool operator==(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) == to_string(name)); }
   
-  AOVName operator=(const std::string& str) { return AOVName(str); }
-  AOVName operator=(const AOVBuiltinName& name) { return AOVName(name); }
+  inline AOVName operator=(const std::string& str) { return AOVName(str); }
+  inline AOVName operator=(const AOVBuiltinName& name) { return AOVName(name); }
   
-  std::string operator+(const char* str) const { return std::string(str) + boost::apply_visitor(aov_name_visitor(), *this); }
+  inline std::string operator+(const char* str) const { return std::string(str) + boost::apply_visitor(aov_name_visitor(), *this); }
 };
 
 struct AOVPlaneInfo {
@@ -103,17 +103,17 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     using SharedPtr = std::shared_ptr<AOVPlane>;
     using SharedConstPtr = std::shared_ptr<const AOVPlane>;
 
-    const std::string&      outputVariableName() const { return mInfo.variableName; }
-    const AOVName&          name() const { return mInfo.name; }
-    Falcor::ResourceFormat  format() const { return mInfo.format; }
-    AOVPlaneInfo            info() const { return mInfo; }
+    inline const std::string&      outputVariableName() const { return mInfo.variableName; }
+    inline const AOVName&          name() const { return mInfo.name; }
+    inline Falcor::ResourceFormat  format() const { return mInfo.format; }
+    inline const AOVPlaneInfo&     info() const { return mInfo; }
 
     bool getImageData(uint8_t* pData) const;
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
 
-    bool isBound() const;
+    inline bool isBound() const;
 
   private:
     AOVPlane(const AOVPlaneInfo& info);
@@ -122,11 +122,11 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool bindToTexture(Falcor::Texture::SharedPtr pTexture);
 
     AccumulatePass::SharedPtr         createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph);
-    AccumulatePass::SharedPtr         accumulationPass() { return mpAccumulatePass; }
-    AccumulatePass::SharedConstPtr    accumulationPass() const { return mpAccumulatePass; }
+    inline AccumulatePass::SharedPtr         accumulationPass() { return mpAccumulatePass; }
+    inline AccumulatePass::SharedConstPtr    accumulationPass() const { return mpAccumulatePass; }
 
-    const std::string&                accumulationPassInputName() const;
-    const std::string&                accumulationPassOutputName() const;
+    inline const std::string&                accumulationPassInputName() const { return mAccumulatePassInputName; }
+    inline const std::string&                accumulationPassOutputName() const { return mAccumulatePassOutputName; }
 
   private:
     AOVPlaneInfo                        mInfo;

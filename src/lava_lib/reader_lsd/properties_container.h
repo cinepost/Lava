@@ -65,10 +65,10 @@ class Property {
 
         static bool create(Type type, const Value& value, Property& property, Owner owner = Owner::SYS);
 
-        const Type type() const { return mType; };
-        const Value& value() const { return mValue; };
+        inline const Type type() const { return mType; };
+        inline const Value& value() const { return mValue; };
 
-        bool isUserProperty() const { return (mOwner == Owner::USER ) ? true : false; };
+        inline bool isUserProperty() const { return (mOwner == Owner::USER ) ? true : false; };
         bool set(Type type, const Value& value);
         bool set(const Value& value);
 
@@ -76,9 +76,9 @@ class Property {
         const T get() const;
 
 
-        bool hasSubContainer() const { return mpSubContainer ? true : false; };
+        inline bool hasSubContainer() const { return mpSubContainer ? true : false; };
         std::shared_ptr<PropertiesContainer> createSubContainer();
-        std::shared_ptr<PropertiesContainer> subContainer() const { return mpSubContainer; };
+        inline std::shared_ptr<PropertiesContainer> subContainer() const { return mpSubContainer; };
 
     private:
         Property(): mType(Type::UNKNOWN), mOwner(Owner::SYS) { }
@@ -176,9 +176,9 @@ class PropertiesContainer: public std::enable_shared_from_this<PropertiesContain
 
     const PropertiesContainer filterProperties(ast::Style style, const std::regex& re) const;
     const PropertiesContainer filterProperties(ast::Style style) const;
-    const PropertiesMap& properties() const { return mPropertiesMap; };
+    inline const PropertiesMap& properties() const { return mPropertiesMap; };
 
-    size_t size() const { return mPropertiesMap.size(); };
+    inline size_t size() const { return mPropertiesMap.size(); };
 
     virtual const void printSummary(std::ostream& os, uint indent = 0) const;
 

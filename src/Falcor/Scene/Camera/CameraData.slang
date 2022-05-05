@@ -55,6 +55,8 @@ struct CameraData
     float3   cameraW                = float3(1, 0, 0);          ///< Camera base vector W. Normalized it indicates the forward direction. The length is the camera focal distance.
     float    jitterY                = 0.0f;                     ///< Eventual camera jitter along the y axis expressed as a subpixel offset divided by screen height (positive value shifts the image up).
 
+    float4   cropRegion             = float4(0, 0, 1, 1);
+
     float    frameHeight            = 24.0f;                    ///< Camera film frame height in mm. 24 is the height of a 35mm film
     float    frameWidth             = 42.666667f;               ///< Camera film frame width in mm.  42 2/3 is the width assuming 24mm height and a 16:9 aspect ratio
     float    focalDistance          = 10000.0f;                 ///< Camera focal distance in scene units.

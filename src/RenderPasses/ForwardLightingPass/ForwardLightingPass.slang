@@ -177,25 +177,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
         EnvMapSample envSample;
         gEnvMapSampler.sample(sampleNext2D(sg), envSample);
 
-/*
-        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
-            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-            envSampleWeight = 0.5;
-        }
-        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
-            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-            envSampleWeight = 0.333333;
-        }
-        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
-            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-            envSampleWeight = 0.25;
-        }
-        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
-            gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-            envSampleWeight = 0.2;
-        }
-*/
-
         if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
             DiffuseReflectionFrostbite diffuseReflection;
             diffuseReflection.albedo = sd.diffuse;
@@ -289,9 +270,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
             reflDir = normalize(sd.fromLocal(wi));
         }
 
-
-        //finalColor.rgb = float3(0,0,0);
-
         if ( valid && dot(reflDir, sd.N) > kMinCosTheta) {
             shadowFactor = 1.0;
 
@@ -311,8 +289,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) {
 
             float envLod = 1.0; //_computeEnvironmentMapLOD(envReflPdf, gScene.envMap.envMap);
             finalColor.rgb += gScene.envMap.eval(reflDir, envLod) * weight * shadowFactor;
-
-            //finalColor.rgb = float3(1.0 / pdf, 0.1 / pdf, 0.01 / pdf);
         }
 
     #endif

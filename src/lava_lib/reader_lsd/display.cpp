@@ -94,6 +94,7 @@ static std::string getDisplayDriverFileName(Display::DisplayType display_type) {
         switch(display_type) {
             case Display::DisplayType::IP:
             case Display::DisplayType::MD:
+            case Display::DisplayType::HOUDINI:
                 return "houdini";
             case Display::DisplayType::SDL:
                 return "sdl";
@@ -113,32 +114,6 @@ static std::string getDisplayDriverFileName(Display::DisplayType display_type) {
     }
     return "";
 }
-
-/*
-    enum class FormatType {
-        Unknown,        ///< Unknown format Type
-        Float,          ///< Floating-point formats
-        Unorm,          ///< Unsigned normalized formats
-        UnormSrgb,      ///< Unsigned normalized SRGB formats
-        Snorm,          ///< Signed normalized formats
-        Uint,           ///< Unsigned integer formats
-        Sint            ///< Signed integer formats
-    };
-*/
-
-/*
-
-    enum class TypeFormat { 
-        FLOAT32, 
-        FLOAT16, 
-        UNSIGNED32, 
-        SIGNED32, 
-        UNSIGNED16, 
-        SIGNED16, 
-        UNSIGNED8, 
-        SIGNED8 
-    };
-*/
 
 static inline Display::TypeFormat falcorTypeToDiplay(Falcor::FormatType format_type, uint32_t numChannelBits) {
     assert((numChannelBits == 8) || (numChannelBits == 16) || (numChannelBits == 32));
@@ -394,7 +369,7 @@ bool Display::closeImage(uint imageHandle) {
     return true;
 }
 
-bool Display::sendBucket(uint imageHandle, int x, int y, int width, int height, const uint8_t *data) {
+bool Display::sendImageRegion(uint imageHandle, int x, int y, int width, int height, const uint8_t *data) {
     if(!mImages[imageHandle].opened) {
         LLOG_ERR << "Can't send image data. Display not opened !!!";
         return false;
@@ -433,14 +408,14 @@ bool Display::sendImage(uint imageHandle, int width, int height, const uint8_t *
     if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder) {
         LLOG_DBG << "Sending " <<  std::to_string(height) << " scan lines";
         for(uint32_t y = 0; y < height; y++) {
-            if(!sendBucket(imageHandle, 0, y, width,y, data)) 
+            if(!sendImageRegion(imageHandle, 0, y, width,y, data)) 
                 return false;
 
             data += scanline_offset;
         }
 
     } else {
-        return sendBucket(imageHandle, 0, 0, width, height, data);
+        return sendImageRegion(imageHandle, 0, 0, width, height, data);
     }
 
     return true;
