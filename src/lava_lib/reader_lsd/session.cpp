@@ -110,7 +110,9 @@ void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& fi
 	LLOG_DBG << "cmdImage";
 	mCurrentDisplayInfo.outputFileName = ((!filename.empty()) ? filename : std::string("unnamed"));
 
-	if (display_type == lsd::ast::DisplayType::NONE ) {
+	if (mIPR) {
+		mCurrentDisplayInfo.displayType = Display::DisplayType::IP;
+	} else if (display_type == lsd::ast::DisplayType::NONE ) {
 		mCurrentDisplayInfo.displayType = resolveDisplayTypeByFileName(filename);
 	} else {
     	mCurrentDisplayInfo.displayType = display_type;
@@ -145,12 +147,12 @@ bool Session::prepareDisplayData() {
 
 	// quantization parameters
 	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float32"));
-	mCurrentDisplayInfo.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 
+	mCurrentDisplayInfo.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 	return true;
 }
 
-void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera) {
+void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 cropRegion) {
 	LLOG_DBG << "setUpCamera";
 	assert(pCamera);
 	
@@ -164,13 +166,12 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera) {
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
 	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
+	pCamera->setCropRegion(cropRegion);
 
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
 		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
-		
-		//double height_k = static_cast<double>(mCurrentFrameInfo.imageHeight) / static_cast<double>(mCurrentFrameInfo.imageWidth);
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
 }
@@ -204,6 +205,35 @@ bool Session::cmdRaytrace() {
 	mCurrentFrameInfo.imageWidth = resolution[0];
 	mCurrentFrameInfo.imageHeight = resolution[1];
 
+	if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
+		LLOG_ERR << "Wrong render frame size: " << to_string(resolution) << " !!!";
+		return false;
+	}
+
+	// Crop region
+	Vector4 crop = mpGlobal->getPropertyValue(ast::Style::IMAGE, "crop", Vector4({0, 0, 0, 0})); // default no crop. houdini crop is: 0-left, 1-right, 2-bottom, 3-top
+	Falcor::float4 cameraCropRegion = {0, 0, 1, 1}; // default full frame
+
+	if((crop[0] > 0.0) || (crop[1] < 1.0) || (crop[2] > 0) || (crop[3] < 1.0)) { 
+		mCurrentFrameInfo.renderRegion = {
+			uint((float)mCurrentFrameInfo.imageWidth * crop[0]), 
+			uint((float)mCurrentFrameInfo.imageHeight * (1.0f - crop[3])), 
+			uint((float)mCurrentFrameInfo.imageWidth * crop[1]), 
+			uint((float)mCurrentFrameInfo.imageHeight * (1.0f - crop[2]))
+		};
+
+			if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
+			LLOG_ERR << "Wrong render image crop region: " << to_string(crop) << " !!!";
+				return false;
+			}
+
+		cameraCropRegion = {
+			(float)mCurrentFrameInfo.renderRegion[0] / (float)mCurrentFrameInfo.imageWidth,
+			(float)mCurrentFrameInfo.renderRegion[1] / (float)mCurrentFrameInfo.imageHeight,
+			(float)mCurrentFrameInfo.renderRegion[2] / (float)mCurrentFrameInfo.imageWidth,
+			(float)mCurrentFrameInfo.renderRegion[3] / (float)mCurrentFrameInfo.imageHeight
+		};
+	}
 
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
@@ -217,9 +247,9 @@ bool Session::cmdRaytrace() {
 	int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
 	std::string imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
 
-    if (houdiniPortNum < 0) {
+    if ((houdiniPortNum > 0) && (mIPR)) {
     	// Negative port num is for IPR
-    	imageFileName = "socket:" + std::to_string(houdiniPortNum);
+    	imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
     }
 
     //
@@ -231,8 +261,7 @@ bool Session::cmdRaytrace() {
 
     // Frame rendeing
     {  
-
-    	setUpCamera(mpRenderer->currentCamera());
+    	setUpCamera(mpRenderer->currentCamera(), cameraCropRegion);
 
 		mpRenderer->prepareFrame(mCurrentFrameInfo);
 
@@ -241,7 +270,7 @@ bool Session::cmdRaytrace() {
 		}
 	}
 
-	LLOG_DBG << "Senging renderd data to display";    
+	LLOG_DBG << "Senging rendered data to display";    
 	AOVPlaneGeometry aov_geometry;
 	if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
 		LLOG_FTL << "No AOV !!!";
@@ -258,8 +287,11 @@ bool Session::cmdRaytrace() {
     	LLOG_ERR << "Error reading AOV texture data !!!";
     }
     
+    // Sending rendered image
     try {
-        if (!mpDisplay->sendImage(hImage, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, textureData.data())) {
+    	auto renderRegionDims = mCurrentFrameInfo.renderRegionDims();
+        if (!mpDisplay->sendImageRegion(hImage, mCurrentFrameInfo.renderRegion[0], mCurrentFrameInfo.renderRegion[1],
+        								renderRegionDims[0], renderRegionDims[1], textureData.data())) {
             LLOG_ERR << "Error sending image to display !";
         }
     } catch (std::exception& e) {
@@ -513,9 +545,9 @@ scope::ScopeBase::SharedPtr Session::getCurrentScope() {
 	return std::dynamic_pointer_cast<scope::ScopeBase>(mpCurrentScope);
 }
 
-void Session::cmdIPRmode(const std::string& mode) {
-	LLOG_DBG << "cmdIPRmode";
-	mIPRmode = true;
+void Session::cmdIPRmode(lsd::ast::IPRMode mode, bool stash) {
+	LLOG_ERR << "cmdIPRmode " << to_string(mode) << " stash " << stash << " !!!!!!!!!!!!!!!!!!!!!!!!!!";
+	if (!mIPR) mIPR = true;
 	//mpRendererIface->setIPRMode(mIPRmode);
 }
 
@@ -846,6 +878,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     float 			surface_roughness = 0.5;
     float 			surface_reflectivity = 1.0;
 
+    Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
+    float           emissive_factor = 1.0f;
+
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
@@ -863,6 +898,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
     	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
     	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0);
+
+    	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
+    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
@@ -873,6 +911,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
     pMaterial->setReflectivity(surface_reflectivity);
+    pMaterial->setEmissiveColor(emissive_color);
+    pMaterial->setEmissiveFactor(emissive_factor);
 
     LLOG_DBG << "setting material textures";
   	bool loadAsSrgb = true;

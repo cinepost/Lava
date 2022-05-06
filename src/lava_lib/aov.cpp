@@ -104,16 +104,6 @@ bool AOVPlane::isBound() const {
     return true;
 }
 
-const std::string&  AOVPlane::accumulationPassInputName() const {
-    assert(mpAccumulatePass);
-    return mAccumulatePassInputName;
-}
-
-const std::string&  AOVPlane::accumulationPassOutputName() const {
-    assert(mpAccumulatePass);
-    return mAccumulatePassOutputName;
-}
-
 std::string aov_name_visitor::operator()(AOVBuiltinName name) const {
     return to_string(name);
 }

@@ -210,7 +210,7 @@ void Visitor::operator()(ast::cmd_transform const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_iprmode const& c) const {
-    mpSession->cmdIPRmode(c.mode);
+    mpSession->cmdIPRmode(c.mode, c.stash);
 }
 
 void Visitor::operator()(ast::cmd_mtransform const& c) const {

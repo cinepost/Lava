@@ -76,12 +76,28 @@ namespace lsd {
     typedef static_vector<double, 16> Matrix4;
     typedef x3::variant<bool, int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
 
+    static inline Falcor::int2 to_int2(const Int2& vec) {
+        return {vec[0], vec[1]};
+    }
+
+    static inline Falcor::int3 to_int3(const Int3& vec) {
+        return {vec[0], vec[1], vec[2]};
+    }
+
+    static inline Falcor::int4 to_int4(const Int4& vec) {
+        return {vec[0], vec[1], vec[2], vec[3]};
+    }
+
     static inline Falcor::float2 to_float2(const Vector2& vec) {
         return {vec[0], vec[1]};
     }
 
     static inline Falcor::float3 to_float3(const Vector3& vec) {
         return {vec[0], vec[1], vec[2]};
+    }
+
+    static inline Falcor::float4 to_float4(const Vector4& vec) {
+        return {vec[0], vec[1], vec[2], vec[3]};
     }
 
     static inline glm::mat4 to_mat4(const Matrix4& m) {
@@ -98,6 +114,7 @@ namespace ast {
     enum class Style { GLOBAL, MATERIAL, NODE, GEO, GEOMETRY, SEGMENT, CAMERA, LIGHT, FOG, OBJECT, INSTANCE, PLANE, IMAGE, RENDERER, UNKNOWN };
     enum class EmbedDataType { TEXTURE, UNKNOWN };
     enum class EmbedDataEncoding { UUENCODED, UNKNOWN };
+    enum class IPRMode { GENERATE, UPDATE };
 
     typedef lava::Display::DisplayType DisplayType;
     
@@ -180,7 +197,8 @@ namespace ast {
     };
 
     struct cmd_iprmode {
-        std::string mode;
+        IPRMode mode;
+        bool stash;
     };
 
     struct cmd_start {
@@ -389,8 +407,20 @@ static inline std::string to_string(const lava::lsd::ast::Style& s) {
     }
 }
 
+using IPRMode = lava::lsd::ast::IPRMode;
+static inline std::string to_string(const ast::IPRMode& mode) {
+    switch(mode) {
+        case IPRMode::GENERATE: return "generate";
+        default: return "update";
+    }
+}
+
 static inline std::ostream& operator<<(std::ostream& os, EmbedDataType t) {
     return os << to_string(t);
+};
+
+static inline std::ostream& operator<<(std::ostream& os, IPRMode mode) {
+    return os << to_string(mode);
 };
 
 static inline std::ostream& operator<<(std::ostream& os, Type t) {
@@ -416,7 +446,7 @@ BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_start, object_type)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_transform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_mtransform, m)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_image, display_type, filename)
-BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_iprmode, mode)
+BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_iprmode, mode, stash)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_defaults, filename)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_config, prop_type, prop_name, prop_value)
 BOOST_FUSION_ADAPT_STRUCT(lava::lsd::ast::cmd_version, version)
@@ -687,6 +717,13 @@ namespace parser {
         }
     } const prop_type;
 
+    struct IPRModesTable : x3::symbols<ast::IPRMode> {
+        IPRModesTable() {
+            add ("generate"    , ast::IPRMode::GENERATE)
+                ("update"     ,  ast::IPRMode::UPDATE);
+        }
+    } const ipr_mode;
+
     struct MxSocketDataTypeTable : x3::symbols<Falcor::MxSocketDataType> {
         MxSocketDataTypeTable() {
             add ("float"        , Falcor::MxSocketDataType::FLOAT)
@@ -714,6 +751,7 @@ namespace parser {
         DisplayTypesTable() {
             add ("\"ip\""       , ast::DisplayType::IP)
                 ("\"md\""       , ast::DisplayType::MD)
+                ("\"houdini\""  , ast::DisplayType::HOUDINI)
                 ("\"idisplay\"" , ast::DisplayType::IDISPLAY)
                 ("\"sdl\""      , ast::DisplayType::SDL)
 
@@ -828,7 +866,8 @@ namespace parser {
 
     auto const cmd_iprmode
         = x3::rule<class cmd_iprmode, ast::cmd_iprmode>{"cmd_iprmode"}
-        = "cmd_iprmode" >> any_string >> eps;
+        = "cmd_iprmode" >> ipr_mode >> lit("-s") >> attr(true)
+        | "cmd_iprmode" >> ipr_mode >> attr(false);
 
     auto const cmd_defaults
         = x3::rule<class cmd_defaults, ast::cmd_defaults>{"cmd_defaults"}

@@ -63,7 +63,7 @@ class Session {
     bool cmdEnd();
     void cmdSetEnv(const std::string& key, const std::string& value);
     bool cmdRaytrace();
-    void cmdIPRmode(const std::string& mode);
+    void cmdIPRmode(lsd::ast::IPRMode mode, bool stash);
     void cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket);
     void cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value);
     void cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value);
@@ -83,7 +83,7 @@ class Session {
   private:
  	  Session(std::shared_ptr<Renderer> pRenderer);
  	
-    void setUpCamera(Falcor::Camera::SharedPtr pCamera);
+    void setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 cropRegion = {0.0f, 0.0f, 1.0f, 1.0f});
     //bool prepareGlobalData();
     bool prepareFrameData();
  	  bool prepareDisplayData();
@@ -96,7 +96,9 @@ class Session {
     void addMxNode(Falcor::MxNode::SharedPtr pParent, scope::Node::SharedConstPtr pNodeLSD);
 
   private:
-    bool  mIPRmode = false;
+    bool  mIPR = false;
+    ast::IPRMode mIPRmode = ast::IPRMode::GENERATE;
+
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
     std::shared_ptr<Renderer> 	    mpRenderer = nullptr;
 

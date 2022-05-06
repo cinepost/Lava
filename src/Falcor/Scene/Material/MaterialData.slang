@@ -78,7 +78,7 @@ struct MaterialData {
     
     float4   specular               = float4(0);        ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
     
-    float3   emissive               = float3(0, 0, 0);  ///< Emissive color (RGB).
+    float3   emissive               = float3(0.0, 0.0, 0.0);  ///< Emissive color (RGB).
     float    roughness              = 0.3;
     
     float    metalness              = 0.0;
@@ -86,7 +86,7 @@ struct MaterialData {
     float    sheen;
     float    subsurface;
 
-    float    emissiveFactor         = 0.f;              ///< Multiplication factor for the emissive color to control light intensity.
+    float    emissiveFactor         = 1.f;              ///< Multiplication factor for the emissive color to control light intensity.
     float    alphaThreshold         = 0.5f;             ///< Alpha threshold, only used in case the alpha mode is mask.
     float    IoR                    = 1.5f;             ///< Index of refraction.
     float    specularTransmission   = 0.f;              ///< Specular transmission.
@@ -104,7 +104,7 @@ struct MaterialData {
     float    displacementOffset     = 0.f;              ///< Displacement offset value.
 
     float3   transmission           = float3(1.f);      ///< Transmission color.
-    float    _pad0                  = 0.f;
+    bool     illuminateObjects      = false;
 
     float3   opacity                = float3(1, 1, 1);
     float    reflectivity           = 1.0f;

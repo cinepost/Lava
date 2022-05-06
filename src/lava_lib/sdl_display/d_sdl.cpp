@@ -297,20 +297,6 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
     for (xmin = oldx; xmin < xmax; ++xmin) {
       const void *ptr = reinterpret_cast<const void*>(data);
       size_t offset = (g_width * g_channels * ymin  + xmin * g_channels) * sizeInBytes(g_pixelType);
-      /*
-      if(g_channels == 4) {
-        //g_pixels[ offset + 0 ]=ptr[0];
-        //g_pixels[ offset + 1 ]=ptr[1];
-        //g_pixels[ offset + 2 ]=ptr[2];
-        //g_pixels[ offset + 3 ]=ptr[3];
-        memcpy(&g_pixels[offset], ptr, entrysize);
-      } else {
-        //g_pixels[ offset + 0 ]=ptr[0];
-        //g_pixels[ offset + 1 ]=ptr[1];
-        //g_pixels[ offset + 2 ]=ptr[2];
-        //memcpy((void*)g_pixels[offset], (void *)ptr, entrysize);
-      }
-      */
       memcpy(&g_pixels[offset], ptr, entrysize);
       data += entrysize;
     }
@@ -413,6 +399,11 @@ PtDspyError processEvents() {
           case SDLK_4 : window->setRenderMode(SDLOpenGLWindow::RenderMode::BLUE); break;
           case SDLK_5 : window->setRenderMode(SDLOpenGLWindow::RenderMode::ALPHA); break;
           case SDLK_6 : window->setRenderMode(SDLOpenGLWindow::RenderMode::GREY); break;
+
+          case SDLK_b : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::NONE); break;
+          case SDLK_c : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::CHECKER); break;
+          case SDLK_l : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::COLOR); break;
+
           case SDLK_LEFTBRACKET : 
             window->setGamma(window->gamma()-0.1f); 
             break;
@@ -428,6 +419,7 @@ PtDspyError processEvents() {
           case SDLK_r :
             window->reset();
             window->setRenderMode(SDLOpenGLWindow::RenderMode::ALL);
+            window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::NONE);
             window->setGamma(1.0f);
             window->setExposure(0.0f);
             break;

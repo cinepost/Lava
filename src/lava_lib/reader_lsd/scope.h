@@ -68,9 +68,9 @@ class Transformable: public ScopeBase {
 
     void setTransform(const lsd::Matrix4& mat);
     void addTransform(const lsd::Matrix4& mat);
-    TransformList& getTransformList() { return mTransformList; };
-    const TransformList& getTransformList() const { return mTransformList; };
-    uint transformSamples() { return mTransformList.size(); };
+    inline TransformList& getTransformList() { return mTransformList; };
+    inline const TransformList& getTransformList() const { return mTransformList; };
+    inline uint transformSamples() { return mTransformList.size(); };
 
  private:
     TransformList mTransformList;
@@ -82,7 +82,7 @@ class Global: public Transformable {
     using SharedPtr = std::shared_ptr<Global>;
     static SharedPtr create();
 
-    ast::Style type() const override { return ast::Style::GLOBAL; };
+    inline ast::Style type() const override { return ast::Style::GLOBAL; };
 
     std::shared_ptr<Geo>        addGeo();
     std::shared_ptr<Object>     addObject();
@@ -114,14 +114,14 @@ class Geo: public ScopeBase {
     using SharedPtr = std::shared_ptr<Geo>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::GEO; };
+    inline ast::Style type() const override { return ast::Style::GEO; };
 
     void setDetailFilename(const std::string& filename);
-    void setDetailName(const std::string& name) { mName = name; };
+    inline void setDetailName(const std::string& name) { mName = name; };
 
-    const std::string& detailFilename() { return mFileName; };
-    const std::string& detailName() { return mName; };
-    bool isInline() { return mIsInline; };
+    inline const std::string& detailFilename() { return mFileName; };
+    inline const std::string& detailName() { return mName; };
+    inline bool isInline() { return mIsInline; };
 
     ika::bgeo::Bgeo::SharedPtr bgeo();
     ika::bgeo::Bgeo::SharedConstPtr bgeo() const { return mpBgeo; }
@@ -157,14 +157,14 @@ class Node: public ScopeBase {
 
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::NODE; };
+    inline ast::Style type() const override { return ast::Style::NODE; };
 
     std::shared_ptr<Node>       addChildNode();
     void                        addChildEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket);
-    const std::vector<std::shared_ptr<Node>>& childNodes() const { return mChildNodes; };
-    const std::vector<EdgeInfo>&            childEdges() const { return mChildEdges; };
+    inline const std::vector<std::shared_ptr<Node>>& childNodes() const { return mChildNodes; };
+    inline const std::vector<EdgeInfo>&            childEdges() const { return mChildEdges; };
 
-    const std::vector<DataSocketTemplate>& socketTemplates() const { return mSocketTemplates; };
+    inline const std::vector<DataSocketTemplate>& socketTemplates() const { return mSocketTemplates; };
 
     void addDataSocketTemplate(const std::string& name, Falcor::MxSocketDataType dataType, Falcor::MxSocketDirection direction);
 
@@ -189,7 +189,7 @@ class Material: public Node {
     using SharedPtr = std::shared_ptr<Material>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::MATERIAL; };
+    inline ast::Style type() const override { return ast::Style::MATERIAL; };
 
     bool insertNode(const NodeUUID& uuid, Falcor::MxNode::SharedPtr pNode);
     Falcor::MxNode::SharedPtr node(const NodeUUID& uuid);
@@ -206,10 +206,10 @@ class Object: public Transformable {
     using SharedPtr = std::shared_ptr<Object>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::OBJECT; };
+    inline ast::Style type() const override { return ast::Style::OBJECT; };
 
-    const std::string& geometryName() const { return mGeometryName; };
-    void setGeometryName(const std::string& name) { mGeometryName = name; };
+    inline const std::string& geometryName() const { return mGeometryName; };
+    inline void setGeometryName(const std::string& name) { mGeometryName = name; };
 
  private:
     Object(ScopeBase::SharedPtr pParent): Transformable(pParent), mGeometryName() {};
@@ -224,7 +224,7 @@ class Plane: public ScopeBase {
     using SharedPtr = std::shared_ptr<Plane>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::PLANE; };
+    inline ast::Style type() const override { return ast::Style::PLANE; };
 
  private:
     Plane(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};
@@ -236,7 +236,7 @@ class Light: public Transformable {
     using SharedPtr = std::shared_ptr<Light>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::LIGHT; };
+    inline ast::Style type() const override { return ast::Style::LIGHT; };
 
  private:
     Light(ScopeBase::SharedPtr pParent): Transformable(pParent) {};
@@ -248,7 +248,7 @@ class Segment: public ScopeBase {
     using SharedPtr = std::shared_ptr<Segment>;
     static SharedPtr create(ScopeBase::SharedPtr pParent);
 
-    ast::Style type() const override { return ast::Style::SEGMENT; };
+    inline ast::Style type() const override { return ast::Style::SEGMENT; };
 
  private:
     Segment(ScopeBase::SharedPtr pParent): ScopeBase(pParent) {};

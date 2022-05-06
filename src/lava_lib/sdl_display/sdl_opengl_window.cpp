@@ -13,17 +13,7 @@ SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _w
   m_width=_width;
   m_height=_height;
   init();
-/*
-  if(_ppp ==3) {
-    m_pixelFormat = GL_RGB;
-    m_pixelType = GL_UNSIGNED_BYTE;
-    m_texFormat = GL_RGB16F;
-  } else if(_ppp ==4) {
-    m_pixelFormat = GL_RGBA;
-    m_pixelType = GL_UNSIGNED_BYTE;
-    m_texFormat = GL_RGBA16F;
-  }
-*/
+
   m_pixelFormat = pixelFormat;
   m_pixelType = pixelType;
   m_texFormat = texFormat;
@@ -122,7 +112,7 @@ void SDLOpenGLWindow::draw() {
   ImGui::Begin("Help", &mShowHelp, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
     ImGui::Text("+/-   - Scale view ");
     ImGui::Text("Space - Reset view ");
-    ImGui::Text("1     - View all channels ");
+    ImGui::Text("1     - View all channels (default)");
     ImGui::Text("2     - View Red channel ");
     ImGui::Text("3     - View Green channel ");
     ImGui::Text("4     - View Blue channel ");
@@ -131,6 +121,11 @@ void SDLOpenGLWindow::draw() {
 
     ImGui::Text("[/]   - Change gamma ");
     ImGui::Text("0/9   - Change exposure ");
+
+    ImGui::Text("b     - Black background (default) ");
+    ImGui::Text("c     - Checkerboard background");
+    ImGui::Text("l     - Color background");
+
     ImGui::Text("r     - Reset all ");
     ImGui::Text("d     - Show/hide HUD ");
     ImGui::Text("h     - show/hide this help window ;) ");
@@ -210,10 +205,10 @@ void SDLOpenGLWindow::createSurface() {
     layout(location=1) in vec2 coordinate;
     uniform vec2 translation;
     uniform float scale;
-    out vec2 Coordinate;
+    out vec2 screenCoord;
     void main()
     {
-       Coordinate = coordinate;
+       screenCoord = coordinate;
        gl_Position = vec4((position + translation) * scale, 0.0, 1.0);
     }
     )";
@@ -221,28 +216,60 @@ void SDLOpenGLWindow::createSurface() {
 
   const std::string fragSource =R"(
     #version 330
-    in vec2 Coordinate;
+    in vec2 screenCoord;
     uniform sampler2D tex;
     uniform float gamma;
     uniform float exposureLevel;
+    
     layout(location=0) out vec4 outColor;
+    
     uniform int displayMode;
+    uniform int backgroundMode;
+    
     vec3 exposure(vec3 colour, float relative_fstop) {
        return colour * pow(2.0,relative_fstop);
     }
+
+    vec3 checkerPattern(vec2 iCoord, vec2 iSize, vec3 color1, vec3 color2 ) {
+      vec2 uv = fract( iCoord / iSize);
+      uv -= 0.5; // moving the coordinate system to middle of screen
+      float m = step(uv.x * uv.y, 0.);
+      return color1 * (1. - m) + color2 * m;
+    }
+
+    
     void main() {
-      vec4 baseColour=texture(tex,Coordinate);
+      vec4 texDispColor;
+      vec4 texBaseColor = texture(tex, screenCoord);
       switch(displayMode) {
-        case 1 : outColor=vec4(baseColour.r,0,0,baseColour.a); break; // red
-        case 2 : outColor=vec4(0,baseColour.g,0,baseColour.a); break; // green
-        case 3 : outColor=vec4(0,0,baseColour.b,baseColour.a); break; // blue
-        case 4 : outColor=vec4(baseColour.a,baseColour.a,baseColour.a,1); break; // alpha are greyscale
-        case 5 : outColor.rgb = vec3(dot(baseColour.rgb, vec3(0.299, 0.587, 0.114))); break; // monochrome image (lightness)
-        case 0 : outColor=baseColour; break; // full rgba image
-        }
-        outColor.rgb = pow(outColor.rgb, vec3(1.0/gamma));
-        outColor.rgb=exposure(outColor.rgb,exposureLevel);
+        case 1 : texDispColor=vec4(texBaseColor.r,0,0,texBaseColor.a); break; // red
+        case 2 : texDispColor=vec4(0,texBaseColor.g,0,texBaseColor.a); break; // green
+        case 3 : texDispColor=vec4(0,0,texBaseColor.b,texBaseColor.a); break; // blue
+        case 4 : texDispColor=vec4(texBaseColor.a,texBaseColor.a,texBaseColor.a,1); break; // alpha are greyscale
+        case 5 : texDispColor.rgb = vec3(dot(texBaseColor.rgb, vec3(0.299, 0.587, 0.114))); break; // monochrome image (lightness)
+        case 0 : texDispColor=texBaseColor; break; // full rgba image
       }
+    
+      texDispColor.rgb = pow(texDispColor.rgb, vec3(1.0/gamma));
+      texDispColor.rgb = exposure(texDispColor.rgb,exposureLevel);
+    
+      switch(backgroundMode) {
+        case 0: // Black background
+          outColor.rgb = texDispColor.rgb;
+          outColor.a = 1.0f;
+          break;
+        case 1: // Color background
+          outColor.rgb = vec3(0.5, 1.0, 0.0);
+          outColor.a = 1.0f;
+          break;
+        case 2: // Checkerboard background
+        default:
+          vec3 checkerColor = checkerPattern(gl_FragCoord.xy , vec2(16), vec3(0.5, 0.5, 0.5), vec3(0.25, 0.25, 0.25));
+          outColor.rgb = checkerColor * (1.0 - texBaseColor.a) + texDispColor.rgb * texBaseColor.a;
+          outColor.a = 1.0f;
+          break;
+      }
+    }
     )";
 
   const GLchar* shaderSource=vertSource.c_str();
@@ -281,6 +308,8 @@ void SDLOpenGLWindow::createSurface() {
   glUniform1f(m_scaleUniform, m_scale);
   m_modeUniform = glGetUniformLocation(m_shaderProgram, "displayMode");
   glUniform1i(m_modeUniform, 0);
+  m_backgroundModeUniform = glGetUniformLocation(m_shaderProgram, "backgroundMode");
+  glUniform1i(m_backgroundModeUniform, 0);
 
   m_gammaUniform = glGetUniformLocation(m_shaderProgram, "gamma");
   glUniform1f(m_gammaUniform, m_gamma);
@@ -399,8 +428,25 @@ void SDLOpenGLWindow::setRenderMode(RenderMode _m) {
     case 4 : 
       glUniform1i(m_modeUniform,4); 
       break;
-    case 5 : 
+    case 5 :
+    default: 
       glUniform1i(m_modeUniform,5); 
+      break;
+  }
+}
+
+void SDLOpenGLWindow::setBackgroundMode(BackgroundMode _m) {
+  mBackgroundMode = _m;
+  switch(static_cast<int>(_m)) {
+    case 0 : 
+      glUniform1i(m_backgroundModeUniform,0); 
+      break;
+    case 1 : 
+      glUniform1i(m_backgroundModeUniform,1); 
+      break;
+    case 2 :
+    default: 
+      glUniform1i(m_backgroundModeUniform,2); 
       break;
   }
 }

@@ -85,6 +85,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (mPrevData.farZ != mData.farZ)               mChanges |= Changes::Frustum;
     if (mPrevData.frameHeight != mData.frameHeight) mChanges |= Changes::Frustum;
     if (mPrevData.frameWidth != mData.frameWidth)   mChanges |= Changes::Frustum;
+    if (mPrevData.cropRegion != mData.cropRegion)   mChanges |= Changes::Frustum;
 
     // Jitter
     if (mPrevData.jitterX != mData.jitterX) mChanges |= Changes::Jitter;
@@ -123,7 +124,13 @@ void Camera::calculateCameraParameters() const {
             mData.projMat = mPersistentProjMat;
         } else {
             if (fovY != 0.f) {
-                mData.projMat = glm::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
+                //mData.projMat = glm::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
+
+                float left   = ((mData.cropRegion[0]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
+                float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
+                float top    = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
+                float bottom = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
+                mData.projMat = glm::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
             } else {
                 // Take the length of look-at vector as half a viewport size
                 const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
@@ -131,18 +138,23 @@ void Camera::calculateCameraParameters() const {
             }
         }
 
+        // Crop region jitter scale coefficient
+        float invJitterScaleX = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
+        float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
+
         // Build jitter matrix
         // (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
         //  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
         glm::mat4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
+            2.0f * mData.jitterX * invJitterScaleX, 2.0f * mData.jitterY * invJitterScaleY, 0.0f, 1.0f);
         // Apply jitter matrix to the projection matrix
         mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
         mData.projMat = jitterMat * mData.projMat;
 
         mData.viewProjMat = mData.projMat * mData.viewMat;
+
         mData.invViewProj = glm::inverse(mData.viewProjMat);
 
         // Extract camera space frustum planes from the VP matrix
@@ -292,6 +304,7 @@ SCRIPT_BINDING(Camera) {
     camera.def_property_readonly("name", &Camera::getName);
     camera.def_property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
     camera.def_property("focalLength", &Camera::getFocalLength, &Camera::setFocalLength);
+    camera.def_property("cropRegion", &Camera::getCropRegion, &Camera::setCropRegion);
     camera.def_property("frameHeight", &Camera::getFrameHeight, &Camera::setFrameHeight);
     camera.def_property("frameWidth", &Camera::getFrameWidth, &Camera::setFrameWidth);
     camera.def_property("focalDistance", &Camera::getFocalDistance, &Camera::setFocalDistance);

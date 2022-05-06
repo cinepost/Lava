@@ -296,7 +296,7 @@ def cmd_prefilter(path, prefilter_path, filter, count, ratio):
 
 def cmd_updateipr(stash=True):
     soho.indent()
-    sys.stdout.write('cmd_updateipr');
+    sys.stdout.write('cmd_iprmode update');
     if stash:
         sys.stdout.write(' -s')
     sys.stdout.write('\n')

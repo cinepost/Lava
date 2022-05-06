@@ -70,7 +70,7 @@ public:
 
     /** Get the camera's aspect ratio.
     */
-    float getAspectRatio() const { return mData.aspectRatio; }
+    inline float getAspectRatio() const { return mData.aspectRatio; }
 
     /** Set camera focal length in mm. See FalcorMath.h for helper functions to convert between fovY angles.
     */
@@ -78,7 +78,15 @@ public:
 
     /** Get the camera's focal length. See FalcorMath.h for helper functions to convert between fovY angles.
     */
-    float getFocalLength() const { return mData.focalLength; }
+    inline float getFocalLength() const { return mData.focalLength; }
+
+    /** Set the camera's normalized crop region box.
+    */
+    void setCropRegion(float4 crop) {  mData.cropRegion = crop; mDirty = true; }
+
+    /** Get the camera's normalized crop region box.
+    */
+    inline float4 getCropRegion() const { return mData.cropRegion; }
 
     /** Set the camera's film plane height in mm.
     */
@@ -86,7 +94,7 @@ public:
 
     /** Get the camera's film plane height in mm.
     */
-    float getFrameHeight() const { return mData.frameHeight; }
+    inline float getFrameHeight() const { return mData.frameHeight; }
 
     /** Set the camera's film plane width in mm.
     */
@@ -94,7 +102,7 @@ public:
 
     /** Get the camera's film plane width in mm.
     */
-    float getFrameWidth() const { return mData.frameWidth; }
+    inline float getFrameWidth() const { return mData.frameWidth; }
 
     /** Set the camera's focal distance in scene units.  Used for depth-of-field.
     */
@@ -102,7 +110,7 @@ public:
 
     /** Get the camera's focal distance in scene units.
     */
-    float getFocalDistance() const { return mData.focalDistance; }
+    inline float getFocalDistance() const { return mData.focalDistance; }
 
     /** Set camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
     */
@@ -110,7 +118,7 @@ public:
 
     /** Get camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
     */
-    float getApertureRadius() const { return mData.apertureRadius; }
+    inline float getApertureRadius() const { return mData.apertureRadius; }
 
     /** Set camera shutter speed in seconds.
     */
@@ -118,7 +126,7 @@ public:
 
     /** Get camera shutter speed in seconds.
     */
-    float getShutterSpeed() const { return mData.shutterSpeed; }
+    inline float getShutterSpeed() const { return mData.shutterSpeed; }
 
     /** Set camera's film speed based on ISO standards.
     */
@@ -126,19 +134,19 @@ public:
 
     /** Get camera's film speed based on ISO standards.
     */
-    float getISOSpeed() const { return mData.ISOSpeed; }
+    inline float getISOSpeed() const { return mData.ISOSpeed; }
 
     /** Get the camera's world space position.
     */
-    const float3& getPosition() const { return mData.posW; }
+    inline const float3& getPosition() const { return mData.posW; }
 
     /** Get the camera's world space up vector.
     */
-    const float3& getUpVector() const {return mData.up;}
+    inline const float3& getUpVector() const {return mData.up;}
 
     /** Get the camera's world space target position.
     */
-    const float3& getTarget() const { return mData.target; }
+    inline const float3& getTarget() const { return mData.target; }
 
     /** Set the camera's world space position.
     */
@@ -162,7 +170,7 @@ public:
 
     /** Get the near plane depth.
     */
-    float getNearPlane() const { return mData.nearZ; }
+    inline float getNearPlane() const { return mData.nearZ; }
 
     /** Set the far plane depth.
     */
@@ -170,7 +178,7 @@ public:
 
     /** Get the far plane depth.
     */
-    float getFarPlane() const { return mData.farZ; }
+    inline float getFarPlane() const { return mData.farZ; }
 
     /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
     */

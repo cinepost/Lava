@@ -135,6 +135,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
     assert(mpDevice);
 
+    auto renderRegionDims = frame_info.renderRegionDims();
     auto pRenderContext = mpDevice->getRenderContext();
     auto pScene = mpSceneBuilder->getScene();
 
@@ -146,7 +147,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     auto const& confgStore = Falcor::ConfigStore::instance();
     bool vtoff = confgStore.get<bool>("vtoff", true);
 
-    Falcor::uint2 imageSize = {frame_info.imageWidth, frame_info.imageHeight};
+    Falcor::uint2 imageSize = {renderRegionDims[0], renderRegionDims[1]};
 
     LLOG_DBG << "createRenderGraph frame dimensions: " << imageSize[0] << " " << imageSize[1];
 
@@ -415,9 +416,10 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
     if (!mpRenderGraph) {
         createRenderGraph(frame_info);
         bindAOVPlanesToResources();
-    } else if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight)) {
+    } else if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || (mCurrentFrameInfo.renderRegion != frame_info.renderRegion)) {
         // Change rendering graph frame dimensions
-        mpRenderGraph->resize(frame_info.imageWidth, frame_info.imageHeight, Falcor::ResourceFormat::RGBA32Float);
+        auto graphRenderRegion = mCurrentFrameInfo.renderRegionDims();
+        mpRenderGraph->resize(graphRenderRegion[0], graphRenderRegion[1], Falcor::ResourceFormat::RGBA32Float);
 
         std::string compilationLog;
         if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {

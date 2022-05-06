@@ -246,7 +246,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexData v, uint materialID
     // Sample the emissive texture. Note that triangles are emissive only on the front-facing side.
     if (sd.frontFacing)
     {
-        sd.emissive = sampleTexture(mr.emissive, mr.samplerState, v.texC, float4(md.emissive, 1), EXTRACT_EMISSIVE_TYPE(md.flags), lod).rgb * md.emissiveFactor;
+        sd.emissive = sampleTexture(mr.emissive, mr.samplerState, v.texC, float4(1), EXTRACT_EMISSIVE_TYPE(md.flags), lod).rgb;// * md.emissive * md.emissiveFactor;
     }
 
     // Apply normal mapping only if we have a valid tangent space.

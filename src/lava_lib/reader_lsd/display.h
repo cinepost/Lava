@@ -13,7 +13,7 @@ namespace lava {
 
 class Display {
   public:
-    enum class DisplayType { NONE, NUL, IP, MD, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type
+    enum class DisplayType { NONE, NUL, IP, MD, HOUDINI, OPENEXR, JPEG, TIFF, PNG, SDL, IDISPLAY, __HYDRA__ }; // __HYDRA is a virtual pseudo type
     enum class TypeFormat { FLOAT32, FLOAT16, UNSIGNED32, SIGNED32, UNSIGNED16, SIGNED16, UNSIGNED8, SIGNED8, UNKNOWN };
 
     struct Channel {
@@ -51,7 +51,7 @@ class Display {
     bool setIntParameter(const std::string& name, const std::vector<int>& ints);
     bool setFloatParameter(const std::string& name, const std::vector<float>& floats);
 
-    bool sendBucket(uint imageHandle, int x, int y, int width, int height, const uint8_t *data);
+    bool sendImageRegion(uint imageHandle, int x, int y, int width, int height, const uint8_t *data);
     bool sendImage(uint imageHandle, int width, int height, const uint8_t *data);
 
  private:

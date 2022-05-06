@@ -39,6 +39,7 @@ import Utils.Geometry.GeometryHelpers;
 struct ShadingData
 {
     float3  posW;                   ///< Shading hit position in world space.
+    float3  posWR;                  ///< Shading hit position adjusted for ray tracing. (Shadow terminator problem)
     float3  V;                      ///< Direction to the eye at shading hit.
     float3  N;                      ///< Shading normal at shading hit.
     float3  T;                      ///< Shading tangent at shading hit.

@@ -18,12 +18,18 @@
 class SDLOpenGLWindow {
   public:
     enum class RenderMode : int {
-        ALL = 0, 
-        RED, 
-        GREEN, 
-        BLUE, 
-        ALPHA, 
-        GREY
+      ALL = 0, 
+      RED, 
+      GREEN, 
+      BLUE, 
+      ALPHA, 
+      GREY
+    };
+
+    enum class BackgroundMode : int {
+      NONE = 0, 
+      COLOR, 
+      CHECKER, 
     };
 
   public:
@@ -47,6 +53,7 @@ class SDLOpenGLWindow {
     void reset();
     void setPosition(float _x, float _y);
     void setRenderMode(RenderMode _m);
+    void setBackgroundMode(BackgroundMode _m);
     void showHelp() { mShowHelp = !mShowHelp; }
     void showHUD() { mShowHUD = !mShowHUD; }
 
@@ -63,7 +70,8 @@ class SDLOpenGLWindow {
     GLuint m_vao;
     GLint m_translateUniform;
     GLint m_scaleUniform;
-    GLint m_modeUniform;
+    GLint m_modeUniform = 0;
+    GLint m_backgroundModeUniform = 2; // checkerboard pattern default
     GLint m_gammaUniform;
     GLint m_exposureUniform;
 
@@ -84,6 +92,7 @@ class SDLOpenGLWindow {
     float m_gamma=1.0f;
     float m_exposure=0.0f;
     RenderMode mRenderMode = RenderMode::ALL;
+    BackgroundMode mBackgroundMode = BackgroundMode::CHECKER;
 
   private:
     bool  mShowHelp = false;

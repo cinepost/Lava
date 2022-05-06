@@ -661,9 +661,12 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
     log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
     //
 
-	if (g_mplayPortNumber == 0) {
-		std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
-		int status = system(cmd.c_str());
+    // If not reserved name, we should try to open MPlay
+    if (!strstr(filename, "socket:") || !strstr(filename, "iprsocket:")) {
+    	if (g_mplayPortNumber == 0) {
+			std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
+			int status = system(cmd.c_str());
+		}
 	}
 
 	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n",
