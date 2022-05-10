@@ -621,7 +621,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
     pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
     pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalTangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_LOC);
-    pStaticLayout->addElement(VERTEX_TEXCOORD_NAME, offsetof(PackedStaticVertexData, texCrd), ResourceFormat::RG32Float, 1, VERTEX_TEXCOORD_LOC);
+    pStaticLayout->addElement(VERTEX_TEXCOORD_U_NAME, offsetof(PackedStaticVertexData, texU), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_U_LOC);
+    pStaticLayout->addElement(VERTEX_TEXCOORD_V_NAME, offsetof(PackedStaticVertexData, texV), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_V_LOC);
     pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
 
     // Add the draw ID layout.

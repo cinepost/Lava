@@ -2122,11 +2122,13 @@ void SceneBuilder::quantizeTexCoords() {
 
             for (uint32_t i = 0; i < mesh.staticVertexCount; ++i) {
                 auto& v = mSceneData.meshStaticData[mesh.staticVertexOffset + i];
-                float2 texCrd = v.texCrd;
+                float2 texCrd = {v.texU, v.texV};
                 minTexCrd = min(minTexCrd, texCrd);
                 maxTexCrd = max(maxTexCrd, texCrd);
-                v.texCrd = f16tof32(f32tof16(texCrd));
-                maxError = max(maxError, abs(v.texCrd - texCrd));
+                const auto t = f16tof32(f32tof16(texCrd));
+                v.texU = t[0];
+                v.texV = t[1];
+                maxError = max(maxError, abs(float2({v.texU, v.texV}) - texCrd));
             }
 
             // Issue warning if quantization errors are too large.

@@ -295,23 +295,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
 #endif
 
     psOut.color = finalColor;
-
-///////////////
-    //psOut.color.rgb = sd.faceN;
-    VertexData vdata = gScene.getVertexData(vsOut.instanceID, triangleIndex, barycentrics);
-
-    //psOut.color.rgb = 0.0;
-    //psOut.color.r = dot(viewDir, normalize(gScene.getFaceNormalW(vsOut.instanceID, triangleIndex)));
-    //psOut.color.r = dot(viewDir, sd.N);
-    //psOut.color.rgb = vdata.posW;
-
-    psOut.color.rgb = gScene.getIndices(vsOut.instanceID, triangleIndex).xyz;
-    psOut.color.rgb = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex).xyz;
-
-    //uint idx = 12 * (ipos.x + 1280 * ipos.y);
-    //psOut.color.rgb = float3(1.0, 1.0, 1.0) * (uint3)gScene.indexData.Load3(idx);
-//////////////    
-
     psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
 
 #ifdef _OUTPUT_MOTION_VECTORS

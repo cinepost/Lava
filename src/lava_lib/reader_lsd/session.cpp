@@ -882,6 +882,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     bool 			surface_use_metallic_texture = false;
     bool 			surface_use_basenormal_texture = false;
 
+    bool            front_face = false;
+
     float 		 	surface_ior = 1.5;
     float 			surface_metallic = 0.0;
     float 			surface_roughness = 0.5;
@@ -910,6 +912,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
     	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0);
+
+    	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
@@ -922,6 +926,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setReflectivity(surface_reflectivity);
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
+    pMaterial->setDoubleSided(!front_face);
 
     LLOG_DBG << "setting material textures";
   	bool loadAsSrgb = true;

@@ -33,8 +33,9 @@ struct VSIn
 {
     // Packed vertex attributes, see PackedStaticVertexData
     float3 pos                      : POSITION;
+    float  texU                     : TEXCOORD_U;
     float3 packedNormalTangent      : PACKED_NORMAL_TANGENT;
-    float2 texC                     : TEXCOORD;
+    float  texV                     : TEXCOORD_V;
 
     // Other vertex attributes
     uint meshInstanceID             : DRAW_ID;
@@ -47,7 +48,8 @@ struct VSIn
         PackedStaticVertexData v;
         v.position = pos;
         v.packedNormalTangent = packedNormalTangent;
-        v.texCrd = texC;
+        v.texU = texU;
+        v.texV = texV;
         return v.unpack();
     }
 };
@@ -86,7 +88,7 @@ VSOut defaultVS(VSIn vIn)
 
     const StaticVertexData v = vIn.unpack();
 
-    vOut.texC = vIn.texC;
+    vOut.texC = float2(vIn.texU, vIn.texV);
     vOut.normalW = mul(v.normal, gScene.getInverseTransposeWorldMatrix(instanceID));
     float4 tangent = v.tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);

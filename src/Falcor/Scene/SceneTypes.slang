@@ -230,8 +230,9 @@ struct StaticVertexData
 struct PackedStaticVertexData
 {
     float3 position;
+    float  texU;
     float3 packedNormalTangent;
-    float2 texCrd;
+    float  texV;
 
 #ifdef HOST_CODE
     PackedStaticVertexData() = default;
@@ -239,8 +240,9 @@ struct PackedStaticVertexData
     void pack(const StaticVertexData& v)
     {
         position = v.position;
-        texCrd = v.texCrd;
-        
+        texU = v.texCrd[0];
+        texV = v.texCrd[1];
+
         packedNormalTangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
         packedNormalTangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.tangent.w }));
         packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
@@ -250,7 +252,8 @@ struct PackedStaticVertexData
     [mutating] void pack(const StaticVertexData v)
     {
         position = v.position;
-        texCrd = v.texCrd;
+        texU = v.texCrd[0];
+        texV = v.texCrd[1];
         
         uint3 n = f32tof16(v.normal);
         uint t_w = f32tof16(v.tangent.w);
@@ -264,7 +267,7 @@ struct PackedStaticVertexData
     {
         StaticVertexData v;
         v.position = position;
-        v.texCrd = texCrd;
+        v.texCrd = float2(texU, texV);
         
         v.normal.x = f16tof32(asuint(packedNormalTangent.x) & 0xffff);
         v.normal.y = f16tof32(asuint(packedNormalTangent.x) >> 16);
