@@ -40,6 +40,7 @@ import Experimental.Scene.Material.Microfacet;
 import Experimental.Scene.Material.StandardMaterial;
 import Experimental.Scene.Material.IBxDF;
 
+//#define _ADJUST_SHADING_POSITION
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
@@ -99,6 +100,15 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
 PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     PsOut psOut;
 
+    //Shading position adjusted for ray-tracing
+    const float3 geomNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+
+#ifdef _ADJUST_SHADING_POSITION
+    const float3 posWA = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
+#else
+    const float3 posWA = vsOut.posW;
+#endif
+
     // pixel position
     int2 ipos = int2(vsOut.posH.xy);
 
@@ -128,7 +138,7 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
-    float3 rayOrigin = sd.posW;
+    float3 rayOrigin = posWA; //sd.posW;
     float3 shadowFactor;
 
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {

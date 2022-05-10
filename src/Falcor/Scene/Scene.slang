@@ -389,6 +389,49 @@ struct Scene
         return isFrontFaceCW ? -N : N;
     }
 
+    /** Computes the shading position of the specified geometric position and vertex positions and
+        normals. For a triangle with normals describing a convex surface, this point will be slightly
+        above the surface. For a concave surface, the geometry position is used directly.
+        NOTE: The difference between the shading position and geometry position is significant when
+        casting shadow rays. If the geometric position is used, a triangle may fully shadow itself when
+        it should be partly lit based on the shading normals; this is the "shadow terminator" problem.
+        \param[in] instanceID Geometry instance ID of the mesh.
+        \param[in] triangleIndex Index of the triangle in the given mesh.
+        \param[in] geomPosition Shading position on geometry in world space.
+        \param[in] shadingNormal Shading normal in world space (normalized).
+        \param[in] barycentrics Barycentric coordinates in the triangle.
+        \param[out] Face normal in object space (normalized).
+    */
+    float3 computeShadingPosition(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 geomPosition, const float3 shadingNormal, const float3 barycentrics) {
+        uint3 vtxIndices = getIndices(instanceID, triangleIndex);
+
+        const StaticVertexData vtx0 = vertices[vtxIndices[0]].unpack();
+        const StaticVertexData vtx1 = vertices[vtxIndices[1]].unpack();
+        const StaticVertexData vtx2 = vertices[vtxIndices[2]].unpack();
+
+        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+        const float3 pos0 = mul(float4(vtx0.position, 1.f), worldMat).xyz;
+        const float3 pos1 = mul(float4(vtx1.position, 1.f), worldMat).xyz;
+        const float3 pos2 = mul(float4(vtx2.position, 1.f), worldMat).xyz;
+
+        const float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
+        const float3 n0 = normalize(mul(vtx0.normal, worldInvTransposeMat));
+        const float3 n1 = normalize(mul(vtx1.normal, worldInvTransposeMat));
+        const float3 n2 = normalize(mul(vtx2.normal, worldInvTransposeMat));
+
+        // Project the geometric position (inside the triangle) to the planes defined by the vertex positions and normals.
+        const float3 p0 = geomPosition - dot(geomPosition - pos0, n0) * n0;
+        const float3 p1 = geomPosition - dot(geomPosition - pos1, n1) * n1;
+        const float3 p2 = geomPosition - dot(geomPosition - pos2, n2) * n2;
+
+        // Interpolate the projected positions using the barycentric coordinates, which gives the shading position.
+        const float3 shadingPosition = p0 * barycentrics.x + p1 * barycentrics.y + p2 * barycentrics.z;
+
+        // Return the shading position for a convex triangle, where the shading point is above the triangle based on the shading normal. Otherwise use the geometric position.
+        bool convex = dot(shadingPosition - geomPosition, shadingNormal) > 0.0f;
+        return convex ? shadingPosition : geomPosition;
+    }
+
     /** Returns a triangle's face normal in world space.
         \param[in] instanceID Geometry instance ID of the mesh.
         \param[in] triangleIndex Index of the triangle in the given mesh.
