@@ -26,15 +26,21 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
-#include "Falcor/Core/API/Buffer.h"
+
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
-//  #include "Falcor/Core/API/LowLevel/ResourceAllocator.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 //#define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+#include "Falcor/Core/API/Buffer.h"
+
+
+#define GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT ( 256 )
+#define GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT ( 512 )
 
 namespace Falcor {
 
@@ -81,9 +87,16 @@ VkBufferUsageFlags getBufferUsageFlag(Buffer::BindFlags bindFlags) {
 // VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR, false, VMA_MEMORY_USAGE_CPU_TO_GPU
 
 size_t getBufferDataAlignment(const Buffer* pBuffer) {
-    VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(pBuffer->device()->getApiHandle(), pBuffer->getApiHandle(), &reqs);
-    return reqs.alignment;
+    //VkMemoryRequirements reqs;
+    //vkGetBufferMemoryRequirements(pBuffer->device()->getApiHandle(), pBuffer->getApiHandle(), &reqs);
+    //return reqs.alignment;
+
+    // This in order of the alignment size
+    const auto& bindFlags = pBuffer->getBindFlags();
+    if (is_set(bindFlags, Buffer::BindFlags::Constant)) return GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+    if (is_set(bindFlags, Buffer::BindFlags::Index)) return sizeof(uint32_t); // This actually depends on the size of the index, but we can handle losing 2 bytes
+
+    return GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 }
 
 Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::BindFlags bindFlags, GpuMemoryHeap::Type memType) {
@@ -126,6 +139,10 @@ Buffer::ApiHandle createBuffer(Device::SharedPtr pDevice, size_t size, Buffer::B
 }
 
 void Buffer::apiInit(bool hasInitData) {
+    if (mBindFlags == BindFlags::Constant) {
+        mSize = align_to((size_t)GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mSize);
+    }
+
     if (mCpuAccess == CpuAccess::Write) {
         mDynamicData = mpDevice->getUploadHeap()->allocate(mSize);
         mApiHandle = mDynamicData.pResourceHandle;

@@ -901,28 +901,57 @@ public:
         Bool2,
         Bool3,
         Bool4,
+        
         Uint,
         Uint2,
         Uint3,
         Uint4,
-        Uint_8,
+        
+        Uint8,
+        Uint8_2,
+        Uint8_3,
+        Uint8_4,
+
+        Uint16,
+        Uint16_2,
+        Uint16_3,
+        Uint16_4,
+
         Uint64,
         Uint64_2,
         Uint64_3,
         Uint64_4,
+
         Int,
         Int2,
         Int3,
         Int4,
-        Int_8,
+
+        Int8,
+        Int8_2,
+        Int8_3,
+        Int8_4,
+
+        Int16,
+        Int16_2,
+        Int16_3,
+        Int16_4,
+
         Int64,
         Int64_2,
         Int64_3,
         Int64_4,
+
+        Float16,
+        Float16_2,
+        Float16_3,
+        Float16_4,
+
         Float,
         Float2,
         Float3,
         Float4,
+        
         Float2x2,
         Float2x3,
         Float2x4,
@@ -932,6 +961,11 @@ public:
         Float4x2,
         Float4x3,
         Float4x4,
+
+        Float64,
+        Float64_2,
+        Float64_3,
+        Float64_4,
 
         Unknown = -1
     };

@@ -40,7 +40,7 @@
 
 namespace Falcor {
 
-const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
+const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450", "460" };
 
 static Program::DefineList sGlobalDefineList;
 

@@ -584,7 +584,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         throw std::runtime_error("Vertex buffer size exceeds 4GB");
     }
 
-    ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource; //| ResourceBindFlags::UnorderedAccess;
+    ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
 
     Vao::BufferVec pVBs(kVertexBufferCount);
