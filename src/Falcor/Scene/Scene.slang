@@ -396,7 +396,8 @@ struct Scene
     */
     float3 getFaceNormalW(const GeometryInstanceID instanceID, const uint triangleIndex)
     {
-        uint3 vtxIndices = getIndices(instanceID, triangleIndex);
+        //uint3 vtxIndices = getIndices(instanceID, triangleIndex);
+        uint3 vtxIndices = getIndices(0, triangleIndex);
         float3 p0 = vertices[vtxIndices[0]].position;
         float3 p1 = vertices[vtxIndices[1]].position;
         float3 p2 = vertices[vtxIndices[2]].position;
