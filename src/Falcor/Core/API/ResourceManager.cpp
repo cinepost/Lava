@@ -8,6 +8,7 @@
 #include "ResourceManager.h"
 
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/ConfigStore.h"
 

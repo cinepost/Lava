@@ -31,6 +31,7 @@
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
 #include "Experimental/Scene/Lights/EnvMapLighting.h"

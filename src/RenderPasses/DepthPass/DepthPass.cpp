@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <chrono>
+
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "DepthPass.h"
 
 // Don't remove this. it's required for hot-reload to function properly
@@ -55,7 +57,7 @@ void DepthPass::parseDictionary(const Dictionary& dict) {
     for (const auto& [key, value] : dict) {
         if (key == kBuildHiZ) setHiZEnabled(value);
         else if (key == kMaxHiZMipLevel) setHiZMaxMipLevels(value);
-        //else if (key == kDepthFormat) setDepthBufferFormat(value);
+        else if (key == kDepthFormat) setDepthBufferFormat(value);
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
         else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
     }
@@ -81,7 +83,9 @@ DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dict
 }
 
 DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
-    mpDownSampleDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthProgramFile, "main", {{"MAX_PASS", ""}});
+    if (mHiZenabled) {
+        mpDownSampleDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthProgramFile, "main", {{"MAX_PASS", ""}});
+    }
 
     Program::Desc desc;
     desc.addShaderLibrary(kProgramFile).psEntry("main");
@@ -162,7 +166,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     // caclulate hierarchical z buffers
     auto pHiMaxZ = renderData[kHiMaxZ]->asTexture();
     
-    if (pHiMaxZ) {
+    if (pHiMaxZ && mHiZenabled) {
         uint prevMipWidth, prevMipHeight, currMipWidth, currMipHeight;
 
         mpDownSampleDepthPass["gDepthSampler"] = mpDepthSampler;

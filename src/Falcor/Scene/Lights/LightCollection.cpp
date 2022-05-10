@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Utils/Timing/Profiler.h"
+#include "Falcor/Utils/Timing/TimeReport.h"
 #include "LightCollection.h"
 #include "LightCollectionShared.slang"
 #include "Scene/Scene.h"

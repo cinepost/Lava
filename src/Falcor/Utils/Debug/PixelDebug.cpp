@@ -26,9 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "PixelDebug.h"
 #include <sstream>
 #include <iomanip>
+
+#include "Falcor/Core/API/RenderContext.h"
+
+#include "PixelDebug.h"
+
 
 namespace Falcor {
 

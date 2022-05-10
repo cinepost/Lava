@@ -28,9 +28,14 @@
 #include <chrono>
 
 #include "stdafx.h"
-#include "ProgramVersion.h"
+#include "Falcor/Core/BufferTypes/ParameterBlock.h"
+#include "Program.h"
+#include "ProgramVars.h"
 
 #include <slang/slang.h>
+
+#include "ProgramVersion.h"
+
 
 namespace Falcor {
     //

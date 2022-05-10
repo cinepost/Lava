@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
 #include "RenderGraph.h"
 #include "RenderPasses/ResolvePass.h"

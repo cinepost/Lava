@@ -35,7 +35,25 @@ cbuffer PerFrameCB {
 
 }
 
+float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint triangleIndex) {
+    uint3 vtxIndices = gScene.getIndices(instanceID, triangleIndex);
+    float3 p0 = gScene.vertices[vtxIndices[0]].position;
+    float3 p1 = gScene.vertices[vtxIndices[1]].position;
+    float3 p2 = gScene.vertices[vtxIndices[2]].position;
+    float3 N = cross(p1 - p0, p2 - p0);
+    
+    //if (isObjectFrontFaceCW(instanceID)) N = -N;
+    
+    float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
+    return normalize(mul(N, worldInvTransposeMat));
+}
+
 void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
+    //float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+
+    // Early discard (backface, phantom, etc)
+    //float3 faceNormal = getGeometricFaceNormalW(vsOut.instanceID, triangleIndex);
+    //if (dot(viewDir, sd.N) < 0.f) discard;
 
     // pixel position
     int2 ipos = int2(vsOut.posH.xy);
@@ -48,10 +66,9 @@ void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
     SampleGenerator sg = SampleGenerator.create(ipos + uint2(geometryID, materialID), gSampleNumber);
 
     // Calculate surface material opacity
-    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
+    //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
 
-    if (sd.opacity < sampleNext1D(sg)) discard;
+    //if (sd.opacity < sampleNext1D(sg)) discard;
     
 #ifndef DISABLE_ALPHA_TEST
     // Calling prepareShadingData() to discard pixels that fail alpha test. The pixel shader has no other side effects.

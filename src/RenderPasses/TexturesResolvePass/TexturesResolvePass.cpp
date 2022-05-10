@@ -1,9 +1,12 @@
 #include <algorithm>
 #include <chrono>
-#include "TexturesResolvePass.h"
 
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/API/ResourceManager.h"
+
+#include "TexturesResolvePass.h"
+
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {

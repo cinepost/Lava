@@ -230,8 +230,10 @@ void GraphicsState::setScissors(uint32_t index, const GraphicsState::Scissor& sc
     mScissors[index] = sc;
 }
 
+#ifdef SCRIPTING
 SCRIPT_BINDING(GraphicsState) {
     pybind11::class_<GraphicsState, GraphicsState::SharedPtr>(m, "GraphicsState");
 }
+#endif
 
 }  // namespace Falcor

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+#include "Falcor/Utils/Scripting/Scripting.h"
 #include "Clock.h"
 
 namespace Falcor {

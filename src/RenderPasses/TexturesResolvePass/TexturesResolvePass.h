@@ -31,6 +31,7 @@
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Math/Vector.h"
 
 #include <slang/slang.h>

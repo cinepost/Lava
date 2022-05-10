@@ -403,6 +403,10 @@ struct Scene
         float3 N = cross(p1 - p0, p2 - p0);
         if (isObjectFrontFaceCW(instanceID)) N = -N;
         float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
+
+        return p0;
+        return float3(vertices[vtxIndices[0]].texCrd, 0);
+
         return normalize(mul(N, worldInvTransposeMat));
     }
 
@@ -515,6 +519,7 @@ struct Scene
     */
     VertexData getVertexData(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics, out StaticVertexData vertices[3])
     {
+
         const uint3 vtxIndices = getIndices(instanceID, triangleIndex);
         vertices = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
 

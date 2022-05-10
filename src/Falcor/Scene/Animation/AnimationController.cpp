@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 #include "AnimationController.h"
-
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/SceneBuilder.h"
 #include <fstream>
 

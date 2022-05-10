@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 #include "LightBVHTypes.slang"
 #include "Utils/Math/BBox.h"

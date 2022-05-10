@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 static std::vector< uint8_t > g_pixels;
-static std::unique_ptr<SDLOpenGLWindow> window;
+static std::unique_ptr<SDLOpenGLWindow> g_window;
 static std::chrono::time_point<std::chrono::system_clock> g_start, g_end;
 
 static int g_channels;
@@ -228,7 +228,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle *image_h, const char *, const char *
   if(!sdl_window)
     return PkDspyErrorNoResource;
 
-  window.reset( sdl_window );
+  g_window.reset( sdl_window );
   g_start = std::chrono::system_clock::now();
 
   *image_h = (void *)new float(1);
@@ -305,8 +305,8 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
   //BOOST_LOG_TRIVIAL(debug) << "SDLDisplay data recieved with " << g_channels << " channels";
 
   // copy data to image and draw
-  window->updateImage(&g_pixels[0]);
-  window->draw();
+  g_window->updateImage(&g_pixels[0]);
+  g_window->draw();
   // see if we had a key event
   return processEvents();
 }
@@ -323,10 +323,10 @@ PtDspyError DspyImageClose(PtDspyImageHandle image_h) {
   PtDspyError quit=PkDspyErrorNone;
   while(quit != PkDspyErrorCancel) {
     quit = processEvents();
-    window->draw();
+    g_window->draw();
   }// end of quit
 
-  window.reset( nullptr );
+  g_window.reset( nullptr );
 
   delete image_h;
 
@@ -342,7 +342,7 @@ PtDspyError processEvents() {
   SDL_Event event;
   PtDspyError ret = PkDspyErrorNone;
 
-  while (window->pollEvent(event)) {
+  while (g_window->pollEvent(event)) {
     // Forward to Imgui
     ImGui_ImplSDL2_ProcessEvent(&event);
 
@@ -352,7 +352,7 @@ PtDspyError processEvents() {
         break;
       case SDL_WINDOWEVENT:
         if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-          window->resizeWindow(event.window.data1, event.window.data2);
+          g_window->resizeWindow(event.window.data1, event.window.data2);
         }
         break;
       // keyup event
@@ -364,70 +364,79 @@ PtDspyError processEvents() {
           case SDLK_ESCAPE : ret=PkDspyErrorCancel;  break;
           case SDLK_EQUALS :
           case SDLK_PLUS :
-            window->setScale(window->scale()+scaleStep);
+            g_window->setScale(g_window->scale()+scaleStep);
             break;
           case SDLK_MINUS :
-            window->setScale( window->scale()-scaleStep);
+            g_window->setScale( g_window->scale()-scaleStep);
             break;
           case SDLK_UP :
             s_yPos+=0.1;
-            window->setPosition(s_xPos,s_yPos);
+            g_window->setPosition(s_xPos,s_yPos);
             break;
           case SDLK_DOWN :
             s_yPos-=0.1;
-            window->setPosition(s_xPos,s_yPos);
+            g_window->setPosition(s_xPos,s_yPos);
             break;
 
           case SDLK_LEFT :
             s_xPos-=0.1;
-            window->setPosition(s_xPos,s_yPos);
+            g_window->setPosition(s_xPos,s_yPos);
             break;
           case SDLK_RIGHT :
             s_xPos+=0.1;
-            window->setPosition(s_xPos,s_yPos);
+            g_window->setPosition(s_xPos,s_yPos);
             break;
 
           case SDLK_SPACE :
             s_xPos=0.0f;
             s_yPos=0.0f;
-            window->reset();
+            g_window->reset();
             break;
 
-          case SDLK_1 : window->setRenderMode(SDLOpenGLWindow::RenderMode::ALL); break;
-          case SDLK_2 : window->setRenderMode(SDLOpenGLWindow::RenderMode::RED); break;
-          case SDLK_3 : window->setRenderMode(SDLOpenGLWindow::RenderMode::GREEN); break;
-          case SDLK_4 : window->setRenderMode(SDLOpenGLWindow::RenderMode::BLUE); break;
-          case SDLK_5 : window->setRenderMode(SDLOpenGLWindow::RenderMode::ALPHA); break;
-          case SDLK_6 : window->setRenderMode(SDLOpenGLWindow::RenderMode::GREY); break;
+          case SDLK_1 : g_window->setRenderMode(RenderMode::ALL); break;
+          case SDLK_2 : g_window->setRenderMode(RenderMode::RED); break;
+          case SDLK_3 : g_window->setRenderMode(RenderMode::GREEN); break;
+          case SDLK_4 : g_window->setRenderMode(RenderMode::BLUE); break;
+          case SDLK_5 : g_window->setRenderMode(RenderMode::ALPHA); break;
+          case SDLK_6 : g_window->setRenderMode(RenderMode::GREY); break;
 
-          case SDLK_b : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::NONE); break;
-          case SDLK_c : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::CHECKER); break;
-          case SDLK_l : window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::COLOR); break;
+          case SDLK_b : g_window->setBackgroundMode(BackgroundMode::NONE); break;
+          case SDLK_c : g_window->setBackgroundMode(BackgroundMode::CHECKER); break;
+          case SDLK_l : g_window->setBackgroundMode(BackgroundMode::COLOR); break;
 
+          case SDLK_e : {
+            if (g_window->mShowFalseColors) {
+              g_window->showFalseColors(false); 
+            } else {
+              g_window->showFalseColors(true); 
+            }
+            break;
+          }
           case SDLK_LEFTBRACKET : 
-            window->setGamma(window->gamma()-0.1f); 
+            g_window->setGamma(g_window->gamma()-0.1f); 
             break;
           case SDLK_RIGHTBRACKET : 
-            window->setGamma(window->gamma()+0.1f);
+            g_window->setGamma(g_window->gamma()+0.1f);
             break;
           case SDLK_0 : 
-            window->setExposure(window->exposure()+0.1f);
+            g_window->setExposure(g_window->exposure()+0.1f);
             break;
           case SDLK_9 : 
-            window->setExposure(window->exposure()-0.1f);
+            g_window->setExposure(g_window->exposure()-0.1f);
             break;
           case SDLK_r :
-            window->reset();
-            window->setRenderMode(SDLOpenGLWindow::RenderMode::ALL);
-            window->setBackgroundMode(SDLOpenGLWindow::BackgroundMode::NONE);
-            window->setGamma(1.0f);
-            window->setExposure(0.0f);
+            g_window->reset();
+            g_window->setRenderMode(RenderMode::ALL);
+            g_window->setBackgroundMode(BackgroundMode::NONE);
+            g_window->showFalseColors(true);
+            g_window->setGamma(1.0f);
+            g_window->setExposure(0.0f);
             break;
           case SDLK_h :
-            window->showHelp();
+            g_window->showHelp();
             break;
           case SDLK_d :
-            window->showHUD();
+            g_window->showHUD();
             break;
           default : 
             break;
@@ -461,16 +470,16 @@ PtDspyError processEvents() {
 
           s_xPos+=diffx;
           s_yPos+=diffy;
-          window->setPosition(s_xPos,s_yPos);
+          g_window->setPosition(s_xPos,s_yPos);
         }
       break;
       case SDL_MOUSEWHEEL :
       {
         //auto delta=event.motion.x;
         if (event.wheel.y > 0)
-          window->setScale(window->scale()+scaleStep);
+          g_window->setScale(g_window->scale()+scaleStep);
         else if (event.wheel.y < 0)
-          window->setScale(window->scale()-scaleStep);
+          g_window->setScale(g_window->scale()-scaleStep);
 
       break;
       }

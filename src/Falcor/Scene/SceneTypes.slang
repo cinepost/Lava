@@ -240,7 +240,7 @@ struct PackedStaticVertexData
     {
         position = v.position;
         texCrd = v.texCrd;
-
+        
         packedNormalTangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
         packedNormalTangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.tangent.w }));
         packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
@@ -251,7 +251,7 @@ struct PackedStaticVertexData
     {
         position = v.position;
         texCrd = v.texCrd;
-
+        
         uint3 n = f32tof16(v.normal);
         uint t_w = f32tof16(v.tangent.w);
 
@@ -265,7 +265,7 @@ struct PackedStaticVertexData
         StaticVertexData v;
         v.position = position;
         v.texCrd = texCrd;
-
+        
         v.normal.x = f16tof32(asuint(packedNormalTangent.x) & 0xffff);
         v.normal.y = f16tof32(asuint(packedNormalTangent.x) >> 16);
         v.normal.z = f16tof32(asuint(packedNormalTangent.y) & 0xffff);

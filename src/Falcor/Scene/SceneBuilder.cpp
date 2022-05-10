@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <mutex>
 #include <thread>
+#include <numeric>
 
 #ifdef _WIN32
 #include <filesystem>
@@ -41,8 +42,12 @@ namespace fs = boost::filesystem;
 #include "SceneCache.h"
 #include "mikktspace/mikktspace.h"
 
+#include "Falcor/Utils/Timing/TimeReport.h"
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/ConfigStore.h"
 #include "Importer.h"
+
+#include "lava_utils_lib/logging.h"
 
 std::mutex g_meshes_mutex;
 std::mutex g_materials_mutex;
@@ -73,8 +78,20 @@ const float kMaxTexelError = 0.5f;
 class MikkTSpaceWrapper {
   public:
     static std::vector<float4> generateTangents(const SceneBuilder::Mesh& mesh) {
-        if (!mesh.normals.pData || !mesh.positions.pData || !mesh.texCrds.pData || !mesh.pIndices) {
-            logWarning("Can't generate tangent space. The mesh '" + std::string(mesh.name) + "' doesn't have positions/normals/texCrd/indices.");
+        if (!mesh.positions.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have positions !!!";
+            return {};
+        }
+        if (!mesh.normals.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have normals !!!";
+            return {};
+        }
+        if (!mesh.texCrds.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
+            return {};
+        }
+        if (mesh.pIndices) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
             return {};
         }
 
@@ -93,7 +110,7 @@ class MikkTSpaceWrapper {
         context.m_pUserData = &wrapper;
 
         if (genTangSpaceDefault(&context) == false) {
-            logError("Failed to generate MikkTSpace tangents for the mesh '" + std::string(mesh.name) + "'.");
+            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
             return {};
         }
 
@@ -193,7 +210,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
     // If no meshes were added, we create a dummy mesh to keep the scene generation working.
     // Scenes with no meshes can be useful for example when using volumes in isolation.
     if (mMeshes.empty()) {
-        logWarning("Scene contains no meshes. Creating a dummy mesh.");
+        LLOG_WRN << "Scene contains no meshes. Creating a dummy mesh.";
         // Add a dummy (degenerate) mesh.
         auto dummyMesh = TriangleMesh::createDummy();
         auto dummyMaterial = Material::create(mpDevice, "Dummy");
@@ -320,7 +337,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     };
 
     auto missing_element_warning = [&](const std::string& element) {
-        logWarning("The mesh '" + mesh.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
+        LLOG_WRN << "The mesh '" << mesh.name << "' is missing the element " << element 
+        << ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.";
     };
 
     if (mesh.topology != Vao::Topology::TriangleList) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nOnly triangle list topology is supported.");
@@ -431,7 +449,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     assert(vertices.size() > 0);
     assert(indices.size() == mesh.indexCount);
     if (vertices.size() != mesh.vertexCount) {
-        logDebug("Mesh with name '" + mesh.name + "' had original vertex count " + std::to_string(mesh.vertexCount) + ", new vertex count " + std::to_string(vertices.size()));
+        LLOG_DBG << "Mesh with name '" << mesh.name << "' had original vertex count " << std::to_string(mesh.vertexCount) << ", new vertex count " + std::to_string(vertices.size());
     }
 
     // Validate vertex data to check for invalid numbers and missing tangent frame.
@@ -440,8 +458,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     for (const auto& v : vertices) {
         validateVertex(v.first, invalidCount, zeroCount);
     }
-    if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
-    if (zeroCount > 0) logWarning("The mesh '" + mesh.name + "' has zero-length normals/tangents at " + std::to_string(zeroCount) + " vertices. Please fix the asset.");
+    if (invalidCount > 0) LLOG_WRN << "The mesh '" << mesh.name << "' has inf/nan vertex attributes at " << std::to_string(invalidCount) << " vertices. Please fix the asset.";
+    if (zeroCount > 0) LLOG_WRN << "The mesh '" << mesh.name << "' has zero-length normals/tangents at " << std::to_string(zeroCount) << " vertices. Please fix the asset.";
 
     // If the non-indexed vertices build flag is set, we will de-index the data below.
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
@@ -760,7 +778,7 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     instance.materialId = addMaterial(pMaterial);
     instance.overrideMaterial = true;
 
-    LOG_DBG("SceneBuilder::addMeshInstance added mesh instance with material id %u", instance.materialId);
+    LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
 }
 
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
@@ -1028,14 +1046,14 @@ void SceneBuilder::removeUnusedMeshes() {
     for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
         auto& mesh = mMeshes[meshID];
         if (mesh.instances.empty()) {
-            logWarning("Mesh with ID " + std::to_string(meshID) + " named '" + mesh.name + "' is not referenced by any scene graph nodes.");
+            LLOG_WRN << "Mesh with ID " << std::to_string(meshID) << " named '" << mesh.name << "' is not referenced by any scene graph nodes.";
             unusedCount++;
         }
     }
 
     // Rebuild mesh list and scene graph only if one or more meshes need to be removed.
     if (unusedCount > 0) {
-        logWarning("Scene has " + std::to_string(unusedCount) + " unused meshes that will be removed.");
+        LLOG_WRN << "Scene has " << std::to_string(unusedCount) << " unused meshes that will be removed.";
 
         const size_t meshCount = mMeshes.size();
         MeshList meshes;
@@ -1175,7 +1193,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
         std::move(newMeshes.begin(), newMeshes.end(), std::back_inserter(mMeshes));
     }
 
-    if (flattenedInstanceCount > 0) logInfo("Flattened " + std::to_string(flattenedInstanceCount) + " static instances.");
+    if (flattenedInstanceCount > 0) LLOG_INF << "Flattened " << std::to_string(flattenedInstanceCount) << " static instances.";
 }
 
 void SceneBuilder::optimizeSceneGraph() {
@@ -1190,7 +1208,7 @@ void SceneBuilder::optimizeSceneGraph() {
         if (collapseNodes(node.parent, nodeID)) removedNodes++;
     }
 
-    if (removedNodes > 0) logInfo("Optimized scene graph by removing " + std::to_string(removedNodes) + " internal static nodes");
+    if (removedNodes > 0) LLOG_INF << "Optimized scene graph by removing " << std::to_string(removedNodes) << " internal static nodes";
 
     // Merge identical static nodes.
     // We build a set of unique nodes. If a node is identical to one of the
@@ -1236,7 +1254,7 @@ void SceneBuilder::optimizeSceneGraph() {
         }
     }
 
-    if (mergedNodes > 0) logInfo("Optimized scene graph by merging " + std::to_string(mergedNodes) + " identical static nodes");
+    if (mergedNodes > 0) LLOG_INF << "Optimized scene graph by merging " << std::to_string(mergedNodes) << " identical static nodes";
 }
 
 void SceneBuilder::pretransformStaticMeshes() {
@@ -2090,6 +2108,7 @@ void SceneBuilder::collectVolumeGrids() {
 }
 
 void SceneBuilder::quantizeTexCoords() {
+    return;
     // Match texture coordinate quantization for textured emissives to format of PackedEmissiveTriangle.
     // This is to avoid mismatch when sampling and evaluating emissive triangles.
     // Note that non-emissive meshes are unmodified and use full precision texcoords.

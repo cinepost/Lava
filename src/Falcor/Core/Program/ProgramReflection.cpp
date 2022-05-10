@@ -28,10 +28,14 @@
 #include <map>
 
 #include "Falcor/stdafx.h"
-#include "ProgramReflection.h"
+#include "Program.h"
+#include "ProgramVersion.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
+
 #include "slang/slang.h"
+
+#include "ProgramReflection.h"
 
 using namespace slang;
 

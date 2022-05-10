@@ -26,9 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/FencedPool.h"
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
-#include "Falcor/Core/API/Device.h"
+
 
 namespace Falcor
 {

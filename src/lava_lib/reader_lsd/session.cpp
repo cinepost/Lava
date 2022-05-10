@@ -356,18 +356,27 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	Falcor::Light::SharedPtr pLight = nullptr;
 
-	if( (light_type == "distant") || (light_type == "sun") ) {
-		auto pDistantLight = Falcor::DistantLight::create("noname_distant");
+	if(light_type == "distant") {
+		// Directional lights
+		auto pDirectionalLight = Falcor::DirectionalLight::create("noname_distant");
+		pDirectionalLight->setWorldDirection(light_dir);
+
+		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
+	} else if (light_type == "sun") {
+		// Directional lights
+		auto pDistantLight = Falcor::DistantLight::create("noname_sun");
 		pDistantLight->setWorldDirection(light_dir);
 		
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
+		// Point light
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
 	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
+		// Area lights
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});

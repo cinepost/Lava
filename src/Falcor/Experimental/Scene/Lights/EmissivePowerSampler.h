@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVEPOWERSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_EMISSIVEPOWERSAMPLER_H_
 
+#include <random>
+
 #include "EmissiveLightSampler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 

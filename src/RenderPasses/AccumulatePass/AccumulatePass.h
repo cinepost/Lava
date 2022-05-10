@@ -30,6 +30,7 @@
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 

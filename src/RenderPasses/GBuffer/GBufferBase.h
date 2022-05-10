@@ -28,8 +28,19 @@
 #ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_
 #define SRC_FALCOR_RENDERPASSES_GBUFFER_GBUFFERBASE_H_
 
+#include <pybind11/embed.h>
+
 #include "Falcor/Falcor.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/RenderGraph/RenderGraph.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
+#include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
+
 
 using namespace Falcor;
 

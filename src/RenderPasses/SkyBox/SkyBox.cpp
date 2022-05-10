@@ -29,6 +29,9 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/euler_angles.hpp"
 
+#include <pybind11/embed.h>
+
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 

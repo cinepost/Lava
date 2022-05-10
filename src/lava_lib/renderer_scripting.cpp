@@ -28,6 +28,7 @@
 #include <string>
 
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include "renderer.h"

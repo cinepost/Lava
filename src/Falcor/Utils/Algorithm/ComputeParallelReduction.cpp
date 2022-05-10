@@ -26,8 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "ComputeParallelReduction.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "ParallelReductionType.slangh"
+
+#include "ComputeParallelReduction.h"
+
 
 namespace Falcor {
     static const char kShaderFile[] = "Utils/Algorithm/ParallelReduction.cs.slang";

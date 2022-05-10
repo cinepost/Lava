@@ -543,7 +543,8 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-set(EXTERNAL_SLANG_VERSION 0.19.14) # last tested version was 0.18.6
+#set(EXTERNAL_SLANG_VERSION 0.19.14) # last tested version was 0.18.6
+set(EXTERNAL_SLANG_VERSION 0.23.12)
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
 set(SLANG_BUILD_LIBS "slang slang-glslang")

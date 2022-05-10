@@ -23,8 +23,8 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
-#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
-#include "RenderPasses/GBuffer/GBuffer/GBufferRaster.h"
+//#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
+//#include "RenderPasses/GBuffer/GBuffer/GBufferRaster.h"
 
 #include "aov.h"
 #include "scene_builder.h"
@@ -45,8 +45,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       std::string virtualTexturesCompressorType = "blosclz";
       uint8_t     virtualTexturesCompressionLevel = 9;
 
-      std::string tangentGenerationMode = "none"; //"mikkt";
-      std::string cullMode = "none"; //"back";
+      std::string tangentGenerationMode = "mikkt";
+      std::string cullMode = "back";
     };
 
     enum class SamplePattern : uint32_t {
@@ -194,9 +194,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
     ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
-
-    GBufferRaster::SharedPtr        mpGBufferRasterPass = nullptr;
-    MinimalPathTracer::SharedPtr    mpMinimalPathTracer = nullptr;
     ///
 
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;

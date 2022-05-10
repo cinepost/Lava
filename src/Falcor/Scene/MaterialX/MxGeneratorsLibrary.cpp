@@ -11,11 +11,13 @@ namespace fs = boost::filesystem;
 #endif
 
 #include "Falcor/stdafx.h"
-#include "MxGeneratorsLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/Platform/OS.h"
-
+#include "Falcor/Core/API/RenderContext.h"
 #include "MxNode.h"
+
+#include "MxGeneratorsLibrary.h"
+
 
 namespace Falcor {
 

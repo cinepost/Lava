@@ -33,10 +33,10 @@
 
 #ifdef _DEBUG
     #include <sys/types.h>
-    #include <sys/stat.h>
     #include <sys/ptrace.h>
 #endif
 
+#include <sys/stat.h>
 // #include <gtk/gtk.h>
 // #include <fstream>
 #include <fcntl.h>
@@ -45,6 +45,7 @@
 // #include <algorithm>
 #include <dlfcn.h>
 
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "boost/filesystem.hpp"

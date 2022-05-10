@@ -28,6 +28,7 @@
 #include "Falcor/stdafx.h"
 #include "Resource.h"
 #include "Texture.h"
+#include "Buffer.h"
 
 namespace Falcor {
 
@@ -79,11 +80,8 @@ const std::string to_string(Resource::State state) {
     state_to_str(AccelStructWrite);
     state_to_str(AccelStructBuildInput);
     state_to_str(AccelStructBuildBlas);
-
     state_to_str(NonPixelShader);
-#ifdef FALCOR_D3D12
     state_to_str(AccelerationStructure);
-#endif
 #undef state_to_str
     return s;
 }
@@ -134,6 +132,19 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     }
     mState.isGlobal = false;
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
+}
+
+std::shared_ptr<Texture> Resource::asTexture() {
+    return this ? ((mType != Type::Buffer) ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr) : nullptr;
+}
+
+std::shared_ptr<const Texture> Resource::asTexture() const {
+    if (mType != Type::Buffer) return std::dynamic_pointer_cast<const Texture>(shared_from_this());
+    return nullptr;
+}
+
+std::shared_ptr<Buffer> Resource::asBuffer() {
+    return this ? ((mType == Type::Buffer) ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr) : nullptr;
 }
 
 #ifdef SCRIPTING

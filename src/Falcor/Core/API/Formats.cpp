@@ -127,6 +127,7 @@ namespace Falcor
 
     static_assert(arraysize(kFormatDesc) == (uint32_t)ResourceFormat::BC7Srgb + 1, "Format desc table has a wrong size");
 
+#ifdef SCRIPTING
     SCRIPT_BINDING(ResourceFormat)
     {
         // Resource formats
@@ -136,4 +137,5 @@ namespace Falcor
             resourceFormat.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
         }
     }
+#endif
 }

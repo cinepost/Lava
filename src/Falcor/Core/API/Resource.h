@@ -85,7 +85,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-        //AccelerationStructure,
+        AccelerationStructure,
         AccelStructRead,
         AccelStructWrite,
         AccelStructBuildInput,
@@ -172,18 +172,9 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Conversions to derived classes
     */
-    std::shared_ptr<Texture> asTexture() {
-        return this ? ((mType != Type::Buffer) ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr) : nullptr;
-    }
-
-    std::shared_ptr<const Texture> asTexture() const {
-        if (mType != Type::Buffer) return std::dynamic_pointer_cast<const Texture>(shared_from_this());
-        return nullptr;
-    }
-
-    std::shared_ptr<Buffer> asBuffer() {
-        return this ? ((mType == Type::Buffer) ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr) : nullptr;
-    }
+    std::shared_ptr<Texture> asTexture();
+    std::shared_ptr<const Texture> asTexture() const;
+    std::shared_ptr<Buffer> asBuffer();
 
  private:
     static std::atomic<size_t> newResourceID;

@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
-#include "ResourceCache.h"
+
+#include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Core/API/Texture.h"
+
+#include "ResourceCache.h"
+
 
 namespace Falcor {
 
@@ -47,8 +51,7 @@ namespace Falcor {
         auto extIt = mExternalResources.find(name);
 
         // Search external resources if not found in render graph resources
-        if (extIt == mExternalResources.end())
-        {
+        if (extIt == mExternalResources.end()) {
             const auto& it = mNameToIndex.find(name);
             if (it == mNameToIndex.end()) return pNull;
             return mResourceData[it->second].pResource;
@@ -95,7 +98,7 @@ namespace Falcor {
             mNameToIndex[name] = (uint32_t)mResourceData.size();
             bool resolveBindFlags = (field.getBindFlags() == ResourceBindFlags::None);
             mResourceData.push_back({ field, {timePoint, timePoint}, nullptr, resolveBindFlags, name });
-        }   else {
+        } else {
             // Add alias
             uint32_t index = mNameToIndex[alias];
             mNameToIndex[name] = index;

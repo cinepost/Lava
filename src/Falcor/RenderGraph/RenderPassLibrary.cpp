@@ -38,6 +38,8 @@ namespace fs = boost::filesystem;
 #endif
 
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Utils/StringUtils.h"
 #include "RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
 #include "Falcor/Core/API/Device.h"

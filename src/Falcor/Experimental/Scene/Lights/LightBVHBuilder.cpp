@@ -29,6 +29,8 @@
 #include "LightBVHBuilder.h"
 #include <algorithm>
 
+#include "Falcor/Utils/Timing/Profiler.h"
+
 namespace {
 
 using namespace Falcor;

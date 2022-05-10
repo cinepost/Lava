@@ -33,6 +33,8 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+
 
 using namespace Falcor;
 
@@ -96,7 +98,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
     ResourceFormat              mDepthFormat = ResourceFormat::D32Float;
-    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
+    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::Back;
     Scene::SharedPtr            mpScene;
 
     bool mDirty = false;

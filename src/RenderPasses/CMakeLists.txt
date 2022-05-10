@@ -117,17 +117,18 @@ function (makeRenderPassLib)
 endfunction()
 
 # Now make bundled render passes
-makeRenderPassLib(NAME "Utils")
+
+#makeRenderPassLib(NAME "Utils")
 makeRenderPassLib(NAME "DepthPass")
-makeRenderPassLib(NAME "BlitPass")
+#makeRenderPassLib(NAME "BlitPass")
 makeRenderPassLib(NAME "TexturesResolvePass")
-makeRenderPassLib(NAME "HBAO")
+#makeRenderPassLib(NAME "HBAO")
 makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "SkyBox")
 
-makeRenderPassLib(NAME "WhittedRayTracer")
-makeRenderPassLib(NAME "MinimalPathTracer")
-makeRenderPassLib(NAME "MegakernelPathTracer")
+#makeRenderPassLib(NAME "WhittedRayTracer")
+#makeRenderPassLib(NAME "MinimalPathTracer")
+#makeRenderPassLib(NAME "MegakernelPathTracer")
 
 #makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
@@ -143,4 +144,4 @@ makeRenderPassLib(NAME "AccumulatePass")
 # Render passes with dependecies
 makeRenderPassLib(NAME "GBuffer" DEPS DepthPass TexturesResolvePass)
 #makeRenderPassLib(NAME "SSAO" DEPS Utils)
-makeRenderPassLib(NAME "CSM" DEPS Utils)
+#makeRenderPassLib(NAME "CSM" DEPS Utils)

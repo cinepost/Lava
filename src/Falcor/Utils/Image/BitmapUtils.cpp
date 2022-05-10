@@ -1,3 +1,5 @@
+#include "Falcor/Core/API/Device.h"
+
 #include "BitmapUtils.h"
 
 namespace Falcor {

@@ -2,12 +2,18 @@
 
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Threading.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
+
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
+
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
-
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
@@ -57,6 +63,8 @@ bool Renderer::init(const Config& config) {
     if (mCurrentConfig.useRaytracing) {
         sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
     }
+
+    //sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
@@ -220,18 +228,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpDepthPass->setScene(pRenderContext, pScene);
     mpDepthPass->setCullMode(cullMode);
     mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-
-    // Test GBuffer pass
-    mpGBufferRasterPass = GBufferRaster::create(pRenderContext);
-    auto gbuffer_pass = mpRenderGraph->addPass(mpGBufferRasterPass, "GBufferRasterPass");
-
-    // Test pathtracer pass
-    Falcor::Dictionary minimalPathTracerPassDictionary;
-    mpMinimalPathTracer = MinimalPathTracer::create(pRenderContext, minimalPathTracerPassDictionary);
-    mpMinimalPathTracer->setScene(pRenderContext, pScene);
-
-    auto ptracer_pass = mpRenderGraph->addPass(mpMinimalPathTracer, "MinimalPathTracerPass");
-
 
     // Forward lighting
     Falcor::Dictionary lightingPassDictionary;
@@ -427,6 +423,10 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
             return false;
         }
         bindAOVPlanesToResources();
+    }
+
+    for(auto &pair: mAOVPlanes) {
+        pair.second->reset();
     }
 
     mCurrentSampleNumber = 0;

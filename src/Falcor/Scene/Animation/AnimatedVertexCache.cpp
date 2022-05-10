@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Animation.h"
 #include "AnimatedVertexCache.h"
 #include "Falcor/Scene/Scene.h"

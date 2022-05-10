@@ -29,6 +29,7 @@
 #define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_TEXTURE_LOADER_H_
 
 #include "Falcor.h"
+#include "Material.h"
 #include "Utils/AsyncTextureLoader.h"
 
 namespace Falcor {

@@ -40,6 +40,7 @@
 #include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
 
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "SceneBuilder.h"
 
@@ -305,6 +306,13 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     }
 
     pState->setRasterizerState(pCurrentRS);
+
+    //auto pTestBuff = mpVao->getIndexBuffer();
+    //size_t loop = pTestBuff->getSize() / 4;
+    //const int32_t* pTestIndexData = reinterpret_cast<const int32_t*>(pTestBuff->map(Buffer::MapType::Read));
+    //for(size_t i = 1; i < loop; i++) {
+    //    std::cout << pTestIndexData[i] << ": ";
+    //}
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
@@ -565,7 +573,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
 
     Buffer::SharedPtr pIB = nullptr;
     if (ibSize > 0) {
-        ResourceBindFlags ibBindFlags = Resource::BindFlags::Index;// | ResourceBindFlags::ShaderResource;
+        ResourceBindFlags ibBindFlags = Resource::BindFlags::Index | ResourceBindFlags::ShaderResource;
         pIB = Buffer::create(mpDevice, ibSize, ibBindFlags, Buffer::CpuAccess::None, indexData.data());
     }
 
@@ -576,7 +584,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
         throw std::runtime_error("Vertex buffer size exceeds 4GB");
     }
 
-    ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex; // | ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
+    ResourceBindFlags vbBindFlags = ResourceBindFlags::Vertex | ResourceBindFlags::ShaderResource; //| ResourceBindFlags::UnorderedAccess;
     Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(mpDevice, sizeof(PackedStaticVertexData), (uint32_t)vertexCount, vbBindFlags, Buffer::CpuAccess::None, nullptr, false);
 
     Vao::BufferVec pVBs(kVertexBufferCount);
@@ -708,6 +716,7 @@ void Scene::initResources() {
 
 void Scene::uploadResources() {
     assert(mpAnimationController);
+    assert(hasIndexBuffer());
 
     // Upload geometry
     mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
@@ -2005,7 +2014,10 @@ void Scene::createDrawList() {
                 draw.InstanceCount = 1;
                 draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
                 draw.BaseVertexLocation = mesh.vbOffset;
+                
                 draw.StartInstanceLocation = drawInstance.instanceID;
+                //draw.StartInstanceLocation = instanceID++;
+
                 draw.MaterialID = materialID; //instance->materialID;
 
                 int i = use16Bit ? 0 : 1;
@@ -2019,7 +2031,6 @@ void Scene::createDrawList() {
         } else {
             std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
-            uint32_t instanceID = 0;
             for (const auto& drawInstance : instances) {
                 const auto instance = drawInstance.instance;
                 const auto& mesh = mMeshDesc[instance->meshID];
@@ -2029,7 +2040,10 @@ void Scene::createDrawList() {
                 draw.VertexCountPerInstance = mesh.vertexCount;
                 draw.InstanceCount = 1;
                 draw.StartVertexLocation = mesh.vbOffset;
+                
                 draw.StartInstanceLocation = drawInstance.instanceID;
+                //draw.StartInstanceLocation = instanceID++;
+
                 draw.MaterialID = materialID; //instance->materialID;
 
                 (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
@@ -3216,6 +3230,7 @@ void Scene::setCameraController(CameraControllerType type) {
 }
 
 std::string Scene::getScript(const std::string& sceneVar) {
+#ifdef SCRIPTING
     std::string c;
 
     // Render settings.
@@ -3249,8 +3264,10 @@ std::string Scene::getScript(const std::string& sceneVar) {
             c += Scripting::makeMemberFunc(sceneVar, kAddViewpoint, v.position, v.target, v.up, v.index);
         }
     }
-
     return c;
+#else
+    return "";
+#endif
 }
 
 #ifdef SCRIPTING

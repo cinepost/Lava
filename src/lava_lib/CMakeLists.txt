@@ -48,9 +48,6 @@ target_link_libraries(
     DepthPass
     ForwardLightingPass
     SkyBox
-    HBAO
-    MinimalPathTracer
-    GBuffer
 )
 
 if(UNIX)

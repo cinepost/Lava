@@ -31,6 +31,7 @@
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
 #include "AssimpImporter.h"
+#include "Falcor/Utils/Math/FalcorMath.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Core/API/Device.h"

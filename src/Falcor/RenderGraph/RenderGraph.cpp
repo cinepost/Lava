@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "RenderGraph.h"
 #include "RenderPassLibrary.h"

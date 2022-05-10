@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_UTILS_TIMING_CLOCK_H_
 #define SRC_FALCOR_UTILS_TIMING_CLOCK_H_
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Texture.h"
 #include "CpuTimer.h"
 
 namespace Falcor {

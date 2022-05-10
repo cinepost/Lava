@@ -84,9 +84,11 @@ VSOut defaultVS(VSIn vIn)
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
 
+    const StaticVertexData v = vIn.unpack();
+
     vOut.texC = vIn.texC;
-    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
-    float4 tangent = vIn.unpack().tangent;
+    vOut.normalW = mul(v.normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+    float4 tangent = v.tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 
     // Compute the vertex position in the previous frame.

@@ -28,12 +28,13 @@
 #include "Falcor/stdafx.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+#include "Device.h"
+#include "Buffer.h"
+#include "Texture.h"
 #include "ResourceViews.h"
 
 
 namespace Falcor {
-
-class Device;
 
 
 using DeviceUID = uint8_t;

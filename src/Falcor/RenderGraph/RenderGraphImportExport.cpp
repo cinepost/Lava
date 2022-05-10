@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Utils/StringUtils.h"
 #include "RenderGraphImportExport.h"
 #include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
@@ -42,6 +44,7 @@ void updateGraphStrings(std::string& graph, std::string& file, std::string& func
 }
 
 void runScriptFile(const std::string& filename, const std::string& custom) {
+#ifdef SCRIPTING
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         throw std::runtime_error("Can't find the file: " + filename);
@@ -49,6 +52,7 @@ void runScriptFile(const std::string& filename, const std::string& custom) {
 
     std::string script = readFile(fullpath) + custom;
     Scripting::runScript(script);
+#endif
 }
 
 }  // namespace
@@ -60,6 +64,7 @@ bool loadFailed(std::exception e, const std::string& filename) {
 }
 
 RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName) {
+#ifdef SCRIPTING
     while(true) {
         try {
             updateGraphStrings(graphName, filename, funcName);
@@ -76,9 +81,13 @@ RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::s
             if (loadFailed(e, filename)) return nullptr;
         }
     }
+#else
+    return nullptr;
+#endif
 }
 
 std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const std::string& filename) {
+#ifdef SCRIPTING
     while(true) {
         try {
             runScriptFile(filename, {});
@@ -96,6 +105,9 @@ std::vector<RenderGraph::SharedPtr> RenderGraphImporter::importAllGraphs(const s
             if (loadFailed(e, filename)) return {};
         }
     }
+#else
+    return std::vector<RenderGraph::SharedPtr>();
+#endif
 }
 
 std::string RenderGraphExporter::getFuncName(const std::string& graphName) {

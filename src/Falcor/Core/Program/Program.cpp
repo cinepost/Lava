@@ -26,10 +26,17 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
-#include "Program.h"
+
 #include "slang/slang.h"
+
+#include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/BufferTypes/ParameterBlock.h"
+#include "ProgramVars.h"
+
+#include "Program.h"
+
 
 namespace Falcor {
 

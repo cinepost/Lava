@@ -73,6 +73,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Movement;
     if (mPrevData.up != mData.up) mChanges |= Changes::Movement;
     if (mPrevData.target != mData.target) mChanges |= Changes::Movement;
+    if (mPrevData.viewMat != mData.viewMat) mChanges |= Changes::Movement;
 
     if (mPrevData.focalDistance != mData.focalDistance) mChanges    |= Changes::FocalDistance;
     if (mPrevData.apertureRadius != mData.apertureRadius) mChanges  |= Changes::Aperture | Changes::Exposure;
@@ -86,6 +87,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (mPrevData.frameHeight != mData.frameHeight) mChanges |= Changes::Frustum;
     if (mPrevData.frameWidth != mData.frameWidth)   mChanges |= Changes::Frustum;
     if (mPrevData.cropRegion != mData.cropRegion)   mChanges |= Changes::Frustum;
+    if (mPrevData.projMat != mData.projMat)         mChanges |= Changes::Frustum;
 
     // Jitter
     if (mPrevData.jitterX != mData.jitterX) mChanges |= Changes::Jitter;
@@ -283,6 +285,7 @@ void Camera::updateFromAnimation(const glm::mat4& transform) {
 }
 
 std::string Camera::getScript(const std::string& cameraVar) {
+#ifdef SCRIPTING
     std::string c;
 
     if (hasAnimation() && !isAnimated()) {
@@ -294,8 +297,10 @@ std::string Camera::getScript(const std::string& cameraVar) {
         c += Scripting::makeSetProperty(cameraVar, kTarget, getTarget());
         c += Scripting::makeSetProperty(cameraVar, kUp, getUpVector());
     }
-
     return c;
+#else
+    return "";
+#endif
 }
 
 #ifdef SCRIPTING

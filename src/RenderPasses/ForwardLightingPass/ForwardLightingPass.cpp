@@ -27,8 +27,11 @@
  **************************************************************************/
 #include "ForwardLightingPass.h"
 
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 
 #include "glm/gtc/random.hpp"
 

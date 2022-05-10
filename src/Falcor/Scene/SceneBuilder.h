@@ -30,6 +30,7 @@
 
 #include <map>
 
+#include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Scene.h"
 #include "SceneCache.h"
 #include "Transform.h"

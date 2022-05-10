@@ -26,9 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "PrefixSum.h"
 #include <iostream>
 #include <iomanip>
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Timing/Profiler.h"
+
+#include "PrefixSum.h"
+
 
 namespace Falcor {
     
