@@ -133,8 +133,8 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/blosc
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/blosc
-
   )
+
 endif()
 
 
@@ -184,8 +184,6 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/boost
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
   )
-
-
 endif()
 
 
@@ -272,8 +270,10 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openexr
   )
+  ExternalProject_Add_StepDependencies(OpenEXR configure OpenVDB Blosc)
+
 endif()
-add_dependencies(OpenEXR Blosc)
+#add_dependencies(OpenEXR Blosc)
 
 
 #######################
@@ -319,6 +319,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
+  ExternalProject_Add_StepDependencies(Assimp configure OpenVDB Blosc)
 
 endif()
 
@@ -385,10 +386,11 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openvdb
   )
   ExternalProject_Get_property(OpenVDB SOURCE_DIR)
+  ExternalProject_Add_StepDependencies(OpenVDB configure Tbb Boost Blosc)
 
 endif()
 
-add_dependencies(OpenVDB Tbb Blosc Boost)
+#add_dependencies(OpenVDB Tbb Blosc Boost)
 
 
 
@@ -435,9 +437,10 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Blosc PyBind OpenEXR OpenVDB)
 
 endif()
-add_dependencies(OpenImageIO Blosc PyBind OpenEXR OpenVDB)
+#add_dependencies(OpenImageIO Blosc PyBind OpenEXR OpenVDB)
 
 
 
@@ -543,10 +546,11 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-#set(EXTERNAL_SLANG_VERSION 0.19.14) # last tested version was 0.18.6
-set(EXTERNAL_SLANG_VERSION 0.23.12)
+set(EXTERNAL_SLANG_VERSION 0.32.12) # last tested version was 0.18.6
+
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
+
 set(SLANG_BUILD_LIBS "slang slang-glslang")
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
@@ -587,7 +591,13 @@ ExternalProject_Add( Slang
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
-  BUILD_COMMAND ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
+  BUILD_COMMAND 
+    COMMAND ${CMAKE_COMMAND}
+      -D SOURCE_DIR=<SOURCE_DIR>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
+    COMMAND
+      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
+
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
     -D SOURCE_DIR=<SOURCE_DIR>
@@ -600,8 +610,6 @@ ExternalProject_Add( Slang
 )
 
 endif()
-
-
 
 #######################
 

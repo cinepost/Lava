@@ -755,15 +755,7 @@ uint32_t SceneBuilder::addNode(const Node& node) {
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID) {
-    if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
-    if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
-
-    mSceneGraph[nodeID].meshes.push_back(meshID);
-
-    mMeshes[meshID].instances.push_back({});
-    MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
-    instance.nodeId = nodeID;
-    instance.overrideMaterial = false;
+    addMeshInstance(nodeID, meshID, nullptr);
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial) {
@@ -775,8 +767,11 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     mMeshes[meshID].instances.push_back({});
     MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
     instance.nodeId = nodeID;
-    instance.materialId = addMaterial(pMaterial);
-    instance.overrideMaterial = true;
+    instance.overrideMaterial = pMaterial ? true : false;
+
+    if (pMaterial) {
+        instance.materialId = addMaterial(pMaterial);
+    }
 
     LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
 }

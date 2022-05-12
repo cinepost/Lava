@@ -2,6 +2,7 @@
 #include <mutex>
 #include <limits>
 #include <fstream>
+#include <cstdlib>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
@@ -180,8 +181,47 @@ void Session::cmdQuit() {
 	//mpRendererIface = nullptr;
 }
 
+static void makeImageTiles(Falcor::uint4 imageRegion, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
+	assert(imageRegion[0] <= imageRegion[2]);
+	assert(imageRegion[1] <= imageRegion[3]);
+
+	uint imageRegionWidth = imageRegion[2] - imageRegion[0];
+	uint imageRegionHeight = imageRegion[3] - imageRegion[1];
+
+	auto hdiv = ldiv(imageRegionWidth, tileSize[0]);
+	auto vdiv = ldiv(imageRegionHeight, tileSize[1]);
+
+	tiles.clear();
+	// First put whole tiles
+	for( int x = 0; x < hdiv.quot; x++) {
+		for( int y = 0; y < vdiv.quot; y++) {
+			Int2 offset = {tileSize[0] * x, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				imageRegion[0] + offset[0],
+				imageRegion[1] + offset[1],
+				imageRegion[0] + offset[0] + tileSize[0],
+				imageRegion[1] + offset[1] + tileSize[1]
+			};
+
+			tiles.push_back({
+				{tileRegion},
+				{
+					tileRegion[0] / (float)imageRegionWidth,
+					tileRegion[1] / (float)imageRegionHeight,
+					tileRegion[2] / (float)imageRegionWidth,
+					tileRegion[3] / (float)imageRegionHeight
+				}
+			});
+		}
+	}
+}
+
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
+
+	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "image_tile_size", Int2({256, 256}));
+	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "image_tiling", false);
+
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN");
 
@@ -222,10 +262,10 @@ bool Session::cmdRaytrace() {
 			uint((float)mCurrentFrameInfo.imageHeight * (1.0f - crop[2]))
 		};
 
-			if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
+		if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
 			LLOG_ERR << "Wrong render image crop region: " << to_string(crop) << " !!!";
-				return false;
-			}
+			return false;
+		}
 
 		cameraCropRegion = {
 			(float)mCurrentFrameInfo.renderRegion[0] / (float)mCurrentFrameInfo.imageWidth,
@@ -234,6 +274,14 @@ bool Session::cmdRaytrace() {
 			(float)mCurrentFrameInfo.renderRegion[3] / (float)mCurrentFrameInfo.imageHeight
 		};
 	}
+
+	// Set up tiles if required or one full frame tile
+	std::vector<TileInfo> tiles;
+	if (tiled_rendering_mode) {
+		makeImageTiles(mCurrentFrameInfo.renderRegion, to_uint2(tileSize), tiles);
+	}
+
+	for(const TileInfo& tileInfo: tiles) LLOG_WRN << to_string(tileInfo);
 
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
@@ -260,7 +308,7 @@ bool Session::cmdRaytrace() {
     }
 
     // Frame rendeing
-    {  
+    //for(const auto& tile: tiles) {  
     	setUpCamera(mpRenderer->currentCamera(), cameraCropRegion);
 
 		mpRenderer->prepareFrame(mCurrentFrameInfo);
@@ -268,7 +316,7 @@ bool Session::cmdRaytrace() {
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
 		}
-	}
+	//}
 
 	LLOG_DBG << "Senging rendered data to display";    
 	AOVPlaneGeometry aov_geometry;

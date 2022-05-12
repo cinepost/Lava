@@ -835,8 +835,8 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     };
 
   public:
-    static SharedPtr create(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
-    static SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
+    static Scene::SharedPtr create(std::shared_ptr<Device> pDevice, SceneData&& sceneData);
+    static Scene::SharedPtr create(std::shared_ptr<Device> pDevice, const std::string& filename);
 
     ~Scene();
 

@@ -13,6 +13,7 @@
 #include "scope.h"
 #include "display.h"
 
+#include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
@@ -49,6 +50,11 @@ class Session {
       double      cameraFrameHeight = 1.0;
 
       Renderer::SamplePattern samplePattern = Renderer::SamplePattern::Stratified;
+    };
+
+    struct TileInfo {
+      Falcor::uint4   imageRegion;
+      Falcor::float4  cameraRegion;
     };
 
   public:
@@ -123,6 +129,13 @@ class Session {
     std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
     std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
 };
+
+static inline std::string to_string(const Session::TileInfo& tileInfo) {
+  return "TileInfo: region[" + std::to_string(tileInfo.imageRegion[0]) 
+                    + ", " +  std::to_string(tileInfo.imageRegion[1]) 
+                    + ", " +  std::to_string(tileInfo.imageRegion[2])
+                    + ", " +  std::to_string(tileInfo.imageRegion[3]) + "]";
+}
 
 }  // namespace lsd
 

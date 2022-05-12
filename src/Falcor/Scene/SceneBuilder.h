@@ -570,6 +570,7 @@ protected:
         uint32_t    nodeId;
         uint32_t    materialId;
         bool        overrideMaterial = false;
+        bool        isMatte = false;
     };
 
     struct MeshSpec {

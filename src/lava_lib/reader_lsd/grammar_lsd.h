@@ -80,11 +80,23 @@ namespace lsd {
         return {vec[0], vec[1]};
     }
 
+    static inline Falcor::uint2 to_uint2(const Int2& vec) {
+        return {vec[0], vec[1]};
+    }
+
     static inline Falcor::int3 to_int3(const Int3& vec) {
         return {vec[0], vec[1], vec[2]};
     }
 
+    static inline Falcor::uint3 to_uint3(const Int3& vec) {
+        return {vec[0], vec[1], vec[2]};
+    }
+
     static inline Falcor::int4 to_int4(const Int4& vec) {
+        return {vec[0], vec[1], vec[2], vec[3]};
+    }
+
+    static inline Falcor::uint4 to_uint4(const Int4& vec) {
         return {vec[0], vec[1], vec[2], vec[3]};
     }
 

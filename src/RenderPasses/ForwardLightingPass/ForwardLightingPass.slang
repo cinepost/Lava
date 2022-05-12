@@ -40,7 +40,7 @@ import Experimental.Scene.Material.Microfacet;
 import Experimental.Scene.Material.StandardMaterial;
 import Experimental.Scene.Material.IBxDF;
 
-//#define _ADJUST_SHADING_POSITION
+#define _ADJUST_SHADING_POSITION
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;

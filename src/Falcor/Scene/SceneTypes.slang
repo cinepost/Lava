@@ -137,6 +137,7 @@ enum class MeshInstanceFlags
     TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
     IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
+    IsMatte = 0x20,             ///< Matte shading
 };
 
 struct MeshInstanceData
@@ -169,15 +170,15 @@ struct PackedMeshInstanceData
 
     // Packed representation
     // The pack/unpack logic assumes that meshID representation is split between packedIds[0] and packedIds[1]
-    // (i.e., kFlagBigs + kMatrixBits < 32, kFlagsBits + kMatrixBits + kMeshBits > 32)
+    // (i.e., kFlagBits + kMatrixBits < 32, kFlagsBits + kMatrixBits + kMeshBits > 32)
     // bit position  31.......................................0
     // packedIds[1]   |    kMaterialBits   |    kMeshBitsHi   |
     // packedIDs[0]   | kMeshBitsLo | kMatrixBits | kFlagBits |
 
-    static const uint kMaterialBits = 17;
+    static const uint kMaterialBits = 16;
     static const uint kMatrixBits = 21;
     static const uint kMeshBits = 21;
-    static const uint kFlagsBits = 5;
+    static const uint kFlagsBits = 6;
 
     static const uint kFlagsOffset = 0;
     static const uint kMatrixOffset = kFlagsOffset + kFlagsBits;
