@@ -509,10 +509,7 @@ namespace parser {
     boost::spirit::x3::real_parser<double, boost::spirit::x3::strict_real_policies<double> > const double_ = {};
 
     template <typename T> auto as = [](auto p) { return x3::rule<struct _, T> {} = p; };
-    //auto const uintPair = as<ast::uintPair_t> ( uint_ >> '-' >> uint_       );
-    //auto const uintObj  = as<ast::uintObj>    ( uintPair | uint_            );
-    //auto const varVec   = as<ast::varVec>     ( '[' >> uintObj % ',' >> ']' );
-
+    
     auto const esc_char 
         = x3::rule<struct esc_char_, char> {"esc_char"}
         = '\\' >> char_("\"");
@@ -526,8 +523,7 @@ namespace parser {
          char_(':') | char_('+') | char_('@') | char_('!') | char_('~') | char_('?');
 
     x3::rule<class unquoted_string_, std::string> const unquoted_string = "unquoted_string";
-    auto const unquoted_string_def = //lexeme[+(~char_(" \"\'"))];
-        lexeme[+string_char];
+    auto const unquoted_string_def = lexeme[+string_char];
     BOOST_SPIRIT_DEFINE(unquoted_string)
 
     x3::rule<class empty_string_> const empty_string = "empty_string";
@@ -550,7 +546,7 @@ namespace parser {
     BOOST_SPIRIT_DEFINE(identifier)
 
     x3::rule<class prop_name_, std::string> const prop_name = "prop_name";
-    auto const prop_name_def = lexeme[identifier >> *(char_(".:/") >> identifier)];
+    auto const prop_name_def = lexeme[identifier >> *(char_(".:/_") >> identifier)];
     BOOST_SPIRIT_DEFINE(prop_name)
 
     x3::rule<class obj_name_, std::string> const obj_name = "obj_name";
@@ -637,7 +633,7 @@ namespace parser {
     auto const prop_value_def = 
         vector4 | vector3 | vector2 | double_
       | int4 | int3 | int2 | int_
-      | any_string ;
+      | any_string;
     BOOST_SPIRIT_DEFINE(prop_value)
 
     auto const keyword

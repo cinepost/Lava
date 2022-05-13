@@ -75,7 +75,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
       Falcor::uint2 renderRegionDims() const {
         if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
-        return {std::min(imageWidth, renderRegion[2] - renderRegion[0]), std::min(imageHeight, renderRegion[3] - renderRegion[1])};
+        return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
     };
 

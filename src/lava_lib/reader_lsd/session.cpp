@@ -161,8 +161,10 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
 
-	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
+	auto dims = mCurrentFrameInfo.renderRegionDims();
 
+	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
+	
 	pCamera->setAspectRatio(aspect_ratio);
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
@@ -181,15 +183,28 @@ void Session::cmdQuit() {
 	//mpRendererIface = nullptr;
 }
 
-static void makeImageTiles(Falcor::uint4 imageRegion, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
-	assert(imageRegion[0] <= imageRegion[2]);
-	assert(imageRegion[1] <= imageRegion[3]);
+static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
+	assert(frameInfo.renderRegion[0] <= frameInfo.renderRegion[2]);
+	assert(frameInfo.renderRegion[1] <= frameInfo.renderRegion[3]);
 
-	uint imageRegionWidth = imageRegion[2] - imageRegion[0];
-	uint imageRegionHeight = imageRegion[3] - imageRegion[1];
+	auto imageRegionDims = frameInfo.renderRegionDims();
+	uint imageRegionWidth = imageRegionDims[0];
+	uint imageRegionHeight = imageRegionDims[1];
+
+	tileSize[0] = std::min(imageRegionWidth, tileSize[0]);
+	tileSize[1] = std::min(imageRegionHeight, tileSize[1]);
+
+	LLOG_DBG << "renderRegion width " << std::to_string(imageRegionWidth);
+	LLOG_DBG << "renderRegion height " << std::to_string(imageRegionHeight);
+
+	LLOG_DBG << "tile width " << std::to_string(tileSize[0]);
+	LLOG_DBG << "tile height " << std::to_string(tileSize[1]);
 
 	auto hdiv = ldiv(imageRegionWidth, tileSize[0]);
 	auto vdiv = ldiv(imageRegionHeight, tileSize[1]);
+
+	LLOG_DBG << "qout x: " << std::to_string(hdiv.quot);
+	LLOG_DBG << "qout y: " << std::to_string(vdiv.quot);
 
 	tiles.clear();
 	// First put whole tiles
@@ -197,30 +212,104 @@ static void makeImageTiles(Falcor::uint4 imageRegion, Falcor::uint2 tileSize, st
 		for( int y = 0; y < vdiv.quot; y++) {
 			Int2 offset = {tileSize[0] * x, tileSize[1] * y};
 			Falcor::uint4 tileRegion = {
-				imageRegion[0] + offset[0],
-				imageRegion[1] + offset[1],
-				imageRegion[0] + offset[0] + tileSize[0],
-				imageRegion[1] + offset[1] + tileSize[1]
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
 			};
 
 			tiles.push_back({
-				{tileRegion},
-				{
-					tileRegion[0] / (float)imageRegionWidth,
-					tileRegion[1] / (float)imageRegionHeight,
-					tileRegion[2] / (float)imageRegionWidth,
-					tileRegion[3] / (float)imageRegionHeight
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
 				}
 			});
 		}
 	}
+
+	// bottom row tiles
+	for ( int x = 0; x < hdiv.quot; x++) {
+		Int2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
+		Falcor::uint4 tileRegion = {
+			frameInfo.renderRegion[0] + offset[0],
+			frameInfo.renderRegion[1] + offset[1],
+			frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+			frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+		};
+		tiles.push_back({
+			{tileRegion}, // image rendering region
+			{             // camera crop region
+				tileRegion[0] / (float)frameInfo.imageWidth,
+				tileRegion[1] / (float)frameInfo.imageHeight,
+				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+			}
+		});
+	}
+
+	// right row tiles
+	for ( int y = 0; y < vdiv.quot; y++) {
+		Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
+		Falcor::uint4 tileRegion = {
+			frameInfo.renderRegion[0] + offset[0],
+			frameInfo.renderRegion[1] + offset[1],
+			frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+			frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+		};
+		tiles.push_back({
+			{tileRegion}, // image rendering region
+			{             // camera crop region
+				tileRegion[0] / (float)frameInfo.imageWidth,
+				tileRegion[1] / (float)frameInfo.imageHeight,
+				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+			}
+		});
+	}
+
+	// last corner tile
+	if ((hdiv.rem >= 1) && (vdiv.rem >=1)) {
+		Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * vdiv.quot};
+		Falcor::uint4 tileRegion = {
+			frameInfo.renderRegion[0] + offset[0],
+			frameInfo.renderRegion[1] + offset[1],
+			frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+			frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+		};
+		tiles.push_back({
+			{tileRegion}, // image rendering region
+			{             // camera crop region
+				tileRegion[0] / (float)frameInfo.imageWidth,
+				tileRegion[1] / (float)frameInfo.imageHeight,
+				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+			}
+		});
+	}
 }
+
+static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+	if(!pAOVPlane->getImageData(textureData.data())) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	auto renderRegionDims = frameInfo.renderRegionDims();
+	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
+        LLOG_ERR << "Error sending image to display !";
+        return false;
+    }
+    return true;
+};
 
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
 
-	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "image_tile_size", Int2({256, 256}));
-	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "image_tiling", false);
+	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
+	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
+	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN");
@@ -252,8 +341,7 @@ bool Session::cmdRaytrace() {
 
 	// Crop region
 	Vector4 crop = mpGlobal->getPropertyValue(ast::Style::IMAGE, "crop", Vector4({0, 0, 0, 0})); // default no crop. houdini crop is: 0-left, 1-right, 2-bottom, 3-top
-	Falcor::float4 cameraCropRegion = {0, 0, 1, 1}; // default full frame
-
+	
 	if((crop[0] > 0.0) || (crop[1] < 1.0) || (crop[2] > 0) || (crop[3] < 1.0)) { 
 		mCurrentFrameInfo.renderRegion = {
 			uint((float)mCurrentFrameInfo.imageWidth * crop[0]), 
@@ -263,22 +351,22 @@ bool Session::cmdRaytrace() {
 		};
 
 		if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
-			LLOG_ERR << "Wrong render image crop region: " << to_string(crop) << " !!!";
+			LLOG_ERR << "Wrong render image region: " << to_string(crop) << " !!!";
 			return false;
 		}
-
-		cameraCropRegion = {
-			(float)mCurrentFrameInfo.renderRegion[0] / (float)mCurrentFrameInfo.imageWidth,
-			(float)mCurrentFrameInfo.renderRegion[1] / (float)mCurrentFrameInfo.imageHeight,
-			(float)mCurrentFrameInfo.renderRegion[2] / (float)mCurrentFrameInfo.imageWidth,
-			(float)mCurrentFrameInfo.renderRegion[3] / (float)mCurrentFrameInfo.imageHeight
-		};
+	} else {
+		// No render region specified so it takes a whole frame
+		mCurrentFrameInfo.renderRegion = {0, 0, resolution[0] - 1, resolution[1] - 1};
 	}
 
 	// Set up tiles if required or one full frame tile
 	std::vector<TileInfo> tiles;
 	if (tiled_rendering_mode) {
-		makeImageTiles(mCurrentFrameInfo.renderRegion, to_uint2(tileSize), tiles);
+		LLOG_DBG << "Tiles mode";
+		makeImageTiles(mCurrentFrameInfo, to_uint2(tileSize), tiles);
+	} else {
+		LLOG_DBG << "Full frame mode";
+		makeImageTiles(mCurrentFrameInfo, mCurrentFrameInfo.renderRegionDims(), tiles);
 	}
 
 	for(const TileInfo& tileInfo: tiles) LLOG_WRN << to_string(tileInfo);
@@ -307,30 +395,52 @@ bool Session::cmdRaytrace() {
         return false;
     }
 
-    // Frame rendeing
-    //for(const auto& tile: tiles) {  
-    	setUpCamera(mpRenderer->currentCamera(), cameraCropRegion);
-
-		mpRenderer->prepareFrame(mCurrentFrameInfo);
-
-		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
-			mpRenderer->renderSample();
-		}
-	//}
-
-	LLOG_DBG << "Senging rendered data to display";    
-	AOVPlaneGeometry aov_geometry;
-	if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
-		LLOG_FTL << "No AOV !!!";
-		return false;
-	}
-
 	Falcor::ResourceFormat outputResourceFormat;
 	uint32_t outputChannelsCount = 0;
+	std::vector<uint8_t> textureData;
 
-    std::vector<uint8_t> textureData;
-    textureData.resize( aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel);
-    
+    // Frame rendeing
+
+	setUpCamera(mpRenderer->currentCamera());
+    for(const auto& tile: tiles) {
+    	LLOG_DBG << "Rendering " << to_string(tile);
+
+    	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+      	frameInfo.renderRegion = tile.renderRegion;
+
+    	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+    	mpRenderer->prepareFrame(frameInfo);
+
+		AOVPlaneGeometry aov_geometry;
+		if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
+			LLOG_FTL << "No AOV !!!";
+			break;
+		}
+
+		uint32_t textureDataSize = aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel;
+		if (textureData.size() != textureDataSize) textureData.resize(textureDataSize);
+
+		long int sampleUpdateIterations = 0;
+		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
+			mpRenderer->renderSample();
+			if (sampleUpdateInterval > 0) {
+				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
+				if (updateIter > sampleUpdateIterations) {
+					LLOG_DBG << "Updating sample " << std::to_string(sample_number);
+					if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+						break;
+					}
+					sampleUpdateIterations = updateIter;
+				}
+			}
+		}
+
+		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+			break;
+		}
+	}
+
+/*
     if(!pMainAOVPlane->getImageData(textureData.data())) {
     	LLOG_ERR << "Error reading AOV texture data !!!";
     }
@@ -345,7 +455,7 @@ bool Session::cmdRaytrace() {
     } catch (std::exception& e) {
         LLOG_ERR << "Error: " << e.what();
     }
-
+*/
     mpDisplay->closeImage(hImage);
 
 	return true;

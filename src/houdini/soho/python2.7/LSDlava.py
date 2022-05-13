@@ -123,9 +123,10 @@ def initializeFeatures(settings):
     Image("image", "bgscale", "bool", "lv_bgscale")
     Image("image", "bgzscale", "float", "lv_bgzscale")
 
-    Image("image", "image_tiling", "bool", "lv_image_tiling")
-    Image("image", "image_tile_size", "int", "lv_image_tile_size")
-    Image("image", "ipr_image_tile_size", "int", "lv_iprbucketsize")
+    Image("image", "tiling", "bool", "lv_image_tiling", skipdefault=False)
+    Image("image", "tilesize", "int", "lv_image_tile_size", skipdefault=False)
+    Image("image", "sampleupdate", "int", "lv_sample_update_interval", skipdefault=False)
+    Image("image", "iprtilesize", "int", "lv_iprbucketsize")
 
     Image("image", "checkpointcachesize", "int", "lv_checkpointcachesize")
     Image("image", "checkpointname", "string", "lv_checkpointname")

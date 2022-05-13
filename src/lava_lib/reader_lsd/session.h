@@ -53,8 +53,8 @@ class Session {
     };
 
     struct TileInfo {
-      Falcor::uint4   imageRegion;
-      Falcor::float4  cameraRegion;
+      Falcor::uint4   renderRegion;
+      Falcor::float4  cameraCropRegion;
     };
 
   public:
@@ -131,10 +131,10 @@ class Session {
 };
 
 static inline std::string to_string(const Session::TileInfo& tileInfo) {
-  return "TileInfo: region[" + std::to_string(tileInfo.imageRegion[0]) 
-                    + ", " +  std::to_string(tileInfo.imageRegion[1]) 
-                    + ", " +  std::to_string(tileInfo.imageRegion[2])
-                    + ", " +  std::to_string(tileInfo.imageRegion[3]) + "]";
+  return "TileInfo: region[" + std::to_string(tileInfo.renderRegion[0]) 
+                    + ", " +  std::to_string(tileInfo.renderRegion[1]) 
+                    + ", " +  std::to_string(tileInfo.renderRegion[2])
+                    + ", " +  std::to_string(tileInfo.renderRegion[3]) + "]";
 }
 
 }  // namespace lsd

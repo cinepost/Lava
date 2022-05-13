@@ -366,18 +366,15 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(Renderer::SamplePattern
 
 void Renderer::finalizeScene(const FrameInfo& frame_info) {
     // finalize camera
-    mInvFrameDim = 1.f / float2({frame_info.imageWidth, frame_info.imageHeight});
+    auto renderRegionDims = frame_info.renderRegionDims();
 
-    if(!mpSampleGenerator) {
+    if(!mpSampleGenerator || (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+        auto mInvRegionDim = 1.f / float2({renderRegionDims[0], renderRegionDims[1]});
         mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_info.imageSamples);
+        mpCamera->setPatternGenerator(mpSampleGenerator, mInvRegionDim);
     }
 
-    if (mpSampleGenerator) {
-        mpCamera->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
-    }
-
-    //mpCamera->setAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
-    mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), 0);
+    mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), frame_info.frameNumber);
 }
 
 void Renderer::bindAOVPlanesToResources() {
@@ -407,15 +404,19 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
         return false;
     }
 
+    auto renderRegionDims = frame_info.renderRegionDims();
     finalizeScene(frame_info);
 
     if (!mpRenderGraph) {
         createRenderGraph(frame_info);
         bindAOVPlanesToResources();
-    } else if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || (mCurrentFrameInfo.renderRegion != frame_info.renderRegion)) {
+    } else if (
+        (mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || 
+        (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || 
+        (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+        
         // Change rendering graph frame dimensions
-        auto graphRenderRegion = mCurrentFrameInfo.renderRegionDims();
-        mpRenderGraph->resize(graphRenderRegion[0], graphRenderRegion[1], Falcor::ResourceFormat::RGBA32Float);
+        mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
 
         std::string compilationLog;
         if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {

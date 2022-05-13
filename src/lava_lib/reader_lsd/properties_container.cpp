@@ -1,5 +1,6 @@
 #include <variant>
 #include <map>
+#include <string>
 
 #include "Falcor/Utils/Math/Vector.h"
 
@@ -199,7 +200,7 @@ bool PropertiesContainer::declareProperty(ast::Style style, Property::Type type,
 
     Property prop;
     if (!Property::create(type, value, prop, owner)) {
-        LLOG_ERR << "Error creating property type: " << property_type_to_string(type) << " with value type: " << value_type_to_string(value) << " !!!";
+        LLOG_ERR << "Error creating property type: " << to_string(type) << " with value type: " << to_string(value) << " !!!";
         return false;
     }
 
@@ -409,19 +410,19 @@ std::string to_string(const PropertiesContainer::PropertyKey& key) {
 using Value = lava::lsd::Property::Value;
 std::string to_string(const Value& val) {
     if (val.type() == typeid(std::string)) {
-        return '"' + boost::get<std::string>(val) + '"';
+        return std::string("String: ") + boost::get<std::string>(val);
     }
     if (val.type() == typeid(bool)) {
-        return boost::get<bool>(val) ? "true" : "false";
+        return boost::get<bool>(val) ? "Bool: true" : "Bool: false";
     }
     
     std::ostringstream ss;
     if (val.type() == typeid(int)) {
-        ss << boost::get<int>(val);
+        ss << "Int: " << boost::get<int>(val);
         return ss.str();    
     }
     if (val.type() == typeid(double)) {
-        ss << boost::get<double>(val);
+        ss << "Double: " << boost::get<double>(val);
         return ss.str();
     }
     if (val.type() == typeid(lava::lsd::Int2)) {

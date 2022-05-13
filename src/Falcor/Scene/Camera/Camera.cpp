@@ -140,17 +140,13 @@ void Camera::calculateCameraParameters() const {
             }
         }
 
-        // Crop region jitter scale coefficient
-        float invJitterScaleX = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
-        float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
-
         // Build jitter matrix
         // (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
         //  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
         glm::mat4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            2.0f * mData.jitterX * invJitterScaleX, 2.0f * mData.jitterY * invJitterScaleY, 0.0f, 1.0f);
+            2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
         // Apply jitter matrix to the projection matrix
         mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
         mData.projMat = jitterMat * mData.projMat;
@@ -264,8 +260,12 @@ void Camera::setJitter(float jitterX, float jitterY) {
 }
 
 void Camera::setJitterInternal(float jitterX, float jitterY) {
-    mData.jitterX = jitterX;
-    mData.jitterY = jitterY;
+    // Crop region jitter scale coefficient
+    float invJitterScaleX = 10.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
+    float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
+
+    mData.jitterX = jitterX;// * invJitterScaleX;
+    mData.jitterY = jitterY;// * invJitterScaleY;
     mDirty = true;
 }
 
