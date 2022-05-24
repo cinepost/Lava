@@ -27,8 +27,10 @@
  **************************************************************************/
 #include "VBufferRaster.h"
 #include "Scene/HitInfo.h"
-#include "RenderGraph/RenderPassHelpers.h"
-#include "RenderGraph/RenderPassStandardFlags.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 
 const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
 
@@ -101,7 +103,7 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     mRaster.pVars = nullptr;
 
     if (pScene) {
-        if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
+        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
         {
             throw std::runtime_error("VBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
         }

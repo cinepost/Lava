@@ -39,19 +39,18 @@ namespace Falcor {
 
 std::weak_ptr<QueryHeap> GpuTimer::spHeap;
 
-GpuTimer::SharedPtr GpuTimer::create(std::shared_ptr<Device> device) {
-    return SharedPtr(new GpuTimer(device));
+GpuTimer::SharedPtr GpuTimer::create(std::shared_ptr<Device> pDevice) {
+    return SharedPtr(new GpuTimer(pDevice));
 }
 
-GpuTimer::GpuTimer(std::shared_ptr<Device> device): mpDevice(device) {
-    assert(device);
+GpuTimer::GpuTimer(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
 #ifdef FALCOR_D3D12
-    mpResolveBuffer = Buffer::create(device, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpResolveBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 #endif
     // Create timestamp query heap upon first use.
     // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
     if (spHeap.expired()) {
-        spHeap = device->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
+        spHeap = mpDevice->createQueryHeap(QueryHeap::Type::Timestamp, 16 * 1024);
     }
     auto pHeap = spHeap.lock();
     assert(pHeap);
@@ -61,7 +60,7 @@ GpuTimer::GpuTimer(std::shared_ptr<Device> device): mpDevice(device) {
         throw std::runtime_error("Can't create GPU timer, no available timestamp queries.");
     }
     assert(mEnd == (mStart + 1));
-    mpLowLevelData = device->getRenderContext()->getLowLevelData();
+    mpLowLevelData = mpDevice->getRenderContext()->getLowLevelData();
 }
 
 GpuTimer::~GpuTimer() {
@@ -73,12 +72,12 @@ GpuTimer::~GpuTimer() {
 
 void GpuTimer::begin() {
     if (mStatus == Status::Begin) {
-        logWarning("GpuTimer::begin() was followed by another call to GpuTimer::begin() without a GpuTimer::end() in-between. Ignoring call.");
+        LLOG_WRN << "GpuTimer::begin() was followed by another call to GpuTimer::begin() without a GpuTimer::end() in-between. Ignoring call.";
         return;
     }
 
     if (mStatus == Status::End) {
-        logWarning("GpuTimer::begin() was followed by a call to GpuTimer::end() without querying the data first. The previous results will be discarded.");
+        LLOG_WRN << "GpuTimer::begin() was followed by a call to GpuTimer::end() without querying the data first. The previous results will be discarded.";
     }
     mStatus = Status::Begin;
     apiBegin();
@@ -86,29 +85,49 @@ void GpuTimer::begin() {
 
 void GpuTimer::end() {
     if (mStatus != Status::Begin) {
-        logWarning("GpuTimer::end() was called without a preciding GpuTimer::begin(). Ignoring call.");
+        LLOG_WRN << "GpuTimer::end() was called without a preciding GpuTimer::begin(). Ignoring call.";
         return;
     }
     mStatus = Status::End;
     apiEnd();
 }
 
+void GpuTimer::resolve() {
+    if (mStatus == Status::Begin) {
+        throw std::runtime_error("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
+    }
+    else if (mStatus == Status::End)
+    {
+        apiResolve();
+
+        mDataPending = true;
+        mStatus = Status::Idle;
+    }
+    // If idle, do nothing.
+    assert(mStatus == Status::Idle);
+}
+
 
 double GpuTimer::getElapsedTime() {
     if (mStatus == Status::Begin) {
-        logWarning("GpuTimer::getElapsedTime() was called but the GpuTimer::end() wasn't called. No data to fetch.");
-        return 0;
+        LLOG_WRN << "GpuTimer::getElapsedTime() was called but the GpuTimer::end() wasn't called. No data to fetch.";
+        return 0.0;
     } else if (mStatus == Status::End) {
+        LLOG_WRN << "GpuTimer::getElapsedTime() was called but the GpuTimer::resolve() wasn't called. No data to fetch.";
+        return 0.0;
+    }
+
+    assert(mStatus == Status::Idle);
+    if (mDataPending) {
         uint64_t result[2];
-        apiResolve(result);
+        apiReadback(result);
 
         double start = (double)result[0];
         double end = (double)result[1];
         double range = end - start;
         mElapsedTime = range * mpDevice->getGpuTimestampFrequency();
-        mStatus = Status::Idle;
+        mDataPending = false;
     }
-    assert(mStatus == Status::Idle);
     return mElapsedTime;
 }
 

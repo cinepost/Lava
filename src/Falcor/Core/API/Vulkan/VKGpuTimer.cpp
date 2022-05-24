@@ -42,7 +42,11 @@ namespace Falcor {
         vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mEnd);
     }
 
-    void GpuTimer::apiResolve(uint64_t result[2]) {
+    void GpuTimer::apiResolve() {
+        // TODO: Copy to staging buffer for readback.
+    }
+
+    void GpuTimer::apiReadback(uint64_t result[2]) {
         auto mpHeap = spHeap.lock()->getApiHandle();
         vk_call(vkGetQueryPoolResults(mpDevice->getApiHandle(), mpHeap, mStart, 2, sizeof(uint64_t) * 2, result, sizeof(result[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
     }

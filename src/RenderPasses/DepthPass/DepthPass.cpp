@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <chrono>
 
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "DepthPass.h"
 
@@ -141,11 +142,16 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
+    mpVars = nullptr;
+
     if (mpScene) {
-        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        auto pProgram = mpState->getProgram();
+        pProgram->addDefines(mpScene->getSceneDefines());
         //mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
+        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+        pProgram->setTypeConformances(mpScene->getTypeConformances());
+        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
     }
-    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {

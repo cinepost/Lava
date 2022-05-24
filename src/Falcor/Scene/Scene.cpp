@@ -29,17 +29,21 @@
 #include <sstream>
 #include <numeric>
 
-//#include "Falcor/stdafx.h"
 #include "Scene.h"
-#include "ScenePrimitiveDefines.slangh"
+#include "SceneDefines.slangh"
+#include "Scene/Curves/CurveConfig.h"
+
 #include "HitInfo.h"
-//#include "Importer.h"
 
-#include "Falcor/Core/API/Vulkan/VKDevice.h"
+//#include "Falcor/Core/API/Vulkan/VKDevice.h"
 
-#include "Raytracing/RtProgram/RtProgram.h"
-#include "Raytracing/RtProgramVars.h"
+#include "Falcor/Core/API/IndirectCommands.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/RtProgram.h"
+#include "Falcor/Core/Program/ProgramVars.h"
 
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Math/MathHelpers.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "SceneBuilder.h"
@@ -47,22 +51,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-#include "nvvk/buffers_vk.hpp"
+//#include "nvvk/buffers_vk.hpp"
 
 namespace Falcor {
 
 static_assert(sizeof(MeshDesc) % 16 == 0, "MeshDesc size should be a multiple of 16");
+static_assert(sizeof(GeometryInstanceData) == 32, "GeometryInstanceData size should be 32");
 static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData size should be a multiple of 16");
-static_assert(sizeof(PackedMeshInstanceData) % 16 == 0, "PackedMeshInstanceData size should be a multiple of 16");
-static_assert(PackedMeshInstanceData::kMatrixBits + PackedMeshInstanceData::kMeshBits + PackedMeshInstanceData::kFlagsBits + PackedMeshInstanceData::kMaterialBits <= 64);
-
-static_assert((uint32_t)PrimitiveTypeFlags::TriangleMesh == PRIMITIVE_TYPE_TRIANGLE_MESH, "Primitive type enum should match define constant for triangle mesh");
-static_assert((uint32_t)PrimitiveTypeFlags::DisplacedTriangleMesh == PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH, "Primitive type enum should match define constant for displaced triangle mesh");
-static_assert((uint32_t)PrimitiveTypeFlags::Curve == PRIMITIVE_TYPE_CURVE, "Primitive type enum should match define constant for curve");
-static_assert((uint32_t)PrimitiveTypeFlags::Custom == PRIMITIVE_TYPE_CUSTOM, "Primitive type enum should match define constant for custom primitives");
-static_assert((uint32_t)PrimitiveTypeFlags::Procedural == PRIMITIVE_TYPE_PROCEDURAL, "Primitive type enum should match define constant for procedural primitives");
-static_assert((uint32_t)PrimitiveTypeFlags::All == PRIMITIVE_TYPE_ALL, "Primitive type enum should match define constant for all");
-static_assert((uint32_t)PrimitiveTypeFlags::All <= std::numeric_limits<uint16_t>::max(), "Primitive type enum should fit in 16 bits");
 
 namespace {
     // Large scenes are split into multiple BLAS groups in order to reduce build memory usage.
@@ -70,21 +65,21 @@ namespace {
     const size_t kMaxBLASBuildMemory = 1ull << 29;
 
     const std::string kParameterBlockName = "gScene";
+    const std::string kGeometryInstanceBufferName = "geometryInstances";
     const std::string kMeshBufferName = "meshes";
-    const std::string kMeshInstanceBufferName = "meshInstances";
     const std::string kIndexBufferName = "indexData";
     const std::string kVertexBufferName = "vertices";
     const std::string kPrevVertexBufferName = "prevVertices";
     const std::string kProceduralPrimAABBBufferName = "proceduralPrimitiveAABBs";
     const std::string kCurveBufferName = "curves";
-    const std::string kCurveInstanceBufferName = "curveInstances";
     const std::string kCurveIndexBufferName = "curveIndices";
     const std::string kCurveVertexBufferName = "curveVertices";
     const std::string kPrevCurveVertexBufferName = "prevCurveVertices";
+    const std::string kSDFGridsArrayName = "sdfGrids";
     const std::string kCustomPrimitiveBufferName = "customPrimitives";
-    const std::string kMaterialsBufferName = "materials";
+    const std::string kMaterialsBlockName = "materials";
     const std::string kLightsBufferName = "lights";
-    const std::string kVolumesBufferName = "volumes";
+    const std::string kGridVolumesBufferName = "gridVolumes";
 
     const std::string kStats = "stats";
     const std::string kBounds = "bounds";
@@ -99,10 +94,10 @@ namespace {
     const std::string kUpdateCallback = "updateCallback";
     const std::string kEnvMap = "envMap";
     const std::string kMaterials = "materials";
-    const std::string kVolumes = "volumes";
+    const std::string kGridVolumes = "gridVolumes";
     const std::string kGetLight = "getLight";
     const std::string kGetMaterial = "getMaterial";
-    const std::string kGetVolume = "getVolume";
+    const std::string kGetGridVolume = "getGridVolume";
     const std::string kSetEnvMap = "setEnvMap";
     const std::string kAddViewpoint = "addViewpoint";
     const std::string kRemoveViewpoint = "kRemoveViewpoint";
@@ -114,30 +109,6 @@ namespace {
     }
 }
 
-
-#ifdef FALCOR_VK
-typedef struct D3D12_DRAW_INDEXED_ARGUMENTS {
-    unsigned int IndexCountPerInstance;
-    unsigned int InstanceCount;
-    unsigned int StartIndexLocation;
-    int BaseVertexLocation;
-    unsigned int StartInstanceLocation;
-    uint32_t     MaterialID;
-} D3D12_DRAW_INDEXED_ARGUMENTS;
-
-
-typedef struct D3D12_DRAW_ARGUMENTS {
-    unsigned int VertexCountPerInstance;
-    unsigned int InstanceCount;
-    unsigned int StartVertexLocation;
-    unsigned int StartInstanceLocation;
-    uint32_t     MaterialID;
-} D3D12_DRAW_ARGUMENTS;
-
-#define D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT 256
-
-#endif
-
 static inline VkTransformMatrixKHR toTransformMatrixKHR(const glm::mat4& m) {
     VkTransformMatrixKHR out_matrix;
     
@@ -148,7 +119,7 @@ static inline VkTransformMatrixKHR toTransformMatrixKHR(const glm::mat4& m) {
 
 Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(pDevice) {
     mRayTraceInitialized = false;
-    mDebug.setup(mpDevice->getApiHandle()); 
+    //mDebug.setup(mpDevice->getApiHandle()); 
 
     // Copy/move scene data to member variables.
     mFilename = sceneData.filename;
@@ -157,39 +128,38 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mSelectedCamera = sceneData.selectedCamera;
     mCameraSpeed = sceneData.cameraSpeed;
     mLights = std::move(sceneData.lights);
-    mMaterials = std::move(sceneData.materials);
+
+    mpMaterialSystem = std::move(sceneData.pMaterialSystem);
     mMaterialXs = std::move(sceneData.materialxs);
-    mVolumes = std::move(sceneData.volumes);
+    mGridVolumes = std::move(sceneData.gridVolumes);
     mGrids = std::move(sceneData.grids);
     mpEnvMap = sceneData.pEnvMap;
     mSceneGraph = std::move(sceneData.sceneGraph);
     mMetadata = std::move(sceneData.metadata);
 
+    // Merge all geometry instance lists into one.
+    mGeometryInstanceData.reserve(sceneData.meshInstanceData.size() + sceneData.curveInstanceData.size() + sceneData.sdfGridInstances.size());
+    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.meshInstanceData), std::end(sceneData.meshInstanceData));
+    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.curveInstanceData), std::end(sceneData.curveInstanceData));
+    mGeometryInstanceData.insert(std::end(mGeometryInstanceData), std::begin(sceneData.sdfGridInstances), std::end(sceneData.sdfGridInstances));
+
     mMeshDesc = std::move(sceneData.meshDesc);
     mMeshNames = std::move(sceneData.meshNames);
     mMeshBBs = std::move(sceneData.meshBBs);
-    mMeshInstanceData = std::move(sceneData.meshInstanceData);
-    mDisplacedMeshInstanceCount = sceneData.displacedMeshInstanceCount;
     mMeshIdToInstanceIds = std::move(sceneData.meshIdToInstanceIds);
     mMeshGroups = std::move(sceneData.meshGroups);
 
+    mUseCompressedHitInfo = sceneData.useCompressedHitInfo;
     mHas16BitIndices = sceneData.has16BitIndices;
     mHas32BitIndices = sceneData.has32BitIndices;
 
     mCurveDesc = std::move(sceneData.curveDesc);
     mCurveBBs = std::move(sceneData.curveBBs);
-    mCurveInstanceData = std::move(sceneData.curveInstanceData);
     mCurveIndexData = std::move(sceneData.curveIndexData);
     mCurveStaticData = std::move(sceneData.curveStaticData);
 
     mCustomPrimitiveDesc = std::move(sceneData.customPrimitiveDesc);
     mCustomPrimitiveAABBs = std::move(sceneData.customPrimitiveAABBs);
-
-    // Check for materials using the SpecGloss shading model.
-    mHasSpecGlossMaterials = std::any_of(mMaterials.begin(), mMaterials.end(), [] (const auto& m) { return m->getShadingModel() == ShadingModelSpecGloss; });
-
-    // Prepare displacement maps for rendering.
-    for (const auto& pMaterial : mMaterials) pMaterial->prepareDisplacementMapForRendering();
 
     // Setup additional resources.
     mFrontClockwiseRS[RasterizerState::CullMode::None] = RasterizerState::create(RasterizerState::Desc().setFrontCounterCW(false).setCullMode(RasterizerState::CullMode::None));
@@ -202,15 +172,42 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     // Setup volume grid -> id map.
     for (size_t i = 0; i < mGrids.size(); ++i) mGridIDs.emplace(mGrids[i], (uint32_t)i);
 
+    // Set default SDF grid config.
+    setSDFGridConfig();
+
     // Create vertex array objects for meshes and curves.
-    createMeshVao(sceneData.meshDrawCount, sceneData.meshIndexData, sceneData.meshStaticData, sceneData.meshDynamicData);
+    createMeshVao(sceneData.meshDrawCount, sceneData.meshIndexData, sceneData.meshStaticData, sceneData.meshSkinningData);
     createCurveVao(mCurveIndexData, mCurveStaticData);
 
     // Create animation controller.
-    mpAnimationController = AnimationController::create(this, sceneData.meshStaticData, sceneData.meshDynamicData, sceneData.animations);
+    mpAnimationController = AnimationController::create(this, sceneData.meshStaticData, sceneData.meshSkinningData, sceneData.prevVertexCount, sceneData.animations);
+
+    // Some runtime mesh data validation. These are essentially asserts, but large scenes are mostly opened in Release
+    for (const auto& mesh : mMeshDesc) {
+        if (mesh.isDynamic()) {
+            if (mesh.prevVbOffset + mesh.vertexCount > sceneData.prevVertexCount) throw std::runtime_error("Cached Mesh Animation: Invalid prevVbOffset");
+        }
+    }
+
+    for (const auto &mesh : sceneData.cachedMeshes) {
+        if (!mMeshDesc[mesh.meshID].isAnimated()) throw std::runtime_error("Cached Mesh Animation: Referenced mesh ID is not dynamic");
+        if (mesh.timeSamples.size() != mesh.vertexData.size()) throw std::runtime_error("Cached Mesh Animation: Time sample count mismatch.");
+        for (const auto &vertices : mesh.vertexData)
+        {
+            if (vertices.size() != mMeshDesc[mesh.meshID].vertexCount) throw std::runtime_error("Cached Mesh Animation: Vertex count mismatch.");
+        }
+    }
+    
+    for (const auto& cache : sceneData.cachedCurves) {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+        {
+            if (!mMeshDesc[cache.geometryID].isAnimated()) throw std::runtime_error("Cached Curve Animation: Referenced mesh ID is not dynamic");
+        }
+    }
 
     // Must be placed after curve data/AABB creation.
-    mpAnimationController->addAnimatedVertexCaches(sceneData.cachedCurves, sceneData.cachedMeshes);
+    mpAnimationController->addAnimatedVertexCaches(std::move(sceneData.cachedCurves), std::move(sceneData.cachedMeshes), sceneData.meshStaticData);
+
 
     // Finalize scene.
     finalize();
@@ -221,10 +218,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
 }
 
 Scene::~Scene() {
-    if (mpRtBuilder) {
-        mpRtBuilder->destroy();
-        delete mpRtBuilder;
-    }
+
 }
 
 Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, const std::string& filename) {
@@ -238,18 +232,68 @@ Scene::SharedPtr Scene::create(std::shared_ptr<Device> pDevice, SceneData&& scen
     return Scene::SharedPtr(new Scene(pDevice, std::move(sceneData)));
 }
 
+Shader::DefineList Scene::getDefaultSceneDefines() {
+    Shader::DefineList defines;
+    defines.add("SCENE_RAYTRACING_ENABLED", "0");
+
+    defines.add("SCENE_GEOMETRY_TYPES", "0");
+    defines.add("SCENE_GRID_COUNT", "0");
+    defines.add("SCENE_SDF_GRID_COUNT", "0");
+    defines.add("SCENE_HAS_INDEXED_VERTICES", "0");
+    defines.add("SCENE_HAS_16BIT_INDICES", "0");
+    defines.add("SCENE_HAS_32BIT_INDICES", "0");
+
+    defines.add(MaterialSystem::getDefaultDefines());
+
+    return defines;
+}
+
 Shader::DefineList Scene::getSceneDefines() const {
     Shader::DefineList defines;
     defines.add("SCENE_RAYTRACING_ENABLED", mRenderSettings.useRayTracing ? "1" : "0");
-    defines.add("SCENE_MATERIAL_COUNT", std::to_string(mMaterials.size()));
+
+    defines.add("SCENE_GEOMETRY_TYPES", std::to_string((uint32_t)mGeometryTypes));
     defines.add("SCENE_GRID_COUNT", std::to_string(mGrids.size()));
     defines.add("SCENE_HAS_INDEXED_VERTICES", hasIndexBuffer() ? "1" : "0");
     defines.add("SCENE_HAS_16BIT_INDICES", mHas16BitIndices ? "1" : "0");
     defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
+
     defines.add(mHitInfo.getDefines());
-    defines.add("SCENE_PRIMITIVE_TYPE_FLAGS", std::to_string((uint)mPrimitiveTypes));
-    defines.add("SCENE_HAS_SPEC_GLOSS_MATERIALS", mHasSpecGlossMaterials ? "1" : "0");
+    defines.add(mpMaterialSystem->getDefines());
+    defines.add(getSceneSDFGridDefines());
+
     return defines;
+}
+
+Shader::DefineList Scene::getSceneSDFGridDefines() const {
+    Shader::DefineList defines;
+    defines.add("SCENE_SDF_GRID_COUNT", std::to_string(mSDFGrids.size()));
+    defines.add("SCENE_SDF_GRID_MAX_LOD_COUNT", std::to_string(mSDFGridMaxLODCount));
+
+    defines.add("SCENE_SDF_GRID_IMPLEMENTATION_NDSDF", std::to_string((uint32_t)SDFGrid::Type::NormalizedDenseGrid));
+    defines.add("SCENE_SDF_GRID_IMPLEMENTATION_SVS", std::to_string((uint32_t)SDFGrid::Type::SparseVoxelSet));
+    defines.add("SCENE_SDF_GRID_IMPLEMENTATION_SBS", std::to_string((uint32_t)SDFGrid::Type::SparseBrickSet));
+    defines.add("SCENE_SDF_GRID_IMPLEMENTATION_SVO", std::to_string((uint32_t)SDFGrid::Type::SparseVoxelOctree));
+
+    defines.add("SCENE_SDF_NO_INTERSECTION_METHOD", std::to_string((uint32_t)SDFGridIntersectionMethod::None));
+    defines.add("SCENE_SDF_NO_VOXEL_SOLVER", std::to_string((uint32_t)SDFGridIntersectionMethod::GridSphereTracing));
+    defines.add("SCENE_SDF_VOXEL_SPHERE_TRACING", std::to_string((uint32_t)SDFGridIntersectionMethod::VoxelSphereTracing));
+
+    defines.add("SCENE_SDF_NO_GRADIENT_EVALUATION_METHOD", std::to_string((uint32_t)SDFGridGradientEvaluationMethod::None));
+    defines.add("SCENE_SDF_GRADIENT_NUMERIC_DISCONTINUOUS", std::to_string((uint32_t)SDFGridGradientEvaluationMethod::NumericDiscontinuous));
+    defines.add("SCENE_SDF_GRADIENT_NUMERIC_CONTINUOUS", std::to_string((uint32_t)SDFGridGradientEvaluationMethod::NumericContinuous));
+
+    defines.add("SCENE_SDF_GRID_IMPLEMENTATION", std::to_string((uint32_t)mSDFGridConfig.implementation));
+    defines.add("SCENE_SDF_VOXEL_INTERSECTION_METHOD", std::to_string((uint32_t)mSDFGridConfig.intersectionMethod));
+    defines.add("SCENE_SDF_GRADIENT_EVALUATION_METHOD", std::to_string((uint32_t)mSDFGridConfig.gradientEvaluationMethod));
+    defines.add("SCENE_SDF_SOLVER_MAX_ITERATION_COUNT", std::to_string(mSDFGridConfig.solverMaxIterations));
+    defines.add("SCENE_SDF_OPTIMIZE_VISIBILITY_RAYS", mSDFGridConfig.optimizeVisibilityRays ? "1" : "0");
+
+    return defines;
+}
+
+Program::TypeConformanceList Scene::getTypeConformances() const {
+        return mpMaterialSystem->getTypeConformances();
 }
 
 const LightCollection::SharedPtr& Scene::getLightCollection(RenderContext* pContext) {
@@ -275,12 +319,12 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     PROFILE(mpDevice, "rasterizeScene");
 
     // nvvk testing stuff
-    initRayTracing();
-    createBottomLevelAS();
-    createTopLevelAS();
+    //initRayTracing();
+    //createBottomLevelAS();
+    //createTopLevelAS();
 
     // Bind TLAS.
-    mpSceneBlock["rtAccel"].setAS(getTlas());
+    //mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
@@ -288,10 +332,8 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     bool isIndexed = hasIndexBuffer();
 
     for (const auto& draw : mDrawArgs) {
-        //assert(draw.count > 0);
-
         // Set state.
-        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpVao16Bit : mpVao);
+        pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
         if (draw.ccw) pState->setRasterizerState(pRasterizerStateCCW);
         else pState->setRasterizerState(pRasterizerStateCW);
@@ -306,13 +348,6 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     }
 
     pState->setRasterizerState(pCurrentRS);
-
-    //auto pTestBuff = mpVao->getIndexBuffer();
-    //size_t loop = pTestBuff->getSize() / 4;
-    //const int32_t* pTestIndexData = reinterpret_cast<const int32_t*>(pTestBuff->map(Buffer::MapType::Read));
-    //for(size_t i = 1; i < loop; i++) {
-    //    std::cout << pTestIndexData[i] << ": ";
-    //}
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
@@ -321,12 +356,12 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
     printf("RasterizerX !!!\n");
 
     // nvvk testing stuff
-    initRayTracing();
-    createBottomLevelAS();
-    createTopLevelAS();
+    //initRayTracing();
+    //createBottomLevelAS();
+    //createTopLevelAS();
 
     // Bind TLAS.
-    mpSceneBlock["rtAccel"].setAS(getTlas());
+    //mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
@@ -335,7 +370,7 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 
     for (size_t materialID = 0; materialID < mMaterialDrawArgs.size(); materialID++) {
 
-        Material::SharedConstPtr pMaterial = mMaterials[materialID];
+        auto pMaterial = mpMaterialSystem->getMaterial(materialID);
         printf("RasterizerX drawing meshes with materialX id %zu\n", materialID);
 
         for (size_t draw_id : mMaterialDrawArgs[materialID]) {
@@ -347,16 +382,10 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
             if (draw.count > 0) {
 
                 // Set state.
-                pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpVao16Bit : mpVao);
+                pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
                 if (draw.ccw) pState->setRasterizerState(pRasterizerStateCCW);
                 else pState->setRasterizerState(pRasterizerStateCW);
-
-                // ProgramVars
-                //auto _pVars = GraphicsVars::create(mpDevice, pVars->getReflection());
-                //_pVars->setParameterBlock("gScene", mpSceneBlock);
-
-
 
                 // Draw the primitives.
                 if (isIndexed) {
@@ -378,180 +407,12 @@ uint32_t Scene::getRaytracingMaxAttributeSize() const {
     return hasDisplacedMesh ? 12 : 8;
 }
 
-VkShaderModule loadShader(const char *fileName, VkDevice device) {
-    std::ifstream is(fileName, std::ios::binary | std::ios::in | std::ios::ate);
-
-    if (is.is_open()) {
-        size_t size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        char* shaderCode = new char[size];
-        is.read(shaderCode, size);
-        is.close();
-
-        assert(size > 0);
-
-        VkShaderModule shaderModule;
-        VkShaderModuleCreateInfo moduleCreateInfo{};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.codeSize = size;
-        moduleCreateInfo.pCode = (uint32_t*)shaderCode;
-
-        vk_call(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
-
-        delete[] shaderCode;
-
-        return shaderModule;
-    } else {
-        std::cerr << "Error: Could not open shader file \"" << fileName << "\"" << "\n";
-        return VK_NULL_HANDLE;
-    }
-}
-
-
 void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uint3 dispatchDims) {
-    logWarning("!!!!!!!!!!!!!!!!Scene::raytrace");
-    
-
-    printf("initRayTracing\n");
-    initRayTracing();
-    printf("initRayTracing done\n");
-
-    return;
-
     PROFILE(mpDevice, "raytraceScene");
+
     assert(pContext && pProgram && pVars);
-
-////////////////
-    std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups{};
-
-    VkPipeline pipeline;
-    VkPipelineLayout pipelineLayout;
-    VkDescriptorSet descriptorSet;
-    VkDescriptorSetLayout descriptorSetLayout;
-
-    VkDescriptorSetLayoutBinding accelerationStructureLayoutBinding{};
-    accelerationStructureLayoutBinding.binding = 0;
-    accelerationStructureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    accelerationStructureLayoutBinding.descriptorCount = 1;
-    accelerationStructureLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding resultImageLayoutBinding{};
-    resultImageLayoutBinding.binding = 1;
-    resultImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    resultImageLayoutBinding.descriptorCount = 1;
-    resultImageLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding uniformBufferBinding{};
-    uniformBufferBinding.binding = 2;
-    uniformBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uniformBufferBinding.descriptorCount = 1;
-    uniformBufferBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    std::vector<VkDescriptorSetLayoutBinding> bindings({
-        accelerationStructureLayoutBinding,
-        resultImageLayoutBinding,
-        uniformBufferBinding
-    });
-
-    VkDescriptorSetLayoutCreateInfo descriptorSetlayoutCI{};
-    descriptorSetlayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetlayoutCI.bindingCount = static_cast<uint32_t>(bindings.size());
-    descriptorSetlayoutCI.pBindings = bindings.data();
-    vk_call(vkCreateDescriptorSetLayout(mpDevice->getApiHandle(), &descriptorSetlayoutCI, nullptr, &descriptorSetLayout));
-
-    VkPipelineLayoutCreateInfo pipelineLayoutCI{};
-    pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCI.setLayoutCount = 1;
-    pipelineLayoutCI.pSetLayouts = &descriptorSetLayout;
-    vk_call(vkCreatePipelineLayout(mpDevice->getApiHandle(), &pipelineLayoutCI, nullptr, &pipelineLayout));
-
-    /*
-        Setup ray tracing shader groups
-    */
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-
-    // Ray generation group
-    {
-        auto shader = loadShader("/home/max/raygen.rgen.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/raygen.rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    // Miss group
-    {
-        auto shader = loadShader("/home/max/miss.rmiss.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/miss.rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-        shaderGroup.generalShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    // Closest hit group
-    {
-        auto shader = loadShader("/home/max/closesthit.rchit.spv", mpDevice->getApiHandle());
-        VkPipelineShaderStageCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        info.pNext = NULL;
-        info.pName = "main";
-        info.module = shader;
-        info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-        shaderStages.push_back(info);
-        //shaderStages.push_back(loadShader(getShadersPath() + "raytracingbasic/closesthit.rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR));
-        VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-        shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-        shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-        shaderGroup.generalShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
-        shaderGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-        shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
-        shaderGroups.push_back(shaderGroup);
-    }
-
-    /*
-        Create the ray tracing pipeline
-    */
-    VkRayTracingPipelineCreateInfoKHR rayTracingPipelineCI{};
-    rayTracingPipelineCI.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    rayTracingPipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-    rayTracingPipelineCI.pStages = shaderStages.data();
-    rayTracingPipelineCI.groupCount = static_cast<uint32_t>(shaderGroups.size());
-    rayTracingPipelineCI.pGroups = shaderGroups.data();
-    rayTracingPipelineCI.maxPipelineRayRecursionDepth = 1;
-    rayTracingPipelineCI.layout = pipelineLayout;
-    vk_call(vkCreateRayTracingPipelinesKHR(mpDevice->getApiHandle(), VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rayTracingPipelineCI, nullptr, &pipeline));
-
-
-////////////////
-
-
-    if (pVars->getGeometryCount() != getGeometryCount()) {
-        throw std::runtime_error("Scene::raytrace() - RtProgramVars geometry count mismatch");
+    if (pVars->getRayTypeCount() > 0 && pVars->getGeometryCount() != getGeometryCount()) {
+        throw std::runtime_error("RtProgramVars geometry count mismatch");
     }
 
     uint32_t rayTypeCount = pVars->getRayTypeCount();
@@ -563,7 +424,7 @@ void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::sh
     pContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
 }
 
-void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<DynamicVertexData>& dynamicData)
+void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData)
 {
     // Create the index buffer.
     size_t ibSize = sizeof(uint32_t) * indexData.size();
@@ -620,7 +481,7 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     // Add the packed static vertex data layout.
     VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
     pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-    pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_NAME, offsetof(PackedStaticVertexData, packedNormalTangent), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_LOC);
+    pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME, offsetof(PackedStaticVertexData, packedNormalTangentCurveRadius), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC);
     pStaticLayout->addElement(VERTEX_TEXCOORD_U_NAME, offsetof(PackedStaticVertexData, texU), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_U_LOC);
     pStaticLayout->addElement(VERTEX_TEXCOORD_V_NAME, offsetof(PackedStaticVertexData, texV), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_V_LOC);
     pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
@@ -634,8 +495,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     // Create the VAO objects.
     // Note that the global index buffer can be mixed 16/32-bit format.
     // For drawing the meshes we need separate VAOs for these cases.
-    mpVao = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
-    mpVao16Bit = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R16Uint);
+    mpMeshVao = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
+    mpMeshVao16Bit = Vao::create(Vao::Topology::TriangleList, pLayout, pVBs, pIB, ResourceFormat::R16Uint);
 }
 
 void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::vector<StaticCurveVertexData>& staticData) {
@@ -683,89 +544,171 @@ void Scene::createCurveVao(const std::vector<uint32_t>& indexData, const std::ve
     mpCurveVao = Vao::create(Vao::Topology::LineStrip, pLayout, pVBs, pIB, ResourceFormat::R32Uint);
 }
     
+
+void Scene::setSDFGridConfig() {
+    if (mSDFGrids.empty()) return;
+
+    for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids) {
+        if (mSDFGridConfig.implementation == SDFGrid::Type::None)
+        {
+            mSDFGridConfig.implementation = pSDFGrid->getType();
+        }
+        else if (mSDFGridConfig.implementation != pSDFGrid->getType())
+        {
+            throw std::runtime_error("All SDF grids in the same scene must currently be of the same type.");
+        }
+    }
+
+    // Set default SDF grid config and compute allowed SDF grid UI settings list.
+
+    switch (mSDFGridConfig.implementation) {
+        case SDFGrid::Type::NormalizedDenseGrid:
+        {
+            mSDFGridConfig.intersectionMethod = SDFGridIntersectionMethod::VoxelSphereTracing;
+            mSDFGridConfig.gradientEvaluationMethod = SDFGridGradientEvaluationMethod::NumericDiscontinuous;
+            mSDFGridConfig.solverMaxIterations = 256;
+            mSDFGridConfig.optimizeVisibilityRays = true;
+
+            break;
+        }
+        case SDFGrid::Type::SparseVoxelSet:
+        case SDFGrid::Type::SparseBrickSet:
+        {
+            mSDFGridConfig.intersectionMethod = SDFGridIntersectionMethod::VoxelSphereTracing;
+            mSDFGridConfig.gradientEvaluationMethod = SDFGridGradientEvaluationMethod::NumericDiscontinuous;
+            mSDFGridConfig.solverMaxIterations = 256;
+            mSDFGridConfig.optimizeVisibilityRays = true;
+
+            break;
+        case SDFGrid::Type::SparseVoxelOctree:
+            mSDFGridConfig.intersectionMethod = SDFGridIntersectionMethod::VoxelSphereTracing;
+            mSDFGridConfig.gradientEvaluationMethod = SDFGridGradientEvaluationMethod::NumericDiscontinuous;
+            mSDFGridConfig.solverMaxIterations = 256;
+            mSDFGridConfig.optimizeVisibilityRays = true;
+        }
+    }
+}
+
+void Scene::initSDFGrids() {
+    if (mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet) {
+        mSDFGridConfig.implementationData.SBS.virtualBrickCoordsBitCount = 0;
+        mSDFGridConfig.implementationData.SBS.brickLocalVoxelCoordsBitCount = 0;
+    }
+    else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+    {
+        mSDFGridConfig.implementationData.SVO.svoIndexBitCount = 0;
+    }
+
+    for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids) {
+        pSDFGrid->createResources(mpDevice->getRenderContext());
+
+        if (mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet) {
+            const SDFSBS* pSBS = reinterpret_cast<const SDFSBS*>(pSDFGrid.get());
+            mSDFGridConfig.implementationData.SBS.virtualBrickCoordsBitCount = std::max(mSDFGridConfig.implementationData.SBS.virtualBrickCoordsBitCount, pSBS->getVirtualBrickCoordsBitCount());
+            mSDFGridConfig.implementationData.SBS.brickLocalVoxelCoordsBitCount = std::max(mSDFGridConfig.implementationData.SBS.brickLocalVoxelCoordsBitCount, pSBS->getBrickLocalVoxelCoordsBrickCount());
+        }
+        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+        {
+            const SDFSVO* pSVO = reinterpret_cast<const SDFSVO*>(pSDFGrid.get());
+            mSDFGridConfig.implementationData.SVO.svoIndexBitCount = std::max(mSDFGridConfig.implementationData.SVO.svoIndexBitCount, pSVO->getSVOIndexBitCount());
+        }
+    }
+}
+
+
 void Scene::initResources() {
     GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main", getSceneDefines());
     ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
     assert(pReflection);
 
     mpSceneBlock = ParameterBlock::create(mpDevice, pReflection);
-    mpMeshesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMeshesBuffer->setName("Scene::mpMeshesBuffer");
-    mpMeshInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMeshInstancesBuffer->setName("Scene::mpMeshInstancesBuffer");
+    
+    if (!mGeometryInstanceData.empty()) {
+        mpGeometryInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kGeometryInstanceBufferName], (uint32_t)mGeometryInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpGeometryInstancesBuffer->setName("Scene::mpGeometryInstancesBuffer");
+    }
 
+    if (!mMeshDesc.empty()) {
+        mpMeshesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpMeshesBuffer->setName("Scene::mpMeshesBuffer");
+    }
+    
     if (!mCurveDesc.empty()) {
         mpCurvesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCurveBufferName], (uint32_t)mCurveDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpCurvesBuffer->setName("Scene::mpCurvesBuffer");
-        mpCurveInstancesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCurveInstanceBufferName], (uint32_t)mCurveInstanceData.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpCurveInstancesBuffer->setName("Scene::mpCurveInstancesBuffer");
     }
-
-    mpMaterialsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpMaterialsBuffer->setName("Scene::mpMaterialsBuffer");
 
     if (!mLights.empty()) {
         mpLightsBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
         mpLightsBuffer->setName("Scene::mpLightsBuffer");
     }
 
-    if (!mVolumes.empty()) {
-        mpVolumesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kVolumesBufferName], (uint32_t)mVolumes.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-        mpVolumesBuffer->setName("Scene::mpVolumesBuffer");
+    if (!mGridVolumes.empty())
+    {
+        mpGridVolumesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kGridVolumesBufferName], (uint32_t)mGridVolumes.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpGridVolumesBuffer->setName("Scene::mpGridVolumesBuffer");
     }
 }
 
 void Scene::uploadResources() {
     assert(mpAnimationController);
-    assert(hasIndexBuffer());
 
-    // Upload geometry
-    mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
+    // Upload geometry.
+    if (!mMeshDesc.empty()) mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
     if (!mCurveDesc.empty()) mpCurvesBuffer->setBlob(mCurveDesc.data(), 0, sizeof(CurveDesc) * mCurveDesc.size());
 
-    mpSceneBlock->setBuffer(kMeshInstanceBufferName, mpMeshInstancesBuffer);
+    mpSceneBlock->setBuffer(kGeometryInstanceBufferName, mpGeometryInstancesBuffer);
     mpSceneBlock->setBuffer(kMeshBufferName, mpMeshesBuffer);
-    mpSceneBlock->setBuffer(kCurveInstanceBufferName, mpCurveInstancesBuffer);
     mpSceneBlock->setBuffer(kCurveBufferName, mpCurvesBuffer);
-    mpSceneBlock->setBuffer(kLightsBufferName, mpLightsBuffer);
-    mpSceneBlock->setBuffer(kVolumesBufferName, mpVolumesBuffer);
-    mpSceneBlock->setBuffer(kMaterialsBufferName, mpMaterialsBuffer);
-    if (hasIndexBuffer()) mpSceneBlock->setBuffer(kIndexBufferName, mpVao->getIndexBuffer());
-    mpSceneBlock->setBuffer(kVertexBufferName, mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
-    mpSceneBlock->setBuffer(kPrevVertexBufferName, mpAnimationController->getPrevVertexData()); // Can be nullptr
 
-    if (mpCurveVao != nullptr) {
+    auto sdfGridsVar = mpSceneBlock[kSDFGridsArrayName];
+
+    for (uint32_t i = 0; i < mSDFGrids.size(); i++)
+    {
+        const SDFGrid::SharedPtr& pGrid = mSDFGrids[i];
+        pGrid->setShaderData(sdfGridsVar[i]);
+    }
+
+    mpSceneBlock->setBuffer(kLightsBufferName, mpLightsBuffer);
+    mpSceneBlock->setBuffer(kGridVolumesBufferName, mpGridVolumesBuffer);
+
+    if (mpMeshVao != nullptr)
+    {
+        if (hasIndexBuffer()) mpSceneBlock->setBuffer(kIndexBufferName, mpMeshVao->getIndexBuffer());
+        mpSceneBlock->setBuffer(kVertexBufferName, mpMeshVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
+        mpSceneBlock->setBuffer(kPrevVertexBufferName, mpAnimationController->getPrevVertexData()); // Can be nullptr
+    }
+
+    if (mpCurveVao != nullptr)
+    {
         mpSceneBlock->setBuffer(kCurveIndexBufferName, mpCurveVao->getIndexBuffer());
         mpSceneBlock->setBuffer(kCurveVertexBufferName, mpCurveVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
         mpSceneBlock->setBuffer(kPrevCurveVertexBufferName, mpAnimationController->getPrevCurveVertexData());
     }
 }
 
-// TODO: On initial upload of materials, we could improve this by not having separate calls to setElement()
-// but instead prepare a buffer containing all data.
-void Scene::uploadMaterial(uint32_t materialID) {
-    assert(materialID < mMaterials.size());
+Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
+    // Update material system.
+    Material::UpdateFlags materialUpdates = mpMaterialSystem->update(forceUpdate);
 
-    const auto& material = mMaterials[materialID];
+    UpdateFlags flags = UpdateFlags::None;
+    if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
+    {
+        flags |= UpdateFlags::MaterialsChanged;
 
-    mpMaterialsBuffer->setElement(materialID, material->getData());
+        // Bind materials parameter block to scene.
+        mpSceneBlock->setParameterBlock(kMaterialsBlockName, mpMaterialSystem->getParameterBlock());
 
-    const auto& resources = material->getResources();
+        // If displacement parameters have changed, we need to trigger displacement update.
+        if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged))
+        {
+            mDisplacement.needsUpdate = true;
+        }
 
-    auto var = mpSceneBlock["materialResources"][materialID];
+        updateMaterialStats();
+    }
 
-#define set_texture(texName) var[#texName] = resources.texName;
-    set_texture(baseColor);
-    set_texture(specular);
-    set_texture(emissive);
-    set_texture(normalMap);
-    set_texture(transmission);
-    set_texture(displacementMap);
-#undef set_texture
-
-    var["samplerState"] = resources.samplerState;
-    var["displacementSamplerStateMin"] = resources.displacementSamplerStateMin;
-    var["displacementSamplerStateMax"] = resources.displacementSamplerStateMax;
+    return flags;
 }
 
 void Scene::uploadSelectedCamera() {
@@ -776,81 +719,120 @@ void Scene::updateBounds() {
     const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
 
     mSceneBB = AABB();
-    for (const auto& inst : mMeshInstanceData) {
-        const AABB& meshBB = mMeshBBs[inst.meshID];
+
+    for (const auto& inst : mGeometryInstanceData)
+    {
         const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
-        mSceneBB |= meshBB.transform(transform);
+        switch (inst.getType())
+        {
+        case GeometryType::TriangleMesh:
+        case GeometryType::DisplacedTriangleMesh:
+        {
+            const AABB& meshBB = mMeshBBs[inst.geometryID];
+            mSceneBB |= meshBB.transform(transform);
+            break;
+        }
+        case GeometryType::Curve:
+        {
+            const AABB& curveBB = mCurveBBs[inst.geometryID];
+            mSceneBB |= curveBB.transform(transform);
+            break;
+        }
+        case GeometryType::SDFGrid:
+        {
+            float3x3 transform3x3 = glm::mat3(transform);
+            transform3x3[0] = glm::abs(transform3x3[0]);
+            transform3x3[1] = glm::abs(transform3x3[1]);
+            transform3x3[2] = glm::abs(transform3x3[2]);
+            float3 center = transform[3];
+            float3 halfExtent = transform3x3 * float3(0.5f);
+            mSceneBB |= AABB(center - halfExtent, center + halfExtent);
+            break;
+        }
+        }
     }
 
-    for (const auto& aabb : mCustomPrimitiveAABBs) {
+    for (const auto& aabb : mCustomPrimitiveAABBs)
+    {
         mSceneBB |= aabb;
     }
 
-    for (const auto& inst : mCurveInstanceData) {
-        const AABB& curveBB = mCurveBBs[inst.curveID];
-        const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
-        mSceneBB |= curveBB.transform(transform);
-    }
-
-    for (const auto& volume : mVolumes) {
-        mSceneBB |= volume->getBounds();
+    for (const auto& pGridVolume : mGridVolumes)
+    {
+        mSceneBB |= pGridVolume->getBounds();
     }
 }
 
-void Scene::updateMeshInstances(bool forceUpdate) {
+Scene::UpdateFlags Scene::updateSDFGrids(RenderContext* pRenderContext)
+{
+    UpdateFlags updateFlags = UpdateFlags::None;
+    if (!is_set(mGeometryTypes, GeometryTypeFlags::SDFGrid)) return updateFlags;
+
+    for (uint32_t sdfGridID = 0; sdfGridID < mSDFGrids.size(); ++sdfGridID)
+    {
+        SDFGrid::SharedPtr& pSDFGrid = mSDFGrids[sdfGridID];
+        SDFGrid::UpdateFlags sdfGridUpdateFlags = pSDFGrid->update(pRenderContext);
+
+        if (is_set(sdfGridUpdateFlags, SDFGrid::UpdateFlags::AABBsChanged))
+        {
+            updateGeometryStats();
+
+            // Clear any previous BLAS data. This will trigger a full BLAS/TLAS rebuild.
+            // TODO: Support partial rebuild of just the procedural primitives.
+            mBlasDataValid = false;
+            updateFlags |= Scene::UpdateFlags::SDFGeometryChanged;
+        }
+
+        if (is_set(sdfGridUpdateFlags, SDFGrid::UpdateFlags::BuffersReallocated))
+        {
+            updateGeometryStats();
+            pSDFGrid->setShaderData(mpSceneBlock[kSDFGridsArrayName][sdfGridID]);
+            updateFlags |= Scene::UpdateFlags::SDFGeometryChanged;
+        }
+    }
+
+    return updateFlags;
+}
+
+void Scene::updateGeometryInstances(bool forceUpdate)
+{
+    if (mGeometryInstanceData.empty()) return;
+
     bool dataChanged = false;
     const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
 
-    for (auto& inst : mMeshInstanceData) {
-        uint32_t prevFlags = inst.flags;
+    for (auto& inst : mGeometryInstanceData)
+    {
+        if (inst.getType() == GeometryType::TriangleMesh || inst.getType() == GeometryType::DisplacedTriangleMesh)
+        {
+            uint32_t prevFlags = inst.flags;
 
-        const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
-        bool isTransformFlipped = doesTransformFlip(transform);
-        bool isObjectFrontFaceCW = getMesh(inst.meshID).isFrontFaceCW();
-        bool isWorldFrontFaceCW = isObjectFrontFaceCW ^ isTransformFlipped;
+            assert(inst.globalMatrixID < globalMatrices.size());
+            const glm::mat4& transform = globalMatrices[inst.globalMatrixID];
+            bool isTransformFlipped = doesTransformFlip(transform);
+            bool isObjectFrontFaceCW = getMesh(inst.geometryID).isFrontFaceCW();
+            bool isWorldFrontFaceCW = isObjectFrontFaceCW ^ isTransformFlipped;
 
-        if (isTransformFlipped) inst.flags |= (uint32_t)MeshInstanceFlags::TransformFlipped;
-        else inst.flags &= ~(uint32_t)MeshInstanceFlags::TransformFlipped;
+            if (isTransformFlipped) inst.flags |= (uint32_t)GeometryInstanceFlags::TransformFlipped;
+            else inst.flags &= ~(uint32_t)GeometryInstanceFlags::TransformFlipped;
 
-        if (isObjectFrontFaceCW) inst.flags |= (uint32_t)MeshInstanceFlags::IsObjectFrontFaceCW;
-        else inst.flags &= ~(uint32_t)MeshInstanceFlags::IsObjectFrontFaceCW;
+            if (isObjectFrontFaceCW) inst.flags |= (uint32_t)GeometryInstanceFlags::IsObjectFrontFaceCW;
+            else inst.flags &= ~(uint32_t)GeometryInstanceFlags::IsObjectFrontFaceCW;
 
-        if (isWorldFrontFaceCW) inst.flags |= (uint32_t)MeshInstanceFlags::IsWorldFrontFaceCW;
-        else inst.flags &= ~(uint32_t)MeshInstanceFlags::IsWorldFrontFaceCW;
+            if (isWorldFrontFaceCW) inst.flags |= (uint32_t)GeometryInstanceFlags::IsWorldFrontFaceCW;
+            else inst.flags &= ~(uint32_t)GeometryInstanceFlags::IsWorldFrontFaceCW;
 
-        dataChanged |= (inst.flags != prevFlags);
+            dataChanged |= (inst.flags != prevFlags);
+        }
     }
 
-    if (forceUpdate || dataChanged) {
-        // Make sure the scene data fits in the packed format.
-        size_t maxMatrices = 1 << PackedMeshInstanceData::kMatrixBits;
-        if (globalMatrices.size() > maxMatrices) {
-            throw std::runtime_error(("Number of transform matrices (" + std::to_string(globalMatrices.size()) + ") exceeds the maximum (" + std::to_string(maxMatrices) + ").").c_str());
-        }
-
-        size_t maxMeshes = 1 << PackedMeshInstanceData::kMeshBits;
-        if (getMeshCount() > maxMeshes) {
-            throw std::runtime_error(("Number of meshes (" + std::to_string(getMeshCount()) + ") exceeds the maximum (" + std::to_string(maxMeshes) + ").").c_str());
-        }
-
-        size_t maxMaterials = 1 << PackedMeshInstanceData::kMaterialBits;
-        if (mMaterials.size() > maxMaterials) {
-            throw std::runtime_error(("Number of materials (" + std::to_string(mMaterials.size()) + ") exceeds the maximum (" + std::to_string(maxMaterials) + ").").c_str());
-        }
-
-        // Prepare packed mesh instance data.
-        assert(mMeshInstanceData.size() > 0);
-        mPackedMeshInstanceData.resize(mMeshInstanceData.size());
-
-        for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
-            mPackedMeshInstanceData[i].pack(mMeshInstanceData[i]);
-        }
-
-        size_t byteSize = sizeof(PackedMeshInstanceData) * mPackedMeshInstanceData.size();
-        assert(mpMeshInstancesBuffer && mpMeshInstancesBuffer->getSize() == byteSize);
-        mpMeshInstancesBuffer->setBlob(mPackedMeshInstanceData.data(), 0, byteSize);
+    if (forceUpdate || dataChanged)
+    {
+        uint32_t byteSize = (uint32_t)(mGeometryInstanceData.size() * sizeof(GeometryInstanceData));
+        mpGeometryInstancesBuffer->setBlob(mGeometryInstanceData.data(), 0, byteSize);
     }
 }
+
 
 Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     // This function updates the global list of AABBs for all procedural primitives.
@@ -959,20 +941,23 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
 }
 
 Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate) {
-    if (!is_set(mPrimitiveTypes, PrimitiveTypeFlags::DisplacedTriangleMesh)) return UpdateFlags::None;
+    if (!hasGeometryType(GeometryType::DisplacedTriangleMesh)) return UpdateFlags::None;
 
     // For now we assume that displaced meshes are static.
     // Create AABB and AABB update task buffers.
-    if (!mDisplacement.pAABBBuffer) {
+    if (!mDisplacement.pAABBBuffer)
+    {
         mDisplacement.meshData.resize(mMeshDesc.size());
         mDisplacement.updateTasks.clear();
 
         uint32_t AABBOffset = 0;
 
-        for (uint32_t meshID = 0; meshID < mMeshDesc.size(); ++meshID) {
+        for (uint32_t meshID = 0; meshID < mMeshDesc.size(); ++meshID)
+        {
             const auto& mesh = mMeshDesc[meshID];
 
-            if (!mesh.isDisplaced()) {
+            if (!mesh.isDisplaced())
+            {
                 mDisplacement.meshData[meshID] = {};
                 continue;
             }
@@ -989,7 +974,7 @@ Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate) {
             mDisplacement.updateTasks.push_back(task);
         }
 
-        mDisplacement.pAABBBuffer = Buffer::createStructured(mpDevice, sizeof(D3D12_RAYTRACING_AABB), AABBOffset, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        mDisplacement.pAABBBuffer = Buffer::createStructured(mpDevice, sizeof(RtAABB), AABBOffset, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
         assert(mDisplacement.updateTasks.size() < std::numeric_limits<uint32_t>::max());
         mDisplacement.pUpdateTasksBuffer = Buffer::createStructured(mpDevice, (uint32_t)sizeof(DisplacementUpdateTask), (uint32_t)mDisplacement.updateTasks.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mDisplacement.updateTasks.data());
@@ -1001,17 +986,19 @@ Scene::UpdateFlags Scene::updateDisplacement(bool forceUpdate) {
     if (!mFinalized) return UpdateFlags::None;
 
     // Update the AABB data.
-    if (!mDisplacement.pUpdatePass) {
+    if (!mDisplacement.pUpdatePass)
+    {
         mDisplacement.pUpdatePass = ComputePass::create(mpDevice, "Scene/Displacement/DisplacementUpdate.cs.slang", "main", getSceneDefines());
         mDisplacement.needsUpdate = true;
     }
 
-    if (mDisplacement.needsUpdate) {
+    if (mDisplacement.needsUpdate)
+    {
         // TODO: Only update objects with modified materials.
 
         PROFILE(mpDevice, "updateDisplacement");
 
-        mDisplacement.pUpdatePass->getVars()->setParameterBlock("gScene", mpSceneBlock);
+        mDisplacement.pUpdatePass->getVars()->setParameterBlock(kParameterBlockName, mpSceneBlock);
 
         auto var = mDisplacement.pUpdatePass->getRootVar()["CB"];
         var["gTaskCount"] = (uint32_t)mDisplacement.updateTasks.size();
@@ -1034,17 +1021,22 @@ Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate) {
     Scene::UpdateFlags flags = updateRaytracingAABBData(forceUpdate);
 
     // Update the procedural primitives metadata.
-    if (forceUpdate || mCustomPrimitivesChanged) {
+    if (forceUpdate || mCustomPrimitivesChanged)
+    {
         // Update the custom primitives buffer.
-        if (!mCustomPrimitiveDesc.empty()) {
-            if (mpCustomPrimitivesBuffer == nullptr || mpCustomPrimitivesBuffer->getElementCount() < (uint32_t)mCustomPrimitiveDesc.size()) {
+        if (!mCustomPrimitiveDesc.empty())
+        {
+            if (mpCustomPrimitivesBuffer == nullptr || mpCustomPrimitivesBuffer->getElementCount() < (uint32_t)mCustomPrimitiveDesc.size())
+            {
                 mpCustomPrimitivesBuffer = Buffer::createStructured(mpDevice, mpSceneBlock[kCustomPrimitiveBufferName], (uint32_t)mCustomPrimitiveDesc.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, mCustomPrimitiveDesc.data(), false);
                 mpCustomPrimitivesBuffer->setName("Scene::mpCustomPrimitivesBuffer");
 
                 // Bind the buffer to the scene.
                 assert(mpSceneBlock);
                 mpSceneBlock->setBuffer(kCustomPrimitiveBufferName, mpCustomPrimitivesBuffer);
-            } else {
+            }
+            else
+            {
                 size_t bytes = sizeof(CustomPrimitiveDesc) * mCustomPrimitiveDesc.size();
                 assert(mpCustomPrimitivesBuffer && mpCustomPrimitivesBuffer->getSize() >= bytes);
                 mpCustomPrimitivesBuffer->setBlob(mCustomPrimitiveDesc.data(), 0, bytes);
@@ -1052,21 +1044,13 @@ Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate) {
         }
 
         // Update scene constants.
-        uint32_t displacedMeshInstanceOffset = getMeshInstanceCount() - getDisplacedMeshInstanceCount();
-        uint32_t curveInstanceOffset = getMeshInstanceCount();
-        uint32_t curveInstanceCount = getCurveInstanceCount();
-        uint32_t customPrimitiveInstanceOffset = curveInstanceOffset + curveInstanceCount;
+        uint32_t customPrimitiveInstanceOffset = getGeometryInstanceCount();
         uint32_t customPrimitiveInstanceCount = getCustomPrimitiveCount();
-        uint32_t totalInstanceCount = customPrimitiveInstanceOffset + customPrimitiveInstanceCount;
 
         auto var = mpSceneBlock->getRootVar();
-        var["displacedMeshInstanceOffset"] = displacedMeshInstanceOffset;
-        var["curveInstanceOffset"] = curveInstanceOffset;
-        var["curveInstanceCount"] = curveInstanceCount;
         var["customPrimitiveInstanceOffset"] = customPrimitiveInstanceOffset;
         var["customPrimitiveInstanceCount"] = customPrimitiveInstanceCount;
         var["customPrimitiveAABBOffset"] = mCustomPrimitiveAABBOffset;
-        var["totalInstanceCount"] = totalInstanceCount;
 
         flags |= Scene::UpdateFlags::GeometryChanged;
     }
@@ -1074,33 +1058,32 @@ Scene::UpdateFlags Scene::updateProceduralPrimitives(bool forceUpdate) {
     return flags;
 }
 
-void Scene::updateCurveInstances(bool forceUpdate) {
-    if (mCurveInstanceData.empty()) return;
-
-    if (forceUpdate) {
-        mpCurveInstancesBuffer->setBlob(mCurveInstanceData.data(), 0, sizeof(CurveInstanceData) * mCurveInstanceData.size());
-    }
+void Scene::updateGeometryTypes() {
+    mGeometryTypes = GeometryTypeFlags(0);
+    if (getMeshCount() > 0) mGeometryTypes |= GeometryTypeFlags::TriangleMesh;
+    auto hasDisplaced = std::any_of(mMeshDesc.begin(), mMeshDesc.end(), [](const auto& mesh) { return mesh.isDisplaced(); });
+    if (hasDisplaced) mGeometryTypes |= GeometryTypeFlags::DisplacedTriangleMesh;
+    if (getCurveCount() > 0) mGeometryTypes |= GeometryTypeFlags::Curve;
+    if (getSDFGridCount() > 0) mGeometryTypes |= GeometryTypeFlags::SDFGrid;
+    if (getCustomPrimitiveCount() > 0) mGeometryTypes |= GeometryTypeFlags::Custom;
 }
-
-void Scene::updatePrimitiveTypes()
-{
-    mPrimitiveTypes = PrimitiveTypeFlags::None;
-    if (getMeshCount() > 0) mPrimitiveTypes |= PrimitiveTypeFlags::TriangleMesh;
-    if (getDisplacedMeshInstanceCount() > 0) mPrimitiveTypes |= PrimitiveTypeFlags::DisplacedTriangleMesh;
-    if (getCurveCount() > 0) mPrimitiveTypes |= PrimitiveTypeFlags::Curve;
-    if (getCustomPrimitiveCount() > 0) mPrimitiveTypes |= PrimitiveTypeFlags::Custom;
-}
-
 
 void Scene::finalize() {
     assert(mHas16BitIndices || mHas32BitIndices);
-    updatePrimitiveTypes();
-    mHitInfo.init(*this);
-    initResources();
+
+    // Prepare the materials.
+    // This step is necessary for setting up scene defines, which are used below when creating scene resources.
+    // TODO: Remove this when unbounded descriptor arrays are supported (#1321).
+    assert(mpMaterialSystem);
+    mpMaterialSystem->finalize();
+
+    updateGeometryTypes();
+    initSDFGrids();
+    mHitInfo.init(*this, mUseCompressedHitInfo);
+    initResources(); // Requires scene defines
     mpAnimationController->animate(mpDevice->getRenderContext(), 0); // Requires Scene block to exist
     updateGeometry(true);
-    updateMeshInstances(true);
-    updateCurveInstances(true);
+    updateGeometryInstances(true);
 
     updateBounds();
     createDrawList();
@@ -1114,7 +1097,7 @@ void Scene::finalize() {
     uploadSelectedCamera();
     addViewpoint();
     updateLights(true);
-    updateVolumes(true);
+    updateGridVolumes(true);
     updateEnvMap(true);
     updateMaterials(true);
     uploadResources(); // Upload data after initialization is complete
@@ -1122,8 +1105,7 @@ void Scene::finalize() {
     updateGeometryStats();
     updateMaterialStats();
     updateLightStats();
-    updateVolumeStats();
-    //prepareUI();
+    updateGridVolumeStats();
 
     mFinalized = true;
 }
@@ -1139,13 +1121,57 @@ void Scene::updateGeometryStats() {
     auto& s = mSceneStats;
 
     s.meshCount = getMeshCount();
-    s.meshInstanceCount = getMeshInstanceCount();
+    s.meshInstanceCount = 0;
     s.meshInstanceOpaqueCount = 0;
     s.transformCount = getAnimationController()->getGlobalMatrices().size();
     s.uniqueVertexCount = 0;
     s.uniqueTriangleCount = 0;
     s.instancedVertexCount = 0;
     s.instancedTriangleCount = 0;
+    s.curveCount = getCurveCount();
+    s.curveInstanceCount = 0;
+    s.uniqueCurvePointCount = 0;
+    s.uniqueCurveSegmentCount = 0;
+    s.instancedCurvePointCount = 0;
+    s.instancedCurveSegmentCount = 0;
+    s.sdfGridCount = getSDFGridCount();
+    s.sdfGridDescriptorCount = getSDFGridDescCount();
+    s.sdfGridInstancesCount = 0;
+
+    s.customPrimitiveCount = getCustomPrimitiveCount();
+
+    for (uint32_t instanceID = 0; instanceID < getGeometryInstanceCount(); instanceID++)
+    {
+        const auto& instance = getGeometryInstance(instanceID);
+        switch (instance.getType())
+        {
+        case GeometryType::TriangleMesh:
+        case GeometryType::DisplacedTriangleMesh:
+        {
+            s.meshInstanceCount++;
+            const auto& mesh = getMesh(instance.geometryID);
+            s.instancedVertexCount += mesh.vertexCount;
+            s.instancedTriangleCount += mesh.getTriangleCount();
+
+            auto pMaterial = getMaterial(instance.materialID);
+            if (pMaterial->isOpaque()) s.meshInstanceOpaqueCount++;
+            break;
+        }
+        case GeometryType::Curve:
+        {
+            s.curveInstanceCount++;
+            const auto& curve = getCurve(instance.geometryID);
+            s.instancedCurvePointCount += curve.vertexCount;
+            s.instancedCurveSegmentCount += curve.getSegmentCount();
+            break;
+        }
+        case GeometryType::SDFGrid:
+        {
+            s.sdfGridInstancesCount++;
+            break;
+        }
+        }
+    }
 
     for (uint32_t meshID = 0; meshID < getMeshCount(); meshID++)
     {
@@ -1153,22 +1179,6 @@ void Scene::updateGeometryStats() {
         s.uniqueVertexCount += mesh.vertexCount;
         s.uniqueTriangleCount += mesh.getTriangleCount();
     }
-    for (uint32_t instanceID = 0; instanceID < getMeshInstanceCount(); instanceID++)
-    {
-        const auto& instance = getMeshInstance(instanceID);
-        const auto& mesh = getMesh(instance.meshID);
-        s.instancedVertexCount += mesh.vertexCount;
-        s.instancedTriangleCount += mesh.getTriangleCount();
-
-        if (getMaterial(instance.materialID)->isOpaque()) s.meshInstanceOpaqueCount++;
-    }
-
-    s.curveCount = getCurveCount();
-    s.curveInstanceCount = getCurveInstanceCount();
-    s.uniqueCurvePointCount = 0;
-    s.uniqueCurveSegmentCount = 0;
-    s.instancedCurvePointCount = 0;
-    s.instancedCurveSegmentCount = 0;
 
     for (uint32_t curveID = 0; curveID < getCurveCount(); curveID++)
     {
@@ -1176,33 +1186,29 @@ void Scene::updateGeometryStats() {
         s.uniqueCurvePointCount += curve.vertexCount;
         s.uniqueCurveSegmentCount += curve.getSegmentCount();
     }
-    for (uint32_t instanceID = 0; instanceID < getCurveInstanceCount(); instanceID++)
-    {
-        const auto& instance = getCurveInstance(instanceID);
-        const auto& curve = getCurve(instance.curveID);
-        s.instancedCurvePointCount += curve.vertexCount;
-        s.instancedCurveSegmentCount += curve.getSegmentCount();
-    }
-
-    s.customPrimitiveCount = getCustomPrimitiveCount();
 
     // Calculate memory usage.
-    const auto& pIB = mpVao->getIndexBuffer();
-    const auto& pVB = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const auto& pDrawID = mpVao->getVertexBuffer(kDrawIdBufferIndex);
-
     s.indexMemoryInBytes = 0;
     s.vertexMemoryInBytes = 0;
     s.geometryMemoryInBytes = 0;
     s.animationMemoryInBytes = 0;
 
-    s.indexMemoryInBytes += pIB ? pIB->getSize() : 0;
-    s.vertexMemoryInBytes += pVB ? pVB->getSize() : 0;
+    if (mpMeshVao)
+    {
+        const auto& pIB = mpMeshVao->getIndexBuffer();
+        const auto& pVB = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
+        const auto& pDrawID = mpMeshVao->getVertexBuffer(kDrawIdBufferIndex);
+
+        s.indexMemoryInBytes += pIB ? pIB->getSize() : 0;
+        s.vertexMemoryInBytes += pVB ? pVB->getSize() : 0;
+        s.geometryMemoryInBytes += pDrawID ? pDrawID->getSize() : 0;
+    }
 
     s.curveIndexMemoryInBytes = 0;
     s.curveVertexMemoryInBytes = 0;
 
-    if (mpCurveVao != nullptr) {
+    if (mpCurveVao != nullptr)
+    {
         const auto& pCurveIB = mpCurveVao->getIndexBuffer();
         const auto& pCurveVB = mpCurveVao->getVertexBuffer(kStaticDataBufferIndex);
 
@@ -1210,50 +1216,30 @@ void Scene::updateGeometryStats() {
         s.curveVertexMemoryInBytes += pCurveVB ? pCurveVB->getSize() : 0;
     }
 
+    s.sdfGridMemoryInBytes = 0;
+
+    for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids)
+    {
+        s.sdfGridMemoryInBytes += pSDFGrid->getSize();
+    }
+
+    s.geometryMemoryInBytes += mpGeometryInstancesBuffer ? mpGeometryInstancesBuffer->getSize() : 0;
     s.geometryMemoryInBytes += mpMeshesBuffer ? mpMeshesBuffer->getSize() : 0;
-    s.geometryMemoryInBytes += mpMeshInstancesBuffer ? mpMeshInstancesBuffer->getSize() : 0;
+    s.geometryMemoryInBytes += mpCurvesBuffer ? mpCurvesBuffer->getSize() : 0;
     s.geometryMemoryInBytes += mpCustomPrimitivesBuffer ? mpCustomPrimitivesBuffer->getSize() : 0;
     s.geometryMemoryInBytes += mpRtAABBBuffer ? mpRtAABBBuffer->getSize() : 0;
-    s.geometryMemoryInBytes += pDrawID ? pDrawID->getSize() : 0;
-    
-    for (const auto& draw : mDrawArgs) {
+
+    for (const auto& draw : mDrawArgs)
+    {
         assert(draw.pBuffer);
         s.geometryMemoryInBytes += draw.pBuffer->getSize();
     }
-    
-    s.geometryMemoryInBytes += mpCurvesBuffer ? mpCurvesBuffer->getSize() : 0;
-    s.geometryMemoryInBytes += mpCurveInstancesBuffer ? mpCurveInstancesBuffer->getSize() : 0;
 
     s.animationMemoryInBytes += getAnimationController()->getMemoryUsageInBytes();
 }
 
 void Scene::updateMaterialStats() {
-    auto& s = mSceneStats;
-
-    s.materialCount = mMaterials.size();
-    s.materialOpaqueCount = 0;
-    s.materialMemoryInBytes = mpMaterialsBuffer ? mpMaterialsBuffer->getSize() : 0;
-
-    std::set<Texture::SharedPtr> textures;
-    for (const auto& m : mMaterials) {
-        for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::Count; i++) {
-            const auto& t = m->getTexture((Material::TextureSlot)i);
-            if (t) textures.insert(t);
-        }
-
-        if (m->isOpaque()) s.materialOpaqueCount++;
-    }
-
-    s.textureCount = textures.size();
-    s.textureCompressedCount = 0;
-    s.textureTexelCount = 0;
-    s.textureMemoryInBytes = 0;
-
-    for (const auto& t : textures) {
-        s.textureTexelCount += t->getTexelCount();
-        s.textureMemoryInBytes += t->getTextureSizeInBytes();
-        if (isCompressedFormat(t->getFormat())) s.textureCompressedCount++;
-    }
+    mSceneStats.materials = mpMaterialSystem->getStats();
 }
 
 void Scene::updateRaytracingBLASStats() {
@@ -1268,20 +1254,23 @@ void Scene::updateRaytracingBLASStats() {
     s.blasMemoryInBytes = 0;
     s.blasScratchMemoryInBytes = 0;
 
-    for (const auto& blas : mBlasData) {
+    for (const auto& blas : mBlasData)
+    {
         if (blas.useCompaction) s.blasCompactedCount++;
         s.blasMemoryInBytes += blas.blasByteSize;
 
         // Count number of opaque geometries in BLAS.
         uint64_t opaque = 0;
-        for (const auto& desc : blas.geomDescs) {
-            if (desc.flags & VK_GEOMETRY_OPAQUE_BIT_KHR) opaque++;
+        for (const auto& desc : blas.geomDescs)
+        {
+            if (is_set(desc.flags, RtGeometryFlags::Opaque)) opaque++;
         }
 
         if (opaque == blas.geomDescs.size()) s.blasOpaqueCount++;
         s.blasGeometryCount += blas.geomDescs.size();
         s.blasOpaqueGeometryCount += opaque;
     }
+
     if (mpBlasScratch) s.blasScratchMemoryInBytes += mpBlasScratch->getSize();
     if (mpBlasStaticWorldMatrices) s.blasScratchMemoryInBytes += mpBlasStaticWorldMatrices->getSize();
 }
@@ -1293,9 +1282,11 @@ void Scene::updateRaytracingTLASStats() {
     s.tlasMemoryInBytes = 0;
     s.tlasScratchMemoryInBytes = 0;
 
-    for (const auto& [i, tlas] : mTlasCache) {
-        if (tlas.pTlas) {
-            s.tlasMemoryInBytes += tlas.pTlas->getSize();
+    for (const auto& [i, tlas] : mTlasCache)
+    {
+        if (tlas.pTlasBuffer)
+        {
+            s.tlasMemoryInBytes += tlas.pTlasBuffer->getSize();
             s.tlasCount++;
         }
         if (tlas.pInstanceDescs) s.tlasScratchMemoryInBytes += tlas.pInstanceDescs->getSize();
@@ -1303,10 +1294,11 @@ void Scene::updateRaytracingTLASStats() {
     if (mpTlasScratch) s.tlasScratchMemoryInBytes += mpTlasScratch->getSize();
 }
 
-void Scene::updateLightStats() {
+void Scene::updateLightStats()
+{
     auto& s = mSceneStats;
 
-    s.activeLightCount = mActiveLightCount;
+    s.activeLightCount = mActiveLights.size();;
     s.totalLightCount = mLights.size();
     s.pointLightCount = 0;
     s.directionalLightCount = 0;
@@ -1314,42 +1306,44 @@ void Scene::updateLightStats() {
     s.sphereLightCount = 0;
     s.distantLightCount = 0;
 
-    for (const auto& light : mLights) {
-        switch (light->getType()) {
-            case LightType::Point:
-                s.pointLightCount++;
-                break;
-            case LightType::Directional:
-                s.directionalLightCount++;
-                break;
-            case LightType::Rect:
-                s.rectLightCount++;
-                break;
-            case LightType::Sphere:
-                s.sphereLightCount++;
-                break;
-            case LightType::Distant:
-                s.distantLightCount++;
-                break;
+    for (const auto& light : mLights)
+    {
+        switch (light->getType())
+        {
+        case LightType::Point:
+            s.pointLightCount++;
+            break;
+        case LightType::Directional:
+            s.directionalLightCount++;
+            break;
+        case LightType::Rect:
+            s.rectLightCount++;
+            break;
+        case LightType::Sphere:
+            s.sphereLightCount++;
+            break;
+        case LightType::Distant:
+            s.distantLightCount++;
+            break;
         }
     }
 
     s.lightsMemoryInBytes = mpLightsBuffer ? mpLightsBuffer->getSize() : 0;
 }
 
-void Scene::updateVolumeStats() {
+void Scene::updateGridVolumeStats() {
     auto& s = mSceneStats;
 
-    s.volumeCount = mVolumes.size();
-    s.volumeMemoryInBytes = mpVolumesBuffer ? mpVolumesBuffer->getSize() : 0;
+    s.gridVolumeCount = mGridVolumes.size();
+    s.gridVolumeMemoryInBytes = mpGridVolumesBuffer ? mpGridVolumesBuffer->getSize() : 0;
 
     s.gridCount = mGrids.size();
     s.gridVoxelCount = 0;
     s.gridMemoryInBytes = 0;
 
-    for (const auto& g : mGrids) {
-        s.gridVoxelCount += g->getVoxelCount();
-        s.gridMemoryInBytes += g->getGridSizeInBytes();
+    for (const auto& pGrid : mGrids) {
+        s.gridVoxelCount += pGrid->getVoxelCount();
+        s.gridMemoryInBytes += pGrid->getGridSizeInBytes();
     }
 }
 
@@ -1397,8 +1391,10 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     Light::Changes combinedChanges = Light::Changes::None;
 
     // Animate lights and get list of changes.
-    for (const auto& light : mLights) {
-        if (light->isActive()) {
+    for (const auto& light : mLights)
+    {
+        if (light->isActive() || forceUpdate)
+        {
             updateAnimatable(*light, *mpAnimationController, forceUpdate);
         }
 
@@ -1407,22 +1403,28 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     }
 
     // Update changed lights.
-    mActiveLightCount = 0;
+    uint32_t activeLightIndex = 0;
+    mActiveLights.clear();
 
-    for (const auto& light : mLights) {
+    for (const auto& light : mLights)
+    {
         if (!light->isActive()) continue;
 
+        mActiveLights.push_back(light);
+
         auto changes = light->getChanges();
-        if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate) {
+        if (changes != Light::Changes::None || is_set(combinedChanges, Light::Changes::Active) || forceUpdate)
+        {
             // TODO: This is slow since the buffer is not CPU writable. Copy into CPU buffer and upload once instead.
-            mpLightsBuffer->setElement(mActiveLightCount, light->getData());
+            mpLightsBuffer->setElement(activeLightIndex, light->getData());
         }
 
-        mActiveLightCount++;
+        activeLightIndex++;
     }
 
-    if (combinedChanges != Light::Changes::None || forceUpdate) {
-        mpSceneBlock["lightCount"] = mActiveLightCount;
+    if (combinedChanges != Light::Changes::None || forceUpdate)
+    {
+        mpSceneBlock["lightCount"] = (uint32_t)mActiveLights.size();
         updateLightStats();
     }
 
@@ -1438,17 +1440,17 @@ Scene::UpdateFlags Scene::updateLights(bool forceUpdate) {
     return flags;
 }
 
-Scene::UpdateFlags Scene::updateVolumes(bool forceUpdate) {
-    Volume::UpdateFlags combinedUpdates = Volume::UpdateFlags::None;
+Scene::UpdateFlags Scene::updateGridVolumes(bool forceUpdate) {
+    GridVolume::UpdateFlags combinedUpdates = GridVolume::UpdateFlags::None;
 
     // Update animations and get combined updates.
-    for (const auto& volume : mVolumes) {
-        updateAnimatable(*volume, *mpAnimationController, forceUpdate);
-        combinedUpdates |= volume->getUpdates();
+    for (const auto& pGridVolume : mGridVolumes) {
+        updateAnimatable(*pGridVolume, *mpAnimationController, forceUpdate);
+        combinedUpdates |= pGridVolume->getUpdates();
     }
 
     // Early out if no volumes have changed.
-    if (!forceUpdate && combinedUpdates == Volume::UpdateFlags::None) return UpdateFlags::None;
+    if (!forceUpdate && combinedUpdates == GridVolume::UpdateFlags::None) return UpdateFlags::None;
 
     // Upload grids.
     if (forceUpdate) {
@@ -1460,32 +1462,31 @@ Scene::UpdateFlags Scene::updateVolumes(bool forceUpdate) {
 
     // Upload volumes and clear updates.
     uint32_t volumeIndex = 0;
-    for (const auto& volume : mVolumes) {
-        if (forceUpdate || volume->getUpdates() != Volume::UpdateFlags::None) {
+    for (const auto& pGridVolume : mGridVolumes) {
+        if (forceUpdate || pGridVolume->getUpdates() != GridVolume::UpdateFlags::None) {
             // Fetch copy of volume data.
-            auto data = volume->getData();
-            data.densityGrid = volume->getDensityGrid() ? mGridIDs.at(volume->getDensityGrid()) : kInvalidGrid;
-            data.emissionGrid = volume->getEmissionGrid() ? mGridIDs.at(volume->getEmissionGrid()) : kInvalidGrid;
+            auto data = pGridVolume->getData();
+            data.densityGrid = pGridVolume->getDensityGrid() ? mGridIDs.at(pGridVolume->getDensityGrid()) : kInvalidGrid;
+            data.emissionGrid = pGridVolume->getEmissionGrid() ? mGridIDs.at(pGridVolume->getEmissionGrid()) : kInvalidGrid;
             // Merge grid and volume transforms.
-            const auto& densityGrid = volume->getDensityGrid();
-            
+            const auto& densityGrid = pGridVolume->getDensityGrid();
             if (densityGrid) {
                 data.transform = data.transform * densityGrid->getTransform();
                 data.invTransform = densityGrid->getInvTransform() * data.invTransform;
             }
-            mpVolumesBuffer->setElement(volumeIndex, data);
+            mpGridVolumesBuffer->setElement(volumeIndex, data);
         }
-        volume->clearUpdates();
+        pGridVolume->clearUpdates();
         volumeIndex++;
     }
 
-    mpSceneBlock["volumeCount"] = (uint32_t)mVolumes.size();
+    mpSceneBlock["gridVolumeCount"] = (uint32_t)mGridVolumes.size();
 
     UpdateFlags flags = UpdateFlags::None;
-    if (is_set(combinedUpdates, Volume::UpdateFlags::TransformChanged)) flags |= UpdateFlags::VolumesMoved;
-    if (is_set(combinedUpdates, Volume::UpdateFlags::PropertiesChanged)) flags |= UpdateFlags::VolumePropertiesChanged;
-    if (is_set(combinedUpdates, Volume::UpdateFlags::GridsChanged)) flags |= UpdateFlags::VolumeGridsChanged;
-    if (is_set(combinedUpdates, Volume::UpdateFlags::BoundsChanged)) flags |= UpdateFlags::VolumeBoundsChanged;
+    if (is_set(combinedUpdates, GridVolume::UpdateFlags::TransformChanged)) flags |= UpdateFlags::GridVolumesMoved;
+    if (is_set(combinedUpdates, GridVolume::UpdateFlags::PropertiesChanged)) flags |= UpdateFlags::GridVolumePropertiesChanged;
+    if (is_set(combinedUpdates, GridVolume::UpdateFlags::GridsChanged)) flags |= UpdateFlags::GridVolumeGridsChanged;
+    if (is_set(combinedUpdates, GridVolume::UpdateFlags::BoundsChanged)) flags |= UpdateFlags::GridVolumeBoundsChanged;
 
     return flags;
 }
@@ -1510,57 +1511,18 @@ Scene::UpdateFlags Scene::updateEnvMap(bool forceUpdate) {
     return flags;
 }
 
-Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
-    UpdateFlags flags = UpdateFlags::None;
-
-    // Early out if no materials have changed.
-    if (!forceUpdate && Material::getGlobalUpdates() == Material::UpdateFlags::None) return flags;
-
-    for (uint32_t materialId = 0; materialId < (uint32_t)mMaterials.size(); ++materialId) {
-        auto& material = mMaterials[materialId];
-        auto materialUpdates = material->getUpdates();
-
-        if (forceUpdate || materialUpdates != Material::UpdateFlags::None) {
-            material->clearUpdates();
-            uploadMaterial(materialId);
-            flags |= UpdateFlags::MaterialsChanged;
-
-            // If displacement parameters have changed, we need to trigger displacement update.
-            if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged)) {
-                mDisplacement.needsUpdate = true;
-            }
-        }
-    }
-
-    // Update material counts.
-    if (forceUpdate || flags != UpdateFlags::None) {
-        mMaterialCountByType.resize((size_t)MaterialType::Count);
-        std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
-
-        for (const auto& material : mMaterials) {
-            size_t index = (size_t)material->getType();
-            assert(index < mMaterialCountByType.size());
-            mMaterialCountByType[index]++;
-        }
-    }
-
-    updateMaterialStats();
-    Material::clearGlobalUpdates();
-
-    return flags;
-}
-
 Scene::UpdateFlags Scene::updateGeometry(bool forceUpdate) {
     UpdateFlags flags = updateProceduralPrimitives(forceUpdate);
     flags |= updateDisplacement(forceUpdate);
 
-    if (forceUpdate || mCustomPrimitivesChanged) {
-        updatePrimitiveTypes();
+    if (forceUpdate || mCustomPrimitivesChanged)
+    {
+        updateGeometryTypes();
         updateGeometryStats();
 
-        // Clear any previous BLAS data. This will trigger a full BLAS/TLAS rebuild.
+        // Mark previous BLAS data as invalid. This will trigger a full BLAS/TLAS rebuild.
         // TODO: Support partial rebuild of just the procedural primitives.
-        mBlasData.clear();
+        mBlasDataValid = false;
     }
 
     mCustomPrimitivesMoved = false;
@@ -1574,56 +1536,75 @@ Scene::UpdateFlags Scene::update(RenderContext* pContext, double currentTime) {
 
     mUpdates = UpdateFlags::None;
 
-    if (mpAnimationController->animate(pContext, currentTime)) {
+    if (mpAnimationController->animate(pContext, currentTime))
+    {
         mUpdates |= UpdateFlags::SceneGraphChanged;
-        for (const auto& inst : mMeshInstanceData) {
-            if (mpAnimationController->isMatrixChanged(inst.globalMatrixID)) {
-                mUpdates |= UpdateFlags::MeshesMoved;
+        if (mpAnimationController->hasSkinnedMeshes()) mUpdates |= UpdateFlags::MeshesChanged;
+
+        for (const auto& inst : mGeometryInstanceData)
+        {
+            if (mpAnimationController->isMatrixChanged(inst.globalMatrixID))
+            {
+                mUpdates |= UpdateFlags::GeometryMoved;
             }
         }
 
-        if (mpAnimationController->hasAnimatedVertexCaches()) mUpdates |= UpdateFlags::CurvesMoved;
+        // We might end up setting the flag even if curves haven't changed (if looping is disabled for example).
+        if (mpAnimationController->hasAnimatedCurveCaches()) mUpdates |= UpdateFlags::CurvesMoved;
+        if (mpAnimationController->hasAnimatedMeshCaches()) mUpdates |= UpdateFlags::MeshesChanged;
     }
 
-    for (const auto& pVolume : mVolumes) {
-        pVolume->updatePlayback(currentTime);
+    for (const auto& pGridVolume : mGridVolumes)
+    {
+        pGridVolume->updatePlayback(currentTime);
     }
 
     mUpdates |= updateSelectedCamera(false);
     mUpdates |= updateLights(false);
-    mUpdates |= updateVolumes(false);
+    mUpdates |= updateGridVolumes(false);
     mUpdates |= updateEnvMap(false);
     mUpdates |= updateMaterials(false);
     mUpdates |= updateGeometry(false);
+    mUpdates |= updateSDFGrids(pContext);
     pContext->flush();
 
-    if (is_set(mUpdates, UpdateFlags::MeshesMoved)) {
-        mTlasCache.clear();
-        updateMeshInstances(false);
+    if (is_set(mUpdates, UpdateFlags::GeometryMoved))
+    {
+        invalidateTlasCache();
+        updateGeometryInstances(false);
     }
 
     // Update existing BLASes if skinned animation and/or procedural primitives moved.
-    bool skinnedAnimation = mHasSkinnedMesh && is_set(mUpdates, UpdateFlags::SceneGraphChanged);
     bool updateProcedural = is_set(mUpdates, UpdateFlags::CurvesMoved) || is_set(mUpdates, UpdateFlags::CustomPrimitivesMoved);
-    bool blasUpdateRequired = skinnedAnimation || updateProcedural;
+    bool blasUpdateRequired = is_set(mUpdates, UpdateFlags::MeshesChanged) || updateProcedural;
 
-    if (!mBlasData.empty() && blasUpdateRequired) {
-        mTlasCache.clear();
+    if (mBlasDataValid && blasUpdateRequired)
+    {
+        invalidateTlasCache();
         buildBlas(pContext);
     }
 
     // Update light collection
-    if (mpLightCollection && mpLightCollection->update(pContext)) {
+    if (mpLightCollection && mpLightCollection->update(pContext))
+    {
         mUpdates |= UpdateFlags::LightCollectionChanged;
         mSceneStats.emissiveMemoryInBytes = mpLightCollection->getMemoryUsageInBytes();
     }
-    else if (!mpLightCollection) {
+    else if (!mpLightCollection)
+    {
         mSceneStats.emissiveMemoryInBytes = 0;
     }
 
-    if (mRenderSettings != mPrevRenderSettings) {
+    if (mRenderSettings != mPrevRenderSettings)
+    {
         mUpdates |= UpdateFlags::RenderSettingsChanged;
         mPrevRenderSettings = mRenderSettings;
+    }
+
+    if (mSDFGridConfig != mPrevSDFGridConfig)
+    {
+        mUpdates |= UpdateFlags::SDFGridConfigChanged;
+        mPrevSDFGridConfig = mSDFGridConfig;
     }
 
     return mUpdates;
@@ -1642,15 +1623,15 @@ bool Scene::useEnvLight() const {
 }
 
 bool Scene::useAnalyticLights() const {
-    return mRenderSettings.useAnalyticLights && mLights.empty() == false;
+    return mRenderSettings.useAnalyticLights && mActiveLights.empty() == false;
 }
 
 bool Scene::useEmissiveLights() const {
     return mRenderSettings.useEmissiveLights && mpLightCollection != nullptr && mpLightCollection->getActiveLightCount() > 0;
 }
 
-bool Scene::useVolumes() const {
-    return mRenderSettings.useVolumes && mVolumes.empty() == false;
+bool Scene::useGridVolumes() const {
+    return mRenderSettings.useGridVolumes && mGridVolumes.empty() == false;
 }
 
 void Scene::setCamera(const Camera::SharedPtr& pCamera) {
@@ -1737,11 +1718,63 @@ uint32_t Scene::getGeometryCount() const {
 }
 
 Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const {
-    // Map global geometry ID to which type of geometry it represents.
-    if (geometryID < mMeshDesc.size()) return mMeshDesc[geometryID].isDisplaced() ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh;
-    else if (geometryID < mMeshDesc.size() + mCurveDesc.size()) return GeometryType::Curve;
-    else if (geometryID < mMeshDesc.size() + mCurveDesc.size() + mCustomPrimitiveDesc.size()) return GeometryType::Custom;
-    else throw std::runtime_error("Invalid geometryID");
+        // Map global geometry ID to which type of geometry it represents.
+        if (geometryID < mMeshDesc.size()) return mMeshDesc[geometryID].isDisplaced() ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh;
+        else if (geometryID < mMeshDesc.size() + mCurveDesc.size()) return GeometryType::Curve;
+        else if (geometryID < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size()) return GeometryType::SDFGrid;
+        else if (geometryID < mMeshDesc.size() + mCurveDesc.size() + mSDFGridDesc.size() + mCustomPrimitiveDesc.size()) return GeometryType::Custom;
+        else throw std::runtime_error("'geometryID' is invalid.");
+}
+
+uint32_t Scene::getSDFGridGeometryCount() const
+{
+    switch (mSDFGridConfig.implementation)
+    {
+    case SDFGrid::Type::None:
+        return 0;
+    case SDFGrid::Type::NormalizedDenseGrid:
+    case SDFGrid::Type::SparseVoxelOctree:
+        return mSDFGrids.empty() ? 0 : 1;
+    case SDFGrid::Type::SparseVoxelSet:
+    case SDFGrid::Type::SparseBrickSet:
+        return (uint32_t)mSDFGrids.size();
+    default:
+        FALCOR_UNREACHABLE();
+        return 0;
+    }
+}
+
+std::vector<uint32_t> Scene::getGeometryInstanceIDsByType(GeometryType type) const {
+    std::vector<uint32_t> instanceIDs;
+    for (uint32_t i = 0; i < getGeometryInstanceCount(); ++i) {
+        const GeometryInstanceData& instanceData = mGeometryInstanceData[i];
+        if (instanceData.getType() == type) instanceIDs.push_back(i);
+    }
+    return instanceIDs;
+}
+
+Material::SharedPtr Scene::getGeometryMaterial(uint32_t geometryID) const {
+    if (geometryID < mMeshDesc.size()) {
+        return mpMaterialSystem->getMaterial(mMeshDesc[geometryID].materialID);
+    }
+    geometryID -= (uint32_t)mMeshDesc.size();
+
+    if (geometryID < mCurveDesc.size()) {
+        return mpMaterialSystem->getMaterial(mCurveDesc[geometryID].materialID);
+    }
+    geometryID -= (uint32_t)mCurveDesc.size();
+
+    //if (geometryID < mSDFGridDesc.size()) {
+    //    return mpMaterialSystem->getMaterial(mSDFGridDesc[geometryID].materialID);
+    //}
+    //geometryID -= (uint32_t)mSDFGridDesc.size();
+
+    if (geometryID < mCustomPrimitiveDesc.size()) {
+        return nullptr;
+    }
+    geometryID -= (uint32_t)mCustomPrimitiveDesc.size();
+
+    throw std::runtime_error("'geometryID' is invalid.");
 }
 
 uint32_t Scene::getCustomPrimitiveIndex(uint32_t geometryID) const {
@@ -1818,16 +1851,8 @@ void Scene::updateCustomPrimitive(uint32_t index, const AABB& aabb) {
     }
 }
 
-Material::SharedPtr Scene::getMaterialByName(const std::string& name) const {
-    for (const auto& m : mMaterials) {
-        if (m->getName() == name) return m;
-    }
-
-    return nullptr;
-}
-
-Volume::SharedPtr Scene::getVolumeByName(const std::string& name) const {
-    for (const auto& v : mVolumes) {
+GridVolume::SharedPtr Scene::getGridVolumeByName(const std::string& name) const {
+    for (const auto& v : mGridVolumes) {
         if (v->getName() == name) return v;
     }
 
@@ -1852,8 +1877,7 @@ void Scene::setBlasUpdateMode(UpdateMode mode) {
     if (mode != mBlasUpdateMode) mRebuildBlas = true;
     mBlasUpdateMode = mode;
 }
-    
-/*
+
 void Scene::createDrawList() {
     // This function creates argument buffers for draw indirect calls to rasterize the scene.
     // The updateMeshInstances() function must have been called before so that the flags are accurate.
@@ -1866,104 +1890,7 @@ void Scene::createDrawList() {
 
     mDrawArgs.clear();
     mMaterialDrawArgs.clear();
-    mMaterialDrawArgs.resize(mMaterials.size());
-
-    for( auto& draws: mMaterialDrawArgs) draws.clear();
-
-    // Helper to create the draw-indirect buffer.
-    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
-        if (drawMeshes.size() > 0) {
-            DrawArgs draw;
-            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
-            draw.pBuffer->setName("Scene draw buffer");
-            assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
-            draw.count = (uint32_t)drawMeshes.size();
-            draw.ccw = ccw;
-            draw.ibFormat = ibFormat;
-            mDrawArgs.push_back(draw);
-
-            //mMaterialDrawArgs[draw.materialID].push_back(mDrawArgs.size());
-        }
-    };
-
-    // Sort all instances by their materials
-    std::vector<std::vector<MeshInstanceData>> instancesByMaterial;
-    instancesByMaterial.resize(mMaterials.size());
-
-    for for (const auto& instance : mMeshInstanceData) {
-
-    if (hasIndexBuffer()) {
-        printf("Index buffer!\n");
-        size_t i;
-        scanf("%zu", &i);;
-
-        std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
-
-        uint32_t instanceID = 0;
-        for (const auto& instance : mMeshInstanceData) {
-            const auto& mesh = mMeshDesc[instance.meshID];
-            bool use16Bit = mesh.use16BitIndices();
-
-            D3D12_DRAW_INDEXED_ARGUMENTS draw;
-            draw.IndexCountPerInstance = mesh.indexCount;
-            draw.InstanceCount = 1;
-            draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
-            draw.BaseVertexLocation = mesh.vbOffset;
-            draw.StartInstanceLocation = instanceID++;
-            draw.MaterialID = instance.materialID;
-
-            int i = use16Bit ? 0 : 1;
-            (instance.isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
-        }
-
-        createDrawBuffer(drawClockwiseMeshes[0], false, ResourceFormat::R16Uint);
-        createDrawBuffer(drawClockwiseMeshes[1], false, ResourceFormat::R32Uint);
-        createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
-        createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
-    } else {
-        printf("No index buffer!\n");
-        size_t i;
-        scanf("%zu", &i);;
-        
-        std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
-
-        uint32_t instanceID = 0;
-        for (const auto& instance : mMeshInstanceData) {
-            const auto& mesh = mMeshDesc[instance.meshID];
-            assert(mesh.indexCount == 0);
-
-            D3D12_DRAW_ARGUMENTS draw;
-            draw.VertexCountPerInstance = mesh.vertexCount;
-            draw.InstanceCount = 1;
-            draw.StartVertexLocation = mesh.vbOffset;
-            draw.StartInstanceLocation = instanceID++;
-            draw.MaterialID = instance.materialID;
-
-            (instance.isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
-        }
-
-        createDrawBuffer(drawClockwiseMeshes, false);
-        createDrawBuffer(drawCounterClockwiseMeshes, true);
-    }
-}
-
-*/
-
-void Scene::createDrawList() {
-    // This function creates argument buffers for draw indirect calls to rasterize the scene.
-    // The updateMeshInstances() function must have been called before so that the flags are accurate.
-    //
-    // Note that we create four draw buffers to handle all combinations of:
-    // 1) mesh is using 16- or 32-bit indices,
-    // 2) mesh triangle winding is CW or CCW after transformation.
-    //
-    // TODO: Update the draw args if a mesh undergoes animation that flips the winding.
-
-    printf("createDrawList(...) ...\n");
-
-    mDrawArgs.clear();
-    mMaterialDrawArgs.clear();
-    mMaterialDrawArgs.resize(mMaterials.size());
+    mMaterialDrawArgs.resize(getMaterialCount());
 
     for( auto& draws: mMaterialDrawArgs) draws.clear();
 
@@ -1986,13 +1913,13 @@ void Scene::createDrawList() {
 
     // Sort all instances by their materials
     std::vector<std::vector<DrawInstance>> instancesByMaterial;
-    instancesByMaterial.resize(mMaterials.size());
+    instancesByMaterial.resize(getMaterialCount());
 
-    printf("Number of materials to draw: %zu\n", mMaterials.size());
+    printf("Number of materials to draw: %zu\n", getMaterialCount());
 
     uint32_t instanceID = 0;
-    for (size_t i = 0; i < mMeshInstanceData.size(); i++) {
-        instancesByMaterial[mMeshInstanceData[i].materialID].push_back({instanceID++, &mMeshInstanceData[i]});
+    for (size_t i = 0; i < mGeometryInstanceData.size(); i++) {
+        instancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID++, &mGeometryInstanceData[i]});
     }
 
 
@@ -2002,15 +1929,15 @@ void Scene::createDrawList() {
     
 
         if (hasIndexBuffer()) {
-            std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
+            std::vector<DrawIndexedArguments> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
 
             uint32_t instanceID = 0;
             for (const auto& drawInstance : instances) {
                 const auto instance = drawInstance.instance;
-                const auto& mesh = mMeshDesc[instance->meshID];
+                const auto& mesh = mMeshDesc[instance->geometryID];
                 bool use16Bit = mesh.use16BitIndices();
 
-                D3D12_DRAW_INDEXED_ARGUMENTS draw;
+                DrawIndexedArguments draw;
                 draw.IndexCountPerInstance = mesh.indexCount;
                 draw.InstanceCount = 1;
                 draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
@@ -2030,14 +1957,14 @@ void Scene::createDrawList() {
             createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
             createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
         } else {
-            std::vector<D3D12_DRAW_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
+            std::vector<DrawArguments> drawClockwiseMeshes, drawCounterClockwiseMeshes;
 
             for (const auto& drawInstance : instances) {
                 const auto instance = drawInstance.instance;
-                const auto& mesh = mMeshDesc[instance->meshID];
+                const auto& mesh = mMeshDesc[instance->geometryID];
                 assert(mesh.indexCount == 0);
 
-                D3D12_DRAW_ARGUMENTS draw;
+                DrawArguments draw;
                 draw.VertexCountPerInstance = mesh.vertexCount;
                 draw.InstanceCount = 1;
                 draw.StartVertexLocation = mesh.vbOffset;
@@ -2058,14 +1985,18 @@ void Scene::createDrawList() {
     printf("createDrawList(...) done. \n");
 }
 
+/*
 VkAccelerationStructureKHR Scene::getTlas() const { 
     return mpRtBuilder ? mpRtBuilder->getAccelerationStructure() : VK_NULL_HANDLE;
 }
+*/
 
+/*
 nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc& mesh) {
-    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
+    
+    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpMeshVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
+    const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
+    const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
 
     VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
     auto vertexStride = pVbLayout->getStride();
@@ -2111,242 +2042,291 @@ nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc
 
     return input;
 }
+*/
 
 void Scene::initGeomDesc(RenderContext* pContext) {
-    assert(mBlasData.empty());
+    // This function initializes all geometry descs to prepare for BLAS build.
+    // If the scene has no geometries the 'mBlasData' array will be left empty.
 
-    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
-    const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
+    // First compute total number of BLASes to build:
+    // - Triangle meshes have been grouped beforehand and we build one BLAS per mesh group.
+    // - Curves and procedural primitives are currently placed in a single BLAS each, if they exist.
+    // - SDF grids are placed in individual BLASes.
+    const uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mCurveDesc.empty() ? 0 : 1) + getSDFGridGeometryCount() + (mCustomPrimitiveDesc.empty() ? 0 : 1);
 
-    // Normally static geometry is already pre-transformed to world space by the SceneBuilder,
-    // but if that isn't the case, we let DXR transform static geometry as part of the BLAS build.
-    // For this we need the GPU address of the transform matrix of each mesh in row-major format.
-    // Since glm uses column-major format we lazily create a buffer with the transposed matrices.
-    // Note that this is sufficient to do once only as the transforms for static meshes can't change.
-    // TODO: Use AnimationController's matrix buffer directly when we've switched to a row-major matrix library.
-    auto getStaticMatricesBuffer = [&]() {
-        if (!mpBlasStaticWorldMatrices) {
-            std::vector<glm::mat4> transposedMatrices;
-            transposedMatrices.reserve(globalMatrices.size());
-            for (const auto& m : globalMatrices) transposedMatrices.push_back(glm::transpose(m));
-
-            uint32_t float4Count = (uint32_t)transposedMatrices.size() * 4;
-            mpBlasStaticWorldMatrices = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, transposedMatrices.data(), false);
-            mpBlasStaticWorldMatrices->setName("Scene::mpBlasStaticWorldMatrices");
-
-            // Transition the resource to non-pixel shader state as expected by DXR.
-            pContext->resourceBarrier(mpBlasStaticWorldMatrices.get(), Resource::State::AccelStructBuildInput);// NonPixelShader);
-        }
-        return mpBlasStaticWorldMatrices;
-    };
-
-    assert(mMeshGroups.size() > 0);
-    uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mRtAABBRaw.empty() ? 0 : 1); // If there are procedural primitives, they are all placed in one more BLAS.
+    mBlasData.clear();
     mBlasData.resize(totalBlasCount);
     mRebuildBlas = true;
-    mHasSkinnedMesh = false;
-    mHasAnimatedVertexCache = false;
 
-    // Iterate over the mesh groups. One BLAS will be created for each group.
-    // Each BLAS may contain multiple geometries.
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
+    if (!mMeshGroups.empty())
+    {
+        FALCOR_ASSERT(mpMeshVao);
+        const VertexBufferLayout::SharedConstPtr& pVbLayout = mpMeshVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
+        const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
+        const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
+        const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
 
-        const auto& meshList = mMeshGroups[i].meshList;
-        const bool isStatic = mMeshGroups[i].isStatic;
-        const bool isDisplaced = mMeshGroups[i].isDisplaced;
+        // Normally static geometry is already pre-transformed to world space by the SceneBuilder,
+        // but if that isn't the case, we let DXR transform static geometry as part of the BLAS build.
+        // For this we need the GPU address of the transform matrix of each mesh in row-major format.
+        // Since glm uses column-major format we lazily create a buffer with the transposed matrices.
+        // Note that this is sufficient to do once only as the transforms for static meshes can't change.
+        // TODO: Use AnimationController's matrix buffer directly when we've switched to a row-major matrix library.
+        auto getStaticMatricesBuffer = [&]()
+        {
+            if (!mpBlasStaticWorldMatrices)
+            {
+                std::vector<glm::mat4> transposedMatrices;
+                transposedMatrices.reserve(globalMatrices.size());
+                for (const auto& m : globalMatrices) transposedMatrices.push_back(glm::transpose(m));
 
-        auto& blasData = mBlasData[i];
-        auto& geomDescs = blasData.geomDescs;
-        auto& ranges = blasData.ranges;
+                uint32_t float4Count = (uint32_t)transposedMatrices.size() * 4;
+                mpBlasStaticWorldMatrices = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, transposedMatrices.data(), false);
+                mpBlasStaticWorldMatrices->setName("Scene::mpBlasStaticWorldMatrices");
 
-        geomDescs.resize(meshList.size());
-        ranges.resize(meshList.size());
-        blasData.hasProceduralPrimitives = false;
-
-        // Track what types of triangle winding exist in the final BLAS.
-        // The SceneBuilder should have ensured winding is consistent, but keeping the check here as a safeguard.
-        uint32_t triangleWindings = 0; // bit 0 indicates CW, bit 1 CCW.
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-            const MeshDesc& mesh = mMeshDesc[meshID];
-            bool frontFaceCW = mesh.isFrontFaceCW();
-            blasData.hasSkinnedMesh |= mesh.hasDynamicData();
-
-            VkAccelerationStructureGeometryKHR& desc = geomDescs[j];
-            VkAccelerationStructureBuildRangeInfoKHR& range = ranges[j];
-            desc.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-
-            if (!isDisplaced) {
-                desc.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-                //desc.geometry.triangles.transformData = 0; // The default is no transform
-
-                if (isStatic) {
-                    // Static meshes will be pre-transformed when building the BLAS.
-                    // Lookup the matrix ID here. If it is an identity matrix, no action is needed.
-                    assert(mMeshIdToInstanceIds[meshID].size() == 1);
-                    uint32_t instanceID = mMeshIdToInstanceIds[meshID][0];
-                    assert(instanceID < mMeshInstanceData.size());
-                    uint32_t matrixID = mMeshInstanceData[instanceID].globalMatrixID;
-
-                    if (globalMatrices[matrixID] != glm::identity<glm::mat4>()) {
-                        // Get the GPU address of the transform in row-major format.
-                        desc.geometry.triangles.transformData.deviceAddress = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
-
-                        if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
-                    }
-                }
-                triangleWindings |= frontFaceCW ? 1 : 2;
-
-                // If this is an opaque mesh, set the opaque flag
-                const auto& material = mMaterials[mesh.materialID];
-                if (material->isOpaque()) {
-                    desc.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-                }
-
-                // Set the position data
-                LOG_WARN("Set position data");
-                printf("Mesh vertex count %u\n", mesh.vertexCount);
-                printf("pVb deviceAddress: %zu\n", pVb->getGpuAddress());
-                printf("pVb deviceAddress: %zu\n", pVb->getGpuAddress());
-
-                desc.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-                desc.geometry.triangles.vertexData.deviceAddress = pVb->getGpuAddress() + (mesh.vbOffset * pVbLayout->getStride());
-                desc.geometry.triangles.vertexData.hostAddress = nullptr;
-                desc.geometry.triangles.vertexStride = pVbLayout->getStride();
-                desc.geometry.triangles.maxVertex = mesh.vertexCount;
-                desc.geometry.triangles.vertexFormat = getVkFormat(pVbLayout->getElementFormat(0));
-
-                // Set index data
-                if (pIb) {
-                    printf("Using indices\n");
-                    if (mesh.use16BitIndices()) {
-                        printf("Using 16 bit indices\n");
-                    }
-
-                    printf("Mesh ibOffset %u\n", mesh.ibOffset);
-                    printf("Mesh index count %u\n", mesh.indexCount);
-                    printf("pIb deviceAddress: %zu\n", pIb->getGpuAddress());
-                    printf("pIb deviceAddress: %zu\n", pIb->getGpuAddress());
-
-                    // The global index data is stored in a dword array.
-                    // Each mesh specifies whether its indices are in 16-bit or 32-bit format.
-                    VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-                    desc.geometry.triangles.indexData.deviceAddress = pIb->getGpuAddress() + mesh.ibOffset * sizeof(uint32_t);
-                    desc.geometry.triangles.indexData.hostAddress = nullptr;
-                    //desc.geometry.triangles.IndexCount = mesh.indexCount;
-                    desc.geometry.triangles.indexType = indexType;
-
-                    range.firstVertex = 0;
-                    range.primitiveCount = mesh.indexCount / 3;
-                    range.primitiveOffset = 0;
-                    range.transformOffset = 0;
-                } else {
-                    assert(mesh.indexCount == 0);
-                    desc.geometry.triangles.indexData.deviceAddress = 0;
-                    desc.geometry.triangles.indexData.hostAddress = nullptr;
-                    //desc.geometry.triangles.IndexCount = 0;
-                    desc.geometry.triangles.indexType = VK_INDEX_TYPE_NONE_KHR;
-                }
-            } else {
-                /*
-                // Displaced triangle mesh, requires custom intersection.
-                desc.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
-                desc.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-
-                desc.AABBs.AABBCount = mDisplacement.meshData[meshID].AABBCount;
-                uint64_t bbStartOffset = mDisplacement.meshData[meshID].AABBOffset * sizeof(D3D12_RAYTRACING_AABB);
-                desc.AABBs.AABBs.StartAddress = mDisplacement.pAABBBuffer->getGpuAddress() + bbStartOffset;
-                desc.AABBs.AABBs.StrideInBytes = sizeof(D3D12_RAYTRACING_AABB);
-                */
+                // Transition the resource to non-pixel shader state as expected by DXR.
+                pContext->resourceBarrier(mpBlasStaticWorldMatrices.get(), Resource::State::NonPixelShader);
             }
-        }
+            return mpBlasStaticWorldMatrices;
+        };
 
-        mHasSkinnedMesh |= blasData.hasSkinnedMesh;
-        assert(!(isStatic && mHasSkinnedMesh));
+        // Iterate over the mesh groups. One BLAS will be created for each group.
+        // Each BLAS may contain multiple geometries.
+        for (size_t i = 0; i < mMeshGroups.size(); i++)
+        {
+            const auto& meshList = mMeshGroups[i].meshList;
+            const bool isStatic = mMeshGroups[i].isStatic;
+            const bool isDisplaced = mMeshGroups[i].isDisplaced;
+            auto& blas = mBlasData[i];
+            auto& geomDescs = blas.geomDescs;
+            geomDescs.resize(meshList.size());
+            blas.hasProceduralPrimitives = false;
 
-        if (triangleWindings == 0x3) {
-            logWarning("Mesh group " + std::to_string(i) + " has mixed triangle winding. Back/front face culling won't work correctly.");
+            // Track what types of triangle winding exist in the final BLAS.
+            // The SceneBuilder should have ensured winding is consistent, but keeping the check here as a safeguard.
+            uint32_t triangleWindings = 0; // bit 0 indicates CW, bit 1 CCW.
+
+            for (size_t j = 0; j < meshList.size(); j++)
+            {
+                const uint32_t meshID = meshList[j];
+                const MeshDesc& mesh = mMeshDesc[meshID];
+                bool frontFaceCW = mesh.isFrontFaceCW();
+                blas.hasDynamicMesh |= mesh.isDynamic();
+
+                RtGeometryDesc& desc = geomDescs[j];
+
+                if (!isDisplaced)
+                {
+                    desc.type = RtGeometryType::Triangles;
+                    desc.content.triangles.transform3x4 = 0; // The default is no transform
+
+                    if (isStatic)
+                    {
+                        // Static meshes will be pre-transformed when building the BLAS.
+                        // Lookup the matrix ID here. If it is an identity matrix, no action is needed.
+                        FALCOR_ASSERT(mMeshIdToInstanceIds[meshID].size() == 1);
+                        uint32_t instanceID = mMeshIdToInstanceIds[meshID][0];
+                        FALCOR_ASSERT(instanceID < mGeometryInstanceData.size());
+                        uint32_t matrixID = mGeometryInstanceData[instanceID].globalMatrixID;
+
+                        FALCOR_ASSERT(matrixID < globalMatrices.size());
+                        if (globalMatrices[matrixID] != glm::identity<glm::mat4>())
+                        {
+                            // Get the GPU address of the transform in row-major format.
+                            desc.content.triangles.transform3x4 = getStaticMatricesBuffer()->getGpuAddress() + matrixID * 64ull;
+
+                            if (glm::determinant(globalMatrices[matrixID]) < 0.f) frontFaceCW = !frontFaceCW;
+                        }
+                    }
+                    triangleWindings |= frontFaceCW ? 1 : 2;
+
+                    // If this is an opaque mesh, set the opaque flag
+                    auto pMaterial = mpMaterialSystem->getMaterial(mesh.materialID);
+                    desc.flags = pMaterial->isOpaque() ? RtGeometryFlags::Opaque : RtGeometryFlags::None;
+
+                    // Set the position data
+                    desc.content.triangles.vertexData = pVb->getGpuAddress() + (mesh.vbOffset * pVbLayout->getStride());
+                    desc.content.triangles.vertexStride = pVbLayout->getStride();
+                    desc.content.triangles.vertexCount = mesh.vertexCount;
+                    desc.content.triangles.vertexFormat = pVbLayout->getElementFormat(0);
+
+                    // Set index data
+                    if (pIb)
+                    {
+                        // The global index data is stored in a dword array.
+                        // Each mesh specifies whether its indices are in 16-bit or 32-bit format.
+                        ResourceFormat ibFormat = mesh.use16BitIndices() ? ResourceFormat::R16Uint : ResourceFormat::R32Uint;
+                        desc.content.triangles.indexData = pIb->getGpuAddress() + mesh.ibOffset * sizeof(uint32_t);
+                        desc.content.triangles.indexCount = mesh.indexCount;
+                        desc.content.triangles.indexFormat = ibFormat;
+                    }
+                    else
+                    {
+                        FALCOR_ASSERT(mesh.indexCount == 0);
+                        desc.content.triangles.indexData = NULL;
+                        desc.content.triangles.indexCount = 0;
+                        desc.content.triangles.indexFormat = ResourceFormat::Unknown;
+                    }
+                }
+                else
+                {
+                    // Displaced triangle mesh, requires custom intersection.
+                    desc.type = RtGeometryType::ProcedurePrimitives;
+                    desc.flags = RtGeometryFlags::Opaque;
+
+                    desc.content.proceduralAABBs.count = mDisplacement.meshData[meshID].AABBCount;
+                    uint64_t bbStartOffset = mDisplacement.meshData[meshID].AABBOffset * sizeof(RtAABB);
+                    desc.content.proceduralAABBs.data = mDisplacement.pAABBBuffer->getGpuAddress() + bbStartOffset;
+                    desc.content.proceduralAABBs.stride = sizeof(RtAABB);
+                }
+            }
+
+            FALCOR_ASSERT(!(isStatic && blas.hasDynamicMesh));
+
+            if (triangleWindings == 0x3)
+            {
+                LLOG_WRN << "Mesh group " << std::to_string(i) << " has mixed triangle winding. Back/front face culling won't work correctly.";
+            }
         }
     }
 
-/*
-
-    // Procedural primitives other than displaced triangle meshes are placed in a single BLAS at the end.
-    // The geometries in this BLAS are using the following layout:
+    // Procedural primitives other than displaced triangle meshes and SDF grids are placed in two BLASes at the end.
+    // The geometries in these BLASes are using the following layout:
     //
-    //  +----------+----------+-----+----------+----------+----------+-----+----------+
-    //  |          |          |     |          |          |          |     |          |
-    //  |  Curve0  |  Curve1  | ... |  CurveM  |  Custom  |  Custom  | ... |  Custom  |
-    //  |          |          |     |          |  Prim0   |  Prim1   |     |  PrimN   |
-    //  |          |          |     |          |          |          |     |          |
-    //  +----------+----------+-----+----------+----------+----------+-----+----------+
+    //  +----------+----------+-----+----------+
+    //  |          |          |     |          |
+    //  |  Curve0  |  Curve1  | ... |  CurveM  |
+    //  |          |          |     |          |
+    //  |          |          |     |          |
+    //  +----------+----------+-----+----------+
+    // SDF grids either create a shared BLAS or one BLAS per SDF grid:
+    //  +----------+          +----------+ +----------+     +----------+
+    //  |          |          |          | |          |     |          |
+    //  | SDFGrid  |          | SDFGrid0 | | SDFGrid1 | ... | SDFGridN |
+    //  |  Shared  |    or    |          | |          |     |          |
+    //  | Geometry |          |          | |          |     |          |
+    //  +----------+          +----------+ +----------+     +----------+
+    //
+    //  +----------+----------+-----+----------+
+    //  |          |          |     |          |
+    //  |  Custom  |  Custom  | ... |  Custom  |
+    //  |  Prim0   |  Prim1   |     |  PrimN   |
+    //  |          |          |     |          |
+    //  +----------+----------+-----+----------+
     //
     // Each procedural primitive indexes a range of AABBs in a global AABB buffer.
     //
-    if (!mRtAABBRaw.empty())
+    size_t blasDataIndex = mMeshGroups.size();
+    uint64_t bbAddressOffset = 0;
+    if (!mCurveDesc.empty())
     {
-        assert(mpRtAABBBuffer && mpRtAABBBuffer->getElementCount() >= mRtAABBRaw.size());
+        FALCOR_ASSERT(mpRtAABBBuffer && mpRtAABBBuffer->getElementCount() >= mRtAABBRaw.size());
 
-        auto& blas = mBlasData.back();
-        blas.geomDescs.resize(mCurveDesc.size() + mCustomPrimitiveDesc.size());
+        auto& blas = mBlasData[blasDataIndex++];
+        blas.geomDescs.resize(mCurveDesc.size());
         blas.hasProceduralPrimitives = true;
+        blas.hasDynamicCurve |= mpAnimationController->hasAnimatedCurveCaches();
 
-        blas.hasAnimatedVertexCache |= mpAnimationController->hasAnimatedVertexCaches();
-        mHasAnimatedVertexCache |= blas.hasAnimatedVertexCache;
-
-        uint64_t bbAddressOffset = 0;
         uint32_t geomIndexOffset = 0;
-
 
         for (const auto& curve : mCurveDesc)
         {
             // One geometry desc per curve.
-            D3D12_RAYTRACING_GEOMETRY_DESC& desc = blas.geomDescs[geomIndexOffset++];
+            RtGeometryDesc& desc = blas.geomDescs[geomIndexOffset++];
 
-            desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+            desc.type = RtGeometryType::ProcedurePrimitives;
+            desc.flags = RtGeometryFlags::Opaque;
+            desc.content.proceduralAABBs.count = curve.indexCount;
+            desc.content.proceduralAABBs.data = mpRtAABBBuffer->getGpuAddress() + bbAddressOffset;
+            desc.content.proceduralAABBs.stride = sizeof(RtAABB);
 
-            // Curves are transparent or not depends on whether we use anyhit shaders for back-face culling.
-#if CURVE_BACKFACE_CULLING_USING_ANYHIT
-            desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-#else
-            desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-#endif
-            desc.AABBs.AABBCount = curve.indexCount;
-            desc.AABBs.AABBs.StartAddress = mpRtAABBBuffer->getGpuAddress() + bbAddressOffset;
-            desc.AABBs.AABBs.StrideInBytes = sizeof(D3D12_RAYTRACING_AABB);
-
-            bbAddressOffset += sizeof(D3D12_RAYTRACING_AABB) * curve.indexCount;
+            bbAddressOffset += sizeof(RtAABB) * curve.indexCount;
         }
+    }
+
+    if (!mSDFGrids.empty())
+    {
+        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid ||
+            mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+        {
+            // All ND SDF Grid instances share the same BLAS and AABB buffer.
+            const SDFGrid::SharedPtr& pSDFGrid = mSDFGrids.back();
+
+            auto& blas = mBlasData[blasDataIndex];
+            blas.hasProceduralPrimitives = true;
+            blas.geomDescs.resize(1);
+
+            RtGeometryDesc& desc = blas.geomDescs.back();
+            desc.type = RtGeometryType::ProcedurePrimitives;
+            desc.flags = RtGeometryFlags::Opaque;
+            desc.content.proceduralAABBs.count = pSDFGrid->getAABBCount();
+            desc.content.proceduralAABBs.data = pSDFGrid->getAABBBuffer()->getGpuAddress();
+            desc.content.proceduralAABBs.stride = sizeof(RtAABB);
+
+            blasDataIndex++;
+        }
+        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet ||
+                 mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
+        {
+            for (uint32_t s = 0; s < mSDFGrids.size(); s++)
+            {
+                const SDFGrid::SharedPtr& pSDFGrid = mSDFGrids[s];
+
+                auto& blas = mBlasData[blasDataIndex + s];
+                blas.hasProceduralPrimitives = true;
+                blas.geomDescs.resize(1);
+
+                RtGeometryDesc& desc = blas.geomDescs.back();
+                desc.type = RtGeometryType::ProcedurePrimitives;
+                desc.flags = RtGeometryFlags::Opaque;
+                desc.content.proceduralAABBs.count = pSDFGrid->getAABBCount();
+                desc.content.proceduralAABBs.data = pSDFGrid->getAABBBuffer()->getGpuAddress();
+                desc.content.proceduralAABBs.stride = sizeof(RtAABB);
+
+                FALCOR_ASSERT(desc.content.proceduralAABBs.count > 0);
+            }
+
+            blasDataIndex += mSDFGrids.size();
+        }
+    }
+
+    if (!mCustomPrimitiveDesc.empty())
+    {
+        FALCOR_ASSERT(mpRtAABBBuffer && mpRtAABBBuffer->getElementCount() >= mRtAABBRaw.size());
+
+        auto& blas = mBlasData.back();
+        blas.geomDescs.resize(mCustomPrimitiveDesc.size());
+        blas.hasProceduralPrimitives = true;
+
+        uint32_t geomIndexOffset = 0;
 
         for (const auto& customPrim : mCustomPrimitiveDesc)
         {
-            D3D12_RAYTRACING_GEOMETRY_DESC& desc = blas.geomDescs[geomIndexOffset++];
-            desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
-            desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+            RtGeometryDesc& desc = blas.geomDescs[geomIndexOffset++];
+            desc.type = RtGeometryType::ProcedurePrimitives;
+            desc.flags = RtGeometryFlags::None;
 
-            desc.AABBs.AABBCount = 1; // Currently only one AABB per user-defined prim supported
-            desc.AABBs.AABBs.StartAddress = mpRtAABBBuffer->getGpuAddress() + bbAddressOffset;
-            desc.AABBs.AABBs.StrideInBytes = sizeof(D3D12_RAYTRACING_AABB);
+            desc.content.proceduralAABBs.count = 1; // Currently only one AABB per user-defined prim supported
+            desc.content.proceduralAABBs.data = mpRtAABBBuffer->getGpuAddress() + bbAddressOffset;
+            desc.content.proceduralAABBs.stride = sizeof(RtAABB);
 
-            bbAddressOffset += sizeof(D3D12_RAYTRACING_AABB);
+            bbAddressOffset += sizeof(RtAABB);
         }
     }
-*/
 
     // Verify that the total geometry count matches the expectation.
     size_t totalGeometries = 0;
     for (const auto& blas : mBlasData) totalGeometries += blas.geomDescs.size();
-    if (totalGeometries != getGeometryCount()) throw std::logic_error("Total geometry count mismatch");
+    if (totalGeometries != getGeometryCount()) throw std::runtime_error("Total geometry count mismatch");
+
+    mBlasDataValid = true;
 }
 
-
+/*
 void Scene::createBottomLevelAS() {
     PROFILE(mpDevice, "createBottomLevelAS");
 
-    if (mBlasBuilt || !mpRtBuilder) return;
+    if (mBlasDataValid || !mpRtBuilder) return;
 
     uint32_t blasID = 0;
     mMeshIdToBlasId.clear();
@@ -2382,7 +2362,7 @@ void Scene::createBottomLevelAS() {
     }
 
     mpRtBuilder->buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
-    mBlasBuilt = true;
+    mBlasDataValid = true;
 }
 
 void Scene::createTopLevelAS() {
@@ -2395,8 +2375,8 @@ void Scene::createTopLevelAS() {
     
     uint32_t instanceID = 0;
 
-    for (const auto& instance : mMeshInstanceData) {
-        auto meshID = instance.meshID;
+    for (const auto& instance : mGeometryInstanceData) {
+        auto meshID = instance.geometryID;
 
         printf("Adding instance to TLAS with meshID %u\n", meshID);
 
@@ -2418,75 +2398,57 @@ void Scene::createTopLevelAS() {
 
     mTlasBuilt = true;
 }
-
+*/
 
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
-
-    for (auto& blasData : mBlasData) {
+    for (auto& blas : mBlasData)
+    {
         // Determine how BLAS build/update should be done.
         // The default choice is to compact all static BLASes and those that don't need to be rebuilt every frame.
         // For all other BLASes, compaction just adds overhead.
         // TODO: Add compaction on/off switch for profiling.
         // TODO: Disable compaction for skinned meshes if update performance becomes a problem.
-        blasData.updateMode = mBlasUpdateMode;
-        blasData.useCompaction = (!blasData.hasSkinnedMesh && !blasData.hasAnimatedVertexCache) || blasData.updateMode != UpdateMode::Rebuild;
+        blas.updateMode = mBlasUpdateMode;
+        blas.useCompaction = (!blas.hasDynamicGeometry()) || blas.updateMode != UpdateMode::Rebuild;
 
         // Setup build parameters.
-        VkAccelerationStructureBuildGeometryInfoKHR& inputs = blasData.buildInputs;
+        RtAccelerationStructureBuildInputs& inputs = blas.buildInputs;
+        inputs.kind = RtAccelerationStructureKind::BottomLevel;
+        inputs.descCount = (uint32_t)blas.geomDescs.size();
+        inputs.geometryDescs = blas.geomDescs.data();
+        inputs.flags = RtAccelerationStructureBuildFlags::None;
 
-        inputs.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        inputs.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
-        inputs.pNext = NULL;
-        inputs.geometryCount = (uint32_t)blasData.geomDescs.size();
-        inputs.pGeometries = blasData.geomDescs.data();
-        
         // Add necessary flags depending on settings.
-        if (blasData.useCompaction) {
-            //printf("Scene::preparePrebuildInfo useCompaction !\n");
-            //inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        if (blas.useCompaction)
+        {
+            inputs.flags |= RtAccelerationStructureBuildFlags::AllowCompaction;
         }
-
-        if ((blasData.hasSkinnedMesh || blasData.hasProceduralPrimitives) && blasData.updateMode == UpdateMode::Refit) {
-            inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if ((blas.hasDynamicGeometry() || blas.hasProceduralPrimitives) && blas.updateMode == UpdateMode::Refit)
+        {
+            inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;
         }
-
         // Set optional performance hints.
         // TODO: Set FAST_BUILD for skinned meshes if update/rebuild performance becomes a problem.
         // TODO: Add FAST_TRACE on/off switch for profiling. It is disabled by default as it is scene-dependent.
-        if (!blasData.hasSkinnedMesh) {
-            inputs.flags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        //if (!blas.hasSkinnedMesh)
+        //{
+        //    inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+        //}
+
+        if (blas.hasDynamicGeometry())
+        {
+            inputs.flags |= RtAccelerationStructureBuildFlags::PreferFastBuild;
         }
 
         // Get prebuild info.
-       //GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
-       //pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &blas.prebuildInfo);
-
-        const VkAccelerationStructureBuildTypeKHR buildType = VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR;
-
-        std::vector<uint32_t> maxPrimCounts(blasData.ranges.size());
-        std::transform(blasData.ranges.begin(), blasData.ranges.end(), maxPrimCounts.begin(), [](const VkAccelerationStructureBuildRangeInfoKHR& r) { return r.primitiveCount; });
-
-        size_t i = 0;
-        printf("Scene::preparePrebuildInfo maxPrimCounts\n");
-        for(i = 0; i < maxPrimCounts.size(); i++) {
-            printf("%zu - %u\n", i, maxPrimCounts[i]);
-        }
-
-        blasData.prebuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-        vkGetAccelerationStructureBuildSizesKHR(mpDevice->getApiHandle(), buildType, &inputs, maxPrimCounts.data(), &blasData.prebuildInfo);
-
-        printf("prebuildInfo.accelerationStructureSize is: %zu bytes\n", blasData.prebuildInfo.accelerationStructureSize);
-        printf("prebuildInfo.buildScratchSize is: %zu bytes\n", blasData.prebuildInfo.buildScratchSize);
-        printf("prebuildInfo.updateScratchSize is: %zu bytes\n", blasData.prebuildInfo.updateScratchSize);
+        blas.prebuildInfo = RtAccelerationStructure::getPrebuildInfo(mpDevice, inputs);
 
         // Figure out the padded allocation sizes to have proper alignment.
-        assert(blasData.prebuildInfo.accelerationStructureSize > 0);
-        //blas.resultByteSize = align_to(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, blas.prebuildInfo.accelerationStructureSize);
-        blasData.resultByteSize = blasData.prebuildInfo.accelerationStructureSize;
+        FALCOR_ASSERT(blas.prebuildInfo.resultDataMaxSize > 0);
+        blas.resultByteSize = align_to(kAccelerationStructureByteAlignment, blas.prebuildInfo.resultDataMaxSize);
 
-        uint64_t scratchByteSize = std::max(blasData.prebuildInfo.buildScratchSize, blasData.prebuildInfo.updateScratchSize);
-        //blas.scratchByteSize = align_to(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, scratchByteSize);
-        blasData.scratchByteSize = scratchByteSize;
+        uint64_t scratchByteSize = std::max(blas.prebuildInfo.scratchDataSize, blas.prebuildInfo.updateScratchDataSize);
+        blas.scratchByteSize = align_to(kAccelerationStructureByteAlignment, scratchByteSize);
     }
 }
 
@@ -2559,31 +2521,49 @@ void Scene::computeBlasGroups() {
 void Scene::buildBlas(RenderContext* pContext) {
     PROFILE(mpDevice, "buildBlas");
 
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing)) {
+    if (!mBlasDataValid) throw std::runtime_error("buildBlas() BLAS data is invalid");
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing))
+    {
         throw std::runtime_error("Raytracing is not supported by the current device");
     }
 
-/*
-
     // Add barriers for the VB and IB which will be accessed by the build.
-    const Buffer::SharedPtr& pVb = mpVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpVao->getIndexBuffer();
-    
-    pContext->resourceBarrier(pVb.get(), Resource::State::AccelStructBuildInput);
-    
-    if (pIb) {
-        pContext->resourceBarrier(pIb.get(), Resource::State::AccelStructBuildInput);
+    if (mpMeshVao)
+    {
+        const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
+        const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
+        pContext->resourceBarrier(pVb.get(), Resource::State::NonPixelShader);
+        if (pIb) pContext->resourceBarrier(pIb.get(), Resource::State::NonPixelShader);
     }
 
-    if (mpRtAABBBuffer) {
-        pContext->resourceBarrier(mpRtAABBBuffer.get(), Resource::State::AccelStructBuildInput);
-    }
-
-    if (mpCurveVao) {
+    if (mpCurveVao)
+    {
         const Buffer::SharedPtr& pCurveVb = mpCurveVao->getVertexBuffer(kStaticDataBufferIndex);
         const Buffer::SharedPtr& pCurveIb = mpCurveVao->getIndexBuffer();
-        pContext->resourceBarrier(pCurveVb.get(), Resource::State::AccelStructBuildInput);
-        pContext->resourceBarrier(pCurveIb.get(), Resource::State::AccelStructBuildInput);
+        pContext->resourceBarrier(pCurveVb.get(), Resource::State::NonPixelShader);
+        pContext->resourceBarrier(pCurveIb.get(), Resource::State::NonPixelShader);
+    }
+
+    if (!mSDFGrids.empty())
+    {
+        if (mSDFGridConfig.implementation == SDFGrid::Type::NormalizedDenseGrid ||
+            mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelOctree)
+        {
+            pContext->resourceBarrier(mSDFGrids.back()->getAABBBuffer().get(), Resource::State::NonPixelShader);
+        }
+        else if (mSDFGridConfig.implementation == SDFGrid::Type::SparseVoxelSet ||
+                 mSDFGridConfig.implementation == SDFGrid::Type::SparseBrickSet)
+        {
+            for (const SDFGrid::SharedPtr& pSDFGrid : mSDFGrids)
+            {
+                pContext->resourceBarrier(pSDFGrid->getAABBBuffer().get(), Resource::State::NonPixelShader);
+            }
+        }
+    }
+
+    if (mpRtAABBBuffer)
+    {
+        pContext->resourceBarrier(mpRtAABBBuffer.get(), Resource::State::NonPixelShader);
     }
 
     // On the first time, or if a full rebuild is necessary we will:
@@ -2594,76 +2574,206 @@ void Scene::buildBlas(RenderContext* pContext) {
     // - Calculate total compacted buffer size
     // - Compact/clone all BLASes to their final location
 
-    pContext->flush(true);
-
-    if (mRebuildBlas) {
-
-        logInfo("Initiating BLAS build for " + std::to_string(mBlasData.size()) + " mesh groups");
-
+    if (mRebuildBlas)
+    {
         // Invalidate any previous TLASes as they won't be valid anymore.
-        mTlasCache.clear();
+        invalidateTlasCache();
 
-        // Compute pre-build info per BLAS and organize the BLASes into groups
-        // in order to limit GPU memory usage during BLAS build.
-        preparePrebuildInfo(pContext);
-        computeBlasGroups();
+        if (mBlasData.empty())
+        {
+            LLOG_INF << "Skipping BLAS build due to no geometries";
 
-        logInfo("BLAS build split into " + std::to_string(mBlasGroups.size()) + " groups");
-
-        // Compute the required maximum size of the result and scratch buffers.
-        size_t maxBlasCount = 0;
-
-        //for (const auto& group : mBlasGroups) {
-        //    resultByteSize = std::max(resultByteSize, group.resultByteSize);
-        //    scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
-        //    maxBlasCount = std::max(maxBlasCount, group.blasIndices.size());
-        //}
-        //assert(resultByteSize > 0);
-        //assert(scratchByteSize > 0);
-
-
-
-        // Iterate over BLAS groups. For each group build and compact all BLASes.
-        for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-            auto& group = mBlasGroups[blasGroupIndex];
-
-            bool useCompaction =false;// true;
-
-            group.scratchByteSize = 0;
-            
-            group.pBLAS = BottomLevelAccelerationStructure::create(mpDevice);
-
-            for (uint32_t blasId : group.blasIndices) {
-                const auto& blasData = mBlasData[blasId];
-
-                for (size_t i = 0; i < blasData.geomDescs.size(); i++) {
-
-                    auto const& geometry = blasData.geomDescs[i].geometry;
-                    auto const& range = blasData.ranges[i];
-
-                    group.pBLAS->addGeometry(geometry.triangles, range, VK_GEOMETRY_OPAQUE_BIT_KHR);
-                }
-            }
-
-            if (!group.pBLAS->createAccelerationStructure(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | (useCompaction ? VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR : 0))) {
-                throw std::runtime_error("Error creating BLAS !!!");
-            } else {
-                logWarning("Group BLAS created.");
-            }
-        
-            group.scratchByteSize = std::max(group.scratchByteSize, group.pBLAS->scratchBufferSize());
-    
-
-            // Insert barrier. The BLAS buffer is now ready for use.
-            //pContext->uavBarrier(pBlas.get());
+            mBlasGroups.clear();
+            mBlasObjects.clear();
         }
+        else
+        {
+            LLOG_INF << "Initiating BLAS build for " << std::to_string(mBlasData.size()) << " mesh groups";
 
-        // Release scratch buffer if there is no animated content. We will not need it.
-        //if (!hasSkinnedMesh && !hasProceduralPrimitives) mpBlasScratch.reset();
+            // Compute pre-build info per BLAS and organize the BLASes into groups
+            // in order to limit GPU memory usage during BLAS build.
+            preparePrebuildInfo(pContext);
+            computeBlasGroups();
+
+            LLOG_INF << "BLAS build split into " << std::to_string(mBlasGroups.size()) << " groups";
+
+            // Compute the required maximum size of the result and scratch buffers.
+            uint64_t resultByteSize = 0;
+            uint64_t scratchByteSize = 0;
+            size_t maxBlasCount = 0;
+
+            for (const auto& group : mBlasGroups)
+            {
+                resultByteSize = std::max(resultByteSize, group.resultByteSize);
+                scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
+                maxBlasCount = std::max(maxBlasCount, group.blasIndices.size());
+            }
+            FALCOR_ASSERT(resultByteSize > 0 && scratchByteSize > 0);
+
+            LLOG_INF << "BLAS build result buffer size: " << formatByteSize(resultByteSize);
+            LLOG_INF << "BLAS build scratch buffer size: " << formatByteSize(scratchByteSize);
+
+            // Allocate result and scratch buffers.
+            // The scratch buffer we'll retain because it's needed for subsequent rebuilds and updates.
+            // TODO: Save memory by reducing the scratch buffer to the minimum required for the dynamic objects.
+            if (mpBlasScratch == nullptr || mpBlasScratch->getSize() < scratchByteSize)
+            {
+                mpBlasScratch = Buffer::create(mpDevice, scratchByteSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+                mpBlasScratch->setName("Scene::mpBlasScratch");
+            }
+
+            Buffer::SharedPtr pResultBuffer = Buffer::create(mpDevice, resultByteSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+            FALCOR_ASSERT(pResultBuffer && mpBlasScratch);
+
+            // Create post-build info pool for readback.
+            RtAccelerationStructurePostBuildInfoPool::Desc compactedSizeInfoPoolDesc;
+            compactedSizeInfoPoolDesc.queryType = RtAccelerationStructurePostBuildInfoQueryType::CompactedSize;
+            compactedSizeInfoPoolDesc.elementCount = (uint32_t)maxBlasCount;
+            RtAccelerationStructurePostBuildInfoPool::SharedPtr compactedSizeInfoPool = RtAccelerationStructurePostBuildInfoPool::create(mpDevice, compactedSizeInfoPoolDesc);
+
+            RtAccelerationStructurePostBuildInfoPool::Desc currentSizeInfoPoolDesc;
+            currentSizeInfoPoolDesc.queryType = RtAccelerationStructurePostBuildInfoQueryType::CurrentSize;
+            currentSizeInfoPoolDesc.elementCount = (uint32_t)maxBlasCount;
+            RtAccelerationStructurePostBuildInfoPool::SharedPtr currentSizeInfoPool = RtAccelerationStructurePostBuildInfoPool::create(mpDevice, currentSizeInfoPoolDesc);
+
+            bool hasDynamicGeometry = false;
+            bool hasProceduralPrimitives = false;
+
+            mBlasObjects.resize(mBlasData.size());
+
+            // Iterate over BLAS groups. For each group build and compact all BLASes.
+            for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++)
+            {
+                auto& group = mBlasGroups[blasGroupIndex];
+
+                // Allocate array to hold intermediate blases for the group.
+                std::vector<RtAccelerationStructure::SharedPtr> intermediateBlases(group.blasIndices.size());
+
+                // Insert barriers. The buffers are now ready to be written.
+                pContext->uavBarrier(pResultBuffer.get());
+                pContext->uavBarrier(mpBlasScratch.get());
+
+                // Reset the post-build info pools to receive new info.
+                compactedSizeInfoPool->reset(pContext);
+                currentSizeInfoPool->reset(pContext);
+
+                // Build the BLASes into the intermediate result buffer.
+                // We output post-build info in order to find out the final size requirements.
+                for (size_t i = 0; i < group.blasIndices.size(); ++i)
+                {
+                    const uint32_t blasId = group.blasIndices[i];
+                    const auto& blas = mBlasData[blasId];
+
+                    hasDynamicGeometry |= blas.hasDynamicGeometry();
+                    hasProceduralPrimitives |= blas.hasProceduralPrimitives;
+
+                    RtAccelerationStructure::Desc createDesc = {};
+                    createDesc.setBuffer(pResultBuffer, blas.resultByteOffset, blas.resultByteSize);
+                    createDesc.setKind(RtAccelerationStructureKind::BottomLevel);
+                    auto blasObject = RtAccelerationStructure::create(mpDevice, createDesc);
+                    intermediateBlases[i] = blasObject;
+
+                    RtAccelerationStructure::BuildDesc asDesc = {};
+                    asDesc.inputs = blas.buildInputs;
+                    asDesc.scratchData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
+                    asDesc.dest = blasObject.get();
+
+                    // Need to find out the post-build compacted BLAS size to know the final allocation size.
+                    RtAccelerationStructurePostBuildInfoDesc postbuildInfoDesc = {};
+                    if (blas.useCompaction)
+                    {
+                        postbuildInfoDesc.type = RtAccelerationStructurePostBuildInfoQueryType::CompactedSize;
+                        postbuildInfoDesc.index = (uint32_t)i;
+                        postbuildInfoDesc.pool = compactedSizeInfoPool.get();
+                    }
+                    else
+                    {
+                        postbuildInfoDesc.type = RtAccelerationStructurePostBuildInfoQueryType::CurrentSize;
+                        postbuildInfoDesc.index = (uint32_t)i;
+                        postbuildInfoDesc.pool = currentSizeInfoPool.get();
+                    }
+
+                    pContext->buildAccelerationStructure(asDesc, 1, &postbuildInfoDesc);
+                }
+
+                // Read back the calculated final size requirements for each BLAS.
+
+                group.finalByteSize = 0;
+                for (size_t i = 0; i < group.blasIndices.size(); i++)
+                {
+                    const uint32_t blasId = group.blasIndices[i];
+                    auto& blas = mBlasData[blasId];
+
+                    // Check the size. Upon failure a zero size may be reported.
+                    uint64_t byteSize = 0;
+                    if (blas.useCompaction)
+                    {
+                        byteSize = compactedSizeInfoPool->getElement(pContext, (uint32_t)i);
+                    }
+                    else
+                    {
+                        byteSize = currentSizeInfoPool->getElement(pContext, (uint32_t)i);
+                        // For platforms that does not support current size query, use prebuild size.
+                        if (byteSize == 0)
+                        {
+                            byteSize = blas.prebuildInfo.resultDataMaxSize;
+                        }
+                    }
+                    FALCOR_ASSERT(byteSize <= blas.prebuildInfo.resultDataMaxSize);
+                    if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index " + std::to_string(blasId));
+
+                    blas.blasByteSize = align_to(kAccelerationStructureByteAlignment, byteSize);
+                    blas.blasByteOffset = group.finalByteSize;
+                    group.finalByteSize += blas.blasByteSize;
+                }
+                FALCOR_ASSERT(group.finalByteSize > 0);
+
+                LLOG_INF << "BLAS group " << std::to_string(blasGroupIndex) << " final size: " << formatByteSize(group.finalByteSize);
+
+                // Allocate final BLAS buffer.
+                auto& pBlas = group.pBlas;
+                if (pBlas == nullptr || pBlas->getSize() < group.finalByteSize)
+                {
+                    pBlas = Buffer::create(mpDevice, group.finalByteSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+                    pBlas->setName("Scene::mBlasGroups[" + std::to_string(blasGroupIndex) + "].pBlas");
+                }
+                else
+                {
+                    // If we didn't need to reallocate, just insert a barrier so it's safe to use.
+                    pContext->uavBarrier(pBlas.get());
+                }
+
+                // Insert barrier. The result buffer is now ready to be consumed.
+                // TOOD: This is probably not necessary since we flushed above, but it's not going to hurt.
+                pContext->uavBarrier(pResultBuffer.get());
+
+                // Compact/clone all BLASes to their final location.
+                for (size_t i = 0; i < group.blasIndices.size(); ++i)
+                {
+                    const uint32_t blasId = group.blasIndices[i];
+                    auto& blas = mBlasData[blasId];
+
+                    RtAccelerationStructure::Desc blasDesc = {};
+                    blasDesc.setBuffer(pBlas, blas.blasByteOffset, blas.blasByteSize);
+                    blasDesc.setKind(RtAccelerationStructureKind::BottomLevel);
+                    mBlasObjects[blasId] = RtAccelerationStructure::create(mpDevice, blasDesc);
+
+                    pContext->copyAccelerationStructure(
+                        mBlasObjects[blasId].get(),
+                        intermediateBlases[i].get(),
+                        blas.useCompaction ? RenderContext::RtAccelerationStructureCopyMode::Compact : RenderContext::RtAccelerationStructureCopyMode::Clone);
+                }
+
+                // Insert barrier. The BLAS buffer is now ready for use.
+                pContext->uavBarrier(pBlas.get());
+            }
+
+            // Release scratch buffer if there is no animated content. We will not need it.
+            if (!hasDynamicGeometry && !hasProceduralPrimitives) mpBlasScratch.reset();
+        }
 
         updateRaytracingBLASStats();
         mRebuildBlas = false;
-
         return;
     }
 
@@ -2671,16 +2781,18 @@ void Scene::buildBlas(RenderContext* pContext) {
     // - Skip the ones that have no animated geometries.
     // - Update or rebuild in-place the ones that are animated.
 
-    assert(!mRebuildBlas);
+    FALCOR_ASSERT(!mRebuildBlas);
     bool updateProcedural = is_set(mUpdates, UpdateFlags::CurvesMoved) || is_set(mUpdates, UpdateFlags::CustomPrimitivesMoved);
 
-    for (const auto& group : mBlasGroups) {
+    for (const auto& group : mBlasGroups)
+    {
         // Determine if any BLAS in the group needs to be updated.
         bool needsUpdate = false;
-        for (uint32_t blasId : group.blasIndices) {
+        for (uint32_t blasId : group.blasIndices)
+        {
             const auto& blas = mBlasData[blasId];
             if (blas.hasProceduralPrimitives && updateProcedural) needsUpdate = true;
-            if (!blas.hasProceduralPrimitives && blas.hasSkinnedMesh) needsUpdate = true;
+            if (!blas.hasProceduralPrimitives && blas.hasDynamicGeometry()) needsUpdate = true;
         }
 
         if (!needsUpdate) continue;
@@ -2688,76 +2800,71 @@ void Scene::buildBlas(RenderContext* pContext) {
         // At least one BLAS in the group needs to be updated.
         // Insert barriers. The buffers are now ready to be written.
         auto& pBlas = group.pBlas;
-        assert(pBlas && mpBlasScratch);
+        FALCOR_ASSERT(pBlas && mpBlasScratch);
         pContext->uavBarrier(pBlas.get());
         pContext->uavBarrier(mpBlasScratch.get());
 
         // Iterate over all BLASes in group.
-        for (uint32_t blasId : group.blasIndices) {
+        for (uint32_t blasId : group.blasIndices)
+        {
             const auto& blas = mBlasData[blasId];
 
             // Skip BLASes that do not need to be updated.
             if (blas.hasProceduralPrimitives && !updateProcedural) continue;
-            if (!blas.hasProceduralPrimitives && !blas.hasSkinnedMesh) continue;
+            if (!blas.hasProceduralPrimitives && !blas.hasDynamicGeometry()) continue;
 
             // Rebuild/update BLAS.
-            D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-            asDesc.Inputs = blas.buildInputs;
-            asDesc.ScratchAccelerationStructureData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
-            asDesc.DestAccelerationStructureData = pBlas->getGpuAddress() + blas.blasByteOffset;
+            RtAccelerationStructure::BuildDesc asDesc = {};
+            asDesc.inputs = blas.buildInputs;
+            asDesc.scratchData = mpBlasScratch->getGpuAddress() + blas.scratchByteOffset;
+            asDesc.dest = mBlasObjects[blasId].get();
 
             if (blas.updateMode == UpdateMode::Refit)
             {
                 // Set source address to destination address to update in place.
-                asDesc.SourceAccelerationStructureData = asDesc.DestAccelerationStructureData;
-                asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-            } else {
-                // We'll rebuild in place. The BLAS should not be compacted, check that size matches prebuild info.
-                assert(blas.blasByteSize == blas.prebuildInfo.ResultDataMaxSizeInBytes);
+                asDesc.source = asDesc.dest;
+                asDesc.inputs.flags |= RtAccelerationStructureBuildFlags::PerformUpdate;
             }
-
-            GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
-            pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+            else
+            {
+                // We'll rebuild in place. The BLAS should not be compacted, check that size matches prebuild info.
+                FALCOR_ASSERT(blas.blasByteSize == blas.prebuildInfo.resultDataMaxSize);
+            }
+            pContext->buildAccelerationStructure(asDesc, 0, nullptr);
         }
 
         // Insert barrier. The BLAS buffer is now ready for use.
         pContext->uavBarrier(pBlas.get());
     }
-*/
 }
 
-void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const {
-
-/*
+void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry) const {
     instanceDescs.clear();
     uint32_t instanceContributionToHitGroupIndex = 0;
     uint32_t instanceID = 0;
 
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
+    for (size_t i = 0; i < mMeshGroups.size(); i++)
+    {
         const auto& meshList = mMeshGroups[i].meshList;
         const bool isStatic = mMeshGroups[i].isStatic;
 
-        assert(mBlasData[i].blasGroupIndex < mBlasGroups.size());
-        
-        const auto& pBlas = mBlasGroups[mBlasData[i].blasGroupIndex].pBLAS;// pBlas;
-        assert(pBlas);
+        FALCOR_ASSERT(mBlasData[i].blasGroupIndex < mBlasGroups.size());
+        const auto& pBlas = mBlasGroups[mBlasData[i].blasGroupIndex].pBlas;
+        FALCOR_ASSERT(pBlas);
 
-        VkAccelerationStructureInstanceKHR desc = {};
-
-        assert(pBlas->getVkHandle() != VK_NULL_HANDLE);
-        assert(pBlas->getVkAddress() != 0);
-
-        desc.accelerationStructureReference = pBlas->getVkAddress();//getGpuAddress() + mBlasData[i].blasByteOffset;
-        desc.mask = 0xFF;
-        desc.instanceShaderBindingTableRecordOffset = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
+        RtInstanceDesc desc = {};
+        desc.accelerationStructure = pBlas->getGpuAddress() + mBlasData[i].blasByteOffset;
+        desc.instanceMask = 0xFF;
+        desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
         instanceContributionToHitGroupIndex += rayCount * (uint32_t)meshList.size();
 
         // We expect all meshes in a group to have identical triangle winding. Verify that assumption here.
-        assert(!meshList.empty());
+        FALCOR_ASSERT(!meshList.empty());
         const bool frontFaceCW = mMeshDesc[meshList[0]].isFrontFaceCW();
-        for (size_t i = 1; i < meshList.size(); i++) {
-            assert(mMeshDesc[meshList[i]].isFrontFaceCW() == frontFaceCW);
+        for (size_t i = 1; i < meshList.size(); i++)
+        {
+            FALCOR_ASSERT(mMeshDesc[meshList[i]].isFrontFaceCW() == frontFaceCW);
         }
 
         // Set the triangle winding for the instance if it differs from the default.
@@ -2765,7 +2872,7 @@ void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& in
         // from the ray origin, in object space in a left-handed coordinate system.
         // Note that Falcor uses a right-handed coordinate system, so we have to invert the flag.
         // Since these winding direction rules are defined in object space, they are unaffected by instance transforms.
-        if (frontFaceCW) desc.flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR;
+        if (frontFaceCW) desc.flags = desc.flags | RtGeometryInstanceFlags::TriangleFrontCounterClockwise;
 
         // From the scene builder we can expect the following:
         //
@@ -2777,242 +2884,297 @@ void Scene::fillInstanceDesc(std::vector<VkAccelerationStructureInstanceKHR>& in
         // - The meshes are guaranteed to be non-instanced or be identically instanced, one INSTANCE_DESC per TLAS instance is needed.
         // - The global matrices are the same for all meshes in an instance.
         //
-        assert(!meshList.empty());
+        FALCOR_ASSERT(!meshList.empty());
         size_t instanceCount = mMeshIdToInstanceIds[meshList[0]].size();
 
-        assert(instanceCount > 0);
-        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
+        FALCOR_ASSERT(instanceCount > 0);
+        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++)
+        {
             // Validate that the ordering is matching our expectations:
             // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-            for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
+            for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++)
+            {
                 const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
-                assert(instances.size() == instanceCount);
-                assert(instances[instanceIdx] == instanceID + geometryIndex);
+                FALCOR_ASSERT(instances.size() == instanceCount);
+                FALCOR_ASSERT(instances[instanceIdx] == instanceID + geometryIndex);
             }
 
-            desc.instanceCustomIndex = instanceID;
+            desc.instanceID = instanceID;
             instanceID += (uint32_t)meshList.size();
 
             glm::mat4 transform4x4 = glm::identity<glm::mat4>();
-            if (!isStatic) {
+            if (!isStatic)
+            {
                 // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
                 // Just pick the matrix from the first mesh.
-                const uint32_t matrixId = mMeshInstanceData[desc.instanceCustomIndex].globalMatrixID;
+                const uint32_t matrixId = mGeometryInstanceData[desc.instanceID].globalMatrixID;
                 transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
 
                 // Verify that all meshes have matching tranforms.
-                for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                    assert(matrixId == mMeshInstanceData[desc.instanceCustomIndex + geometryIndex].globalMatrixID);
+                for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++)
+                {
+                    FALCOR_ASSERT(matrixId == mGeometryInstanceData[desc.instanceID + geometryIndex].globalMatrixID);
                 }
             }
-            std::memcpy(&desc.transform, &transform4x4, sizeof(desc.transform));
+            std::memcpy(desc.transform, &transform4x4, sizeof(desc.transform));
+
+            // Verify that instance data has the correct instanceIndex and geometryIndex.
+            for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++)
+            {
+                FALCOR_ASSERT((uint32_t)instanceDescs.size() == mGeometryInstanceData[desc.instanceID + geometryIndex].instanceIndex);
+                FALCOR_ASSERT(geometryIndex == mGeometryInstanceData[desc.instanceID + geometryIndex].geometryIndex);
+            }
+
             instanceDescs.push_back(desc);
         }
     }
 
-    // One instance with identity transform for AABBs.
-    if (!mRtAABBRaw.empty()) {
-        // Last BLAS should be all AABBs.
-        assert(mBlasData.size() == mMeshGroups.size() + 1);
+    uint32_t totalBlasCount = (uint32_t)mMeshGroups.size() + (mCurveDesc.empty() ? 0 : 1) + getSDFGridGeometryCount() + (mCustomPrimitiveDesc.empty() ? 0 : 1);
+    FALCOR_ASSERT((uint32_t)mBlasData.size() == totalBlasCount);
 
-        assert(mBlasData.back().blasGroupIndex < mBlasGroups.size());
-        const auto& pBlas = mBlasGroups[mBlasData.back().blasGroupIndex].pBLAS; //pBlas;
-        assert(pBlas);
+    size_t blasDataIndex = mMeshGroups.size();
+    // One instance for curves.
+    if (!mCurveDesc.empty())
+    {
+        const auto& blasData = mBlasData[blasDataIndex++];
+        FALCOR_ASSERT(blasData.blasGroupIndex < mBlasGroups.size());
+        const auto& pBlas = mBlasGroups[blasData.blasGroupIndex].pBlas;
+        FALCOR_ASSERT(pBlas);
 
-        VkAccelerationStructureInstanceKHR desc = {};
-
-        desc.accelerationStructureReference = pBlas->getVkAddress(); //getGpuAddress() + mBlasData.back().blasByteOffset;
-        desc.mask = 0xFF;
-        desc.instanceCustomIndex = instanceID;
-        instanceID++;
+        RtInstanceDesc desc = {};
+        desc.accelerationStructure = pBlas->getGpuAddress() + blasData.blasByteOffset;
+        desc.instanceMask = 0xFF;
+        desc.instanceID = instanceID;
+        instanceID += (uint32_t)mCurveDesc.size();
 
         // Start procedural primitive hit group after the triangle hit groups.
-        desc.instanceShaderBindingTableRecordOffset = perMeshHitEntry ? instanceContributionToHitGroupIndex : rayCount;
+        desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
 
-        glm::mat4 identityMat = glm::identity<glm::mat4>();
-        std::memcpy(&desc.transform, &identityMat, sizeof(desc.transform));
+        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCurveDesc.size();
+
+        // For cached curves, the matrices for all curves in an instance are guaranteed to be the same.
+        // Just pick the matrix from the first curve.
+        auto it = std::find_if(mGeometryInstanceData.begin(), mGeometryInstanceData.end(), [](const auto& inst) { return inst.getType() == GeometryType::Curve; });
+        FALCOR_ASSERT(it != mGeometryInstanceData.end());
+        const uint32_t matrixId = it->globalMatrixID;
+        desc.setTransform(mpAnimationController->getGlobalMatrices()[matrixId]);
+
+        // Verify that instance data has the correct instanceIndex and geometryIndex.
+        for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)mCurveDesc.size(); geometryIndex++)
+        {
+            FALCOR_ASSERT((uint32_t)instanceDescs.size() == mGeometryInstanceData[desc.instanceID + geometryIndex].instanceIndex);
+            FALCOR_ASSERT(geometryIndex == mGeometryInstanceData[desc.instanceID + geometryIndex].geometryIndex);
+        }
+
         instanceDescs.push_back(desc);
     }
-*/
+
+    // One instance per SDF grid instance.
+    if (!mSDFGrids.empty())
+    {
+        bool sdfGridInstancesHaveUniqueBLASes = true;
+        switch (mSDFGridConfig.implementation)
+        {
+        case SDFGrid::Type::NormalizedDenseGrid:
+        case SDFGrid::Type::SparseVoxelOctree:
+            sdfGridInstancesHaveUniqueBLASes = false;
+            break;
+        case SDFGrid::Type::SparseVoxelSet:
+        case SDFGrid::Type::SparseBrickSet:
+            sdfGridInstancesHaveUniqueBLASes = true;
+            break;
+        default:
+            FALCOR_UNREACHABLE();
+        }
+
+        for (const GeometryInstanceData& instance : mGeometryInstanceData)
+        {
+            if (instance.getType() != GeometryType::SDFGrid) continue;
+
+            const BlasData& blasData = mBlasData[blasDataIndex + (sdfGridInstancesHaveUniqueBLASes ? instance.geometryID : 0)];
+            const auto& pBlas = mBlasGroups[blasData.blasGroupIndex].pBlas;
+
+            RtInstanceDesc desc = {};
+            desc.accelerationStructure = pBlas->getGpuAddress() + blasData.blasByteOffset;
+            desc.instanceMask = 0xFF;
+            desc.instanceID = instanceID;
+            instanceID++;
+
+            // Start SDF grid hit group after the curve hit groups.
+            desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
+
+            desc.setTransform(mpAnimationController->getGlobalMatrices()[instance.globalMatrixID]);
+
+            // Verify that instance data has the correct instanceIndex and geometryIndex.
+            FALCOR_ASSERT((uint32_t)instanceDescs.size() == instance.instanceIndex);
+            FALCOR_ASSERT(0 == instance.geometryIndex);
+
+            instanceDescs.push_back(desc);
+        }
+
+        blasDataIndex += (sdfGridInstancesHaveUniqueBLASes ? mSDFGrids.size() : 1);
+        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mSDFGridDesc.size();
+    }
+
+    // One instance with identity transform for custom primitives.
+    if (!mCustomPrimitiveDesc.empty())
+    {
+        FALCOR_ASSERT(mBlasData.back().blasGroupIndex < mBlasGroups.size());
+        const auto& pBlas = mBlasGroups[mBlasData.back().blasGroupIndex].pBlas;
+        FALCOR_ASSERT(pBlas);
+
+        RtInstanceDesc desc = {};
+        desc.accelerationStructure = pBlas->getGpuAddress() + mBlasData.back().blasByteOffset;
+        desc.instanceMask = 0xFF;
+        desc.instanceID = instanceID;
+        instanceID += (uint32_t)mCustomPrimitiveDesc.size();
+
+        // Start procedural primitive hit group after the curve hit group.
+        desc.instanceContributionToHitGroupIndex = perMeshHitEntry ? instanceContributionToHitGroupIndex : 0;
+
+        instanceContributionToHitGroupIndex += rayCount * (uint32_t)mCustomPrimitiveDesc.size();
+
+        glm::mat4 identityMat = glm::identity<glm::mat4>();
+        std::memcpy(desc.transform, &identityMat, sizeof(desc.transform));
+        instanceDescs.push_back(desc);
+    }
+}
+
+void Scene::invalidateTlasCache() {
+    for (auto& tlas : mTlasCache) {
+        tlas.second.pTlasObject = nullptr;
+    }
 }
 
 void Scene::buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry) {
-/*
     PROFILE(mpDevice, "buildTlas");
 
     TlasData tlas;
     auto it = mTlasCache.find(rayCount);
     if (it != mTlasCache.end()) tlas = it->second;
 
+    // Prepare instance descs.
+    // Note if there are no instances, we'll build an empty TLAS.
     fillInstanceDesc(mInstanceDescs, rayCount, perMeshHitEntry);
+
+    RtAccelerationStructureBuildInputs inputs = {};
+    inputs.kind = RtAccelerationStructureKind::TopLevel;
+    inputs.descCount = (uint32_t)mInstanceDescs.size();
+    inputs.flags = RtAccelerationStructureBuildFlags::None;
+
+    // Add build flags for dynamic scenes if TLAS should be updating instead of rebuilt
+    if ((mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches()) && mTlasUpdateMode == UpdateMode::Refit)
+    {
+        inputs.flags |= RtAccelerationStructureBuildFlags::AllowUpdate;
+
+        // If TLAS has been built already and it was built with ALLOW_UPDATE
+        if (tlas.pTlasObject != nullptr && tlas.updateMode == UpdateMode::Refit) inputs.flags |= RtAccelerationStructureBuildFlags::PerformUpdate;
+    }
 
     tlas.updateMode = mTlasUpdateMode;
 
-    uint64_t scratchByteSize = 0;
-    for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-        auto& group = mBlasGroups[blasGroupIndex];
-        scratchByteSize = std::max(scratchByteSize, group.scratchByteSize);
+    // On first build for the scene, create scratch buffer and cache prebuild info. As long as INSTANCE_DESC count doesn't change, we can reuse these
+    if (mpTlasScratch == nullptr)
+    {
+        // Prebuild
+        mTlasPrebuildInfo = RtAccelerationStructure::getPrebuildInfo(mpDevice, inputs);
+        mpTlasScratch = Buffer::create(mpDevice, mTlasPrebuildInfo.scratchDataSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        mpTlasScratch->setName("Scene::mpTlasScratch");
+
+        // #SCENE This isn't guaranteed according to the spec, and the scratch buffer being stored should be sized differently depending on update mode
+        FALCOR_ASSERT(mTlasPrebuildInfo.updateScratchDataSize <= mTlasPrebuildInfo.scratchDataSize);
     }
+
+    // Setup GPU buffers
+    RtAccelerationStructure::BuildDesc asDesc = {};
+    asDesc.inputs = inputs;
 
     // If first time building this TLAS
-    if (tlas.pTLAS == nullptr) {
-        tlas.pTLAS = TopLevelAccelerationStructure::create(mpDevice);
-        tlas.pTLAS->addInstances(mInstanceDescs);
-        if (!tlas.pTLAS->createAccelerationStructure(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)) {
-            throw std::runtime_error("Error creating TLAS !!!");
-        }
-        scratchByteSize =  std::max(scratchByteSize, tlas.pTLAS->scratchBufferSize());
-        mpTlasScratch = Buffer::create(mpDevice, scratchByteSize * 5, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-
-
-        VkResult result = vkQueueWaitIdle(mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0));
-        if(result != VK_SUCCESS) {
-            LOG_ERR("Error vkQueueWaitIdle(queue) main!!!");
-        }
-
-pContext->flush(true);
-pContext->getLowLevelData()->flush();
-
-auto queueFamilyIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
-VkQueue queue = mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 1);
-
-VkCommandPoolCreateInfo poolInfo{};
-poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-poolInfo.queueFamilyIndex = queueFamilyIndex;
-poolInfo.flags = 0; // Optional
-
-VkCommandPool commandPool;
-
-//if (vkCreateCommandPool(mpDevice->getApiHandle(), &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-//    throw std::runtime_error("failed to create command pool!");
-//}
-commandPool = pContext->getLowLevelData()->getCommandAllocator();
-
-//vkGetDeviceQueue(mpDevice->getApiHandle(), queueFamilyIndex, 2, &queue);
-
-
-VkDeviceSize scratch_buffer_size = 0;
-for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-    auto& group = mBlasGroups[blasGroupIndex];
-    scratch_buffer_size = std::max(scratch_buffer_size, group.pBLAS->scratchBufferSize());
-}
-
-printf("Scratch buffer size: %zu\n", scratch_buffer_size);
-auto pScratchBuffer = Buffer::create(mpDevice, scratch_buffer_size, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-
-oneTimeCommandBuffer(mpDevice, commandPool, queue, [&](VkCommandBuffer cmdBuff) {
-
-        // barrier to wait for build to finish
-        VkMemoryBarrier barrier = {};
-        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        const VkPipelineStageFlags src = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-        const VkPipelineStageFlags dst = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-
-        for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-            auto& group = mBlasGroups[blasGroupIndex];
-
-            LOG_WARN("Build blas....");
-
-            //auto pScratchBuffer = Buffer::create(mpDevice, scratch_buffer_size, Buffer::BindFlags::AccelerationStructureScratch, Buffer::CpuAccess::None);
-            if(!group.pBLAS->build(cmdBuff, pScratchBuffer->getGpuAddress())) {
-                LOG_ERR("pBLAS not built!!!");
+    if (tlas.pTlasObject == nullptr)
+    {
+        {
+            // Allocate a new buffer for the TLAS only if the existing buffer isn't big enough.
+            if (!tlas.pTlasBuffer || tlas.pTlasBuffer->getSize() < mTlasPrebuildInfo.resultDataMaxSize)
+            {
+                tlas.pTlasBuffer = Buffer::create(mpDevice, mTlasPrebuildInfo.resultDataMaxSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+                tlas.pTlasBuffer->setName("Scene TLAS buffer");
             }
-            vkCmdPipelineBarrier(cmdBuff, src, dst, 0, 1, &barrier, 0, 0, 0, 0);
         }
-
-
-        assert(mpTlasScratch);
-        //tlas.pTLAS->build(cmdBuff, mpTlasScratch->getGpuAddress());
-        vkCmdPipelineBarrier(cmdBuff, src, dst | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, &barrier, 0, 0, 0, 0);
-});
-        // compact BLAS
-        // building must be finished to retrieve the compacted size, or vkGetQueryPoolResults will time out
-
-        bool COMPACT_BLAS = false;//true;
-
-        if (COMPACT_BLAS) {
-            LOG_WARN("COMPACT_BLAS");
-            std::vector<BottomLevelAccelerationStructure::SharedPtr> compacted_bottom_as_list;
-
-oneTimeCommandBuffer(mpDevice, commandPool, queue, [&](VkCommandBuffer cmdBuff) {
-            // one_time_command_buffer {
-            VkMemoryBarrier barrier = {};
-            barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-            barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-            
-            const VkPipelineStageFlags src = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-            const VkPipelineStageFlags dst = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-
-            for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-                auto& group = mBlasGroups[blasGroupIndex];
-                printf("blasGroupIndex %zu\n", blasGroupIndex);
-                AccelerationStructure::SharedPtr pCompactedBLAS = group.pBLAS->compact(cmdBuff);
-                printf("updateInstance\n");
-                tlas.pTLAS->updateInstance(blasGroupIndex, std::dynamic_pointer_cast<BottomLevelAccelerationStructure>(pCompactedBLAS));
-
-                //compacted_bottom_as_list.push_back(std::dynamic_pointer_cast<BottomLevelAccelerationStructure>(pCompactedBLAS));
-                // update the TLAS with references to the new compacted BLAS since their handles changed
-                //tlas.pTLAS->updateInstance(blasGroupIndex, compacted_bottom_as_list[blasGroupIndex]);
+        if (!mInstanceDescs.empty())
+        {
+            // Allocate a new buffer for the TLAS instance desc input only if the existing buffer isn't big enough.
+            if (!tlas.pInstanceDescs || tlas.pInstanceDescs->getSize() < mInstanceDescs.size() * sizeof(RtInstanceDesc))
+            {
+                tlas.pInstanceDescs = Buffer::create(mpDevice, (uint32_t)mInstanceDescs.size() * sizeof(RtInstanceDesc), Buffer::BindFlags::None, Buffer::CpuAccess::Write, mInstanceDescs.data());
+                tlas.pInstanceDescs->setName("Scene instance descs buffer");
             }
-            
-            LOG_WARN("33");
-            vkCmdPipelineBarrier(cmdBuff, src, dst, 0, 1, &barrier, 0, 0, 0, 0);
-            tlas.pTLAS->update(cmdBuff, mpTlasScratch->getGpuAddress());
-            vkCmdPipelineBarrier(cmdBuff, src, dst | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 1, &barrier, 0, 0, 0, 0);
-});
-            //}
-
-vkDestroyCommandPool(mpDevice->getApiHandle(), commandPool, nullptr);
-
-             for (size_t blasGroupIndex = 0; blasGroupIndex < mBlasGroups.size(); blasGroupIndex++) {
-                auto& group = mBlasGroups[blasGroupIndex];
-                group.pBLAS = compacted_bottom_as_list[blasGroupIndex];
+            else
+            {
+                tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, mInstanceDescs.size() * sizeof(RtInstanceDesc));
             }
         }
 
-    } else {
-    // Updateing TLAS
-        // Else update instance descs and barrier TLAS buffers
-
-        //assert(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
-        //pContext->uavBarrier(tlas.pTlas.get());
-        //pContext->uavBarrier(mpTlasScratch.get());
-        //tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.NumDescs * sizeof(VkAccelerationStructureInstanceKHR));
-        //asDesc.SourceAccelerationStructureData = tlas.pTlas->getGpuAddress(); // Perform the update in-place
+        RtAccelerationStructure::Desc asCreateDesc = {};
+        asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
+        asCreateDesc.setBuffer(tlas.pTlasBuffer, 0, mTlasPrebuildInfo.resultDataMaxSize);
+        tlas.pTlasObject = RtAccelerationStructure::create(mpDevice, asCreateDesc);
+    }
+    // Else update instance descs and barrier TLAS buffers
+    else
+    {
+        FALCOR_ASSERT(mpAnimationController->hasAnimations() || mpAnimationController->hasAnimatedVertexCaches());
+        pContext->uavBarrier(tlas.pTlasBuffer.get());
+        pContext->uavBarrier(mpTlasScratch.get());
+        if (tlas.pInstanceDescs)
+        {
+            FALCOR_ASSERT(!mInstanceDescs.empty());
+            tlas.pInstanceDescs->setBlob(mInstanceDescs.data(), 0, inputs.descCount * sizeof(RtInstanceDesc));
+        }
+        asDesc.source = tlas.pTlasObject.get(); // Perform the update in-place
     }
 
+    FALCOR_ASSERT(tlas.pTlasBuffer && tlas.pTlasBuffer->getApiHandle() && mpTlasScratch->getApiHandle());
+    FALCOR_ASSERT(inputs.descCount == 0 || (tlas.pInstanceDescs && tlas.pInstanceDescs->getApiHandle()));
 
-    // Create TLAS SRV
-    //LOG_WARN("Create TLAS SRV");
-    //if (tlas.pSrv == nullptr) {
-    //    tlas.pSrv = ShaderResourceView::createViewForAccelerationStructure(mpDevice, tlas.pTlas);
-    //}
+    asDesc.inputs.instanceDescs = tlas.pInstanceDescs ? tlas.pInstanceDescs->getGpuAddress() : 0;
+    asDesc.scratchData = mpTlasScratch->getGpuAddress();
+    asDesc.dest = tlas.pTlasObject.get();
+
+    // Set the source buffer to update in place if this is an update
+    if ((inputs.flags & RtAccelerationStructureBuildFlags::PerformUpdate) != RtAccelerationStructureBuildFlags::None)
+    {
+        asDesc.source = asDesc.dest;
+    }
+
+    // Create TLAS
+    if (tlas.pInstanceDescs)
+    {
+        pContext->resourceBarrier(tlas.pInstanceDescs.get(), Resource::State::NonPixelShader);
+    }
+    pContext->buildAccelerationStructure(asDesc, 0, nullptr);
+    pContext->uavBarrier(tlas.pTlasBuffer.get());
 
     mTlasCache[rayCount] = tlas;
     updateRaytracingTLASStats();
-
-*/
 }
 
 void Scene::initRayTracing() {
     if (!mRenderSettings.useRayTracing || mRayTraceInitialized) return;
 
-    
+    /*
     auto graphicsQueueIndex = mpDevice->getApiCommandQueueType(LowLevelContextData::CommandQueueType::Direct);
     
     mpRtBuilder = new nvvk::RaytracingBuilderKHR();
     mpRtBuilder->setup(mpDevice->getApiHandle(), mpDevice->nvvkAllocator(), graphicsQueueIndex);
+    */
 
     mRayTraceInitialized = true;
 }
 
 void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
-    logWarning("!!!!!!!!!!!!!!!!setRaytracingShaderData");
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
-    if (mBlasData.empty()) {
+    if (!mBlasDataValid)
+    {
         initGeomDesc(pContext);
         buildBlas(pContext);
     }
@@ -3023,23 +3185,23 @@ void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& va
     // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
     //
     auto tlasIt = mTlasCache.find(rayTypeCount);
-    if (tlasIt == mTlasCache.end()) {
+    if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject)
+    {
         // We need a hit entry per mesh right now to pass GeometryIndex()
         buildTlas(pContext, rayTypeCount, true);
 
         // If new TLAS was just created, get it so the iterator is valid
         if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
     }
-
-    assert(mpSceneBlock);
-    assert(tlasIt->second.pSrv);
+    FALCOR_ASSERT(mpSceneBlock);
 
     // Bind TLAS.
-    mpSceneBlock["rtAccel"].setSrv(tlasIt->second.pSrv);
+    FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
+    mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     // Bind Scene parameter block.
     getCamera()->setShaderData(mpSceneBlock[kCamera]); // TODO REMOVE: Shouldn't be needed anymore?
-    var["gScene"] = mpSceneBlock;
+    var[kParameterBlockName] = mpSceneBlock;
 }
 
 std::vector<uint32_t> Scene::getMeshBlasIDs() const {
@@ -3062,130 +3224,58 @@ uint32_t Scene::getParentNodeID(uint32_t nodeID) const {
     return mSceneGraph[nodeID].parent;
 }
 
-/*
-void Scene::setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars) {
-    // Sets the 'geometryIndex' hit shader variable for each mesh.
-    // This is the local index of which mesh in the BLAS was hit.
-    // In DXR 1.0 we have to pass it via a constant buffer to the shader,
-    // in DXR 1.1 it is available through the GeometryIndex() system value.
 
-    auto setIntoVars = [](const EntryPointGroupVars::SharedPtr& pVars, uint32_t geometryIndex) {
-        auto var = pVars->findMember(0).findMember("geometryIndex");
-        if (var.isValid()) {
-            var = geometryIndex;
-        }
-    };
-
-    assert(!mBlasData.empty());
-    uint32_t meshCount = getMeshCount();
-    uint32_t descHitCount = pVars->getDescHitGroupCount();
-
-    uint32_t blasIndex = 0;
-    uint32_t geometryIndex = 0;
-    for (uint32_t meshId = 0; meshId < meshCount; meshId++) {
-        for (uint32_t hit = 0; hit < descHitCount; hit++) {
-            setIntoVars(pVars->getHitVars(hit, meshId), geometryIndex);
-        }
-
-        geometryIndex++;
-
-        // If at the end of this BLAS, reset counters and start checking next BLAS
-        uint32_t geomCount = (uint32_t)mMeshGroups[blasIndex].meshList.size();
-        if (geometryIndex == geomCount) {
-            geometryIndex = 0;
-            blasIndex++;
-        }
-    }
-
-    // For custom primitives, there is one geometry per primitive, all in one BLAS
-    geometryIndex = 0; // Reset counter
-    for (uint32_t i = 0; i < getProceduralPrimitiveCount(); i++) {
-        for (uint32_t hit = 0; hit < descHitCount; hit++) {
-            setIntoVars(pVars->getAABBHitVars(hit, i), geometryIndex);
-        }
-
-        geometryIndex++;
-    }
-}
-    
-void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount) {
-    // On first execution, create BLAS for each mesh.
-    if (mBlasData.empty()) {
-        initGeomDesc(pContext);
-        buildBlas(pContext);
-    }
-
-    // On first execution, when meshes have moved, when there's a new ray count, or when a BLAS has changed, create/update the TLAS
-    //
-    // TODO: The notion of "ray count" is being treated as fundamental here, and intrinsically
-    // linked to the number of hit groups in the program, without checking if this matches
-    // other things like the number of miss shaders. If/when we support meshes with custom
-    // intersection shaders, then the assumption that number of ray types and number of
-    // hit groups match will be incorrect.
-    //
-    // It really seems like a first-class notion of ray types (and the number thereof) is required.
-    //
-    auto tlasIt = mTlasCache.find(rayTypeCount);
-    if (tlasIt == mTlasCache.end()) {
-        // We need a hit entry per mesh right now to pass GeometryIndex()
-        buildTlas(pContext, rayTypeCount, true);
-
-        // If new TLAS was just created, get it so the iterator is valid
-        if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
-    }
-
-    assert(mpSceneBlock);
-    assert(tlasIt->second.pSrv);
-
-    // Bind Scene parameter block.
-    getCamera()->setShaderData(mpSceneBlock[kCamera]);
-    var["gScene"] = mpSceneBlock;
-
-    // Bind TLAS.
-    var["gRtScene"].setSrv(tlasIt->second.pSrv);
-}
-*/
-
-void Scene::nullTracePass(RenderContext* pContext, const uint2& dim) {
-/*    
-    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    void Scene::nullTracePass(RenderContext* pContext, const uint2& dim)
     {
-        logWarning("Raytracing Tier 1.1 is not supported by the current device");
-        return;
+        Device::SharedPtr pDevice = pContext->device();
+
+        if (!pDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+        {
+            LLOG_WRN << "Raytracing Tier 1.1 is not supported by the current device.";
+            return;
+        }
+
+        RtAccelerationStructureBuildInputs inputs = {};
+        inputs.kind = RtAccelerationStructureKind::TopLevel;
+        inputs.descCount = 0;
+        inputs.flags = RtAccelerationStructureBuildFlags::None;
+
+        RtAccelerationStructurePrebuildInfo prebuildInfo = RtAccelerationStructure::getPrebuildInfo(pDevice, inputs);
+
+        auto pScratch = Buffer::create(pDevice, prebuildInfo.scratchDataSize, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        auto pTlasBuffer = Buffer::create(pDevice, prebuildInfo.resultDataMaxSize, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
+
+        RtAccelerationStructure::Desc createDesc = {};
+        createDesc.setKind(RtAccelerationStructureKind::TopLevel);
+        createDesc.setBuffer(pTlasBuffer, 0, prebuildInfo.resultDataMaxSize);
+        RtAccelerationStructure::SharedPtr tlasObject = RtAccelerationStructure::create(pDevice, createDesc);
+
+        RtAccelerationStructure::BuildDesc asDesc = {};
+        asDesc.inputs = inputs;
+        asDesc.scratchData = pScratch->getGpuAddress();
+        asDesc.dest = tlasObject.get();
+
+        pContext->buildAccelerationStructure(asDesc, 0, nullptr);
+        pContext->uavBarrier(pTlasBuffer.get());
+
+        Program::Desc desc;
+        desc.addShaderLibrary("Scene/NullTrace.cs.slang").csEntry("main").setShaderModel("6_5");
+        auto pass = ComputePass::create(pDevice, desc);
+        pass["gOutput"] = Texture::create2D(pDevice, dim.x, dim.y, ResourceFormat::R8Uint, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
+        pass["gTlas"].setAccelerationStructure(tlasObject);
+
+        for (size_t i = 0; i < 100; i++)
+        {
+            pass->execute(pContext, uint3(dim, 1));
+        }
     }
 
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
-    inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    inputs.NumDescs = 0;
-    inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+void Scene::updateNodeTransform(uint32_t nodeID, const float4x4& transform) {
+    assert(nodeID < mSceneGraph.size());
 
-    GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
-    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
-    pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuildInfo);
-    auto pScratch = Buffer::create(prebuildInfo.ScratchDataSizeInBytes, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-    auto pTlas = Buffer::create(prebuildInfo.ResultDataMaxSizeInBytes, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
-
-    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-    asDesc.Inputs = inputs;
-    asDesc.ScratchAccelerationStructureData = pScratch->getGpuAddress();
-    asDesc.DestAccelerationStructureData = pTlas->getGpuAddress();
-
-    GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
-    pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
-    pContext->uavBarrier(pTlas.get());
-
-    Program::Desc desc;
-    desc.addShaderLibrary("Scene/NullTrace.cs.slang").csEntry("main").setShaderModel("6_5");
-    auto pass = ComputePass::create(desc);
-    pass["gOutput"] = Texture::create2D(dim.x, dim.y, ResourceFormat::R8Uint, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
-    pass["gTlas"].setSrv(ShaderResourceView::createViewForAccelerationStructure(pTlas));
-
-    for (size_t i = 0; i < 100; i++)
-    {
-        pass->execute(pContext, uint3(dim, 1));
-    }
-*/
+    Node& node = mSceneGraph[nodeID];
+    node.transform = validateTransformMatrix(transform);
+    mpAnimationController->setNodeEdited(nodeID);
 }
     
 void Scene::setEnvMap(EnvMap::SharedPtr pEnvMap) {
@@ -3201,12 +3291,6 @@ void Scene::loadEnvMap(const std::string& filename) {
 
 void Scene::setCameraAspectRatio(float ratio) {
     getCamera()->setAspectRatio(ratio);
-}
-
-void Scene::bindSamplerToMaterials(const Sampler::SharedPtr& pSampler) {
-    for (auto& pMaterial : mMaterials) {
-        pMaterial->setSampler(pSampler);
-    }
 }
 
 void Scene::setCameraController(CameraControllerType type) {
@@ -3282,7 +3366,8 @@ std::string Scene::getScript(const std::string& sceneVar) {
         scene.def_property_readonly(kCameras.c_str(), &Scene::getCameras);
         scene.def_property_readonly(kLights.c_str(), &Scene::getLights);
         scene.def_property_readonly(kMaterials.c_str(), &Scene::getMaterials);
-        scene.def_property_readonly(kVolumes.c_str(), &Scene::getVolumes);
+        scene.def_property_readonly(kGridVolumes.c_str(), &Scene::getGridVolumes);
+        scene.def_property_readonly("volumes", &Scene::getGridVolumes); // PYTHONDEPRECATED
         scene.def_property(kCameraSpeed.c_str(), &Scene::getCameraSpeed, &Scene::setCameraSpeed);
         scene.def_property(kAnimated.c_str(), &Scene::isAnimated, &Scene::setIsAnimated);
         scene.def_property(kLoopAnimations.c_str(), &Scene::isLooped, &Scene::setIsLooped);
@@ -3293,8 +3378,10 @@ std::string Scene::getScript(const std::string& sceneVar) {
         scene.def(kGetLight.c_str(), &Scene::getLightByName, "name"_a);
         scene.def(kGetMaterial.c_str(), &Scene::getMaterial, "index"_a);
         scene.def(kGetMaterial.c_str(), &Scene::getMaterialByName, "name"_a);
-        scene.def(kGetVolume.c_str(), &Scene::getVolume, "index"_a);
-        scene.def(kGetVolume.c_str(), &Scene::getVolumeByName, "name"_a);
+        scene.def(kGetGridVolume.c_str(), &Scene::getGridVolume, "index"_a);
+        scene.def(kGetGridVolume.c_str(), &Scene::getGridVolumeByName, "name"_a);
+        scene.def("getVolume", &Scene::getGridVolume, "index"_a); // PYTHONDEPRECATED
+        scene.def("getVolume", &Scene::getGridVolumeByName, "name"_a); // PYTHONDEPRECATED
 
         // Viewpoints
         scene.def(kAddViewpoint.c_str(), pybind11::overload_cast<>(&Scene::addViewpoint)); // add current camera as viewpoint
@@ -3309,7 +3396,7 @@ std::string Scene::getScript(const std::string& sceneVar) {
         renderSettings.field(useEnvLight);
         renderSettings.field(useAnalyticLights);
         renderSettings.field(useEmissiveLights);
-        renderSettings.field(useVolumes);
+        renderSettings.field(useGridVolumes);
 #undef field
     }
 #endif // SCRIPTING

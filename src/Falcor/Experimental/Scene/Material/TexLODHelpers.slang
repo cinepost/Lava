@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@
 
 #include "Utils/Math/MathConstants.slangh"
 import Experimental.Scene.Material.TexLODTypes;
-import Scene.SceneTypes;        // Needed for ray bounce helpers.
+import Scene.SceneTypes; // Needed for ray bounce helpers.
 
 // Modes for calculating spread angle from curvature
 #define TEXLOD_SPREADANGLE_RTG1                     0     // 0: Original approach derived from RTG.
@@ -76,6 +76,20 @@ struct RayCone
     float getSpreadAngle()      { return f16tof32(widthSpreadAngleFP16); }
 #endif
 
+    /** Initializes a ray cone struct.
+        \param[in] width The width of the ray cone.
+        \param[in] angle The angle of the ray cone.
+    */
+    __init(float width, float angle)
+    {
+#ifndef USE_RAYCONES_WITH_FP16_IN_RAYPAYLOAD
+        this.width = width;
+        this.spreadAngle = angle;
+#else
+        this.widthSpreadAngleFP16 = (f32tof16(width) << 16) | f32tof16(angle);
+#endif
+    }
+
     /** Propagate the raycone to the next hit point (hitT distance away).
         \param[in] hitT Distance to the hit point.
         \return The propagated ray cone.
@@ -84,7 +98,7 @@ struct RayCone
     {
         float angle = getSpreadAngle();
         float width = getWidth();
-        return RayCone.create(angle * hitT + width, angle);
+        return RayCone(angle * hitT + width, angle);
     }
 
     /** Add surface spread angle to the current RayCone and returns the updated RayCone.
@@ -94,14 +108,14 @@ struct RayCone
     RayCone addToSpreadAngle(float surfaceSpreadAngle)
     {
         float angle = getSpreadAngle();
-        return RayCone.create(getWidth(), angle + surfaceSpreadAngle);
+        return RayCone(getWidth(), angle + surfaceSpreadAngle);
     }
 
     /** Compute texture level of details based on ray cone. Commented out, since we handle texture resolution as part of the texture lookup in Falcor.
         Keeping this here for now, since other may find it easier to understand.
         Note: call propagateDistance() before computeLOD()
     */
-    float computeLOD(float triLODConstant, float3 rayDir, float3 normal, float textureWidth, float textureHeight)     
+    float computeLOD(float triLODConstant, float3 rayDir, float3 normal, float textureWidth, float textureHeight)
     {
         float lambda = triLODConstant;                                  // Constant per triangle.
         float filterWidth = getWidth();
@@ -130,24 +144,6 @@ struct RayCone
         lambda += 0.5f * log2(distTerm / (normalTerm * normalTerm));
         return lambda;
     }
-
-    /** Create a ray cone struct.
-        \param[in] width The width of the ray cone.
-        \param[in] angle The angle of the ray cone.
-        \return The ray cone.
-    */
-    static RayCone create(float width, float angle)
-    {
-        RayCone rc;
-#ifndef USE_RAYCONES_WITH_FP16_IN_RAYPAYLOAD
-        rc.width = width;
-        rc.spreadAngle = angle;
-#else
-        rc.widthSpreadAngleFP16 = (f32tof16(width) << 16) | f32tof16(angle);
-#endif
-        return rc;
-    }
-
 };
 
 /** Compute the triangle LOD value based on triangle vertices and texture coordinates, used by ray cones.
@@ -263,12 +259,12 @@ float computeSpreadAngleFromCurvatureIso(float curvature, float rayConeWidth, fl
     \param[in] intersectionPoint The intersection point.
     \param[in] faceNormal The normal of the triangle.
     \param[in] rayConeDir Direction of the ray cone.
-    \param[in] rayConeRadiusAtIntersection Radius of the cone at the intersection point, typically computed as coneRadiusAtIntersection = t * tan(rayConeAngle);
+    \param[in] rayConeWidthAtIntersection Width of the cone at the intersection point (use: raycone.getWidth()).
     \param[in] positions Positions of the triangle.
     \param[in] txcoords Texture coordinates of the vertices of the triangle.
     \param[in] interpolatedTexCoordsAtIntersection Interpolated texture coordinates at the intersection point.
-    \param[in] texGradientX First gradient of texture coordinates.
-    \param[in] texGradientY Second gradient of texture coordinates.
+    \param[in] texGradientX First gradient of texture coordinates, which can be fed into SampleGrad().
+    \param[in] texGradientY Second gradient of texture coordinates, which can be fed into SampleGrad().
 */
 void computeAnisotropicEllipseAxes(float3 intersectionPoint, float3 faceNormal, float3 rayConeDir,
     float rayConeRadiusAtIntersection, float3 positions[3], float2 txcoords[3], float2 interpolatedTexCoordsAtIntersection,
@@ -444,7 +440,7 @@ void computeRayConeForRefraction(inout RayCone rayCone, float3 rayOrg, float3 ra
     // Intersect line (0,0) + t * refractDirOrtho2D with the line: hitPoint_l + s * refractedDir2D_l.
     width += (hitPoint_l_x * refractedDir2D_l.y) / dot(refractDirOrtho2D, orthogonal(refractedDir2D_l));
 
-    rayCone = RayCone.create(width, spreadAngle);
+    rayCone = RayCone(width, spreadAngle);
 }
 
 /** Refracts a ray cone. Note that teh incident ray cone should be called with propagate(0.0f, hitT); before refractRayCone() is called.
@@ -491,6 +487,20 @@ struct RayDiff
     float3 getdDdx() { return dDdx; }
     float3 getdDdy() { return dDdy; }
 
+    /** Initializes a ray differential struct.
+        \param[in] dOdx The differential ray origin in x.
+        \param[in] dOdy The differential ray origin in y.
+        \param[in] dDdx The differential ray direction in x.
+        \param[in] dDdy The differential ray direction in y.
+    */
+    __init(float3 dOdx, float3 dOdy, float3 dDdx, float3 dDdy)
+    {
+        this.dOdx = dOdx;
+        this.dOdy = dOdy;
+        this.dDdx = dDdx;
+        this.dDdy = dDdy;
+    }
+
     /** Propagate the ray differential t distances away.
         \param[in] O Ray origin.
         \param[in] D Ray direction.
@@ -509,24 +519,7 @@ struct RayDiff
         dodx += D * dtdx;
         dody += D * dtdy;
 
-        return RayDiff.create(dodx, dody, getdDdx(), getdDdy());
-    }
-
-    /** Create a ray differential struct.
-        \param[in] dOdx The differential ray origin in x.
-        \param[in] dOdy The differential ray origin in y.
-        \param[in] dDdx The differential ray direction in x.
-        \param[in] dDdy The differential ray direction in y.
-        \return The created ray differential.
-    */
-    static RayDiff create(float3 dOdx, float3 dOdy, float3 dDdx, float3 dDdy)
-    {
-        RayDiff rd;
-        rd.dOdx = dOdx;
-        rd.dOdy = dOdy;
-        rd.dDdx = dDdx;
-        rd.dDdy = dDdy;
-        return rd;
+        return RayDiff(dodx, dody, getdDdx(), getdDdy());
     }
 };
 
@@ -674,7 +667,7 @@ void reflectRayDifferential(inout RayDiff rayDiff, float3 rayDir, float3 nonNorm
     float3 dOdy = rayDiff.getdOdy();
     float3 dDdx = rayDiff.getdDdx() - 2.0f * (dNdx * DN + normalizedInterpolatedNormalW * dDNdx);
     float3 dDdy = rayDiff.getdDdy() - 2.0f * (dNdy * DN + normalizedInterpolatedNormalW * dDNdy);
-    rayDiff = RayDiff.create(dOdx, dOdy, dDdx, dDdy);
+    rayDiff = RayDiff(dOdx, dOdy, dDdx, dDdy);
 }
 
 /** Computes the refracted ray differential.
@@ -709,7 +702,7 @@ void computeRayDifferentialRefraction(inout RayDiff rayDiff, float3 rayDir, floa
     float3 dDdx = eta * rayDiff.getdDdx() - (mu * dNdx + dMudx * normalizedInterpolatedNormalW);    // Equation 18.
     float3 dDdy = eta * rayDiff.getdDdy() - (mu * dNdy + dMudy * normalizedInterpolatedNormalW);    // Equation 18.
 
-    rayDiff = RayDiff.create(dOdx, dOdy, dDdx, dDdy);
+    rayDiff = RayDiff(dOdx, dOdy, dDdx, dDdy);
 }
 
 /** Computes the refracted ray differential. Calls the computeRayDifferentialRefraction() just above.

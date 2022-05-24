@@ -34,6 +34,8 @@
 namespace Falcor {
 
 class Device;
+class ComputeVars;
+class ComputeContext;
 
 /** Compute program. See GraphicsProgram to manage graphics programs.
 */
@@ -54,7 +56,7 @@ class dlldecl ComputeProgram : public Program, public inherit_shared_from_this<P
         \param[in] shaderModel Optional string desribing which shader model to use.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
+    static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
 
     /** Create a new compute program.
         Note that this call merely creates a program object. The actual compilation and link happens at a later time.
@@ -62,10 +64,17 @@ class dlldecl ComputeProgram : public Program, public inherit_shared_from_this<P
         \param[in] programDefines Optional list of macro definitions to set into the program.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Program::Desc& desc, const DefineList& programDefines = DefineList());
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Program::Desc& desc, const DefineList& programDefines = DefineList());
+
+    /** Dispatch the program using the argument values set in `pVars`.
+    */
+    virtual void dispatchCompute(
+        ComputeContext* pContext,
+        ComputeVars*    pVars,
+        uint3 const&    threadGroupCount);
 
  private:
-    ComputeProgram() = default;
+    ComputeProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 };
 
 }  // namespace Falcor

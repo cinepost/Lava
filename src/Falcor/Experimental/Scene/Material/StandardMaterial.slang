@@ -25,120 +25,97 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Math/MathConstants.slangh"
-
 __exported import Experimental.Scene.Material.IMaterial;
-__exported import Experimental.Scene.Material.BxDF;
-import Utils.Math.MathHelpers;
+__exported import Experimental.Scene.Material.StandardBSDF;
+import Scene.Material.BasicMaterialData;
+import Scene.Material.ShadingUtils;
 
 /** Implementation of Falcor's standard surface material.
 
-    The material has the following BxDF lobes:
-    - Delta reflection (ideal specular reflection).
-    - Specular reflection using a GGX microfacet model.
-    - Diffuse reflection using Disney's diffuse BRDF.
-    - Delta transmission (ideal specular transmission).
-    - Specular transmission using a GGX microfacet model.
-    - Diffuse transmission.
+    The material is a linear combination of six BSDF lobes handling
+    delta/specular/diffuse reflection and transmission.
 
-    The material is a linear combination of the above BSDF lobes.
     By default, the material is single-sided and the back side black.
     Double-sided materials are supported by mirroring the BSDF around the
     shading normal. This is possible because the material is not layered.
 */
 struct StandardMaterial : IMaterial
 {
-    // Implementation of IMaterial interface
+    MaterialHeader header;
+    BasicMaterialData data;
 
-    float3 eval(const ShadingData sd, const float3 wo)
+    // Specify that the associated `BSDF` type is `StandardBSDF`.
+    typedef StandardBSDF BSDF;
+
+    StandardBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
     {
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
-        FalcorBSDF bsdf;
-        bsdf.setup(sd);
+        StandardBSDFData d = {};
 
-        return bsdf.eval(wiLocal, woLocal);
+        d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
+        d.diffuseTransmission = data.diffuseTransmission;
+        d.specularTransmission = data.specularTransmission;
+        if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
+        {
+            d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(data.transmission, 0.f), lod).rgb;
+        }
+
+        // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
+        // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
+        float f = (data.IoR - 1.f) / (data.IoR + 1.f);
+        float F0 = f * f;
+
+        // Sample base color.
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
+
+        // Sample the specular texture.
+        // Depending on the shading model this encodes the material parameters differently.
+        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+
+#if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
+        if (data.getShadingModel() == ShadingModel::MetalRough)
+#endif
+        {
+            // G - Roughness; B - Metallic
+            d.diffuse = lerp(baseColor, float3(0), spec.b);
+            d.specular = lerp(float3(F0), baseColor, spec.b);
+            d.roughness = spec.g;
+            d.metallic = spec.b;
+        }
+#if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
+        else // ShadingModel::SpecGloss
+        {
+            d.diffuse = baseColor;
+            d.specular = spec.rgb;
+            d.roughness = 1 - spec.a;
+            d.metallic = getMetallic(d.diffuse, d.specular);
+        }
+#endif
+        StandardBSDF bsdf = {};
+        bsdf.data = d;
+
+        // Sample the emissive texture.
+        // The standard material supports uniform emission over the hemisphere.
+        // Note that the material is only emissive on the front-facing side.
+        if (sd.frontFacing)
+        {
+            bsdf.emission = ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod).rgb * data.emissiveFactor;
+        }
+
+        return bsdf;
     }
 
-    bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
+    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd)
     {
-        if (!useImportanceSampling) return sampleReference(sd, sg, result);
-
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = {};
-
-        FalcorBSDF bsdf;
-        bsdf.setup(sd);
-
-        bool valid = bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobe, sg);
-        result.wo = sd.fromLocal(woLocal);
-
-        return valid;
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+        applyNormalMap(sd, data.getNormalMapType(), encodedNormal, tangentW);
     }
 
-    float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true)
+    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
     {
-        if (!useImportanceSampling) return evalPdfReference(sd, wo);
-
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
-
-        FalcorBSDF bsdf;
-        bsdf.setup(sd);
-
-        return bsdf.evalPdf(wiLocal, woLocal);
-    }
-
-
-    // Additional functions
-
-    /** Return the set of available BSDF lobes for the given shading data.
-        \param[in] sd Shading data.
-        \return A combination of LobeType flags (see IBxDF.slang).
-    */
-    uint getBSDFLobes(const ShadingData sd)
-    {
-        return FalcorBSDF::getLobes(sd);
-    }
-
-    /** Reference implementation that uses cosine-weighted hemisphere sampling.
-        This is for testing purposes only. Note that transmission is not sampled.
-        \param[in] sd Shading data.
-        \param[in] sg Sample generator.
-        \param[out] result Generated sample. Only valid if true is returned.
-        \return True if a sample was generated, false otherwise.
-    */
-    bool sampleReference<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
-    {
-        // TODO: Sample whole sphere if transmissive
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf); // pdf = cos(theta) / pi
-
-        if (min(wiLocal.z, woLocal.z) < kMinCosTheta || result.pdf == 0.f) return false;
-
-        FalcorBSDF bsdf;
-        bsdf.setup(sd);
-
-        result.wo = sd.fromLocal(woLocal);
-        result.weight = bsdf.eval(wiLocal, woLocal) / result.pdf;
-        result.lobe = (uint)LobeType::DiffuseReflection;
-
-        return true;
-    }
-
-    /** Evaluates the directional pdf for sampling the given direction using the reference implementation.
-        \param[in] sd Shading data.
-        \param[in] wo Outgoing direction.
-        \return PDF with respect to solid angle for sampling direction wo (0 for delta events).
-    */
-    float evalPdfReference(const ShadingData sd, const float3 wo)
-    {
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
-
-        if (min(wiLocal.z, woLocal.z) < kMinCosTheta) return 0.f;
-
-        return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
     }
 };

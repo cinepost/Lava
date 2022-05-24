@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "ForwardLightingPass.h"
 
+
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
@@ -148,14 +150,18 @@ void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileDa
 
 void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
+    mpVars = nullptr;
 
-    if (mpScene) mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+    if (mpScene) {
+        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        mpState->getProgram()->setTypeConformances(mpScene->getTypeConformances());
 
-    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    setSampler(Sampler::create(pRenderContext->device(), samplerDesc));
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        setSampler(Sampler::create(pRenderContext->device(), samplerDesc));
+    }
 }
 
 void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& renderData) {

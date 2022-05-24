@@ -29,7 +29,7 @@
 #include "LightBVH.h"
 
 #include "Utils/AlignedAllocator.h"
-#include "Utils/Math/BBox.h"
+#include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 
 #include <limits>
@@ -111,7 +111,7 @@ protected:
 
     struct TriangleSortData
     {
-        BBox bounds;                                    ///< World-space bounding box for the light source(s).
+        AABB bounds;                                    ///< World-space bounding box for the light source(s).
         float3 center = {};                             ///< Center point.
         float3 coneDirection = {};                      ///< Light emission normal direction.
         float cosConeAngle = 1.f;                       ///< Cosine normal bounding cone (half) angle.
@@ -136,7 +136,7 @@ protected:
         \param[in] nodeBounds Bounds for the node to be splitted.
         \param[in] parameters Various parameters defining how the building should occur.
     */
-    using SplitHeuristicFunction = std::function<SplitResult(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters)>;
+    using SplitHeuristicFunction = std::function<SplitResult(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters)>;
 
     LightBVHBuilder(const Options& options);
     
@@ -167,9 +167,9 @@ protected:
     static float3 computeLightingCone(const Range& triangleRange, const BuildingData& data, float& cosTheta);
 
     // See the documentation of SplitHeuristicFunction.
-    static SplitResult computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const BBox& nodeBounds, const Options& /*parameters*/);
-    static SplitResult computeSplitWithBinnedSAH(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters);
-    static SplitResult computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const BBox& nodeBounds, const Options& parameters);
+    static SplitResult computeSplitWithEqual(const BuildingData& /*data*/, const Range& triangleRange, const AABB& nodeBounds, const Options& /*parameters*/);
+    static SplitResult computeSplitWithBinnedSAH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters);
+    static SplitResult computeSplitWithBinnedSAOH(const BuildingData& data, const Range& triangleRange, const AABB& nodeBounds, const Options& parameters);
 
     static SplitHeuristicFunction getSplitFunction(SplitHeuristic heuristic);
 

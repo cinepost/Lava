@@ -25,12 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_SCENE_VOLUME_BC4ENCODE_H_
-#define SRC_FALCOR_SCENE_VOLUME_BC4ENCODE_H_
-
-#include <stdint.h>
-#include <limits.h>
-#include <algorithm>
+#pragma once
 
 // this file exposes a single function, CompressAlphaDxt5, which encodes a 4x4 set of uint8 alpha values into a single 64 bit BC4 encoded block
 static void CompressAlphaDxt5(uint8_t* tile, void* block);
@@ -246,4 +241,3 @@ static void CompressAlphaDxt5(uint8_t* tile, void* block)
         WriteAlphaBlock7(min7, max7, indices7, block);
 }
 
-#endif // SRC_FALCOR_SCENE_VOLUME_BC4ENCODE_H_

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,288 +25,150 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include <regex>
-
-#ifdef _WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
-#include "boost/filesystem.hpp"
-namespace fs = boost::filesystem;
-#endif
-
-#include <boost/format.hpp>
-
 #include "stdafx.h"
+#include "BasicMaterial.h"
+#include "Falcor/Experimental/Scene/Material/LobeType.slang"
+
+#include "MaterialSystem.h"
 #include "Material.h"
 
-#include "Falcor/Core/API/ResourceManager.h"
-#include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ProgramVars.h"
-#include "Utils/Color/ColorHelpers.slang"
-
-namespace Falcor {
-
-namespace {
-    // Constants.
-    const float kMaxVolumeAnisotropy = 0.99f;
-}
-
-static_assert(sizeof(MaterialData) % 16 == 0, "Material::MaterialData size should be a multiple of 16");
-static_assert((MATERIAL_FLAGS_BITS) <= 32, "Material::MaterialData flags should be maximum 32 bits");
-static_assert(static_cast<uint32_t>(MaterialType::Count) <= (1u << kMaterialTypeBits), "MaterialType count exceeds the maximum");
-
-Material::UpdateFlags Material::sGlobalUpdates = Material::UpdateFlags::None;
-
-Material::Material(std::shared_ptr<Device> pDevice, const std::string& name) : mpDevice(pDevice), mName(name) {
-    // Call update functions to ensure a valid initial state based on default material parameters.
-    updateBaseColorType();
-    updateSpecularType();
-    updateRoughnessType();
-    updateEmissiveType();
-    updateTransmissionType();
-    updateAlphaMode();
-    updateNormalMapMode();
-    updateDisplacementFlag();
-}
-
-Material::SharedPtr Material::create(std::shared_ptr<Device> pDevice, const std::string& name)
+namespace Falcor
 {
-    assert(pDevice);
-    Material* pMaterial = new Material(pDevice, name);
-    return SharedPtr(pMaterial);
-}
-
-Material::~Material() = default;
-
-void Material::setType(MaterialType type)
-{
-    if (mData.type != static_cast<uint32_t>(type))
+    namespace
     {
-        mData.type = static_cast<uint32_t>(type);
-        markUpdates(UpdateFlags::DataChanged);
+        static_assert(sizeof(TextureHandle) == 4);
+        static_assert(sizeof(MaterialHeader) == 8);
+        static_assert(sizeof(MaterialPayload) == 120);
+        static_assert(sizeof(MaterialDataBlob) == 128);
+        static_assert(static_cast<uint32_t>(MaterialType::Count) <= (1u << MaterialHeader::kMaterialTypeBits), "MaterialType count exceeds the maximum");
+        static_assert(static_cast<uint32_t>(AlphaMode::Count) <= (1u << MaterialHeader::kAlphaModeBits), "AlphaMode bit count exceeds the maximum");
+        static_assert(static_cast<uint32_t>(LobeType::All) < (1u << MaterialHeader::kLobeTypeBits), "LobeType bit count exceeds the maximum");
+        static_assert(static_cast<uint32_t>(TextureHandle::Mode::Count) <= (1u << TextureHandle::kModeBits), "TextureHandle::Mode bit count exceeds the maximum");
+        static_assert(MaterialHeader::kTotalHeaderBitsX <= 32, "MaterialHeader bit count x exceeds the maximum");
+        static_assert(MaterialHeader::kTotalHeaderBitsY <= 32, "MaterialHeader bit count y exceeds the maximum");
+        static_assert(MaterialHeader::kAlphaThresholdBits == 16, "MaterialHeader alpha threshold bit count must be 16");
     }
-}
 
-void Material::setShadingModel(uint32_t model)
-{
-    setFlags(PACK_SHADING_MODEL(mData.flags, model));
-}
-
-void Material::setAlphaMode(uint32_t alphaMode)
-{
-    setFlags(PACK_ALPHA_MODE(mData.flags, alphaMode));
-}
-
-void Material::setDoubleSided(bool doubleSided)
-{
-    setFlags(PACK_DOUBLE_SIDED(mData.flags, doubleSided ? 1 : 0));
-}
-
-void Material::setAlphaThreshold(float alpha)
-{
-    if (mData.alphaThreshold != alpha)
+    bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs)
     {
-        mData.alphaThreshold = alpha;
-        markUpdates(UpdateFlags::DataChanged);
+        return lhs.packedData == rhs.packedData;
     }
-}
 
-void Material::setIndexOfRefraction(float IoR) {
-    if (mData.IoR != IoR) {
-        mData.IoR = IoR;
-        markUpdates(UpdateFlags::DataChanged);
-    }
-}
-
-void Material::setReflectivity(float reflectivity) {
-    if (mData.reflectivity != reflectivity) {
-        mData.reflectivity = reflectivity;
-        markUpdates(UpdateFlags::DataChanged);
-    }
-}
-
-void Material::setNestedPriority(uint32_t priority)
-{
-    const uint32_t maxPriority = (1U << NESTED_PRIORITY_BITS) - 1;
-    if (priority > maxPriority)
+    Material::Material(Device::SharedPtr pDevice, const std::string& name, MaterialType type)
+        : mpDevice(pDevice)
+        , mName(name)
     {
-        logWarning("Requested nested priority " + std::to_string(priority) + " for material '" + mName + "' is out of range. Clamping to " + std::to_string(maxPriority) + ".");
-        priority = maxPriority;
+        mHeader.setMaterialType(type);
+        mHeader.setAlphaMode(AlphaMode::Opaque);
+        mHeader.setAlphaThreshold(float16_t(0.5f));
+        mHeader.setActiveLobes(static_cast<uint32_t>(LobeType::All));
     }
-    setFlags(PACK_NESTED_PRIORITY(mData.flags, priority));
-}
 
-void Material::setSampler(Sampler::SharedPtr pSampler)
-{
-    if (pSampler != mResources.samplerState)
+    std::shared_ptr<BasicMaterial> Material::toBasicMaterial()
     {
-        mResources.samplerState = pSampler;
-        markUpdates(UpdateFlags::ResourcesChanged);
-    }
-}
-
-void Material::setTexture(TextureSlot slot, Texture::SharedPtr pTexture) {
-    if (pTexture == getTexture(slot)) return;
-
-    switch (slot) {
-        case TextureSlot::BaseColor:
-            // Assume the texture is non-constant and has full alpha range.
-            // This may be changed later by optimizeTexture().
-            if (pTexture) {
-                mAlphaRange = float2(0.f, 1.f);
-                mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
-            }
-            mResources.baseColor = pTexture;
-            updateBaseColorType();
-            updateAlphaMode();
-            break;
-        case TextureSlot::Specular:
-            mResources.specular = pTexture;
-            updateSpecularType();
-            break;
-        case TextureSlot::Roughness:
-            mResources.roughness = pTexture;
-            updateRoughnessType();
-            break;
-        case TextureSlot::Emissive:
-            mResources.emissive = pTexture;
-            updateEmissiveType();
-            break;
-        case TextureSlot::Normal:
-            mResources.normalMap = pTexture;
-            updateNormalMapMode();
-            break;
-        case TextureSlot::Displacement:
-            mResources.displacementMap = pTexture;
-            updateDisplacementFlag();
-            updateDoubleSidedFlag();
-            break;
-        case TextureSlot::Transmission:
-            mResources.transmission = pTexture;
-            updateTransmissionType();
-            updateDoubleSidedFlag();
-            break;
-    default:
-        should_not_get_here();
-    }
-}
-
-Texture::SharedPtr Material::getTexture(TextureSlot slot) const {
-    switch (slot) {
-        case TextureSlot::BaseColor:
-            return mResources.baseColor;
-        case TextureSlot::Specular:
-            return mResources.specular;
-        case TextureSlot::Roughness:
-            return mResources.roughness;
-        case TextureSlot::Emissive:
-            return mResources.emissive;
-        case TextureSlot::Normal:
-            return mResources.normalMap;
-        case TextureSlot::Displacement:
-            return mResources.displacementMap;
-        case TextureSlot::Transmission:
-            return mResources.transmission;
-        default:
-            should_not_get_here();
-    }
-    return nullptr;
-}
-
-void Material::optimizeTexture(TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats)
-{
-
-}
-
-void Material::prepareDisplacementMapForRendering() {
-    if (getTexture(TextureSlot::Displacement) != nullptr)
-    {
-        // Creates RGBA texture with MIP pyramid containing average, min, max values.
-        Falcor::ResourceFormat oldFormat = mResources.displacementMap->getFormat();
-
-        // Replace texture with a 4 component one if necessary.
-        if (getFormatChannelCount(oldFormat) < 4)
+        if (mHeader.isBasicMaterial())
         {
-            Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
-            Resource::BindFlags bf = mResources.displacementMap->getBindFlags() | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget;
-            Texture::SharedPtr newDisplacementTex = Texture::create2D(mpDevice, mResources.displacementMap->getWidth(), mResources.displacementMap->getHeight(), newFormat, mResources.displacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
-
-            // Copy base level.
-            RenderContext* pContext = mpDevice->getRenderContext();
-            uint32_t arraySize = mResources.displacementMap->getArraySize();
-            for (uint32_t a = 0; a < arraySize; a++)
-            {
-                auto srv = mResources.displacementMap->getSRV(0, 1, a, 1);
-                auto rtv = newDisplacementTex->getRTV(0, a, 1);
-                const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
-                const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f) };
-                //pContext->blit(srv, rtv, uint4(-1), uint4(-1), Sampler::Filter::Linear, redModes, componentsTransform);
-            }
-
-            mResources.displacementMap = newDisplacementTex;
+            assert(std::dynamic_pointer_cast<BasicMaterial>(shared_from_this()));
+            return std::static_pointer_cast<BasicMaterial>(shared_from_this());
         }
-
-        // Build min/max MIPS.
-        mResources.displacementMap->generateMips(mpDevice->getRenderContext());
+        return nullptr;
     }
-}
 
-uint2 Material::getMaxTextureDimensions() const
-{
-    uint2 dim = uint2(0);
-    for (uint32_t i = 0; i < (uint32_t)TextureSlot::Count; i++)
+    void Material::setDoubleSided(bool doubleSided)
     {
-        const auto& t = getTexture((TextureSlot)i);
-        if (t) dim = max(dim, uint2(t->getWidth(), t->getHeight()));
-    }
-    return dim;
-}
-
-void Material::loadTexture(TextureSlot slot, const std::string& filename, bool useSrgb) {
-    assert(mpDevice);
-
-    std::string udimDelimiter = "<UDIM>";
-    size_t fullPathUdimPos = filename.find(udimDelimiter);
-
-    if (fullPathUdimPos!=std::string::npos) {
-        // UDIM texture
-        printf("UDIM texture load requested %s !!!!\n", filename.c_str());
-        std::vector<std::string> filenames;
-
-        fs::path filenamePath    = fs::path(filename);
-        std::string searchPath   = filenamePath.parent_path().string();
-        std::string filenamePart = filenamePath.filename().string();
-        
-        size_t fnameUdimPos = filenamePart.find(udimDelimiter);
-        std::string beforeUdimPart = filenamePart.substr(0, fnameUdimPos);
-        std::string afterUdimPart  = filenamePart.erase(0, fnameUdimPos + udimDelimiter.length());
-
-        boost::format fmt = boost::format("%1%\\d{4}%2%") % beforeUdimPart % afterUdimPart;
-        std::regex  regex(fmt.str()); 
-
-        if (findFilesInDataDirectories(searchPath, regex, filenames)) {
-            for(auto const& fname: filenames) {
-                printf("Loading UDIM texture tile: %s\n", fname.c_str());
-                auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fname, true, useSrgb && isSrgbTextureRequired(slot));
-                if (pTexture) {
-                    Texture::UDIMTileInfo tileInfo;
-                    tileInfo.isUDIMTile = true;
-                    tileInfo.u = 0;
-                    tileInfo.v = 0;
-                    pTexture->setUDIMTileInfo(tileInfo);
-                    setTexture(slot, pTexture);
-                }
-                mpDevice->flushAndSync();
-            }
+        if (mHeader.isDoubleSided() != doubleSided)
+        {
+            mHeader.setDoubleSided(doubleSided);
+            markUpdates(UpdateFlags::DataChanged);
         }
-    } else {
-        std::string fullPath;
-        // Normal texture
-        if (findFileInDataDirectories(filename, fullPath)) {
-            auto pTexture = mpDevice->resourceManager()->createSparseTextureFromFile(fullPath, true, useSrgb && isSrgbTextureRequired(slot));
-            if (pTexture) {
-                setTexture(slot, pTexture);
+    }
+
+    void Material::setThinSurface(bool thinSurface)
+    {
+        if (mHeader.isThinSurface() != thinSurface)
+        {
+            mHeader.setThinSurface(thinSurface);
+            markUpdates(UpdateFlags::DataChanged);
+        }
+    }
+
+    void Material::setAlphaMode(AlphaMode alphaMode)
+    {
+        LLOG_WRN << "Material '" << getName() << "' of type '" << to_string(getType()) << "' does not support alpha. Ignoring call to setAlphaMode().";
+    }
+
+    void Material::setAlphaThreshold(float alphaThreshold)
+    {
+        LLOG_WRN << "Material '" << getName() << "' of type '" << to_string(getType()) << "' does not support alpha. Ignoring call to setAlphaThreshold().";
+    }
+
+    void Material::setNestedPriority(uint32_t priority)
+    {
+        const uint32_t maxPriority = (1u << MaterialHeader::kNestedPriorityBits) - 1;
+        if (priority > maxPriority)
+        {
+            LLOG_WRN << "Requested nested priority " << std::to_string(priority) << " for material '" << mName << "' is out of range. Clamping to "<< std::to_string(maxPriority) << ".";
+            priority = maxPriority;
+        }
+        if (mHeader.getNestedPriority() != priority)
+        {
+            mHeader.setNestedPriority(priority);
+            markUpdates(UpdateFlags::DataChanged);
+        }
+    }
+
+    const Material::TextureSlotInfo& Material::getTextureSlotInfo(const TextureSlot slot) const
+    {
+        assert((size_t)slot < mTextureSlotInfo.size());
+        return mTextureSlotInfo[(size_t)slot];
+    }
+
+    bool Material::hasTextureSlotData(const TextureSlot slot) const
+    {
+        assert((size_t)slot < mTextureSlotInfo.size());
+        return mTextureSlotData[(size_t)slot].pTexture != nullptr;
+    }
+
+    bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture)
+    {
+        if (!hasTextureSlot(slot))
+        {
+            LLOG_WRN << "Material '" << getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
+            return false;
+        }
+
+        if (pTexture == getTexture(slot)) return false;
+
+        assert((size_t)slot < mTextureSlotInfo.size());
+        mTextureSlotData[(size_t)slot].pTexture = pTexture;
+
+        markUpdates(UpdateFlags::ResourcesChanged);
+        return true;
+    }
+
+    Texture::SharedPtr Material::getTexture(const TextureSlot slot) const
+    {
+        if (!hasTextureSlot(slot)) return nullptr;
+
+        assert((size_t)slot < mTextureSlotInfo.size());
+        return mTextureSlotData[(size_t)slot].pTexture;
+    }
+
+    void Material::loadTexture(TextureSlot slot, const fs::path& path, bool useSrgb)
+    {
+        if (!hasTextureSlot(slot))
+        {
+            LLOG_WRN << "Material '" << getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call to loadTexture().";
+            return;
+        }
+
+        fs::path fullPath;
+        if (findFileInDataDirectories(path, fullPath))
+        {
+            auto texture = Texture::createFromFile(mpDevice, fullPath, true, useSrgb && getTextureSlotInfo(slot).srgb);
+            if (texture)
+            {
+                setTexture(slot, texture);
                 // Flush and sync in order to prevent the upload heap from growing too large. Doing so after
                 // every texture creation is overly conservative, and will likely lead to performance issues
                 // due to the forced CPU/GPU sync.
@@ -314,352 +176,132 @@ void Material::loadTexture(TextureSlot slot, const std::string& filename, bool u
             }
         }
     }
-}
 
-void Material::clearTexture(TextureSlot slot) {
-    setTexture(slot, nullptr);
-}
-
-bool Material::isSrgbTextureRequired(TextureSlot slot) {
-    uint32_t shadingModel = getShadingModel();
-
-    switch (slot) {
-        case TextureSlot::Specular:
-            return (shadingModel == ShadingModelSpecGloss);
-        case TextureSlot::BaseColor:
-        case TextureSlot::Emissive:
-        case TextureSlot::Transmission:
-            return true;
-        case TextureSlot::Normal:
-        case TextureSlot::Displacement:
-            return false;
-        default:
-            should_not_get_here();
-            return false;
-    }
-}
-
-void Material::setDisplacementScale(float scale) {
-    if (mData.displacementScale != scale) {
-        mData.displacementScale = scale;
-        markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
-    }
-}
-
-void Material::setDisplacementOffset(float offset) {
-    if (mData.displacementOffset != offset) {
-        mData.displacementOffset = offset;
-        markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
-    }
-}
-
-void Material::setBaseColorTexture(Texture::SharedPtr pBaseColor) {
-    if (mResources.baseColor != pBaseColor) {
-        mResources.baseColor = pBaseColor;
-        markUpdates(UpdateFlags::ResourcesChanged);
-        updateBaseColorType();
-        bool hasAlpha = pBaseColor && doesFormatHasAlpha(pBaseColor->getFormat());
-        setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
-    }
-}
-
-void Material::setSpecularTexture(Texture::SharedPtr pSpecular) {
-    if (mResources.specular != pSpecular) {
-        mResources.specular = pSpecular;
-        markUpdates(UpdateFlags::ResourcesChanged);
-        updateSpecularType();
-    }
-}
-
-void Material::setRoughnessTexture(Texture::SharedPtr pRoughness) {
-    if (mResources.roughness != pRoughness) {
-        mResources.roughness = pRoughness;
-        markUpdates(UpdateFlags::ResourcesChanged);
-        updateRoughnessType();
-    }
-}
-
-void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive) {
-    if (mResources.emissive != pEmissive) {
-        mResources.emissive = pEmissive;
-        markUpdates(UpdateFlags::ResourcesChanged);
-        updateEmissiveType();
-    }
-}
-
-void Material::setBaseColor(const float4& color) {
-    if (mData.baseColor != color) {
-        mData.baseColor = color;
-        markUpdates(UpdateFlags::DataChanged);
-        updateBaseColorType();
-    }
-}
-
-void Material::setSpecularParams(const float4& color) {
-    if (mData.specular != color) {
-        mData.specular = color;
-        markUpdates(UpdateFlags::DataChanged);
-        updateSpecularType();
-    }
-}
-
-void Material::setRoughness(float roughness) {
-    if (getShadingModel() != ShadingModelMetalRough) {
-        logWarning("Ignoring setRoughness(). Material '" + mName + "' does not use the metallic/roughness shading model.");
-        return;
+    uint2 Material::getMaxTextureDimensions() const
+    {
+        uint2 dim = uint2(0);
+        for (uint32_t i = 0; i < (uint32_t)TextureSlot::Count; i++)
+        {
+            auto pTexture = getTexture((TextureSlot)i);
+            if (pTexture) dim = max(dim, uint2(pTexture->getWidth(), pTexture->getHeight()));
+        }
+        return dim;
     }
 
-    if (mData.roughness != roughness) {
-        mData.roughness = roughness;
-        markUpdates(UpdateFlags::DataChanged);
-        updateRoughnessType();
-    }
-}
-
-void Material::setMetallic(float metallic) {
-    if (getShadingModel() != ShadingModelMetalRough) {
-        logWarning("Ignoring setMetallic(). Material '" + mName + "' does not use the metallic/roughness shading model.");
-        return;
+    void Material::setTextureTransform(const Transform& textureTransform)
+    {
+        mTextureTransform = textureTransform;
     }
 
-    if (mData.specular.b != metallic) {
-        mData.specular.b = metallic;
-        markUpdates(UpdateFlags::DataChanged);
-        updateSpecularType();
+    void Material::markUpdates(UpdateFlags updates)
+    {
+        // Mark updates locally in this material.
+        mUpdates |= updates;
+
+        // Mark updates globally across all materials.
+        if (mUpdateCallback) mUpdateCallback(updates);
     }
-}
 
-void Material::setDiffuseTransmission(float diffuseTransmission) {
-    if (mData.diffuseTransmission != diffuseTransmission) {
-        mData.diffuseTransmission = diffuseTransmission;
-        markUpdates(UpdateFlags::DataChanged);
-        updateDoubleSidedFlag();
+    void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::SharedPtr& pTexture, TextureHandle& handle)
+    {
+        TextureHandle prevHandle = handle;
+
+        // Update the given texture handle.
+        if (pTexture)
+        {
+            auto h = pOwner->getTextureManager()->addTexture(pTexture);
+            assert(h);
+            handle.setTextureID(h.getID());
+        }
+        else
+        {
+            handle.setMode(TextureHandle::Mode::Uniform);
+        }
+
+        if (handle != prevHandle) mUpdates |= Material::UpdateFlags::DataChanged;
     }
-}
 
+    void Material::updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle)
+    {
+        auto pTexture = getTexture(slot);
+        updateTextureHandle(pOwner, pTexture, handle);
+    };
 
-void Material::setSpecularTransmission(float specularTransmission) {
-    if (mData.specularTransmission != specularTransmission) {
-        mData.specularTransmission = specularTransmission;
-        markUpdates(UpdateFlags::DataChanged);
-        updateDoubleSidedFlag();
+    void Material::updateDefaultTextureSamplerID(MaterialSystem* pOwner, const Sampler::SharedPtr& pSampler)
+    {
+        const uint32_t samplerID = pOwner->addTextureSampler(pSampler);
+
+        if (mHeader.getDefaultTextureSamplerID() != samplerID)
+        {
+            mHeader.setDefaultTextureSamplerID(samplerID);
+            mUpdates |= Material::UpdateFlags::DataChanged;
+        }
     }
-}
 
-void Material::setTransmissionColor(const float3& transmissionColor) {
-    if (mData.transmission != transmissionColor) {
-        mData.transmission = transmissionColor;
-        markUpdates(UpdateFlags::DataChanged);
-        updateTransmissionType();
-    }
-}
+    bool Material::isBaseEqual(const Material& other) const
+    {
+        // This function compares all data in the base class between two materials *except* the name.
+        // It's a separate helper to ensure isEqual() is pure virtual and must be implemented in all derived classes.
 
-void Material::setVolumeAbsorption(const float3& volumeAbsorption) {
-    if (mData.volumeAbsorption != volumeAbsorption) {
-        mData.volumeAbsorption = volumeAbsorption;
-        markUpdates(UpdateFlags::DataChanged);
-    }
-}
+        if (mHeader != other.mHeader) return false;
+        if (mTextureTransform != other.mTextureTransform) return false;
 
-void Material::setEmissiveColor(const float3& color) {
-    if (mData.emissive != color) {
-        mData.emissive = color;
-        markUpdates(UpdateFlags::DataChanged);
-        updateEmissiveType();
-    }
-}
-
-void Material::setEmissiveFactor(float factor) {
-    if (mData.emissiveFactor != factor) {
-        mData.emissiveFactor = factor;
-        markUpdates(UpdateFlags::DataChanged);
-        updateEmissiveType();
-    }
-}
-
-void Material::setNormalMap(Texture::SharedPtr pNormalMap) {
-    if (mResources.normalMap != pNormalMap) {
-        mResources.normalMap = pNormalMap;
-        markUpdates(UpdateFlags::ResourcesChanged);
-        uint32_t normalMode = NormalMapUnused;
-        if (pNormalMap) {
-            switch(getFormatChannelCount(pNormalMap->getFormat())) {
-                case 2:
-                    normalMode = NormalMapRG;
-                    break;
-                case 3:
-                case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                    normalMode = NormalMapRGB;
-                    break;
-                default:
-                    should_not_get_here();
-                    logWarning("Unsupported normal map format for material " + mName);
+        assert(mTextureSlotInfo.size() == mTextureSlotData.size());
+        for (size_t i = 0; i < mTextureSlotInfo.size(); i++)
+        {
+            // Compare texture slots.
+            // These checks are a bit redundant since identical material types are currently
+            // guaranteed to have the same set of slots, but this is future-proof if that changes.
+            auto slot = (TextureSlot)i;
+            if (hasTextureSlot(slot) != other.hasTextureSlot(slot)) return false;
+            if (hasTextureSlot(slot))
+            {
+                if (mTextureSlotInfo[i] != other.mTextureSlotInfo[i]) return false;
+                if (mTextureSlotData[i] != other.mTextureSlotData[i]) return false;
             }
         }
-        setFlags(PACK_NORMAL_MAP_TYPE(mData.flags, normalMode));
+
+        return true;
     }
-}
-
-
-bool Material::operator==(const Material& other) const
-{
-#define compare_field(_a) if (mData._a != other.mData._a) return false
-        compare_field(baseColor);
-        compare_field(specular);
-        compare_field(emissive);
-        compare_field(roughness);
-        compare_field(emissiveFactor);
-        compare_field(alphaThreshold);
-        compare_field(IoR);
-        compare_field(diffuseTransmission);
-        compare_field(specularTransmission);
-        compare_field(transmission);
-        compare_field(volumeAbsorption);
-        compare_field(volumeAnisotropy);
-        compare_field(volumeScattering);
-        compare_field(flags);
-        compare_field(type);
-        compare_field(displacementScale);
-        compare_field(displacementOffset);
-#undef compare_field
-
-#define compare_texture(_a) if (mResources._a != other.mResources._a) return false
-        compare_texture(baseColor);
-        compare_texture(specular);
-        compare_texture(emissive);
-        compare_texture(roughness);
-        compare_texture(normalMap);
-        compare_texture(transmission);
-        compare_texture(displacementMap);
-#undef compare_texture
-    if (mResources.samplerState != other.mResources.samplerState) return false;
-    return true;
-}
-
-void Material::markUpdates(UpdateFlags updates)
-{
-    mUpdates |= updates;
-    sGlobalUpdates |= updates;
-}
-
-void Material::setFlags(uint32_t flags)
-{
-    if (mData.flags != flags)
-    {
-        mData.flags = flags;
-        markUpdates(UpdateFlags::DataChanged);
-    }
-}
-
-template<typename vec>
-static uint32_t getChannelMode(bool hasTexture, const vec& color) {
-    if (hasTexture) return ChannelTypeTexture;
-    if (luminance(color) == 0) return ChannelTypeUnused;
-    return ChannelTypeConst;
-}
-
-void Material::updateBaseColorType() {
-    bool useTexture = mResources.baseColor != nullptr && !mIsTexturedBaseColorConstant;
-    setFlags(PACK_BASE_COLOR_TYPE(mData.flags, getChannelMode(useTexture, mData.baseColor.rgb)));
-}
-
-void Material::updateSpecularType() {
-    setFlags(PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mResources.specular != nullptr, mData.specular)));
-}
-
-void Material::updateRoughnessType() {
-    setFlags(PACK_ROUGHNESS_TYPE(mData.flags, getChannelMode(mResources.roughness != nullptr, mData.roughness)));
-}
-
-void Material::updateEmissiveType() {
-    setFlags(PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mResources.emissive != nullptr, mData.emissive * mData.emissiveFactor)));
-}
-
-void Material::updateTransmissionType() {
-    setFlags(PACK_TRANS_TYPE(mData.flags, getChannelMode(mResources.transmission != nullptr, mData.transmission)));
-}
-
-void Material::updateAlphaMode() {
-    // Decide how alpha channel should be accessed.
-    bool hasAlpha = mResources.baseColor && doesFormatHasAlpha(mResources.baseColor->getFormat());
-    bool useTexture = hasAlpha && !mIsTexturedAlphaConstant;
-    setFlags(PACK_ALPHA_TYPE(mData.flags, getChannelMode(useTexture, mData.baseColor.a)));
-
-    // Set alpha range to the fixed alpha value if non-textured.
-    if (!hasAlpha) mAlphaRange = float2(mData.baseColor.a);
-
-    // Decide if we need to run the alpha test.
-    // This is derived from the current alpha threshold and conservative alpha range.
-    // If the test will never fail we disable it. This optimization assumes basic alpha thresholding.
-    // TODO: Update the logic if other alpha modes are added.
-    bool useAlpha = mAlphaRange.x < mData.alphaThreshold;
-    setAlphaMode(useAlpha ? AlphaModeMask : AlphaModeOpaque);
-}
-
-void Material::updateNormalMapMode() {
-    uint32_t normalMode = NormalMapUnused;
-    if (mResources.normalMap) {
-        switch(getFormatChannelCount(mResources.normalMap->getFormat())) {
-            case 2:
-                normalMode = NormalMapRG;
-                break;
-            case 3:
-            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                normalMode = NormalMapRGB;
-                break;
-            default:
-                should_not_get_here();
-                logWarning("Unsupported normal map format for material " + mName);
-        }
-    }
-    setFlags(PACK_NORMAL_MAP_TYPE(mData.flags, normalMode));
-}
-
-void Material::updateDoubleSidedFlag() {
-    bool doubleSided = mDoubleSided;
-    // Make double sided if diffuse or specular transmission is used.
-    if (mData.diffuseTransmission > 0.f || mData.specularTransmission > 0.f) doubleSided = true;
-    // Make double sided if a dispacement map is used since backfacing surfaces can become frontfacing.
-    if (mResources.displacementMap != nullptr) doubleSided = true;
-    setFlags(PACK_DOUBLE_SIDED(mData.flags, doubleSided ? 1 : 0));
-}
-
-void Material::updateDisplacementFlag() {
-    bool hasMap = (mResources.displacementMap != nullptr);
-    setFlags(PACK_DISPLACEMENT_MAP(mData.flags, hasMap ? 1 : 0));
-}
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(Material)
-{
-    pybind11::enum_<Material::TextureSlot> textureSlot(m, "MaterialTextureSlot");
-    textureSlot.value("BaseColor", Material::TextureSlot::BaseColor);
-    textureSlot.value("Specular", Material::TextureSlot::Specular);
-    textureSlot.value("Roughness", Material::TextureSlot::Roughness);
-    textureSlot.value("Emissive", Material::TextureSlot::Emissive);
-    textureSlot.value("Normal", Material::TextureSlot::Normal);
-    textureSlot.value("Occlusion", Material::TextureSlot::Occlusion);
-    textureSlot.value("SpecularTransmission", Material::TextureSlot::SpecularTransmission);
+    SCRIPT_BINDING(Material)
+    {
+        SCRIPT_BINDING_DEPENDENCY(Transform)
 
-    pybind11::class_<Material, Material::SharedPtr> material(m, "Material");
-    material.def_property_readonly("name", &Material::getName);
-    material.def_property("baseColor", &Material::getBaseColor, &Material::setBaseColor);
-    material.def_property("specularParams", &Material::getSpecularParams, &Material::setSpecularParams);
-    material.def_property("roughness", &Material::getRoughness, &Material::setRoughness);
-    material.def_property("metallic", &Material::getMetallic, &Material::setMetallic);
-    material.def_property("specularTransmission", &Material::getSpecularTransmission, &Material::setSpecularTransmission);
-    material.def_property("volumeAbsorption", &Material::getVolumeAbsorption, &Material::setVolumeAbsorption);
-    material.def_property("indexOfRefraction", &Material::getIndexOfRefraction, &Material::setIndexOfRefraction);
-    material.def_property("emissiveColor", &Material::getEmissiveColor, &Material::setEmissiveColor);
-    material.def_property("emissiveFactor", &Material::getEmissiveFactor, &Material::setEmissiveFactor);
-    material.def_property("alphaMode", &Material::getAlphaMode, &Material::setAlphaMode);
-    material.def_property("alphaThreshold", &Material::getAlphaThreshold, &Material::setAlphaThreshold);
-    material.def_property("doubleSided", &Material::isDoubleSided, &Material::setDoubleSided);
-    material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
+        pybind11::enum_<MaterialType> materialType(m, "MaterialType");
+        materialType.value("Standard", MaterialType::Standard);
+        materialType.value("Cloth", MaterialType::Cloth);
+        materialType.value("Hair", MaterialType::Hair);
+        materialType.value("MERL", MaterialType::MERL);
 
-    material.def("loadTexture", &Material::loadTexture, "slot"_a, "filename"_a, "useSrgb"_a = true);
-    material.def("clearTexture", &Material::clearTexture, "slot"_a);
-}
+        pybind11::enum_<AlphaMode> alphaMode(m, "AlphaMode");
+        alphaMode.value("Opaque", AlphaMode::Opaque);
+        alphaMode.value("Mask", AlphaMode::Mask);
+
+        pybind11::enum_<Material::TextureSlot> textureSlot(m, "MaterialTextureSlot");
+        textureSlot.value("BaseColor", Material::TextureSlot::BaseColor);
+        textureSlot.value("Specular", Material::TextureSlot::Specular);
+        textureSlot.value("Emissive", Material::TextureSlot::Emissive);
+        textureSlot.value("Normal", Material::TextureSlot::Normal);
+        textureSlot.value("Transmission", Material::TextureSlot::Transmission);
+        textureSlot.value("Displacement", Material::TextureSlot::Displacement);
+
+        // Register Material base class as IMaterial in python to allow deprecated script syntax.
+        // TODO: Remove workaround when all scripts have been updated to create derived Material classes.
+        pybind11::class_<Material, Material::SharedPtr> material(m, "IMaterial"); // PYTHONDEPRECATED
+        material.def_property_readonly("type", &Material::getType);
+        material.def_property("name", &Material::getName, &Material::setName);
+        material.def_property("doubleSided", &Material::isDoubleSided, &Material::setDoubleSided);
+        material.def_property("thinSurface", &Material::isThinSurface, &Material::setThinSurface);
+        material.def_property_readonly("emissive", &Material::isEmissive);
+        material.def_property("alphaMode", &Material::getAlphaMode, &Material::setAlphaMode);
+        material.def_property("alphaThreshold", &Material::getAlphaThreshold, &Material::setAlphaThreshold);
+        material.def_property("nestedPriority", &Material::getNestedPriority, &Material::setNestedPriority);
+        material.def_property("textureTransform", pybind11::overload_cast<void>(&Material::getTextureTransform, pybind11::const_), &Material::setTextureTransform);
+
+        material.def("loadTexture", &Material::loadTexture, "slot"_a, "path"_a, "useSrgb"_a = true);
+        material.def("clearTexture", &Material::clearTexture, "slot"_a);
+    }
 #endif
-
-}  // namespace Falcor
+}

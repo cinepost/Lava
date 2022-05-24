@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -30,175 +30,269 @@
 
 #include <stack>
 #include <unordered_map>
-#include <vector>
+#include <memory>
+
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 
 #include "CpuTimer.h"
-#include "Falcor/Core/API/GpuTimer.h"
+#include "Core/API/GpuTimer.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor {
-
-extern dlldecl bool gProfileEnabled;
 
 class Device;
 class GpuTimer;
 
 /** Container class for CPU/GPU profiling.
-    This class uses the most accurately available CPU and GPU timers to profile given events. It automatically creates event hierarchies based on the order of the calls made.
-    This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
-    ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
+	This class uses the most accurately available CPU and GPU timers to profile given events.
+	It automatically creates event hierarchies based on the order and nesting of the calls made.
+	This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
+	ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
 */
 class dlldecl Profiler {
- public:
+  public:
+	  using SharedPtr = std::shared_ptr<Profiler>;
 
-#if _PROFILING_LOG == 1
-    static void flushLog();
-#endif
+	  enum class Flags {
+		  None        = 0x0,
+		  Internal    = 0x1,
+		  Pix         = 0x2,
+		  Default     = Internal | Pix
+	  };
 
-    typedef std::pair<uint8_t, std::string> DeviceEventKey;
+	  struct Stats {
+		  float min;
+		  float max;
+		  float mean;
+		  float stdDev;
 
-    struct device_event_key_hash    {
-        template <class T1, class T2>
-        std::size_t operator() (const std::pair<T1, T2> &pair) const {
-            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
-        }
-    };
+		  pybind11::dict toPython() const;
 
-    enum class Flags {
-        None = 0x0,
-        Internal = 0x1,
-        Pix = 0x2,
+		  static Stats compute(const float* data, size_t len);
+	  };
 
-        Default = Internal | Pix
-    };
+		class Event {
+			public:
+				const std::string getName() const { return mName; }
 
-    struct EventData {
-        virtual ~EventData() {}
-        std::string name;
+				float getCpuTime() const { return mCpuTime; }
+				float getGpuTime() const { return mGpuTime; }
 
-        struct FrameData {
-            std::vector<GpuTimer::SharedPtr> pTimers;
-            size_t currentTimer = 0;
-        };
-        
-        FrameData frameData[2];  // Double-buffering, to avoid GPU flushes
-        bool showInMsg;
-        std::stack<size_t> callStack;
-        CpuTimer::TimePoint cpuStart;
-        CpuTimer::TimePoint cpuEnd;
-        double cpuTotal = 0;
-        double cpuRunningAverageMS = -1.f;  // Negative value to signify invalid
-        double gpuRunningAverageMS = -1.f;
-        uint32_t level;
-        uint32_t triggered = 0;
-        bool registered = false;
-#if _PROFILING_LOG == 1
-        int stepNr = 0;
-        int filesWritten = 0;
-        float cpuMs[_PROFILING_LOG_BATCH_SIZE];
-        float gpuMs[_PROFILING_LOG_BATCH_SIZE];
-#endif
-    };
+				float getCpuTimeAverage() const { return mCpuTimeAverage; }
+				float getGpuTimeAverage() const { return mGpuTimeAverage; }
 
-    /** Start profiling a new event and update the events hierarchies.
-        \param[in] name The event name.
-    */
-    static void startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags = Flags::Default, bool showInMsg = true);
+				Stats computeCpuTimeStats() const;
+				Stats computeGpuTimeStats() const;
 
-    /** Finish profiling a new event and update the events hierarchies.
-        \param[in] name The event name.
-    */
-    static void endEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags = Flags::Default);
+			private:
+				Event(const std::string& name);
 
-    /** Finish profiling for the entire frame.
-        Due to the double-buffering nature of the profiler, the results returned are for the previous frame.
-        \param[out] profileResults A string containing the the profiling results.
-    */
-    static void endFrame();
+				void start(std::shared_ptr<Device> pDevice, uint32_t frameIndex);
+				void end(uint32_t frameIndex);
+				void endFrame(uint32_t frameIndex);
 
-    /** Get a string with the current frame results
-    */
-    static std::string getEventsString();
+				std::string mName;                              ///< Nested event name.
 
-    /** Create a new event and register and initialize it using \ref initNewEvent.
-        \param[in] name The event name.
-    */
-    static EventData* createNewEvent(std::shared_ptr<Device> pDevice, const std::string& name);
-    
-    /** Initialize a previously generated event.
-        Used to do the default initialization without creating the actual event instance, to support derived event types. See \ref Cuda::Profiler::EventData.
-        \param[out] pEvent Event to initialize
-        \param[in] name New event name
-    */
-    static void initNewEvent(std::shared_ptr<Device> pDevice, EventData *pEvent, const std::string& name);
+				float mCpuTime = 0.0;                           ///< CPU time (previous frame).
+				float mGpuTime = 0.0;                           ///< GPU time (previous frame).
 
-    /** Get the event, or create a new one if the event does not yet exist.
-        This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
-    */
-    static EventData* getEvent(std::shared_ptr<Device> pDevice, const std::string& name);
+				float mCpuTimeAverage = -1.f;                   ///< Average CPU time (negative value to signify invalid).
+				float mGpuTimeAverage = -1.f;                   ///< Average GPU time (negative value to signify invalid).
 
-    /** Get the event, or create a new one if the event does not yet exist.
-    This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
-    */
-    static double getEventCpuTime(std::shared_ptr<Device> pDevice, const std::string& name);
+				std::vector<float> mCpuTimeHistory;             ///< CPU time history (round-robin, used for computing stats).
+				std::vector<float> mGpuTimeHistory;             ///< GPU time history (round-robin, used for computing stats).
+				size_t mHistoryWriteIndex = 0;                  ///< History write index.
+				size_t mHistorySize = 0;                        ///< History size.
 
-    /** Get the event, or create a new one if the event does not yet exist.
-    This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
-    */
-    static double getEventGpuTime(std::shared_ptr<Device> pDevice, const std::string& name);
+				uint32_t mTriggered = 0;                        ///< Keeping track of nested calls to start().
 
-    /** Returns the event or \c nullptr if the event is not known.
-        Can be used as a predicate.
-    */
-    static EventData* isEventRegistered(std::shared_ptr<Device> pDevice, const std::string& name);
+				struct FrameData {
+					CpuTimer::TimePoint cpuStartTime;           ///< Last event CPU start time.
+					float cpuTotalTime = 0.0;                   ///< Total accumulated CPU time.
 
-    /** Clears all the events. 
-        Useful if you want to start profiling a different technique with different events.
-    */
-    static void clearEvents();
+					std::vector<GpuTimer::SharedPtr> pTimers;   ///< Pool of GPU timers.
+					size_t currentTimer = 0;                    ///< Next GPU timer to use from the pool.
+					GpuTimer *pActiveTimer = nullptr;           ///< Currently active GPU timer.
 
- private:
-    static double getGpuTime(const EventData* pData);
-    static double getCpuTime(const EventData* pData);
+					bool valid = false;                         ///< True when frame data is valid (after begin/end cycle).
+				};
+				FrameData mFrameData[2];                        ///< Double-buffered frame data to avoid GPU flushes.
 
-    static std::unordered_map<DeviceEventKey, EventData*, device_event_key_hash> sProfilerEvents;
-    static std::vector<EventData*> sRegisteredEvents;
-    static uint32_t sCurrentLevel;
-    static uint32_t sGpuTimerIndex;
+				friend class Profiler;
+		};
+
+		class Capture {
+			public:
+				using SharedPtr = std::shared_ptr<Capture>;
+
+				struct Lane {
+					std::string name;
+					Stats stats;
+					std::vector<float> records;
+				};
+
+				size_t getFrameCount() const { return mFrameCount; }
+				const std::vector<Lane>& getLanes() const { return mLanes; }
+
+				pybind11::dict toPython() const;
+				std::string toJsonString() const;
+				void writeToFile(const fs::path& path) const;
+
+			private:
+				Capture(size_t reservedEvents, size_t reservedFrames);
+
+				static SharedPtr create(size_t reservedEvents, size_t reservedFrames);
+				void captureEvents(const std::vector<Event*>& events);
+				void finalize();
+
+				size_t mReservedFrames = 0;
+				size_t mFrameCount = 0;
+				std::vector<Event*> mEvents;
+				std::vector<Lane> mLanes;
+				bool mFinalized = false;
+
+				friend class Profiler;
+		};
+
+		/** Check if the profiler is enabled.
+			\return Returns true if the profiler is enabled.
+		*/
+		bool isEnabled() const { return mEnabled; }
+
+		/** Enable/disable the profiler.
+			\param[in] enabled True to enable the profiler.
+		*/
+		void setEnabled(bool enabled) { mEnabled = enabled; }
+
+		/** Check if the profiler is paused.
+			\return Returns true if the profiler is paused.
+		*/
+		bool isPaused() const { return mPaused; }
+
+		/** Pause/resume the profiler.
+			\param[in] paused True to pause the profiler.
+		*/
+		void setPaused(bool paused) { mPaused = paused; }
+
+		/** Start profile capture.
+			\param[in] reservedFrames Number of frames to reserve memory for.
+		*/
+		void startCapture(size_t reservedFrames = 1024);
+
+		/** End profile capture.
+			\return Returns the captured data.
+		*/
+		Capture::SharedPtr endCapture();
+
+		/** Check if the profiler is capturing.
+			\return Return true if the profiler is capturing.
+		*/
+		bool isCapturing() const;
+
+		/** Finish profiling for the entire frame.
+			Note: Must be called once at the end of each frame.
+		*/
+		void endFrame();
+
+		/** Start profiling a new event and update the events hierarchies.
+			\param[in] name The event name.
+			\param[in] flags The event flags.
+		*/
+		void startEvent(const std::string& name, Flags flags = Flags::Default);
+
+		/** Finish profiling a new event and update the events hierarchies.
+			\param[in] name The event name.
+			\param[in] flags The event flags.
+		*/
+		void endEvent(const std::string& name, Flags flags = Flags::Default);
+
+		/** Get the event, or create a new one if the event does not yet exist.
+			This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
+			\param[in] name The event name.
+			\return Returns a pointer to the event.
+		*/
+		Event* getEvent(const std::string& name);
+
+		/** Get the profiler events (previous frame).
+		*/
+		const std::vector<Event*>& getEvents() const { return mLastFrameEvents; }
+
+		/** Get the profiler events (previous frame) as a python dictionary.
+		*/
+		pybind11::dict getPythonEvents() const;
+
+		/** Global profiler instance pointer.
+		*/
+		static const Profiler::SharedPtr& instancePtr(std::shared_ptr<Device> pDevice);
+
+		/** Global profiler instance.
+		*/
+		static Profiler& instance(std::shared_ptr<Device> pDevice) { return *instancePtr(pDevice); }
+
+		Profiler(std::shared_ptr<Device> pDevice);
+
+	private:
+		/** Create a new event.
+			\param[in] name The event name.
+			\return Returns the new event.
+		*/
+		Event* createEvent(const std::string& name);
+
+		/** Find an event that was previously created.
+			\param[in] name The event name.
+			\return Returns the event or nullptr if none was found.
+		*/
+		Event* findEvent(const std::string& name);
+
+		std::shared_ptr<Device> mpDevice = nullptr;
+
+		bool mEnabled = false;
+		bool mPaused = false;
+
+		std::unordered_map<std::string, std::shared_ptr<Event>> mEvents; ///< Events by name.
+		std::vector<Event*> mCurrentFrameEvents;            ///< Events registered for current frame.
+		std::vector<Event*> mLastFrameEvents;               ///< Events from last frame.
+		std::string mCurrentEventName;                      ///< Current nested event name.
+		uint32_t mCurrentLevel = 0;                         ///< Current nesting level.
+		uint32_t mFrameIndex = 0;                           ///< Current frame index.
+
+		Capture::SharedPtr mpCapture;                       ///< Currently active capture.
+
+		GpuFence::SharedPtr mpFence;
+		uint64_t mFenceValue = uint64_t(-1);
 };
 
-/** Helper class for starting and ending profiling events.
-    The class C'tor and D'tor call Profiler#StartEvent() and Profiler#EndEvent(). This class can be used with scoping to simplify event creation.\n
-    The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled, and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
-*/
-class ProfilerEvent {
- public:
-    /** C'tor
-    */
-    ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags), mpDevice(pDevice) { Profiler::startEvent(mpDevice, name, flags); }
-    /** D'tor
-    */
-    ~ProfilerEvent() { Profiler::endEvent(mpDevice, mName, mFlags); }
-
- private:
-    const std::string       mName;
-    Profiler::Flags         mFlags;
-    std::shared_ptr<Device> mpDevice;
-};
-
-#if _PROFILING_ENABLED
-// Profiling enabled
-#define PROFILE_ALL_FLAGS(_device, _name) Falcor::ProfilerEvent _profileEvent##__LINE__(_device, _name)
-#define PROFILE_SOME_FLAGS(_device, _name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_device, _name, _flags)
-
-#define GET_PROFILE(_1, _2, _3, NAME, ...) NAME
-#define PROFILE(...) GET_PROFILE(__VA_ARGS__, PROFILE_SOME_FLAGS, PROFILE_ALL_FLAGS)(__VA_ARGS__)
-#else
-// Profiling disabled
-#define PROFILE(_device, _name)
-#endif
-
+//FALCOR_ENUM_CLASS_OPERATORS(Profiler::Flags);
 enum_class_operators(Profiler::Flags);
 
+/** Helper class for starting and ending profiling events using RAII.
+	The constructor and destructor call Profiler::StartEvent() and Profiler::EndEvent().
+	The PROFILE macro wraps creation of local ProfilerEvent objects when profiling is enabled,
+	and does nothing when profiling is disabled, so should be used instead of directly creating ProfilerEvent objects.
+*/
+class ProfilerEvent {
+  public:
+	  ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags = Profiler::Flags::Default);
+		~ProfilerEvent() { Profiler::instance(mpDevice).endEvent(mName, mFlags); }
+
+  private:
+  	std::shared_ptr<Device> mpDevice = nullptr;
+	  const std::string mName;
+	  Profiler::Flags mFlags;
+};
+
 }  // namespace Falcor
+
+#ifdef FALCOR_ENABLE_PROFILER
+#define PROFILE_DEFAULT(_pDevice, _name) Falcor::ProfilerEvent _profileEvent##__LINE__(_pDevice, _name)
+#define PROFILE_SOME(_pDevice, _name, _flags) Falcor::ProfilerEvent _profileEvent##__LINE__(_pDevice, _name, _flags)
+
+
+#define GET_PROFILE(_1, _2, _3, NAME, ...) NAME
+#define PROFILE(...) GET_PROFILE(__VA_ARGS__, PROFILE_SOME, PROFILE_DEFAULT)(__VA_ARGS__)
+#else
+#define PROFILE(_pDevice, _name, ...)
+#endif
 
 #endif  // SRC_FALCOR_UTILS_TIMING_PROFILER_H_

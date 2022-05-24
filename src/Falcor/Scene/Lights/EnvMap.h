@@ -31,6 +31,10 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/Sampler.h"
+
+#include "Falcor/Core/Program/ShaderVar.h"
+
 #include "EnvMapData.slang"
 
 namespace Falcor {

@@ -30,18 +30,21 @@
 
 #include "Falcor/Core/Framework.h"
 
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+
 namespace Falcor {
 
 class dlldecl ShaderLibrary {
   public:
     using SharedPtr = std::shared_ptr<ShaderLibrary>;
 
-    static SharedPtr create(const std::string& filename);
-    const std::string& getFilename() const { return mFilename; }
+    static SharedPtr create(const fs::path& path);
+    const fs::path& getPath() const { return mPath; }
 
   private:
-    ShaderLibrary(const std::string& filename) : mFilename(filename) {}
-    std::string mFilename;
+    ShaderLibrary(const fs::path& path) : mPath(path) {}
+    fs::path mPath;
 };
 
 }  // namespace Falcor

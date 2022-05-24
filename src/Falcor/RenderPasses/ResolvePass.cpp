@@ -26,6 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Core/API/RenderContext.h"
 #include "ResolvePass.h"
 
 namespace Falcor {

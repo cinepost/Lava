@@ -141,7 +141,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string                         mAccumulatePassInputName;
     std::string                         mAccumulatePassOutputName;
 
-    Falcor::Resource::Type              mType = Falcor::Resource::Type::Undefined;
+    Falcor::Resource::Type              mType;
 
   friend class Renderer;
 };

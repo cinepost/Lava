@@ -53,24 +53,36 @@ public:
     ~AnimationController() = default;
 
     using StaticVertexVector = std::vector<PackedStaticVertexData>;
-    using DynamicVertexVector = std::vector<DynamicVertexData>;
+    using SkinningVertexVector = std::vector<SkinningVertexData>;
 
     /** Create a new object.
         \return A new object, or throws an exception if creation failed.
     */
-    static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
+    static UniquePtr create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
     /** Add animated vertex caches (curves and meshes) to the controller.
     */
-    void addAnimatedVertexCaches(std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes);
+    void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData);
 
     /** Returns true if controller contains animations.
     */
-    bool hasAnimations() const { return mAnimations.size() > 0; }
+    bool hasAnimations() const { return mAnimations.size() > 0 || hasAnimatedVertexCaches(); }
+
+    /** Returns true if controller is handling any skinned meshes.
+    */
+    bool hasSkinnedMeshes() const { return mpSkinningPass != nullptr; }
 
     /** Returns true if controller contains animated vertex caches.
     */
-    bool hasAnimatedVertexCaches() const { return mpVertexCache && mpVertexCache->hasAnimations(); }
+    bool hasAnimatedVertexCaches() const { return hasAnimatedCurveCaches() || hasAnimatedMeshCaches(); }
+
+    /** Returns true if controller contains animated curve caches.
+    */
+    bool hasAnimatedCurveCaches() const { return mpVertexCache && mpVertexCache->hasCurveAnimations(); }
+
+    /** Returns true if controller contains animated curve caches.
+    */
+    bool hasAnimatedMeshCaches() const { return mpVertexCache && mpVertexCache->hasMeshAnimations(); }
 
     /** Returns a list of all animations.
     */
@@ -86,20 +98,21 @@ public:
 
     /** Enable/disable globally looping animations.
     */
-    void setIsLooped(bool looped) { mLoopAnimations = looped; }
+    void setIsLooped(bool looped);
 
     /** Returns true if animations are currently globally looped.
     */
     bool isLooped() { return mLoopAnimations; }
 
+    /** Mark a scene node as being edited externally.
+        Ensures that all global matrices depending on this scene node are updated.
+    */
+    void setNodeEdited(size_t nodeID) { mNodesEdited[nodeID] = true; }
+
     /** Run the animation
         \return true if a change occurred, otherwise false
     */
     bool animate(RenderContext* pContext, double currentTime);
-
-    /** Check if a matrix is animated.
-    */
-    bool isMatrixAnimated(size_t matrixID) const { return mMatricesAnimated[matrixID]; }
 
     /** Check if a matrix changed since last frame.
     */
@@ -131,9 +144,8 @@ public:
 
 private:
     friend class SceneBuilder;
-    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations);
+    AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations);
 
-    void initFlags();
     void initLocalMatrices();
     void updateLocalMatrices(double time);
     void updateWorldMatrices(bool updateAll = false);
@@ -141,15 +153,15 @@ private:
 
     void bindBuffers();
 
-    void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData);
+    void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
     void executeSkinningPass(RenderContext* pContext, bool initPrev = false);
 
     // Animation
     std::vector<Animation::SharedPtr> mAnimations;
+    std::vector<bool> mNodesEdited;
     std::vector<float4x4> mLocalMatrices;
     std::vector<float4x4> mGlobalMatrices;
     std::vector<float4x4> mInvTransposeGlobalMatrices;
-    std::vector<bool> mMatricesAnimated;        ///< Flag per matrix, true if matrix is affected by animations.
     std::vector<bool> mMatricesChanged;         ///< Flag per matrix, true if matrix changed since last frame.
 
     bool mFirstUpdate = true;       ///< True if this is the first update.
@@ -180,8 +192,8 @@ private:
     Buffer::SharedPtr mpMeshInvBindMatricesBuffer;
     Buffer::SharedPtr mpSkinningMatricesBuffer;
     Buffer::SharedPtr mpInvTransposeSkinningMatricesBuffer;
-    Buffer::SharedPtr mpSkinningStaticVertexData;
-    Buffer::SharedPtr mpSkinningDynamicVertexData;
+    Buffer::SharedPtr mpStaticVertexData;
+    Buffer::SharedPtr mpSkinningVertexData;
     Buffer::SharedPtr mpPrevVertexData;
 
     // Animated vertex caches

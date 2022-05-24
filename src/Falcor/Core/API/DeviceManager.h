@@ -36,7 +36,10 @@
 #include <atomic>
 #include <unordered_map>
 
+#ifdef FALCOR_VK
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#endif 
+
 #include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
@@ -69,16 +72,16 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     void printEnumeratedDevices() const;
 
     uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
+
+#ifdef FALCOR_GFX
     const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
+    VkInstance vulkanInstance() const;
+#endif
 
     static SharedPtr create();
 
-    VkInstance vulkanInstance() const;
-
  private:
     DeviceManager();
-
-    static VkInstance createVulkanInstance(bool enableDebugLayer);
 
     bool init();
     bool deviceEnumerated(uint8_t gpuId) const;
@@ -93,7 +96,9 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     uint8_t mDefaultRenderingDeviceID = 0;   
 
     uint32_t                        mPhysicalDevicesCount = 0;
+#ifdef FALCOR_GFX
     std::vector<VkPhysicalDevice>   mPhysicalDevices;
+#endif
 };
 
 

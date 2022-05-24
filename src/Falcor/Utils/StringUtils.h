@@ -41,6 +41,14 @@
 #include <cxxabi.h>
 #endif
 
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
+
 namespace Falcor {
 
     // String/string_View append operators missing from the spec
@@ -100,6 +108,10 @@ namespace Falcor {
             }
         }
         return false;
+    }
+
+    inline bool hasSuffix(const fs::path& path, const std::string& suffix, bool caseSensitive = true) {
+        return hasSuffix(path.string(), suffix, caseSensitive);
     }
 
     /** Split a string into a vector of strings based on d delimiter

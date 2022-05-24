@@ -34,6 +34,8 @@ import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Lights.LightHelpers;
 import Experimental.Scene.Lights.EnvMapSampler;
+import Experimental.Scene.Lights.EnvMapLighting;
+
 
 import Experimental.Scene.Material.Fresnel;
 import Experimental.Scene.Material.Microfacet;
@@ -55,9 +57,7 @@ cbuffer PerFrameCB {
   EnvMapSampler     gEnvMapSampler;
 };
 
-//RaytracingAccelerationStructure gTlas;
-
-//EnvMapLighting gEnvMapLighting; 
+EnvMapLighting gEnvMapLighting; 
 
 SamplerState gSampler;
 SamplerState gNoiseSampler;
@@ -100,9 +100,10 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
 PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     PsOut psOut;
 
-    //Shading position adjusted for ray-tracing
-    const float3 geomNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+    let lod = ImplicitLodTextureSampler();
+    if (alphaTest(vsOut, triangleIndex, lod)) discard;
 
+    //Shading position adjusted for ray-tracing
 #ifdef _ADJUST_SHADING_POSITION
     const float3 posWA = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
 #else
@@ -117,6 +118,9 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
 
     // blue noise
     float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
+    psOut.color.rgb = noise.rgb;
+    psOut.color.a = 1;
+    return psOut;
 
     // screen space texture coordinates gradient
     float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
@@ -124,12 +128,13 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
     
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
     
-    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
+    //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
-    // Compute GGX alpha.
-    float alpha = sd.linearRoughness * sd.linearRoughness;
+    // Create BSDF instance and query its properties.
+    let bsdf = gScene.materials.getBSDF(sd, lod);
+    let bsdfProperties = bsdf.getProperties(sd);
 
-    StandardMaterial mtl;
 
     float4 finalColor = float4(0, 0, 0, 1);
 
@@ -166,19 +171,19 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
 
-        finalColor.rgb += mtl.eval(sd, ls.dir) * ls.Li * shadowFactor;
+        finalColor.rgb += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }
 
     // Add the emissive component
-    finalColor.rgb += sd.emissive;
+    finalColor.rgb += bsdf.getProperties(sd).emission;
     finalColor.a = sd.opacity;
 
 #ifdef _USE_ENV_MAP
     // Add lighting from environment map
 
     #ifdef _USE_SIMPLIFIED_ENV_LIGHTING
-        finalColor.rgb += gEnvMapLighting.evalDiffuse(sd);
-        finalColor.rgb += gEnvMapLighting.evalSpecular(sd, reflect(-sd.V, sd.N));
+        finalColor.rgb += gEnvMapLighting.evalDiffuse(sd, bsdfProperties);
+        finalColor.rgb += gEnvMapLighting.evalSpecular(sd, bsdfProperties, reflect(-sd.V, sd.N));
     #else
 
 

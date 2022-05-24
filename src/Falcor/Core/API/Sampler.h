@@ -121,6 +121,14 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         */
         Desc& setBorderColor(const float4& borderColor);
 
+        /** Returns true if sampler descs are identical.
+        */
+        bool operator==(const Desc& other) const;
+
+        /** Returns true if sampler descs are not identical.
+        */
+        bool operator!=(const Desc& other) const { return !(*this == other); }
+
      protected:
         Filter mMagFilter = Filter::Linear;
         Filter mMinFilter = Filter::Linear;
@@ -143,7 +151,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         \param[in] desc Describes sampler settings.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     /** Get the API handle
     */
@@ -205,13 +213,23 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     */
     const Desc& getDesc() const { return mDesc; }
 
+    /** Get an object that represents a default sampler
+    */
+    static Sampler::SharedPtr getDefault(std::shared_ptr<Device> pDevice);
+
+    /** Get an D3D12 CPU Descriptor handle.
+        \return A valid CPU descriptor heap handle when using the D3D12 API, otherwise nullptr.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+
 private:
-    Sampler(std::shared_ptr<Device> device, const Desc& desc);
+    Sampler(std::shared_ptr<Device> pDevice, const Desc& desc);
+
+    std::shared_ptr<Device> mpDevice = nullptr; 
     Desc mDesc;
     ApiHandle mApiHandle = {};
-    static uint32_t getApiMaxAnisotropy(std::shared_ptr<Device> device);
+    static uint32_t getApiMaxAnisotropy(std::shared_ptr<Device> pDevice);
 
-    std::shared_ptr<Device> mpDevice; 
 };
 
 #define filter_str(a) case Sampler::Filter::a: return #a

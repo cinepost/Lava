@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,230 +25,290 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "Grid.h"
+#include "stdafx.h"
 
-#pragma warning(disable:4146 4244 4267 4275 4996)
+#pragma warning(push)
+#pragma warning(disable : 4146 4244 4267 4275 4996)
 #include <nanovdb/util/IO.h>
 #include <nanovdb/util/GridStats.h>
 #include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/OpenToNanoVDB.h>
 #include <nanovdb/util/Primitives.h>
 #include <openvdb/openvdb.h>
-#pragma warning(default:4146 4244 4267 4275 4996)
+#pragma warning(pop)
 #include <glm/gtc/type_ptr.hpp>
 #include "GridConverter.h"
 
+#include "Falcor/Core/Program/ShaderVar.h"
+#include "Grid.h"
 
-namespace Falcor {
-
-namespace {
-    float3 cast(const nanovdb::Vec3f& v) {
-        return float3(v[0], v[1], v[2]);
-    }
-
-    float3 cast(const nanovdb::Vec3R& v) {
-        return float3(v[0], v[1], v[2]);
-    }
-
-    int3 cast(const nanovdb::Coord& c) {
-        return int3(c[0], c[1], c[2]);
-    }
-}
-
-Grid::SharedPtr Grid::createSphere(Device::SharedPtr pDevice, float radius, float voxelSize, float blendRange) {
-    //auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, blendRange);
-
-    //double          halfWidth = 3.0f;
-    //nanovdb::Vec3d  origin = nanovdb::Vec3d(0.0);
-    //auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3R(0.0), voxelSize, halfWidth, origin);
-    auto handle = nanovdb::createFogVolumeSphere(20.0f, nanovdb::Vec3f(50), 1.0, 3.0, nanovdb::Vec3d(0), "sphere_20");
-    return SharedPtr(new Grid(pDevice, std::move(handle)));
-}
-
-Grid::SharedPtr Grid::createBox(Device::SharedPtr pDevice, float width, float height, float depth, float voxelSize, float blendRange) {
-    //auto handle = nanovdb::createFogVolumeBox(width, height, depth, nanovdb::Vec3R(0.0), voxelSize, blendRange);
-    auto handle = nanovdb::createFogVolumeBox<float>(40.0f, 60.0f, 80.0f, nanovdb::Vec3f(50), 1.0, 3.0, nanovdb::Vec3d(0), "box");
-    return SharedPtr(new Grid(pDevice, std::move(handle)));
-}
-
-Grid::SharedPtr Grid::createFromFile(Device::SharedPtr pDevice, const std::string& filename, const std::string& gridname) {
-    std::string fullpath;
-    if (!findFileInDataDirectories(filename, fullpath)) {
-        logWarning("Error when loading grid. Can't find grid file '" + filename + "'");
-        return nullptr;
-    }
-
-    auto ext = getExtensionFromFile(fullpath);
-    if (ext == "nvdb") {
-        return createFromNanoVDBFile(pDevice, fullpath, gridname);
-    } else if (ext == "vdb") {
-        return createFromOpenVDBFile(pDevice, fullpath, gridname);
-    } else {
-        logWarning("Error when loading grid. Unsupported grid file '" + filename + "'");
-        return nullptr;
-    }
-}
-
-void Grid::setShaderData(const ShaderVar& var) {
-    var["buf"] = mpBuffer;
-    var["rangeTex"] = mBrickedGrid.range;
-    var["indirectionTex"] = mBrickedGrid.indirection;
-    var["atlasTex"] = mBrickedGrid.atlas;
-    var["minIndex"] = getMinIndex();
-    var["minValue"] = getMinValue();
-    var["maxIndex"] = getMaxIndex();
-    var["maxValue"] = getMaxValue();
-}
-
-int3 Grid::getMinIndex() const {
-    return cast(mpFloatGrid->indexBBox().min());
-}
-
-int3 Grid::getMaxIndex() const {
-    return cast(mpFloatGrid->indexBBox().max());
-}
-
-float Grid::getMinValue() const {
-    //return mpFloatGrid->tree().root().valueMin();
-    return mpFloatGrid->tree().root().minimum();
-}
-
-float Grid::getMaxValue() const {
-    // return mpFloatGrid->tree().root().valueMax();
-    return mpFloatGrid->tree().root().maximum();
-}
-
-uint64_t Grid::getVoxelCount() const {
-    return mpFloatGrid->activeVoxelCount();
-}
-
-uint64_t Grid::getGridSizeInBytes() const {
-    const uint64_t nvdb = mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
-    const uint64_t bricks = (mBrickedGrid.range ? mBrickedGrid.range->getTextureSizeInBytes() : (uint64_t)0) +
-        (mBrickedGrid.indirection ? mBrickedGrid.indirection->getTextureSizeInBytes() : (uint64_t)0) +
-        (mBrickedGrid.atlas ? mBrickedGrid.atlas->getTextureSizeInBytes() : (uint64_t)0);
-    return nvdb + bricks;
-}
-
-AABB Grid::getWorldBounds() const {
-    auto bounds = mpFloatGrid->worldBBox();
-    return AABB(cast(bounds.min()), cast(bounds.max()));
-}
-
-float Grid::getValue(const int3& ijk) const {
-    return mAccessor.getValue(nanovdb::Coord(ijk.x, ijk.y, ijk.z));
-}
-
-glm::mat4 Grid::getTransform() const {
-    const auto& gridMap = mGridHandle.gridMetaData()->map();
-    const float3x3 affine = glm::make_mat3(gridMap.mMatF);
-    const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-    return glm::translate(float4x4(affine), translation);
-}
-
-glm::mat4 Grid::getInvTransform() const {
-    const auto& gridMap = mGridHandle.gridMetaData()->map();
-    const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
-    const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
-    return glm::translate(float4x4(invAffine), -translation);
-}
-
-const nanovdb::GridHandle<nanovdb::HostBuffer>& Grid::getGridHandle() const {
-    return mGridHandle;
-}
-
-Grid::Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
-    : mpDevice(pDevice)
-    , mGridHandle(std::move(gridHandle))
-    , mpFloatGrid(mGridHandle.grid<float>())
-    , mAccessor(mpFloatGrid->getAccessor())
+namespace Falcor
 {
-    if (!mpFloatGrid->hasMinMax()) {
-        nanovdb::gridStats(*mpFloatGrid);
-    }
+    namespace
+    {
+        float3 cast(const nanovdb::Vec3f& v)
+        {
+            return float3(v[0], v[1], v[2]);
+        }
 
-    mpBuffer = Buffer::createStructured(
-        mpDevice, 
-        sizeof(uint32_t),
-        uint32_t(div_round_up(mGridHandle.size(), sizeof(uint32_t))),
-        ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource,
-        Buffer::CpuAccess::None,
-        mGridHandle.data()
-    );
+        float3 cast(const nanovdb::Vec3R& v)
+        {
+            return float3(v[0], v[1], v[2]);
+        }
 
-    using NanoVDBGridConverter = NanoVDBConverterBC4;
-    mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert();
-}
-
-Grid::SharedPtr Grid::createFromNanoVDBFile(Device::SharedPtr pDevice, const std::string& path, const std::string& gridname) {
-    if (!nanovdb::io::hasGrid(path, gridname)) {
-        logWarning("Error when loading grid. Can't find grid '" + gridname + "' in '" + path + "'");
-        return nullptr;
-    }
-
-    auto handle = nanovdb::io::readGrid(path, gridname);
-    if (!handle) {
-        logWarning("Error when loading grid.");
-        return nullptr;
-    }
-
-    auto floatGrid = handle.grid<float>();
-    if (!floatGrid || floatGrid->gridType() != nanovdb::GridType::Float) {
-        logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
-        return nullptr;
-    }
-
-    return SharedPtr(new Grid(pDevice, std::move(handle)));
-}
-
-Grid::SharedPtr Grid::createFromOpenVDBFile(Device::SharedPtr pDevice, const std::string& path, const std::string& gridname) {
-    openvdb::initialize();
-
-    openvdb::io::File file(path);
-    file.open();
-
-    openvdb::GridBase::Ptr baseGrid;
-    for (auto it = file.beginName(); it != file.endName(); ++it) {
-        if (it.gridName() == gridname) {
-            baseGrid = file.readGrid(it.gridName());
-            break;
+        int3 cast(const nanovdb::Coord& c)
+        {
+            return int3(c[0], c[1], c[2]);
         }
     }
 
-    file.close();
+/*
+template<typename ValueT = float,
+         typename VoxelT = ValueT,
+         typename BufferT = HostBuffer>
+GridHandle<BufferT>
+createFogVolumeSphere(ValueT              radius = 100.0f,
+                      const Vec3<ValueT>& center = Vec3<ValueT>(0.0f),
+                      double              voxelSize = 1.0f,
+                      double              halfWidth = 3.0f,
+                      const Vec3d&        origin = Vec3d(0.0),
+                      const std::string&  name = "sphere_fog",
+                      StatsMode           sMode = StatsMode::Default,
+                      ChecksumMode        cMode = ChecksumMode::Default,
+                      float               tolerance = -1.0f,
+                      bool                ditherOn = false,
+                      const BufferT&      buffer = BufferT());
+*/
 
-    if (!baseGrid) {
-        logWarning("Error when loading grid. Can't find grid '" + gridname + "' in '" + path + "'");
-        return nullptr;
+    Grid::SharedPtr Grid::createSphere(Device::SharedPtr pDevice, float radius, float voxelSize, float blendRange)
+    {
+        auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3<float>(0.0), (double)voxelSize, (double)blendRange);
+        return SharedPtr(new Grid(pDevice, std::move(handle)));
     }
 
-    if (!baseGrid->isType<openvdb::FloatGrid>()) {
-        logWarning("Error when loading grid. Grid '" + gridname + "' in '" + path + "' is not of type float");
-        return nullptr;
+    Grid::SharedPtr Grid::createBox(Device::SharedPtr pDevice, float width, float height, float depth, float voxelSize, float blendRange)
+    {
+        auto handle = nanovdb::createFogVolumeBox(width, height, depth, nanovdb::Vec3<float>(0.0), voxelSize, blendRange);
+        return SharedPtr(new Grid(pDevice, std::move(handle)));
     }
 
-    openvdb::FloatGrid::Ptr floatGrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-    auto handle = nanovdb::openToNanoVDB(floatGrid);
+    Grid::SharedPtr Grid::createFromFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname)
+    {
+        fs::path fullPath;
+        if (!findFileInDataDirectories(path, fullPath))
+        {
+            LLOG_ERR << "Error when loading grid. Can't find grid file " << path;
+            return nullptr;
+        }
 
-    return SharedPtr(new Grid(pDevice, std::move(handle)));
-}
+        if (hasExtension(fullPath, "nvdb"))
+        {
+            return createFromNanoVDBFile(pDevice, fullPath, gridname);
+        }
+        else if (hasExtension(fullPath, "vdb"))
+        {
+            return createFromOpenVDBFile(pDevice, fullPath, gridname);
+        }
+        else
+        {
+            LLOG_ERR << "Error when loading grid. Unsupported grid file '{}'." << fullPath;
+            return nullptr;
+        }
+    }
+
+    void Grid::setShaderData(const ShaderVar& var)
+    {
+        var["buf"] = mpBuffer;
+        var["rangeTex"] = mBrickedGrid.range;
+        var["indirectionTex"] = mBrickedGrid.indirection;
+        var["atlasTex"] = mBrickedGrid.atlas;
+        var["minIndex"] = getMinIndex();
+        var["minValue"] = getMinValue();
+        var["maxIndex"] = getMaxIndex();
+        var["maxValue"] = getMaxValue();
+    }
+
+    int3 Grid::getMinIndex() const
+    {
+        return cast(mpFloatGrid->indexBBox().min()) & (~7); // The volume texture path requires the index bounding box to fall on a brick boundary (multiple of 8).
+    }
+
+    int3 Grid::getMaxIndex() const
+    {
+        return (cast(mpFloatGrid->indexBBox().max()) + 7) & (~7); // The volume texture path requires the index bounding box to fall on a brick boundary (multiple of 8).
+    }
+
+    float Grid::getMinValue() const
+    {
+        return mpFloatGrid->tree().root().minimum();
+    }
+
+    float Grid::getMaxValue() const
+    {
+        return mpFloatGrid->tree().root().maximum();
+    }
+
+    uint64_t Grid::getVoxelCount() const
+    {
+        return mpFloatGrid->activeVoxelCount();
+    }
+
+    uint64_t Grid::getGridSizeInBytes() const
+    {
+        const uint64_t nvdb = mpBuffer ? mpBuffer->getSize() : (uint64_t)0;
+        const uint64_t bricks = (mBrickedGrid.range ? mBrickedGrid.range->getTextureSizeInBytes() : (uint64_t)0) +
+            (mBrickedGrid.indirection ? mBrickedGrid.indirection->getTextureSizeInBytes() : (uint64_t)0) +
+            (mBrickedGrid.atlas ? mBrickedGrid.atlas->getTextureSizeInBytes() : (uint64_t)0);
+        return nvdb + bricks;
+    }
+
+    AABB Grid::getWorldBounds() const
+    {
+        auto bounds = mpFloatGrid->worldBBox();
+        return AABB(cast(bounds.min()), cast(bounds.max()));
+    }
+
+    float Grid::getValue(const int3& ijk) const
+    {
+        return mAccessor.getValue(nanovdb::Coord(ijk.x, ijk.y, ijk.z));
+    }
+
+    const nanovdb::GridHandle<nanovdb::HostBuffer>& Grid::getGridHandle() const
+    {
+        return mGridHandle;
+    }
+
+    glm::mat4 Grid::getTransform() const
+    {
+        const auto& gridMap = mGridHandle.gridMetaData()->map();
+        const float3x3 affine = glm::make_mat3(gridMap.mMatF);
+        const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+        return glm::translate(float4x4(affine), translation);
+    }
+
+    glm::mat4 Grid::getInvTransform() const
+    {
+        const auto& gridMap = mGridHandle.gridMetaData()->map();
+        const float3x3 invAffine = glm::make_mat3(gridMap.mInvMatF);
+        const float3 translation = float3(gridMap.mVecF[0], gridMap.mVecF[1], gridMap.mVecF[2]);
+        return glm::translate(float4x4(invAffine), -translation);
+    }
+
+    Grid::Grid(Device::SharedPtr pDevice, nanovdb::GridHandle<nanovdb::HostBuffer> gridHandle)
+        : mpDevice(pDevice)
+        , mGridHandle(std::move(gridHandle))
+        , mpFloatGrid(mGridHandle.grid<float>())
+        , mAccessor(mpFloatGrid->getAccessor())
+    {
+        if (!mpFloatGrid->hasMinMax())
+        {
+            nanovdb::gridStats(*mpFloatGrid);
+        }
+
+        // Keep both NanoVDB and brick textures resident in GPU memory for simplicity for now (~15% increased footprint).
+        mpBuffer = Buffer::createStructured(
+            mpDevice,
+            sizeof(uint32_t),
+            uint32_t(div_round_up(mGridHandle.size(), sizeof(uint32_t))),
+            ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource,
+            Buffer::CpuAccess::None,
+            mGridHandle.data()
+        );
+        using NanoVDBGridConverter = NanoVDBConverterBC4;
+        mBrickedGrid = NanoVDBGridConverter(mpFloatGrid).convert(mpDevice);
+    }
+
+    Grid::SharedPtr Grid::createFromNanoVDBFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname)
+    {
+        if (!nanovdb::io::hasGrid(path.string(), gridname))
+        {
+            LLOG_ERR << "Error when loading grid. Can't find grid '" << gridname << "' in " << path;
+            return nullptr;
+        }
+
+        auto handle = nanovdb::io::readGrid(path.string(), gridname);
+        if (!handle)
+        {
+            LLOG_ERR << "Error when loading grid.";
+            return nullptr;
+        }
+
+        auto floatGrid = handle.grid<float>();
+        if (!floatGrid || floatGrid->gridType() != nanovdb::GridType::Float)
+        {
+            LLOG_ERR << "Error when loading grid. Grid '" << gridname << "' in '" << path << "' is not of type float.";
+            return nullptr;
+        }
+
+        if (floatGrid->isEmpty())
+        {
+            LLOG_WRN << "Grid '" << gridname << "' in '" << path << "' is empty.";
+            return nullptr;
+        }
+
+        return SharedPtr(new Grid(pDevice, std::move(handle)));
+    }
+
+    Grid::SharedPtr Grid::createFromOpenVDBFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& gridname)
+    {
+        openvdb::initialize();
+
+        openvdb::io::File file(path.string());
+        file.open();
+
+        openvdb::GridBase::Ptr baseGrid;
+        for (auto it = file.beginName(); it != file.endName(); ++it)
+        {
+            if (it.gridName() == gridname)
+            {
+                baseGrid = file.readGrid(it.gridName());
+                break;
+            }
+        }
+
+        file.close();
+
+        if (!baseGrid)
+        {
+            LLOG_ERR << "Error when loading grid. Can't find grid '" << gridname << "' in " << path;
+            return nullptr;
+        }
+
+        if (!baseGrid->isType<openvdb::FloatGrid>())
+        {
+            LLOG_ERR << "Error when loading grid. Grid '" << gridname << "' in '" << path << "' is not of type float.";
+            return nullptr;
+        }
+
+        if (baseGrid->empty())
+        {
+            LLOG_WRN << "Grid '" << gridname << "' in '" << path << "' is empty.";
+            return nullptr;
+        }
+
+        openvdb::FloatGrid::Ptr floatGrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+        auto handle = nanovdb::openToNanoVDB(floatGrid);
+
+        return SharedPtr(new Grid(pDevice, std::move(handle)));
+    }
+
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(Grid) {
-    pybind11::class_<Grid, Grid::SharedPtr> grid(m, "Grid");
-    grid.def_property_readonly("voxelCount", &Grid::getVoxelCount);
-    grid.def_property_readonly("minIndex", &Grid::getMinIndex);
-    grid.def_property_readonly("maxIndex", &Grid::getMaxIndex);
-    grid.def_property_readonly("minValue", &Grid::getMinValue);
-    grid.def_property_readonly("maxValue", &Grid::getMaxValue);
+    SCRIPT_BINDING(Grid)
+    {
+        pybind11::class_<Grid, Grid::SharedPtr> grid(m, "Grid");
+        grid.def_property_readonly("voxelCount", &Grid::getVoxelCount);
+        grid.def_property_readonly("minIndex", &Grid::getMinIndex);
+        grid.def_property_readonly("maxIndex", &Grid::getMaxIndex);
+        grid.def_property_readonly("minValue", &Grid::getMinValue);
+        grid.def_property_readonly("maxValue", &Grid::getMaxValue);
 
-    grid.def("getValue", &Grid::getValue, "ijk"_a);
+        grid.def("getValue", &Grid::getValue, "ijk"_a);
 
-    grid.def_static("createSphere", &Grid::createSphere, "radius"_a, "voxelSize"_a, "blendRange"_a = 3.f);
-    grid.def_static("createBox", &Grid::createBox, "width"_a, "height"_a, "depth"_a, "voxelSize"_a, "blendRange"_a = 3.f);
-    grid.def_static("createFromFile", &Grid::createFromFile, "filename"_a, "gridname"_a);
-}
-#endif
+        grid.def_static("createSphere", &Grid::createSphere, "radius"_a, "voxelSize"_a, "blendRange"_a = 3.f);
+        grid.def_static("createBox", &Grid::createBox, "width"_a, "height"_a, "depth"_a, "voxelSize"_a, "blendRange"_a = 3.f);
+        grid.def_static("createFromFile", &Grid::createFromFile, "path"_a, "gridname"_a);
+    }
+#endif  // SCRIPTING
 
-}
+}  // namespace Falcor

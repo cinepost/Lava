@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "RenderGraphExe.h"
 

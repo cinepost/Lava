@@ -7,6 +7,7 @@
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
@@ -35,6 +36,8 @@ using DisplayType = Display::DisplayType;
 
 
 Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
+	assert(pRenderer);
+
 	auto pSession = Session::UniquePtr(new Session(pRenderer));
 	auto pGlobal = scope::Global::create();
 	if (!pGlobal) {
@@ -49,6 +52,7 @@ Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
 
 Session::Session(std::shared_ptr<Renderer> pRenderer):mFirstRun(true) { 
 	mpRenderer = pRenderer;
+	mpDevice = mpRenderer->device();
 }
 
 Session::~Session() {
@@ -188,8 +192,8 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	assert(frameInfo.renderRegion[1] <= frameInfo.renderRegion[3]);
 
 	auto imageRegionDims = frameInfo.renderRegionDims();
-	uint imageRegionWidth = imageRegionDims[0];
-	uint imageRegionHeight = imageRegionDims[1];
+	uint32_t imageRegionWidth = imageRegionDims[0];
+	uint32_t imageRegionHeight = imageRegionDims[1];
 
 	tileSize[0] = std::min(imageRegionWidth, tileSize[0]);
 	tileSize[1] = std::min(imageRegionHeight, tileSize[1]);
@@ -200,11 +204,14 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	LLOG_DBG << "tile width " << std::to_string(tileSize[0]);
 	LLOG_DBG << "tile height " << std::to_string(tileSize[1]);
 
-	auto hdiv = ldiv(imageRegionWidth, tileSize[0]);
-	auto vdiv = ldiv(imageRegionHeight, tileSize[1]);
+	auto hdiv = ldiv((uint32_t)imageRegionWidth, (uint32_t)tileSize[0]);
+	auto vdiv = ldiv((uint32_t)imageRegionHeight, (uint32_t)tileSize[1]);
 
 	LLOG_DBG << "qout x: " << std::to_string(hdiv.quot);
 	LLOG_DBG << "qout y: " << std::to_string(vdiv.quot);
+
+	LLOG_DBG << "rem x: " << std::to_string(hdiv.rem);
+	LLOG_DBG << "rem y: " << std::to_string(vdiv.rem);
 
 	tiles.clear();
 	// First put whole tiles
@@ -231,43 +238,47 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	}
 
 	// bottom row tiles
-	for ( int x = 0; x < hdiv.quot; x++) {
-		Int2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
-		Falcor::uint4 tileRegion = {
-			frameInfo.renderRegion[0] + offset[0],
-			frameInfo.renderRegion[1] + offset[1],
-			frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
-			frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
-		};
-		tiles.push_back({
-			{tileRegion}, // image rendering region
-			{             // camera crop region
-				tileRegion[0] / (float)frameInfo.imageWidth,
-				tileRegion[1] / (float)frameInfo.imageHeight,
-				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
-				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
-			}
-		});
+	if( vdiv.rem > 0) {
+		for ( int x = 0; x < hdiv.quot; x++) {
+			Int2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
 	}
 
 	// right row tiles
-	for ( int y = 0; y < vdiv.quot; y++) {
-		Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
-		Falcor::uint4 tileRegion = {
-			frameInfo.renderRegion[0] + offset[0],
-			frameInfo.renderRegion[1] + offset[1],
-			frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
-			frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
-		};
-		tiles.push_back({
-			{tileRegion}, // image rendering region
-			{             // camera crop region
-				tileRegion[0] / (float)frameInfo.imageWidth,
-				tileRegion[1] / (float)frameInfo.imageHeight,
-				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
-				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
-			}
-		});
+	if( hdiv.rem > 0) {
+		for ( int y = 0; y < vdiv.quot; y++) {
+			Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
 	}
 
 	// last corner tile
@@ -306,8 +317,10 @@ static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Render
 
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
+	PROFILE(mpDevice, "cmdRaytrace");
 
 	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
+
 	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
 	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
@@ -326,6 +339,11 @@ bool Session::cmdRaytrace() {
 		if(!mpDisplay) {
 			return false;
 		}
+	}
+
+	if (!mpDisplay->supportsLiveUpdate()) {
+		// Non interactive display. No need to make intermediate updates
+		sampleUpdateInterval = 0;
 	}
 
 	// Prepare frame data
@@ -439,24 +457,12 @@ bool Session::cmdRaytrace() {
 			break;
 		}
 	}
-
-/*
-    if(!pMainAOVPlane->getImageData(textureData.data())) {
-    	LLOG_ERR << "Error reading AOV texture data !!!";
-    }
-    
-    // Sending rendered image
-    try {
-    	auto renderRegionDims = mCurrentFrameInfo.renderRegionDims();
-        if (!mpDisplay->sendImageRegion(hImage, mCurrentFrameInfo.renderRegion[0], mCurrentFrameInfo.renderRegion[1],
-        								renderRegionDims[0], renderRegionDims[1], textureData.data())) {
-            LLOG_ERR << "Error sending image to display !";
-        }
-    } catch (std::exception& e) {
-        LLOG_ERR << "Error: " << e.what();
-    }
-*/
     mpDisplay->closeImage(hImage);
+
+//#ifdef FALCOR_ENABLE_PROFILER
+//    auto profiler = Falcor::Profiler::instance(mpDevice);
+//    profiler.endFrame();
+//#endif
 
 	return true;
 }
@@ -983,8 +989,6 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
-	assert(pSceneBuilder->device());
-
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
 
 	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
@@ -1076,12 +1080,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
-    auto pMaterial = Falcor::Material::create(pSceneBuilder->device(), obj_name);
+    auto pMaterial = Falcor::StandardMaterial::create(mpDevice, obj_name);
     pMaterial->setBaseColor({surface_base_color, 1.0});
     pMaterial->setIndexOfRefraction(surface_ior);
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
-    pMaterial->setReflectivity(surface_reflectivity);
+    //pMaterial->setReflectivity(surface_reflectivity);
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
     pMaterial->setDoubleSided(!front_face);
@@ -1095,8 +1099,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     if(surface_metallic_texture != "" && surface_use_metallic_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::Specular, surface_metallic_texture, false); // load as linear texture
 
-    if(surface_rough_texture != "" && surface_use_roughness_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
+    //if(surface_rough_texture != "" && surface_use_roughness_texture) 
+   // 	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
 
     if(surface_base_normal_texture != "" && surface_use_basenormal_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture, false); // load as linear texture

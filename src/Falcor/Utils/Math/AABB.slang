@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,12 +34,13 @@ struct AABB
     float3 minPoint;    ///< Minimum point.
     float3 maxPoint;    ///< Maximum point. If any minPoint > maxPoint the box is invalid.
 
-    /** Create a new AABB.
+    /** Initializes an AABB.
         Note if minPoint > maxPoint in any component the box is invalid.
     */
-    static AABB create(float3 minPoint, float3 maxPoint)
+    __init(float3 minPoint, float3 maxPoint)
     {
-        return { minPoint, maxPoint };
+        this.minPoint = minPoint;
+        this.maxPoint = maxPoint;
     }
 
     /** Set box to single point.

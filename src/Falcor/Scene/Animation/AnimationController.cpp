@@ -26,10 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
-#include "AnimationController.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/SceneBuilder.h"
 #include <fstream>
+
+#include "AnimationController.h"
 
 namespace Falcor {
     
@@ -41,32 +45,49 @@ namespace
     const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
 }
 
-AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations)
+AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
     : mpScene(pScene)
+    , mAnimations(animations)
+    , mNodesEdited(pScene->mSceneGraph.size())
     , mLocalMatrices(pScene->mSceneGraph.size())
     , mGlobalMatrices(pScene->mSceneGraph.size())
     , mInvTransposeGlobalMatrices(pScene->mSceneGraph.size())
-    , mMatricesAnimated(pScene->mSceneGraph.size())
     , mMatricesChanged(pScene->mSceneGraph.size())
-    , mAnimations(animations)
 {
     mpDevice = pScene->device();
-    initFlags();
+    assert(mpDevice);
 
     // Create GPU resources.
     assert(mLocalMatrices.size() * 4 <= std::numeric_limits<uint32_t>::max());
     uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
 
-    mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
-    mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
-    mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
-    mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
-    mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
+    if (float4Count > 0) {
+        mpWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpWorldMatricesBuffer->setName("AnimationController::mpWorldMatricesBuffer");
+        mpPrevWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevWorldMatricesBuffer->setName("AnimationController::mpPrevWorldMatricesBuffer");
+        mpInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpInvTransposeWorldMatricesBuffer->setName("AnimationController::mpInvTransposeWorldMatricesBuffer");
+        mpPrevInvTransposeWorldMatricesBuffer = Buffer::createStructured(mpDevice, sizeof(float4), float4Count, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        mpPrevInvTransposeWorldMatricesBuffer->setName("AnimationController::mpPrevInvTransposeWorldMatricesBuffer");
+    }
 
-    createSkinningPass(staticVertexData, dynamicVertexData);
+    // An extra buffer is required to store the previous frame vertex data for skinned and vertex-animated meshes.
+    // The buffer contains data for skinned meshes first, followed by vertex-animated meshes.
+    //
+    // Initialize the previous positions for skinned vertices. AnimatedVertexCache will initialize the remaining data if necessary
+    // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
+    if (prevVertexCount > 0) {
+        std::vector<PrevVertexData> prevVertexData(prevVertexCount);
+        for (size_t i = 0; i < skinningVertexData.size(); i++) {
+            uint32_t staticIndex = skinningVertexData[i].staticIndex;
+            prevVertexData[i].position = staticVertexData[staticIndex].position;
+        }
+        mpPrevVertexData = Buffer::createStructured(mpDevice, sizeof(PrevVertexData), prevVertexCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
+        mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
+    }
+
+    createSkinningPass(staticVertexData, skinningVertexData);
 
     // Determine length of global animation loop.
     for (const auto& pAnimation : mAnimations)
@@ -75,40 +96,99 @@ AnimationController::AnimationController(Scene* pScene, const StaticVertexVector
     }
 }
 
-AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData, const std::vector<Animation::SharedPtr>& animations)
+AnimationController::UniquePtr AnimationController::create(Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<Animation::SharedPtr>& animations)
 {
-    return UniquePtr(new AnimationController(pScene, staticVertexData, dynamicVertexData, animations));
+    return UniquePtr(new AnimationController(pScene, staticVertexData, skinningVertexData, prevVertexCount, animations));
 }
 
-void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>& cachedCurves, std::vector<CachedMesh>& cachedMeshes)
+void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData)
 {
-    mpVertexCache = AnimatedVertexCache::create(mpScene, cachedCurves, cachedMeshes);
+    size_t totalAnimatedMeshVertexCount = 0;
+
+    for (auto& cache : cachedMeshes)
+    {
+        totalAnimatedMeshVertexCount += mpScene->getMesh(cache.meshID).vertexCount;
+    }
+    for (auto& cache : cachedCurves)
+    {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+        {
+            totalAnimatedMeshVertexCount += mpScene->getMesh(cache.geometryID).vertexCount;
+        }
+    }
+
+    if (totalAnimatedMeshVertexCount > 0)
+    {
+        // Initialize remaining previous position data
+        std::vector<PrevVertexData> prevVertexData;
+        prevVertexData.reserve(totalAnimatedMeshVertexCount);
+
+        for (auto& cache : cachedMeshes)
+        {
+            uint32_t offset = mpScene->getMesh(cache.meshID).vbOffset;
+            for (size_t i = 0; i < cache.vertexData.front().size(); i++)
+            {
+                prevVertexData.push_back({ staticVertexData[offset + i].position });
+            }
+        }
+
+        for (auto& cache : cachedCurves)
+        {
+            if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+            {
+                uint32_t offset = mpScene->getMesh(cache.geometryID).vbOffset;
+                uint32_t vertexCount = mpScene->getMesh(cache.geometryID).vertexCount;
+                for (size_t i = 0; i < vertexCount; i++)
+                {
+                    prevVertexData.push_back({ staticVertexData[offset + i].position });
+                }
+            }
+        }
+
+        uint32_t byteOffset = 0;
+        if (!cachedMeshes.empty())
+        {
+            byteOffset = mpScene->getMesh(cachedMeshes.front().meshID).prevVbOffset * sizeof(PrevVertexData);
+        }
+        else // !cachedCurves.empty()
+        {
+            for (auto& cache : cachedCurves)
+            {
+                if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+                {
+                    byteOffset = mpScene->getMesh(cache.geometryID).prevVbOffset * sizeof(PrevVertexData);
+                    break;
+                }
+            }
+        }
+
+        mpPrevVertexData->setBlob(prevVertexData.data(), byteOffset, prevVertexData.size() * sizeof(PrevVertexData));
+    }
+
+    mpVertexCache = AnimatedVertexCache::create(mpScene, mpPrevVertexData, std::move(cachedCurves), std::move(cachedMeshes));
+
+    // Note: It is a workaround to have two pre-infinity behaviors for the cached animation.
+    // We need `Cycle` behavior when the length of cached animation is smaller than the length of mesh animation (e.g., tiger forest).
+    // We need `Constant` behavior when both animation lengths are equal (e.g., a standalone tiger).
+    if (mpVertexCache->getGlobalAnimationLength() < mGlobalAnimationLength)
+    {
+        mpVertexCache->setPreInfinityBehavior(Animation::Behavior::Cycle);
+    }
 }
+
 
 void AnimationController::setEnabled(bool enabled)
 {
     mEnabled = enabled;
 }
 
-void AnimationController::initFlags()
+void AnimationController::setIsLooped(bool looped)
 {
-    std::fill(mMatricesAnimated.begin(), mMatricesAnimated.end(), false);
+    mLoopAnimations = looped;
 
-    // Tag all matrices affected by an animation.
-    for (const auto& pAnimation : mAnimations)
+    if (mpVertexCache)
     {
-        mMatricesAnimated[pAnimation->getNodeID()] = true;
-    }
-
-    // Traverse the scene graph hierarchy to propagate the flags.
-    assert(mpScene->mSceneGraph.size() == mMatricesAnimated.size());
-    for (size_t i = 0; i < mMatricesAnimated.size(); i++)
-    {
-        if (uint32_t parent = mpScene->mSceneGraph[i].parent; parent != SceneBuilder::kInvalidNode)
-        {
-            assert(parent < i);
-            mMatricesAnimated[i] = mMatricesAnimated[i] || mMatricesAnimated[parent];
-        }
+        mpVertexCache->setIsLooped(looped);
     }
 }
 
@@ -124,9 +204,24 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime)
 {
     PROFILE(mpDevice, "animate");
 
+    std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
+
+    // Check for edited scene nodes and update local matrices.
+    const auto& sceneGraph = mpScene->mSceneGraph;
+    bool edited = false;
+    for (size_t i = 0; i < sceneGraph.size(); ++i)
+    {
+        if (mNodesEdited[i])
+        {
+            mLocalMatrices[i] = sceneGraph[i].transform;
+            mNodesEdited[i] = false;
+            mMatricesChanged[i] = true;
+            edited = true;
+        }
+    }
+
     bool changed = false;
     double time = mLoopAnimations ? std::fmod(currentTime, mGlobalAnimationLength) : currentTime;
-    std::fill(mMatricesChanged.begin(), mMatricesChanged.end(), false);
 
     // Check if animation controller was enabled/disabled since last call.
     // When enabling/disabling, all data for the current and previous frame is initialized,
@@ -141,12 +236,27 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime)
         }
         updateWorldMatrices(true);
         uploadWorldMatrices(true);
-        pContext->copyResource(mpPrevWorldMatricesBuffer.get(), mpWorldMatricesBuffer.get());
-        pContext->copyResource(mpPrevInvTransposeWorldMatricesBuffer.get(), mpInvTransposeWorldMatricesBuffer.get());
-        bindBuffers();
-        executeSkinningPass(pContext, true);
 
-        if (mpVertexCache) mpVertexCache->copyToPrevVertices(pContext);
+        if (!sceneGraph.empty())
+        {
+            assert(mpWorldMatricesBuffer && mpPrevWorldMatricesBuffer);
+            assert(mpInvTransposeWorldMatricesBuffer && mpPrevInvTransposeWorldMatricesBuffer);
+            pContext->copyResource(mpPrevWorldMatricesBuffer.get(), mpWorldMatricesBuffer.get());
+            pContext->copyResource(mpPrevInvTransposeWorldMatricesBuffer.get(), mpInvTransposeWorldMatricesBuffer.get());
+            bindBuffers();
+            executeSkinningPass(pContext, true);
+        }
+
+        if (mpVertexCache)
+        {
+            if (mEnabled && mpVertexCache->hasAnimations())
+            {
+                // Recompute time based on the cycle length of vertex caches.
+                double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
+                mpVertexCache->animate(pContext, vertexCacheTime);
+            }
+            mpVertexCache->copyToPrevVertices(pContext);
+        }
 
         mFirstUpdate = false;
         mPrevEnabled = mEnabled;
@@ -155,10 +265,12 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime)
 
     // Perform incremental update.
     // This updates all animated matrices and dynamic vertex data.
-    if (mEnabled && (time != mTime || mTime != mPrevTime))
+    if (edited || mEnabled && (time != mTime || mTime != mPrevTime))
     {
-        if (hasAnimations())
+        if (edited || hasAnimations())
         {
+            assert(mpWorldMatricesBuffer && mpPrevWorldMatricesBuffer);
+            assert(mpInvTransposeWorldMatricesBuffer && mpPrevInvTransposeWorldMatricesBuffer);
             swap(mpPrevWorldMatricesBuffer, mpWorldMatricesBuffer);
             swap(mpPrevInvTransposeWorldMatricesBuffer, mpInvTransposeWorldMatricesBuffer);
             updateLocalMatrices(time);
@@ -171,8 +283,9 @@ bool AnimationController::animate(RenderContext* pContext, double currentTime)
 
         if (mpVertexCache && mpVertexCache->hasAnimations())
         {
-            double time = mLoopAnimations ? std::fmod(currentTime, mpVertexCache->getGlobalAnimationLength()) : currentTime;
-            mpVertexCache->animate(pContext, time);
+            // Recompute time based on the cycle length of vertex caches.
+            double vertexCacheTime = (mGlobalAnimationLength == 0) ? currentTime : time;
+            mpVertexCache->animate(pContext, vertexCacheTime);
             changed = true;
         }
 
@@ -188,6 +301,7 @@ void AnimationController::updateLocalMatrices(double time)
     for (auto& pAnimation : mAnimations)
     {
         uint32_t nodeID = pAnimation->getNodeID();
+        assert(nodeID < mLocalMatrices.size());
         mLocalMatrices[nodeID] = pAnimation->animate(time);
         mMatricesChanged[nodeID] = true;
     }
@@ -195,24 +309,30 @@ void AnimationController::updateLocalMatrices(double time)
 
 void AnimationController::updateWorldMatrices(bool updateAll)
 {
+    const auto& sceneGraph = mpScene->mSceneGraph;
+
     for (size_t i = 0; i < mGlobalMatrices.size(); i++)
     {
-        if (!mMatricesAnimated[i] && !updateAll) continue;
+        // Propagate matrix change flag to children.
+        if (sceneGraph[i].parent != SceneBuilder::kInvalidNode)
+        {
+            mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[sceneGraph[i].parent];
+        }
+
+        if (!mMatricesChanged[i] && !updateAll) continue;
 
         mGlobalMatrices[i] = mLocalMatrices[i];
 
         if (mpScene->mSceneGraph[i].parent != SceneBuilder::kInvalidNode)
         {
-            mGlobalMatrices[i] = mGlobalMatrices[mpScene->mSceneGraph[i].parent] * mGlobalMatrices[i];
-            mMatricesChanged[i] = mMatricesChanged[i] || mMatricesChanged[mpScene->mSceneGraph[i].parent];
-            assert(!mMatricesChanged[i] || mMatricesAnimated[i]);
+            mGlobalMatrices[i] = mGlobalMatrices[sceneGraph[i].parent] * mGlobalMatrices[i];
         }
 
         mInvTransposeGlobalMatrices[i] = transpose(inverse(mGlobalMatrices[i]));
 
         if (mpSkinningPass)
         {
-            mSkinningMatrices[i] = mGlobalMatrices[i] * mpScene->mSceneGraph[i].localToBindSpace;
+            mSkinningMatrices[i] = mGlobalMatrices[i] * sceneGraph[i].localToBindSpace;
             mInvTransposeSkinningMatrices[i] = transpose(inverse(mSkinningMatrices[i]));
         }
     }
@@ -220,6 +340,11 @@ void AnimationController::updateWorldMatrices(bool updateAll)
 
 void AnimationController::uploadWorldMatrices(bool uploadAll)
 {
+    if (mGlobalMatrices.empty()) return;
+
+    assert(mGlobalMatrices.size() == mInvTransposeGlobalMatrices.size());
+    assert(mpWorldMatricesBuffer && mpInvTransposeWorldMatricesBuffer);
+
     if (uploadAll)
     {
         // Upload all matrices.
@@ -228,16 +353,16 @@ void AnimationController::uploadWorldMatrices(bool uploadAll)
     }
     else
     {
-        // Upload animated matrices only.
+        // Upload changed matrices only.
         for (size_t i = 0; i < mGlobalMatrices.size();)
         {
-            // Detect ranges of consecutive matrices that are all animated or not.
+            // Detect ranges of consecutive matrices that have all changed or not.
             size_t offset = i;
-            bool animated = mMatricesAnimated[i];
-            while (i < mGlobalMatrices.size() && mMatricesAnimated[i] == animated) ++i;
+            bool changed = mMatricesChanged[i];
+            while (i < mGlobalMatrices.size() && mMatricesChanged[i] == changed) ++i;
 
-            // Upload range of animated matrices.
-            if (animated)
+            // Upload range of changed matrices.
+            if (changed)
             {
                 size_t count = i - offset;
                 mpWorldMatricesBuffer->setBlob(&mGlobalMatrices[offset], offset * sizeof(float4x4), count * sizeof(float4x4));
@@ -267,37 +392,29 @@ uint64_t AnimationController::getMemoryUsageInBytes() const
     m += mpSkinningMatricesBuffer ? mpSkinningMatricesBuffer->getSize() : 0;
     m += mpInvTransposeSkinningMatricesBuffer ? mpInvTransposeSkinningMatricesBuffer->getSize() : 0;
     m += mpMeshBindMatricesBuffer ? mpMeshBindMatricesBuffer->getSize() : 0;
-    m += mpSkinningStaticVertexData ? mpSkinningStaticVertexData->getSize() : 0;
-    m += mpSkinningDynamicVertexData ? mpSkinningDynamicVertexData->getSize() : 0;
+    m += mpStaticVertexData ? mpStaticVertexData->getSize() : 0;
+    m += mpSkinningVertexData ? mpSkinningVertexData->getSize() : 0;
     m += mpPrevVertexData ? mpPrevVertexData->getSize() : 0;
     m += mpVertexCache ? mpVertexCache->getMemoryUsageInBytes() : 0;
     return m;
 }
 
-void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
-{
+void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData) {
+    if (staticVertexData.empty()) return;
+
     // We always copy the static data, to initialize the non-skinned vertices.
-    const Buffer::SharedPtr& pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex);
+    assert(mpScene->getMeshVao());
+    const Buffer::SharedPtr& pVB = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
     assert(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
     pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
 
-    if (!dynamicVertexData.empty())
-    {
+    if (!skinningVertexData.empty()) {
         mSkinningMatrices.resize(mpScene->mSceneGraph.size());
         mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
         mMeshBindMatrices.resize(mpScene->mSceneGraph.size());
 
         mpSkinningPass = ComputePass::create(mpDevice, "Scene/Animation/Skinning.slang");
         auto block = mpSkinningPass->getVars()["gData"];
-
-        // Initialize the previous positions for skinned vertices.
-        // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
-        std::vector<PrevVertexData> prevVertexData(dynamicVertexData.size());
-        for (size_t i = 0; i < dynamicVertexData.size(); i++)
-        {
-            uint32_t staticIndex = dynamicVertexData[i].staticIndex;
-            prevVertexData[i].position = staticVertexData[staticIndex].position;
-        }
 
         // Initialize mesh bind transforms
         std::vector<float4x4> meshInvBindMatrices(mMeshBindMatrices.size());
@@ -309,16 +426,14 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
 
         // Bind vertex data.
         assert(staticVertexData.size() <= std::numeric_limits<uint32_t>::max());
-        assert(dynamicVertexData.size() <= std::numeric_limits<uint32_t>::max());
-        mpSkinningStaticVertexData = Buffer::createStructured(mpDevice, block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
-        mpSkinningStaticVertexData->setName("AnimationController::mpSkinningStaticVertexData");
-        mpSkinningDynamicVertexData = Buffer::createStructured(mpDevice, block["dynamicData"], (uint32_t)dynamicVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, dynamicVertexData.data(), false);
-        mpSkinningDynamicVertexData->setName("AnimationController::mpSkinningDynamicVertexData");
-        mpPrevVertexData = Buffer::createStructured(mpDevice, block["prevSkinnedVertices"], (uint32_t)dynamicVertexData.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, prevVertexData.data(), false);
-        mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
+        assert(skinningVertexData.size() <= std::numeric_limits<uint32_t>::max());
+        mpStaticVertexData = Buffer::createStructured(mpDevice, block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, staticVertexData.data(), false);
+        mpStaticVertexData->setName("AnimationController::mpStaticVertexData");
+        mpSkinningVertexData = Buffer::createStructured(mpDevice, block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, skinningVertexData.data(), false);
+        mpSkinningVertexData->setName("AnimationController::mpSkinningVertexData");
 
-        block["staticData"] = mpSkinningStaticVertexData;
-        block["dynamicData"] = mpSkinningDynamicVertexData;
+        block["staticData"] = mpStaticVertexData;
+        block["skinningData"] = mpSkinningVertexData;
         block["skinnedVertices"] = pVB;
         block["prevSkinnedVertices"] = mpPrevVertexData;
 
@@ -339,7 +454,7 @@ void AnimationController::createSkinningPass(const std::vector<PackedStaticVerte
         block["meshBindMatrices"].setBuffer(mpMeshBindMatricesBuffer);
         block["meshInvBindMatrices"].setBuffer(mpMeshInvBindMatricesBuffer);
 
-        mSkinningDispatchSize = (uint32_t)dynamicVertexData.size();
+        mSkinningDispatchSize = (uint32_t)skinningVertexData.size();
     }
 }
 

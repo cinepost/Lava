@@ -41,8 +41,7 @@ namespace Falcor
         bool recordingCmds = false;
     };
 
-    VkCommandBuffer createCommandBuffer(std::shared_ptr<Device> device, void* pUserData)
-    {
+    VkCommandBuffer createCommandBuffer(std::shared_ptr<Device> device, void* pUserData) {
         LowLevelContextData* pThis = (LowLevelContextData*)pUserData;
         VkCommandBufferAllocateInfo cmdBufAllocateInfo = {};
         cmdBufAllocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -54,8 +53,7 @@ namespace Falcor
         return cmdBuf;
     }
 
-    void initCommandList(LowLevelContextApiData* pApiData, const CommandListHandle& list)
-    {
+    void initCommandList(LowLevelContextApiData* pApiData, const CommandListHandle& list) {
         // Begin recording
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -65,8 +63,7 @@ namespace Falcor
         pApiData->recordingCmds = true;
     }
 
-    LowLevelContextData::LowLevelContextData(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue): mType(type), mpQueue(queue), mpDevice(device)
-    {
+    LowLevelContextData::LowLevelContextData(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue): mType(type), mpQueue(queue), mpDevice(device) {
 
     }
 
@@ -81,8 +78,7 @@ namespace Falcor
         commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         commandPoolCreateInfo.queueFamilyIndex = device->getApiCommandQueueType(type);
         VkCommandPool pool;
-        if (VK_FAILED(vkCreateCommandPool(device->getApiHandle(), &commandPoolCreateInfo, nullptr, &pool)))
-        {
+        if (VK_FAILED(vkCreateCommandPool(device->getApiHandle(), &commandPoolCreateInfo, nullptr, &pool))) {
             logError("Could not create command pool");
             return nullptr;
         }
@@ -95,14 +91,21 @@ namespace Falcor
         return pThis;
     }
 
-    LowLevelContextData::~LowLevelContextData()
-    {
+    void LowLevelContextData::beginDebugEvent(const char* name) {
+        //float blackColor[3] = { 0.0f, 0.0f, 0.0f };
+        //mpApiData->getResourceCommandEncoder()->beginDebugEvent(name, blackColor);
+    }
+
+    void LowLevelContextData::endDebugEvent() {
+        //mpApiData->getResourceCommandEncoder()->endDebugEvent();
+    }
+
+    LowLevelContextData::~LowLevelContextData() {
         safe_delete(mpApiData);
     }
 
     // Submit the recorded command buffers here. 
-    void LowLevelContextData::flush()
-    {
+    void LowLevelContextData::flush() {
         mpApiData->recordingCmds = false;
         vk_call(vkEndCommandBuffer(mpList));
         VkSubmitInfo submitInfo = {};

@@ -76,11 +76,11 @@ const std::string to_string(Resource::State state) {
     state_to_str(ResolveSource);
     state_to_str(Present);
     state_to_str(Predication);
-    state_to_str(AccelStructRead);
-    state_to_str(AccelStructWrite);
-    state_to_str(AccelStructBuildInput);
-    state_to_str(AccelStructBuildBlas);
     state_to_str(NonPixelShader);
+    //state_to_str(AccelStructRead);
+    //state_to_str(AccelStructWrite);
+    //state_to_str(AccelStructBuildInput);
+    //state_to_str(AccelStructBuildBlas);
     state_to_str(AccelerationStructure);
 #undef state_to_str
     return s;
@@ -96,7 +96,7 @@ void Resource::invalidateViews() const {
 
 Resource::State Resource::getGlobalState() const {
     if (mState.isGlobal == false) {
-        logWarning("Resource::getGlobalState() - the resource doesn't have a global state. The subresoruces are in a different state, use getSubResourceState() instead");
+        LLOG_WRN << "Resource::getGlobalState() - the resource doesn't have a global state. The subresoruces are in a different state, use getSubResourceState() instead";
         return State::Undefined;
     }
     return mState.global;
@@ -108,7 +108,7 @@ Resource::State Resource::getSubresourceState(uint32_t arraySlice, uint32_t mipL
         uint32_t subResource = pTexture->getSubresourceIndex(arraySlice, mipLevel);
         return (mState.isGlobal) ? mState.global : mState.perSubresource[subResource];
     } else {
-        logWarning("Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead");
+        LLOG_WRN << "Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead";
         assert(mState.isGlobal);
         return mState.global;
     }

@@ -42,6 +42,7 @@ class Texture;
 class Buffer;
 
 using ResourceWeakPtr = std::weak_ptr<Resource>;
+using ResourceSharedPtr = std::shared_ptr<Resource>;
 using ConstTextureSharedPtrRef = const std::shared_ptr<Texture>&;
 using ConstBufferSharedPtrRef = const std::shared_ptr<Buffer>&;
 
@@ -104,7 +105,17 @@ class dlldecl ResourceView {
 
     /** Get the resource referenced by the view.
     */
-    Resource* getResource() const { return mpResource.lock().get(); }
+    ResourceSharedPtr getResource() const { return mpResource.lock(); }
+
+#if FALCOR_ENABLE_CUDA
+    /** Get the CUDA device address for this view.
+    */
+    void* getCUDADeviceAddress() const
+    {
+        return mpResource.lock()->getCUDADeviceAddress(mViewInfo);
+    }
+#endif
+
 
  protected:
     ApiHandle mApiHandle;
@@ -113,6 +124,12 @@ class dlldecl ResourceView {
     ResourceViewInfo mViewInfo;
 };
 
+template<>
+ResourceView<CbvHandle>::~ResourceView<CbvHandle>();
+
+//template<>
+//ResourceView<CbvHandle>::~ResourceView<CbvHandle>() {};
+
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
   public:
     using SharedPtr = std::shared_ptr<ShaderResourceView>;
@@ -120,16 +137,26 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-    //static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
 
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
-    static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
-    static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
+#ifdef FALCOR_D3D12
+    static SharedPtr createViewForAccelerationStructure(ConstBufferSharedPtrRef pBuffer);
+#endif
+
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    //static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
+    //static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
+
+    /** Get the D3D12 CPU descriptor handle representing this resource view.
+        Valid only when D3D12 is the underlying API.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+
+private:
 
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         : ResourceView(pDevice, pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
-  private:
     ShaderResourceView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
         : ResourceView(pDevice, pResource, handle, firstElement, elementCount) {}
 
@@ -143,8 +170,13 @@ class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
     using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
-
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    
+    /** Get the D3D12 CPU descriptor handle representing this resource view.
+        Valid only when D3D12 is the underlying API.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
  private:
     DepthStencilView(std::shared_ptr<Device> pDevice,ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -157,9 +189,16 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
 
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
-    static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
-    static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+    //static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
+    //static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
+
+    /** Get the D3D12 CPU descriptor handle representing this resource view.
+        Valid only when D3D12 is the underlying API.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
 
  private:
     UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
@@ -174,7 +213,15 @@ class dlldecl RenderTargetView : public ResourceView<RtvHandle> {
     using SharedPtr = std::shared_ptr<RenderTargetView>;
     using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-    static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
+
+    static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
+
+    /** Get the D3D12 CPU descriptor handle representing this resource view.
+        Valid only when D3D12 is the underlying API.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+
     ~RenderTargetView();
 
  private:
@@ -187,12 +234,29 @@ class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
     using SharedPtr = std::shared_ptr<ConstantBufferView>;
     using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer);
+    static SharedPtr create(std::shared_ptr<Device> pDevice);
+
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
+
+    /** Get the D3D12 CPU descriptor handle representing this resource view.
+        Valid only when D3D12 is the underlying API.
+    */
+    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
 
  private:
     ConstantBufferView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle) : ResourceView(pDevice, pResource, handle, 0, 1, 0, 1) {}
 };
 
+//template<>
+//ResourceView<CbvHandle>::~ResourceView<CbvHandle>() {};
+
+    //template<typename T>
+    //ResourceView<T>::~ResourceView()
+    //{
+    //    mpDevice->releaseResource(mApiHandle);
+    //}
+
+/*
 struct NullResourceViews {
     ShaderResourceView::SharedPtr  srv;
     ConstantBufferView::SharedPtr  cbv;
@@ -205,6 +269,7 @@ struct NullResourceBufferViews {
     ShaderResourceView::SharedPtr  srv;
     UnorderedAccessView::SharedPtr uav;
 };
+*/
 
 }  // namespace Falcor
 

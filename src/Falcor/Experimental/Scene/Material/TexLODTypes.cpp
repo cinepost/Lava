@@ -33,6 +33,7 @@
 
 namespace Falcor
 {
+#ifdef SCRIPTING
     SCRIPT_BINDING(TexLODTypes)
     {
         pybind11::enum_<TexLODMode> texLODMode(m, "TexLODMode");
@@ -40,4 +41,5 @@ namespace Falcor
         texLODMode.value("RayCones", TexLODMode::RayCones);
         texLODMode.value("RayDiffs", TexLODMode::RayDiffs);
     }
+#endif
 }

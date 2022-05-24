@@ -61,6 +61,13 @@ enum class MsgResponseId {
     Ignore
 };
 
+static WindowHandle gMainWindowHandle;
+
+void setMainWindowHandle(WindowHandle windowHandle)
+{
+    gMainWindowHandle = windowHandle;
+}
+
 uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId) {
     return -1;
 }

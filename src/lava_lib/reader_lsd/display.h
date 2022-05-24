@@ -54,6 +54,8 @@ class Display {
     bool sendImageRegion(uint imageHandle, int x, int y, int width, int height, const uint8_t *data);
     bool sendImage(uint imageHandle, int width, int height, const uint8_t *data);
 
+    inline bool supportsLiveUpdate() const { return mLiveUpdateSupport; }
+
  private:
     struct ImageData {
         PtDspyImageHandle handle;
@@ -77,10 +79,7 @@ class Display {
     std::string mDriverName = "";
     void* mLibHandle = nullptr;
 
-    //std::string mImageName = "";
-    //uint mImageWidth, mImageHeight;
-    //bool mOpened = false;
-    //bool mClosed = false;
+    bool mLiveUpdateSupport = false;
 
     int mEntrySize = 1;
 

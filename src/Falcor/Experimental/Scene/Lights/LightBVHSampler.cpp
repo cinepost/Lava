@@ -26,11 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "LightBVHSampler.h"
+
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/io.hpp>
 #include <algorithm>
 #include <numeric>
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "LightBVHSampler.h"
 
 namespace Falcor {
 

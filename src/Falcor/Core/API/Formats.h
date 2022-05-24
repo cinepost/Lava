@@ -44,6 +44,21 @@ class Device;
     *  @{
     */
 
+    /** Flags for enumerating texture color channels.
+    */
+    enum class TextureChannelFlags : uint32_t
+    {
+        None = 0x0,
+        Red = 0x1,
+        Green = 0x2,
+        Blue = 0x4,
+        Alpha = 0x8,
+        RGB = 0x7,
+        RGBA = 0xf,
+    };
+
+    enum_class_operators(TextureChannelFlags);
+
     /** These flags are hints the driver to what pipeline stages the resource will be bound to.
 */
     enum class ResourceBindFlags : uint32_t {
@@ -143,17 +158,23 @@ class Device;
         D24UnormS8,
 
         // Compressed formats
+        BC1Unorm,
+        BC1UnormSrgb,
         BC1RGBUnorm,
         BC1RGBSrgb,
         BC1RGBAUnorm,
         BC1RGBASrgb,
 
+        BC2Unorm,
+        BC2UnormSrgb,
         BC2RGBAUnorm,
         BC2RGBASrgb,
         
+        BC3UnormSrgb,
         BC3RGBAUnorm,
         BC3RGBASrgb,
         
+        BC3Unorm,
         BC4Unorm,
         BC4Snorm,
         
@@ -164,6 +185,7 @@ class Device;
         BC6HU16,
         
         BC7Unorm,
+        BC7UnormSrgb,
         BC7Srgb,
 
         Count
@@ -269,6 +291,13 @@ class Device;
         return kFormatDesc[(uint32_t)format].Type;
     }
 
+    /** Check if a format is an integer type.
+    */
+    inline bool isIntegerFormat(ResourceFormat format) {
+        FormatType type = getFormatType(format);
+        return type == FormatType::Uint || type == FormatType::Sint;
+    }
+
     inline uint32_t getNumChannelBits(ResourceFormat format, int channel) {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
     }
@@ -367,9 +396,10 @@ class Device;
         }
     }
 
+
     /** Get the supported bind-flags for a specific format
     */
-    ResourceBindFlags getFormatBindFlags(std::shared_ptr<Device> device, ResourceFormat format);
+    ResourceBindFlags getFormatBindFlags(std::shared_ptr<Device> pDevice, ResourceFormat format);
 
     inline const std::string& to_string(ResourceFormat format) {
         assert(kFormatDesc[(uint32_t)format].format == format);

@@ -31,6 +31,8 @@
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/Core/Program/GraphicsProgram.h"
 #include "RenderGraph/BasePasses/ComputePass.h"
 #include "MeshLightData.slang"
 

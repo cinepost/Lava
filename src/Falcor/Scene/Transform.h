@@ -59,6 +59,9 @@ class dlldecl Transform {
 
     const glm::float4x4& getMatrix() const;
 
+    bool operator==(const Transform& other) const;
+    bool operator!=(const Transform& other) const { return !((*this) == other); }
+
   private:
     float3 mTranslation = float3(0.f);
     float3 mScaling = float3(1.f);

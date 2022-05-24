@@ -30,8 +30,8 @@
 
 namespace Falcor {
 
-ShaderLibrary::SharedPtr ShaderLibrary::create(const std::string& filename) {
-    return SharedPtr(new ShaderLibrary(filename));
+ShaderLibrary::SharedPtr ShaderLibrary::create(const fs::path& path) {
+    return SharedPtr(new ShaderLibrary(path));
 }
 
 }

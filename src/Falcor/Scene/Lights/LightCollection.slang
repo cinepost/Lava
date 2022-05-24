@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Scene/Material/MaterialDefines.slangh"
-
 import Utils.Attributes;
 import Scene.SceneTypes;
 import Scene.ShadingData;
@@ -46,12 +44,12 @@ struct LightCollection
     uint                                        triangleCount;          ///< Total number of emissive triangles in all mesh lights.
     uint                                        activeTriangleCount;    ///< Total number of active (non-culled) emissive triangles in all mesh lights.
     uint                                        meshCount;              ///< Total number of mesh lights.
-    uint                                        _pad;
 
     // These buffers are only valid if triangleCount > 0.
     [root] StructuredBuffer<PackedEmissiveTriangle> triangleData;       ///< Per-triangle geometry data for emissive triangles.
 
     StructuredBuffer<uint>                      activeTriangles;        ///< Indices of all active (non-culled) emissive triangles. This is only valid if activeTriangleCount > 0.
+    StructuredBuffer<uint>                      triToActiveMapping;     ///< Mapping from triangle index to active triangle index. kInvalidIndex if triangle is not active.
     StructuredBuffer<EmissiveFlux>              fluxData;               ///< Per-triangle flux data for emissive triangles.
     StructuredBuffer<MeshLightData>             meshData;               ///< Per-mesh data for emissive meshes.
     StructuredBuffer<uint>                      perMeshInstanceOffset;  ///< Per-mesh instance offset into emissive triangles array, or kInvalidIndex if mesh has no emissive triangles.
@@ -101,6 +99,15 @@ struct LightCollection
     {
         uint offset = perMeshInstanceOffset[instanceID.index];
         return offset != kInvalidIndex ? offset + primitiveIndex : kInvalidIndex;
+    }
+
+    /** Return active triangle index for a given triangle.
+        \param[in] triIdx Emissive triangle index.
+        \return Active triangle index, or kInvalidIndex if not an active triangle.
+    */
+    uint getActiveTriangleIndex(uint triIdx)
+    {
+        return triToActiveMapping[triIdx];
     }
 
     /** Returns the mesh light index for a given triangle.

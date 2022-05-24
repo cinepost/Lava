@@ -36,6 +36,7 @@ class MaterialX;
 class Renderer: public std::enable_shared_from_this<Renderer> {
   public:
     struct Config {
+      // Rendering options
       bool useRaytracing = true;
       bool useVirtualTexturing = false;
       bool useAsyncGeometryProcessing = true;
@@ -88,13 +89,10 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
   public:
     static SharedPtr create(Device::SharedPtr pDevice);
-    Falcor::Device::SharedPtr device() const { return mpDevice; };
+    inline Falcor::Device::SharedPtr device() const { return mpDevice; };
 
  	  bool loadScript(const std::string& file_name);
- 	  //void renderFrame(const RendererIface::FrameData frame_data);
-
-    //bool addPlane(const RendererIface::PlaneData plane_data);
-    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+ 	  bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
 
   public:
     inline lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };

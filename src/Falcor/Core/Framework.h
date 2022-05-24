@@ -39,16 +39,25 @@
 #ifdef _MSC_VER
 #define falcorexport __declspec(dllexport)
 #define falcorimport __declspec(dllimport)
+#define FALCOR_API_EXPORT __declspec(dllexport)
+#define FALCOR_API_IMPORT __declspec(dllimport)
 #elif defined(__GNUC__)  // _MSC_VER
 #define falcorexport __attribute__ ((visibility ("default")))
 #define falcorimport  // extern
+#define FALCOR_API_EXPORT __attribute__ ((visibility ("default")))
+#define FALCOR_API_IMPORT //extern
 #endif  // _MSC_VER
 
 #ifdef FALCOR_DLL
+#define FALCOR_API FALCOR_API_EXPORT
 #define dlldecl falcorexport
 #else   // BUILDING_SHARED_DLL
+#define FALCOR_API FALCOR_API_IMPORT
 #define dlldecl falcorimport
 #endif  // BUILDING_SHARED_DLL
+
+#include "Falcor/Core/ErrorHandling.h"
+//#include "Falcor/Core/Errors.h"
 
 #include <stdint.h>
 #include <iostream>
@@ -61,6 +70,16 @@
 #include <utility>
 #include <memory>
 #include <type_traits>
+
+
+#ifdef _WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include "boost/format.hpp"
+#include "boost/filesystem.hpp"
+namespace fs = boost::filesystem;
+#endif
 
 #include "Falcor/Core/FalcorConfig.h"
 #include "Falcor/Utils/Logger.h"
@@ -103,6 +122,50 @@
 
 #endif  // _DEBUG
 
+#ifdef _DEBUG
+
+#define FALCOR_ASSERT(a)\
+    if (!(a)) {\
+        std::string s = boost::str(boost::format("assertion failed( %1% )\n%2%(%3%)") % #a % __FILE__ % __LINE__); \
+        Falcor::reportFatalError(s);\
+    }
+#define FALCOR_ASSERT_MSG(a, msg)\
+    if (!(a)) {\
+        std::string s = boost::str(boost::format("assertion failed( %1% ): %2%\n%3%(%4%)") % #a % msg % __FILE__ % __LINE__); \
+        Falcor::reportFatalError(s); \
+    }
+#define FALCOR_ASSERT_OP(a, b, OP)\
+    if (!(a OP b)) {\
+        std::string s = boost::str(boost::format("assertion failed( %1% %2% %3% (%4% %5% %6%) )\n%7%(%8%)") % #a % #OP % #b % a % #OP % b % __FILE__ % __LINE__); \
+        Falcor::reportFatalError(s); \
+    }
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+
+
+#else // _DEBUG
+
+#define FALCOR_ASSERT(a) {}
+#define FALCOR_ASSERT_MSG(a, msg) {}
+#define FALCOR_ASSERT_OP(a, b, OP) {}
+#define FALCOR_ASSERT_EQ(a, b) FALCOR_ASSERT_OP(a, b, == )
+#define FALCOR_ASSERT_NE(a, b) FALCOR_ASSERT_OP(a, b, != )
+#define FALCOR_ASSERT_GE(a, b) FALCOR_ASSERT_OP(a, b, >= )
+#define FALCOR_ASSERT_GT(a, b) FALCOR_ASSERT_OP(a, b, > )
+#define FALCOR_ASSERT_LE(a, b) FALCOR_ASSERT_OP(a, b, <= )
+#define FALCOR_ASSERT_LT(a, b) FALCOR_ASSERT_OP(a, b, < )
+
+#endif // _DEBUG
+
+#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::RuntimeError("Not implemented"); } while(0)
+
+#define FALCOR_UNREACHABLE() FALCOR_ASSERT(false)
+
+
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
 #define stringize(a) #a
@@ -117,6 +180,15 @@ namespace Falcor {
     inline e_& operator&= (e_& a, e_ b) { a = a & b; return a; } \
     inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a));} \
     inline bool is_set(e_ val, e_ flag) { return (val & flag) != (e_)0;}
+
+#define FALCOR_ENUM_CLASS_OPERATORS(e_) \
+    inline e_ operator& (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b)); } \
+    inline e_ operator| (e_ a, e_ b) { return static_cast<e_>(static_cast<int>(a)| static_cast<int>(b)); } \
+    inline e_& operator|= (e_& a, e_ b) { a = a | b; return a; }; \
+    inline e_& operator&= (e_& a, e_ b) { a = a & b; return a; }; \
+    inline e_  operator~ (e_ a) { return static_cast<e_>(~static_cast<int>(a)); } \
+    inline bool is_set(e_ val, e_ flag) { return (val & flag) != static_cast<e_>(0); } \
+    inline void flip_bit(e_& val, e_ flag) { val = is_set(val, flag) ? (val & (~flag)) : (val | flag); }
 
 /*!
 *  \addtogroup Falcor
@@ -250,6 +322,8 @@ public:
 #include "Falcor/Core/API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#elif defined(FALCOR_GFX_VK)
+#include "Core/API/GFX/FalcorGFX.h"
 #else
 #error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
 #endif

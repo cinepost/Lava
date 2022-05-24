@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor.h"
-#include "RenderGraph/RenderPassStandardFlags.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 
 const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
@@ -130,7 +132,7 @@ void GBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     mRaster.pVars = nullptr;
 
     if (pScene) {
-        if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
+        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
             throw std::runtime_error("GBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
         }
 

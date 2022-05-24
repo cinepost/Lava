@@ -309,6 +309,7 @@ void ResourceManager::loadPages(const Texture::SharedPtr& pTexture, const std::v
 }
 
 void ResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
+/*
     assert(mpDevice);
     assert(pTexture.get());
 
@@ -316,17 +317,12 @@ void ResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
 
     auto it = mTextureLTXBitmapsMap.find(textureID);
     if (it == mTextureLTXBitmapsMap.end()) {
-        LOG_ERR("Not LTX_Bitmap stored for texture %u", textureID);
+        LLOG_ERR << "Not LTX_Bitmap stored for texture " << std::to_string(textureID);
         return;
     }
 
     auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
     auto pTex = pTexture.get();
-
-    //uint32_t mipLevel = pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod;
-    //uint32_t width = std::max(pTex->mWidth >> pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
-    //uint32_t height = std::max(pTex->mHeight >> pTex->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
-    //uint32_t depth = 1;
 
     VkSparseImageMemoryBind mipTailimageMemoryBind{};
 
@@ -337,7 +333,7 @@ void ResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
     memAllocInfo.memoryTypeIndex = pTex->mMemoryTypeIndex;
     
     if ( VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mipTailimageMemoryBind.memory)) ) {
-        LOG_ERR("Could not allocate memory !!!");
+        LLOG_ERR << "Could not allocate memory !";
         return;
     }
 
@@ -349,11 +345,11 @@ void ResourceManager::fillMipTail(const Texture::SharedPtr& pTexture) {
 
         std::vector<unsigned char> tmpPage(65536, 255);
 
-        LOG_WARN("Fill mip tail level %u", mipLevel);
+        LLOG_WARN << "Fill mip tail level " << std::to_string(mipLevel);
         mpCtx->updateMipTailData(pTex, {0,0,0}, { width, height, depth }, mipLevel, tmpPage.data());
-        //mpCtx->updateSubresourceData(pTex, 0, tmpPage.data(), uint3(0), { width, height, depth });
     }
     mpCtx->flush(true);
+*/
 }
 
 void ResourceManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* pData) {

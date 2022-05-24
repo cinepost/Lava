@@ -5,7 +5,7 @@ add_subdirectory( lava_utils_lib ) # lava utility library
 add_subdirectory( lava_lib ) # lava rendering library
 add_subdirectory( lava_cmd ) # lava command line renderer
 
-add_subdirectory( lava_tools ) # lava command line tools
+#add_subdirectory( lava_tools ) # lava command line tools
 
 add_subdirectory( houdini ) # SOHO
 

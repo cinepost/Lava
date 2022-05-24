@@ -33,6 +33,7 @@
 #include "RenderPassReflection.h"
 #include "ResourceCache.h"
 #include "RenderPass.h"
+#include "Falcor/Core/API/FBO.h"
 #include "Falcor/Utils/Algorithm/DirectedGraph.h"
 #include "RenderGraphExe.h"
 #include "RenderGraphCompiler.h"

@@ -29,6 +29,10 @@
 
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+
+#include "Falcor/Scene/Material/BasicMaterial.h"
 #include "LightCollection.h"
 #include "LightCollectionShared.slang"
 #include "Scene/Scene.h"
@@ -76,7 +80,7 @@ bool LightCollection::update(RenderContext* pRenderContext, UpdateStatus* pUpdat
 
     for (uint32_t lightIdx = 0; lightIdx < mMeshLights.size(); ++lightIdx)
     {
-        const MeshInstanceData& instanceData = pScene->getMeshInstance(mMeshLights[lightIdx].meshInstanceID);
+        const GeometryInstanceData& instanceData = pScene->getGeometryInstance(mMeshLights[lightIdx].instanceID);
         UpdateFlags updateFlags = UpdateFlags::None;
 
         // Check if instance transform changed.
@@ -191,18 +195,24 @@ bool LightCollection::setupMeshLights(const Scene& scene)
     mTriangleCount = 0;
 
     // Create mesh lights for all emissive mesh instances.
-    for (uint32_t meshInstanceID = 0; meshInstanceID < scene.getMeshInstanceCount(); meshInstanceID++)
+    for (uint32_t instanceID = 0; instanceID < scene.getGeometryInstanceCount(); instanceID++)
     {
-        const MeshInstanceData& instanceData = scene.getMeshInstance(meshInstanceID);
-        const MeshDesc& meshData = scene.getMesh(instanceData.meshID);
-        const Material::SharedPtr& pMaterial = scene.getMaterial(instanceData.materialID);
+        const GeometryInstanceData& instanceData = scene.getGeometryInstance(instanceID);
+
+        // We only support triangle meshes.
+        if (instanceData.getType() != GeometryType::TriangleMesh) continue;
+
+        const MeshDesc& meshData = scene.getMesh(instanceData.geometryID);
+        
+        auto pMaterial = scene.getMaterial(instanceData.materialID)->toBasicMaterial();
+
         assert(pMaterial);
 
         if (pMaterial->isEmissive())
         {
             // We've found a mesh instance with an emissive material => Setup mesh light data.
             MeshLightData meshLight;
-            meshLight.meshInstanceID = meshInstanceID;
+            meshLight.instanceID = instanceID;
             meshLight.triangleCount = meshData.getTriangleCount();
             meshLight.triangleOffset = mTriangleCount;
             meshLight.materialID = instanceData.materialID;
@@ -216,12 +226,12 @@ bool LightCollection::setupMeshLights(const Scene& scene)
             {
                 if (!mpSamplerState)
                 {
-                    mpSamplerState = pMaterial->getSampler();
+                    mpSamplerState = pMaterial->getDefaultTextureSampler();
                 }
-                else if (mpSamplerState != pMaterial->getSampler())
+                else if (mpSamplerState != pMaterial->getDefaultTextureSampler())
                 {
-                    logError("Material '" + pMaterial->getName() + "' is using a different sampler.");
-                    return false;
+                    std::string err = "Material '" + pMaterial->getName() + "' is using a different sampler.";
+                    throw std::runtime_error(err);
                 }
             }
         }
@@ -311,13 +321,13 @@ void LightCollection::prepareMeshData(const Scene& scene)
 
     // Build a lookup table from mesh instance ID to emissive triangle offset.
     // This is useful in ray tracing for locating the emissive triangle that was hit for MIS computation etc.
-    uint32_t instanceCount = scene.getMeshInstanceCount();
+    uint32_t instanceCount = scene.getGeometryInstanceCount();
     assert(instanceCount > 0);
     std::vector<uint32_t> triangleOffsets(instanceCount, MeshLightData::kInvalidIndex);
     for (const auto& it : mMeshLights)
     {
-        assert(it.meshInstanceID < instanceCount);
-        triangleOffsets[it.meshInstanceID] = it.triangleOffset;
+        assert(it.instanceID < instanceCount);
+        triangleOffsets[it.instanceID] = it.triangleOffset;
     }
 
     mpPerMeshInstanceOffset = Buffer::createStructured(mpDevice, sizeof(uint32_t), instanceCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, triangleOffsets.data(), false);
@@ -431,7 +441,9 @@ void LightCollection::computeStats() const
     uint32_t trianglesTotal = 0;
     for (const auto& meshLight : mMeshLights)
     {
-        bool isTextured = pScene->getMaterial(meshLight.materialID)->getEmissiveTexture() != nullptr;
+        auto pMaterial = pScene->getMaterial(meshLight.materialID)->toBasicMaterial();
+        assert(pMaterial);
+        bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 
         if (isTextured)
         {
@@ -454,7 +466,9 @@ void LightCollection::computeStats() const
         {
             // TODO: Currently we don't detect uniform radiance for textured lights, so just look at whether the mesh light is textured or not.
             // This code will change when we tag individual triangles as textured vs non-textured.
-            bool isTextured = pScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->getEmissiveTexture() != nullptr;
+            auto pMaterial = pScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->toBasicMaterial();
+            assert(pMaterial);
+            bool isTextured = pMaterial->getEmissiveTexture() != nullptr;
 
             if (isTextured) stats.trianglesActiveTextured++;
             else stats.trianglesActiveUniform++;
@@ -484,7 +498,7 @@ void LightCollection::buildTriangleList(RenderContext* pRenderContext, const Sce
 
         mpTriangleListBuilder["CB"]["gLightIdx"] = lightIdx;
         mpTriangleListBuilder["CB"]["gMaterialID"] = meshLight.materialID;
-        mpTriangleListBuilder["CB"]["gMeshInstanceID"] = meshLight.meshInstanceID;
+        mpTriangleListBuilder["CB"]["gInstanceID"] = meshLight.instanceID;
         mpTriangleListBuilder["CB"]["gTriangleCount"] = meshLight.triangleCount;
         mpTriangleListBuilder["CB"]["gTriangleOffset"] = meshLight.triangleOffset;
 

@@ -34,11 +34,11 @@ struct VSIn
     // Packed vertex attributes, see PackedStaticVertexData
     float3 pos                      : POSITION;
     float  texU                     : TEXCOORD_U;
-    float3 packedNormalTangent      : PACKED_NORMAL_TANGENT;
+    float3 packedNormalTangentCurveRadius   : PACKED_NORMAL_TANGENT_CURVE_RADIUS;
     float  texV                     : TEXCOORD_V;
 
     // Other vertex attributes
-    uint meshInstanceID             : DRAW_ID;
+    uint instanceID                 : DRAW_ID;
 
     // System values
     uint vertexID                   : SV_VertexID;
@@ -47,7 +47,7 @@ struct VSIn
     {
         PackedStaticVertexData v;
         v.position = pos;
-        v.packedNormalTangent = packedNormalTangent;
+        v.packedNormalTangentCurveRadius = packedNormalTangentCurveRadius;
         v.texU = texU;
         v.texV = texV;
         return v.unpack();
@@ -76,7 +76,7 @@ struct VSOut
 VSOut defaultVS(VSIn vIn)
 {
     VSOut vOut;
-    const GeometryInstanceID instanceID = { vIn.meshInstanceID };
+    const GeometryInstanceID instanceID = { vIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     float3 posW = mul(float4(vIn.pos, 1.f), worldMat).xyz;
@@ -95,11 +95,11 @@ VSOut defaultVS(VSIn vIn)
 
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
-    MeshInstanceData meshInstance = gScene.getMeshInstance(instanceID);
-    if (meshInstance.hasDynamicData())
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    if (instance.isDynamic())
     {
-        uint dynamicVertexIndex = gScene.meshes[meshInstance.meshID].dynamicVbOffset + vIn.vertexID;
-        prevPos = gScene.prevVertices[dynamicVertexIndex].position;
+        uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
+        prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
     vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
@@ -125,22 +125,30 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
 }
 
 /** Helper function that prepares the ShadingData struct based on VSOut.
-    This version uses implicit LOD and fetches material data directly from the scene.
+    \param[in] vsOut Interpolated vertex attributes.
+    \param[in] triangleIndex Triangle index.
+    \param[in] viewDir View direction. Points from the shading point towards the viewer.
+    \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
+    \return Shading data struct.
 */
-ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir)
+ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, L lod)
 {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
-    return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir);
+    return gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
 }
 
-/** Helper function to evaluate alpha testing.
+/** Helper function to evaluate alpha testing based on VSOut.
+    \param[in] vsOut Interpolated vertex attributes.
+    \param[in] triangleIndex Triangle index.
+    \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
+    \return True if hit should be ignored/discarded.
 */
-bool alphaTest(VSOut vsOut, uint triangleIndex)
+bool alphaTest<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, L lod)
 {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
-    return alphaTest(v, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID]);
+    return gScene.materials.alphaTest(v, vsOut.materialID, lod);
 }
 
 
@@ -148,9 +156,9 @@ bool alphaTest(VSOut vsOut, uint triangleIndex)
 /** Helper function that prepares the ShadingData struct based on VSOut.
     This version uses texture gradients LOD and fetches material data directly from the scene.
 */
-ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir, float2 gradX, float2 gradY)
-{
-    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
-    VertexData v = prepareVertexData(vsOut, faceNormal);
-    return prepareShadingData(v, vsOut.materialID, gScene.materials[vsOut.materialID], gScene.materialResources[vsOut.materialID], viewDir, gradX, gradY);
-}
+//ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, float2 gradX, float2 gradY)
+//{
+//    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+//    VertexData v = prepareVertexData(vsOut, faceNormal);
+//    return prepareShadingData(v, vsOut.materialID, viewDir, gradX, gradY);
+//}

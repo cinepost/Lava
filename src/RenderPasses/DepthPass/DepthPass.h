@@ -101,6 +101,8 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::Back;
     Scene::SharedPtr            mpScene;
 
+    bool mUseAlphaTest = false;
+
     bool mDirty = false;
 };
 

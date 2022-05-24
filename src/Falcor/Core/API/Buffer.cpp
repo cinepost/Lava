@@ -26,10 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Buffer.h"
-#include "Device.h"
 
-#include "Falcor/Utils/Debug/debug.h"
+#include "Falcor/Core/Framework.h"
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+
+#include "lava_utils_lib/logging.h"
+
+#include "Buffer.h"
+
 
 namespace Falcor {
 
@@ -57,7 +65,7 @@ Buffer::SharedPtr createStructuredFromType(
 }  // namespace
 
 size_t getBufferDataAlignment(const Buffer* pBuffer);
-void* mapBufferApi(std::shared_ptr<Device> pDevice, const Buffer::ApiHandle& apiHandle, size_t size);
+void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
 
 Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess): Resource(pDevice, Type::Buffer, bindFlags, size), mCpuAccess(cpuAccess) {
     //LOG_DBG("Create buffer %zu bindFlags %s cpuAccess %s", id(), to_string(bindFlags).c_str(), to_string(cpuAccess).c_str());
@@ -137,18 +145,19 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
     assert(pBaseResource->asBuffer()); // Only aliasing buffers for now
     CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
     if (cpuAccess != CpuAccess::None) {
-        logError("Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" + to_string(cpuAccess) + " which is illegal. Aliased resource must have CpuAccess::None");
+        LLOG_ERR << "Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" << to_string(cpuAccess) << " which is illegal. Aliased resource must have CpuAccess::None";
         return nullptr;
     }
 
     if ((pBaseResource->getBindFlags() & bindFlags) != bindFlags) {
-        logError("Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " + to_string(bindFlags) + "\nAliased = " + to_string(pBaseResource->getBindFlags()));
+        LLOG_ERR << "Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " << 
+        to_string(bindFlags) << "\nAliased = " << to_string(pBaseResource->getBindFlags());
         return nullptr;
     }
 
     if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize()) {
-        logError("Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " +
-            to_string(size) + ", offset = " + to_string(offset) + ". Aliased resource size = " + to_string(pBaseResource->getSize()));
+        LLOG_ERR << "Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " <<
+            to_string(size) << ", offset = " << to_string(offset) << ". Aliased resource size = " << to_string(pBaseResource->getSize());
         return nullptr;
     }
 
@@ -193,7 +202,7 @@ typename ViewClass::SharedPtr findViewCommon(Buffer* pBuffer, uint32_t firstElem
 
 ShaderResourceView::SharedPtr Buffer::getSRV(uint32_t firstElement, uint32_t elementCount) {
     auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-        return ShaderResourceView::create(pBuffer->device(), pBuffer->shared_from_this(), firstElement, elementCount);
+        return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
     };
 
     return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
@@ -205,7 +214,7 @@ ShaderResourceView::SharedPtr Buffer::getSRV() {
 
 UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t elementCount) {
     auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-        return UnorderedAccessView::create(pBuffer->device(), pBuffer->shared_from_this(), firstElement, elementCount);
+        return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
     };
 
     return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
@@ -219,7 +228,7 @@ UnorderedAccessView::SharedPtr Buffer::getUAV() {
 
 bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
     if (offset + size > mSize) {
-        logError("Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call");
+        LLOG_ERR << "Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call";
         return false;
     }
 
@@ -236,13 +245,13 @@ void* Buffer::map(MapType type) {
     //LOG_WARN("map buffer %zu", mID);
     if (type == MapType::Write) {
         if (mCpuAccess != CpuAccess::Write) {
-            logError("Trying to map a buffer for write, but it wasn't created with the write permissions");
+            LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
             return nullptr;
         }
         return mDynamicData.pData;
     } else if (type == MapType::WriteDiscard) {
         if (mCpuAccess != CpuAccess::Write) {
-            logError("Trying to map a buffer for write, but it wasn't created with the write permissions");
+            LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
             return nullptr;
         }
 
@@ -267,10 +276,10 @@ void* Buffer::map(MapType type) {
             return mDynamicData.pData;
         } else if (mCpuAccess == CpuAccess::Read) {
             assert(mBindFlags == BindFlags::None);
-            return mapBufferApi(mpDevice, mApiHandle, mSize);
+            return mapBufferApi(mApiHandle, mSize);
         } else {
             // For buffers without CPU access we must copy the contents to a staging buffer.
-            logWarning("Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work");
+            LLOG_WRN << "Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work";
             if (mpStagingResource == nullptr) {
                 mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
             }
@@ -287,7 +296,7 @@ void* Buffer::map(MapType type) {
 }
 
 ConstantBufferView::SharedPtr Buffer::getCBV() {
-    if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, shared_from_this());
+    if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, std::static_pointer_cast<Buffer>(shared_from_this()));
     return mpCBV;
 }
 

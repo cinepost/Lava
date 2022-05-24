@@ -18,11 +18,15 @@
 #include <boost/log/expressions.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+
 #include <boost/algorithm/string/join.hpp>
 namespace po = boost::program_options;
 
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Core/API/DeviceManager.h"
+#include "Falcor/Utils/Scripting/Scripting.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
@@ -70,6 +74,20 @@ void listGPUs() {
 
 typedef std::basic_ifstream<wchar_t, std::char_traits<wchar_t> > wifstream;
 
+#ifdef FALCOR_ENABLE_PROFILER
+Profiler* gProfiler = nullptr;
+#endif
+
+static void writeProfilerStatsToFile(const std::string& outputFilename) {
+#ifdef FALCOR_ENABLE_PROFILER
+  gProfiler->endFrame();
+  Falcor::Profiler::Capture::SharedPtr profilerCapture = gProfiler->endCapture();
+  if(profilerCapture) {
+    LLOG_INF << "Writing performance profiler stats to file \'" << outputFilename << "\'";
+    profilerCapture->writeToFile(outputFilename);
+  }
+#endif
+}
 
 int main(int argc, char** argv){
 
@@ -126,6 +144,13 @@ int main(int argc, char** argv){
       ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
       ;
 
+    const std::string profilerCaptureDefaultFilename = "lava_profiling_stats.json";
+    std::string profilerCaptureFilename;
+    po::options_description profiling("Profiling");
+    profiling.add_options()
+      ("perf-file", po::value<std::string>(&profilerCaptureFilename)->default_value(profilerCaptureDefaultFilename), "Output profiling file")
+      ;
+
     po::options_description cmdline_options;
     cmdline_options.add(generic).add(config).add(input);
 
@@ -133,7 +158,7 @@ int main(int argc, char** argv){
     config_file_options.add(config);
 
     po::options_description visible("Allowed options");
-    visible.add(generic).add(config).add(input).add(logging);
+    visible.add(generic).add(config).add(input).add(logging).add(profiling);
 
     po::variables_map vm;  
 
@@ -167,6 +192,9 @@ int main(int argc, char** argv){
       std::cout << config << "\n";
       std::cout << input << "\n";
       std::cout << logging << "\n";
+#ifdef FALCOR_ENABLE_PROFILER
+      std::cout << profiling << "\n";
+#endif
       exit(EXIT_SUCCESS);
     }
 
@@ -204,45 +232,62 @@ int main(int argc, char** argv){
     Falcor::Device::Desc device_desc;
     device_desc.width = 1280;
     device_desc.height = 720;
-    device_desc.surface = VK_NULL_HANDLE;
 
     LLOG_DBG << "Creating rendering device id " << to_string(gpuID);
     auto pDevice = pDeviceManager->createRenderingDevice(gpuID, device_desc);
     LLOG_DBG << "Rendering device " << to_string(gpuID) << " created";
 
+    // Start scripting system
+    Falcor::Scripting::start();
+
+    // Start profiler if needed
+#ifdef FALCOR_ENABLE_PROFILER
+    gProfiler = Falcor::Profiler::instancePtr(pDevice).get();
+    gProfiler->setEnabled(true);
+    gProfiler->startCapture();
+#endif
 
     Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
     if (vm.count("input-files")) {
+      // Reading scenes from files...
       for (const std::string& inputFilename: inputFilenames) {
         std::ifstream in_file(inputFilename, std::ifstream::binary);
         if(!in_file) {
-          LLOG_ERR << "Unable to open file " << inputFilename << " ! aborting...\n";
+          LLOG_ERR << "Unable to open file \'" << inputFilename << "\'' !\n";
           exit(EXIT_FAILURE);
         }
         
-        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(boost::filesystem::extension(inputFilename));
+        auto reader = SceneReadersRegistry::getInstance().getReaderByExt(fs::extension(inputFilename));
         reader->init(pRenderer, echo_input);
 
-        LLOG_DBG << "Reading "<< inputFilename << " scene file with " << reader->formatName() << " reader";
+        LLOG_DBG << "Reading \'"<< inputFilename << "\'' scene file with " << reader->formatName() << " reader";
         if (!reader->readStream(in_file)) {
           LLOG_ERR << "Error reading scene from file: " << inputFilename;
           exit(EXIT_FAILURE);
         }
 
+        std::string _captureFilename = profilerCaptureFilename;;
+        if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
+          fs::path p(inputFilename);
+          _captureFilename = p.filename().string() + "_profilig_stats.json";
+        }
+        writeProfilerStatsToFile(_captureFilename);
       }
     } else {
-      // loading from stdin
       LLOG_DBG << "Reading scene from stdin ...\n";
       auto reader = SceneReadersRegistry::getInstance().getReaderByExt(".lsd"); // default format for reading stdin is ".lsd"
       reader->init(pRenderer, echo_input);
 
       if (!reader->readStream(std::cin)) {
-        // error loading scene from stdin
         LLOG_ERR << "Error loading scene from stdin !";
         exit(EXIT_FAILURE);
       }
+      writeProfilerStatsToFile(profilerCaptureFilename);
     }
+
+    // Shutdown scripting system before destroying renderer !
+    Falcor::Scripting::shutdown();
 
     pRenderer = nullptr;
     pDeviceManager = nullptr;

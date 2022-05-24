@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
 #include "ShaderVar.h"
 
 namespace Falcor
@@ -112,7 +113,7 @@ namespace Falcor
         auto result = findMember(name);
         if( !result.isValid() && isValid() )
         {
-            logError("No member named '" + name + "' found.");
+            reportError("No member named '" + name + "' found.");
         }
         return result;
     }
@@ -184,7 +185,7 @@ namespace Falcor
             }
         }
 
-        logError("No element or member found at index " + std::to_string(index));
+        reportError("No element or member found at index " + std::to_string(index));
         return ShaderVar();
     }
 
@@ -274,39 +275,47 @@ namespace Falcor
             }
         }
 
-        logError("no member at offset");
+        reportError("no member at offset");
         return ShaderVar();
     }
 
-    bool ShaderVar::isValid() const {
+    bool ShaderVar::isValid() const
+    {
         return mOffset.isValid();
     }
 
-    bool ShaderVar::setAS(VkAccelerationStructureKHR accel) const {
-        return mpBlock->setAS(mOffset, accel);
-    }
-
-    bool ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const {
+    bool ShaderVar::setTexture(const Texture::SharedPtr& pTexture) const
+    {
         return mpBlock->setTexture(mOffset, pTexture);
     }
 
-    bool ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const {
+    bool ShaderVar::setSampler(const Sampler::SharedPtr& pSampler) const
+    {
         return mpBlock->setSampler(mOffset, pSampler);
     }
 
-    bool ShaderVar::setBuffer(Buffer::ConstSharedPtrRef pBuffer) const {
+    bool ShaderVar::setBuffer(const Buffer::SharedPtr& pBuffer) const
+    {
         return mpBlock->setBuffer(mOffset, pBuffer);
     }
 
-    bool ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const {
+    bool ShaderVar::setSrv(const ShaderResourceView::SharedPtr& pSrv) const
+    {
         return mpBlock->setSrv(mOffset, pSrv);
     }
 
-    bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const {
+    bool ShaderVar::setUav(const UnorderedAccessView::SharedPtr& pUav) const
+    {
         return mpBlock->setUav(mOffset, pUav);
     }
 
-    bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const {
+    bool ShaderVar::setAccelerationStructure(const RtAccelerationStructure::SharedPtr& pAccl) const
+    {
+        return mpBlock->setAccelerationStructure(mOffset, pAccl);
+    }
+
+    bool ShaderVar::setParameterBlock(const std::shared_ptr<ParameterBlock>& pBlock) const
+    {
         return mpBlock->setParameterBlock(mOffset, pBlock);
     }
 
@@ -325,10 +334,6 @@ namespace Falcor
         return mpBlock->setBuffer(mOffset, pBuffer);
     }
 
-    bool ShaderVar::setImpl(VkAccelerationStructureKHR accel) const {
-        return mpBlock->setAS(mOffset, accel);
-    }
-    
     bool ShaderVar::setImpl(const std::shared_ptr<ParameterBlock>& pBlock) const
     {
         return mpBlock->setParameterBlock(mOffset, pBlock);
@@ -369,11 +374,6 @@ namespace Falcor
         return mpBlock->getSampler(mOffset);
     }
 
-    ShaderVar::operator VkAccelerationStructureKHR() const
-    {
-        return mpBlock->getAS(mOffset);
-    }
-
     ShaderVar::operator UniformShaderVarOffset() const
     {
         return mOffset.getUniform();
@@ -399,10 +399,6 @@ namespace Falcor
         return mpBlock->getSampler(mOffset);
     }
 
-    VkAccelerationStructureKHR ShaderVar::getAS() const {
-        return mpBlock->getAS(mOffset);
-    }
-
     ShaderResourceView::SharedPtr ShaderVar::getSrv() const
     {
         return mpBlock->getSrv(mOffset);
@@ -411,6 +407,11 @@ namespace Falcor
     UnorderedAccessView::SharedPtr ShaderVar::getUav() const
     {
         return mpBlock->getUav(mOffset);
+    }
+
+    RtAccelerationStructure::SharedPtr ShaderVar::getAccelerationStructure() const
+    {
+        return mpBlock->getAccelerationStructure(mOffset);
     }
 
     size_t ShaderVar::getByteOffset() const

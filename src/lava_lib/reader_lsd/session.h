@@ -14,6 +14,7 @@
 #include "display.h"
 
 #include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
@@ -25,7 +26,7 @@ namespace lsd {
 class Session {
   public:
  	  using UniquePtr = std::unique_ptr<Session>;
-    static UniquePtr create(std::shared_ptr<Renderer> pRenderer);    
+    static UniquePtr create(Renderer::SharedPtr pRenderer);    
     ~Session();
 
     struct DisplayInfo {
@@ -106,7 +107,8 @@ class Session {
     ast::IPRMode mIPRmode = ast::IPRMode::GENERATE;
 
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
-    std::shared_ptr<Renderer> 	    mpRenderer = nullptr;
+    Renderer::SharedPtr 	         mpRenderer = nullptr;
+    Device::SharedPtr              mpDevice   = nullptr;
 
     std::map<std::string, std::string>  mEnvmap;
 

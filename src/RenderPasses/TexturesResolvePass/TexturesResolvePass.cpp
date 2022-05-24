@@ -107,6 +107,7 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 
 
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
+/*
     initDepth(pContext, renderData);
 
     const auto& pDebugData = renderData[kOutput]->asTexture();
@@ -285,6 +286,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
 
     LOG_DBG("TexturesResolvePass::execute done");
+    */
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

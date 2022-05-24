@@ -529,7 +529,7 @@ static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat f
     return format;
 }
 
-Texture::SharedPtr createTextureFromDx10Dds(std::shared_ptr<Device> device, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromDx10Dds(std::shared_ptr<Device> pDevice, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
     format = convertBgrxFormatToBgra(ddsData, format);
 
     uint32_t arraySize = ddsData.dx10Header.arraySize;
@@ -537,18 +537,18 @@ Texture::SharedPtr createTextureFromDx10Dds(std::shared_ptr<Device> device, DdsD
 
     switch(ddsData.dx10Header.resourceDimension) {
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE1D:
-            return Texture::create1D(device, ddsData.header.width, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+            return Texture::create1D(pDevice, ddsData.header.width, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE2D:
             if(ddsData.dx10Header.miscFlag & DdsHeaderDX10::kCubeMapMask) {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 6 * arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels, true);
-                return Texture::createCube(device, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+                return Texture::createCube(pDevice, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
             } else {
                 flipData(ddsData, format, ddsData.header.width, ddsData.header.height, arraySize, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-                return Texture::create2D(device, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
+                return Texture::create2D(pDevice, ddsData.header.width, ddsData.header.height, format, arraySize, mipLevels, ddsData.data.data(), bindFlags);
             }
         case DXResourceDimension::RESOURCE_DIMENSION_TEXTURE3D:
             flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-            return Texture::create3D(device, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
+            return Texture::create3D(pDevice, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_BUFFER:
         case DXResourceDimension::RESOURCE_DIMENSION_UNKNOWN:
             logError("The resource dimension specified in " + filename + " is not supported by Falcor");
@@ -559,27 +559,27 @@ Texture::SharedPtr createTextureFromDx10Dds(std::shared_ptr<Device> device, DdsD
     }
 }
 
-Texture::SharedPtr createTextureFromLegacyDds(std::shared_ptr<Device> device, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromLegacyDds(std::shared_ptr<Device> pDevice, DdsData& ddsData, const std::string& filename, ResourceFormat format, uint32_t mipLevels, Texture::BindFlags bindFlags) {
     format = convertBgrxFormatToBgra(ddsData, format);
 
     // Load the volume or 3D texture
     if (ddsData.header.flags & DdsHeader::kDepthMask) {
         flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-        return Texture::create3D(device, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::create3D(pDevice, ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
     } else if (ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask) {
         // Load the cubemap texture
-        return Texture::createCube(device, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::createCube(pDevice, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     } else {
         // This is a 2D Texture
         flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 1, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
-        return Texture::create2D(device, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
+        return Texture::create2D(pDevice, ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
     }
 
     should_not_get_here();
     return nullptr;
 }
 
-Texture::SharedPtr createTextureFromDDSFile(std::shared_ptr<Device> device, const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+Texture::SharedPtr createTextureFromDDSFile(std::shared_ptr<Device> pDevice, const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     DdsData ddsData;
     if (!loadDDSDataFromFile(filename, ddsData)) return nullptr;
 
@@ -601,13 +601,13 @@ Texture::SharedPtr createTextureFromDDSFile(std::shared_ptr<Device> device, cons
     }
 
     if (ddsData.hasDX10Header) {
-        return createTextureFromDx10Dds(device, ddsData, filename, format, mipLevels, bindFlags);
+        return createTextureFromDx10Dds(pDevice, ddsData, filename, format, mipLevels, bindFlags);
     } else {
-        return createTextureFromLegacyDds(device, ddsData, filename, format, mipLevels, bindFlags);
+        return createTextureFromLegacyDds(pDevice, ddsData, filename, format, mipLevels, bindFlags);
     }
 }
 
-Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> device, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
         logError("Error when loading image file. Can't find image file " + filename);
@@ -616,16 +616,16 @@ Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> device, const
 
     Texture::SharedPtr pTex;
     if (hasSuffix(filename, ".dds")) {
-        pTex = createTextureFromDDSFile(device, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
+        pTex = createTextureFromDDSFile(pDevice, fullpath, generateMipLevels, loadAsSrgb, bindFlags);
     } else {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(device, fullpath, kTopDown);
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullpath, kTopDown);
         if (pBitmap) {
             ResourceFormat texFormat = pBitmap->getFormat();
             if (loadAsSrgb) {
                 texFormat = linearToSrgbFormat(texFormat);
             }
 
-            pTex = Texture::create2D(device, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+            pTex = Texture::create2D(pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
         }
     }
 
@@ -634,6 +634,10 @@ Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> device, const
     }
 
     return pTex;
+}
+
+Texture::SharedPtr Texture::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+    return Texture::createFromFile(pDevice, path.string(), generateMipLevels, loadAsSrgb, bindFlags);
 }
 
 }  // namespace Falcor

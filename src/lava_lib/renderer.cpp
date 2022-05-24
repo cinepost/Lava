@@ -8,6 +8,7 @@
 #include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
 #include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
 
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
@@ -19,7 +20,9 @@
 
 #include "lava_utils_lib/logging.h"
 
-namespace Falcor {  IFramework* gpFramework = nullptr; } // TODO: probably it's safe to remove now...
+namespace Falcor {  
+    IFramework* gpFramework = nullptr;  // TODO: probably it's safe to remove now...
+}
 
 namespace lava {
 
@@ -35,21 +38,18 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 
 
 Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
-	LLOG_DBG << "Renderer::Renderer";
-    mMainAOVPlaneExist = false;
+	mMainAOVPlaneExist = false;
 }
 
 bool Renderer::init(const Config& config) {
 	if(mInited) return true;
 
-	LLOG_DBG << "Renderer::init";
-
-    mCurrentConfig = config;
+	mCurrentConfig = config;
 
     Falcor::OSServices::start();
 
 #ifdef SCRIPTING
-	Falcor::Scripting::start();
+    Falcor::Scripting::start();
     Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
 #endif
 
@@ -93,10 +93,7 @@ Renderer::~Renderer() {
     
     mpSampler = nullptr;
 
-#ifdef SCRIPTING
     Falcor::Scripting::shutdown();
-#endif
-
     Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
 
     mpTargetFBO.reset();
@@ -264,8 +261,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     std::string log;
     bool result = mpRenderGraph->compile(pRenderContext, log);
     if(!result) {
-        LLOG_ERR << "Error compiling rendering graph !!!";
-        LLOG_ERR << log;
+        LLOG_ERR << "Error compiling rendering graph !!!\n" << log;
         mpRenderGraph = nullptr;
     }
     LLOG_DBG << "createRenderGraph done";

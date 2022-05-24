@@ -10,6 +10,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 //#include "boost/asio/thread_pool.hpp"
 

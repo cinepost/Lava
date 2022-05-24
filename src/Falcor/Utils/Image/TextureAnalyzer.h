@@ -25,125 +25,119 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREANALYZER_H_
-#define SRC_FALCOR_UTILS_IMAGE_TEXTUREANALYZER_H_
+#pragma once
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
+
 #include "Falcor/RenderGraph/BasePasses/ComputePass.h"
 
-namespace Falcor {
-
-/** A class for analyzing texture contents.
-*/
-class dlldecl TextureAnalyzer : public std::enable_shared_from_this<TextureAnalyzer> {
-  public:
-    using SharedPtr = std::shared_ptr<TextureAnalyzer>;
-
-    /** Texture analysis result.
+namespace Falcor
+{
+    /** A class for analyzing texture contents.
     */
-    struct Result {
-        uint32_t mask;          ///< Bits 0-3 indicate which color channels (RGBA) are varying (0 = constant, 1 = varying in i:th bit).
-                                ///< Bits 4-19 indicate numerical range of texture (4 bits per channel). Bits 20-31 are reserved.
-        uint32_t reserved[3];   ///< Reserved bits.
+    class dlldecl TextureAnalyzer
+    {
+    public:
+        using SharedPtr = std::shared_ptr<TextureAnalyzer>;
 
-        float4 value;           ///< The constant color value in RGBA fp32 format. Only valid for channels that are identified as constant.
-        float4 minValue;        ///< The minimum color value in RGBA fp32 format. NOTE: Clamped to zero.
-        float4 maxValue;        ///< The maximum color value in RGBA fp32 format. NOTE: Clamped to zero.
-
-        enum class ChannelMask : uint32_t {
-            Red     = 0x1,
-            Green   = 0x2,
-            Blue    = 0x4,
-            Alpha   = 0x8,
-
-            RGB     = Red | Green | Blue,
-            RGBA    = Red | Green | Blue | Alpha,
-        };
-
-        enum class RangeFlags : uint32_t {
-            Pos     = 0x1,      ///< Texture channel has positive values > 0;
-            Neg     = 0x2,      ///< Texture channel has negative values < 0;
-            Inf     = 0x4,      ///< Texture channel has +/-inf values.
-            NaN     = 0x8,      ///< Texture channel has NaN values.
-        };
-
-        bool isConstant(uint32_t channelMask) const { return (mask & channelMask) == 0; }
-        bool isConstant(ChannelMask channelMask) const { return isConstant((uint32_t)channelMask); }
-
-        bool isPos(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Pos; }
-        bool isNeg(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Neg; }
-        bool isInf(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Inf; }
-        bool isNaN(ChannelMask channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::NaN; }
-
-        /** Returns the numerical range of texels in the given color channels.
-            \param[in] channelMask Which color channels to look at.
-            \return Union of 'RangeFlags' flags (0 = no texels, 1 = at least one texel).
+        /** Texture analysis result.
         */
-        uint32_t getRange(ChannelMask channelMask) const {
-            uint32_t range = 0;
-            for (int i = 0; i < 4; i++) {
-                if ((uint32_t)channelMask & (1 << i)) {
-                    range |= mask >> (4 + 4 * i);
+        struct Result
+        {
+            uint32_t mask;          ///< Bits 0-3 indicate which color channels (RGBA) are varying (0 = constant, 1 = varying in i:th bit).
+                                    ///< Bits 4-19 indicate numerical range of texture (4 bits per channel). Bits 20-31 are reserved.
+            uint32_t reserved[3];   ///< Reserved bits.
+
+            float4 value;           ///< The constant color value in RGBA fp32 format. Only valid for channels that are identified as constant.
+            float4 minValue;        ///< The minimum color value in RGBA fp32 format. NOTE: Clamped to zero.
+            float4 maxValue;        ///< The maximum color value in RGBA fp32 format. NOTE: Clamped to zero.
+
+            enum class RangeFlags : uint32_t
+            {
+                Pos     = 0x1,      ///< Texture channel has positive values > 0;
+                Neg     = 0x2,      ///< Texture channel has negative values < 0;
+                Inf     = 0x4,      ///< Texture channel has +/-inf values.
+                NaN     = 0x8,      ///< Texture channel has NaN values.
+            };
+
+            bool isConstant(uint32_t channelMask) const { return (mask & channelMask) == 0; }
+            bool isConstant(TextureChannelFlags channelMask) const { return isConstant((uint32_t)channelMask); }
+
+            bool isPos(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Pos; }
+            bool isNeg(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Neg; }
+            bool isInf(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::Inf; }
+            bool isNaN(TextureChannelFlags channelMask) const { return getRange(channelMask) & (uint32_t)RangeFlags::NaN; }
+
+            /** Returns the numerical range of texels in the given color channels.
+                \param[in] channelMask Which color channels to look at.
+                \return Union of 'RangeFlags' flags (0 = no texels, 1 = at least one texel).
+            */
+            uint32_t getRange(TextureChannelFlags channelMask) const
+            {
+                uint32_t range = 0;
+                for (int i = 0; i < 4; i++)
+                {
+                    if ((uint32_t)channelMask & (1 << i))
+                    {
+                        range |= mask >> (4 + 4 * i);
+                    }
                 }
+                return range & 0xf;
             }
-            return range & 0xf;
-        }
+        };
+
+        /** Create a new texture analyzer.
+            \return A new object, or throws an exception if creation failed.
+        */
+        static SharedPtr create(Device::SharedPtr pDevice);
+
+        /** Analyze 2D texture to check if it has a constant color.
+            Throws an exception if the input texture is of unsupported format or dimension.
+            The result is written in the format of the 'Result' struct (64B total).
+            \param[in] pRenderContext The context.
+            \param[in] pInput Input texture. This has to be a 2D non-MSAA texture of floating-point format.
+            \param[in] mipLevel The mip level.
+            \param[in] arraySlice The array slice.
+            \param[in] pResult GPU buffer to where the result is written. This is expected to have UAV bind flag and be cleared to zero before the call.
+            \param[in] resultOffset Offset into result buffer to where the result is written.
+            \param[in] clearResult Flag indicating whether the function should clear the result buffer first.
+        */
+        void analyze(RenderContext* pRenderContext, const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice, Buffer::SharedPtr pResult, uint64_t resultOffset = 0, bool clearResult = true);
+
+        /** Batch analysis of a set of 2D textures. This is more efficient than calling analyze() repeatedly.
+            The first mip level and array slice of each texture is used.
+            Throws an exception if any input texture is of unsupported format or dimension.
+            The result is written as an arary of 'Result' structs (64B each).
+            \param[in] pRenderContext The context.
+            \param[in] inputs Array of input textures. These have to be 2D non-MSAA textures of floating-point formats.
+            \param[in] pResult GPU buffer to where the result is written. This is expected to have UAV bind flag.
+            \param[in] clearResult Flag indicating whether the function should clear the result buffer first.
+        */
+        void analyze(RenderContext* pRenderContext, const std::vector<Texture::SharedPtr>& inputs, Buffer::SharedPtr pResult, bool clearResult = true);
+
+        /** Helper function to clear the results buffer.
+            \param[in] pRenderContext The context.
+            \param[in] pResult GPU buffer to clear. This is expected to have UAV bind flag.
+            \param[in] resultOffset Offset into result buffer to where the first result is stored.
+            \param[in] resultsCount Number of result structs.
+        */
+        void clear(RenderContext* pRenderContext, Buffer::SharedPtr pResult, uint64_t resultOffset, size_t resultCount) const;
+
+        /** Returns the size of the generated result for one texture in bytes.
+        */
+        static size_t getResultSize();
+
+    private:
+        TextureAnalyzer(Device::SharedPtr pDevice);
+        void checkFormatSupport(const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice) const;
+
+        Device::SharedPtr       mpDevice;
+        ComputePass::SharedPtr  mpClearPass;
+        ComputePass::SharedPtr  mpAnalyzePass;
     };
 
-    /** Create a new texture analyzer.
-        \return A new object, or throws an exception if creation failed.
-    */
-    static SharedPtr create(Device::SharedPtr pDevice);
-
-    /** Analyze 2D texture to check if it has a constant color.
-        Throws an exception if the input texture is of unsupported format or dimension.
-        The result is written in the format of the 'Result' struct (64B total).
-        \param[in] pRenderContext The context.
-        \param[in] pInput Input texture. This has to be a 2D non-MSAA texture of floating-point format.
-        \param[in] mipLevel The mip level.
-        \param[in] arraySlice The array slice.
-        \param[in] pResult GPU buffer to where the result is written. This is expected to have UAV bind flag and be cleared to zero before the call.
-        \param[in] resultOffset Offset into result buffer to where the result is written.
-        \param[in] clearResult Flag indicating whether the function should clear the result buffer first.
-    */
-    void analyze(RenderContext* pRenderContext, const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice, Buffer::SharedPtr pResult, uint64_t resultOffset = 0, bool clearResult = true);
-
-    /** Batch analysis of a set of 2D textures. This is more efficient than calling analyze() repeatedly.
-        The first mip level and array slice of each texture is used.
-        Throws an exception if any input texture is of unsupported format or dimension.
-        The result is written as an arary of 'Result' structs (64B each).
-        \param[in] pRenderContext The context.
-        \param[in] inputs Array of input textures. These have to be 2D non-MSAA textures of floating-point formats.
-        \param[in] pResult GPU buffer to where the result is written. This is expected to have UAV bind flag.
-        \param[in] clearResult Flag indicating whether the function should clear the result buffer first.
-    */
-    void analyze(RenderContext* pRenderContext, const std::vector<Texture::SharedPtr>& inputs, Buffer::SharedPtr pResult, bool clearResult = true);
-
-    /** Helper function to clear the results buffer.
-        \param[in] pRenderContext The context.
-        \param[in] pResult GPU buffer to clear. This is expected to have UAV bind flag.
-        \param[in] resultOffset Offset into result buffer to where the first result is stored.
-        \param[in] resultsCount Number of result structs.
-    */
-    void clear(RenderContext* pRenderContext, Buffer::SharedPtr pResult, uint64_t resultOffset, size_t resultCount) const;
-
-    /** Returns the size of the generated result for one texture in bytes.
-    */
-    static size_t getResultSize();
-
-private:
-    TextureAnalyzer(Device::SharedPtr pDevice);
-    void checkFormatSupport(const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice) const;
-
-    ComputePass::SharedPtr mpClearPass;
-    ComputePass::SharedPtr mpAnalyzePass;
-};
-
-enum_class_operators(TextureAnalyzer::Result::ChannelMask);
-enum_class_operators(TextureAnalyzer::Result::RangeFlags);
-
-} // namespace Falcor
-
-#endif  // SRC_FALCOR_UTILS_IMAGE_TEXTUREANALYZER_H_
+    enum_class_operators(TextureAnalyzer::Result::RangeFlags);
+}

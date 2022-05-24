@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,27 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
-#define SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+#pragma once
 
-#include "Core/Program/ProgramReflection.h"
-#include "Core/API/Shader.h"
-#include "Core/API/RootSignature.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Shader.h"
+
+#if FALCOR_D3D12_AVAILABLE
+#include "Falcor/Core/API/Shared/D3D12RootSignature.h"
+#endif
 
 #include <slang/slang.h>
 
-namespace Falcor {
+#include "Falcor/Core/Program/ProgramReflection.h"
 
-    class Device;
-
-    class dlldecl Program;
-    class dlldecl ProgramVars;
-    class dlldecl ProgramVersion;
+namespace Falcor
+{
+    class FALCOR_API Program;
+    class FALCOR_API ProgramVars;
+    class FALCOR_API ProgramVersion;
 
 #if 0
     /** A collection of one or more entry points in a program kernels object.
     */
-    class dlldecl EntryPointGroup
+    class FALCOR_API EntryPointGroup
     {
     public:
         using SharedPtr = std::shared_ptr<EntryPointGroup>;
@@ -68,14 +70,16 @@ namespace Falcor {
 
     /** A collection of one or more entry points in a program kernels object.
     */
-    class dlldecl EntryPointGroupKernels {
-     public:
+    class FALCOR_API EntryPointGroupKernels
+    {
+    public:
         using SharedPtr = std::shared_ptr<EntryPointGroupKernels>;
         using SharedConstPtr = std::shared_ptr<const EntryPointGroupKernels>;
 
         /** Types of entry point groups.
         */
-        enum class Type {
+        enum class Type
+        {
             Compute,            ///< A group consisting of a single compute kernel
             Rasterization,      ///< A group consisting of rasterization shaders to be used together as a pipeline.
             RtSingleShader,     ///< A group consisting of a single ray tracing shader
@@ -102,20 +106,17 @@ namespace Falcor {
         Shaders mShaders;
     };
 
-    class dlldecl RtEntryPointGroupKernels : public EntryPointGroupKernels
+    class FALCOR_API RtEntryPointGroupKernels : public EntryPointGroupKernels
     {
     public:
         static SharedPtr create(
             Type type,
             const Shaders& shaders,
             std::string const& exportName,
-            RootSignature::SharedPtr const& localRootSignature,
             uint32_t maxPayloadSize,
             uint32_t maxAttributeSize);
 
         const std::string& getExportName() const { return mExportName; }
-
-        const RootSignature::SharedPtr& getLocalRootSignature() const { return mLocalRootSignature; }
 
         uint32_t getMaxPayloadSize() const { return mMaxPayloadSize; }
         uint32_t getMaxAttributesSize() const { return mMaxAttributesSize; }
@@ -125,12 +126,10 @@ namespace Falcor {
             Type type,
             const Shaders& shaders,
             std::string const& exportName,
-            RootSignature::SharedPtr const& localRootSignature,
             uint32_t maxPayloadSize,
             uint32_t maxAttributeSize);
 
         std::string mExportName;
-        RootSignature::SharedPtr mLocalRootSignature;
         uint32_t mMaxPayloadSize;
         uint32_t mMaxAttributesSize;
     };
@@ -138,8 +137,9 @@ namespace Falcor {
     /** Low-level program object
         This class abstracts the API's program creation and management
     */
-    class dlldecl ProgramKernels : public std::enable_shared_from_this<ProgramKernels> {
-     public:
+    class FALCOR_API ProgramKernels : public std::enable_shared_from_this<ProgramKernels>
+    {
+    public:
         using SharedPtr = std::shared_ptr<ProgramKernels>;
         using SharedConstPtr = std::shared_ptr<const ProgramKernels>;
 
@@ -157,8 +157,10 @@ namespace Falcor {
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
-            std::shared_ptr<Device> pDevice, 
+            Device::SharedPtr pDevice, 
             const ProgramVersion* pVersion,
+            slang::IComponentType* pSpecializedSlangGlobalScope,
+            const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             std::string& log,
@@ -178,7 +180,9 @@ namespace Falcor {
         */
         const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
 
-        RootSignature::SharedPtr const& getRootSignature() const { return mpRootSignature; }
+#ifdef FALCOR_D3D12
+        D3D12RootSignature::SharedPtr const& getD3D12RootSignature() const { return mpRootSignature; }
+#endif
 
         std::shared_ptr<const ProgramVersion> getProgramVersion() const;
 
@@ -186,13 +190,17 @@ namespace Falcor {
 
         const EntryPointGroupKernels::SharedPtr& getUniqueEntryPointGroup(uint32_t index) const { return mUniqueEntryPointGroups[index]; }
 
+        ProgramHandle getApiHandle() const { return mApiHandle; }
+
     protected:
         ProgramKernels(
-            std::shared_ptr<Device> device, 
+            Device::SharedPtr pDevice, 
             const ProgramVersion* pVersion,
             const ProgramReflection::SharedPtr& pReflector,
             const UniqueEntryPointGroups& uniqueEntryPointGroups,
             const std::string& name = "");
+
+        Device::SharedPtr mpDevice = nullptr; 
 
         ProgramHandle mApiHandle = ProgramHandle();
         const std::string mName;
@@ -203,13 +211,15 @@ namespace Falcor {
         const ProgramReflection::SharedPtr mpReflector;
 
         ProgramVersion const* mpVersion = nullptr;
-        RootSignature::SharedPtr mpRootSignature;
 
-        std::shared_ptr<Device> mpDevice; 
+#ifdef FALCOR_D3D12
+        D3D12RootSignature::SharedPtr mpRootSignature;
+#endif
     };
 
-    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion> {
-     public:
+    class ProgramVersion : public std::enable_shared_from_this<ProgramVersion>
+    {
+    public:
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
         using DefineList = Shader::DefineList;
@@ -229,7 +239,7 @@ namespace Falcor {
         /** Get the reflection object.
             \return A program reflection object.
         */
-        ProgramReflection::ConstSharedPtrRef getReflector() const { assert(mpReflector); return mpReflector; }
+        const ProgramReflection::SharedPtr& getReflector() const { FALCOR_ASSERT(mpReflector); return mpReflector; }
 
         /** Get executable kernels based on state in a `ProgramVars`
         */
@@ -239,7 +249,7 @@ namespace Falcor {
         slang::IComponentType* getSlangGlobalScope() const;
         slang::IComponentType* getSlangEntryPoint(uint32_t index) const;
 
-     protected:
+    protected:
         friend class Program;
         friend class RtProgram;
 
@@ -263,7 +273,4 @@ namespace Falcor {
         // Cached version of compiled kernels for this program version
         mutable std::unordered_map<std::string, ProgramKernels::SharedPtr> mpKernels;
     };
-
-}  // namespace Falcor
-
-#endif  // SRC_FALCOR_CORE_PROGRAM_PROGRAMVERSION_H_
+}

@@ -26,16 +26,23 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Device.h"
 #include "Sampler.h"
 
 namespace Falcor {
 
-Sampler::Sampler(std::shared_ptr<Device> device, const Desc& desc) : mDesc(desc), mpDevice(device) {
+Sampler::Sampler(Device::SharedPtr pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
+   
 }
 
 Sampler::~Sampler() {
 
 }
+
+Sampler::SharedPtr Sampler::getDefault(Device::SharedPtr pDevice) { 
+    return pDevice->getDefaultSampler(); 
+};
 
 Sampler::Desc& Sampler::Desc::setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter) {
     mMagFilter = magFilter;
@@ -76,6 +83,24 @@ Sampler::Desc& Sampler::Desc::setAddressingMode(AddressMode modeU, AddressMode m
 Sampler::Desc& Sampler::Desc::setBorderColor(const float4& borderColor) {
     mBorderColor = borderColor;
     return *this;
+}
+
+bool Sampler::Desc::operator==(const Sampler::Desc& other) const {
+    if (mMagFilter != other.mMagFilter) return false;
+    if (mMinFilter != other.mMinFilter) return false;
+    if (mMipFilter != other.mMipFilter) return false;
+    if (mMaxAnisotropy != other.mMaxAnisotropy) return false;
+    if (mMaxLod != other.mMaxLod) return false;
+    if (mMinLod != other.mMinLod) return false;
+    if (mLodBias != other.mLodBias) return false;
+    if (mComparisonMode != other.mComparisonMode) return false;
+    if (mReductionMode != other.mReductionMode) return false;
+    if (mModeU != other.mModeU) return false;
+    if (mModeV != other.mModeV) return false;
+    if (mModeW != other.mModeW) return false;
+    if (mBorderColor != other.mBorderColor) return false;
+
+    return true;
 }
 
 #ifdef SCRIPTING

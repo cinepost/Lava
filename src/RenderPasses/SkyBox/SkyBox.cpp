@@ -82,7 +82,7 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
     mpState = GraphicsState::create(pDevice);
     BlendState::Desc blendDesc(pDevice);
 
-    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(pDevice); i++) {
+    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(); i++) {
         blendDesc.setRenderTargetWriteMask(i, false, false, false, false);
     }
 

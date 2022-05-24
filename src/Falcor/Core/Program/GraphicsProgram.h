@@ -51,7 +51,7 @@ class dlldecl GraphicsProgram : public Program, public inherit_shared_from_this<
         \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, const Desc& desc, const Program::DefineList& programDefines = DefineList());
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines = DefineList());
 
     /** Create a new graphics program from file.
         \param[in] filename Graphics program filename.
@@ -60,10 +60,10 @@ class dlldecl GraphicsProgram : public Program, public inherit_shared_from_this<
         \param[in] programDefines Optional list of macro definitions to set into the program. The macro definitions will be set on all shader stages.
         \return A new object, or an exception is thrown if creation failed.
     */
-    static SharedPtr createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines = DefineList());
+    static SharedPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines = DefineList());
 
  private:
-    GraphicsProgram() = default;
+    GraphicsProgram(std::shared_ptr<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines);
 };
 
 }  // namespace Flacor

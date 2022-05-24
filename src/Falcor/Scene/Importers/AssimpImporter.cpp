@@ -30,14 +30,17 @@
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
 #include "assimp/pbrmaterial.h"
-#include "AssimpImporter.h"
+
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Math/FalcorMath.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Timing/TimeReport.h"
-#include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/SceneBuilder.h"
 #include "Falcor/Scene/Importer.h"
 #include "Falcor/Scene/Material/Material.h"
+#include "Falcor/Scene/Material/StandardMaterial.h"
+
+#include "AssimpImporter.h"
 
 namespace Falcor {
 
@@ -725,7 +728,7 @@ namespace
         }
     }
 
-    void loadTextures(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb)
+    void loadTextures(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const fs::path& searchPath, const Material::SharedPtr& pMaterial, ImportMode importMode)
     {
         assert(pDevice);
 
@@ -742,38 +745,19 @@ namespace
             std::string path(aiPath.data);
             if (path.empty())
             {
-                logWarning("Texture has empty file name, ignoring.");
+                logWarning("AssimpImporter: Texture has empty file name, ignoring.");
                 continue;
             }
 
-            // Check if the texture was already loaded
-            Texture::SharedPtr pTex;
-            const auto& cacheItem = data.textureCache.find(path);
-            if (cacheItem != data.textureCache.end())
-            {
-                pTex = cacheItem->second;
-            }
-            else
-            {
-                // create a new texture
-                std::string fullpath = folder + '/' + path;
-                fullpath = replaceSubstring(fullpath, "\\", "/");
-                pTex = Texture::createFromFile(pDevice, fullpath, true, useSrgb && pMaterial->isSrgbTextureRequired(source.targetType));
-                if (pTex)
-                {
-                    data.textureCache[path] = pTex;
-                }
-            }
-
-            assert(pTex != nullptr);
-            pMaterial->setTexture(source.targetType, pTex);
+            // Load the texture
+            auto fullPath = searchPath / path;
+            data.builder.loadMaterialTexture(pMaterial, source.targetType, fullPath);
         }
-
         // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
         pDevice->flushAndSync();
     }
 
-    Material::SharedPtr createMaterial(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, ImportMode importMode, bool useSrgb)
+    Material::SharedPtr createMaterial(std::shared_ptr<Device> pDevice, ImporterData& data, const aiMaterial* pAiMaterial, const fs::path& folder, ImportMode importMode)
     {
         assert(pDevice);
 
@@ -787,19 +771,21 @@ namespace
             logWarning("Material with no name found -> renaming to 'unnamed'");
             nameStr = "unnamed";
         }
-        Material::SharedPtr pMaterial = Material::create(pDevice, nameStr); 
 
         // Determine shading model.
         // MetalRough is the default for everything except OBJ. Check that both flags aren't set simultaneously.
+        ShadingModel shadingModel = ShadingModel::MetalRough;
         SceneBuilder::Flags builderFlags = data.builder.getFlags();
         assert(!(is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) && is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)));
         if (is_set(builderFlags, SceneBuilder::Flags::UseSpecGlossMaterials) || (importMode == ImportMode::OBJ && !is_set(builderFlags, SceneBuilder::Flags::UseMetalRoughMaterials)))
         {
-            pMaterial->setShadingModel(ShadingModelSpecGloss);
+            shadingModel = ShadingModel::SpecGloss;
         }
 
+        StandardMaterial::SharedPtr pMaterial = StandardMaterial::create(pDevice, nameStr, shadingModel); 
+
         // Load textures. Note that loading is affected by the current shading model.
-        loadTextures(pDevice, data, pAiMaterial, folder, pMaterial.get(), importMode, useSrgb);
+        loadTextures(pDevice, data, pAiMaterial, folder, pMaterial, importMode);
 
         // Opacity
         float opacity = 1.f;
@@ -916,25 +902,15 @@ namespace
         return pMaterial;
     }
 
-    bool createAllMaterials(std::shared_ptr<Device> pDevice, ImporterData& data, const std::string& modelFolder, ImportMode importMode)
+    void createAllMaterials(std::shared_ptr<Device> pDevice, ImporterData& data, const fs::path& searchPath, ImportMode importMode)
     {
         assert(pDevice);
-
-        bool useSrgb = !is_set(data.builder.getFlags(), SceneBuilder::Flags::AssumeLinearSpaceTextures);
 
         for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++)
         {
             const aiMaterial* pAiMaterial = data.pScene->mMaterials[i];
-            auto pMaterial = createMaterial(pDevice, data, pAiMaterial, modelFolder, importMode, useSrgb);
-            if (pMaterial == nullptr)
-            {
-                logError("Can't allocate memory for material");
-                return false;
-            }
-            data.materialMap[i] = pMaterial;
+            data.materialMap[i] = createMaterial(pDevice, data, pAiMaterial, searchPath, importMode);
         }
-
-        return true;
     }
 
     BoneMeshMap createBoneMap(const aiScene* pScene)
@@ -1080,11 +1056,7 @@ bool AssimpImporter::import(const std::string& filename, SceneBuilder& builder, 
     if (hasSuffix(filename, ".obj", false)) importMode = ImportMode::OBJ;
     if (hasSuffix(filename, ".gltf", false) || hasSuffix(filename, ".glb", false)) importMode = ImportMode::GLTF2;
 
-    if (createAllMaterials(pDevice, data, modelFolder, importMode) == false)
-    {
-        logError("Can't create materials for model " + filename);
-        return false;
-    }
+    createAllMaterials(pDevice, data, modelFolder, importMode);
     timeReport.measure("Creating materials");
 
     if (createSceneGraph(data) == false)

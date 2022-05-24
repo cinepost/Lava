@@ -13,7 +13,8 @@ file( GLOB SOURCES
     #./*.cpp
     ./Core/*.cpp
     ./Core/API/*.cpp
-    ./Core/API/Vulkan/*.cpp
+    #./Core/API/Vulkan/*.cpp
+    ./Core/API/GFX/*.cpp
     ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
     ./Core/Platform/Linux/Linux.cpp
@@ -23,8 +24,8 @@ file( GLOB SOURCES
     ./RenderGraph/*.cpp
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
-    ./Raytracing/*.cpp
-    ./Raytracing/RtProgram/*.cpp
+    #./Rendering/RTXDI/*.cpp
+    #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
     ./Scene/Animation/*.cpp
     ./Scene/Camera/*.cpp
@@ -45,24 +46,25 @@ file( GLOB SOURCES
     ./Utils/Scripting/*.cpp
     ./Utils/Timing/*.cpp
     ./Experimental/Scene/Lights/*.cpp
+    ./Experimental/Scene/Material/*.cpp
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/raytraceKHR_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/resourceallocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/commands_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/buffersuballocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/stagingmemorymanager_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/raytraceKHR_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/resourceallocator_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/commands_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/buffersuballocator_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/stagingmemorymanager_vk.cpp
     
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memorymanagement_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_dedicated_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/samplers_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/images_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memorymanagement_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_dedicated_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/memallocator_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/samplers_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/images_vk.cpp
     
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/extensions_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/error_vk.cpp
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/debug_util_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/extensions_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/error_vk.cpp
+    #${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvvk/debug_util_vk.cpp
 
     ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvh/nvprint.cpp
 
@@ -167,6 +169,7 @@ add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_BINARY_DIR}/lib )
+find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_BINARY_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
@@ -181,6 +184,12 @@ find_package(OpenSSL REQUIRED)
 message("OpenVDB ${OpenVDB_LIBRARY}")
 message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
 
+# NVTT
+find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_BINARY_DIR}/lib )
+
+# GLFW3
+find_package(glfw3 3.3 REQUIRED)
+
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
@@ -194,6 +203,7 @@ target_link_libraries(
     Blosc::blosc
     ${assimp_LIBRARIES}
     ${SLANG_LIBRARY}
+    ${SLANG_GFX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Python3_LIBRARIES}
@@ -206,6 +216,7 @@ target_link_libraries(
     OpenVDB::openvdb
     ${LZ4_LIBRARY}
     OpenSSL::SSL
+    glfw
 )
 
 # Copy/install all needed shaders

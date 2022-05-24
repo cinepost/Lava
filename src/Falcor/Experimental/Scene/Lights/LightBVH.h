@@ -31,7 +31,7 @@
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 #include "LightBVHTypes.slang"
-#include "Utils/Math/BBox.h"
+#include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 
 #include <limits>

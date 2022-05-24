@@ -73,7 +73,7 @@ class dlldecl GpuMemoryHeap {
         \param[in] pFence Fence to use for synchronization.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
 
     Allocation allocate(size_t size, size_t alignment = 1);
     void release(Allocation& data);
@@ -81,7 +81,7 @@ class dlldecl GpuMemoryHeap {
     void executeDeferredReleases();
 
 private:
-    GpuMemoryHeap(std::shared_ptr<Device> device, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
+    GpuMemoryHeap(std::shared_ptr<Device> pDevice, Type type, size_t pageSize, const GpuFence::SharedPtr& pFence);
 
     struct PageData : public BaseData {
         uint32_t allocationsCount = 0;
