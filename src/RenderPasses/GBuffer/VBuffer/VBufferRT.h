@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-
-#ifdef FALCOR_D3D
-
 #include "../GBufferBase.h"
 #include "Utils/Sampling/SampleGenerator.h"
 
@@ -45,19 +42,33 @@ class VBufferRT : public GBufferBase
 public:
     using SharedPtr = std::shared_ptr<VBufferRT>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    std::string getDesc(void) override { return kDesc; }
+    Dictionary getScriptingDictionary() override;
+    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
 private:
-    VBufferRT(const Dictionary& dict);
+    void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
+    void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
+
+    Program::DefineList getShaderDefines(const RenderData& renderData) const;
+    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void recreatePrograms();
+
+    VBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);
+    void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
+    bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
     SampleGenerator::SharedPtr mpSampleGenerator;
-    uint32_t mFrameCount = 0;
+
+    // UI variables
+    bool mUseTraceRayInline = false;
+    bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
 
     struct
     {
@@ -65,8 +76,5 @@ private:
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 
-    static const char* kDesc;
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
+    ComputePass::SharedPtr mpComputePass;
 };
-
-#endif  // FALCOR_D3D

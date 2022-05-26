@@ -493,7 +493,7 @@ struct Scene
     {
         VertexData v = {};
 
-        v.posW = vertices[0].position * barycentrics[0];
+v.posW = vertices[0].position * barycentrics[0];
         v.posW += vertices[1].position * barycentrics[1];
         v.posW += vertices[2].position * barycentrics[2];
 
@@ -510,12 +510,17 @@ struct Scene
         v.texC += vertices[1].texCrd * barycentrics[1];
         v.texC += vertices[2].texCrd * barycentrics[2];
 
+        v.curveRadius = vertices[0].curveRadius * barycentrics[0];
+        v.curveRadius += vertices[1].curveRadius * barycentrics[1];
+        v.curveRadius += vertices[2].curveRadius * barycentrics[2];
+
         v.faceNormalW = getFaceNormalInObjectSpace(vertices, isFrontFaceCW);
 
         v.posW = mul(float4(v.posW, 1.f), worldMat).xyz;
         v.normalW = mul(v.normalW, worldInvTransposeMat);
         v.faceNormalW = mul(v.faceNormalW, worldInvTransposeMat);
         v.tangentW.xyz = mul(v.tangentW.xyz, (float3x3)worldMat);
+        v.curveRadius = length(mul(float3(v.curveRadius, 0.f, 0.f), (float3x3)worldMat));
 
         v.normalW = normalize(v.normalW);
         v.faceNormalW = normalize(v.faceNormalW);

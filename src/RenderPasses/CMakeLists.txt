@@ -62,35 +62,14 @@ function (makeRenderPassLib)
     	falcor_lib
         ${ARGS_DEPS}
     	${PYTHON_LIBRARIES}
+        lava_utils_lib
     )
 
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
-    
-
-    #if (WIN32)
-    #file(
-    #    COPY ${ARGS_NAME}
-    #    DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
-    #    FILES_MATCHING
-    #        PATTERN "*.slang*"
-    #)
-    #else()
-    #add_custom_command(
-    #    TARGET ${PASS_LIB} 
-    #    #POST_BUILD
-    #    PRE_LINK
-    #    COMMAND rsync
-    #    ARGS -r --include='*.slang' --include='*/' --exclude='*'
-    #        ${CMAKE_CURRENT_SOURCE_DIR}/${ARGS_NAME}
-    #        ${SHADERS_OUTPUT_DIRECTORY}
-    #    COMMENT "Copying ${ARGS_NAME} shaders"
-    #)
-    #endif (WIN32)
 
     # Install render-pass library
-    
     install( 
         TARGETS ${PASS_LIB} 
         DESTINATION "render_passes" 

@@ -32,7 +32,7 @@
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 
-const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
+const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buffer generation pass." };
 
 namespace
 {
@@ -65,7 +65,7 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
 VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
 }
-VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice) {
+VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice, kInfo) {
     parseDictionary(dict);
 
     // Check for required features.

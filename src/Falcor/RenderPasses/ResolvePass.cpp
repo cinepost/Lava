@@ -27,17 +27,18 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "ResolvePass.h"
 
 namespace Falcor {
 
-const char* ResolvePass::kDesc = "Resolve a multi-sampled texture";
+const RenderPass::Info ResolvePass::kInfo { "ResolvePass", "Resolve a multi-sampled texture." };
 
 static const std::string kDst = "dst";
 static const std::string kSrc = "src";
 
-ResolvePass::ResolvePass(Device::SharedPtr pDevice): RenderPass(pDevice) {}
+ResolvePass::ResolvePass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {}
 
 RenderPassReflection ResolvePass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
@@ -57,13 +58,13 @@ void ResolvePass::execute(RenderContext* pContext, const RenderData& renderData)
 
     if (pSrcTex && pDstTex) {
         if (pSrcTex->getSampleCount() == 1) {
-            logWarning("ResolvePass::execute() - Cannot resolve from a non-multisampled texture.");
+            LLOG_WRN << "ResolvePass::execute() - Cannot resolve from a non-multisampled texture.";
             return;
         }
 
         pContext->resolveResource(pSrcTex, pDstTex);
     } else {
-        logWarning("ResolvePass::execute() - missing an input or output resource");
+        LLOG_WRN << "ResolvePass::execute() - missing an input or output resource";
     }
 }
 

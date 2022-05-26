@@ -78,7 +78,7 @@ bool DeviceManager::deviceEnumerated(uint8_t gpuId) const {
     if(mDeviceNames.find(gpuId) != mDeviceNames.end()) {
         return true;
     }
-    LLOG_ERR << "Device " << gpuId << "not enumerated !";
+    LLOG_ERR << "Device " << std::to_string(static_cast<uint16_t>(gpuId)) << "not enumerated !";
     return false;
 }
 
@@ -96,9 +96,9 @@ Device::SharedPtr DeviceManager::renderingDevice(uint8_t gpuId) const {
 
 
 void DeviceManager::printEnumeratedDevices() const {
-    LLOG_INF << "Enumerated Vulkan physical devices...";
+    LLOG_INF << "Enumerated physical devices...";
     for( auto &it: mDeviceNames) {
-        LLOG_INF << "Physical device id: " << it.first << ", name: " << it.second;
+        LLOG_INF << "Physical device id: " << std::to_string(static_cast<uint16_t>(it.first)) << ", name: " << it.second;
     }
 }
 

@@ -248,9 +248,9 @@ namespace Falcor
         for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
         {
             Slang::ComPtr<gfx::ITextureResource> imageHandle;
-            HRESULT hr = mpApiData->pSwapChain->getImage(i, imageHandle.writeRef());
+            SlangResult hr = mpApiData->pSwapChain->getImage(i, imageHandle.writeRef());
             apiHandles[i] = imageHandle.get();
-            if (FAILED(hr))
+            if (SLANG_FAILED(hr))
             {
                 LLOG_ERR << "Failed to get back-buffer " << std::to_string(i) << " from the swap-chain";
                 return false;
@@ -450,8 +450,23 @@ namespace Falcor
         mSupportedFeatures = querySupportedFeatures(mApiHandle);
         mSupportedShaderModel = querySupportedShaderModel(mApiHandle);
 
-        for (uint32_t i = 0; i < kSwapChainBuffersCount; ++i)
-        {
+        if( !mHeadless ) {
+            for (uint32_t i = 0; i < kSwapChainBuffersCount; ++i)
+            {
+                ITransientResourceHeap::Desc transientHeapDesc = {};
+                transientHeapDesc.flags = ITransientResourceHeap::Flags::AllowResizing;
+                transientHeapDesc.constantBufferSize = kTransientHeapConstantBufferSize;
+                transientHeapDesc.samplerDescriptorCount = 2048;
+                transientHeapDesc.uavDescriptorCount = 1000000;
+                transientHeapDesc.srvDescriptorCount = 1000000;
+                transientHeapDesc.constantBufferDescriptorCount = 1000000;
+                transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
+                if (SLANG_FAILED(pData->pDevice->createTransientResourceHeap(transientHeapDesc, pData->pTransientResourceHeaps[i].writeRef())))
+                {
+                    return false;
+                }
+            }
+        } else {
             ITransientResourceHeap::Desc transientHeapDesc = {};
             transientHeapDesc.flags = ITransientResourceHeap::Flags::AllowResizing;
             transientHeapDesc.constantBufferSize = kTransientHeapConstantBufferSize;
@@ -460,7 +475,7 @@ namespace Falcor
             transientHeapDesc.srvDescriptorCount = 1000000;
             transientHeapDesc.constantBufferDescriptorCount = 1000000;
             transientHeapDesc.accelerationStructureDescriptorCount = 1000000;
-            if (SLANG_FAILED(pData->pDevice->createTransientResourceHeap(transientHeapDesc, pData->pTransientResourceHeaps[i].writeRef())))
+            if (SLANG_FAILED(pData->pDevice->createTransientResourceHeap(transientHeapDesc, pData->pTransientResourceHeaps[0].writeRef())))
             {
                 return false;
             }

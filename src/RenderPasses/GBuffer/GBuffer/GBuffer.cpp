@@ -48,7 +48,7 @@ namespace
     const char kCullMode[] = "cull";
 }
 
-GBuffer::GBuffer(Device::SharedPtr pDevice) : GBufferBase(pDevice), mGBufferParams{} {
+GBuffer::GBuffer(Device::SharedPtr pDevice, Info info) : GBufferBase(pDevice, info), mGBufferParams{} {
     assert(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }
 

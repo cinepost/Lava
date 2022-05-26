@@ -634,7 +634,7 @@ namespace Falcor
                 fs::path fullPath;
                 if (!findFileInShaderDirectories(path, fullPath))
                 {
-                    reportError("Can't find file " + src.pLibrary->getPath().string());
+                    LLOG_ERR << "Can't find file " << src.pLibrary->getPath().string();
                     spDestroyCompileRequest(pSlangRequest);
                     return nullptr;
                 }
@@ -1132,7 +1132,7 @@ namespace Falcor
             if (pVersion == nullptr)
             {
                 std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
-                reportErrorAndAllowRetry(error);
+                LLOG_ERR << error;
 
                 // Continue loop to keep trying...
             }
@@ -1147,7 +1147,15 @@ namespace Falcor
                 mpActiveVersion = pVersion;
                 return true;
             }
+
+            char choice;
+            std::cout << "Would you like to try again ? (Y/N)" << std::endl;
+            std::cin >> choice;
+            if ( choice =='N' || choice =='n' ){
+                break;
+            }
         }
+        return false;
     }
 
     void Program::reset()

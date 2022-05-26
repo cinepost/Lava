@@ -35,6 +35,9 @@
 
 #include "AccumulatePass.h"
 
+const RenderPass::Info AccumulatePass::kInfo { "AccumulatePass", "Buffer accumulation." };
+
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -51,7 +54,7 @@ static void regAccumulatePass(pybind11::module& m) {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("AccumulatePass", "Buffer accumulation", AccumulatePass::create);
+    lib.registerPass(AccumulatePass::kInfo, AccumulatePass::create);
     ScriptBindings::registerBinding(regAccumulatePass);
 }
 
@@ -74,7 +77,7 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
     return SharedPtr(new AccumulatePass(pRenderContext->device(), dict));
 }
 
-AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict)
     {

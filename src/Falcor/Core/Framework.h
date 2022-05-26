@@ -161,7 +161,7 @@ namespace fs = boost::filesystem;
 
 #endif // _DEBUG
 
-#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::RuntimeError("Not implemented"); } while(0)
+#define FALCOR_UNIMPLEMENTED() do{ FALCOR_ASSERT_MSG(false, "Not implemented"); throw Falcor::std::runtime_error("Not implemented"); } while(0)
 
 #define FALCOR_UNREACHABLE() FALCOR_ASSERT(false)
 
@@ -431,11 +431,13 @@ std::enable_if_t<has_iterator<T>::value, std::string> to_string(const T& t) {
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function has been deprecated in " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
 using DllHandle = HMODULE;
+using SharedLibraryHandle = HMODULE;
 #define suppress_deprecation __pragma(warning(suppress : 4996));
 #elif defined(__GNUC__)
 #define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function has been deprecated in " _ver_ ". " _msg_)))
 #define forceinline __attribute__((always_inline))
 using DllHandle = void*;
+using SharedLibraryHandle = void*;
 #define suppress_deprecation _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
 #endif
 

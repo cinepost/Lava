@@ -707,16 +707,6 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     assert(VK_KHR_raytracing_pipeline_enabled == true);
     assert(VK_KHR_ray_query_enabled == true);
 
-    // Features
-    //vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-
-    // Get ray tracing pipeline properties, which will be used later on in the sample
-    //rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-    //VkPhysicalDeviceProperties2 deviceProperties2{};
-    //deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    //deviceProperties2.pNext = &rayTracingPipelineProperties;
-    //vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
-
     // Query for features
 
 #if VMA_VULKAN_VERSION >= 1001000
@@ -744,9 +734,6 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     PrintPhysicalDeviceProperties(physicalDeviceProperties);
 
 #endif // #if VMA_VULKAN_VERSION >= 1001000
-
-   // VkPhysicalDeviceProperties2 physicalDeviceProperties2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    //vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties2);
 
     //-----------------------
     VkPhysicalDeviceFeatures2 physicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
@@ -779,14 +766,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         PnextChainPushFront(&physicalDeviceFeatures, &pDevice->mEnabledRayQueryFeatures);
     }
 
-    //VkPhysicalDeviceRayTracingPipelineFeaturesKHR       mEnabledRayTracingPipelineFeatures
 
-    // Get acceleration structure properties, which will be used later on
-    //accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-    //VkPhysicalDeviceFeatures2 deviceFeatures2{};
-    //deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    //deviceFeatures2.pNext = &accelerationStructureFeatures;
-    //vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
     
     vkGetPhysicalDeviceFeatures2(physicalDevice, &physicalDeviceFeatures);
 
@@ -843,9 +823,6 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
         //"VK_KHR_get_physical_device_properties2",
         "VK_EXT_host_query_reset"
     };
-
-    //if (desc.surface != VK_NULL_HANDLE) defaultExtensionNames.push_back("VK_KHR_swapchain");
-
 
     // check for default extensions availability
     for (const std::string& a : defaultExtensionNames) {

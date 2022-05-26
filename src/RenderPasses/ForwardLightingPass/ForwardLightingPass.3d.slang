@@ -69,7 +69,7 @@ Texture2D gNoiseTex;
 static VSOut vsData;
 
 
-VSOut vs(VSIn vIn)
+VSOut vsMain(VSIn vIn)
 {
     VSOut vsOut;
     vsOut = defaultVS(vIn);
@@ -97,7 +97,7 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
 
 
 [earlydepthstencil]
-PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
+PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     PsOut psOut;
 
     let lod = ImplicitLodTextureSampler();
@@ -116,12 +116,6 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
     // pseudo-random sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
 
-    // blue noise
-    float4 noise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
-    psOut.color.rgb = noise.rgb;
-    psOut.color.a = 1;
-    return psOut;
-
     // screen space texture coordinates gradient
     float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
     float2 gradY = ddy_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
@@ -137,6 +131,13 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
 
 
     float4 finalColor = float4(0, 0, 0, 1);
+    
+    float3 fn = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+
+    psOut.color.rgb = normalize(vsOut.normalW).rgb;
+    psOut.color.a = 1.0f;
+    return psOut;
+
 
     // Direct lighting from analytic light sources
     
@@ -171,11 +172,11 @@ PsOut ps(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics :
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
 
-        finalColor.rgb += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
+        finalColor.rgb += bsdf.eval(sd, ls.dir, sg) * ls.Li;// * shadowFactor;
     }
 
     // Add the emissive component
-    finalColor.rgb += bsdf.getProperties(sd).emission;
+    //finalColor.rgb += bsdf.getProperties(sd).emission;
     finalColor.a = sd.opacity;
 
 #ifdef _USE_ENV_MAP

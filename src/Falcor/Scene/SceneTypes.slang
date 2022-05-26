@@ -205,6 +205,7 @@ struct StaticVertexData
     float3 normal;      ///< Shading normal.
     float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
     float2 texCrd;      ///< Texture coordinates.
+
     float curveRadius;  ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 };
 

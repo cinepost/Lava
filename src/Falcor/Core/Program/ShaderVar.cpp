@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "Falcor/Core/Framework.h"
 #include "ShaderVar.h"
 
 namespace Falcor
@@ -113,7 +114,7 @@ namespace Falcor
         auto result = findMember(name);
         if( !result.isValid() && isValid() )
         {
-            reportError("No member named '" + name + "' found.");
+            LLOG_FTL << "No member named '" << name << "' found.";
         }
         return result;
     }
@@ -185,7 +186,7 @@ namespace Falcor
             }
         }
 
-        reportError("No element or member found at index " + std::to_string(index));
+        LLOG_ERR << "No element or member found at index " << std::to_string(index);
         return ShaderVar();
     }
 
@@ -275,7 +276,7 @@ namespace Falcor
             }
         }
 
-        reportError("no member at offset");
+        LLOG_ERR << "no member at offset";
         return ShaderVar();
     }
 

@@ -25,11 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
-#define FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
+#pragma once
 
 #include "RenderPass.h"
-#include "Core/Program/Program.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/Program.h"
 
 namespace Falcor
 {
@@ -107,6 +108,28 @@ namespace Falcor
         }
     }
 
-}  // namespace Falcor
+    /** Clears all available channels.
+        \param[in] pRenderContext Render context.
+        \param[in] channels List of channel descriptors.
+        \param[in] renderData Render data containing the channel resources.
+    */
+    inline void clearRenderPassChannels(RenderContext* pRenderContext, const ChannelList& channels, const RenderData& renderData)
+    {
+        for (const auto& channel : channels)
+        {
+            auto pTex = renderData[channel.name]->asTexture();
+            if (pTex)
+            {
+                if (isIntegerFormat(pTex->getFormat()))
+                {
+                    pRenderContext->clearUAV(pTex->getUAV().get(), uint4(0));
+                }
+                else
+                {
+                    pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+                }
+            }
+        }
+    }
 
-#endif  // FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
+}

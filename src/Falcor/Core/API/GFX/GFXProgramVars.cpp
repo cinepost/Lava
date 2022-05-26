@@ -40,7 +40,7 @@ namespace Falcor
 {
     ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
         : mpDevice(pDevice)
-        , ParameterBlock(mpDevice, pReflector)
+        , ParameterBlock(pDevice, pReflector)
         , mpReflector(pReflector)
     {
         FALCOR_ASSERT(pReflector);

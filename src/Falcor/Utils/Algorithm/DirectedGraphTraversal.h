@@ -76,7 +76,6 @@ namespace Falcor {
 
         uint32_t traverse() {
             if (mNodeList.empty()) {
-                logWarning(Args::getName() + " traversal ended, nowhere new to go");
                 return DirectedGraph::kInvalidID;
             }
 
@@ -85,7 +84,6 @@ namespace Falcor {
                 while (mVisited[curNode]) {
                     mNodeList.pop();
                     if (mNodeList.empty()) {
-                        logWarning(Args::getName() + " traversal ended, nowhere new to go");
                         return DirectedGraph::kInvalidID;
                     }
                     curNode = Args::getTop(mNodeList);

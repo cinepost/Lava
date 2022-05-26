@@ -113,7 +113,7 @@ uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::str
 void RenderGraph::removePass(const std::string& name) {
     uint32_t index = getPassIndex(name);
     if (index == kInvalidIndex) {
-        logWarning("Can't remove pass `" + name + "`. Pass doesn't exist");
+        LLOG_WRN << "Can't remove pass `" << name << "`. Pass doesn't exist";
         return;
     }
 
@@ -140,14 +140,14 @@ void RenderGraph::updatePass(RenderContext* pRenderContext, const std::string& p
     const auto pPassIt = mNodeData.find(index);
 
     if (pPassIt == mNodeData.end()) {
-        logError("Error in RenderGraph::updatePass(). Unable to find pass " + passName);
+        LLOG_ERR << "Error in RenderGraph::updatePass(). Unable to find pass " << passName;
         return;
     }
 
     // Recreate pass without changing graph using new dictionary
     auto pOldPass = pPassIt->second.pPass;
     std::string passTypeName = getClassTypeName(pOldPass.get());
-    auto pPass = RenderPassLibrary::instance(mpDevice).createPass(pRenderContext, passTypeName.c_str(), dict);
+    auto pPass = RenderPassLibrary::instance().createPass(pRenderContext, passTypeName.c_str(), dict);
     pPassIt->second.pPass = pPass;
     pPass->mPassChangedCB = [this]() { mRecompile = true; };
     pPass->mName = pOldPass->getName();
@@ -160,7 +160,7 @@ const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
     uint32_t index = getPassIndex(name);
     if (index == kInvalidIndex) {
         static RenderPass::SharedPtr pNull;
-        logError("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
+        LLOG_ERR << "RenderGraph::getRenderPass() - can't find a pass named `" << name << "`";
         return pNull;
     }
     return mNodeData.at(index).pPass;
@@ -200,12 +200,12 @@ static RenderPass* getRenderPassAndNamePair(const RenderGraph* pGraph, const std
 
     RenderPass* pPass = pGraph->getPass(nameAndField.first).get();
     if (!pPass) {
-        logError(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
+        LLOG_ERR << errorPrefix << " - can't find render-pass named '" << nameAndField.first << "'";
         return nullptr;
     }
 
     if (nameAndField.second.size() && checkRenderPassIoExist<input>(pPass, nameAndField.second) == false) {
-        logError(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
+        LLOG_ERR << errorPrefix << "- can't find field named `" << nameAndField.second << "` in render-pass `" << nameAndField.first << "`";
         return nullptr;
     }
     return pPass;
@@ -227,7 +227,7 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst) {
 
     if (pSrc == nullptr || pDst == nullptr) return kInvalidIndex;
     if (checkMatchingEdgeTypes(newEdge.srcField, newEdge.dstField) == false) {
-        logError("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. One of the nodes is a resource while the other is a pass. Can't tell if you want a data-dependency or an execution-dependency");
+        LLOG_ERR << "RenderGraph::addEdge() - can't add the edge [" << src << ", " << dst << "]. One of the nodes is a resource while the other is a pass. Can't tell if you want a data-dependency or an execution-dependency";
         return kInvalidIndex;
     }
 
@@ -247,7 +247,7 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst) {
                     removeEdge(incomingEdgeId);
                     break;
                 } else {
-                    logError("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
+                    LLOG_ERR << "RenderGraph::addEdge() - destination `" << dst << "` is already initialized. Please remove the existing connection before trying to add an edge";
                     return kInvalidIndex;
                 }
             }
@@ -256,7 +256,7 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst) {
 
     // Make sure that this doesn't create a cycle
     if (DirectedGraphPathDetector::hasPath(mpGraph, dstIndex, srcIndex)) {
-        logError("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. The edge will create a cycle in the graph which is not allowed");
+        LLOG_ERR << "RenderGraph::addEdge() - can't add the edge [" << src << ", " << dst << "]. The edge will create a cycle in the graph which is not allowed";
         return kInvalidIndex;
     }
 
@@ -272,7 +272,7 @@ void RenderGraph::removeEdge(const std::string& src, const std::string& dst) {
     const auto& pDst = getRenderPassAndNamePair<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
 
     if (pSrc == nullptr || pDst == nullptr) {
-        logError("Unable to remove edge. Input or output node not found.");
+        LLOG_ERR << "Unable to remove edge. Input or output node not found.";
         return;
     }
 
@@ -293,7 +293,7 @@ void RenderGraph::removeEdge(const std::string& src, const std::string& dst) {
 
 void RenderGraph::removeEdge(uint32_t edgeID) {
     if (mEdgeData.find(edgeID) == mEdgeData.end()) {
-        logError("Can't remove edge with index " + std::to_string(edgeID) + ". The edge doesn't exist");
+        LLOG_ERR << "Can't remove edge with index " << std::to_string(edgeID) << ". The edge doesn't exist";
         return;
     }
     mEdgeData.erase(edgeID);
@@ -357,7 +357,7 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
 void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_t sampleNumber) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::execute() call");
+        LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::execute() call";
         return;
     }
 
@@ -373,7 +373,7 @@ void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_
 void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::resolvePerFrameSparseResources() call");
+        LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::resolvePerFrameSparseResources() call";
         return;
     }
 
@@ -389,7 +389,7 @@ void RenderGraph::resolvePerFrameSparseResources(RenderContext* pContext) {
 void RenderGraph::resolvePerSampleSparseResources(RenderContext* pContext) {
     std::string log;
     if (!compile(pContext, log)) {
-        logError("Failed to compile RenderGraph named: " + mName + "\n" + log + "Ignoring RenderGraph::resolvePerSampleSparseResources() call");
+        LLOG_ERR << "Failed to compile RenderGraph named: " << mName << "\n" << log << "Ignoring RenderGraph::resolvePerSampleSparseResources() call";
         return;
     }
 
@@ -713,7 +713,7 @@ SCRIPT_BINDING(RenderGraph)
 
     // RenderPassLibrary
     const auto& createRenderPass = [](std::shared_ptr<Device> pDevice, const std::string& passName, pybind11::dict d = {}) {
-        auto pPass = RenderPassLibrary::instance(pDevice).createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
+        auto pPass = RenderPassLibrary::instance().createPass(pDevice->getRenderContext(), passName.c_str(), Dictionary(d));
         if (!pPass) { 
             throw std::runtime_error(("Can't create a render pass named `" + passName + "`. Make sure the required library was loaded.").c_str());
         }
@@ -725,13 +725,13 @@ SCRIPT_BINDING(RenderGraph)
 
     const auto& loadPassLibraryDefault = [](const std::string& library) {
         for(auto& pDevice: DeviceManager::instance().renderingDevices())
-            RenderPassLibrary::instance(pDevice).loadLibrary(library);
+            RenderPassLibrary::instance().loadLibrary(pDevice, library);
         return;
     };
     m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibraryDefault, "name"_a);
 
     const auto& loadPassLibrary = [](std::shared_ptr<Device> pDevice, const std::string& library) {
-        return RenderPassLibrary::instance(pDevice).loadLibrary(library);
+        return RenderPassLibrary::instance().loadLibrary(pDevice, library);
     };
     m.def(RenderGraphIR::kLoadPassLibrary, loadPassLibrary, "device"_a, "name"_a);
 

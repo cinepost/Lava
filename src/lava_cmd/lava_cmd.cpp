@@ -67,7 +67,7 @@ void listGPUs() {
   std::cout << "Available rendering devices:\n";
   const auto& deviceMap = pDeviceManager->listDevices();
   for( auto const& [gpu_id, name]: deviceMap ) {
-    std::cout << "\t[" << to_string(gpu_id) << "] : " << name << "\n";
+    std::cout << "\t[" << std::to_string(static_cast<uint32_t>(gpu_id)) << "] : " << name << "\n";
   }
   std::cout << std::endl;
 }

@@ -208,7 +208,8 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
     gfx::IDevice::Desc iDesc;
 
     iDesc.existingDeviceHandles.handles[0].api = gfx::InteropHandleAPI::Vulkan;
-    iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(vulkanInstance());
+    VkInstance instance = vulkanInstance();
+    iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(instance);
 
     iDesc.existingDeviceHandles.handles[1].api = gfx::InteropHandleAPI::Vulkan;
     iDesc.existingDeviceHandles.handles[1].handleValue = reinterpret_cast<uint64_t>(mPhysicalDevices[gpuId]);
@@ -217,9 +218,12 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
     iDesc.existingDeviceHandles.handles[2].handleValue = 0;
 
     pDevice = Device::create(nullptr, iDesc, desc);
+    //pDevice = Device::create(nullptr, desc);
     if (!pDevice) {
-        LLOG_ERR << "Unable to create rendering device on gpu " << gpuId << " !";
+        LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";
         return nullptr;
+    } else {
+        LLOG_INF << "Rendering device created on gpu id " << std::to_string(gpuId) << "!";
     }
 
     mRenderingDevices[gpuId] = pDevice;

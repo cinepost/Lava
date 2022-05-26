@@ -40,6 +40,10 @@
 #include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #endif 
 
+#if FALCOR_GFX_VK
+#include <vulkan/vulkan.h>
+#endif
+
 #include "Falcor/Core/API/Device.h"
 
 namespace Falcor {
@@ -73,7 +77,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
 
-#ifdef FALCOR_GFX
+#if FALCOR_GFX_VK
     const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
     VkInstance vulkanInstance() const;
 #endif

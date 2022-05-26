@@ -31,7 +31,7 @@
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 
-const char* GBufferRaster::kDesc = "Rasterized G-buffer generation pass";
+const RenderPass::Info GBufferRaster::kInfo { "GBufferRaster", "Rasterized G-buffer generation pass." };
 
 namespace {
 
@@ -74,7 +74,7 @@ GBufferRaster::SharedPtr GBufferRaster::create(RenderContext* pRenderContext, co
     return SharedPtr(new GBufferRaster(pRenderContext->device(), dict));
 }
 
-GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice) {
+GBufferRaster::GBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict): GBuffer(pDevice, kInfo) {
     // Check for required features.
     if (!pDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics)) {
         throw std::runtime_error("Pixel shader barycentrics are not supported by the current device");

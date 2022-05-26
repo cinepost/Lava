@@ -36,17 +36,16 @@ class Device;
 
     class dlldecl RenderPassLibrary {
      public:
-        RenderPassLibrary(std::shared_ptr<Device> pDevice);// = default;
+        RenderPassLibrary() = default;
         RenderPassLibrary(RenderPassLibrary&) = delete;
         ~RenderPassLibrary();
         using CreateFunc = std::function<RenderPass::SharedPtr(RenderContext*, const Dictionary&)>;
 
         struct RenderPassDesc {
             RenderPassDesc() = default;
-            RenderPassDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
+            RenderPassDesc(const RenderPass::Info& info, CreateFunc func) : info(info), func(func) {}
 
-            const char* className = nullptr;
-            const char* desc = nullptr;
+            RenderPass::Info info;
             CreateFunc func = nullptr;
         };
 
@@ -54,15 +53,18 @@ class Device;
 
         /** Get an instance of the library. It's a singleton, you'll always get the same object
         */
-        static RenderPassLibrary& instance(std::shared_ptr<Device> pDevice);
+        static RenderPassLibrary& instance();
 
         /** Call this before the app is shutting down to release all the libraries
         */
         void shutdown();
 
-        /** Add a new pass class to the library
+        /** Register a render pass to the library.
+            \param[in] info Render pass info.
+            \param[in] func Render pass factory.
+            \return The render pass library.
         */
-        RenderPassLibrary& registerClass(const char* className, const char* desc, CreateFunc func);
+        RenderPassLibrary& registerPass(const RenderPass::Info& info, CreateFunc func);
 
         /** Instantiate a new render pass object.
             \param[in] pRenderContext The render context.
@@ -78,7 +80,7 @@ class Device;
 
         /** Load a new render-pass library (DLL/DSO)
         */
-        void loadLibrary(const std::string& filename);
+        void loadLibrary(Device::SharedPtr pDevice, const std::string& filename);
 
         /** Release a previously loaded render-pass library (DLL/DSO)
         */
@@ -104,26 +106,25 @@ class Device;
 
     private:
         static RenderPassLibrary* spInstance;
-        static std::map<Device*, RenderPassLibrary*> spInstances;
 
         struct ExtendedDesc : RenderPassDesc {
             ExtendedDesc() = default;
-            ExtendedDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc_, func_), module(module_) {}
+            ExtendedDesc(const RenderPass::Info& info, CreateFunc func, SharedLibraryHandle library) : RenderPassDesc(info, func), library(library) {}
 
-            DllHandle module = nullptr;
+            SharedLibraryHandle library = nullptr;
         };
 
-        void registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle hmodule);
+        void registerInternal(const RenderPass::Info& info, CreateFunc func, SharedLibraryHandle library);
 
         struct LibDesc {
-            DllHandle module;
+            SharedLibraryHandle library;
             time_t lastModified;
         };
         std::unordered_map<std::string, LibDesc> mLibs;
         std::unordered_map<std::string, ExtendedDesc> mPasses;
 
-        std::shared_ptr<Device> mpDevice;
+        std::unordered_map<std::string, std::vector<Device::SharedPtr>> mLibDevices;
 
-        void reloadLibrary(RenderContext* pRenderContext, std::string name);
+        void reloadLibrary(RenderContext* pRenderContext, const std::string& filename);
     };
 }

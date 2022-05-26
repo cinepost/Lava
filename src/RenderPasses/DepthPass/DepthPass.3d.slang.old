@@ -48,7 +48,11 @@ float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint t
     return normalize(mul(N, worldInvTransposeMat));
 }
 
-void main(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
+VSOut vsMain(VSIn vIn) {
+    return defaultVS(vIn);
+}
+
+void psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
     //float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
 
     // Early discard (backface, phantom, etc)

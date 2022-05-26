@@ -562,6 +562,19 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
     */
     const GeometryInstanceData &getGeometryInstance(uint32_t instanceID) const { return mGeometryInstanceData[instanceID]; }
 
+    /** Get a list of all geometry IDs for a given geometry type.
+        \param[in] geometryType The geometry type.
+        \return List of geometry IDs.
+    */
+    std::vector<uint32_t> getGeometryIDs(GeometryType geometryType) const;
+
+    /** Get a list of all geometry IDs for a given geometry and material type.
+        \param[in] geometryType The geometry type.
+        \param[in] materialType The material type.
+        \return List of geometry IDs.
+    */
+    std::vector<uint32_t> getGeometryIDs(GeometryType geometryType, MaterialType materialType) const;
+
     /** Get the number of curves.
     */
     uint32_t getCurveCount() const { return (uint32_t)mCurveDesc.size(); }

@@ -31,7 +31,7 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
 
-const char* GBufferRT::kDesc = "Ray traced G-buffer generation pass";
+const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
 
 namespace
 {
@@ -100,7 +100,7 @@ Dictionary GBufferRT::getScriptingDictionary() {
     return dict;
 }
 
-GBufferRT::GBufferRT(const Dictionary& dict) : GBuffer() {
+GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict) : GBuffer(pDevice, kInfo) {
     parseDictionary(dict);
 
     // Create random engine

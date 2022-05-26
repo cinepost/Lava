@@ -110,6 +110,9 @@ namespace Falcor
         , mpReflector(pReflector->getDefaultParameterBlock())
         , mpProgramVersion(pReflector->getProgramVersion())
     {
+        assert(pDevice);
+        assert(pReflector);
+        
         FALCOR_GFX_CALL(mpDevice->getApiHandle()->createMutableRootShaderObject(
             pReflector->getProgramVersion()->getKernels(nullptr)->getApiHandle(),
             mpShaderObject.writeRef()));

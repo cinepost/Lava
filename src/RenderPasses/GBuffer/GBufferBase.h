@@ -31,9 +31,11 @@
 #include <pybind11/embed.h>
 
 #include "Falcor/Falcor.h"
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
@@ -64,10 +66,12 @@ class GBufferBase : public RenderPass {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
  protected:
-    GBufferBase(Device::SharedPtr pDevice);
+    GBufferBase(Device::SharedPtr pDevice, Info info);
     virtual void parseDictionary(const Dictionary& dict);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
+    void updateFrameDim(const uint2 frameDim);
     void updateSamplePattern();
+    Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
 
     // Internal state
     Scene::SharedPtr                mpScene;

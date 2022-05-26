@@ -35,6 +35,9 @@
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
+const RenderPass::Info SkyBox::kInfo { "SkyBox", "Render an environment map. The map can be provided by the user or taken from a scene." };
+
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
@@ -48,10 +51,9 @@ static void regSkyBox(pybind11::module& m) {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("SkyBox", "Render an environment map", SkyBox::create);
+    lib.registerPass(SkyBox::kInfo, SkyBox::create);
     ScriptBindings::registerBinding(regSkyBox);
 }
-const char* SkyBox::kDesc = "Render an environment-map. The map can be provided by the user or taken from a scene";
 
 namespace {
 
@@ -66,13 +68,13 @@ namespace {
 
 }
 
-SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
+SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     assert(pDevice);
 
     mpCubeScene = Scene::create(pDevice, "SkyBox/cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
-    mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.slang", "vs", "ps");
+    mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.3d.slang", "vsMain", "psMain");
     mpProgram->addDefines(mpCubeScene->getSceneDefines());
     mpProgram->addDefine("_SKYBOX_SOLID_MODE");
     mpVars = GraphicsVars::create(pDevice, mpProgram->getReflector());
@@ -143,6 +145,8 @@ RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
 }
 
 void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+    LLOG_DBG << "SkyBox::execute";
+
     mpFbo->attachColorTarget(renderData[kTarget]->asTexture(), 0);
     mpFbo->attachDepthStencilTarget(renderData[kDepth]->asTexture());
 
@@ -161,6 +165,8 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
     mpState->setFbo(mpFbo);
     mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
+
+    LLOG_DBG << "SkyBox::execute done";
 }
 
 void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {

@@ -94,7 +94,7 @@ Renderer::~Renderer() {
     mpSampler = nullptr;
 
     Falcor::Scripting::shutdown();
-    Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
+    Falcor::RenderPassLibrary::instance().shutdown();
 
     mpTargetFBO.reset();
 
@@ -237,7 +237,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpLightingPass->setColorFormat(ResourceFormat::RGBA32Float);
 
     auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
-
 
     // SkyBox
     mpSkyBoxPass = SkyBox::create(pRenderContext);

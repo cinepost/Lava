@@ -90,9 +90,11 @@
 #endif
 
 #include "Core/API/Shared/D3D12Handles.h"
+#if FALCOR_GFX_VK
+#include <vulkan/vulkan.h>
+#endif
 
-#define FAILED(res) (res != VK_SUCCESS)
-#define FALCOR_GFX_CALL(a) {auto hr_ = a; if(FAILED(hr_)) { reportError(#a); }}
+#define FALCOR_GFX_CALL(a) {auto hr_ = a; if(SLANG_FAILED(hr_)) { reportError(#a); }}
 
 #if FALCOR_GFX_D3D12
 #pragma comment(lib, "dxgi.lib")

@@ -7,14 +7,14 @@
 #include "Falcor/stdafx.h"
 #include "ResourceManager.h"
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 #include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/ConfigStore.h"
 
 #include "boost/filesystem/operations.hpp"
-#include "boost/filesystem/path.hpp"
-namespace fs = boost::filesystem;
+
 
 namespace Falcor {
 

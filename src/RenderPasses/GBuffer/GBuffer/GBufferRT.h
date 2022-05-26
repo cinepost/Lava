@@ -41,13 +41,14 @@ class GBufferRT : public GBuffer {
   public:
     using SharedPtr = std::shared_ptr<GBufferRT>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     Dictionary getScriptingDictionary() override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    std::string getDesc() override { return kDesc; }
 
     enum class LODMode {
         UseMip0          = 0,       // Don't compute LOD (default)
@@ -56,7 +57,7 @@ class GBufferRT : public GBuffer {
     };
 
   private:
-    GBufferRT(const Dictionary& dict);
+    GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state

@@ -406,7 +406,6 @@ Profiler::Event* Profiler::findEvent(const std::string& name) {
 }
 
 ProfilerEvent::ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags) :mpDevice(pDevice), mName(name), mFlags(flags) { 
-    printf("ProfilerEvent %s", name.c_str());
     Profiler::instance(mpDevice).startEvent(mName, mFlags); 
 }
 

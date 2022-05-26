@@ -74,8 +74,15 @@ namespace Falcor
     void LowLevelContextData::openCommandBuffer()
     {
         mpApiData->mIsCommandBufferOpen = true;
-        auto transientHeap = mpDevice->getApiData()->pTransientResourceHeaps[mpDevice->getCurrentBackBufferIndex()].get();
-        mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+
+        if(!mpDevice->isHeadless()) {
+            auto transientHeap = mpDevice->getApiData()->pTransientResourceHeaps[mpDevice->getCurrentBackBufferIndex()].get();
+            mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+        } else {
+            auto transientHeap = mpDevice->getApiData()->pTransientResourceHeaps[0].get();
+            mpApiData->pCommandBuffer = transientHeap->createCommandBuffer();
+        }
+
 #if FALCOR_D3D12_AVAILABLE
         mpApiData->mUsingCustomDescriptorHeap = false;
 #endif

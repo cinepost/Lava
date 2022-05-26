@@ -138,7 +138,6 @@ void RenderGraphCompiler::resolveExecutionOrder() {
     for (auto& node : topologicalSort) {
         if (participatingPasses.find(node) != participatingPasses.end()) {
             const auto pData = mGraph.mNodeData[node];
-            LOG_DBG("!!!");
             mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect(compileData) });
         }
     }

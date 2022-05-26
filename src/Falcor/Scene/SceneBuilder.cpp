@@ -534,7 +534,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
         StaticVertexData s;
         s.position = v.position;
-        s.normal = v.normal;
+        s.normal = {1, 0, 0};//v.normal;
         s.texCrd = v.texCrd;
         s.tangent = v.tangent;
         s.curveRadius = v.curveRadius;

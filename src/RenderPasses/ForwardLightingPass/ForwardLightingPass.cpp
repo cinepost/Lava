@@ -39,7 +39,13 @@
 
 #include "glm/gtx/string_cast.hpp"
 
+const RenderPass::Info ForwardLightingPass::kInfo
+{
+    "ForwardLightingPass",
 
+    "Computes direct and indirect illumination and applies shadows for the current scene (if visibility map is provided).\n"
+    "The pass can output the world-space normals and screen-space motion vectors, both are optional."
+};
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -47,13 +53,12 @@ extern "C" falcorexport const char* getProjDir() {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("ForwardLightingPass", "Computes direct and indirect illumination and applies shadows for the current scene", ForwardLightingPass::create);
+    lib.registerPass(ForwardLightingPass::kInfo, ForwardLightingPass::create);
 }
 
-const char* ForwardLightingPass::kDesc = "The pass computes the lighting results for the current scene. It will compute direct-illumination, indirect illumination from the light-probe and apply shadows (if a visibility map is provided).\n"
-"The pass can output the world-space normals and screen-space motion vectors, both are optional";
-
 namespace {
+    const char kShaderFile[] = "RenderPasses/ForwardLightingPass/ForwardLightingPass.3d.slang";
+
     const std::string kDepth = "depth";
     const std::string kColor = "color";
     const std::string kMotionVecs = "motionVecs";
@@ -89,19 +94,19 @@ Dictionary ForwardLightingPass::getScriptingDictionary() {
     return d;
 }
 
-ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice) {
-    GraphicsProgram::SharedPtr mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/ForwardLightingPass/ForwardLightingPass.slang", "", "ps");
-    mpProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
-    mpProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
-    mpProgram->addDefine("ENABLE_DEFERED_AO", "1");
+ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
+    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(pDevice, kShaderFile, "vsMain", "psMain");
+    pProgram->addDefine("_MS_DISABLE_ALPHA_TEST", "");
+    pProgram->removeDefine("_MS_DISABLE_ALPHA_TEST"); // TODO: move to execute
+    pProgram->addDefine("ENABLE_DEFERED_AO", "1");
 
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     assert(mpSampleGenerator);
-    mpProgram->addDefines(mpSampleGenerator->getDefines());
+    pProgram->addDefines(mpSampleGenerator->getDefines());
 
     mpState = GraphicsState::create(pDevice);
-    mpState->setProgram(mpProgram);
+    mpState->setProgram(pProgram);
 
     mpFbo = Fbo::create(pDevice);
 
@@ -140,10 +145,6 @@ void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileDa
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();
 
-    if(mUseSSAO) {
-        mpState->getProgram()->addDefine("USE_SSAO", "1");
-    }
-
     mpNoiseOffsetGenerator = StratifiedSamplePattern::create(mFrameSampleCount);
     mpBlueNoiseTexture = BlueNoiseTexture::create(pDevice);
 }
@@ -152,10 +153,11 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
     mpScene = pScene;
     mpVars = nullptr;
 
+    assert(pRenderContext->device() && "no device");
+
     if (mpScene) {
         mpState->getProgram()->addDefines(mpScene->getSceneDefines());
         mpState->getProgram()->setTypeConformances(mpScene->getTypeConformances());
-
         mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 
         Sampler::Desc samplerDesc;
@@ -198,6 +200,8 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
 }
 
 void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
+    LLOG_DBG << "ForwardLightingPass::execute";
+
     initDepth(pContext, renderData);
     initFbo(pContext, renderData);
     
@@ -216,13 +220,13 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
     mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
 
-    if(renderData[kVisBuffer])
+    if(renderData[kVisBuffer]) {
         mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    }
     
     mpState->setFbo(mpFbo);
     mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
-    //mpScene->rasterizeX(pContext, mpState.get(), mpVars.get(), mCullMode);
-
+    LLOG_DBG << "ForwardLightingPass::execute done";
 }
 
 void ForwardLightingPass::prepareVars(RenderContext* pContext) {
@@ -253,8 +257,7 @@ void ForwardLightingPass::prepareVars(RenderContext* pContext) {
 
     mpVars["gNoiseSampler"]     = mpNoiseSampler;
     mpVars["gNoiseTex"]         = mpBlueNoiseTexture;
-    //mpVars["gTlas"] = mpScene->getTlas();
-
+    
     bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
     if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
 

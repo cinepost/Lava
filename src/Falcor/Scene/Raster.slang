@@ -86,11 +86,9 @@ VSOut defaultVS(VSIn vIn)
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
 
-    const StaticVertexData v = vIn.unpack();
-
     vOut.texC = float2(vIn.texU, vIn.texV);
-    vOut.normalW = mul(v.normal, gScene.getInverseTransposeWorldMatrix(instanceID));
-    float4 tangent = v.tangent;
+    vOut.normalW = vIn.packedNormalTangentCurveRadius; //mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+    float4 tangent = vIn.unpack().tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 
     // Compute the vertex position in the previous frame.
@@ -117,7 +115,7 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
     VertexData v;
     v.posW = vsOut.posW;
     v.texC = vsOut.texC;
-    v.normalW = vsOut.normalW;
+    v.normalW = normalize(vsOut.normalW);
     v.faceNormalW = faceNormalW;
     v.tangentW.xyz = normalize(vsOut.tangentW.xyz);
     v.tangentW.w = sign(vsOut.tangentW.w); // Preserve zero to indicate invalid tangent.

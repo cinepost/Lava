@@ -318,10 +318,35 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
-    // nvvk testing stuff
-    //initRayTracing();
-    //createBottomLevelAS();
-    //createTopLevelAS();
+    LLOG_DBG << "Scene::rasterize";
+
+    // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
+    if (!mBlasDataValid)
+    {
+        initGeomDesc(pContext);
+        buildBlas(pContext);
+    }
+
+    // On first execution, when meshes have moved, when there's a new ray type count, or when a BLAS has changed, create/update the TLAS
+    //
+    // The raytracing shader table has one hit record per ray type and geometry. We need to know the ray type count in order to setup the indexing properly.
+    // Note that for DXR 1.1 ray queries, the shader table is not used and the ray type count doesn't matter and can be set to zero.
+    //
+    int rayTypeCount = 0;
+    auto tlasIt = mTlasCache.find(rayTypeCount);
+    if (tlasIt == mTlasCache.end() || !tlasIt->second.pTlasObject)
+    {
+        // We need a hit entry per mesh right now to pass GeometryIndex()
+        buildTlas(pContext, rayTypeCount, true);
+
+        // If new TLAS was just created, get it so the iterator is valid
+        if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
+    }
+    FALCOR_ASSERT(mpSceneBlock);
+
+    // Bind TLAS.
+    FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
+    mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     // Bind TLAS.
     //mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
@@ -348,6 +373,7 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     }
 
     pState->setRasterizerState(pCurrentRS);
+    LLOG_DBG << "Scene::rasterize done";
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
@@ -617,7 +643,7 @@ void Scene::initSDFGrids() {
 
 
 void Scene::initResources() {
-    GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "", "main", getSceneDefines());
+    ComputeProgram::SharedPtr pProgram = ComputeProgram::createFromFile(mpDevice, "Scene/SceneBlock.slang", "main", getSceneDefines());
     ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
     assert(pReflection);
 
@@ -1639,14 +1665,14 @@ void Scene::setCamera(const Camera::SharedPtr& pCamera) {
     if (it != mCameras.end()) {
         selectCamera((uint32_t)std::distance(mCameras.begin(), it));
     } else if (pCamera) {
-        logWarning("Selected camera " + pCamera->getName() + " does not exist.");
+        LLOG_WRN << "Selected camera " << pCamera->getName() << " does not exist.";
     }
 }
 
 void Scene::selectCamera(uint32_t index) {
     if (index == mSelectedCamera) return;
     if (index >= mCameras.size()) {
-        logWarning("Selected camera index " + std::to_string(index) + " is invalid.");
+        LLOG_WRN << "Selected camera index " << std::to_string(index) << " is invalid.";
         return;
     }
 
@@ -1687,7 +1713,7 @@ void Scene::addViewpoint(const float3& position, const float3& target, const flo
 
 void Scene::removeViewpoint() {
     if (mCurrentViewpoint == 0) {
-        logWarning("Cannot remove default viewpoint");
+        LLOG_WRN << "Cannot remove default viewpoint";
         return;
     }
     mViewpoints.erase(mViewpoints.begin() + mCurrentViewpoint);
@@ -1696,7 +1722,7 @@ void Scene::removeViewpoint() {
 
 void Scene::selectViewpoint(uint32_t index) {
     if (index >= mViewpoints.size()) {
-        logWarning("Viewpoint does not exist");
+    LLOG_WRN << "Viewpoint does not exist";
         return;
     }
 
@@ -1715,6 +1741,36 @@ uint32_t Scene::getGeometryCount() const {
     size_t totalGeometries = mMeshDesc.size() + mCurveDesc.size() + mCustomPrimitiveDesc.size();
     assert(totalGeometries < std::numeric_limits<uint32_t>::max());
     return (uint32_t)totalGeometries;
+}
+
+std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType) const
+{
+    if (!hasGeometryType(geometryType)) return {};
+
+    std::vector<uint32_t> geometryIDs;
+    uint32_t geometryCount = getGeometryCount();
+    for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
+    {
+        if (getGeometryType(geometryID) == geometryType) geometryIDs.push_back(geometryID);
+    }
+    return geometryIDs;
+}
+
+std::vector<uint32_t> Scene::getGeometryIDs(GeometryType geometryType, MaterialType materialType) const
+{
+    if (!hasGeometryType(geometryType)) return {};
+
+    std::vector<uint32_t> geometryIDs;
+    uint32_t geometryCount = getGeometryCount();
+    for (uint32_t geometryID = 0; geometryID < geometryCount; geometryID++)
+    {
+        auto pMaterial = getGeometryMaterial(geometryID);
+        if (getGeometryType(geometryID) == geometryType && pMaterial && pMaterial->getType() == materialType)
+        {
+            geometryIDs.push_back(geometryID);
+        }
+    }
+    return geometryIDs;
 }
 
 Scene::GeometryType Scene::getGeometryType(uint32_t geometryID) const {

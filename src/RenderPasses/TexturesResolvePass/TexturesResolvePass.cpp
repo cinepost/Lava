@@ -8,16 +8,17 @@
 #include "TexturesResolvePass.h"
 
 
+const RenderPass::Info TexturesResolvePass::kInfo { "TexturesResolve", "Resolves sparse textures tiles to be loaded" };
+
+
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("TexturesResolve", "Resolves sparse textures tiles to be loaded", TexturesResolvePass::create);
+    lib.registerPass(TexturesResolvePass::kInfo, TexturesResolvePass::create);
 }
-
-const char* TexturesResolvePass::kDesc = "Creates a depth-buffer using the scene's active camera";
 
 namespace {
     const std::string kProgramFile = "RenderPasses/TexturesResolvePass/TexturesResolvePass.ps.slang";
@@ -49,7 +50,7 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
     return SharedPtr(pTexturesResolvePass);
 }
 
-TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     
     //Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
     Program::Desc desc;

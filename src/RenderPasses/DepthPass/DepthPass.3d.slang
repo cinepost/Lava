@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,46 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_
-#define SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_
+import Scene.Raster;
 
-#include "../GBufferBase.h"
+VSOut vsMain(VSIn vIn)
+{
+    return defaultVS(vIn);
+}
 
-using namespace Falcor;
-
-/** Rasterized V-buffer pass.
-
-    This pass renders a visibility buffer using ray tracing.
-    The visibility buffer encodes the mesh instance ID and primitive index,
-    as well as the barycentrics at the hit point.
-*/
-class VBufferRaster : public GBufferBase {
- public:
-    using SharedPtr = std::shared_ptr<VBufferRaster>;
-
-    static const Info kInfo;
-
-    static SharedPtr create(RenderContext* pRenderContext, const Dictionary& dict);
-
-    RenderPassReflection reflect(const CompileData& compileData) override;
-    void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-
- private:
-    VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
-
-    // Internal state
-    Fbo::SharedPtr                  mpFbo;
-
-    struct
-    {
-        GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
-    } mRaster;
-
-    static const char* kDesc;
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
-};
-
-#endif  // SRC_FALCOR_RENDERPASSES_GBUFFER_VBUFFER_VBUFFERRASTER_H_
+void psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+{
+#if USE_ALPHA_TEST
+    //let lod = ImplicitLodTextureSampler();
+    //if (alphaTest(vsOut, triangleIndex, lod)) discard;
+#endif
+}

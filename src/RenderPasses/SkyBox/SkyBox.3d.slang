@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Scene;
-import Scene.ShadingData;
-import Utils.Helpers;
+import Utils.Math.MathHelpers;
 
 #ifdef _SPHERICAL_MAP
 Texture2D gTexture;
@@ -47,7 +46,7 @@ cbuffer PerFrameCB : register(b0) {
 };
 
 [shader("vertex")]
-void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION) {
+void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_POSITION) {
 
 #ifdef _SKYBOX_SOLID_MODE
     dir = float3(1.0, 0.0, 0.0);
@@ -62,7 +61,7 @@ void vs(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : SV_PO
 }
 
 [shader("fragment")]
-float4 ps(float3 dir : NORMAL) : SV_TARGET {
+float4 psMain(float3 dir : NORMAL) : SV_TARGET {
 
 #ifdef _SKYBOX_SOLID_MODE
     return float4(gIntensity, gTransparency);

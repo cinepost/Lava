@@ -48,8 +48,7 @@ std::atomic<std::uint8_t> Device::UID = 0;
 
 Device::Device(Window::SharedPtr pWindow, const Device::Desc& desc) : mpWindow(pWindow), mDesc(desc), mPhysicalDeviceName("Unknown") {
     _uid = UID++;
-
-    if(pWindow) { mHeadless = true; } else { mHeadless = false; };
+    if(pWindow) { mHeadless = false; } else { mHeadless = true; };
 }
 
 Device::SharedPtr Device::create(const Device::Desc& desc) {

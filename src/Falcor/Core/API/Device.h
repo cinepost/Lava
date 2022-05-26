@@ -40,9 +40,9 @@
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
-#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
+//#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
 
-#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+//#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace Falcor {
 
@@ -144,11 +144,11 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     /** VMA allocator
     */
-    const VmaAllocator& allocator() const { return mAllocator; }
+    //const VmaAllocator& allocator() const { return mAllocator; }
 
     /** NVVK allocator
     */
-    nvvk::LavaResourceAllocatorVma* nvvkAllocator() { return &mNvvkResourceAllocator; }
+    //nvvk::LavaResourceAllocatorVma* nvvkAllocator() { return &mNvvkResourceAllocator; }
 
     /** Check if the window is occluded
     */
@@ -283,7 +283,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
 #endif
 
+
  private:
+    Device(Window::SharedPtr pWindow, const Desc& desc);
+
     struct ResourceRelease {
         size_t frameID;
         ApiObjectHandle pApiObject;
@@ -295,8 +298,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint32_t mCurrentBackBufferIndex;
     std::shared_ptr<Fbo> mpSwapChainFbos[kSwapChainBuffersCount];
     std::shared_ptr<Fbo> mpOffscreenFbo;
-
-    Device(Window::SharedPtr pWindow, const Desc& desc);
 
     void executeDeferredReleases();
     void releaseFboData();
@@ -352,7 +353,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 
     void toggleFullScreen(bool fullscreen);
 
- protected:
+ public:
     /** Create a new rendering(headless) device.
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
@@ -379,6 +380,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static SharedPtr create(Window::SharedPtr pWindow, const gfx::IDevice::Desc& idesc, const Desc& desc);
 #endif
 
+  protected:
     bool init();
 
     std::string mPhysicalDeviceName;
@@ -391,14 +393,15 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 #endif
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
 
-    VmaAllocator    mAllocator;
-    nvvk::LavaResourceAllocatorVma mNvvkResourceAllocator;
+    //VmaAllocator    mAllocator;
+    //nvvk::LavaResourceAllocatorVma mNvvkResourceAllocator;
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 
     friend class DeviceManager;
     friend class ResourceManager;
 
+#ifdef FALCOR_VK
  public:
     VkPhysicalDeviceFeatures                            mDeviceFeatures;
     VkPhysicalDeviceFeatures2                           mPhysicalDeviceFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
@@ -412,6 +415,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     VkPhysicalDeviceAccelerationStructureFeaturesKHR    mEnabledAccelerationStructureFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
     VkPhysicalDeviceSynchronization2FeaturesKHR         mEnabledSynchronization2Features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
     VkPhysicalDeviceHostQueryResetFeatures              mEnabledHostQueryResetFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
+#endif
 };
 
 enum_class_operators(Device::SupportedFeatures);
