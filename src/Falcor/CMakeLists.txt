@@ -1,4 +1,4 @@
-set(DEPS_BINARY_DIR ${PROJECT_SOURCE_DIR}/deps/)
+set(DEPS_DIR ${PROJECT_SOURCE_DIR}/deps/)
 
 include_directories( 
     ${PROJECT_SOURCE_DIR}/deps
@@ -24,7 +24,7 @@ file( GLOB SOURCES
     ./RenderGraph/*.cpp
     ./RenderGraph/BasePasses/*.cpp
     ./RenderPasses/*.cpp
-    #./Rendering/RTXDI/*.cpp
+    ./Rendering/RTXDI/*.cpp
     #./Rendering/RTXGI/*.cpp
     ./Scene/*.cpp
     ./Scene/Animation/*.cpp
@@ -73,7 +73,7 @@ file( GLOB SOURCES
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
 # Blosc
-set(Blosc_ROOT ${DEPS_BINARY_DIR})
+set(Blosc_ROOT ${DEPS_DIR})
 find_package(Blosc 1.21.0 REQUIRED)
 
 # PyBind11
@@ -84,7 +84,7 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
-set(assimp_ROOT ${DEPS_BINARY_DIR})
+set(assimp_ROOT ${DEPS_DIR})
 find_package(assimp 5.0.0 REQUIRED)
 
 # LZ4
@@ -111,11 +111,11 @@ if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
 endif()
 
 # OpenEXR
-set(OpenEXR_ROOT ${DEPS_BINARY_DIR})
+set(OpenEXR_ROOT ${DEPS_DIR})
 find_package( OpenEXR 2.5 REQUIRED )
 
 # OpenImageIO
-set(OpenImageIO_ROOT ${DEPS_BINARY_DIR})
+set(OpenImageIO_ROOT ${DEPS_DIR})
 find_package( OpenImageIO REQUIRED )
 if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
@@ -160,7 +160,7 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
-set(BOOST_ROOT ${DEPS_BINARY_DIR})
+set(BOOST_ROOT ${DEPS_DIR})
 find_package( Boost COMPONENTS filesystem system REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
@@ -168,13 +168,13 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
-find_library( SLANG_LIBRARY slang PATHS ${DEPS_BINARY_DIR}/lib )
-find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_BINARY_DIR}/lib )
+find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
+find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 # OpenVDB/NanoVDB
-set(OpenVDB_ROOT ${DEPS_BINARY_DIR})
+set(OpenVDB_ROOT ${DEPS_DIR})
 find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
@@ -184,8 +184,12 @@ find_package(OpenSSL REQUIRED)
 message("OpenVDB ${OpenVDB_LIBRARY}")
 message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
 
+# RTXDi/Gi
+include_directories( ${DEPS_DIR}/rtxdi-sdk/include )
+include_directories( ${DEPS_DIR}/rtxgi-sdk/include )
+
 # NVTT
-find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_BINARY_DIR}/lib )
+find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_DIR}/lib )
 
 # GLFW3
 find_package(glfw3 3.3 REQUIRED)
@@ -241,11 +245,14 @@ if(UNIX)
     )
 
     # third party libs
-    install(DIRECTORY ${DEPS_BINARY_DIR}/lib/ DESTINATION 3rdparty/lib)
+    install(DIRECTORY ${DEPS_DIR}/lib/ DESTINATION 3rdparty/lib)
+
+    # third additional shaders and dependencies
+    install(DIRECTORY ${DEPS_DIR}/shaders/ DESTINATION shaders)
 
     # Install all needed shaders
     install(
-        DIRECTORY Core Experimental Raytracing RenderGraph RenderPasses Scene Testing Utils
+        DIRECTORY Core Experimental Raytracing RenderGraph Rendering RenderPasses Scene Testing Utils
         DESTINATION shaders
         FILES_MATCHING PATTERN "*.slan*"
     )

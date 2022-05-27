@@ -30,7 +30,9 @@
 
 
 #include "GBuffer.h"
-#include "Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+
+#include "Falcor/Experimental/Scene/Material/TexLODTypes.slang"
 
 using namespace Falcor;
 
@@ -57,24 +59,33 @@ class GBufferRT : public GBuffer {
     };
 
   private:
+    void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
+    void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
+
+    Program::DefineList getShaderDefines(const RenderData& renderData) const;
+    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void recreatePrograms();
+
     GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict) override;
 
     // Internal state
-    SampleGenerator::SharedPtr      mpSampleGenerator;
+    bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
+    SampleGenerator::SharedPtr mpSampleGenerator;
 
     // UI variables
-    LODMode                         mLODMode = LODMode::UseMip0;
+    TexLODMode mLODMode = TexLODMode::Mip0;
+    bool mUseTraceRayInline = false;
+    bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
 
     // Ray tracing resources
-    struct {
+    struct
+    {
         RtProgram::SharedPtr pProgram;
         RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 
-    static const char* kDesc;
-    static void registerBindings(pybind11::module& m);
-    friend void getPasses(Falcor::RenderPassLibrary& lib);
+    ComputePass::SharedPtr mpComputePass;
 };
 
 #endif  // GBUFFER_RT_H_

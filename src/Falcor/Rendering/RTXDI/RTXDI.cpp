@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 #include "lava_utils_lib/logging.h"
 
@@ -40,7 +42,7 @@ namespace {
     const std::string kRTXDIShadersFile = "Rendering/RTXDI/RTXDISetup.cs.slang";
     const std::string kLightUpdaterShaderFile = "Rendering/RTXDI/LightUpdater.cs.slang";
     const std::string kEnvLightUpdaterShaderFile = "Rendering/RTXDI/EnvLightUpdater.cs.slang";
-    const std::string kShaderModel = "450";
+    const std::string kShaderModel = "6_5";
 
     /** Config setting : Maximum number of unique screen-sized reservoir bufers needed by any
         RTXDI pipelines we create in this pass. Just controls memory allocation (not really perf).

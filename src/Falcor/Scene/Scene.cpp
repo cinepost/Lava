@@ -452,6 +452,8 @@ void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::sh
 
 void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData, const std::vector<SkinningVertexData>& skinningData)
 {
+    if (drawCount == 0) return;
+
     // Create the index buffer.
     size_t ibSize = sizeof(uint32_t) * indexData.size();
     if (ibSize > std::numeric_limits<uint32_t>::max()) {
@@ -507,8 +509,8 @@ void Scene::createMeshVao(uint32_t drawCount, const std::vector<uint32_t>& index
     // Add the packed static vertex data layout.
     VertexBufferLayout::SharedPtr pStaticLayout = VertexBufferLayout::create();
     pStaticLayout->addElement(VERTEX_POSITION_NAME, offsetof(PackedStaticVertexData, position), ResourceFormat::RGB32Float, 1, VERTEX_POSITION_LOC);
-    pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME, offsetof(PackedStaticVertexData, packedNormalTangentCurveRadius), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC);
     pStaticLayout->addElement(VERTEX_TEXCOORD_U_NAME, offsetof(PackedStaticVertexData, texU), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_U_LOC);
+    pStaticLayout->addElement(VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_NAME, offsetof(PackedStaticVertexData, packedNormalTangentCurveRadius), ResourceFormat::RGB32Float, 1, VERTEX_PACKED_NORMAL_TANGENT_CURVE_RADIUS_LOC);
     pStaticLayout->addElement(VERTEX_TEXCOORD_V_NAME, offsetof(PackedStaticVertexData, texV), ResourceFormat::R32Float, 1, VERTEX_TEXCOORD_V_LOC);
     pLayout->addBufferLayout(kStaticDataBufferIndex, pStaticLayout);
 
@@ -871,13 +873,15 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     size_t customAABBCount = mCustomPrimitiveAABBs.size();
     size_t totalAABBCount = curveAABBCount + customAABBCount;
 
-    if (totalAABBCount > std::numeric_limits<uint32_t>::max()) {
+    if (totalAABBCount > std::numeric_limits<uint32_t>::max())
+    {
         throw std::runtime_error("Procedural primitive count exceeds the maximum");
     }
 
     // If there are no procedural primitives, clear the CPU buffer and return.
     // We'll leave the GPU buffer to be lazily re-allocated when needed.
-    if (totalAABBCount == 0) {
+    if (totalAABBCount == 0)
+    {
         mRtAABBRaw.clear();
         return flags;
     }
@@ -888,9 +892,11 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     size_t firstUpdated = std::numeric_limits<size_t>::max();
     size_t lastUpdated = 0;
 
-    if (forceUpdate) {
+    if (forceUpdate)
+    {
         // Compute AABBs of curve segments.
-        for (const auto& curve : mCurveDesc) {
+        for (const auto& curve : mCurveDesc)
+        {
             // Track range of updated AABBs.
             // TODO: Per-curve flag to indicate changes. For now assume all curves need updating.
             firstUpdated = std::min(firstUpdated, (size_t)offset);
@@ -899,22 +905,18 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
             const auto* indexData = &mCurveIndexData[curve.ibOffset];
             const auto* staticData = &mCurveStaticData[curve.vbOffset];
 
-            for (uint32_t j = 0; j < curve.indexCount; j++) {
+            for (uint32_t j = 0; j < curve.indexCount; j++)
+            {
                 AABB curveSegBB;
                 uint32_t v = indexData[j];
 
-                for (uint32_t k = 0; k <= curve.degree; k++) {
+                for (uint32_t k = 0; k <= curve.degree; k++)
+                {
                     curveSegBB.include(staticData[v + k].position - float3(staticData[v + k].radius));
                     curveSegBB.include(staticData[v + k].position + float3(staticData[v + k].radius));
                 }
 
-                auto& aabb = mRtAABBRaw[offset++];
-                aabb.MinX = curveSegBB.minPoint.x;
-                aabb.MinY = curveSegBB.minPoint.y;
-                aabb.MinZ = curveSegBB.minPoint.z;
-                aabb.MaxX = curveSegBB.maxPoint.x;
-                aabb.MaxY = curveSegBB.maxPoint.y;
-                aabb.MaxZ = curveSegBB.maxPoint.z;
+                mRtAABBRaw[offset++] = static_cast<RtAABB>(curveSegBB);
             }
             flags |= Scene::UpdateFlags::CurvesMoved;
         }
@@ -922,21 +924,17 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     }
     offset = (uint32_t)curveAABBCount;
 
-    if (forceUpdate || mCustomPrimitivesChanged || mCustomPrimitivesMoved) {
+    if (forceUpdate || mCustomPrimitivesChanged || mCustomPrimitivesMoved)
+    {
         mCustomPrimitiveAABBOffset = offset;
 
         // Track range of updated AABBs.
         firstUpdated = std::min(firstUpdated, (size_t)offset);
         lastUpdated = std::max(lastUpdated, (size_t)offset + customAABBCount);
 
-        for (auto& aabb : mCustomPrimitiveAABBs) {
-            auto& rtAabb = mRtAABBRaw[offset++];
-            rtAabb.MinX = aabb.minPoint.x;
-            rtAabb.MinY = aabb.minPoint.y;
-            rtAabb.MinZ = aabb.minPoint.z;
-            rtAabb.MaxX = aabb.maxPoint.x;
-            rtAabb.MaxY = aabb.maxPoint.y;
-            rtAabb.MaxZ = aabb.maxPoint.z;
+        for (auto& aabb : mCustomPrimitiveAABBs)
+        {
+            mRtAABBRaw[offset++] = static_cast<RtAABB>(aabb);
         }
         assert(offset == totalAABBCount);
         flags |= Scene::UpdateFlags::CustomPrimitivesMoved;
@@ -944,8 +942,9 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
 
     // Create/update GPU buffer. This is used in BLAS creation and also bound to the scene for lookup in shaders.
     // Requires unordered access and will be in Non-Pixel Shader Resource state.
-    if (mpRtAABBBuffer == nullptr || mpRtAABBBuffer->getElementCount() < (uint32_t)mRtAABBRaw.size()) {
-        mpRtAABBBuffer = Buffer::createStructured(mpDevice, sizeof(D3D12_RAYTRACING_AABB), (uint32_t)mRtAABBRaw.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mRtAABBRaw.data(), false);
+    if (mpRtAABBBuffer == nullptr || mpRtAABBBuffer->getElementCount() < (uint32_t)mRtAABBRaw.size())
+    {
+        mpRtAABBBuffer = Buffer::createStructured(mpDevice, sizeof(RtAABB), (uint32_t)mRtAABBRaw.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, mRtAABBRaw.data(), false);
         mpRtAABBBuffer->setName("Scene::mpRtAABBBuffer");
 
         // Bind the new buffer to the scene.
@@ -954,12 +953,12 @@ Scene::UpdateFlags Scene::updateRaytracingAABBData(bool forceUpdate) {
     }
     else if (firstUpdated < lastUpdated)
     {
-        size_t bytes = sizeof(D3D12_RAYTRACING_AABB) * mRtAABBRaw.size();
+        size_t bytes = sizeof(RtAABB) * mRtAABBRaw.size();
         assert(mpRtAABBBuffer && mpRtAABBBuffer->getSize() >= bytes);
 
         // Update the modified range of the GPU buffer.
-        size_t offset = firstUpdated * sizeof(D3D12_RAYTRACING_AABB);
-        bytes = (lastUpdated - firstUpdated) * sizeof(D3D12_RAYTRACING_AABB);
+        size_t offset = firstUpdated * sizeof(RtAABB);
+        bytes = (lastUpdated - firstUpdated) * sizeof(RtAABB);
         mpRtAABBBuffer->setBlob(mRtAABBRaw.data() + firstUpdated, offset, bytes);
     }
 

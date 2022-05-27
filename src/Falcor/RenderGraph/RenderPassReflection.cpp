@@ -182,6 +182,13 @@ namespace Falcor
         return nullptr;
     }
 
+    RenderPassReflection::Field* RenderPassReflection::getField(const std::string& name) {
+        for (auto& field : mFields) {
+            if (field.getName() == name) return &field;
+        }
+        return nullptr;
+    }
+
     RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPassReflection::Field& other) {
         auto err = [&](const std::string& msg) {
             //const

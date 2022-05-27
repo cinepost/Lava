@@ -23,8 +23,9 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
+#include "RenderPasses/RTXDIPass/RTXDIPass.h"
 //#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
-//#include "RenderPasses/GBuffer/GBuffer/GBufferRaster.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 
 #include "aov.h"
 #include "scene_builder.h"

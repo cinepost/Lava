@@ -81,7 +81,7 @@ public:
     /** Creates an empty LightBVH object. Use a LightBVHBuilder to build the BVH.
         \param[in] pLightCollection The light collection around which the BVH will be built.
     */
-    static SharedPtr create(const LightCollection::SharedConstPtr& pLightCollection);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
 
     /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
         The BVH needs to have been built before trying to refit it.

@@ -28,7 +28,7 @@
 #ifndef FALCOR_UTILS_MATH_AABB_H_
 #define FALCOR_UTILS_MATH_AABB_H_
 
-
+#include "Falcor/Core/API/Raytracing.h"
 #include "Vector.h"
 #include <limits>
 
@@ -200,6 +200,12 @@ namespace Falcor {
         AABB operator& (const AABB& rhs) const {
             AABB bb = *this;
             return bb &= rhs;
+        }
+
+        /** Conversion to RtAABB.
+        */
+        explicit operator RtAABB() const {
+            return { minPoint, maxPoint };
         }
     };
 

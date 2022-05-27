@@ -34,8 +34,8 @@
 */
 
 import Utils.Sampling.TinyUniformSampleGenerator;
-import Rendering.Materials.Microfacet;
-import Rendering.Materials.Fresnel;
+import Experimental.Scene.Material.Microfacet;
+import Experimental.Scene.Material.Fresnel;
 import SurfaceData;
 
 // Only sample specular lobe when BRDF sampling is enabled.
@@ -505,5 +505,5 @@ bool RAB_AreMaterialsSimilar(RAB_Surface a, RAB_Surface b)
 */
 RAB_RandomSamplerState RAB_InitRandomSampler(uint2 index, uint passIndex)
 {
-    return TinyUniformSampleGenerator(index, gRTXDI.frameIndex + passIndex * 13);
+    return TinyUniformSampleGenerator.create(index, gRTXDI.frameIndex + passIndex * 13);
 }

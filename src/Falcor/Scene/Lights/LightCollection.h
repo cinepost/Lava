@@ -112,9 +112,6 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
 
     ~LightCollection() = default;
 
-    Device::SharedPtr device() { return mpDevice; }
-    Device::SharedPtr device() const { return mpDevice; }
-
     /** Creates a light collection for the given scene.
         Note that update() must be called before the collection is ready to use.
         \param[in] pRenderContext The render context.
@@ -134,7 +131,7 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
         \param[in] var The shader variable to set the data into.
         \return True if successful, false otherwise.
     */
-    bool setShaderData(const ShaderVar& var) const;
+    void setShaderData(const ShaderVar& var) const;
 
     /** Returns the total number of active (non-culled) triangle lights.
     */
@@ -181,11 +178,10 @@ class dlldecl LightCollection : public std::enable_shared_from_this<LightCollect
     };
 
 protected:
-    LightCollection(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {};
+    LightCollection(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
-    bool init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
-    bool initIntegrator(const Scene& scene);
-    bool setupMeshLights(const Scene& scene);
+    void initIntegrator(const Scene& scene);
+    void setupMeshLights(const Scene& scene);
     void build(RenderContext* pRenderContext, const Scene& scene);
     void prepareTriangleData(RenderContext* pRenderContext, const Scene& scene);
     void prepareMeshData(const Scene& scene);
@@ -201,18 +197,21 @@ protected:
     // Internal state
     Device::SharedPtr                       mpDevice = nullptr;
     std::weak_ptr<Scene>                    mpScene;                ///< Weak pointer to scene (scene owns LightCollection).
-
+    
     std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.
     uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.
 
     mutable std::vector<MeshLightTriangle>  mMeshLightTriangles;    ///< List of all pre-processed mesh light triangles.
     mutable std::vector<uint32_t>           mActiveTriangleList;    ///< List of active (non-culled) emissive triangles.
+    mutable std::vector<uint32_t>           mTriToActiveList;       ///< Mapping of all light triangles to index in mActiveTriangleList.
+
     mutable MeshLightStats                  mMeshLightStats;        ///< Stats before/after pre-processing of mesh lights. Do not access this directly, use getStats() which ensures the stats are up-to-date.
     mutable bool                            mStatsValid = false;    ///< True when stats are valid.
 
     // GPU resources for the mesh lights and emissive triangles.
     Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle geometry data for emissive triangles (mTriangleCount elements).
     Buffer::SharedPtr                       mpActiveTriangleList;   ///< List of active (non-culled) emissive triangle.
+    Buffer::SharedPtr                       mpTriToActiveList;      ///< Mapping of all light triangles to index in mActiveTriangleList.
     Buffer::SharedPtr                       mpFluxData;             ///< Per-triangle flux data for emissive triangles (mTriangleCount elements).
     Buffer::SharedPtr                       mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
     Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).

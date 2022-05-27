@@ -217,8 +217,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     // Depth pass
     Falcor::Dictionary depthPassDictionary;
     depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
-    depthPassDictionary["maxMipLevels"] = (uint8_t)5;
-
 
     mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
     mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
@@ -236,25 +234,41 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpLightingPass->setScene(pRenderContext, pScene);
     mpLightingPass->setColorFormat(ResourceFormat::RGBA32Float);
 
-    auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
+    mpRenderGraph->addPass(mpLightingPass, "LightingPass");
+
+    // VBuffer
+    Falcor::Dictionary vbufferPassDictionary;
+    auto pVBufferPass =VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+    pVBufferPass->setScene(pRenderContext, pScene);
+
+    mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+    // RTXDIPass
+    Falcor::Dictionary rtxdiPassDictionary;
+    auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
+    pRTXDIPass->setScene(pRenderContext, pScene);
+
+    mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
 
     // SkyBox
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
-    mpSkyBoxPass->setTransparency(0.0f);
+    mpSkyBoxPass->setOpacity(1.0f);
 
     mpSkyBoxPass->setScene(pRenderContext, pScene);
-    auto pass3 = mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
+    mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 
     pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
     
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
+
+    mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
     
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     
-    mpRenderGraph->addEdge("LightingPass.color", pMainAOV->accumulationPassInputName());
+    mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
 
     // Compile graph
     std::string log;

@@ -37,7 +37,7 @@ const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buf
 namespace
 {
     const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
-    const std::string kShaderModel = "6_1";
+    const std::string kShaderModel = "6_2";
 
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
@@ -46,7 +46,7 @@ namespace
 
     const ChannelList kVBufferExtraChannels =
     {
-        { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
     };
 
     const std::string kDepthName = "depth";
@@ -55,8 +55,11 @@ namespace
 RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
+    // Add the required outputs. These always exist.
     reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil);
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);//.format(mVBufferFormat);
+    
+    // Add all the other outputs.
     addRenderPassOutputs(reflector, kVBufferExtraChannels, Resource::BindFlags::UnorderedAccess);
 
     return reflector;
@@ -109,25 +112,25 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
         }
 
         mRaster.pProgram->addDefines(pScene->getSceneDefines());
+        mRaster.pProgram->setTypeConformances(pScene->getTypeConformances());
     }
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBufferBase::execute(pRenderContext, renderData);
 
-    // Clear depth and output buffer.
-    auto pDepth = renderData[kDepthName]->asTexture();
+    // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
+    FALCOR_ASSERT(pOutput);
+    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+
+    // Clear depth and output buffer.
+    auto pDepth = getOutput(renderData, kDepthName);
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
 
     // Clear extra output buffers.
-    auto clear = [&](const ChannelDesc& channel)
-    {
-        auto pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-    };
-    for (const auto& channel : kVBufferExtraChannels) clear(channel);
+    clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
 
     // If there is no scene, we're done.
     if (mpScene == nullptr)
@@ -156,7 +159,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kVBufferExtraChannels)
     {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         mRaster.pVars[channel.texname] = pTex;
     }
 

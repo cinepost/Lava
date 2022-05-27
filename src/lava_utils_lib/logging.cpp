@@ -83,12 +83,12 @@ void init_log() {
     boost::log::core::get()->add_sink(sink);
 
     // add sink stop functions
+#if USE_ASYNCRONOUS_CONSOLE_SINK
     g_log_stop_functions.emplace_back([sink]() {
-#ifndef _DEBUG
         sink->stop();   
-#endif
         sink->flush();
     });
+#endif
 }
 
 void shutdown_log() {
@@ -98,8 +98,8 @@ void shutdown_log() {
         }
     }
     g_log_stop_functions.empty();
-    //boost::log::core::get()->flush();
-    //boost::log::core::get()->remove_all_sinks();
+    boost::log::core::get()->flush();
+    boost::log::core::get()->remove_all_sinks();
 }
 
 // Initialize file logger

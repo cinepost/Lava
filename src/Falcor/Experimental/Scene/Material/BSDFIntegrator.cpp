@@ -56,7 +56,7 @@ namespace Falcor
 
         // Create programs.
         Program::Desc desc;
-        desc.setShaderModel("450");
+        desc.setShaderModel("6_5");
         desc.addShaderLibrary(kShaderFile);
         desc.addTypeConformances(pScene->getTypeConformances());
         auto defines = pScene->getSceneDefines();

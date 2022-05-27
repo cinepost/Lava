@@ -128,7 +128,7 @@ class ForwardLightingPass : public RenderPass {
 
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
-    bool mUseSimplifiedEnvLighting = true;
+    bool mUseSimplifiedEnvLighting = false;
     
     bool mDirty = true;
     bool mEnvMapDirty = true;

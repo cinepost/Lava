@@ -596,7 +596,8 @@ ExternalProject_Add ( RTXDI
   BUILD_COMMAND ""
 
   INSTALL_COMMAND
-    ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
+    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
+    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
 
   TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXDI_PREFIX}
   STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXDI_PREFIX}

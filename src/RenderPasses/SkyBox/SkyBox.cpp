@@ -48,6 +48,7 @@ static void regSkyBox(pybind11::module& m) {
     pass.def_property("scale", &SkyBox::getScale, &SkyBox::setScale);
     pass.def_property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
     pass.def_property("intensity", &SkyBox::getIntensity, &SkyBox::setIntensity);
+    pass.def_property("opacity", &SkyBox::getOpacity, &SkyBox::setOpacity);
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
@@ -65,6 +66,7 @@ namespace {
     const std::string kLoadAsSrgb = "loadAsSrgb";
     const std::string kFilter = "filter";
     const std::string kIntensity = "intensity";
+    const std::string kOpacity = "opacity";
 
 }
 
@@ -114,6 +116,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
         else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
         else if (key == kFilter) pSkyBox->setFilter(value);
         else if (key == kIntensity) pSkyBox->setIntensity(value);
+        else if (key == kOpacity) pSkyBox->setOpacity(value);
         else logWarning("Unknown field '" + key + "' in a SkyBox dictionary");
     }
 
@@ -134,6 +137,7 @@ Dictionary SkyBox::getScriptingDictionary() {
     dict[kLoadAsSrgb] = mLoadSrgb;
     dict[kFilter] = mFilter;
     dict[kIntensity] = mIntensity;
+    dict[kOpacity] = mOpacity;
     return dict;
 }
 
@@ -162,7 +166,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
-    mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
+    mpVars["PerFrameCB"]["gOpacity"] = mOpacity;
     mpState->setFbo(mpFbo);
     mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
 

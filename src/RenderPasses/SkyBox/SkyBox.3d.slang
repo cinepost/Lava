@@ -42,7 +42,7 @@ cbuffer PerFrameCB : register(b0) {
     float4x4 gProjMat;
     float3 gIntensity;
     float gScale;
-    float gTransparency;
+    float gOpacity;
 };
 
 [shader("vertex")]
@@ -63,14 +63,16 @@ void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : S
 [shader("fragment")]
 float4 psMain(float3 dir : NORMAL) : SV_TARGET {
 
+    float3 intensity = gIntensity * gOpacity;
+
 #ifdef _SKYBOX_SOLID_MODE
-    return float4(gIntensity, gTransparency);
+    return float4(intensity, gOpacity);
 #else
     #ifdef _SPHERICAL_MAP
-        float2 uv = dirToSphericalCrd(dir);
-        return gTexture.Sample(gSampler, uv) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
+        float2 uv = world_to_latlong_map(dir);
+        return gTexture.Sample(gSampler, uv) * float4(intensity, gOpacity);
     #else
-        return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(gIntensity.r, gIntensity.g, gIntensity.b, gTransparency);
+        return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(intensity, gOpacity);
     #endif
 #endif
 }

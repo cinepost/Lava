@@ -48,6 +48,8 @@ target_link_libraries(
     DepthPass
     ForwardLightingPass
     SkyBox
+    RTXDIPass
+    GBuffer
 )
 
 if(UNIX)

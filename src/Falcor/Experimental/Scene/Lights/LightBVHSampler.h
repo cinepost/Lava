@@ -35,6 +35,9 @@
 
 namespace Falcor
 {
+
+    class Device;
+
     /** The CPU pointer to the lighting system's acceleration structure is
         passed to RenderPass::execute() via a field with this name in the
         dictionary.
@@ -85,13 +88,10 @@ namespace Falcor
         */
         virtual bool update(RenderContext* pRenderContext) override;
 
-        /** Add compile-time specialization to program to use this light sampler.
-            This function must be called every frame before the sampler is bound.
-            Note that ProgramVars may need to be re-created after this call, check the return value.
-            \param[in] pProgram The Program to add compile-time specialization to.
-            \return True if the ProgramVars needs to be re-created.
+        /** Return a list of shader defines to use this light sampler.
+        *   \return Returns a list of shader defines.
         */
-        virtual bool prepareProgram(Program* pProgram) const override;
+        virtual Program::DefineList getDefines() const override;
 
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.
@@ -110,6 +110,8 @@ namespace Falcor
 
     protected:
         LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options);
+
+        std::shared_ptr<Device>         mpDevice = nullptr;
 
         // Configuration
         Options                         mOptions;               ///< Current configuration options.

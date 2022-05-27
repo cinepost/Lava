@@ -82,7 +82,11 @@ VSOut vsMain(VSIn vIn)
 struct PsOut
 {
     float4 color : SV_TARGET0;
+
+#ifdef _OUTPUT_NORMALS
     float4 normal : SV_TARGET1;
+#endif
+
 #ifdef _OUTPUT_MOTION_VECTORS
     float2 motion : SV_TARGET2;
 #endif
@@ -130,14 +134,12 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     let bsdfProperties = bsdf.getProperties(sd);
 
 
-    float4 finalColor = float4(0, 0, 0, 1);
-    
-    float3 fn = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+    float3 surfaceColor = float3(0, 0, 0);
+    float  surfaceAlpha = 0.0;
 
-    psOut.color.rgb = normalize(vsOut.normalW).rgb;
-    psOut.color.a = 1.0f;
-    return psOut;
-
+    // Test
+    VertexData v = gScene.getVertexData(vsOut.instanceID, triangleIndex, barycentrics);
+    sd.N = v.normalW;
 
     // Direct lighting from analytic light sources
     
@@ -172,155 +174,27 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
 
-        finalColor.rgb += bsdf.eval(sd, ls.dir, sg) * ls.Li;// * shadowFactor;
+        surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }
 
     // Add the emissive component
-    //finalColor.rgb += bsdf.getProperties(sd).emission;
-    finalColor.a = sd.opacity;
+    surfaceColor += bsdf.getProperties(sd).emission;
+    
+    // Surface alpha
+    surfaceAlpha = max(psOut.color.a, sd.opacity);
 
-#ifdef _USE_ENV_MAP
-    // Add lighting from environment map
+    // Final pixel color
+    psOut.color.rgb = surfaceColor; //lerp(psOut.color.rgb, surfaceColor, surfaceAlpha);
+    psOut.color.a = surfaceAlpha;
 
-    #ifdef _USE_SIMPLIFIED_ENV_LIGHTING
-        finalColor.rgb += gEnvMapLighting.evalDiffuse(sd, bsdfProperties);
-        finalColor.rgb += gEnvMapLighting.evalSpecular(sd, bsdfProperties, reflect(-sd.V, sd.N));
-    #else
-
-
-        // Environment diffuse
-        float envSampleWeight = 1.0;
-        EnvMapSample envSample;
-        gEnvMapSampler.sample(sampleNext2D(sg), envSample);
-
-        if ( dot(envSample.dir, sd.N) <= kMinCosTheta) {
-            DiffuseReflectionFrostbite diffuseReflection;
-            diffuseReflection.albedo = sd.diffuse;
-            diffuseReflection.linearRoughness = sd.linearRoughness;
-
-            float pdf = 0.0;
-            float3 weight = float3(1.0, 1.0, 1.0);
-            uint lobe;
-            float3 wi;
-            float3 wo = sd.toLocal(sd.V);
-
-            bool result = diffuseReflection.sample(wo, wi, pdf, weight, lobe, sg);
-
-            float3 diffDir = normalize(sd.fromLocal(wi));
-
-            shadowFactor = 1.0;
-
-            {
-                RayDesc ray;
-                ray.Origin = rayOrigin;
-                ray.Direction = diffDir;
-                ray.TMin = 0.001f;
-                ray.TMax = 1e4f;
-            
-                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
-                rayQuery.Proceed();
-                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
-            }
-
-            float diffLod = 6.0; // TODO: calculate based on pdf
-            float3 Le = gScene.envMap.eval(diffDir, diffLod);
-            finalColor.rgb += (diffuseReflection.eval(wo, wi) * Le * shadowFactor);
-
-        } else {
-
-            shadowFactor = 1.0;
-
-            {
-                RayDesc ray;
-                ray.Origin = rayOrigin;
-                ray.Direction = envSample.dir;
-                ray.TMin = 0.001f;
-                ray.TMax = 1e4f;
-            
-                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
-                rayQuery.Proceed();
-                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
-            }
-            
-            if ( envSample.pdf > 0) {
-                DiffuseReflectionFrostbite diffuseReflection;
-                diffuseReflection.albedo = sd.diffuse;
-                diffuseReflection.linearRoughness = sd.linearRoughness;
-
-                float3 wi = sd.toLocal(envSample.dir);
-                float3 wo = sd.toLocal(sd.V);
-                float3 diffuse = diffuseReflection.eval(wo, wi);
-
-                float envLod = _computeEnvironmentMapLOD(envSample.pdf, gScene.envMap.envMap);
-                float3 Le = envSample.Le; //gEnvMapSampler.eval(envSample.dir, 4.0); //envSample.Le
-
-                finalColor.rgb += diffuse * (Le / envSample.pdf) * shadowFactor * envSampleWeight;
-            }
-        }
-
-
-        // Environment specular
-        SpecularReflectionMicrofacet specularReflection;
-
-        const uint activeLobes = sd.getActiveLobes();
-
-        specularReflection.albedo = sd.specular;
-        specularReflection.alpha = alpha;
-        specularReflection.activeLobes = (uint)LobeType::SpecularReflection; //activeLobes;
-
-        float pdf = 0.0;
-        float3 weight = float3(1.0, 1.0, 1.0);
-        uint lobe;
-        float3 wi;
-        float3 wo = sd.toLocal(sd.V);
-        
-        float3 reflDir;
-        bool valid = true;
-
-        if (alpha == 0.0) {
-            pdf = 0.0;
-            reflDir = normalize(sd.fromLocal(float3(-wo.x, -wo.y, wo.z)));
-            weight = evalFresnelSchlick(sd.specular, 1.f, wo.z);
-        } else {
-            specularReflection.sample(wo, wi,  pdf, weight, lobe, sg);
-            reflDir = normalize(sd.fromLocal(wi));
-        }
-
-        if ( valid && dot(reflDir, sd.N) > kMinCosTheta) {
-            shadowFactor = 1.0;
-
-            {
-                RayDesc ray;
-                ray.Origin = rayOrigin;
-                ray.Direction = reflDir;
-                ray.TMin = 0.001f;
-                ray.TMax = 1e4f;
-            
-                rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
-                rayQuery.Proceed();
-                shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0 : 1.0;
-            }
-
-            //float envReflPdf = gEnvMapSampler.evalPdf(reflDir);
-
-            float envLod = 1.0; //_computeEnvironmentMapLOD(envReflPdf, gScene.envMap.envMap);
-            finalColor.rgb += gScene.envMap.eval(reflDir, envLod) * weight * shadowFactor;
-        }
-
-    #endif
-#endif
-
-    psOut.color = finalColor;
+#ifdef _OUTPUT_NORMALS
     psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
+#endif
 
 #ifdef _OUTPUT_MOTION_VECTORS
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     psOut.motion = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
 #endif
 
-//#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-//    float3 cascadeColor = visibilityBuffer.Load(int3(vsOut.posH.xy, 0)).gba;
-//    psOut.color.rgb *= cascadeColor;
-//#endif
     return psOut;
 }

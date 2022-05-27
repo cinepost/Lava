@@ -243,7 +243,8 @@ void Device::releaseResource(ApiObjectHandle pResource) {
 }
 
 bool Device::isFeatureSupported(SupportedFeatures flags) const {
-    return is_set(mSupportedFeatures, flags);
+    return true;
+    //return is_set(mSupportedFeatures, flags);
 }
 
 void Device::executeDeferredReleases() {

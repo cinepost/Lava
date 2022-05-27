@@ -87,7 +87,7 @@ VSOut defaultVS(VSIn vIn)
     vOut.materialID = gScene.getMaterialID(instanceID);
 
     vOut.texC = float2(vIn.texU, vIn.texV);
-    vOut.normalW = vIn.packedNormalTangentCurveRadius; //mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
+    vOut.normalW = mul(vIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID));
     float4 tangent = vIn.unpack().tangent;
     vOut.tangentW = float4(mul(tangent.xyz, (float3x3)gScene.getWorldMatrix(instanceID)), tangent.w);
 

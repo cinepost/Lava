@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "ScenePrimitiveDefines.slangh"
+#include "SceneDefines.slangh"
 
 __exported import Scene.HitInfo;
 __exported import Scene.SceneTypes;
@@ -493,7 +493,7 @@ struct Scene
     {
         VertexData v = {};
 
-v.posW = vertices[0].position * barycentrics[0];
+        v.posW = vertices[0].position * barycentrics[0];
         v.posW += vertices[1].position * barycentrics[1];
         v.posW += vertices[2].position * barycentrics[2];
 

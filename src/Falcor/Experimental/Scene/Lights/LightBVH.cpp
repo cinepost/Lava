@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "LightBVH.h"
 
@@ -36,9 +37,8 @@ namespace {
 
 namespace Falcor {
 
-LightBVH::SharedPtr LightBVH::create(const LightCollection::SharedConstPtr& pLightCollection)
+LightBVH::SharedPtr LightBVH::create(Device::SharedPtr pDevice, const LightCollection::SharedConstPtr& pLightCollection)
 {
-    auto pDevice = pLightCollection->device();
     return SharedPtr(new LightBVH(pDevice, pLightCollection));
 }
 

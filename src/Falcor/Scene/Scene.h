@@ -77,15 +77,6 @@
 
 namespace Falcor {
 
-typedef struct D3D12_RAYTRACING_AABB {
-  float MinX;
-  float MinY;
-  float MinZ;
-  float MaxX;
-  float MaxY;
-  float MaxZ;
-} D3D12_RAYTRACING_AABB;
-
 class Device;
 class RtProgram;
 class RtProgramVars;
@@ -123,7 +114,6 @@ class RtProgramVars;
 class dlldecl Scene : public std::enable_shared_from_this<Scene> {
  public:
     using SharedPtr = std::shared_ptr<Scene>;
-    using SharedConstPtr = std::shared_ptr<const Scene>;
     using GeometryType = Falcor::GeometryType;
     using GeometryTypeFlags = Falcor::GeometryTypeFlags;
 
@@ -1226,7 +1216,7 @@ public:
     // The following array and buffer records the AABBs of all procedural primitives, including custom primitives, curves, etc.
     // There is an implicit type conversion from D3D12_RAYTRACING_AABB to AABB (defined in Utils.Math.AABB).
     // It is fine because both structs have the same data layout.
-    std::vector<D3D12_RAYTRACING_AABB> mRtAABBRaw;              ///< Raw AABB data (min, max) for all procedural primitives.
+    std::vector<RtAABB> mRtAABBRaw;              ///< Raw AABB data (min, max) for all procedural primitives.
     Buffer::SharedPtr mpRtAABBBuffer;                           ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
 
     // Materials

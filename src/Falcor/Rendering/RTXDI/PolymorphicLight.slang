@@ -28,7 +28,7 @@
 #include "Utils/Math/MathConstants.slangh"
 
 import Scene.Scene;
-import Rendering.Lights.LightHelpers;
+import Experimental.Scene.Lights.LightHelpers;
 import Utils.Math.MathHelpers;
 import Utils.Color.ColorHelpers;
 __exported import PackedTypes;

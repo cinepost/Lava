@@ -40,8 +40,10 @@ struct PackedPolymorphicLight
 struct PackedSurfaceData
 {
     uint3 position;
-    uint viewDepth;
-    uint normal;
-    uint weights;
-    uint2 _pad;
+    uint  _pad1;
+
+    uint  viewDepth;
+    uint  normal;
+    uint  weights;
+    uint  _pad2;
 };
