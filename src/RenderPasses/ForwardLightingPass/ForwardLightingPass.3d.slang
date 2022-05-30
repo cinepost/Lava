@@ -139,7 +139,6 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     // Test
     VertexData v = gScene.getVertexData(vsOut.instanceID, triangleIndex, barycentrics);
-    sd.N = v.normalW;
 
     // Direct lighting from analytic light sources
     
@@ -185,6 +184,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     // Final pixel color
     psOut.color.rgb = surfaceColor; //lerp(psOut.color.rgb, surfaceColor, surfaceAlpha);
+    //psOut.color.rgb = v.faceNormalW;
     psOut.color.a = surfaceAlpha;
 
 #ifdef _OUTPUT_NORMALS

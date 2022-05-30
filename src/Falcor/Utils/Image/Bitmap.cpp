@@ -43,19 +43,19 @@ namespace Falcor {
 
 static void genError(const std::string& errMsg, const std::string& filename) {
     std::string err = "Error when loading image file " + filename + '\n' + errMsg + '.';
-    logError(err);
+    LLOG_ERR << err;
 }
 
 Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
-        logError("Error when loading image file. Can't find image file " + filename);
+        LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
         return nullptr;
     }
 
     auto in = oiio::ImageInput::open(fullpath);
     if (!in) {
-        LOG_ERR("Error reading image file %s", fullpath.c_str());
+        LLOG_ERR << "Error reading image file" << fullpath;
         return nullptr;
     }
     const oiio::ImageSpec &spec_tmp = in->spec(); // original image spec
@@ -112,13 +112,13 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
         oiio::ImageBuf tmpBuffRGB(fullpath);
 
         if (bpp == 24) {
-            logWarning("Converting 24-bit texture to 32-bit");
+            LLOG_WRN << "Converting 24-bit texture to 32-bit";
             bpp = 32;
             srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
         }
         else if (bpp == 96 && (isRGB32fSupported(pDevice) == false))
         {
-            logWarning("Converting 96-bit texture to 128-bit");
+            LLOG_WRN << "Converting 96-bit texture to 128-bit";
             bpp = 128;
             srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
         }
@@ -140,7 +140,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
 Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
-        logError("Error when loading image file. Can't find image file " + filename);
+        LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
         return nullptr;
     }
 
@@ -213,7 +213,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
 
     // Convert the image to RGBX image
     if (bpp == 24) {
-        logWarning("Converting 24-bit texture to 32-bit");
+        LLOG_WRN << "Converting 24-bit texture to 32-bit";
         bpp = 32;
         auto pNew = FreeImage_ConvertTo32Bits(pDib);
         FreeImage_Unload(pDib);
@@ -221,7 +221,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
     }
     else if (bpp == 96 && (isRGB32fSupported(pDevice) == false))
     {
-        logWarning("Converting 96-bit texture to 128-bit");
+        LLOG_WRN << "Converting 96-bit texture to 128-bit";
         bpp = 128;
         auto pNew = convertToRGBAF(pDib);
         FreeImage_Unload(pDib);
@@ -265,7 +265,7 @@ Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext) {
     for (uint32_t i = 0 ; i < arraysize(kExtensions) ; i++) {
         if (kExtensions[i] == ext) return Bitmap::FileFormat(i);
     }
-    logError("Can't find a matching format for file extension `" + ext + "`");
+    LLOG_ERR << "Can't find a matching format for file extension: " << ext;
     return Bitmap::FileFormat(-1);
 }
 
@@ -317,12 +317,12 @@ void Bitmap::saveImageDialog(Texture* pTexture) {
 
 void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData) {
     if (pData == nullptr) {
-        logError("Bitmap::saveImage provided no data to save.");
+        LLOG_ERR << "Bitmap::saveImage provided no data to save.";
         return;
     }
 
     if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy)) {
-        logError("Bitmap::saveImage incompatible flags: lossy cannot be combined with uncompressed.");
+        LLOG_ERR << "Bitmap::saveImage incompatible flags: lossy cannot be combined with uncompressed.";
         return;
     }
 
@@ -352,7 +352,7 @@ void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t hei
             resourceFormat = ResourceFormat::RGBA32Float;
             bytesPerPixel = 16;
         } else if (bytesPerPixel != 16 && bytesPerPixel != 12) {
-            logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.");
+            LLOG_ERR << "Bitmap::saveImage supports only 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.";
             return;
         }
 
@@ -360,17 +360,17 @@ void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t hei
 
         if (fileFormat == Bitmap::FileFormat::PfmFile) {
             if (is_set(exportFlags, ExportFlags::Lossy)) {
-                logError("Bitmap::saveImage: PFM does not support lossy compression mode.");
+                LLOG_ERR << "Bitmap::saveImage: PFM does not support lossy compression mode.";
                 return;
             }
             if (exportAlpha) {
-                logError("Bitmap::saveImage: PFM does not support alpha channel.");
+                LLOG_ERR << "Bitmap::saveImage: PFM does not support alpha channel.";
                 return;
             }
         }
 
         if (exportAlpha && bytesPerPixel != 16) {
-            logError("Bitmap::saveImage requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
+            LLOG_ERR << "Bitmap::saveImage requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel";
             return;
         }
 
@@ -451,7 +451,7 @@ void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t hei
         }
 
         if (warnings.empty() == false) {
-            logWarning("Bitmap::saveImage: " + joinStrings(warnings, " "));
+            LLOG_WRN << "Bitmap::saveImage: " << joinStrings(warnings, " ");
         }
     }
 
@@ -461,7 +461,7 @@ void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t hei
 
 void Bitmap::saveSparseImage(const std::string& filename, uint32_t width, uint32_t height, ResourceFormat resourceFormat, void* pData) {
     if(!hasSuffix(filename, ".ltx")) {
-        LOG_ERR("Only LTX format supported for saving sparse images !!!");
+        LLOG_ERR << "Only LTX format supported for saving sparse images !!!";
         return;
     }
 }

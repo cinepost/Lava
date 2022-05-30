@@ -1,8 +1,5 @@
 include_directories( 
-    ${PROJECT_SOURCE_DIR}/deps
-    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
+    ${EXTERNALS_INSTALL_DIR}
 )
 
 file( GLOB SOURCES

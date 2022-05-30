@@ -318,8 +318,6 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
-    LLOG_DBG << "Scene::rasterize";
-
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid)
     {
@@ -373,21 +371,10 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     }
 
     pState->setRasterizerState(pCurrentRS);
-    LLOG_DBG << "Scene::rasterize done";
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeXScene");
-
-    printf("RasterizerX !!!\n");
-
-    // nvvk testing stuff
-    //initRayTracing();
-    //createBottomLevelAS();
-    //createTopLevelAS();
-
-    // Bind TLAS.
-    //mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
@@ -397,12 +384,10 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
     for (size_t materialID = 0; materialID < mMaterialDrawArgs.size(); materialID++) {
 
         auto pMaterial = mpMaterialSystem->getMaterial(materialID);
-        printf("RasterizerX drawing meshes with materialX id %zu\n", materialID);
-
+        
         for (size_t draw_id : mMaterialDrawArgs[materialID]) {
             size_t i = 0;
-            printf("RasterizerX draw %zu\n", i);
-
+            
             const auto& draw = mDrawArgs[draw_id];
 
             if (draw.count > 0) {
@@ -1970,7 +1955,7 @@ void Scene::createDrawList() {
     std::vector<std::vector<DrawInstance>> instancesByMaterial;
     instancesByMaterial.resize(getMaterialCount());
 
-    printf("Number of materials to draw: %zu\n", getMaterialCount());
+    LLOG_DBG << "Number of materials to draw: " << std::to_string(getMaterialCount());
 
     uint32_t instanceID = 0;
     for (size_t i = 0; i < mGeometryInstanceData.size(); i++) {
@@ -2036,68 +2021,7 @@ void Scene::createDrawList() {
             createDrawBuffer(drawCounterClockwiseMeshes, true);
         }
     }
-
-    printf("createDrawList(...) done. \n");
 }
-
-/*
-VkAccelerationStructureKHR Scene::getTlas() const { 
-    return mpRtBuilder ? mpRtBuilder->getAccelerationStructure() : VK_NULL_HANDLE;
-}
-*/
-
-/*
-nvvk::RaytracingBuilderKHR::BlasInput  Scene::meshToVkGeometryKHR(const MeshDesc& mesh) {
-    
-    const VertexBufferLayout::SharedConstPtr& pVbLayout = mpMeshVao->getVertexLayout()->getBufferLayout(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pVb = mpMeshVao->getVertexBuffer(kStaticDataBufferIndex);
-    const Buffer::SharedPtr& pIb = mpMeshVao->getIndexBuffer();
-
-    VkIndexType indexType = mesh.use16BitIndices() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
-    auto vertexStride = pVbLayout->getStride();
-
-    // BLAS builder requires raw device addresses.
-    size_t indexStride = mesh.use16BitIndices() ? sizeof(uint16_t) : sizeof(uint32_t); // index stride in bytes
-    VkDeviceAddress vertexAddress = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pVb->getApiHandle()) + (mesh.vbOffset * vertexStride);
-    VkDeviceAddress indexAddress  = nvvk::getBufferDeviceAddress(mpDevice->getApiHandle(), pIb->getApiHandle()) + (mesh.ibOffset * sizeof(uint32_t));
-
-    uint32_t maxPrimitiveCount = mesh.indexCount / 3;
-
-    // Describe buffer as array of VertexObj.
-    VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
-    triangles.vertexFormat             = getVkFormat(pVbLayout->getElementFormat(0));;  // vec3 vertex position data.
-    triangles.vertexData.deviceAddress = vertexAddress;
-    triangles.vertexStride             = vertexStride;
-    
-    // Describe index data (32-bit unsigned int)
-    triangles.indexType               = indexType;
-    triangles.indexData.deviceAddress = indexAddress;
-    
-    // Indicate identity transform by setting transformData to null device pointer.
-    //triangles.transformData = {};
-    triangles.maxVertex = mesh.vertexCount;
-
-
-    // Identify the above data as containing opaque triangles.
-    VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
-    asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
-    asGeom.geometry.triangles = triangles;
-
-    // The entire array will be used to build the BLAS.
-    VkAccelerationStructureBuildRangeInfoKHR offset;
-    offset.firstVertex     = 0;
-    offset.primitiveCount  = maxPrimitiveCount;
-    offset.primitiveOffset = 0;
-    offset.transformOffset = 0;
-
-    nvvk::RaytracingBuilderKHR::BlasInput input;
-    input.asGeometry.emplace_back(asGeom);
-    input.asBuildOffsetInfo.emplace_back(offset);
-
-    return input;
-}
-*/
 
 void Scene::initGeomDesc(RenderContext* pContext) {
     // This function initializes all geometry descs to prepare for BLAS build.
@@ -2376,84 +2300,6 @@ void Scene::initGeomDesc(RenderContext* pContext) {
 
     mBlasDataValid = true;
 }
-
-/*
-void Scene::createBottomLevelAS() {
-    PROFILE(mpDevice, "createBottomLevelAS");
-
-    if (mBlasDataValid || !mpRtBuilder) return;
-
-    uint32_t blasID = 0;
-    mMeshIdToBlasId.clear();
-
-    uint32_t totalMeshCount = 0;
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        for (size_t j = 0; j <  mMeshGroups[i].meshList.size(); j++) {
-            totalMeshCount++;
-        }
-    }
-    mMeshIdToBlasId.resize(totalMeshCount);
-
-    // BLAS - Storing each primitive in a geometry
-    std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
-    allBlas.reserve(totalMeshCount);
-
-    // Iterate over the mesh groups. One BLAS will be created for each group.
-    for (size_t i = 0; i < mMeshGroups.size(); i++) {
-        const auto& meshList = mMeshGroups[i].meshList;
-
-        for (size_t j = 0; j < meshList.size(); j++) {
-            const uint32_t meshID = meshList[j];
-            const MeshDesc& mesh = mMeshDesc[meshID];
-
-            printf("Converting mesh id %u to VkGeometryKHR...\n", meshID);
-            auto blas = meshToVkGeometryKHR(mesh);
-
-            // We could add more geometry in each BLAS, but we add only one for now
-            allBlas.emplace_back(blas);
-            mMeshIdToBlasId[meshID] = blasID;
-            blasID++;
-        }
-    }
-
-    mpRtBuilder->buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
-    mBlasDataValid = true;
-}
-
-void Scene::createTopLevelAS() {
-    PROFILE(mpDevice, "createTopLevelAS");
-
-    if (mTlasBuilt || !mpRtBuilder) return;
-
-    const auto& globalMatrices = mpAnimationController->getGlobalMatrices();
-    std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    
-    uint32_t instanceID = 0;
-
-    for (const auto& instance : mGeometryInstanceData) {
-        auto meshID = instance.geometryID;
-
-        printf("Adding instance to TLAS with meshID %u\n", meshID);
-
-        //nvmath::mat4f transform = nvmath::translation_mat4(nvmath::vec3f{0, 0.0, 0}); //(1);
-
-        VkAccelerationStructureInstanceKHR rayInst{};
-
-        rayInst.transform = toTransformMatrixKHR(globalMatrices[instance.globalMatrixID]);  // Position of the instance
-        rayInst.instanceCustomIndex = instanceID++;
-        rayInst.accelerationStructureReference = mpRtBuilder->getBlasDeviceAddress(mMeshIdToBlasId[meshID]);
-        rayInst.flags                          = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
-        rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
-
-        tlas.emplace_back(rayInst);
-    }
-
-    mpRtBuilder->buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
-
-    mTlasBuilt = true;
-}
-*/
 
 void Scene::preparePrebuildInfo(RenderContext* pContext) {
     for (auto& blas : mBlasData)

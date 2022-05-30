@@ -2,6 +2,8 @@ include (ExternalProject)
 
 message("Running SuperBuild.cmake")
 
+list(APPEND 3RD_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+
 # Third party external projects
 ExternalProject_Add( third_party
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/third_party
@@ -10,6 +12,7 @@ ExternalProject_Add( third_party
   BUILD_ALWAYS ON
   CONFIGURE_HANDLED_BY_BUILD ON
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party
+  CMAKE_ARGS ${3RD_ARGS}
 )
 
 # Main project

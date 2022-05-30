@@ -9,7 +9,7 @@
 	"settings": {
 		"working_dir":".",
     
-    "SublimeLinter.linters.clang++.disable": false,
+    "SublimeLinter.linters.clang++.disable": true,
     "SublimeLinter.linters.clang++.args": ["-std=c++17"],
     "SublimeLinter.linters.clang++.I": [
       "/opt/USD/include/",
@@ -87,7 +87,7 @@
  "linters":
   {
       "gcc": {
-          "disable": false,
+          "disable": true,
           "executable": ["gcc"],
           "args": ["-fsyntax-only", "-std=c90"],
           "I": [

@@ -114,7 +114,7 @@ bool Device::init() {
 
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
 
-    createNullViews(shared_from_this());
+    createNullViews();
 
     mpResourceManager = ResourceManager::create(shared_from_this());
     assert(mpResourceManager);
@@ -280,11 +280,7 @@ void Device::cleanup() {
 
     mDeferredReleases = decltype(mDeferredReleases)();
 
-    releaseNullViews(shared_from_this());
-    //releaseNullBufferViews(shared_from_this());
-    //releaseNullTypedBufferViews(shared_from_this());
-    //releaseStaticResources(shared_from_this());
-
+    releaseNullViews();
     mpRenderContext.reset();
     mpUploadHeap.reset();
 
@@ -374,6 +370,53 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
 #endif
 
     return getSwapChainFbo();
+}
+
+void Device::createNullViews() {
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Buffer] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Buffer);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1D);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture1DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture1DArray);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2D);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DArray);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMS] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMS);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture2DMSArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture2DMSArray);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::Texture3D] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::Texture3D);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCube] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCube);
+    mNullViews.srv[(size_t)ShaderResourceView::Dimension::TextureCubeArray] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::TextureCubeArray);
+
+    if (isFeatureSupported(Device::SupportedFeatures::Raytracing))
+    {
+        mNullViews.srv[(size_t)ShaderResourceView::Dimension::AccelerationStructure] = ShaderResourceView::create(shared_from_this(), ShaderResourceView::Dimension::AccelerationStructure);
+    }
+
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Buffer] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Buffer);
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1D);
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture1DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture1DArray);
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2D);
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture2DArray] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture2DArray);
+    mNullViews.uav[(size_t)UnorderedAccessView::Dimension::Texture3D] = UnorderedAccessView::create(shared_from_this(), UnorderedAccessView::Dimension::Texture3D);
+
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1D);
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture1DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture1DArray);
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2D] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2D);
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DArray);
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMS] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMS);
+    mNullViews.dsv[(size_t)DepthStencilView::Dimension::Texture2DMSArray] = DepthStencilView::create(shared_from_this(), DepthStencilView::Dimension::Texture2DMSArray);
+
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Buffer] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Buffer);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1D);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture1DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture1DArray);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2D);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DArray);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMS] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMS);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture2DMSArray] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture2DMSArray);
+    mNullViews.rtv[(size_t)RenderTargetView::Dimension::Texture3D] = RenderTargetView::create(shared_from_this(), RenderTargetView::Dimension::Texture3D);
+
+    mNullViews.cbv = ConstantBufferView::create(shared_from_this());
+}
+
+void Device::releaseNullViews() {
+    mNullViews = {};
 }
 
 #ifdef SCRIPTING

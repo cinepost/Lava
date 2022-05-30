@@ -28,41 +28,36 @@
 #include "stdafx.h"
 #include "RtAccelerationStructure.h"
 
-namespace Falcor
-{
-    RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setKind(RtAccelerationStructureKind kind)
-    {
-        mKind = kind;
-        return *this;
-    }
+namespace Falcor {
 
-    RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setBuffer(Buffer::SharedPtr buffer, uint64_t offset, uint64_t size)
-    {
-        mBuffer = buffer;
-        mOffset = offset;
-        mSize = size;
-        return *this;
-    }
-
-    RtAccelerationStructure::SharedPtr RtAccelerationStructure::create(Device::SharedPtr pDevice, const Desc& desc)
-    {
-        auto pResult = SharedPtr(new RtAccelerationStructure(pDevice, desc));
-        if (!pResult->apiInit())
-        {
-            throw std::runtime_error("Failed to create acceleration structure.");
-        }
-        return pResult;
-    }
-
-    uint64_t RtAccelerationStructure::getGpuAddress()
-    {
-        return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
-    }
-
-    RtInstanceDesc& RtInstanceDesc::setTransform(const glm::mat4& matrix)
-    {
-        glm::mat4 transform4x4 = transpose(matrix);
-        std::memcpy(transform, &transform4x4, sizeof(transform));
-        return *this;
-    }
+RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setKind(RtAccelerationStructureKind kind) {
+    mKind = kind;
+    return *this;
 }
+
+RtAccelerationStructure::Desc& RtAccelerationStructure::Desc::setBuffer(Buffer::SharedPtr buffer, uint64_t offset, uint64_t size) {
+    mBuffer = buffer;
+    mOffset = offset;
+    mSize = size;
+    return *this;
+}
+
+RtAccelerationStructure::SharedPtr RtAccelerationStructure::create(Device::SharedPtr pDevice, const Desc& desc) {
+    auto pResult = SharedPtr(new RtAccelerationStructure(pDevice, desc));
+    if (!pResult->apiInit()) {
+        throw std::runtime_error("Failed to create acceleration structure.");
+    }
+    return pResult;
+}
+
+uint64_t RtAccelerationStructure::getGpuAddress() {
+    return mDesc.mBuffer->getGpuAddress() + mDesc.mOffset;
+}
+
+RtInstanceDesc& RtInstanceDesc::setTransform(const glm::mat4& matrix) {
+    glm::mat4 transform4x4 = transpose(matrix);
+    std::memcpy(transform, &transform4x4, sizeof(transform));
+    return *this;
+}
+
+}  // namespace Falcor

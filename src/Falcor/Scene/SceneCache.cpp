@@ -79,7 +79,7 @@ bool SceneCache::hasValidCache(const Key& key) {
 void SceneCache::writeCache(const Scene::SceneData& sceneData, const Key& key) {
     auto cachePath = getCachePath(key);
 
-    logInfo("Writing scene cache to " + cachePath.string());
+    LLOG_INF << "Writing scene cache to " << cachePath.string();
 
     // Create directories if not existing.
     fs::create_directories(cachePath.parent_path());
@@ -104,7 +104,7 @@ void SceneCache::writeCache(const Scene::SceneData& sceneData, const Key& key) {
 Scene::SceneData SceneCache::readCache(Device::SharedPtr pDevice, const Key& key) {
     auto cachePath = getCachePath(key);
 
-    logInfo("Loading scene cache from " + cachePath.string());
+    LLOG_INF << "Loading scene cache from " << cachePath.string();
 
     // Open file.
     std::ifstream fs(cachePath.c_str(), std::ios_base::binary);

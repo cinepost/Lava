@@ -130,8 +130,8 @@ void Camera::calculateCameraParameters() const {
 
                 float left   = ((mData.cropRegion[0]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
                 float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
-                float top    = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
-                float bottom = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
+                float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
+                float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
                 mData.projMat = glm::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
             } else {
                 // Take the length of look-at vector as half a viewport size
@@ -149,10 +149,10 @@ void Camera::calculateCameraParameters() const {
             2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
         // Apply jitter matrix to the projection matrix
         mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
+        mData.projMatNoJitter = mData.projMat;
         mData.projMat = jitterMat * mData.projMat;
 
         mData.viewProjMat = mData.projMat * mData.viewMat;
-
         mData.invViewProj = glm::inverse(mData.viewProjMat);
 
         // Extract camera space frustum planes from the VP matrix

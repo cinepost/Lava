@@ -23,7 +23,7 @@ ResourceManager::SharedPtr ResourceManager::create(std::shared_ptr<Device> pDevi
     auto pMgr = new ResourceManager(pDevice);
 
     if(!pMgr->checkDeviceFeatures(pDevice)) {
-        LOG_ERR("No capable rendering device provided !!!");
+        LLOG_ERR << "No capable rendering device provided !!!";
         return nullptr;
     };
 
@@ -36,17 +36,17 @@ ResourceManager::SharedPtr ResourceManager::create(std::shared_ptr<Device> pDevi
         // Check if path exists and is of a directory file
         if (!(fs::exists(pathObj) && fs::is_directory(pathObj))) {
             if(fs::create_directory(pathObj)) {
-                LOG_DBG("Created resources cache directory %s", mCacheDir.c_str());
+                LLOG_DBG << "Created resources cache directory " << mCacheDir;
             } else if (fs::create_directories(pathObj)) {
-                LOG_DBG("Created resources cache directory %s", mCacheDir.c_str());
+                LLOG_DBG <<"Created resources cache directory " << mCacheDir;
             } else {
-                LOG_ERR("Unable to create texture cache directory %s", mCacheDir.c_str());
+                LLOG_ERR << "Unable to create texture cache directory " << mCacheDir;
                 //return nullptr; TODO: use in-memory file system if cache directory not available
             }
         }
     } catch (fs::filesystem_error & e) {
-        LOG_ERR("Can't access texture cache directory !!!\n %s", e.what());
-        logError(e.what());
+        LLOG_ERR << "Can't access texture cache directory !!! Error details:";
+        LLOG_ERR << e.what();
 
         //return nullptr; TODO: use in-memory file system if cache directory not available
     }
@@ -59,7 +59,6 @@ ResourceManager::SharedPtr ResourceManager::create(std::shared_ptr<Device> pDevi
 }
     
 ResourceManager::ResourceManager(std::shared_ptr<Device> pDevice) {
-    LOG_DBG("ResourceManager::ResourceManager");
     mpDevice = pDevice;
     mpCtx = pDevice->getRenderContext();
 
@@ -67,8 +66,6 @@ ResourceManager::ResourceManager(std::shared_ptr<Device> pDevice) {
 }
 
 ResourceManager::~ResourceManager() {
-    LOG_DBG("ResourceManager::~ResourceManager");
-    
     blosc_destroy();
 
     if(!mpDevice)
@@ -113,7 +110,7 @@ ResourceFormat ResourceManager::compressedFormat(ResourceFormat format) {
         case ResourceFormat::RG8Unorm:
         case ResourceFormat::R8Unorm:
         default:
-            LOG_WARN("Unable to find appropriate compression format for source format %s", to_string(format).c_str());
+            LLOG_WRN << "Unable to find appropriate compression format for source format " <<  to_string(format);
             break;
     }
 
@@ -135,7 +132,7 @@ Texture::SharedPtr ResourceManager::createSparseTexture2D(uint32_t width, uint32
 Texture::SharedPtr ResourceManager::createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
     auto search = mLoadedTexturesMap.find(filename);
     if(search != mLoadedTexturesMap.end()) {
-        LOG_DBG("Using already loaded texture %s", filename.c_str());
+        LLOG_DBG << "Using already loaded texture: " << filename;
         return search->second;
     }
 
@@ -150,7 +147,7 @@ Texture::SharedPtr ResourceManager::createTextureFromFile(const std::string& fil
 Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags, bool compress) {
     fs::path fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
-        logError("Error when loading image file. Can't find image file " + filename);
+        LLOG_ERR << "Error when loading image file. Can't find image file " << filename;
         return nullptr;
     }
 
@@ -160,7 +157,7 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     bool vtoff = configStore.get<bool>("vtoff", true);
     if (!mSparseTexturesEnabled || vtoff) {
         if (ext == ".ltx") {
-            logWarning("Virtual texturing disabled. Unable to use LTX texture " + filename);
+            LLOG_ERR << "Virtual texturing disabled. Unable to use LTX texture " << filename;
             return nullptr;
         }
         return createTextureFromFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
@@ -172,14 +169,14 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
 
     auto search = mLoadedTexturesMap.find(ltxFilename);
     if(search != mLoadedTexturesMap.end()) {
-        LOG_DBG("Using already loaded sparse texture %s", ltxFilename.c_str());
+        LLOG_DBG << "Using already loaded sparse texture " << ltxFilename;
         return search->second;
     }
 
 
     Texture::SharedPtr pTex;
     if (hasSuffix(filename, ".dds")) {
-        LOG_ERR("Sparse texture handling for DDS format unimplemented !!!");
+        LLOG_ERR << "Sparse texture handling for DDS format unimplemented !!!";
         return nullptr;
     } 
         
@@ -194,22 +191,22 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
         if(fs::exists(ltxFilename) && LTX_Bitmap::checkFileMagic(ltxFilename, true)) ltxMagicMatch = true;
 
         if(configStore.get<bool>("fconv", true) || !fs::exists(ltxFilename) || !ltxMagicMatch ) {
-            LOG_DBG("Converting texture %s to LTX format ...",  fullpath.c_str());
+            LLOG_DBG << "Converting texture " << fullpath << " to LTX format ...";
 
             LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
             tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
             if (!LTX_Bitmap::convertToKtxFile(mpDevice, fullpath.string(), ltxFilename, tlcParms, true)) {
-                LOG_ERR("Error converting texture to %s", ltxFilename.c_str());
+                LLOG_ERR << "Error converting texture to " << ltxFilename;
             } else {
-                LOG_DBG("Conversion done %s", ltxFilename.c_str());
+                LLOG_DBG << "Conversion done for " << ltxFilename;
             }
         }
     }
 
     auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxFilename, true);
     if (!pLtxBitmap) {
-        LOG_ERR("Error loading converted ltx bitmap from %s !!!", ltxFilename.c_str());
+        LLOG_ERR << "Error loading converted ltx bitmap from " << ltxFilename;
         pTex = nullptr;
         return pTex;
     }
@@ -225,21 +222,22 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     try {
         pTex->apiInit(nullptr, generateMipLevels);
     } catch (const std::runtime_error& e) {
-        LOG_ERR("Error initializing sparse texture %s !!!\n %s", ltxFilename.c_str(), e.what());
+        LLOG_ERR << "Error initializing sparse texture " <<  ltxFilename << "'\nError details:";
+        LLOG_ERR << e.what();
         pTex = nullptr;
         return pTex;
     } catch (...) {
-        LOG_ERR("Error initializing sparse texture %s !!!", ltxFilename.c_str());
+        LLOG_ERR <<  "Error initializing sparse texture " << ltxFilename;
         pTex = nullptr;
         return pTex;
     }
 
     uint32_t deviceMemRequiredSize = pTex->getTextureSizeInBytes();
-    LOG_DBG("Texture require %u bytes of device memory", deviceMemRequiredSize);
+    LLOG_DBG << "Texture requires " << std::to_string(deviceMemRequiredSize) << " bytes of device memory";
     if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
         deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
     } else {
-        LOG_ERR("No texture space left for %s !!!", ltxFilename.c_str());
+        LLOG_ERR << "No texture space left for " <<  ltxFilename;
         pTex = nullptr;
     }
     
@@ -274,7 +272,7 @@ void ResourceManager::loadPages(const Texture::SharedPtr& pTexture, const std::v
 
     auto it = mTextureLTXBitmapsMap.find(textureID);
     if (it == mTextureLTXBitmapsMap.end()) {
-        LOG_ERR("Not LTX_Bitmap stored for texture %u", textureID);
+        LLOG_ERR << "Non LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
         return;
     }
 
@@ -357,22 +355,22 @@ void ResourceManager::fillPage(VirtualTexturePage::SharedPtr pPage, const void* 
 }
 
 void ResourceManager::printStats() {
-    std::cout << "-------------- ResourceManager stats --------------\n";
+    LLOG_DBG << "-------------- ResourceManager stats --------------";
     
-    printf("Host cache mem cap: %u bytes\n", hostCacheMemSize);
-    printf("Host cache mem used: %u bytes\n", hostCacheMemSize - hostCacheMemSizeLeft);
+    LLOG_DBG << "Host cache mem cap: " << std::to_string(hostCacheMemSize) << " bytes";
+    LLOG_DBG << "Host cache mem used: " << std::to_string(hostCacheMemSize - hostCacheMemSizeLeft) << " bytes";
     
-    std::cout << "---\n";
+    LLOG_DBG << "---\n";
     
     size_t usedDeviceMemSize = 0;
     for (auto const& elem: mLoadedTexturesMap) {
         usedDeviceMemSize += elem.second->getTextureSizeInBytes();
     }
 
-    printf("Device cache mem cap: %u bytes\n", deviceCacheMemSize);
-    printf("Device cache mem used: %zu bytes\n", usedDeviceMemSize); //deviceCacheMemSize - deviceCacheMemSizeLeft);
+    LLOG_DBG << "Device cache mem cap: " << std::to_string(deviceCacheMemSize) << " bytes";
+    LLOG_DBG << "Device cache mem used: " << std::to_string(usedDeviceMemSize) << " bytes";
 
-    std::cout << "--------------------------------------------------\n";
+    LLOG_DBG << "--------------------------------------------------\n";
 }
 
 }  // namespace Falcor

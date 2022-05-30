@@ -31,57 +31,57 @@
 namespace Falcor {
 
 bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, Buffer* pIB, ResourceFormat ibFormat) {
-    // TODO: Check number of vertex buffers match with pLayout.
-    if (pIB) {
-        if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint) {
-            logError("Invalid index buffer format (" + to_string(ibFormat) + ")");
-            return false;
-        }
-    }
+	// TODO: Check number of vertex buffers match with pLayout.
+	if (pIB) {
+		if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint) {
+			logError("Invalid index buffer format (" + to_string(ibFormat) + ")");
+			return false;
+		}
+	}
 
-    return true;
+	return true;
 }
 
 Vao::Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology topology)
-    : mIbFormat(ibFormat)
-    , mpVBs(pVBs)
-    , mpIB(pIB)
-    , mpVertexLayout(pLayout)
-    , mTopology(topology) {
+	: mIbFormat(ibFormat)
+	, mpVBs(pVBs)
+	, mpIB(pIB)
+	, mpVertexLayout(pLayout)
+	, mTopology(topology) {
 }
 
 Vao::SharedPtr Vao::create(Topology topology, const VertexLayout::SharedPtr& pLayout, const BufferVec& pVBs, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat) {
-    if (pLayout != nullptr) {
-        if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false) {
-            throw std::runtime_error("Failed to create VAO");
-        }
-    }
+	if (pLayout != nullptr) {
+		if (checkVaoParams(pVBs, pLayout.get(), pIB.get(), ibFormat) == false) {
+			throw std::runtime_error("Failed to create VAO");
+		}
+	}
 
-    SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
-    return pVao;
+	SharedPtr pVao = SharedPtr(new Vao(pVBs, pLayout, pIB, ibFormat, topology));
+	return pVao;
 }
 
 Vao::ElementDesc Vao::getElementIndexByLocation(uint32_t elementLocaion) const {
-    ElementDesc desc;
+	ElementDesc desc;
 
-    for (uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId) {
-        const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
-        assert(pVbLayout);
+	for (uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId) {
+		const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
+		assert(pVbLayout);
 
-        for (uint32_t i = 0; i < pVbLayout->getElementCount(); ++i) {
-            if (pVbLayout->getElementShaderLocation(i) == elementLocaion) {
-                desc.vbIndex = bufId;
-                desc.elementIndex = i;
-                return desc;
-            }
-        }
-    }
-    return desc;
+		for (uint32_t i = 0; i < pVbLayout->getElementCount(); ++i) {
+			if (pVbLayout->getElementShaderLocation(i) == elementLocaion) {
+				desc.vbIndex = bufId;
+				desc.elementIndex = i;
+				return desc;
+			}
+		}
+	}
+	return desc;
 }
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Vao) {
-    pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
+	pybind11::class_<Vao, Vao::SharedPtr>(m, "Vao");
 }
 #endif
 

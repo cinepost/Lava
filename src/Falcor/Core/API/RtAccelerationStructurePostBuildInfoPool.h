@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTUREPOOL_H_
+#define SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTUREPOOL_H_
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
@@ -35,56 +36,59 @@
 #include "Core/API/Buffer.h"
 #endif
 
-namespace Falcor
-{
-    enum class RtAccelerationStructurePostBuildInfoQueryType
-    {
-        CompactedSize,
-        SerializationSize,
-        CurrentSize,
+namespace Falcor {
+
+enum class RtAccelerationStructurePostBuildInfoQueryType {
+  CompactedSize,
+  SerializationSize,
+  CurrentSize,
+};
+
+class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
+  public:
+    using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
+
+    struct Desc {
+        RtAccelerationStructurePostBuildInfoQueryType queryType;
+        uint32_t elementCount;
     };
 
-    class FALCOR_API RtAccelerationStructurePostBuildInfoPool
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtAccelerationStructurePostBuildInfoPool>;
+    static SharedPtr create(Device::SharedPtr pDevice, const Desc& desc);
+    ~RtAccelerationStructurePostBuildInfoPool();
+    uint64_t getElement(CopyContext* pContext, uint32_t index);
+    void reset(CopyContext* pContext);
 
-        struct Desc
-        {
-            RtAccelerationStructurePostBuildInfoQueryType queryType;
-            uint32_t elementCount;
-        };
-        static SharedPtr create(Device::SharedPtr pDevice, const Desc& desc);
-        ~RtAccelerationStructurePostBuildInfoPool();
-        uint64_t getElement(CopyContext* pContext, uint32_t index);
-        void reset(CopyContext* pContext);
 #if defined(FALCOR_D3D12)
-        uint64_t getBufferAddress(uint32_t index);
+    uint64_t getBufferAddress(uint32_t index);
 #elif defined(FALCOR_GFX)
-        gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
+    gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
 #endif
-    protected:
-        RtAccelerationStructurePostBuildInfoPool(Device::SharedPtr pDevice, const Desc& desc);
-    private:
-        Device::SharedPtr mpDevice = nullptr;
-        Desc mDesc;
-#if defined(FALCOR_D3D12)
-        size_t mElementSize = 0;
-        Buffer::SharedPtr mpPostbuildInfoBuffer;
-        Buffer::SharedPtr mpPostbuildInfoStagingBuffer;
-        const void* mMappedPostBuildInfo = nullptr;
-        bool mStagingBufferUpToDate = false;
-#elif defined(FALCOR_GFX)
-        Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
-        bool mNeedFlush = true;
-#endif
-    };
 
-    struct RtAccelerationStructurePostBuildInfoDesc
-    {
-        RtAccelerationStructurePostBuildInfoQueryType type;
-        RtAccelerationStructurePostBuildInfoPool* pool;
-        uint32_t index;
-    };
+  protected:
+    RtAccelerationStructurePostBuildInfoPool(Device::SharedPtr pDevice, const Desc& desc);
+
+  private:
+    Device::SharedPtr mpDevice = nullptr;
+    Desc mDesc;
+
+#if defined(FALCOR_D3D12)
+    size_t mElementSize = 0;
+    Buffer::SharedPtr mpPostbuildInfoBuffer;
+    Buffer::SharedPtr mpPostbuildInfoStagingBuffer;
+    const void* mMappedPostBuildInfo = nullptr;
+    bool mStagingBufferUpToDate = false;
+#elif defined(FALCOR_GFX)
+    Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
+    bool mNeedFlush = true;
+#endif
+};
+
+struct RtAccelerationStructurePostBuildInfoDesc {
+  RtAccelerationStructurePostBuildInfoQueryType type;
+  RtAccelerationStructurePostBuildInfoPool* pool;
+  uint32_t index;
+};
 
 }
+
+#endif  // SRC_FALCOR_CORE_API_RTACCELERATIONSTRUCTUREPOOL_H_

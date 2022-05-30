@@ -83,7 +83,7 @@ void RenderGraph::setScene(const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     for (auto& it : mNodeData) {
         if (!mpDevice->getRenderContext()) {
-            LOG_ERR("No render context in mpDevice !!!");
+            LLOG_ERR << "No render context present in rendering device id: " << std::to_string(static_cast<uint32_t>(mpDevice->uid()));
         }
         it.second.pPass->setScene(mpDevice->getRenderContext(), pScene);
     }
@@ -94,7 +94,7 @@ uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::str
     assert(pPass);
     uint32_t passIndex = getPassIndex(passName);
     if (passIndex != kInvalidIndex) {
-        logError("Pass named `" + passName + "' already exists. Ignoring call");
+        LLOG_ERR << "Pass named `" << passName << "' already exists. Ignoring call";
         return kInvalidIndex;
     } else {
         passIndex = mpGraph->addNode();
@@ -460,7 +460,7 @@ void RenderGraph::setInput(const std::string& name, const Resource::SharedPtr& p
         mCompilerDeps.externalResources[name] = pResource;
     } else {
         if (mCompilerDeps.externalResources.find(name) == mCompilerDeps.externalResources.end()) {
-            logWarning("RenderGraph::setInput() - Trying to remove an external resource named `" + name + "` but the resource wasn't registered before. Ignoring call");
+            LLOG_WRN << "RenderGraph::setInput() - Trying to remove an external resource named `" << name << "` but the resource wasn't registered before. Ignoring call";
             return;
         }
         mCompilerDeps.externalResources.erase(name);
@@ -685,14 +685,11 @@ void RenderGraph::onHotReload(HotReloadFlags reloaded) {
 }
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(RenderGraph)
-{
-    //RenderGraph::SharedPtr (&create_default)(const std::string&) = RenderGraph::create;
+SCRIPT_BINDING(RenderGraph) {
     RenderGraph::SharedPtr (&create_on_device)(std::shared_ptr<Device>, const std::string&) = RenderGraph::create;
 
     pybind11::class_<RenderGraph, RenderGraph::SharedPtr> renderGraph(m, "RenderGraph");
     
-    //renderGraph.def(pybind11::init(&create_default));
     renderGraph.def(pybind11::init(&create_on_device));
 
     renderGraph.def_property("name", &RenderGraph::getName, &RenderGraph::setName);

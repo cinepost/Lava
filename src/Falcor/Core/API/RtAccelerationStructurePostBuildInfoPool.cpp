@@ -29,10 +29,10 @@
 
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 
-namespace Falcor
-{
-    RtAccelerationStructurePostBuildInfoPool::SharedPtr RtAccelerationStructurePostBuildInfoPool::create(Device::SharedPtr pDevice, const Desc& desc)
-    {
-        return SharedPtr(new RtAccelerationStructurePostBuildInfoPool(pDevice, desc));
-    }
+namespace Falcor {
+
+RtAccelerationStructurePostBuildInfoPool::SharedPtr RtAccelerationStructurePostBuildInfoPool::create(Device::SharedPtr pDevice, const Desc& desc) {
+    return SharedPtr(new RtAccelerationStructurePostBuildInfoPool(pDevice, desc));
 }
+
+}  // namespace Falcor

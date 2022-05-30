@@ -127,9 +127,6 @@ class dlldecl ResourceView {
 template<>
 ResourceView<CbvHandle>::~ResourceView<CbvHandle>();
 
-//template<>
-//ResourceView<CbvHandle>::~ResourceView<CbvHandle>() {};
-
 class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
   public:
     using SharedPtr = std::shared_ptr<ShaderResourceView>;
@@ -144,8 +141,6 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
 #endif
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
-    //static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
-    //static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
 
     /** Get the D3D12 CPU descriptor handle representing this resource view.
         Valid only when D3D12 is the underlying API.
@@ -192,8 +187,6 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
-    //static SharedPtr getNullBufferView(std::shared_ptr<Device> pDevice);
-    //static SharedPtr getNullTypedBufferView(std::shared_ptr<Device> pDevice);
 
     /** Get the D3D12 CPU descriptor handle representing this resource view.
         Valid only when D3D12 is the underlying API.
@@ -247,29 +240,13 @@ class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
     ConstantBufferView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle) : ResourceView(pDevice, pResource, handle, 0, 1, 0, 1) {}
 };
 
-//template<>
-//ResourceView<CbvHandle>::~ResourceView<CbvHandle>() {};
-
-    //template<typename T>
-    //ResourceView<T>::~ResourceView()
-    //{
-    //    mpDevice->releaseResource(mApiHandle);
-    //}
-
-/*
 struct NullResourceViews {
-    ShaderResourceView::SharedPtr  srv;
-    ConstantBufferView::SharedPtr  cbv;
-    RenderTargetView::SharedPtr    rtv;
-    UnorderedAccessView::SharedPtr uav;
-    DepthStencilView::SharedPtr    dsv;
+    std::array<ShaderResourceView::SharedPtr, (size_t)ShaderResourceView::Dimension::Count> srv;
+    std::array<UnorderedAccessView::SharedPtr, (size_t)UnorderedAccessView::Dimension::Count> uav;
+    std::array<DepthStencilView::SharedPtr, (size_t)DepthStencilView::Dimension::Count> dsv;
+    std::array<RenderTargetView::SharedPtr, (size_t)RenderTargetView::Dimension::Count> rtv;
+    ConstantBufferView::SharedPtr cbv;
 };
-
-struct NullResourceBufferViews {
-    ShaderResourceView::SharedPtr  srv;
-    UnorderedAccessView::SharedPtr uav;
-};
-*/
 
 }  // namespace Falcor
 

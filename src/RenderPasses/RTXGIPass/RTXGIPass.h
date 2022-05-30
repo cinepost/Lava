@@ -28,14 +28,13 @@
 #pragma once
 #include "Falcor.h"
 
+#include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/Rendering/RTXGI/RTXGIVolume.h"
 #include "VisualizerDefines.slang"
 
 using namespace Falcor;
-
-#if FALCOR_D3D12_AVAILABLE
 
 /** Diffuse indirect illumination using RTXGI.
 
@@ -68,7 +67,6 @@ private:
 
     void init();
     void parseDictionary(const Dictionary& dict);
-    void renderVisualizerUI(Gui::Widgets& widget);
     void probeVisualizerPass(RenderContext* pRenderContext, const RenderData& renderData);
     void computeIndirectPass(RenderContext* pRenderContext, const RenderData& renderData);
     void bindPassIO(ShaderVar var, const RenderData& renderData) const;
@@ -120,5 +118,3 @@ private:
         VisualizerProbeMode probeMode = VisualizerProbeMode::Irradiance;
     } mVisualizerOptions;
 };
-
-#endif // FALCOR_D3D12_AVAILABLE

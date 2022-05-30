@@ -198,20 +198,8 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	tileSize[0] = std::min(imageRegionWidth, tileSize[0]);
 	tileSize[1] = std::min(imageRegionHeight, tileSize[1]);
 
-	LLOG_DBG << "renderRegion width " << std::to_string(imageRegionWidth);
-	LLOG_DBG << "renderRegion height " << std::to_string(imageRegionHeight);
-
-	LLOG_DBG << "tile width " << std::to_string(tileSize[0]);
-	LLOG_DBG << "tile height " << std::to_string(tileSize[1]);
-
 	auto hdiv = ldiv((uint32_t)imageRegionWidth, (uint32_t)tileSize[0]);
 	auto vdiv = ldiv((uint32_t)imageRegionHeight, (uint32_t)tileSize[1]);
-
-	LLOG_DBG << "qout x: " << std::to_string(hdiv.quot);
-	LLOG_DBG << "qout y: " << std::to_string(vdiv.quot);
-
-	LLOG_DBG << "rem x: " << std::to_string(hdiv.rem);
-	LLOG_DBG << "rem y: " << std::to_string(vdiv.rem);
 
 	tiles.clear();
 	// First put whole tiles
@@ -332,7 +320,9 @@ bool Session::cmdRaytrace() {
 		return false;
 	}
 
+#ifdef _DEBUG
 	mpGlobal->printSummary(std::cout);
+#endif
 
 	if(!mpDisplay) {
 		mpDisplay = createDisplay(mCurrentDisplayInfo);
@@ -839,10 +829,14 @@ bool Session::cmdEnd() {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
 			if( pGeo->isInline()) {
+#ifdef _DEBUG
 				pGeo->bgeo()->printSummary(std::cout);
+#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			} else {
+#ifdef _DEBUG
 				pGeo->bgeo()->printSummary(std::cout);
+#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			}
 			break;

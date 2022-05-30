@@ -299,7 +299,7 @@ bool Fbo::calcAndValidateProperties() const {
 
     // Check depth
     if (verifyAttachment(mDepthStencil) == false) {
-        LOG_ERR("check depth appachment failed!");
+        LLOG_ERR << "check depth appachment failed!";
         return false;
     }
 

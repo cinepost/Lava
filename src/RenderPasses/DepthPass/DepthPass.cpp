@@ -109,7 +109,6 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 }
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    LLOG_DBG << "DepthPass::setScene";
     mpScene = pScene;
     mpVars = nullptr;
 
@@ -121,12 +120,9 @@ void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
         pProgram->setTypeConformances(mpScene->getTypeConformances());
         mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
     }
-    LLOG_DBG << "DepthPass::setScene done";
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    LLOG_DBG << "DepthPass::execute";
-
     const auto& pDepth = renderData[kDepth]->asTexture();
     mpFbo->attachDepthStencilTarget(pDepth);
 
@@ -139,7 +135,6 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     if (mpScene) {
         mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
     }
-    LLOG_DBG << "DepthPass::done";
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {

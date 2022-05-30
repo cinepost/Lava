@@ -28,16 +28,16 @@
 #pragma once
 #include "Falcor.h"
 
-#if FALCOR_D3D12_AVAILABLE
-#include "Utils/Sampling/SampleGenerator.h"
-#include "Core/API/Shared/D3D12DescriptorSet.h"
-#include "Core/API/Shared/MockedD3D12StagingBuffer.h"
-#include "Rendering/Lights/LightBVHSampler.h"
-#include "Rendering/Lights/EnvMapSampler.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Core/API/Shared/D3D12DescriptorSet.h"
+#include "Falcor/Core/API/Shared/MockedD3D12StagingBuffer.h"
+#include "Falcor/Experimental/Scene/Lights/LightBVHSampler.h"
+#include "Falcor/Experimental/Scene/Lights/EnvMapSampler.h"
 
 #include "RTXGIDefines.slangh"
-#include "rtxgi/rtxgi-sdk/include/RTXGI/ddgi/DDGIVolume.h"
-#include "rtxgi/rtxgi-sdk/include/RTXGI/ddgi/gfx/DDGIVolume_D3D12.h"
+
+#include "rtxgi-sdk/include/rtxgi/ddgi/DDGIVolume.h"
+#include "rtxgi-sdk/include/rtxgi/ddgi/gfx/DDGIVolume_D3D12.h"
 
 namespace Falcor
 {
@@ -234,5 +234,3 @@ namespace Falcor
         } mDebug;
     };
 }
-
-#endif // FALCOR_D3D12_AVAILABLE

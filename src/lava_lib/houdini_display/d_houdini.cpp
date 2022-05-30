@@ -1206,7 +1206,6 @@ H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1,
 
 	// the source resolution
 	int a_xres = a_x1 - a_x0;
-	//int a_yres = a_y1 - a_y0;
 
 	// the destination resolution
 	xres = x1 - x0;
@@ -1215,8 +1214,6 @@ H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1,
 	// sanity check
 	if (xres <= 0 || yres <= 0)
 		return 1;
-
-	//fprintf(stderr, "TILE: %d %d %d %d {%dx%d} -- %d %d\n", x0, x1, y0, y1, x1-x0, y1-y0, xres, yres);
 
 	// begint the tile for all channels
 	for (ch = 0; ch < myChannels.size(); ++ch)

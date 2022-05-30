@@ -33,60 +33,61 @@
 #include <slang/slang-gfx.h>
 
 namespace Falcor {
-    class Scene;
-    class Program;
-    class RtStateObject;
-    class RtProgramVars;
+	
+	class Scene;
+	class Program;
+	class RtStateObject;
+	class RtProgramVars;
 /*
-    class IShaderTable : public ISlangUnknown {
-    public:
-        // Specifies the bytes to overwrite into a record in the shader table.
-        struct ShaderRecordOverwrite {
-            size_t  offset;  // Offset within the shader record.
-            size_t  size;    // Number of bytes to overwrite.
-            uint8_t data[8]; // Content to overwrite.
-        };
+	class IShaderTable : public ISlangUnknown {
+	public:
+		// Specifies the bytes to overwrite into a record in the shader table.
+		struct ShaderRecordOverwrite {
+			size_t  offset;  // Offset within the shader record.
+			size_t  size;    // Number of bytes to overwrite.
+			uint8_t data[8]; // Content to overwrite.
+		};
 
-        struct Desc {
-            int rayGenShaderCount;
-            const char** rayGenShaderEntryPointNames;
-            const ShaderRecordOverwrite* rayGenShaderRecordOverwrites;
+		struct Desc {
+			int rayGenShaderCount;
+			const char** rayGenShaderEntryPointNames;
+			const ShaderRecordOverwrite* rayGenShaderRecordOverwrites;
 
-            int missShaderCount;
-            const char** missShaderEntryPointNames;
-            const ShaderRecordOverwrite* missShaderRecordOverwrites;
+			int missShaderCount;
+			const char** missShaderEntryPointNames;
+			const ShaderRecordOverwrite* missShaderRecordOverwrites;
 
-            int hitGroupCount;
-            const char** hitGroupNames;
-            const ShaderRecordOverwrite* hitGroupRecordOverwrites;
+			int hitGroupCount;
+			const char** hitGroupNames;
+			const ShaderRecordOverwrite* hitGroupRecordOverwrites;
 
-            Program* program;
-        };
-    };
+			Program* program;
+		};
+	};
 
-    using ShaderTablePtr = std::shared_ptr<IShaderTable>;
+	using ShaderTablePtr = std::shared_ptr<IShaderTable>;
 */
 
-    /** This class represents the GPU shader table for raytracing programs.
-        We are using the following layout for the shader table:
+	/** This class represents the GPU shader table for raytracing programs.
+		We are using the following layout for the shader table:
 
-        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
-        |            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
-        |   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
-        |   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
-        |            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
-        +------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+		+------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
+		|            |        |        | ... |        |         |        | ... |        |        | ... |        | ... |         |         | ... |         |
+		|   RayGen   |  Miss  |  Miss  | ... |  Miss  |  Hit    |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit    |  Hit    | ... |  Hit    |
+		|   Entry    |  Idx0  |  Idx1  | ... | IdxM-1 |  Ray0   |  Ray1  | ... | RayK-1 |  Ray0  | ... | RayK-1 | ... |  Ray0   |  Ray1   | ... | RayK-1  |
+		|            |        |        | ... |        |  Geom0  |  Geom0 | ... |  Geom0 |  Geom1 | ... |  Geom1 | ... | GeomN-1 | GeomN-1 | ... | GeomN-1 |
+		+------------+--------+--------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+---------+---------+-----+---------+
 
-        The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
-        For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
-        The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records contain only the program identifier (32B).
+		The first record is the ray gen record, followed by the M miss records, followed by the geometry hit group records.
+		For each of the N geometries in the scene we have K hit group records, where K is the number of ray types (the same for all geometries).
+		The size of each record is based on the requirements of the local root signatures. By default, raygen, miss, and hit group records contain only the program identifier (32B).
 
-        User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
-        To get the root signature that matches this table, call the static function getRootSignature().
-    */
+		User provided local root signatures are currently not supported for performance reasons. Managing and updating data for custom root signatures results in significant overhead.
+		To get the root signature that matches this table, call the static function getRootSignature().
+	*/
 
-    // In VK, we use gfx::IShaderTable directly.
-    using ShaderTablePtr = Slang::ComPtr<gfx::IShaderTable>;
+	// In VK, we use gfx::IShaderTable directly.
+	using ShaderTablePtr = Slang::ComPtr<gfx::IShaderTable>;
    
 
 }  // namespace Falcor 

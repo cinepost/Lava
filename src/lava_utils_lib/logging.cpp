@@ -4,11 +4,19 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/log/sources/severity_logger.hpp>
+#include <boost/phoenix/bind/bind_function.hpp>
+#include <boost/log/expressions/attr_fwd.hpp>
+#include <boost/log/expressions/attr.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+
+// Supporting headers
+#include <boost/log/support/date_time.hpp>
 
 #include "lava_utils_lib/logging.h"
 
 
 static bool g_logger_initialized = false;
+static bool g_logger_shutted_down = false;
 std::vector< std::function< void() > > g_log_stop_functions;
 
 
@@ -45,8 +53,15 @@ void console_color_formatter(boost::log::record_view const& rec, boost::log::for
         }
     }
 
-    // Format the message here...
-    strm << rec[boost::log::expressions::smessage];
+    // Shorter console time format
+    auto date_time_formatter = boost::log::expressions::stream << std::setw(5) << std::setfill('0') << rec[line_id] << std::setfill(' ') << " | "
+        << boost::log::expressions::format_date_time< boost::posix_time::ptime >("TimeStamp", "%H:%M:%S.%f");
+    
+    date_time_formatter(rec, strm);
+
+    // Rest of the message
+    strm << " [" << rec[boost::log::trivial::severity] << "]"
+        << " - " << rec[boost::log::expressions::smessage];
 
     if (severity) {
         // Restore the default color
@@ -67,14 +82,7 @@ void init_log() {
     // flush
     sink->locked_backend()->auto_flush(true);
 
-    // format sink
-    boost::log::formatter formatter = boost::log::expressions::stream
-        << std::setw(7) << std::setfill('0') << line_id << std::setfill(' ') << " | "
-        << boost::log::expressions::format_date_time(timestamp, "%Y-%m-%d, %H:%M:%S.%f") << " "
-        << "[" << boost::log::trivial::severity << "]"
-        << " - " << boost::log::expressions::smessage;
-    sink->set_formatter(formatter);
-    //sink->set_formatter(&console_color_formatter);
+    sink->set_formatter(&console_color_formatter);
 
     // filter
     // TODO: add any filters
@@ -92,14 +100,16 @@ void init_log() {
 }
 
 void shutdown_log() {
+    if (g_logger_shutted_down) return;
+
     if (g_log_stop_functions.size() > 0) {
         for (auto& stop : g_log_stop_functions) {
             stop();
         }
     }
     g_log_stop_functions.empty();
-    boost::log::core::get()->flush();
-    boost::log::core::get()->remove_all_sinks();
+    //boost::log::core::get()->flush();
+    //boost::log::core::get()->remove_all_sinks();
 }
 
 // Initialize file logger
@@ -121,7 +131,7 @@ void init_file_log(const std::string& logfilename, bool autoFlush) {
 
     // format sink
     boost::log::formatter formatter = boost::log::expressions::stream
-        << std::setw(7) << std::setfill('0') << line_id << std::setfill(' ') << " | "
+        << std::setw(5) << std::setfill('0') << line_id << std::setfill(' ') << " | "
         << boost::log::expressions::format_date_time(timestamp, "%Y-%m-%d, %H:%M:%S.%f") << " "
         << "[" << boost::log::trivial::severity << "]"
         << " - " << boost::log::expressions::smessage;

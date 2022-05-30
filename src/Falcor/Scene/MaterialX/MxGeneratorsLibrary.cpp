@@ -77,7 +77,8 @@ MxGeneratorsLibrary& MxGeneratorsLibrary::registerGenerator(const MxGeneratorBas
 
 void MxGeneratorsLibrary::registerInternal(const MxGeneratorBase::Info& info, CreateFunc func, DllHandle module) {
     if (mGenerators.find(info) != mGenerators.end()) {
-        logWarning("Trying to register a generator for type `" + std::string(info.typeName) + "` to the generators library,  but a generator type with the same type name already exists. Ignoring the new definition");
+        LLOG_WRN << "Trying to register a generator for type `" << std::string(info.typeName) 
+                 << "` to the generators library,  but a generator type with the same type name already exists. Ignoring the new definition";
     } else {
         mGenerators[info] = ExtendedDesc(info, func, module);
     }
@@ -87,11 +88,11 @@ std::shared_ptr<MxGeneratorBase> MxGeneratorsLibrary::createGenerator(const MxGe
     if (mGenerators.find(info) == mGenerators.end()) {
         // See if we can load a DLL with the class's name and retry
         std::string libName = std::string(info.typeName) + kMxLibExt;
-        logInfo("Can't find a xmaterial generator named: " + std::string(info.typeName) + ". Trying to load a library: `" + libName + '`' + kMxLibExt);
+        LLOG_INF << "Can't find a xmaterial generator named: " << std::string(info.typeName) << ". Trying to load a library: `" << libName << '`' << kMxLibExt;
         loadLibrary(libName);
 
         if (mGenerators.find(info) == mGenerators.end()) {
-            logWarning("Trying to create a generator named `" + std::string(info.typeName) + "`, but no such class exists in the library");
+            LLOG_WRN << "Trying to create a generator named `" << std::string(info.typeName) << "`, but no such class exists in the library";
             return nullptr;
         }
     }
@@ -127,12 +128,12 @@ void MxGeneratorsLibrary::loadLibrary(const std::string& filename) {
     std::string fullpath;
     
     if (!findFileInRenderPassDirectories(filePath.string(), fullpath)) {
-        logWarning("Can't load shader generator library `" + filePath.string() + "`. File not found");
+        LLOG_WRN << "Can't load shader generator library `" << filePath.string() << "`. File not found";
         return;
     }
 
     if (mLibs.find(fullpath) != mLibs.end()) {
-        logInfo("Shader generator library `" + fullpath + "` already loaded. Ignoring `loadLibrary()` call");
+        LLOG_INF << "Shader generator library `" << fullpath << "` already loaded. Ignoring `loadLibrary()` call";
         return;
     }
 
@@ -144,7 +145,7 @@ void MxGeneratorsLibrary::loadLibrary(const std::string& filename) {
     auto func = (LibraryFunc)getDllProcAddress(l, "getGenerators");
 
     if(!func) {
-        LOG_ERR("RenderPass library getPasses proc address is NULL !!!");
+        LLOG_ERR << "RenderPass library getPasses proc address is NULL !!!";
     }
 
     // Add the DLL project directory to the search paths
@@ -161,7 +162,7 @@ void MxGeneratorsLibrary::loadLibrary(const std::string& filename) {
     try {
         func(lib);
     } catch (...) {
-        logError("Can't get generators from library: " + fullpath);
+        LLOG_ERR << "Can't get generators from library: " << fullpath;
         throw;
     }
 
@@ -178,7 +179,7 @@ void MxGeneratorsLibrary::releaseLibrary(const std::string& filename) {
 
     auto libIt = mLibs.find(fullpath);
     if (libIt == mLibs.end()) {
-        logWarning("Can't unload render-pass library `" + fullpath + "`. The library wasn't loaded");
+        LLOG_WRN << "Can't unload render-pass library `" << fullpath << "`. The library wasn't loaded";
         return;
     }
 

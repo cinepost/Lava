@@ -5,10 +5,8 @@ message("Render passes build dir: ${PASS_LIBRARY_OUTPUT_DIRECTORY}")
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 
 include_directories( 
-    ${PROJECT_SOURCE_DIR}/deps
-    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
+    ${EXTERNALS_INSTALL_DIR}
+
 )
 # external passes (can also be made built-in)
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)

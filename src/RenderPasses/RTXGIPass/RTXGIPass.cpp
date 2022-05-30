@@ -30,6 +30,7 @@
 
 #include "RTXGIPass.h"
 
+
 const RenderPass::Info RTXGIPass::kInfo { "RTXGIPass", "Indirect diffuse lighing using RTXGI." };
 
 namespace
@@ -91,8 +92,7 @@ RTXGIPass::SharedPtr RTXGIPass::create(RenderContext* pRenderContext, const Dict
     return SharedPtr(new RTXGIPass(pRenderContext->device(), dict));
 }
 
-RTXGIPass::RTXGIPass(Device::SharedPtr pDevice, const Dictionary& dict)
-    : RenderPass(pDevice, kInfo)
+RTXGIPass::RTXGIPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo)
 {
     parseDictionary(dict);
 
@@ -421,7 +421,7 @@ void RTXGIPass::probeVisualizerPass(RenderContext* pRenderContext, const RenderD
         // Note we can't use Scene::render() as it only draws a single instance.
         uint32_t probeCount = mpVolume->getProbeCount();
         auto mesh = mpSphereScene->getMesh(0);
-        FALCOR_ASSERT(mesh.indexCount > 0);
+        assert(mesh.indexCount > 0);
         // TODO: We're drawing more instances here than the VAO is setup for so we will get validation errors.
         pRenderContext->drawIndexedInstanced(mVisualizeProbes.pState.get(), mVisualizeProbes.pVars.get(), mesh.indexCount, probeCount, mesh.ibOffset, mesh.vbOffset, 0);
     }

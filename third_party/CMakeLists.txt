@@ -6,7 +6,7 @@ include(ExternalProject)
 include(ProcessorCount)
 #ProcessorCount(N)
 
-message("Running third party dependencies build...")
+message("Running third party dependencies ${CMAKE_BUILD_TYPE} build...")
 
 set(N 4)
 
@@ -20,9 +20,12 @@ set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/external)
 set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/stamp)
 set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/tmp)
-set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps)
 
-
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/release)
+else()
+  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/debug)
+endif()
 
 set(EXTERNALS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 

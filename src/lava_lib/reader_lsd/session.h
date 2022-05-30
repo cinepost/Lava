@@ -136,7 +136,11 @@ static inline std::string to_string(const Session::TileInfo& tileInfo) {
   return "TileInfo: region[" + std::to_string(tileInfo.renderRegion[0]) 
                     + ", " +  std::to_string(tileInfo.renderRegion[1]) 
                     + ", " +  std::to_string(tileInfo.renderRegion[2])
-                    + ", " +  std::to_string(tileInfo.renderRegion[3]) + "]";
+                    + ", " +  std::to_string(tileInfo.renderRegion[3]) + "]"
+                    + "[" + std::to_string(tileInfo.cameraCropRegion[0])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[1])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[2])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[3]) + "]";
 }
 
 }  // namespace lsd

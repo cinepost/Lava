@@ -174,7 +174,14 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 #------------------------------------------
 # Our stuff
 #------------------------------------------
-list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/release)
+  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+else()
+  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/debug)
+  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+endif()
 
 add_subdirectory( src )
 add_subdirectory( contrib )

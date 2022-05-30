@@ -40,9 +40,7 @@
 #include "Falcor/Core/API/LowLevelContextData.h"
 #include "Falcor/Core/API/GpuMemoryHeap.h"
 #include "Falcor/Core/API/QueryHeap.h"
-//#include "Falcor/Core/API/Vulkan/nvvk_memallocator_vma_vk.hpp"
-
-//#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+#include "Falcor/Core/API/ResourceViews.h"
 
 namespace Falcor {
 
@@ -141,14 +139,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Get physical device name
     */
     std::string& getPhysicalDeviceName();
-
-    /** VMA allocator
-    */
-    //const VmaAllocator& allocator() const { return mAllocator; }
-
-    /** NVVK allocator
-    */
-    //nvvk::LavaResourceAllocatorVma* nvvkAllocator() { return &mNvvkResourceAllocator; }
 
     /** Check if the window is occluded
     */
@@ -309,6 +299,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     Desc mDesc;
     ApiHandle mApiHandle;
     GpuMemoryHeap::SharedPtr mpUploadHeap;
+
 #if FALCOR_D3D12_AVAILABLE
     D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
     D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
@@ -380,8 +371,13 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     static SharedPtr create(Window::SharedPtr pWindow, const gfx::IDevice::Desc& idesc, const Desc& desc);
 #endif
 
+    inline const NullResourceViews& nullResourceViews() const { return mNullViews; };
+
   protected:
     bool init();
+
+    void createNullViews();
+    void releaseNullViews();
 
     std::string mPhysicalDeviceName;
 
@@ -393,8 +389,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 #endif
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
 
-    //VmaAllocator    mAllocator;
-    //nvvk::LavaResourceAllocatorVma mNvvkResourceAllocator;
+    NullResourceViews mNullViews;
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
 

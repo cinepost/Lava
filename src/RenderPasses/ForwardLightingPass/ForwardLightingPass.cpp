@@ -200,8 +200,6 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
 }
 
 void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
-    LLOG_DBG << "ForwardLightingPass::execute";
-
     initDepth(pContext, renderData);
     initFbo(pContext, renderData);
     
@@ -226,7 +224,6 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     
     mpState->setFbo(mpFbo);
     mpScene->rasterize(pContext, mpState.get(), mpVars.get(), mCullMode);
-    LLOG_DBG << "ForwardLightingPass::execute done";
 }
 
 void ForwardLightingPass::prepareVars(RenderContext* pContext) {

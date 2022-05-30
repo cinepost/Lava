@@ -108,7 +108,7 @@ namespace Falcor
         // Then copy the packed volume descriptor into both the ParamBlock and the SDK-internal
         // ddgiVolumeBlock
         {
-            FALCOR_PROFILE("rtxgi::DDGIVolume::Update");
+            PROFILE(mpDevice, "rtxgi::DDGIVolume::Update");
             mpDDGIVolume->Update();
             rtxgi::DDGIVolumeDescGPUPacked volumeDesc = mpDDGIVolume->GetDescGPUPacked();
             mpDDGIVolumeBlockSDK->setBlob(&volumeDesc, 0, sizeof(rtxgi::DDGIVolumeDescGPUPacked));

@@ -196,7 +196,7 @@ bool findFileInDataDirectories(const fs::path& path, fs::path& fullPath) {
 bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames) {
     // Check if searchPath exists
     if (!fs::exists(fs::path(searchPath))) {
-        logWarning("Search path \"" + searchPath + "\" does not exist !!!");
+        LLOG_WRN << "Search path '" << searchPath << "' does not exist !!!";
         return false;
     }
 
@@ -288,7 +288,7 @@ bool findFileInRenderPassDirectories(const std::string& filename, std::string& f
     for (const auto& dir : gRenderPassDirectories) {
         fullPath = canonicalizeFilename(dir + '/' + filename);
         if (doesFileExist(fullPath)) {
-            LOG_DBG("RenderPass library: %s found as: %s", filename.c_str(), fullPath.c_str());
+            LLOG_DBG << "RenderPass library: " << filename << " found as: " << fullPath;
             return true;
         }
     }

@@ -93,7 +93,11 @@ int main(int argc, char** argv){
 
     int gpuID = -1; // automatic gpu selection
 
+#ifdef _DEBUG
     bool echo_input = true;
+#else
+    bool echo_input = false;
+#endif
 
     std::atexit(atexitHandler);
 /*

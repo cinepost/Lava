@@ -175,7 +175,7 @@ namespace Falcor
         assert(mImage != VK_NULL_HANDLE);
 
         if (!mIsSparse) {
-            LOG_ERR("Unable to sparse bind non sparse texture !!!");
+            LLOG_ERR << "Unable to sparse bind non sparse texture !!!";
             return;
         }
         

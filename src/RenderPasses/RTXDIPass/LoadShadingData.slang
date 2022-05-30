@@ -58,9 +58,6 @@ bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camer
         const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
         sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 
-        // test
-        sd.N = v.normalW;
-
         // Adjust shading normals if GBuffer pass has flag enabled.
 #if GBUFFER_ADJUST_SHADING_NORMALS
         adjustShadingNormal(sd, v);

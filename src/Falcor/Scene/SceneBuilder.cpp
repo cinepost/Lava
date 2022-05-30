@@ -1406,7 +1406,9 @@ void SceneBuilder::pretransformStaticMeshes() {
         mesh.instances[0].nodeId = identityNodeID;
     }
 
-    if (transformedMeshCount > 0) logInfo("Pre-transformed " + std::to_string(transformedMeshCount) + " static meshes to world space");
+    if (transformedMeshCount > 0) {
+        LLOG_INF << "Pre-transformed "<< std::to_string(transformedMeshCount) << " static meshes to world space";
+    }
 }
 
 void SceneBuilder::flipTriangleWinding(MeshSpec& mesh) {
@@ -1460,7 +1462,9 @@ void SceneBuilder::unifyTriangleWinding() {
         flippedMeshCount++;
     }
 
-    if (flippedMeshCount > 0) logInfo("Flipped triangle winding for " + std::to_string(flippedMeshCount) + " out of " + std::to_string(mMeshes.size()) + " meshes");
+    if (flippedMeshCount > 0) {
+        LLOG_INF << "Flipped triangle winding for " + std::to_string(flippedMeshCount) << " out of " << std::to_string(mMeshes.size()) << " meshes";
+    }
 }
 
 void SceneBuilder::calculateMeshBoundingBoxes() {
@@ -1573,10 +1577,10 @@ void SceneBuilder::createMeshGroups() {
     if ((instancedCount + displacedInstancedCount) != instancedMeshCount ||
         (instancedMeshes.size() + displacedInstancedMeshes.size()) != instancedMeshCount) throw std::logic_error("Error in instanced mesh grouping logic");
 
-    logInfo("Found " + std::to_string(staticMeshes.size()) + " static non-instanced meshes, arranged in 1 mesh group.");
-    logInfo("Found " + std::to_string(staticDisplacedMeshes.size()) + " displaced non-instanced meshes, arranged in 1 mesh group.");
-    logInfo("Found " + std::to_string(nonInstancedDynamicMeshCount) + " dynamic non-instanced meshes, arranged in " + std::to_string(nodeToMeshList.size()) + " mesh groups.");
-    logInfo("Found " + std::to_string(instancedMeshCount) + " instanced meshes, arranged in " + std::to_string(instancesToMeshList.size()) + " mesh groups.");
+    LLOG_INF << "Found " << std::to_string(staticMeshes.size()) << " static non-instanced meshes, arranged in 1 mesh group.";
+    LLOG_INF << "Found " << std::to_string(staticDisplacedMeshes.size()) << " displaced non-instanced meshes, arranged in 1 mesh group.";
+    LLOG_INF << "Found " << std::to_string(nonInstancedDynamicMeshCount) << " dynamic non-instanced meshes, arranged in " << std::to_string(nodeToMeshList.size()) << " mesh groups.";
+    LLOG_INF << "Found " << std::to_string(instancedMeshCount) << " instanced meshes, arranged in " << std::to_string(instancesToMeshList.size()) << " mesh groups.";
 
     // Build final result. Format is a list of Mesh ID's per mesh group.
 
@@ -1673,7 +1677,10 @@ std::pair<std::optional<uint32_t>, std::optional<uint32_t>> SceneBuilder::splitM
     if (leftMesh.getTriangleCount() == 0) return { std::nullopt, meshID };
     else if (rightMesh.getTriangleCount() == 0) return { meshID, std::nullopt };
 
-    logDebug("Mesh '" + mesh.name + "' with " + std::to_string(mesh.getTriangleCount()) + " triangles was split into two meshes with " + std::to_string(leftMesh.getTriangleCount()) + " and " + std::to_string(rightMesh.getTriangleCount()) + " triangles, respectively.");
+    LLOG_DBG << "Mesh '"<< mesh.name << "' with " << std::to_string(mesh.getTriangleCount())
+             << " triangles was split into two meshes with " << std::to_string(leftMesh.getTriangleCount()) 
+             << " and " << std::to_string(rightMesh.getTriangleCount()) << " triangles, respectively.";
+
 
     // Store new meshes.
     // The left mesh replaces the existing mesh.

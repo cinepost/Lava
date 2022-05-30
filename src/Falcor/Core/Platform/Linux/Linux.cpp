@@ -361,7 +361,7 @@ DllHandle loadDll(const std::string& libPath) {
     void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
 
     if (!handle) {
-        LOG_ERR("Cannot open library: %s", + dlerror());
+        LLOG_ERR << "Cannot open library: " << dlerror();
         return nullptr;
     }
     

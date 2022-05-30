@@ -103,7 +103,7 @@ public:
     /** Configuration options, with generally reasonable defaults.
     */
     struct Options {
-        Mode mode = Mode::SpatiotemporalResampling; ///< RTXDI sampling mode.
+        Mode mode = Mode::NoResampling; ///< RTXDI sampling mode.
 
         // Light presampling options.
         uint32_t presampledTileCount = 128;         ///< Number of precomputed light tiles.
@@ -119,7 +119,7 @@ public:
         bool testCandidateVisibility = true;        ///< Test visibility on selected candidate sample before doing resampling.
 
         // Resampling options.
-        BiasCorrection biasCorrection = BiasCorrection::Basic; ///< Bias correction mode.
+        BiasCorrection biasCorrection = BiasCorrection::Pairwise; ///< Bias correction mode.
         float depthThreshold = 0.1f;                ///< Relative depth difference at which pixels are classified too far apart to be reused (0.1 = 10%).
         float normalThreshold = 0.5f;               ///< Cosine of the angle between normals, below which pixels are classified too far apart to be reused.
 

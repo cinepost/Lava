@@ -127,8 +127,8 @@ bool LTX_Bitmap::checkFileMagic(const std::string filename, bool strict) {
 }
 
 static void makeMagic(unsigned char *magic) {
-    static_assert(0 <= kLtxVersionMajor <= 9);
-    static_assert(0 <= kLtxVersionMinor <= 9);
+    static_assert((0 <= kLtxVersionMajor) && (kLtxVersionMajor <= 9));
+    static_assert((0 <= kLtxVersionMinor) && (kLtxVersionMinor <= 9));
 
     memcpy(magic, gLtxFileMagic, 12);
     magic[5] = 48 + static_cast<unsigned char>(kLtxVersionMajor);
@@ -328,15 +328,15 @@ bool LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
 
     LLOG_INF << "Converting texture \"" << srcFilename << "\" to LTX format using " << to_string(getTLCFromString(compParms.compressorName)) << " compressor.";
 
-    LOG_DBG("OIIO channel formats size: %zu", spec.channelformats.size());
-    LOG_DBG("OIIO is signed: %s", spec.format.is_signed() ? "YES" : "NO");
-    LOG_DBG("OIIO is float: %s", spec.format.is_floating_point() ? "YES" : "NO");
-    LOG_DBG("OIIO basetype %u", oiio::TypeDesc::BASETYPE(spec.format.basetype));
-    LOG_DBG("OIIO bytes per pixel %zu", spec.pixel_bytes());
-    LOG_DBG("OIIO nchannels %i", spec.nchannels);
+    LLOG_DBG << "OIIO channel formats size: " << std::to_string(spec.channelformats.size());
+    LLOG_DBG << "OIIO is signed: " << (spec.format.is_signed() ? "YES" : "NO");
+    LLOG_DBG << "OIIO is float: " << (spec.format.is_floating_point() ? "YES" : "NO");
+    LLOG_DBG << "OIIO basetype: " << std::to_string(oiio::TypeDesc::BASETYPE(spec.format.basetype));
+    LLOG_DBG << "OIIO bytes per pixel: " << std::to_string(spec.pixel_bytes());
+    LLOG_DBG << "OIIO nchannels: " << std::to_string(spec.nchannels);
     
     auto srcFormat = getFormatOIIO(spec.format.basetype, spec.nchannels);
-    LOG_WARN("Source ResourceFormat from OIIO: %s", to_string(srcFormat).c_str());
+    LLOG_DBG << "Source ResourceFormat from OIIO: " << to_string(srcFormat);
     auto dstFormat = getDestFormat(srcFormat);
 
     oiio::ImageBuf srcBuff;
@@ -386,7 +386,7 @@ bool LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
         header.pagesCount += pagesCountX * pagesCountY * pagesCountZ;
     }
 
-    LOG_WARN("LTX calc pages count is: %u", header.pagesCount);
+    LLOG_DBG << "LTX calc pages count is: " << std::to_string(header.pagesCount);
 
     // test
     header.topLevelCompression = getTLCFromString(compParms.compressorName);//BLOSC_LZ;
@@ -426,14 +426,14 @@ bool LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
             return false;
         }
 
-        LOG_WARN("LTX Tlc: %s clevel: %u", compname, compressionInfo.compressionLevel);
+        LLOG_DBG << "LTX Tlc: " << compname << " clevel: " << std::to_string(compressionInfo.compressionLevel);
 
         // write initial values. these valuse are going to rewriten after all pages compressed and written to disk
         fwrite(pageOffsets.data(), sizeof(uint32_t), header.pagesCount, pFile);
         fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);
     }
 
-    LOG_WARN("LTX Mip page dims %u %u %u ...", mipInfo.pageDims.x, mipInfo.pageDims.y, mipInfo.pageDims.z);
+    LLOG_DBG << "LTX Mip page dims " << mipInfo.pageDims.x << " " <<  mipInfo.pageDims.y << " " << mipInfo.pageDims.z;
 
     bool result = false;
 
@@ -471,7 +471,7 @@ bool LTX_Bitmap::convertToKtxFile(std::shared_ptr<Device> pDevice, const std::st
         fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);
     }
     
-    LOG_WARN("LTX post write pages count is: %u", header.pagesCount);
+    LLOG_DBG << "LTX post write pages count is: " << std::to_string(header.pagesCount);
 
     fclose(pFile);
     return result;
@@ -511,7 +511,8 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
         fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
 
         auto nbytes = blosc_decompress(tmp.data(), pData, 65536);
-        LOG_WARN("Compressed page (read) %zu size is %u offset %u decomp size %u", pageNum, mCompressedPageDataSize[pageNum], page_data_offset, nbytes);
+        LLOG_DBG << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 
+                 << " offset " <<std::to_string(page_data_offset) << " decomp size: " << std::to_string(nbytes);
     }
 
 }
