@@ -30,22 +30,18 @@
 #include "Falcor/Core/API/Resource.h"
 #include "Falcor/Utils/StringUtils.h"
 
-namespace Falcor
-{
-    void Resource::apiSetName()
-    {
-        mApiHandle->setDebugName(mName.c_str());
-    }
+namespace Falcor {
 
-    SharedResourceApiHandle Resource::getSharedApiHandle() const
-    {
-        return SharedResourceApiHandle();
-    }
+void Resource::apiSetName() {
+    mApiHandle->setDebugName(mName.c_str());
+}
 
-    gfx::ResourceState getGFXResourceState(Resource::State state)
-    {
-        switch (state)
-        {
+SharedResourceApiHandle Resource::getSharedApiHandle() const {
+    return SharedResourceApiHandle();
+}
+
+gfx::ResourceState getGFXResourceState(Resource::State state) {
+    switch (state) {
         case Resource::State::Undefined:
             return gfx::ResourceState::Undefined;
         case Resource::State::PreInitialized:
@@ -91,79 +87,73 @@ namespace Falcor
         case Resource::State::AccelerationStructure:
             return gfx::ResourceState::AccelerationStructure;
         default:
-            FALCOR_UNREACHABLE();
+            assert(false);
             return gfx::ResourceState::Undefined;
-        }
+    }
+}
+
+void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates) {
+    defaultState = gfx::ResourceState::General;
+    allowedStates = gfx::ResourceStateSet(defaultState);
+
+    // setting up the following flags requires Slang gfx resourece states to have integral type
+    if (is_set(flags, Resource::BindFlags::UnorderedAccess)) {
+        allowedStates.add(gfx::ResourceState::UnorderedAccess);
     }
 
-    void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates)
-    {
-        defaultState = gfx::ResourceState::General;
-        allowedStates = gfx::ResourceStateSet(defaultState);
-
-        // setting up the following flags requires Slang gfx resourece states to have integral type
-        if (is_set(flags, Resource::BindFlags::UnorderedAccess))
-        {
-            allowedStates.add(gfx::ResourceState::UnorderedAccess);
-        }
-
-        if (is_set(flags, Resource::BindFlags::ShaderResource))
-        {
-            allowedStates.add(gfx::ResourceState::ShaderResource);
-        }
-
-        if (is_set(flags, Resource::BindFlags::RenderTarget))
-        {
-            allowedStates.add(gfx::ResourceState::RenderTarget);
-        }
-
-        if (is_set(flags, Resource::BindFlags::DepthStencil))
-        {
-            allowedStates.add(gfx::ResourceState::DepthWrite);
-        }
-
-        if (is_set(flags, Resource::BindFlags::Vertex))
-        {
-            allowedStates.add(gfx::ResourceState::VertexBuffer);
-            allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
-        }
-        if (is_set(flags, Resource::BindFlags::Index))
-        {
-            allowedStates.add(gfx::ResourceState::IndexBuffer);
-            allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
-        }
-        if (is_set(flags, Resource::BindFlags::IndirectArg))
-        {
-            allowedStates.add(gfx::ResourceState::IndirectArgument);
-        }
-        if (is_set(flags, Resource::BindFlags::Constant))
-        {
-            allowedStates.add(gfx::ResourceState::ConstantBuffer);
-        }
-        if (is_set(flags, Resource::BindFlags::AccelerationStructure))
-        {
-            allowedStates.add(gfx::ResourceState::AccelerationStructure);
-            allowedStates.add(gfx::ResourceState::ShaderResource);
-            allowedStates.add(gfx::ResourceState::UnorderedAccess);
-            defaultState = gfx::ResourceState::AccelerationStructure;
-        }
-        allowedStates.add(gfx::ResourceState::CopyDestination);
-        allowedStates.add(gfx::ResourceState::CopySource);
+    if (is_set(flags, Resource::BindFlags::ShaderResource)) {
+        allowedStates.add(gfx::ResourceState::ShaderResource);
     }
 
-    const D3D12ResourceHandle& Resource::getD3D12Handle() const
-    {
+    if (is_set(flags, Resource::BindFlags::RenderTarget)) {
+        allowedStates.add(gfx::ResourceState::RenderTarget);
+    }
+
+    if (is_set(flags, Resource::BindFlags::DepthStencil)) {
+        allowedStates.add(gfx::ResourceState::DepthWrite);
+    }
+
+    if (is_set(flags, Resource::BindFlags::Vertex)) {
+        allowedStates.add(gfx::ResourceState::VertexBuffer);
+        allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+    }
+
+    if (is_set(flags, Resource::BindFlags::Index)) {
+        allowedStates.add(gfx::ResourceState::IndexBuffer);
+        allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+    }
+
+    if (is_set(flags, Resource::BindFlags::IndirectArg)) {
+        allowedStates.add(gfx::ResourceState::IndirectArgument);
+    }
+
+    if (is_set(flags, Resource::BindFlags::Constant)) {
+        allowedStates.add(gfx::ResourceState::ConstantBuffer);
+    }
+
+    if (is_set(flags, Resource::BindFlags::AccelerationStructure)) {
+        allowedStates.add(gfx::ResourceState::AccelerationStructure);
+        allowedStates.add(gfx::ResourceState::ShaderResource);
+        allowedStates.add(gfx::ResourceState::UnorderedAccess);
+        defaultState = gfx::ResourceState::AccelerationStructure;
+    }
+
+    allowedStates.add(gfx::ResourceState::CopyDestination);
+    allowedStates.add(gfx::ResourceState::CopySource);
+}
+
+const D3D12ResourceHandle& Resource::getD3D12Handle() const {
 #if FALCOR_D3D12_AVAILABLE
-        if (!mpD3D12Handle)
-        {
-            gfx::InteropHandle handle = {};
-            FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
-            FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);
-            mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
-        }
-        return mpD3D12Handle;
-#else
-        throw std::runtime_error("D3D12 is not available.");
-#endif
+    if (!mpD3D12Handle) {
+        gfx::InteropHandle handle = {};
+        FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
+        assert(handle.api == gfx::InteropHandleAPI::D3D12);
+        mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
     }
+    return mpD3D12Handle;
+#else
+    throw std::runtime_error("D3D12 is not available.");
+#endif
+}
+    
 } // namespace Falcor

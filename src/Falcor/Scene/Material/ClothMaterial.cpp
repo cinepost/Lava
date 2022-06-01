@@ -46,9 +46,9 @@ namespace Falcor
 
     void ClothMaterial::setRoughness(float roughness)
     {
-        if (mData.specular[1] != (float16_t)roughness)
+        if (mData.roughness != (float16_t)roughness)
         {
-            mData.specular[1] = (float16_t)roughness;
+            mData.roughness = (float16_t)roughness;
             markUpdates(UpdateFlags::DataChanged);
         }
     }

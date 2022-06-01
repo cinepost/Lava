@@ -81,14 +81,14 @@ namespace Falcor
         \param[in] channels List of channels.
         \param[in] bindFlags Optional bind flags. The default is 'ShaderResource' for all inputs.
     */
-    inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource)
+    inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const uint2 dim = {})
     {
         for (const auto& it : channels)
         {
-            auto& buffer = reflector.addInput(it.name, it.desc);
-            buffer.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) buffer.format(it.format);
-            if (it.optional) buffer.flags(RenderPassReflection::Field::Flags::Optional);
+            auto& tex = reflector.addInput(it.name, it.desc).texture2D(dim.x, dim.y);
+            tex.bindFlags(bindFlags);
+            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
         }
     }
 
@@ -97,14 +97,14 @@ namespace Falcor
         \param[in] channels List of channels.
         \param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
     */
-    inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess)
+    inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {})
     {
         for (const auto& it : channels)
         {
-            auto& buffer = reflector.addOutput(it.name, it.desc);
-            buffer.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) buffer.format(it.format);
-            if (it.optional) buffer.flags(RenderPassReflection::Field::Flags::Optional);
+            auto& tex = reflector.addOutput(it.name, it.desc).texture2D(dim.x, dim.y);
+            tex.bindFlags(bindFlags);
+            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
         }
     }
 

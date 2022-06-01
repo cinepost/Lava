@@ -36,92 +36,77 @@
 
 #include "Falcor/Core/Program/ProgramVars.h"
 
-namespace Falcor
-{
-    ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector)
-        : mpDevice(pDevice)
-        , ParameterBlock(pDevice, pReflector)
-        , mpReflector(pReflector)
-    {
-        FALCOR_ASSERT(pReflector);
+namespace Falcor {
+
+ProgramVars::ProgramVars(Device::SharedPtr pDevice, const ProgramReflection::SharedConstPtr& pReflector): mpDevice(pDevice), ParameterBlock(pDevice, pReflector), mpReflector(pReflector) {
+    assert(pReflector);
+}
+
+void ComputeVars::dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount) {
+    auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
+    assert(pProgram);
+    pProgram->dispatchCompute(pContext, this, threadGroupCount);
+}
+
+bool RtProgramVars::prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso) {
+    auto& pKernels = pRtso->getKernels();
+
+    bool needShaderTableUpdate = false;
+    if (!mpShaderTable) {
+        needShaderTableUpdate = true;
     }
 
-    void ComputeVars::dispatchCompute(ComputeContext* pContext, uint3 const& threadGroupCount)
-    {
-        auto pProgram = std::dynamic_pointer_cast<ComputeProgram>(getReflection()->getProgramVersion()->getProgram());
-        FALCOR_ASSERT(pProgram);
-        pProgram->dispatchCompute(pContext, this, threadGroupCount);
-    }
-
-    bool RtProgramVars::prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso)
-    {
-        auto& pKernels = pRtso->getKernels();
-
-        bool needShaderTableUpdate = false;
-        if (!mpShaderTable)
-        {
+    if (!needShaderTableUpdate) {
+        if (pRtso != mpCurrentRtStateObject) {
             needShaderTableUpdate = true;
         }
-
-        if (!needShaderTableUpdate)
-        {
-            if (pRtso != mpCurrentRtStateObject)
-            {
-                needShaderTableUpdate = true;
-            }
-        }
-
-        if (needShaderTableUpdate)
-        {
-            auto getShaderNames = [&](VarsVector& varsVec, std::vector<const char*>& shaderNames, std::vector<gfx::IShaderTable::ShaderRecordOverwrite>* overwrites)
-            {
-                for (uint32_t i = 0; i < (uint32_t)varsVec.size(); i++)
-                {
-                    auto& varsInfo = varsVec[i];
-
-                    auto uniqueGroupIndex = varsInfo.entryPointGroupIndex;
-
-                    auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
-                    if (!pGroupKernels)
-                    {
-                        shaderNames.push_back(nullptr);
-                        if (overwrites)
-                        {
-                            overwrites->push_back(gfx::IShaderTable::ShaderRecordOverwrite{});
-                        }
-                        continue;
-                    }
-
-                    shaderNames.push_back(static_cast<const char*>(pRtso->getShaderIdentifier(uniqueGroupIndex)));
-                    
-                }
-            };
-
-            std::vector<const char*> rayGenShaders;
-            getShaderNames(mRayGenVars, rayGenShaders, nullptr);
-
-            std::vector<const char*> missShaders;
-            getShaderNames(mMissVars, missShaders, nullptr);
-
-            std::vector<const char*> hitgroupShaders;
-            std::vector<gfx::IShaderTable::ShaderRecordOverwrite> hitGroupRecordOverwrites;
-            getShaderNames(mHitVars, hitgroupShaders, &hitGroupRecordOverwrites);
-
-            gfx::IShaderTable::Desc desc = {};
-            desc.rayGenShaderCount = (uint32_t)rayGenShaders.size();
-            desc.rayGenShaderEntryPointNames = rayGenShaders.data();
-            desc.missShaderCount = (uint32_t)missShaders.size();
-            desc.missShaderEntryPointNames = missShaders.data();
-            desc.hitGroupCount = (uint32_t)hitgroupShaders.size();
-            desc.hitGroupNames = hitgroupShaders.data();
-            desc.hitGroupRecordOverwrites = hitGroupRecordOverwrites.data();
-            FALCOR_ASSERT(hitGroupRecordOverwrites.size() == desc.hitGroupCount);
-            desc.program = pRtso->getKernels()->getApiHandle();
-            if (SLANG_FAILED(mpDevice->getApiHandle()->createShaderTable(desc, mpShaderTable.writeRef())))
-                return false;
-            mpCurrentRtStateObject = pRtso;
-        }
-
-        return true;
     }
+
+    if (needShaderTableUpdate) {
+        auto getShaderNames = [&](VarsVector& varsVec, std::vector<const char*>& shaderNames, std::vector<gfx::IShaderTable::ShaderRecordOverwrite>* overwrites) {
+            for (uint32_t i = 0; i < (uint32_t)varsVec.size(); i++) {
+                auto& varsInfo = varsVec[i];
+
+                auto uniqueGroupIndex = varsInfo.entryPointGroupIndex;
+
+                auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
+                if (!pGroupKernels) {
+                    shaderNames.push_back(nullptr);
+                    if (overwrites) {
+                        overwrites->push_back(gfx::IShaderTable::ShaderRecordOverwrite{});
+                    }
+                    continue;
+                }
+
+                shaderNames.push_back(static_cast<const char*>(pRtso->getShaderIdentifier(uniqueGroupIndex)));
+            }
+        };
+
+        std::vector<const char*> rayGenShaders;
+        getShaderNames(mRayGenVars, rayGenShaders, nullptr);
+
+        std::vector<const char*> missShaders;
+        getShaderNames(mMissVars, missShaders, nullptr);
+
+        std::vector<const char*> hitgroupShaders;
+        std::vector<gfx::IShaderTable::ShaderRecordOverwrite> hitGroupRecordOverwrites;
+        getShaderNames(mHitVars, hitgroupShaders, &hitGroupRecordOverwrites);
+
+        gfx::IShaderTable::Desc desc = {};
+        desc.rayGenShaderCount = (uint32_t)rayGenShaders.size();
+        desc.rayGenShaderEntryPointNames = rayGenShaders.data();
+        desc.missShaderCount = (uint32_t)missShaders.size();
+        desc.missShaderEntryPointNames = missShaders.data();
+        desc.hitGroupCount = (uint32_t)hitgroupShaders.size();
+        desc.hitGroupNames = hitgroupShaders.data();
+        desc.hitGroupRecordOverwrites = hitGroupRecordOverwrites.data();
+        assert(hitGroupRecordOverwrites.size() == desc.hitGroupCount);
+        desc.program = pRtso->getKernels()->getApiHandle();
+        if (SLANG_FAILED(mpDevice->getApiHandle()->createShaderTable(desc, mpShaderTable.writeRef())))
+            return false;
+        mpCurrentRtStateObject = pRtso;
+    }
+    return true;
 }
+
+}  // namespace Falcor

@@ -26,15 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/API/RasterizerState.h"
+#include "Falcor/Core/API/RasterizerState.h"
 
-namespace Falcor
-{
-    RasterizerState::~RasterizerState() = default;
+namespace Falcor {
 
-    const RasterizerStateHandle& RasterizerState::getApiHandle() const
-    {
-        UNSUPPORTED_IN_GFX("RasterizerState::getApiHandle()");
-        return mApiHandle;
-    }
+RasterizerState::~RasterizerState() = default;
+
+const RasterizerStateHandle& RasterizerState::getApiHandle() const {
+    UNSUPPORTED_IN_GFX("RasterizerState::getApiHandle()");
+    return mApiHandle;
 }
+
+}  // namespace Falcor

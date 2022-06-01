@@ -330,8 +330,8 @@ namespace Falcor
         gfx::IFramebufferLayout::Desc gfxFbDesc = {};
         {
             auto fboDesc = mDesc.getFboDesc();
-            gfx::IFramebufferLayout::TargetLayout depthAttachment = {};
-            std::vector<gfx::IFramebufferLayout::TargetLayout> attachments(Fbo::getMaxColorTargetCount());
+            gfx::IFramebufferLayout::AttachmentLayout depthAttachment = {};
+            std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachments(Fbo::getMaxColorTargetCount());
             if (mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
             {
                 depthAttachment.format = getGFXFormat(fboDesc.getDepthStencilFormat());
@@ -355,26 +355,26 @@ namespace Falcor
         // Create render pass layout.
         {
             gfx::IRenderPassLayout::Desc renderPassDesc = {};
-            gfx::IRenderPassLayout::TargetAccessDesc depthAccess = {};
+            gfx::IRenderPassLayout::AttachmentAccessDesc depthAccess = {};
             depthAccess.initialState = gfx::ResourceState::DepthWrite;
             depthAccess.finalState = gfx::ResourceState::DepthWrite;
-            depthAccess.loadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
-            depthAccess.stencilLoadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
-            depthAccess.stencilStoreOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
-            depthAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
+            depthAccess.loadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
+            depthAccess.stencilLoadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
+            depthAccess.stencilStoreOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
+            depthAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
             if (this->mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
             {
                 renderPassDesc.depthStencilAccess = &depthAccess;
             }
             renderPassDesc.framebufferLayout = mpGFXFramebufferLayout.get();
             renderPassDesc.renderTargetCount = gfxFbDesc.renderTargetCount;
-            std::vector<gfx::IRenderPassLayout::TargetAccessDesc> colorAccesses(renderPassDesc.renderTargetCount);
+            std::vector<gfx::IRenderPassLayout::AttachmentAccessDesc> colorAccesses(renderPassDesc.renderTargetCount);
             for (auto& colorAccess : colorAccesses)
             {
                 colorAccess.initialState = gfx::ResourceState::RenderTarget;
                 colorAccess.finalState = gfx::ResourceState::RenderTarget;
-                colorAccess.loadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
-                colorAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
+                colorAccess.loadOp = gfx::IRenderPassLayout::AttachmentLoadOp::Load;
+                colorAccess.storeOp = gfx::IRenderPassLayout::AttachmentStoreOp::Store;
             }
             renderPassDesc.renderTargetAccess = colorAccesses.data();
             FALCOR_GFX_CALL(mpDevice->getApiHandle()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));

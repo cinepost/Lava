@@ -120,66 +120,66 @@ bool Property::set(const Value& value) {
     }
 
     if (mType == Type::BOOL && type == Type::INT) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (bool) (boost::get<int>(value) == 0 ? false : true);
         return true;
     }
 
     if (mType == Type::BOOL && type == Type::FLOAT) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (bool) (boost::get<double>(value) == 0 ? false : true);
         return true;
     }
 
     if (mType == Type::INT && type == Type::FLOAT) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (int) boost::get<double>(value);
         return true;
     }
 
     if (mType == Type::INT2 && type == Type::VECTOR2) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Vector2>(value);
         mValue = Int2{int(v[0]), int(v[1])};
         return true;
     }
 
     if (mType == Type::INT3 && type == Type::VECTOR3) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Vector3>(value);
         mValue = Int3{int(v[0]), int(v[1]), int(v[2])};
         return true;
     }
 
     if (mType == Type::INT4 && type == Type::VECTOR4) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Vector4>(value);
         mValue = Int4{int(v[0]), int(v[1]), int(v[2]), int(v[3])};
         return true;
     }
 
     if (mType == Type::FLOAT && type == Type::INT) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         mValue = (double) boost::get<int>(value);
         return true;
     }
 
     if (mType == Type::VECTOR2 && type == Type::INT2) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Int2>(value);
         mValue = Vector2{double(v[0]), double(v[1])};
         return true;
     }
 
     if (mType == Type::VECTOR3 && type == Type::INT3) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Int3>(value);
         mValue = Vector3{double(v[0]), double(v[1]), double(v[2])};
         return true;
     }
 
     if (mType == Type::VECTOR4 && type == Type::INT4) {
-        LLOG_WRN << "Conversion from " << to_string(type) << " to " << to_string(mType);
+        LLOG_DBG << "Conversion from " << to_string(type) << " to " << to_string(mType);
         auto const& v = boost::get<Int4>(value);
         mValue = Vector4{double(v[0]), double(v[1]), double(v[2]), double(v[3])};
         return true;
@@ -256,7 +256,7 @@ const Property::Value& PropertiesContainer::_getPropertyValue(ast::Style style, 
     auto pProperty = getProperty(style, name);
     
     if(!pProperty)
-        LLOG_WRN << "Can't find property " << to_string(PropertyKey(style, name)) << " ! Returning default value...";
+        LLOG_DBG << "Can't find property " << to_string(PropertyKey(style, name)) << " ! Returning default value...";
         return default_value;
 
     if(!checkValueTypeStrict(pProperty->type(), default_value)) {
@@ -270,8 +270,8 @@ template<>
 const Int2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int2& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Int2>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -279,8 +279,8 @@ template<>
 const Int3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int3& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Int3>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -288,8 +288,8 @@ template<>
 const Int4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Int4& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Int4>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -297,8 +297,8 @@ template<>
 const Vector2 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector2& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Vector2>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -306,8 +306,8 @@ template<>
 const Vector3 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector3& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Vector3>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -315,8 +315,8 @@ template<>
 const Vector4 PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const Vector4& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<Vector4>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -324,8 +324,8 @@ template<>
 const std::string PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const std::string& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<std::string>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -333,8 +333,8 @@ template<>
 const double PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const double& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<double>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -342,8 +342,8 @@ template<>
 const float PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const float& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<float>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -351,8 +351,8 @@ template<>
 const int PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const int& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<int>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< to_string(default_value);
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< to_string(default_value);
     return default_value;
 }
 
@@ -360,8 +360,8 @@ template<>
 const bool PropertiesContainer::getPropertyValue(ast::Style style, const std::string& name, const bool& default_value) const {
     auto pProperty = getProperty(style, name);
     if(pProperty) return pProperty->get<bool>();
-    LLOG_WRN << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
-    LLOG_WRN << "Returning default value "<< (default_value ? "True" : "False");
+    LLOG_DBG << "Property '" << name << "' of style '" << to_string(style) << "'' doesn't exist...";
+    LLOG_DBG << "Returning default value "<< (default_value ? "True" : "False");
     return default_value;
 }
 

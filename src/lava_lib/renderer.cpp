@@ -106,7 +106,7 @@ Renderer::~Renderer() {
 }
 
 AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
-    LLOG_WRN << "Adding aov " << info.name;
+    LLOG_DBG << "Adding aov " << info.name;
     if (mAOVPlanes.find(info.name) != mAOVPlanes.end()) {
         LLOG_ERR << "AOV plane named \"" << info.name << "\" already exist !";
         return nullptr;
@@ -125,7 +125,7 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 }
 
 AOVPlane::SharedPtr Renderer::getAOVPlane(const AOVName& name) {
-    LLOG_WRN << "Getting aov " << name;
+    LLOG_DBG << "Getting aov " << name;
     if (mAOVPlanes.find(name) == mAOVPlanes.end()) {
         LLOG_ERR << "No AOV plane named \"" << name << "\" exist !";
         return nullptr;
@@ -463,7 +463,7 @@ void Renderer::renderSample() {
     }
 
     mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-
+    
     double currentTime = 0;
     pScene->update(pRenderContext, currentTime);
 

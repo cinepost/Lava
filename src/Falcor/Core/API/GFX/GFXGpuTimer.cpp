@@ -26,30 +26,29 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "GFXLowLevelContextApiData.h"
 
 #include "Falcor/Core/API/GpuTimer.h"
 
-namespace Falcor
-{
-    void GpuTimer::apiBegin()
-    {
+#include "GFXLowLevelContextApiData.h"
+
+
+namespace Falcor {
+
+    void GpuTimer::apiBegin() {
         mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mStart);
     }
 
-    void GpuTimer::apiEnd()
-    {
+    void GpuTimer::apiEnd() {
         mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
     }
 
-    void GpuTimer::apiResolve()
-    {
+    void GpuTimer::apiResolve() {
         // TODO: Copy to staging buffer for readback.
     }
 
-    void GpuTimer::apiReadback(uint64_t result[2])
-    {
+    void GpuTimer::apiReadback(uint64_t result[2]) {
         mpLowLevelData->flush();
         FALCOR_GFX_CALL(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
     }
-}
+
+}  // namespace Falcor

@@ -85,9 +85,9 @@ namespace Falcor
             return;
         }
 
-        if (mData.specular[2] != (float16_t)metallic)
+        if (mData.metallic != (float16_t)metallic)
         {
-            mData.specular[2] = (float16_t)metallic;
+            mData.metallic = (float16_t)metallic;
             markUpdates(UpdateFlags::DataChanged);
         }
     }

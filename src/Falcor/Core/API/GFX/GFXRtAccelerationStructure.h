@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_
+#define SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_
+
 #include "stdafx.h"
 
 #include <slang/slang-gfx.h>
@@ -33,12 +35,11 @@
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 
-namespace Falcor
-{
-    /** A helper class to translate `RtAccelerationStructureBuildInputs` into `gfx::IAccelerationStructure::BuildInputs`.
-    */
-    struct GFXAccelerationStructureBuildInputsTranslator
-    {
+namespace Falcor {
+
+/** A helper class to translate `RtAccelerationStructureBuildInputs` into `gfx::IAccelerationStructure::BuildInputs`.
+*/
+struct GFXAccelerationStructureBuildInputsTranslator {
     public:
         gfx::IAccelerationStructure::BuildInputs& translate(const RtAccelerationStructureBuildInputs& buildInputs);
 
@@ -47,11 +48,13 @@ namespace Falcor
         gfx::IAccelerationStructure::PrebuildInfo mPrebuildInfo = {};
         std::vector<gfx::IAccelerationStructure::GeometryDesc> mGeomDescs;
 
-        gfx::IAccelerationStructure::GeometryFlags::Enum translateGeometryFlags(RtGeometryFlags flags)
-        {
+        gfx::IAccelerationStructure::GeometryFlags::Enum translateGeometryFlags(RtGeometryFlags flags) {
             return (gfx::IAccelerationStructure::GeometryFlags::Enum)flags;
         }
-    };
+};
 
-    gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type);
-}
+gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type);
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GFX_GFXRTACCELERATIONSTRUCTURE_H_

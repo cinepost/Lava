@@ -651,7 +651,7 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 
 	auto pSubContainer = pProp->subContainer();
 	if(!pSubContainer) {
-		LLOG_ERR << "No sub-container for property " << values[0].first;
+		LLOG_WRN << "No sub-container for property " << values[0].first;
 		return;
 	}
 

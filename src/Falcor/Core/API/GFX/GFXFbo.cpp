@@ -31,10 +31,9 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/FBO.h"
 
-namespace Falcor
-{
-    struct FboData
-    {
+namespace Falcor {
+
+    struct FboData {
         bool mHandleDirty = true;
     };
 
@@ -100,8 +99,8 @@ namespace Falcor
         mpPrivateData->mHandleDirty = false;
 
         gfx::IFramebufferLayout::Desc layoutDesc = {};
-        std::vector<gfx::IFramebufferLayout::TargetLayout> attachmentLayouts;
-        gfx::IFramebufferLayout::TargetLayout depthAttachmentLayout = {};
+        std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachmentLayouts;
+        gfx::IFramebufferLayout::AttachmentLayout depthAttachmentLayout = {};
         gfx::IFramebuffer::Desc desc = {};
         if (mDepthStencil.pTexture)
         {
@@ -115,7 +114,7 @@ namespace Falcor
         std::vector<gfx::IResourceView*> renderTargetViews;
         for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++)
         {
-            gfx::IFramebufferLayout::TargetLayout renderAttachmentLayout = {};
+            gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
 
             if (mColorAttachments[i].pTexture)
             {

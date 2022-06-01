@@ -88,8 +88,6 @@ bool ReaderLSD::parseStream(std::istream& in) {
 
         begin = str.begin(); end = str.end();
         
-        std::cout << str << std::endl;
-
         std::vector<lsd::ast::Command> commands; // ast tree
         bool result = x3::phrase_parse(begin, end, lsd::parser::input, lsd::parser::skipper, commands); 
 
@@ -105,20 +103,7 @@ bool ReaderLSD::parseStream(std::istream& in) {
         for (auto& cmd : commands) {
 
             if (!mpVisitor->ignoreCommands()) {
-                //try {
-                    boost::apply_visitor(*mpVisitor, cmd);
-                //} catch (const std::runtime_error& re) {
-                //    LLOG_FTL << "Runtime error: " << re.what();
-                //    return false;
-                //} catch (const std::exception &exc) {
-                //    // catch anything thrown within try block that derives from std::exception
-                //    LLOG_FTL << exc.what();
-                //} catch (...) {
-                //    LLOG_FTL << "Unknown error occured !!! __________________________";
-                //    LLOG_FTL << str;
-                //    LLOG_FTL << "____________________________________________________";
-                //    return false;
-                //}
+                boost::apply_visitor(*mpVisitor, cmd);
             }
 
             if(mpVisitor->readyToQuit()) {
@@ -127,9 +112,6 @@ bool ReaderLSD::parseStream(std::istream& in) {
             } 
         }
     }
-
-    printf("ReaderLSD done!\n");
-
     return true;
 }
 

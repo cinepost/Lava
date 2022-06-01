@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GFX_GFXLOWLEVELCONTEXTAPIDATA_H_
+#define SRC_FALCOR_CORE_API_GFX_GFXLOWLEVELCONTEXTAPIDATA_H_
 
 #include <slang/slang-gfx.h>
 
@@ -33,29 +34,31 @@
 #include "Core/API/Shared/D3D12DescriptorPool.h"
 #endif
 
-namespace Falcor
-{
-    struct LowLevelContextApiData
-    {
-#if FALCOR_D3D12_AVAILABLE
-        bool mUsingCustomDescriptorHeap = false;
-        D3D12CommandListHandle mpD3D12CommandListHandle;
-        D3D12CommandQueueHandle mpD3D12CommandQueueHandle;
-#endif
-        Slang::ComPtr<gfx::ICommandBuffer> pCommandBuffer;
-        bool mIsCommandBufferOpen = false;
+namespace Falcor {
 
-        gfx::IResourceCommandEncoder* getResourceCommandEncoder();
-        gfx::IComputeCommandEncoder* getComputeCommandEncoder();
-        gfx::IRenderCommandEncoder* getRenderCommandEncoder(gfx::IRenderPassLayout* renderPassLayout, gfx::IFramebuffer* framebuffer, bool& newEncoder);
-        gfx::IRayTracingCommandEncoder* getRayTracingCommandEncoder();
-        void closeEncoders();
-    private:
-        gfx::IFramebuffer* mpFramebuffer = nullptr;
-        gfx::IRenderPassLayout* mpRenderPassLayout = nullptr;
-        gfx::IResourceCommandEncoder* mpResourceCommandEncoder = nullptr;
-        gfx::IComputeCommandEncoder* mpComputeCommandEncoder = nullptr;
-        gfx::IRenderCommandEncoder* mpRenderCommandEncoder = nullptr;
-        gfx::IRayTracingCommandEncoder* mpRayTracingCommandEncoder = nullptr;
-    };
-}
+struct LowLevelContextApiData {
+#if FALCOR_D3D12_AVAILABLE
+    bool mUsingCustomDescriptorHeap = false;
+    D3D12CommandListHandle mpD3D12CommandListHandle;
+    D3D12CommandQueueHandle mpD3D12CommandQueueHandle;
+#endif
+    Slang::ComPtr<gfx::ICommandBuffer> pCommandBuffer;
+    bool mIsCommandBufferOpen = false;
+
+    gfx::IResourceCommandEncoder* getResourceCommandEncoder();
+    gfx::IComputeCommandEncoder* getComputeCommandEncoder();
+    gfx::IRenderCommandEncoder* getRenderCommandEncoder(gfx::IRenderPassLayout* renderPassLayout, gfx::IFramebuffer* framebuffer, bool& newEncoder);
+    gfx::IRayTracingCommandEncoder* getRayTracingCommandEncoder();
+    void closeEncoders();
+private:
+    gfx::IFramebuffer* mpFramebuffer = nullptr;
+    gfx::IRenderPassLayout* mpRenderPassLayout = nullptr;
+    gfx::IResourceCommandEncoder* mpResourceCommandEncoder = nullptr;
+    gfx::IComputeCommandEncoder* mpComputeCommandEncoder = nullptr;
+    gfx::IRenderCommandEncoder* mpRenderCommandEncoder = nullptr;
+    gfx::IRayTracingCommandEncoder* mpRayTracingCommandEncoder = nullptr;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GFX_GFXLOWLEVELCONTEXTAPIDATA_H_

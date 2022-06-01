@@ -39,7 +39,7 @@ namespace Falcor {
 
         for (const auto& pass : mExecutionList) {
             PROFILE(pDevice, pass.name);
-
+            
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, sampleNumber);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }

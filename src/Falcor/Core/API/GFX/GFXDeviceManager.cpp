@@ -143,7 +143,12 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
 bool DeviceManager::init() {
     if (mInitialized) return true;
 
+#ifdef _DEBUG
     bool enableDebugLayer = true;
+#else
+    bool enableDebugLayer = false;
+#endif
+    
     gVulkanInstance = createVulkanInstance(enableDebugLayer);
     
     if (gVulkanInstance == VK_NULL_HANDLE) return false;

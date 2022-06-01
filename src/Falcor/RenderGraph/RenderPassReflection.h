@@ -75,7 +75,10 @@ public:
 
         Field& rawBuffer(uint32_t size);
         Field& texture1D(uint32_t width = 0, uint32_t mipCount = 1, uint32_t arraySize = 1);
+        
+        Field& texture2D(uint2 dims, uint32_t sampleCount = 1, uint32_t mipCount = 1, uint32_t arraySize = 1);
         Field& texture2D(uint32_t width = 0, uint32_t height = 0, uint32_t sampleCount = 1, uint32_t mipCount = 1, uint32_t arraySize = 1);
+        
         Field& texture3D(uint32_t width = 0, uint32_t height = 0, uint32_t depth = 0, uint32_t arraySize = 1);
         Field& textureCube(uint32_t width = 0, uint32_t height = 0, uint32_t mipCount = 1, uint32_t arraySize = 1);
         Field& resourceType(Type type, uint32_t width, uint32_t height, uint32_t depth, uint32_t sampleCount, uint32_t mipCount, uint32_t arraySize);

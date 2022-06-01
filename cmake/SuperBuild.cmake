@@ -4,6 +4,10 @@ message("Running SuperBuild.cmake")
 
 list(APPEND 3RD_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 
+if( DEFINED SLANG_BUILD_TYPE)
+  list(APPEND 3RD_ARGS "-DSLANG_BUILD_TYPE=${SLANG_BUILD_TYPE}")
+endif()
+
 # Third party external projects
 ExternalProject_Add( third_party
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/third_party

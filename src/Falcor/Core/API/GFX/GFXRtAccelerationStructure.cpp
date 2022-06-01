@@ -26,87 +26,73 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Core/API/RtAccelerationStructure.h"
+#include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "GFXRtAccelerationStructure.h"
 #include "GFXFormats.h"
 
-namespace Falcor
-{
+namespace Falcor {
 
-    RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, const RtAccelerationStructure::Desc& desc)
-        : mpDevice(pDevice), mDesc(desc)
-    {
-    }
+RtAccelerationStructure::RtAccelerationStructure(Device::SharedPtr pDevice, const RtAccelerationStructure::Desc& desc): mpDevice(pDevice), mDesc(desc) {}
 
-    RtAccelerationStructure::~RtAccelerationStructure()
-    {
-        mpDevice->releaseResource(mApiHandle);
-    }
+RtAccelerationStructure::~RtAccelerationStructure() {
+    mpDevice->releaseResource(mApiHandle);
+}
 
-    RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(Device::SharedPtr pDevice,  const RtAccelerationStructureBuildInputs& inputs)
-    {
-        static_assert(sizeof(RtAccelerationStructurePrebuildInfo) == sizeof(gfx::IAccelerationStructure::PrebuildInfo));
+RtAccelerationStructurePrebuildInfo RtAccelerationStructure::getPrebuildInfo(Device::SharedPtr pDevice,  const RtAccelerationStructureBuildInputs& inputs) {
+    static_assert(sizeof(RtAccelerationStructurePrebuildInfo) == sizeof(gfx::IAccelerationStructure::PrebuildInfo));
 
-        gfx::IAccelerationStructure::BuildInputs gfxBuildInputs;
+    gfx::IAccelerationStructure::BuildInputs gfxBuildInputs;
 
-        GFXAccelerationStructureBuildInputsTranslator translator;
-        gfxBuildInputs = translator.translate(inputs);
+    GFXAccelerationStructureBuildInputsTranslator translator;
+    gfxBuildInputs = translator.translate(inputs);
 
-        FALCOR_ASSERT(pDevice);
-        Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
+    assert(pDevice);
+    Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
 
-        gfx::IAccelerationStructure::PrebuildInfo gfxPrebuildInfo;
-        iDevice->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo);
+    gfx::IAccelerationStructure::PrebuildInfo gfxPrebuildInfo;
+    iDevice->getAccelerationStructurePrebuildInfo(gfxBuildInputs, &gfxPrebuildInfo);
 
-        RtAccelerationStructurePrebuildInfo result = {};
-        result.resultDataMaxSize = gfxPrebuildInfo.resultDataMaxSize;
-        result.scratchDataSize = gfxPrebuildInfo.scratchDataSize;
-        result.updateScratchDataSize = gfxPrebuildInfo.updateScratchDataSize;
-        return result;
-    }
+    RtAccelerationStructurePrebuildInfo result = {};
+    result.resultDataMaxSize = gfxPrebuildInfo.resultDataMaxSize;
+    result.scratchDataSize = gfxPrebuildInfo.scratchDataSize;
+    result.updateScratchDataSize = gfxPrebuildInfo.updateScratchDataSize;
+    return result;
+}
 
-    gfx::IAccelerationStructure::Kind getGFXAccelerationStructureKind(RtAccelerationStructureKind kind)
-    {
-        switch (kind)
-        {
+gfx::IAccelerationStructure::Kind getGFXAccelerationStructureKind(RtAccelerationStructureKind kind) {
+    switch (kind) {
         case RtAccelerationStructureKind::TopLevel:
             return gfx::IAccelerationStructure::Kind::TopLevel;
         case RtAccelerationStructureKind::BottomLevel:
             return gfx::IAccelerationStructure::Kind::BottomLevel;
         default:
-            FALCOR_UNREACHABLE();
+            assert(false);
             return gfx::IAccelerationStructure::Kind::BottomLevel;
-        }
     }
+}
 
-    bool RtAccelerationStructure::apiInit()
-    {
-        gfx::IAccelerationStructure::CreateDesc createDesc = {};
-        createDesc.buffer = static_cast<gfx::IBufferResource*>(mDesc.getBuffer()->getApiHandle().get());
-        createDesc.kind = getGFXAccelerationStructureKind(mDesc.mKind);
-        createDesc.offset = mDesc.getOffset();
-        createDesc.size = mDesc.getSize();
-        SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getApiHandle()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
-        return true;
-    }
+bool RtAccelerationStructure::apiInit() {
+    gfx::IAccelerationStructure::CreateDesc createDesc = {};
+    createDesc.buffer = static_cast<gfx::IBufferResource*>(mDesc.getBuffer()->getApiHandle().get());
+    createDesc.kind = getGFXAccelerationStructureKind(mDesc.mKind);
+    createDesc.offset = mDesc.getOffset();
+    createDesc.size = mDesc.getSize();
+    SLANG_RETURN_FALSE_ON_FAIL(mpDevice->getApiHandle()->createAccelerationStructure(createDesc, mApiHandle.writeRef()));
+    return true;
+}
 
-    AccelerationStructureHandle RtAccelerationStructure::getApiHandle() const
-    {
-        return mApiHandle;
-    }
+AccelerationStructureHandle RtAccelerationStructure::getApiHandle() const {
+    return mApiHandle;
+}
 
-    gfx::IAccelerationStructure::BuildInputs& GFXAccelerationStructureBuildInputsTranslator::translate(const RtAccelerationStructureBuildInputs& buildInputs)
-    {
-        if (buildInputs.geometryDescs)
-        {
-            mGeomDescs.resize(buildInputs.descCount);
-            for (size_t i = 0; i < mGeomDescs.size(); i++)
-            {
-                auto& inputGeomDesc = buildInputs.geometryDescs[i];
-                mGeomDescs[i].flags = translateGeometryFlags(inputGeomDesc.flags);
+gfx::IAccelerationStructure::BuildInputs& GFXAccelerationStructureBuildInputsTranslator::translate(const RtAccelerationStructureBuildInputs& buildInputs) {
+    if (buildInputs.geometryDescs) {
+        mGeomDescs.resize(buildInputs.descCount);
+        for (size_t i = 0; i < mGeomDescs.size(); i++) {
+            auto& inputGeomDesc = buildInputs.geometryDescs[i];
+            mGeomDescs[i].flags = translateGeometryFlags(inputGeomDesc.flags);
 
-                switch (inputGeomDesc.type)
-                {
+            switch (inputGeomDesc.type) {
                 case RtGeometryType::Triangles:
                     mGeomDescs[i].type = gfx::IAccelerationStructure::GeometryType::Triangles;
                     mGeomDescs[i].content.triangles.indexData = inputGeomDesc.content.triangles.indexData;
@@ -127,15 +113,14 @@ namespace Falcor
                     break;
 
                 default:
-                    FALCOR_UNREACHABLE();
-                }
+                    assert(false);
             }
         }
+    }
 
-        mDesc.descCount = buildInputs.descCount;
+    mDesc.descCount = buildInputs.descCount;
 
-        switch (buildInputs.kind)
-        {
+    switch (buildInputs.kind) {
         case RtAccelerationStructureKind::TopLevel:
             mDesc.kind = gfx::IAccelerationStructure::Kind::TopLevel;
             mDesc.instanceDescs = buildInputs.instanceDescs;
@@ -145,16 +130,14 @@ namespace Falcor
             mDesc.kind = gfx::IAccelerationStructure::Kind::BottomLevel;
             mDesc.geometryDescs = &mGeomDescs[0];
             break;
-        }
-
-        mDesc.flags = (gfx::IAccelerationStructure::BuildFlags::Enum)buildInputs.flags;
-        return mDesc;
     }
 
-    gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type)
-    {
-        switch (type)
-        {
+    mDesc.flags = (gfx::IAccelerationStructure::BuildFlags::Enum)buildInputs.flags;
+    return mDesc;
+}
+
+gfx::QueryType getGFXAccelerationStructurePostBuildQueryType(RtAccelerationStructurePostBuildInfoQueryType type) {
+    switch (type) {
         case RtAccelerationStructurePostBuildInfoQueryType::CompactedSize:
             return gfx::QueryType::AccelerationStructureCompactedSize;
         case RtAccelerationStructurePostBuildInfoQueryType::SerializationSize:
@@ -162,8 +145,9 @@ namespace Falcor
         case RtAccelerationStructurePostBuildInfoQueryType::CurrentSize:
             return gfx::QueryType::AccelerationStructureCurrentSize;
         default:
-            FALCOR_UNREACHABLE();
+            assert(false);
             return gfx::QueryType::AccelerationStructureCompactedSize;
-        }
     }
 }
+
+}  // namespace Falcor

@@ -128,10 +128,10 @@ extension MaterialSystem
             
 
             // TODO: normal flipping bug here
-            //if (!sd.frontFacing && sd.mtl.isDoubleSided())
-            //{
-            //    sd.N = -sd.N;
-            //}
+            if (!sd.frontFacing && sd.mtl.isDoubleSided())
+            {
+                sd.N = -sd.N;
+            }
         }
 
         return sd;

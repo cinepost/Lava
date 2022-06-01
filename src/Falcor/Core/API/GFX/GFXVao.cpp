@@ -28,11 +28,11 @@
 #include "stdafx.h"
 #include "Core/API/VAO.h"
 
-namespace Falcor
-{
-    const VaoHandle& Vao::getApiHandle() const
-    {
-        UNSUPPORTED_IN_GFX("VAO doesn't have an API handle");
-        return mApiHandle;
-    }
+namespace Falcor {
+
+const VaoHandle& Vao::getApiHandle() const {
+    UNSUPPORTED_IN_GFX("VAO doesn't have an API handle");
+    return mApiHandle;
+}
+
 }

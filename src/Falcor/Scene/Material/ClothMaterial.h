@@ -63,7 +63,7 @@ namespace Falcor
 
         /** Get the roughness.
         */
-        float getRoughness() const { return (float)mData.specular[1]; }
+        float getRoughness() const { return (float)mData.roughness; }
 
     protected:
         ClothMaterial(Device::SharedPtr pDevice, const std::string& name);

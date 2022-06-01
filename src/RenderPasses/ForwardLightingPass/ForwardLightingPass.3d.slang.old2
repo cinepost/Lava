@@ -54,10 +54,9 @@ cbuffer PerFrameCB {
   uint              gSamplesPerFrame;
 
   float4x4          gViewInvMat;
-
-  EnvMapSampler     gEnvMapSampler;
 };
 
+EnvMapSampler  gEnvMapSampler;
 EnvMapLighting gEnvMapLighting; 
 
 SamplerState gSampler;
@@ -173,6 +172,51 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }
+
+/*
+/////////////////////////////////////
+
+// Evaluate diffuse and specular lobes.
+            float3 diffuse = {};
+            float3 specular = {};
+            if (valid)
+            {
+                TinyUniformSampleGenerator sg = TinyUniformSampleGenerator.create(ipos, gSampleNumber);
+
+                sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
+                diffuse = bsdf.eval(sd, dir, sg) * Li;
+
+                sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+                specular = bsdf.eval(sd, dir, sg) * Li;
+
+                hitT = distance;
+            }
+
+/////////////////////////////////////
+*/
+
+#if _USE_ENV_MAP
+    // Evaluate environment diffuse and specular lobes.
+    float3 envDiffuse = {};
+    float3 envSpecular = {};
+
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator.create(ipos, gSampleNumber);
+
+    float misWeight = 1.f;
+    // If NEE and MIS are enabled, and we've already sampled the env map,
+    // then we need to evaluate the MIS weight here to account for the remaining contribution.
+
+    // Evaluate PDF, had it been generated with light sampling.
+    float envLightPdf = gEnvMapSampler.evalPdf(path.dir);
+
+    // Compute MIS weight by combining this with BSDF sampling.
+    // Note we can assume path.pdf > 0.f since we shouldn't have got here otherwise.
+    misWeight = evalMIS(1, path.pdf, 1, lightPdf);
+    
+    float3 Le = gEnvMapSampler.eval(path.dir);
+    surfaceColor += Le + misWeight;    
+
+#endif
 
     // Add the emissive component
     surfaceColor += bsdf.getProperties(sd).emission;

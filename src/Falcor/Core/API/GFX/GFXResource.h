@@ -25,15 +25,17 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_GFX_GFXRESOURCEHANDLE_H_
+#define SRC_FALCOR_CORE_API_GFX_GFXRESOURCEHANDLE_H_
 
 #include <slang/slang-gfx.h>
 
 #include "Falcor/Core/API/Resource.h"
 
 
-namespace Falcor
-{
+namespace Falcor {
     gfx::ResourceState getGFXResourceState(Resource::State state);
     void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
-}
+} // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_GFX_GFXRESOURCEHANDLE_H_

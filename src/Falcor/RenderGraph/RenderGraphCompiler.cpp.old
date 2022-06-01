@@ -236,10 +236,18 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
         const auto& passReflection = mExecutionList[i].reflector;
 
         auto isResourceUsed = [&](auto field) {
+            if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) && is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Input)) {
+                // This is optional output field. Check if its connected
+                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++) {
+                    const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
+                    if (edgeData.srcField == field.getName()) return true;
+                }
+                return false;
+            }
+
             if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) return true;
-            if (mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
-            {
+            if(mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
+            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++) {
                 const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
                 if (edgeData.srcField == field.getName()) return true;
             }
@@ -387,7 +395,7 @@ void RenderGraphCompiler::compilePasses(RenderContext* pContext) {
         }
 
         if (!changed) {
-            LLOG_ERR << "Graph compilation failed.\n" << log;
+            logError("Graph compilation failed.\n" + log);
             return;
         }
     }

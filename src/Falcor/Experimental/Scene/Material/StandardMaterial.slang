@@ -67,25 +67,27 @@ struct StandardMaterial : IMaterial
         float F0 = f * f;
 
         // Sample base color.
-        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
-
-        // Sample the specular texture.
-        // Depending on the shading model this encodes the material parameters differently.
-        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;
 
 #if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
         if (data.getShadingModel() == ShadingModel::MetalRough)
 #endif
         {
+            float metallic = ms.sampleTexture(data.texSpecular, s, sd.uv, float4(1.f), lod).r * data.metallic;
+
             // G - Roughness; B - Metallic
-            d.diffuse = lerp(baseColor, float3(0), spec.b);
-            d.specular = lerp(float3(F0), baseColor, spec.b);
-            d.roughness = spec.g;
-            d.metallic = spec.b;
+            d.diffuse = lerp(baseColor, float3(0), metallic);
+            d.specular = lerp(float3(F0), baseColor, metallic);
+            d.roughness = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
+            d.metallic = metallic;
         }
 #if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
         else // ShadingModel::SpecGloss
         {
+            // Sample the specular texture.
+            // Depending on the shading model this encodes the material parameters differently.
+            const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+
             d.diffuse = baseColor;
             d.specular = spec.rgb;
             d.roughness = 1 - spec.a;

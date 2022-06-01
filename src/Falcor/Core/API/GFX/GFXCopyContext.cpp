@@ -43,12 +43,10 @@
 
 #include "Falcor/Core/API/CopyContext.h"
 
+namespace Falcor {
 
-namespace Falcor
-{
-    void CopyContext::bindDescriptorHeaps()
-    {
-    }
+
+void CopyContext::bindDescriptorHeaps() { }
 
     void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset, const uint3& size)
     {
@@ -59,7 +57,7 @@ namespace Falcor
         uint8_t* dataPtr = (uint8_t*)pData;
         auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
         gfx::ITextureResource::Offset3D gfxOffset = { (int)offset.x, (int)offset.y, (int)offset.z };
-        gfx::ITextureResource::Extents gfxSize = { (int)size.x, (int)size.y, (int)size.z };
+        gfx::ITextureResource::Size gfxSize = { (int)size.x, (int)size.y, (int)size.z };
         gfx::FormatInfo formatInfo = {};
         gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
         for (uint32_t index = firstSubresource; index < firstSubresource + subresourceCount; index++)
@@ -122,7 +120,7 @@ namespace Falcor
             gfx::ResourceState::CopySource,
             srcSubresource,
             gfx::ITextureResource::Offset3D(0, 0, 0),
-            gfx::ITextureResource::Extents{ (int)pTexture->getWidth(mipLevel), (int)pTexture->getHeight(mipLevel), (int)pTexture->getDepth(mipLevel) });
+            gfx::ITextureResource::Size{ (int)pTexture->getWidth(mipLevel), (int)pTexture->getHeight(mipLevel), (int)pTexture->getDepth(mipLevel) });
         pCtx->setPendingCommands(true);
 
         // Create a fence and signal
@@ -267,7 +265,7 @@ namespace Falcor
             gfx::ITextureResource* srcTexture = static_cast<gfx::ITextureResource*>(pSrc->getApiHandle().get());
             gfx::SubresourceRange subresourceRange = {};
             resourceEncoder->copyTexture(dstTexture, gfx::ResourceState::CopyDestination, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0),
-                srcTexture, gfx::ResourceState::CopySource, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0), gfx::ITextureResource::Extents{ 0,0,0 });
+                srcTexture, gfx::ResourceState::CopySource, subresourceRange, gfx::ITextureResource::Offset3D(0, 0, 0), gfx::ITextureResource::Size{ 0,0,0 });
         }
         mCommandsPending = true;
     }
@@ -334,7 +332,7 @@ namespace Falcor
         srcSubresource.mipLevel = pSrc->getSubresourceMipLevel(srcSubresourceIdx);
         srcSubresource.mipLevelCount = 1;
 
-        gfx::ITextureResource::Extents copySize = { (int)size.x, (int)size.y, (int)size.z };
+        gfx::ITextureResource::Size copySize = { (int)size.x, (int)size.y, (int)size.z };
 
         if (size.x == glm::uint(-1))
         {

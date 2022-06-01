@@ -64,7 +64,7 @@ struct BasicMaterialData
     float16_t   volumeAnisotropy        = float16_t(0.f);   ///< Volume phase function anisotropy (g). Range [-1,1].
 
     float16_t   roughness               = float16_t(0.f);
-    float16_t   _pad1;
+    float16_t   metallic                = float16_t(0.f);
 
     float       displacementScale       = 0.f;              ///< Displacement scale value.
     float       displacementOffset      = 0.f;              ///< Displacement offset value.

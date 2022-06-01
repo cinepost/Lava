@@ -685,7 +685,7 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-set(EXTERNAL_SLANG_VERSION 0.32.12) # last tested version was 0.18.6
+set(EXTERNAL_SLANG_VERSION 0.23.7) # last tested version was 0.18.6
 
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
@@ -695,7 +695,12 @@ set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
+if(NOT DEFINED SLANG_BUILD_TYPE)
+  set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
+endif()
+
+
+if (SLANG_BUILD_TYPE STREQUAL "Release")
   set(SLANG_BUILD_CONFIG release_x64)
   set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
 else()
@@ -703,15 +708,15 @@ else()
   set(SLANG_BIN_DIR ${SLANG_DEBUG_BIN_DIR})
 endif()
 
-set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
-set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
+message("Slang build config " ${SLANG_BUILD_CONFIG})
+
 
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
 ExternalProject_Add( Slang
   PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
   GIT_REPOSITORY https://github.com/shader-slang/slang.git
-  GIT_REMOTE_NAME releases/tags/v${EXTERNAL_SLANG_VERSION}
+  GIT_TAG v${EXTERNAL_SLANG_VERSION}
   UPDATE_DISCONNECTED ON
   BUILD_IN_SOURCE   TRUE
   LOG_BUILD ON
@@ -731,9 +736,9 @@ ExternalProject_Add( Slang
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
   BUILD_COMMAND 
-    COMMAND ${CMAKE_COMMAND}
-      -D SOURCE_DIR=<SOURCE_DIR>
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
+    #COMMAND ${CMAKE_COMMAND}
+    #  -D SOURCE_DIR=<SOURCE_DIR>
+    #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
     COMMAND
       ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
 
@@ -762,11 +767,8 @@ add_dependencies( dummy_target
   Assimp
   OpenVDB
   OpenImageIO
-  NVPro_Core
-  VMA
   RTXDI
   RTXGI
   Slang
-  NVTT
   Glfw
 )

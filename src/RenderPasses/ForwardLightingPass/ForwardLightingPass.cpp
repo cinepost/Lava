@@ -255,8 +255,8 @@ void ForwardLightingPass::prepareVars(RenderContext* pContext) {
     mpVars["gNoiseSampler"]     = mpNoiseSampler;
     mpVars["gNoiseTex"]         = mpBlueNoiseTexture;
     
-    bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
-    if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
+    //bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
+    //if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
 
     mEnvMapDirty = false;
 }

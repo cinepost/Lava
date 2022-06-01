@@ -30,22 +30,21 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/QueryHeap.h"
 
-namespace Falcor
-{
-    QueryHeap::QueryHeap(Device::SharedPtr pDevice, Type type, uint32_t count) : mType(type), mCount(count)
-    {
-        FALCOR_ASSERT(pDevice);
-        gfx::IQueryPool::Desc desc = {};
-        desc.count = count;
-        switch (type)
-        {
+namespace Falcor {
+
+QueryHeap::QueryHeap(Device::SharedPtr pDevice, Type type, uint32_t count) : mType(type), mCount(count) {
+    assert(pDevice);
+    gfx::IQueryPool::Desc desc = {};
+    desc.count = count;
+    switch (type) {
         case Type::Timestamp:
             desc.type = gfx::QueryType::Timestamp;
             break;
         default:
-            FALCOR_UNREACHABLE();
+            assert(false);
             break;
-        }
-        FALCOR_GFX_CALL(pDevice->getApiHandle()->createQueryPool(desc, mApiHandle.writeRef()));
     }
+    FALCOR_GFX_CALL(pDevice->getApiHandle()->createQueryPool(desc, mApiHandle.writeRef()));
 }
+
+}  // namespace Falcro

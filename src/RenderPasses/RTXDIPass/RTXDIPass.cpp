@@ -91,7 +91,7 @@ RenderPassReflection RTXDIPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
 
-    reflector.addInput(kInputVBuffer, "Depth buffer").format(ResourceFormat::RGBA32Uint);
+    reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
 
     addRenderPassOutputs(reflector, kOutputChannels);
     addRenderPassInputs(reflector, kInputChannels);

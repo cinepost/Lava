@@ -98,7 +98,7 @@ namespace Falcor
         /** Get the metallic value.
             Only available for metallic/roughness shading model.
         */
-        float getMetallic() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.specular[2] : 0.f; }
+        float getMetallic() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.metallic : 0.f; }
 
         /** Set the emissive color.
         */

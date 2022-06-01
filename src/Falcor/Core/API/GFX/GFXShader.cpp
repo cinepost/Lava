@@ -33,69 +33,60 @@
 
 #include "Falcor/Core/API/Shader.h"
 
-namespace Falcor
-{
-    struct ShaderData
-    {
-        Shader::Blob pBlob;
-        Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
-        ISlangBlob* getBlob()
-        {
-            if (!pBlob)
-            {
-                Slang::ComPtr<ISlangBlob> pSlangBlob;
-                Slang::ComPtr<ISlangBlob> pDiagnostics;
+namespace Falcor {
 
-                if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef())))
-                {
-                    throw std::runtime_error(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
-                }
-                pBlob = Shader::Blob(pSlangBlob.get());
+struct ShaderData {
+    Shader::Blob pBlob;
+    Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+    ISlangBlob* getBlob() {
+        if (!pBlob) {
+            Slang::ComPtr<ISlangBlob> pSlangBlob;
+            Slang::ComPtr<ISlangBlob> pDiagnostics;
+
+            if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef()))) {
+                throw std::runtime_error(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
             }
-            return pBlob.get();
+            pBlob = Shader::Blob(pSlangBlob.get());
         }
-    };
-
-    Shader::Shader(Device::SharedPtr pDevice, ShaderType type) : mpDevice(pDevice), mType(type)
-    {
-        mpPrivateData = std::make_unique<ShaderData>();
+        return pBlob.get();
     }
+};
 
-    Shader::~Shader()
-    {
-    }
+Shader::Shader(Device::SharedPtr pDevice, ShaderType type) : mpDevice(pDevice), mType(type) {
+    mpPrivateData = std::make_unique<ShaderData>();
+}
 
-    bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log)
-    {
-        // In GFX, we do not generate actual shader code at program creation.
-        // The actual shader code will only be generated and cached when all specialization arguments
-        // are known, which is right before a draw/dispatch command is issued, and this is done
-        // internally within GFX.
-        // The `Shader` implementation here serves as a helper utility for application code that
-        // uses raw graphics API to get shader kernel code from an ordinary slang source.
-        // Since most users/render-passes do not need to get shader kernel code, we defer
-        // the call to slang's `getEntryPointCode` function until it is actually needed.
-        // to avoid redundant shader compiler invocation.
-        mpPrivateData->pBlob = nullptr;
-        mpPrivateData->pLinkedSlangEntryPoint = slangEntryPoint;
-        return slangEntryPoint != nullptr;
-    }
+Shader::~Shader() {}
+
+bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+    // In GFX, we do not generate actual shader code at program creation.
+    // The actual shader code will only be generated and cached when all specialization arguments
+    // are known, which is right before a draw/dispatch command is issued, and this is done
+    // internally within GFX.
+    // The `Shader` implementation here serves as a helper utility for application code that
+    // uses raw graphics API to get shader kernel code from an ordinary slang source.
+    // Since most users/render-passes do not need to get shader kernel code, we defer
+    // the call to slang's `getEntryPointCode` function until it is actually needed.
+    // to avoid redundant shader compiler invocation.
+    mpPrivateData->pBlob = nullptr;
+    mpPrivateData->pLinkedSlangEntryPoint = slangEntryPoint;
+    return slangEntryPoint != nullptr;
+}
 
 #ifdef FALCOR_D3D12_AVAILABLE
-    ID3DBlobPtr Shader::getD3DBlob() const
-    {
-        ID3DBlobPtr result = mpPrivateData->getBlob();
-        return result;
-    }
+ID3DBlobPtr Shader::getD3DBlob() const {
+    ID3DBlobPtr result = mpPrivateData->getBlob();
+    return result;
+}
 #endif
 
-    Shader::BlobData Shader::getBlobData() const
-    {
-        auto blob = mpPrivateData->getBlob();
+Shader::BlobData Shader::getBlobData() const {
+    auto blob = mpPrivateData->getBlob();
 
-        BlobData result;
-        result.data = blob->getBufferPointer();
-        result.size = blob->getBufferSize();
-        return result;
-    }
+    BlobData result;
+    result.data = blob->getBufferPointer();
+    result.size = blob->getBufferSize();
+    return result;
 }
+
+}  // namespace Falcor

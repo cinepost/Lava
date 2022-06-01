@@ -62,24 +62,6 @@ namespace Falcor
         }
     }
 
-/*
-template<typename ValueT = float,
-         typename VoxelT = ValueT,
-         typename BufferT = HostBuffer>
-GridHandle<BufferT>
-createFogVolumeSphere(ValueT              radius = 100.0f,
-                      const Vec3<ValueT>& center = Vec3<ValueT>(0.0f),
-                      double              voxelSize = 1.0f,
-                      double              halfWidth = 3.0f,
-                      const Vec3d&        origin = Vec3d(0.0),
-                      const std::string&  name = "sphere_fog",
-                      StatsMode           sMode = StatsMode::Default,
-                      ChecksumMode        cMode = ChecksumMode::Default,
-                      float               tolerance = -1.0f,
-                      bool                ditherOn = false,
-                      const BufferT&      buffer = BufferT());
-*/
-
     Grid::SharedPtr Grid::createSphere(Device::SharedPtr pDevice, float radius, float voxelSize, float blendRange)
     {
         auto handle = nanovdb::createFogVolumeSphere(radius, nanovdb::Vec3<float>(0.0), (double)voxelSize, (double)blendRange);

@@ -158,7 +158,7 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
 }
 
 void GBufferBase::updateFrameDim(const uint2 frameDim) {
-    FALCOR_ASSERT(frameDim.x > 0 && frameDim.y > 0);
+    assert(frameDim.x > 0 && frameDim.y > 0);
     mFrameDim = frameDim;
     mInvFrameDim = 1.f / float2(frameDim);
 
@@ -173,11 +173,13 @@ void GBufferBase::updateSamplePattern() {
 
 Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const {
     // This helper fetches the render pass output with the given name and verifies it has the correct size.
-    FALCOR_ASSERT(mFrameDim.x > 0 && mFrameDim.y > 0);
+    assert(mFrameDim.x > 0 && mFrameDim.y > 0);
+
     auto pTex = renderData[name]->asTexture();
-    if (pTex && (pTex->getWidth() != mFrameDim.x || pTex->getHeight() != mFrameDim.y))
-    {
-        throw std::runtime_error("GBufferBase: Pass output '{}' has mismatching size. All outputs must be of the same size." + name);
+    if (!pTex) return nullptr;
+
+    if ((pTex->getWidth() != mFrameDim.x) || (pTex->getHeight() != mFrameDim.y)) {
+        throw std::runtime_error("GBufferBase: Pass output '" + name + "' has mismatching size. All outputs must be of the same size.");
     }
     return pTex;
 }

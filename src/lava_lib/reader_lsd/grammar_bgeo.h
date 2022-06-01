@@ -227,7 +227,6 @@ namespace parser {
     //BOOST_SPIRIT_DEFINE(bgeo)
 
     auto assign_bgeo = [](auto& ctx) { 
-        std::cout << "BGEO!!!";
         _val(ctx) =bgeo::ast::Bgeo();
     };
 

@@ -178,8 +178,6 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     std::vector<int32_t> prim_start_indices;
 
     for(uint32_t p_i=0; p_i < pBgeo->getPrimitiveCount(); p_i++) {
-        std::cout << "Processing primitive number " << p_i << "\n";
-
         const auto& pPrim = pBgeo->getPrimitive(p_i);
         if(!pPrim) {
             LLOG_WRN << "Unable to get primitive number: " << p_i;

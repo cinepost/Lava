@@ -122,7 +122,7 @@ void Resource::setGlobalState(State newState) const {
 void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const {
     const Texture* pTexture = dynamic_cast<const Texture*>(this);
     if (pTexture == nullptr) {
-        logWarning("Calling Resource::setSubresourceState() on an object that is not a texture. This is invalid. Ignoring call");
+        LLOG_WRN << "Calling Resource::setSubresourceState() on an object that is not a texture. This is invalid. Ignoring call";
         return;
     }
 
@@ -134,18 +134,20 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 std::shared_ptr<Texture> Resource::asTexture() {
-    return this ? ((mType != Type::Buffer) ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr) : nullptr;
+    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
 }
 
 std::shared_ptr<const Texture> Resource::asTexture() const {
-    if (mType != Type::Buffer) return std::dynamic_pointer_cast<const Texture>(shared_from_this());
-    return nullptr;
+    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
 }
 
 std::shared_ptr<Buffer> Resource::asBuffer() {
-    return this ? ((mType == Type::Buffer) ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr) : nullptr;
+    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
 }
+#pragma GCC pop_options
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {
