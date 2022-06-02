@@ -40,12 +40,17 @@ struct SurfaceData
 
     float3 position;        ///< Position in world-space.
     float viewDepth;        ///< Distance from viewer to surface (negative for invalid surface).
+    
     uint packedNormal;      ///< Packed surface normal in world-space (octahedral mapping).
     uint packedWeights;     ///< Packed diffuse/specular reflectance and roughness.
+
+    uint _pad0;
+    uint _pad1;
 
     // The following fields are *NOT* stored in PackedSurfaceData.
 
     float3 viewDir;         ///< Direction to the viewer in world-space.
+    float  _pad2;
 
     // True if surface data is valid.
     property bool valid

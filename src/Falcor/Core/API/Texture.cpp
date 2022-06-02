@@ -39,7 +39,11 @@
 
 namespace Falcor {
 
-Texture::BindFlags Texture::updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
+namespace {
+
+static const bool kTopDown = true; // Memory layout when loading from file
+
+Texture::BindFlags updateBindFlags(Device::SharedPtr pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType) {
     if ((mipLevels == Texture::kMaxPossible) && hasInitData) {
         flags |= Texture::BindFlags::RenderTarget;
     }
@@ -47,14 +51,15 @@ Texture::BindFlags Texture::updateBindFlags(Device::SharedPtr pDevice, Texture::
     Texture::BindFlags supported = getFormatBindFlags(pDevice, format);
     supported |= ResourceBindFlags::Shared;
     if ((flags & supported) != flags) {
-        logError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
-            "Requested = (" + to_string(flags) + "), supported = (" + to_string(supported) + ").\n\n"
-            "The texture will be created only with the supported bind flags, which may result in a crash or a rendering error.");
+        throw std::runtime_error("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported. Requested = (" 
+                                    + to_string(flags) + "), supported = (" +to_string(supported) + ").");
         flags = flags & supported;
     }
 
     return flags;
 }
+
+}  // namespace
 
 
 Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags) {
@@ -121,6 +126,48 @@ Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t 
     pTexture->apiInit(nullptr, false);
     return pTexture;
 }
+
+Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+    fs::path fullPath(filename);
+    return createFromFile(pDevice, fullPath, generateMipLevels, loadAsSrgb, bindFlags);
+}
+
+Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
+    fs::path fullPath;
+    if (!findFileInDataDirectories(path, fullPath)) {
+        LLOG_WRN << "Error when loading image file. Can't find image file " << path;
+        return nullptr;
+    }
+
+    Texture::SharedPtr pTex;
+    if (hasExtension(fullPath, "dds")) {
+        try {
+            //pTex = ImageIO::loadTextureFromDDS(fullPath, loadAsSrgb);
+            return nullptr;
+        }
+        catch (const std::exception& e)
+        {
+            LLOG_ERR << "Error loading '" << fullPath << "': " << e.what();
+        }
+    } else {
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullPath, kTopDown);
+        if (pBitmap) {
+            ResourceFormat texFormat = pBitmap->getFormat();
+            if (loadAsSrgb) {
+                texFormat = linearToSrgbFormat(texFormat);
+            }
+
+            pTex = Texture::create2D(pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+        }
+    }
+
+    if (pTex != nullptr) {
+        pTex->setSourcePath(fullPath);
+    }
+
+    return pTex;
+}
+
 
 Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
     : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {

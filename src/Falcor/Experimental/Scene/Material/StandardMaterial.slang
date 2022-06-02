@@ -75,7 +75,6 @@ struct StandardMaterial : IMaterial
         {
             float metallic = ms.sampleTexture(data.texSpecular, s, sd.uv, float4(1.f), lod).r * data.metallic;
 
-            // G - Roughness; B - Metallic
             d.diffuse = lerp(baseColor, float3(0), metallic);
             d.specular = lerp(float3(F0), baseColor, metallic);
             d.roughness = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;

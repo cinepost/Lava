@@ -51,9 +51,12 @@ struct FinalShading
 
     uint2 frameDim;
 
+
     void execute(const uint2 pixel)
     {
         if (any(pixel >= frameDim)) return;
+
+        const HitInfo hit = HitInfo(vbuffer[pixel]);
 
         float3 color = {};
         float3 emission = {};

@@ -206,6 +206,10 @@ public:
     */
     const glm::mat4& getViewMatrix() const;
 
+    /** Get the previous frame view matrix, which possibly includes the previous frame's camera jitter.
+    */
+    const glm::mat4& getPrevViewMatrix() const;
+
     /** Get the projection matrix.
     */
     const glm::mat4& getProjMatrix() const;

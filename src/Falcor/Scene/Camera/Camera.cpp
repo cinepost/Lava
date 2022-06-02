@@ -66,7 +66,9 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (firstFrame) mPrevData = mData;
 
     // Keep copies of the transforms used for the previous frame. We need these for computing motion vectors etc.
+    mData.prevViewMat = mPrevData.viewMat;
     mData.prevViewProjMatNoJitter = mPrevData.viewProjMatNoJitter;
+    mData.prevPosW = mPrevData.posW;
 
     mChanges = is_set(mChanges, Changes::Movement | Changes::Frustum) ? Changes::History : Changes::None;
 
@@ -117,6 +119,8 @@ void Camera::calculateCameraParameters() const {
 
             // set camera word position from our persistent view matrix
             mData.posW = {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]};
+            mData.target = mData.posW - float3({mData.viewMat[0][2], mData.viewMat[1][2], mData.viewMat[2][2]});
+            mData.up = glm::normalize(float3({mData.viewMat[0][1], mData.viewMat[1][1], mData.viewMat[2][1]}));
         } else {
             mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
         }
@@ -186,6 +190,10 @@ void Camera::calculateCameraParameters() const {
 const glm::mat4& Camera::getViewMatrix() const {
     calculateCameraParameters();
     return mData.viewMat;
+}
+
+const glm::mat4& Camera::getPrevViewMatrix() const {
+    return mData.prevViewMat;
 }
 
 const glm::mat4& Camera::getProjMatrix() const {

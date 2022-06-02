@@ -36,8 +36,7 @@ using namespace Falcor;
 
 const RenderPass::Info RTXDIPass::kInfo { "RTXDIPass", "Standalone pass for direct lighting using RTXDI." };
 
-namespace
-{
+namespace {
     const std::string kPrepareSurfaceDataFile = "RenderPasses/RTXDIPass/PrepareSurfaceData.cs.slang";
     const std::string kFinalShadingFile = "RenderPasses/RTXDIPass/FinalShading.cs.slang";
 
@@ -48,15 +47,13 @@ namespace
     const std::string kInputMotionVectors = "mvec";
 
 
-    const Falcor::ChannelList kInputChannels =
-    {
-        //{ kInputVBuffer,            "gVBuffer",                 "Visibility buffer in packed format" false, ResourceFormat::RGBA32Uint },
+    const Falcor::ChannelList kInputChannels = {
+      //{ kInputVBuffer,            "gVBuffer",                 "Visibility buffer in packed format" false, ResourceFormat::RGBA32Uint },
         { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */                   },
         { kInputMotionVectors,      "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
     };
 
-    const Falcor::ChannelList kOutputChannels =
-    {
+    const Falcor::ChannelList kOutputChannels = {
         { "color",                  "gColor",                   "Final color",              true /* optional */, ResourceFormat::RGBA32Float },
         { "emission",               "gEmission",                "Emissive color",           true /* optional */, ResourceFormat::RGBA32Float },
         { "diffuseIllumination",    "gDiffuseIllumination",     "Diffuse illumination",     true /* optional */, ResourceFormat::RGBA32Float },
@@ -71,24 +68,20 @@ namespace
 
 
 // This is required for DLL and shader hot-reload to function properly
-extern "C" falcorexport const char* getProjDir()
-{
+extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
 // What passes does this DLL expose?  Register them here
-extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib)
-{
+extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerPass(RTXDIPass::kInfo, RTXDIPass::create);
 }
 
-RTXDIPass::SharedPtr RTXDIPass::create(RenderContext* pRenderContext, const Dictionary& dict)
-{
+RTXDIPass::SharedPtr RTXDIPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return RTXDIPass::SharedPtr(new RTXDIPass(pRenderContext->device(), dict));
 }
 
-RenderPassReflection RTXDIPass::reflect(const CompileData& compileData)
-{
+RenderPassReflection RTXDIPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
     reflector.addInput(kInputVBuffer, "Visibility buffer in packed format").format(ResourceFormat::RGBA32Uint);
@@ -99,11 +92,9 @@ RenderPassReflection RTXDIPass::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
+void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     // Clear outputs if no scene is loaded.
-    if (!mpScene)
-    {
+    if (!mpScene) {
         clearRenderPassChannels(pRenderContext, kOutputChannels, renderData);
         return;
     }
@@ -116,8 +107,7 @@ void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     auto& dict = renderData.getDictionary();
 
     // Update refresh flag if changes that affect the output have occured.
-    if (mOptionsChanged)
-    {
+    if (mOptionsChanged) {
         auto flags = dict.getValue(kRenderPassRefreshFlags, Falcor::RenderPassRefreshFlags::None);
         flags |= Falcor::RenderPassRefreshFlags::RenderOptionsChanged;
         dict[Falcor::kRenderPassRefreshFlags] = flags;
@@ -138,17 +128,14 @@ void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpRTXDI->endFrame(pRenderContext);
 }
 
-void RTXDIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void RTXDIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
     mpRTXDI = nullptr;
     mpPrepareSurfaceDataPass = nullptr;
     mpFinalShadingPass = nullptr;
 
-    if (mpScene)
-    {
-        if (pScene->hasProceduralGeometry())
-        {
+    if (mpScene) {
+        if (pScene->hasProceduralGeometry()) {
             LLOG_WRN << "RTXDIPass: This render pass only supports triangles. Other types of geometry will be ignored.";
         }
 
@@ -156,42 +143,34 @@ void RTXDIPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& 
     }
 }
 
-RTXDIPass::RTXDIPass(Device::SharedPtr pDevice, const Dictionary& dict)
-    : RenderPass(pDevice, kInfo)
-{
+RTXDIPass::RTXDIPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     parseDictionary(dict);
 }
 
-void RTXDIPass::parseDictionary(const Dictionary& dict)
-{
-    for (const auto& [key, value] : dict)
-    {
+void RTXDIPass::parseDictionary(const Dictionary& dict) {
+    for (const auto& [key, value] : dict) {
         if (key == kOptions) mOptions = value;
         else LLOG_WRN << "Unknown field '" << key << "' in RTXDIPass dictionary.";
     }
 }
 
-Dictionary RTXDIPass::getScriptingDictionary()
-{
+Dictionary RTXDIPass::getScriptingDictionary() {
     Dictionary d;
     d[kOptions] = mOptions;
     return d;
 }
 
-void RTXDIPass::compile(RenderContext* pRenderContext, const CompileData& compileData)
-{
+void RTXDIPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
     mFrameDim = compileData.defaultTexDims;
 }
 
-void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer)
-{
-    FALCOR_ASSERT(mpRTXDI);
-    FALCOR_ASSERT(pVBuffer);
+void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer) {
+    assert(mpRTXDI);
+    assert(pVBuffer);
 
     PROFILE(mpDevice, "prepareSurfaceData");
 
-    if (!mpPrepareSurfaceDataPass)
-    {
+    if (!mpPrepareSurfaceDataPass) {
         Program::Desc desc;
         desc.addShaderLibrary(kPrepareSurfaceDataFile).setShaderModel(kShaderModel).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -216,15 +195,13 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const Texture:
     mpPrepareSurfaceDataPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }
 
-void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer, const RenderData& renderData)
-{
-    FALCOR_ASSERT(mpRTXDI);
-    FALCOR_ASSERT(pVBuffer);
+void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::SharedPtr& pVBuffer, const RenderData& renderData) {
+    assert(mpRTXDI);
+    assert(pVBuffer);
 
     PROFILE(mpDevice, "finalShading");
 
-    if (!mpFinalShadingPass)
-    {
+    if (!mpFinalShadingPass) {
         Program::Desc desc;
         desc.addShaderLibrary(kFinalShadingFile).setShaderModel(kShaderModel).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -255,8 +232,7 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const Texture::Share
 
     // Bind output channels as UAV buffers.
     var = mpFinalShadingPass->getRootVar();
-    auto bind = [&](const ChannelDesc& channel)
-    {
+    auto bind = [&](const ChannelDesc& channel) {
         Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
         var[channel.texname] = pTex;
     };

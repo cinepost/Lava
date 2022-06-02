@@ -268,7 +268,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     
-    mpRenderGraph->addEdge("LightingPass.color", pMainAOV->accumulationPassInputName());
+    mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
 
     // Compile graph
     std::string log;

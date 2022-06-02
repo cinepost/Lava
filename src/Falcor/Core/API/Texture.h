@@ -334,8 +334,6 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	bool isUDIMTile() const { return mUDIMTileInfo.isUDIMTile; }
 
  protected:
-	static Texture::BindFlags updateBindFlags(std::shared_ptr<Device> pDevice, Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels, ResourceFormat format, const std::string& texType);
-
 	Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 	
 	void apiInit(const void* pData, bool autoGenMips);

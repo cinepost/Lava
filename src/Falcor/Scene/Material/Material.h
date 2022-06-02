@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_ 
+#define SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
@@ -37,15 +38,14 @@
 #include "Falcor/Utils/Math/Float16.h"
 #include "Falcor/Utils/Image/TextureAnalyzer.h"
 
-namespace Falcor
-{
+namespace Falcor {
+
     class MaterialSystem;
     class BasicMaterial;
 
     /** Abstract base class for materials.
     */
-    class dlldecl Material : public std::enable_shared_from_this<Material>
-    {
+    class dlldecl Material : public std::enable_shared_from_this<Material> {
     public:
         // While this is an abstract base class, we still need a holder type (shared_ptr)
         // for pybind11 bindings to work on inherited types.
@@ -53,8 +53,7 @@ namespace Falcor
 
         /** Flags indicating if and what was updated in the material.
         */
-        enum class UpdateFlags : uint32_t
-        {
+        enum class UpdateFlags : uint32_t {
             None                = 0x0,  ///< Nothing updated.
             DataChanged         = 0x1,  ///< Material data (parameters) changed.
             ResourcesChanged    = 0x2,  ///< Material resources (textures, samplers) changed.
@@ -64,8 +63,7 @@ namespace Falcor
         /** Texture slots available for use.
             A material does not need to expose/bind all slots.
         */
-        enum class TextureSlot
-        {
+        enum class TextureSlot {
             BaseColor,
             Specular,
             Emissive,
@@ -77,8 +75,7 @@ namespace Falcor
             Count // Must be last
         };
 
-        struct TextureSlotInfo
-        {
+        struct TextureSlotInfo {
             std::string         name;                               ///< Name of texture slot.
             TextureChannelFlags mask = TextureChannelFlags::None;   ///< Mask of enabled texture channels.
             bool                srgb = false;                       ///< True if texture should be loaded in sRGB space.
@@ -89,8 +86,7 @@ namespace Falcor
             bool operator!=(const TextureSlotInfo& rhs) const { return !((*this) == rhs); }
         };
 
-        struct TextureSlotData
-        {
+        struct TextureSlotData {
             Texture::SharedPtr  pTexture;                           ///< Texture bound to texture slot.
 
             bool hasData() const { return pTexture != nullptr; }
@@ -98,8 +94,7 @@ namespace Falcor
             bool operator!=(const TextureSlotData& rhs) const { return !((*this) == rhs); }
         };
 
-        struct TextureOptimizationStats
-        {
+        struct TextureOptimizationStats {
             std::array<size_t, (size_t)TextureSlot::Count> texturesRemoved = {};
             size_t disabledAlpha = 0;
             size_t constantBaseColor = 0;
@@ -285,8 +280,7 @@ namespace Falcor
         bool isBaseEqual(const Material& other) const;
 
         template<typename T>
-        MaterialDataBlob prepareDataBlob(const T& data) const
-        {
+        MaterialDataBlob prepareDataBlob(const T& data) const {
             MaterialDataBlob blob = {};
             blob.header = mHeader;
             static_assert(sizeof(mHeader) + sizeof(data) <= sizeof(blob));
@@ -311,10 +305,8 @@ namespace Falcor
         friend class SceneCache;
     };
 
-    inline std::string to_string(MaterialType type)
-    {
-        switch (type)
-        {
+    inline std::string to_string(MaterialType type) {
+        switch (type) {
 #define tostr(t_) case MaterialType::t_: return #t_;
             tostr(Standard);
             tostr(Cloth);
@@ -326,10 +318,8 @@ namespace Falcor
         }
     }
 
-    inline std::string to_string(Material::TextureSlot slot)
-    {
-        switch (slot)
-        {
+    inline std::string to_string(Material::TextureSlot slot) {
+        switch (slot) {
 #define tostr(a) case Material::TextureSlot::a: return #a;
             tostr(BaseColor);
             tostr(Specular);
@@ -344,4 +334,7 @@ namespace Falcor
     }
 
     enum_class_operators(Material::UpdateFlags);
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_MATERIAL_MATERIAL_H_

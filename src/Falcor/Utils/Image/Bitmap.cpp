@@ -137,6 +137,10 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
     return UniqueConstPtr(pBmp);
 }
 
+Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown) {
+    return createFromFile(pDevice, fullpath.string(), isTopDown);
+}
+
 Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
     std::string fullpath;
     if (findFileInDataDirectories(filename, fullpath) == false) {
