@@ -65,7 +65,7 @@ namespace Falcor {
         */
         enum class TextureSlot {
             BaseColor,
-            Specular,
+            Metallic,
             Emissive,
             Normal,
             Transmission,
@@ -322,7 +322,7 @@ namespace Falcor {
         switch (slot) {
 #define tostr(a) case Material::TextureSlot::a: return #a;
             tostr(BaseColor);
-            tostr(Specular);
+            tostr(Metallic);
             tostr(Emissive);
             tostr(Normal);
             tostr(Transmission);

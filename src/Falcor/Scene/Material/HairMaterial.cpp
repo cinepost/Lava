@@ -40,7 +40,7 @@ namespace Falcor
     {
         // Setup additional texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true }; // Note: No alpha support
-        mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::RGB, false };
+        mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
     }
 
 #ifdef SCRIPTING

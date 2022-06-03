@@ -93,7 +93,7 @@ namespace Falcor
         /** Set the metallic value.
             Only available for metallic/roughness shading model.
         */
-        void setMetallic(float metallic);
+        void setMetallic(float metallic) override;
 
         /** Get the metallic value.
             Only available for metallic/roughness shading model.

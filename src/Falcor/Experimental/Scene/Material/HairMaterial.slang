@@ -49,10 +49,10 @@ struct HairMaterial : IMaterial
         d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
 
         // Sample base color.
-        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;
 
         // Sample the specular texture. This encodes additional BSDF parameters.
-        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+        const float4 spec = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod) * data.reflectivity;
 
         d.baseColor = baseColor;
         d.betaM = spec.x;

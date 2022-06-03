@@ -111,14 +111,14 @@ namespace
         // Default mappings
         {
             { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
-            { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
+            { aiTextureType_SPECULAR, 0, Material::TextureSlot::Metallic },
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
             { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
         },
         // OBJ mappings
         {
             { aiTextureType_DIFFUSE, 0, Material::TextureSlot::BaseColor },
-            { aiTextureType_SPECULAR, 0, Material::TextureSlot::Specular },
+            { aiTextureType_SPECULAR, 0, Material::TextureSlot::Metallic },
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
             // OBJ does not offer a normal map, thus we use the bump map instead.
             { aiTextureType_HEIGHT, 0, Material::TextureSlot::Normal },
@@ -130,7 +130,7 @@ namespace
             { aiTextureType_EMISSIVE, 0, Material::TextureSlot::Emissive },
             { aiTextureType_NORMALS, 0, Material::TextureSlot::Normal },
             // GLTF2 exposes metallic roughness texture.
-            { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureSlot::Specular },
+            { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, Material::TextureSlot::Metallic },
         }
     };
 
@@ -791,8 +791,8 @@ namespace
         float opacity = 1.f;
         if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
         {
-            float4 diffuse = pMaterial->getBaseColor();
-            diffuse.a = opacity;
+            float3 diffuse = pMaterial->getBaseColor();
+            //diffuse.a = opacity;
             pMaterial->setBaseColor(diffuse);
         }
 
@@ -802,7 +802,7 @@ namespace
         {
             // TODO this should probably be a multiplier to the normal map
         }
-
+/*
         // Shininess
         float shininess;
         if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
@@ -817,7 +817,7 @@ namespace
             spec.a = shininess;
             pMaterial->setSpecularParams(spec);
         }
-
+*/
         // Refraction
         float refraction;
         if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS) pMaterial->setIndexOfRefraction(refraction);
@@ -826,15 +826,15 @@ namespace
         aiColor3D color;
         if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
         {
-            float4 diffuse = float4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
+            float3 diffuse = float3(color.r, color.g, color.b);
             pMaterial->setBaseColor(diffuse);
         }
 
         // Specular color
         if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS)
         {
-            float4 specular = float4(color.r, color.g, color.b, pMaterial->getSpecularParams().a);
-            pMaterial->setSpecularParams(specular);
+            //float4 specular = float4(color.r, color.g, color.b, pMaterial->getSpecularParams().a);
+            //pMaterial->setSpecularParams(specular);
         }
 
         // Emissive color
@@ -856,25 +856,21 @@ namespace
         {
             if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS)
             {
-                float4 baseColor = float4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
+                float3 baseColor = float3(color.r, color.g, color.b);
                 pMaterial->setBaseColor(baseColor);
             }
-
-            float4 specularParams = pMaterial->getSpecularParams();
 
             float metallic;
             if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLIC_FACTOR, metallic) == AI_SUCCESS)
             {
-                specularParams.b = metallic;
+                pMaterial->setMetallic(metallic);
             }
 
             float roughness;
             if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS)
             {
-                specularParams.g = roughness;
+                pMaterial->setRoughness(roughness);
             }
-
-            pMaterial->setSpecularParams(specularParams);
         }
 
         // Parse the information contained in the name

@@ -37,10 +37,9 @@
 #include "BasicMaterial.h"
 
 
-namespace Falcor
-{
-    namespace
-    {
+namespace Falcor {
+
+    namespace {
         static_assert((sizeof(MaterialHeader) + sizeof(BasicMaterialData)) <= sizeof(MaterialDataBlob), "Total material data size is too large");
         static_assert(static_cast<uint32_t>(ShadingModel::Count) <= (1u << BasicMaterialData::kShadingModelBits), "ShadingModel bit count exceeds the maximum");
         static_assert(static_cast<uint32_t>(NormalMapType::Count) <= (1u << BasicMaterialData::kNormalMapTypeBits), "NormalMapType bit count exceeds the maximum");
@@ -50,9 +49,7 @@ namespace Falcor
         const float kMaxVolumeAnisotropy = 0.99f;
     }
 
-    BasicMaterial::BasicMaterial(Device::SharedPtr pDevice, const std::string& name, MaterialType type)
-        : Material(pDevice, name, type)
-    {
+    BasicMaterial::BasicMaterial(Device::SharedPtr pDevice, const std::string& name, MaterialType type): Material(pDevice, name, type) {
         mHeader.setIsBasicMaterial(true);
 
         // Setup common texture slots.
@@ -64,13 +61,11 @@ namespace Falcor
         updateEmissiveFlag();
     }
 
-    Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner)
-    {
+    Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
         assert(pOwner);
 
         auto flags = Material::UpdateFlags::None;
-        if (mUpdates != Material::UpdateFlags::None)
-        {
+        if (mUpdates != Material::UpdateFlags::None) {
             // Adjust material sidedness based on current parameters.
             // TODO: Remove when single-sided transmissive materials are supported.
             adjustDoubleSidedFlag();
@@ -80,7 +75,7 @@ namespace Falcor
 
             // Update texture handles.
             updateTextureHandle(pOwner, TextureSlot::BaseColor, mData.texBaseColor);
-            updateTextureHandle(pOwner, TextureSlot::Specular, mData.texSpecular);
+            updateTextureHandle(pOwner, TextureSlot::Metallic, mData.texMetallic);
             updateTextureHandle(pOwner, TextureSlot::Emissive, mData.texEmissive);
             updateTextureHandle(pOwner, TextureSlot::Transmission, mData.texTransmission);
             updateTextureHandle(pOwner, TextureSlot::Normal, mData.texNormalMap);
@@ -102,35 +97,28 @@ namespace Falcor
         return flags;
     }
 
-    bool BasicMaterial::isDisplaced() const
-    {
+    bool BasicMaterial::isDisplaced() const {
         return hasTextureSlotData(Material::TextureSlot::Displacement);
     }
 
-    void BasicMaterial::setAlphaMode(AlphaMode alphaMode)
-    {
-        if (!isAlphaSupported())
-        {
+    void BasicMaterial::setAlphaMode(AlphaMode alphaMode) {
+        if (!isAlphaSupported()) {
             assert(getAlphaMode() == AlphaMode::Opaque);
             LLOG_WRN << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
             return;
         }
-        if (mHeader.getAlphaMode() != alphaMode)
-        {
+        if (mHeader.getAlphaMode() != alphaMode) {
             mHeader.setAlphaMode(alphaMode);
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setAlphaThreshold(float alphaThreshold)
-    {
-        if (!isAlphaSupported())
-        {
+    void BasicMaterial::setAlphaThreshold(float alphaThreshold) {
+        if (!isAlphaSupported()) {
             LLOG_WRN << "Alpha is not supported by material type '" << to_string(getType()) << "'. Ignoring call to setAlphaMode() for material '" << getName() << "'.";
             return;
         }
-        if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold)
-        {
+        if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold) {
             mHeader.setAlphaThreshold((float16_t)alphaThreshold);
             markUpdates(UpdateFlags::DataChanged);
             updateAlphaMode();
@@ -144,10 +132,8 @@ namespace Falcor
         }
     }
 
-    void BasicMaterial::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler)
-    {
-        if (pSampler != mpDefaultSampler)
-        {
+    void BasicMaterial::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {
+        if (pSampler != mpDefaultSampler) {
             mpDefaultSampler = pSampler;
 
             // Create derived samplers for displacement Min/Max filtering.
@@ -162,49 +148,43 @@ namespace Falcor
         }
     }
 
-    bool BasicMaterial::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture)
-    {
+    bool BasicMaterial::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) {
         if (!Material::setTexture(slot, pTexture)) return false;
 
         // Update additional metadata about texture usage.
-        switch (slot)
-        {
-        case TextureSlot::BaseColor:
-            if (pTexture)
-            {
-                // Assume the texture is non-constant and has full alpha range.
-                // This may be changed later by optimizeTexture().
-                mAlphaRange = float2(0.f, 1.f);
-                mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
-            }
-            updateAlphaMode();
-            break;
-        case TextureSlot::Normal:
-            updateNormalMapType();
-            break;
-        case TextureSlot::Emissive:
-            updateEmissiveFlag();
-            break;
-        case TextureSlot::Displacement:
-            mDisplacementMapChanged = true;
-            markUpdates(UpdateFlags::DisplacementChanged);
-            break;
-        default:
-            break;
+        switch (slot) {
+            case TextureSlot::BaseColor:
+                if (pTexture) {
+                    // Assume the texture is non-constant and has full alpha range.
+                    // This may be changed later by optimizeTexture().
+                    mAlphaRange = float2(0.f, 1.f);
+                    mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
+                }
+                updateAlphaMode();
+                break;
+            case TextureSlot::Normal:
+                updateNormalMapType();
+                break;
+            case TextureSlot::Emissive:
+                updateEmissiveFlag();
+                break;
+            case TextureSlot::Displacement:
+                mDisplacementMapChanged = true;
+                markUpdates(UpdateFlags::DisplacementChanged);
+                break;
+            default:
+                break;
         }
 
         return true;
     }
 
-    void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats)
-    {
+    void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats) {
         assert(getTexture(slot) != nullptr);
         TextureChannelFlags channelMask = getTextureSlotInfo(slot).mask;
 
-        switch (slot)
-        {
-        case TextureSlot::BaseColor:
-        {
+        switch (slot) {
+        case TextureSlot::BaseColor: {
             bool previouslyOpaque = isOpaque();
 
             auto pBaseColor = getBaseColorTexture();
@@ -216,21 +196,17 @@ namespace Falcor
             if (hasAlpha) mAlphaRange = float2(texInfo.minValue.a, texInfo.maxValue.a);
 
             // Update base color parameter and texture.
-            float4 baseColor = getBaseColor();
-            if (isColorConstant)
-            {
-                baseColor = float4(texInfo.value.rgb, baseColor.a);
+            float3 baseColor = getBaseColor();
+            if (isColorConstant) {
+                baseColor = float3(texInfo.value.rgb);
                 mIsTexturedBaseColorConstant = true;
             }
-            if (hasAlpha && isAlphaConstant)
-            {
-                baseColor = float4(baseColor.rgb, texInfo.value.a);
+            if (hasAlpha && isAlphaConstant) {
                 mIsTexturedAlphaConstant = true;
             }
             setBaseColor(baseColor);
 
-            if (isColorConstant && (!hasAlpha || isAlphaConstant))
-            {
+            if (isColorConstant && (!hasAlpha || isAlphaConstant)) {
                 clearTexture(Material::TextureSlot::BaseColor);
                 stats.texturesRemoved[(size_t)slot]++;
             }
@@ -247,63 +223,53 @@ namespace Falcor
 
             break;
         }
-        case TextureSlot::Specular:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
-                clearTexture(Material::TextureSlot::Specular);
-                setSpecularParams(texInfo.value);
+        case TextureSlot::Metallic: {
+            if (texInfo.isConstant(channelMask)) {
+                clearTexture(Material::TextureSlot::Metallic);
+                setMetallic(texInfo.value.r);
                 stats.texturesRemoved[(size_t)slot]++;
             }
             break;
         }
-        case TextureSlot::Emissive:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
+        case TextureSlot::Emissive: {
+            if (texInfo.isConstant(channelMask)) {
                 clearTexture(Material::TextureSlot::Emissive);
                 setEmissiveColor(texInfo.value.rgb);
                 stats.texturesRemoved[(size_t)slot]++;
             }
             break;
         }
-        case TextureSlot::Normal:
-        {
+        case TextureSlot::Normal: {
             // Determine which channels of the normal map are used.
-            switch (getNormalMapType())
-            {
-            case NormalMapType::RG:
-                channelMask = TextureChannelFlags::Red | TextureChannelFlags::Green;
-                break;
-            case NormalMapType::RGB:
-                channelMask = TextureChannelFlags::RGB;
-                break;
-            default:
-                logWarning("BasicMaterial::optimizeTexture() - Unsupported normal map mode");
-                channelMask = TextureChannelFlags::RGBA;
-                break;
+            switch (getNormalMapType()) {
+                case NormalMapType::RG:
+                    channelMask = TextureChannelFlags::Red | TextureChannelFlags::Green;
+                    break;
+                case NormalMapType::RGB:
+                    channelMask = TextureChannelFlags::RGB;
+                    break;
+                default:
+                    logWarning("BasicMaterial::optimizeTexture() - Unsupported normal map mode");
+                    channelMask = TextureChannelFlags::RGBA;
+                    break;
             }
 
-            if (texInfo.isConstant(channelMask))
-            {
+            if (texInfo.isConstant(channelMask)) {
                 // We don't have a way to specify constant normal map value.
                 // Count number of cases and issue a perf warning later instead.
                 stats.constantNormalMaps++;
             }
             break;
         }
-        case TextureSlot::Transmission:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
+        case TextureSlot::Transmission: {
+            if (texInfo.isConstant(channelMask)) {
                 clearTexture(Material::TextureSlot::Transmission);
                 setTransmissionColor(texInfo.value.rgb);
                 stats.texturesRemoved[(size_t)slot]++;
             }
             break;
         }
-        case TextureSlot::Displacement:
-        {
+        case TextureSlot::Displacement: {
             // Nothing to do here, displacement texture is prepared when calling prepareDisplacementMap().
             break;
         }
@@ -312,21 +278,17 @@ namespace Falcor
         }
     }
 
-    bool BasicMaterial::isAlphaSupported() const
-    {
+    bool BasicMaterial::isAlphaSupported() const {
         return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
     }
 
-    void BasicMaterial::prepareDisplacementMapForRendering()
-    {
-        if (auto pDisplacementMap = getDisplacementMap(); pDisplacementMap && mDisplacementMapChanged)
-        {
+    void BasicMaterial::prepareDisplacementMapForRendering() {
+        if (auto pDisplacementMap = getDisplacementMap(); pDisplacementMap && mDisplacementMapChanged) {
             // Creates RGBA texture with MIP pyramid containing average, min, max values.
             Falcor::ResourceFormat oldFormat = pDisplacementMap->getFormat();
 
             // Replace texture with a 4 component one if necessary.
-            if (getFormatChannelCount(oldFormat) < 4)
-            {
+            if (getFormatChannelCount(oldFormat) < 4) {
                 Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
                 Resource::BindFlags bf = pDisplacementMap->getBindFlags() | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget;
                 Texture::SharedPtr newDisplacementTex = Texture::create2D(mpDevice, pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
@@ -334,8 +296,7 @@ namespace Falcor
                 // Copy base level.
                 RenderContext* pContext = mpDevice->getRenderContext();
                 uint32_t arraySize = pDisplacementMap->getArraySize();
-                for (uint32_t a = 0; a < arraySize; a++)
-                {
+                for (uint32_t a = 0; a < arraySize; a++) {
                     auto srv = pDisplacementMap->getSRV(0, 1, a, 1);
                     auto rtv = newDisplacementTex->getRTV(0, a, 1);
                     const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
@@ -353,108 +314,86 @@ namespace Falcor
         mDisplacementMapChanged = false;
     }
 
-    void BasicMaterial::setDisplacementScale(float scale)
-    {
-        if (mData.displacementScale != scale)
-        {
+    void BasicMaterial::setDisplacementScale(float scale) {
+        if (mData.displacementScale != scale) {
             mData.displacementScale = scale;
             markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
         }
     }
 
-    void BasicMaterial::setDisplacementOffset(float offset)
-    {
-        if (mData.displacementOffset != offset)
-        {
+    void BasicMaterial::setDisplacementOffset(float offset) {
+        if (mData.displacementOffset != offset) {
             mData.displacementOffset = offset;
             markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
         }
     }
 
-    void BasicMaterial::setBaseColor(const float4& color)
-    {
-        if (mData.baseColor != (float16_t4)color)
-        {
-            mData.baseColor = (float16_t4)color;
+    void BasicMaterial::setBaseColor(const float3& color) {
+        if (mData.baseColor != (float16_t3)color) {
+            mData.baseColor = (float16_t3)color;
             markUpdates(UpdateFlags::DataChanged);
             updateAlphaMode();
         }
     }
 
-    void BasicMaterial::setSpecularParams(const float4& color)
-    {
-        if (mData.specular != (float16_t4)color)
-        {
-            mData.specular = (float16_t4)color;
+    void BasicMaterial::setReflectivity(const float& reflectivity) {
+        if (mData.reflectivity != (float16_t)reflectivity) {
+            mData.reflectivity = (float16_t)reflectivity;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setTransmissionColor(const float3& transmissionColor)
-    {
-        if (mData.transmission != (float16_t3)transmissionColor)
-        {
+    void BasicMaterial::setTransmissionColor(const float3& transmissionColor) {
+        if (mData.transmission != (float16_t3)transmissionColor) {
             mData.transmission = (float16_t3)transmissionColor;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setDiffuseTransmission(float diffuseTransmission)
-    {
-        if (mData.diffuseTransmission != (float16_t)diffuseTransmission)
-        {
+    void BasicMaterial::setDiffuseTransmission(float diffuseTransmission) {
+        if (mData.diffuseTransmission != (float16_t)diffuseTransmission) {
             mData.diffuseTransmission = (float16_t)diffuseTransmission;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setSpecularTransmission(float specularTransmission)
-    {
-        if (mData.specularTransmission != (float16_t)specularTransmission)
-        {
+    void BasicMaterial::setSpecularTransmission(float specularTransmission) {
+        if (mData.specularTransmission != (float16_t)specularTransmission) {
             mData.specularTransmission = (float16_t)specularTransmission;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setVolumeAbsorption(const float3& volumeAbsorption)
-    {
-        if (mData.volumeAbsorption != (float16_t3)volumeAbsorption)
-        {
+    void BasicMaterial::setVolumeAbsorption(const float3& volumeAbsorption) {
+        if (mData.volumeAbsorption != (float16_t3)volumeAbsorption) {
             mData.volumeAbsorption = (float16_t3)volumeAbsorption;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setVolumeScattering(const float3& volumeScattering)
-    {
-        if (mData.volumeScattering != (float16_t3)volumeScattering)
-        {
+    void BasicMaterial::setVolumeScattering(const float3& volumeScattering) {
+        if (mData.volumeScattering != (float16_t3)volumeScattering) {
             mData.volumeScattering = (float16_t3)volumeScattering;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::setVolumeAnisotropy(float volumeAnisotropy)
-    {
+    void BasicMaterial::setVolumeAnisotropy(float volumeAnisotropy) {
         auto clampedAnisotropy = clamp(volumeAnisotropy, -kMaxVolumeAnisotropy, kMaxVolumeAnisotropy);
-        if (mData.volumeAnisotropy != (float16_t)clampedAnisotropy)
-        {
+        if (mData.volumeAnisotropy != (float16_t)clampedAnisotropy) {
             mData.volumeAnisotropy = (float16_t)clampedAnisotropy;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    bool BasicMaterial::isEqual(const Material::SharedPtr& pOther) const
-    {
+    bool BasicMaterial::isEqual(const Material::SharedPtr& pOther) const {
         auto other = std::dynamic_pointer_cast<BasicMaterial>(pOther);
         if (!other) return false;
 
         return (*this) == (*other);
     }
 
-    bool BasicMaterial::operator==(const BasicMaterial& other) const
-    {
+    bool BasicMaterial::operator==(const BasicMaterial& other) const {
         if (!isBaseEqual(other)) return false;
 
 #define compare_field(_a) if (mData._a != other.mData._a) return false
@@ -462,7 +401,9 @@ namespace Falcor
         compare_field(displacementScale);
         compare_field(displacementOffset);
         compare_field(baseColor);
-        compare_field(specular);
+        compare_field(metallic);
+        compare_field(roughness);
+        compare_field(reflectivity);
         compare_field(emissive);
         compare_field(emissiveFactor);
         compare_field(IoR);
@@ -482,17 +423,15 @@ namespace Falcor
         return true;
     }
 
-    void BasicMaterial::updateAlphaMode()
-    {
-        if (!isAlphaSupported())
-        {
+    void BasicMaterial::updateAlphaMode() {
+        if (!isAlphaSupported()) {
             assert(getAlphaMode() == AlphaMode::Opaque);
             return;
         }
 
         // Set alpha range to the constant alpha value if non-textured.
         bool hasAlpha = getBaseColorTexture() && doesFormatHasAlpha(getBaseColorTexture()->getFormat());
-        float alpha = ((float4)mData.baseColor).a;
+        float alpha = 1.0f; //((float4)mData.baseColor).a;
         if (!hasAlpha) mAlphaRange = float2(alpha);
 
         // Decide if we need to run the alpha test.
@@ -506,50 +445,42 @@ namespace Falcor
         setAlphaMode(useAlpha ? AlphaMode::Mask : AlphaMode::Opaque);
     }
 
-    void BasicMaterial::updateNormalMapType()
-    {
+    void BasicMaterial::updateNormalMapType() {
         NormalMapType type = NormalMapType::None;
 
-        if (auto pNormalMap = getNormalMap())
-        {
-            switch (getFormatChannelCount(pNormalMap->getFormat()))
-            {
-            case 2:
-                type = NormalMapType::RG;
-                break;
-            case 3:
-            case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
-                type = NormalMapType::RGB;
-                break;
-            default:
-                assert(false);
-                LLOG_WRN << "Unsupported normal map format for material " << mName;
+        if (auto pNormalMap = getNormalMap()) {
+            switch (getFormatChannelCount(pNormalMap->getFormat())) {
+                case 2:
+                    type = NormalMapType::RG;
+                    break;
+                case 3:
+                case 4: // Some texture formats don't support RGB, only RGBA. We have no use for the alpha channel in the normal map.
+                    type = NormalMapType::RGB;
+                    break;
+                default:
+                    assert(false);
+                    LLOG_WRN << "Unsupported normal map format for material " << mName;
             }
         }
 
-        if (mData.getNormalMapType() != type)
-        {
+        if (mData.getNormalMapType() != type) {
             mData.setNormalMapType(type);
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::updateEmissiveFlag()
-    {
+    void BasicMaterial::updateEmissiveFlag() {
         bool isEmissive = false;
-        if (mData.emissiveFactor > 0.f)
-        {
+        if (mData.emissiveFactor > 0.f) {
             isEmissive = hasTextureSlotData(Material::TextureSlot::Emissive) || (float3)mData.emissive != float3(0.f);
         }
-        if (mHeader.isEmissive() != isEmissive)
-        {
+        if (mHeader.isEmissive() != isEmissive) {
             mHeader.setEmissive(isEmissive);
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void BasicMaterial::adjustDoubleSidedFlag()
-    {
+    void BasicMaterial::adjustDoubleSidedFlag() {
         bool doubleSided = isDoubleSided();
 
         // Make double sided if diffuse or specular transmission is used.
@@ -563,8 +494,7 @@ namespace Falcor
     }
 
 #ifdef SCRIPTING
-    SCRIPT_BINDING(BasicMaterial)
-    {
+    SCRIPT_BINDING(BasicMaterial) {
         SCRIPT_BINDING_DEPENDENCY(Material)
 
         pybind11::class_<BasicMaterial, Material, BasicMaterial::SharedPtr> material(m, "BasicMaterial");

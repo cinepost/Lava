@@ -39,8 +39,8 @@ namespace Falcor
         : BasicMaterial(pDevice, name, MaterialType::Cloth)
     {
         // Setup additional texture slots.
-        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGBA, true };
-        mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::Green, false };
+        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { "baseColor", TextureChannelFlags::RGB, true };
+        mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = { "metallic", TextureChannelFlags::Red, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     }
 
