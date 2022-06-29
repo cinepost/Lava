@@ -26,22 +26,40 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/ComputeContext.h"
 #include "ComputeProgram.h"
 
 namespace Falcor {
 
-    ComputeProgram::SharedPtr ComputeProgram::createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel) {
-        Desc d(filename);
+    ComputeProgram::SharedPtr ComputeProgram::createFromFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& csEntry, const DefineList& programDefines, Shader::CompilerFlags flags, const std::string& shaderModel) {
+        Desc d(path);
         if (!shaderModel.empty()) d.setShaderModel(shaderModel);
         d.setCompilerFlags(flags);
         d.csEntry(csEntry);
-        return create(device, d, programDefines);
+        return create(pDevice, d, programDefines);
     }
 
-    ComputeProgram::SharedPtr ComputeProgram::create(std::shared_ptr<Device> device, const Program::Desc& desc, const DefineList& programDefines) {
-        SharedPtr pProg = SharedPtr(new ComputeProgram);
-        pProg->init(device, desc, programDefines);
+    ComputeProgram::SharedPtr ComputeProgram::create(Device::SharedPtr pDevice, const Program::Desc& desc, const DefineList& programDefines) {
+        auto pProg = SharedPtr(new ComputeProgram(pDevice, desc, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
+    }
+
+    ComputeProgram::ComputeProgram(Device::SharedPtr pDevice, const Desc& desc, const DefineList& programDefines)
+        : Program(pDevice, desc, programDefines)
+    {
+    }
+
+    void ComputeProgram::dispatchCompute(
+        ComputeContext* pContext,
+        ComputeVars* pVars,
+        uint3 const& threadGroupCount)
+    {
+        auto pState = ComputeState::create(mpDevice);
+        pState->setProgram(std::static_pointer_cast<ComputeProgram>(shared_from_this()));
+        pContext->dispatch(pState.get(), pVars, threadGroupCount);
     }
 
 #ifdef SCRIPTING

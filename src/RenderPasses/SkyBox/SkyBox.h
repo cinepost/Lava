@@ -31,19 +31,20 @@
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/Utils/Scripting/ScriptBindings.h"
+
 #include "Falcor/Scene/Scene.h"
 
 using namespace Falcor;
 
-class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, SkyBox> {
+class SkyBox : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<SkyBox>;
-    using inherit_shared_from_this::shared_from_this;
-    static const char* kDesc;
+    static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    std::string getDesc() override { return kDesc; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -52,8 +53,8 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     void setIntensity(float3 intensity) { mIntensity = intensity; }
     float3 getIntensity() const { return mIntensity; }
 
-    void setTransparency(float transparency) { mTransparency = transparency; }
-    float getTransparency() const { return mTransparency; }
+    void setOpacity(float opacity) { mOpacity = opacity; }
+    float getOpacity() const { return mOpacity; }
 
     void setScale(float scale) { mScale = scale; }
     void setFilter(uint32_t filter);
@@ -70,7 +71,7 @@ class SkyBox : public RenderPass, public inherit_shared_from_this<RenderPass, Sk
     glm::mat4 mTransformMatrix;
     
     float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
-    float  mTransparency = 1.0;
+    float  mOpacity = 1.0;
     
     float mScale = 1;
     bool mSolidMode = true;

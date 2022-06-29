@@ -36,6 +36,7 @@
 namespace Falcor {
 
 class Device;
+class FboData;
 
 /** Low level framebuffer object.
     This class abstracts the API's framebuffer creation and management.
@@ -193,7 +194,7 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
 
     /** Get the maximum number of color targets
     */
-    static uint32_t getMaxColorTargetCount(std::shared_ptr<Device> pDevice);
+    static uint32_t getMaxColorTargetCount();
 
     /** Get an attached color texture. If no texture is attached will return nullptr.
     */
@@ -291,7 +292,7 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     mutable bool mIsZeroAttachment = false;
 
     mutable ApiHandle mApiHandle = {};
-    void* mpPrivateData = nullptr;
+    std::unique_ptr<FboData> mpPrivateData;
 
     std::shared_ptr<Device> mpDevice;
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,93 +25,50 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "Falcor/Utils/Debug/debug.h"
+#include "stdafx.h"
 
+#include "Falcor/Core/API/Device.h"
 #include "ResourceViews.h"
-
 
 namespace Falcor {
 
-class Device;
-
-
-using DeviceUID = uint8_t;
-
-static NullResourceViews gNullViews[FALCOR_MAX_DEVICES];
-static NullResourceViews gNullBufferViews[FALCOR_MAX_DEVICES];
-static NullResourceViews gNullTypedBufferViews[FALCOR_MAX_DEVICES];
-
-Buffer::SharedPtr getEmptyBuffer(std::shared_ptr<Device> pDevice);
-Buffer::SharedPtr getEmptyTypedBuffer(std::shared_ptr<Device> pDevice);
-Buffer::SharedPtr getEmptyConstantBuffer(std::shared_ptr<Device> pDevice);
-
-Buffer::SharedPtr createZeroBuffer(std::shared_ptr<Device> pDevice);
-Buffer::SharedPtr createZeroTypedBuffer(std::shared_ptr<Device> pDevice);
-
-Texture::SharedPtr getEmptyTexture(std::shared_ptr<Device> pDevice);
-Texture::SharedPtr createBlackTexture(std::shared_ptr<Device> pDevice);
-
-void ReleaseBlackTextures(Device::SharedPtr pDevice);
-void ReleaseZeroBuffers(Device::SharedPtr pDevice);
-void ReleaseZeroTypedBuffers(Device::SharedPtr pDevice);
-void ReleaseZeroConstantBuffers(Device::SharedPtr pDevice);
-
-void createNullViews(std::shared_ptr<Device> pDevice) {
-    assert(pDevice);
-    gNullViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyTexture(pDevice), 0, 1, 0, 1);
-    gNullViews[pDevice->uid()].dsv = DepthStencilView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
-    gNullViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
-    gNullViews[pDevice->uid()].rtv = RenderTargetView::create(pDevice, getEmptyTexture(pDevice), 0, 0, 1);
-    gNullViews[pDevice->uid()].cbv = ConstantBufferView::create(pDevice, getEmptyConstantBuffer(pDevice));
+ShaderResourceView::SharedPtr ShaderResourceView::getNullView(Device::SharedPtr pDevice, ShaderResourceView::Dimension dimension) {
+    auto nullViews = pDevice->nullResourceViews();
+    assert((size_t)dimension < nullViews.srv.size() && nullViews.srv[(size_t)dimension]);
+    return nullViews.srv[(size_t)dimension];
 }
 
-void createNullBufferViews(std::shared_ptr<Device> pDevice) {
-    assert(pDevice);
-    gNullBufferViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyBuffer(pDevice), 0, 0);
-    gNullBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyBuffer(pDevice), 0, 0);
+UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(Device::SharedPtr pDevice, UnorderedAccessView::Dimension dimension) {
+    auto nullViews = pDevice->nullResourceViews();
+    assert((size_t)dimension < nullViews.uav.size() && nullViews.uav[(size_t)dimension]);
+    return nullViews.uav[(size_t)dimension];
 }
 
-void createNullTypedBufferViews(std::shared_ptr<Device> pDevice) {
-    assert(pDevice);
-    gNullTypedBufferViews[pDevice->uid()].srv = ShaderResourceView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
-    gNullTypedBufferViews[pDevice->uid()].uav = UnorderedAccessView::create(pDevice, getEmptyTypedBuffer(pDevice), 0, 0);
+DepthStencilView::SharedPtr DepthStencilView::getNullView(Device::SharedPtr pDevice, DepthStencilView::Dimension dimension) {
+    auto nullViews = pDevice->nullResourceViews();
+    assert((size_t)dimension < nullViews.dsv.size() && nullViews.dsv[(size_t)dimension]);
+    return nullViews.dsv[(size_t)dimension];
 }
 
-void releaseNullViews(Device::SharedPtr pDevice) {
-    gNullViews[pDevice->uid()] = {};
+RenderTargetView::SharedPtr RenderTargetView::getNullView(Device::SharedPtr pDevice, RenderTargetView::Dimension dimension) {
+    auto nullViews = pDevice->nullResourceViews();
+    assert((size_t)dimension < nullViews.rtv.size() && nullViews.rtv[(size_t)dimension]);
+    return nullViews.rtv[(size_t)dimension];
 }
 
-void releaseNullBufferViews(Device::SharedPtr pDevice) {
-    gNullBufferViews[pDevice->uid()] = {};
+ConstantBufferView::SharedPtr ConstantBufferView::getNullView(Device::SharedPtr pDevice) {
+    auto nullViews = pDevice->nullResourceViews();
+    return nullViews.cbv;
 }
-
-void releaseNullTypedBufferViews(Device::SharedPtr pDevice) {
-    gNullTypedBufferViews[pDevice->uid()] = {};
-}
-
-
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].srv; }
-DepthStencilView::SharedPtr    DepthStencilView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].dsv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(std::shared_ptr<Device> pDevice) { return gNullViews[pDevice->uid()].uav; }
-RenderTargetView::SharedPtr    RenderTargetView::getNullView(std::shared_ptr<Device> pDevice)    { return gNullViews[pDevice->uid()].rtv; }
-ConstantBufferView::SharedPtr  ConstantBufferView::getNullView(std::shared_ptr<Device> pDevice)  { return gNullViews[pDevice->uid()].cbv; }
-
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullBufferView(std::shared_ptr<Device> pDevice)  { return gNullBufferViews[pDevice->uid()].srv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullBufferView(std::shared_ptr<Device> pDevice) { return gNullBufferViews[pDevice->uid()].uav; }
-
-ShaderResourceView::SharedPtr  ShaderResourceView::getNullTypedBufferView(std::shared_ptr<Device> pDevice)  { return gNullTypedBufferViews[pDevice->uid()].srv; }
-UnorderedAccessView::SharedPtr UnorderedAccessView::getNullTypedBufferView(std::shared_ptr<Device> pDevice) { return gNullTypedBufferViews[pDevice->uid()].uav; }
-
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(ResourceView) {
+    FALCOR_SCRIPT_BINDING(ResourceView)
+    {
         pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
         pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
         pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
         pybind11::class_<ConstantBufferView, ConstantBufferView::SharedPtr>(m, "ConstantBufferView");
         pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
-}
+    }
 #endif
-
-}  // namespace Falcor
+}

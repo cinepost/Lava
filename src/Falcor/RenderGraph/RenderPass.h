@@ -59,6 +59,10 @@ class dlldecl RenderData {
     */
     InternalDictionary& getDictionary() const { return (*mpDictionary); }
 
+    /** Get the global dictionary. You can use it to pass data between different passes
+    */
+    InternalDictionary::SharedPtr getDictionaryPtr() const { return mpDictionary; }
+
     /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
     */
     const uint2& getDefaultTextureDims() const { return mDefaultTexDims; }
@@ -97,20 +101,46 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     using SharedPtr = std::shared_ptr<RenderPass>;
     virtual ~RenderPass() = default;
 
-    struct CompileData {
-        RenderPassReflection connectedResources;
-        uint2 defaultTexDims;
-        ResourceFormat defaultTexFormat;
+    // Render pass info.
+    struct Info
+    {
+        std::string type;   ///< Type name of the render pass. In general this should match the name of the class implementing the render pass.
+        std::string desc;   ///< Brief textural description of what the render pass does.
     };
 
-    /** Called once before compilation. Describes I/O requirements of the pass.
-        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+    struct CompileData {
+        uint2 defaultTexDims;                       ///< Default texture dimension (same as the swap chain size).
+        ResourceFormat defaultTexFormat;            ///< Default texture format (same as the swap chain format).
+        RenderPassReflection connectedResources;    ///< Reflection data for connected resources, if available. This field may be empty when reflect() is called.
+    };
+
+    /** Get the render pass info data.
+    */
+    const Info& getInfo() const { return mInfo; }
+
+    /** Get the render pass type.
+    */
+    const std::string& getType() const { return mInfo.type; }
+
+    /** Get the render pass description.
+    */
+    const std::string& getDesc() const { return mInfo.desc; }
+
+
+    /** Called before render graph compilation. Describes I/O requirements of the pass.
+        The function may be called repeatedly and should not perform any expensive operations.
+        The requirements can't change after the graph is compiled. If the I/O are dynamic, you'll need to
+        trigger re-compilation of the render graph yourself by calling 'requestRecompile()'.
     */
     virtual RenderPassReflection reflect(const CompileData& compileData) = 0;
 
     /** Will be called during graph compilation. You should throw an exception in case the compilation failed
     */
     virtual void compile(RenderContext* pContext, const CompileData& compileData) {}
+
+    /** Executes the pass.
+    */
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) = 0;
 
     /** If pass has frame dependent sparse resources they should be resolved within this call
     */
@@ -120,17 +150,10 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual void resolvePerSampleSparseResources(RenderContext* pRenderContext, const RenderData& renderData) {}
 
-    /** Executes the pass.
-    */
-    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) = 0;
 
     /** Get a dictionary that can be used to reconstruct the object
     */
     virtual Dictionary getScriptingDictionary() { return {}; }
-
-    /** Get a string describing what the pass is doing
-    */
-    virtual std::string getDesc() = 0;
 
     /** Set a scene into the render-pass
     */
@@ -147,9 +170,17 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
  protected:
     friend class RenderGraph;
-    RenderPass(Device::SharedPtr pDevice);
+    RenderPass(Device::SharedPtr pDevice, const Info& info);
     
+    /** Request a recompilation of the render graph.
+        Call this function if the I/O requirements of the pass have changed.
+        During the recompile, reflect() will be called for the pass to report the new requirements.
+    */
+    void requestRecompile() { mPassChangedCB(); }
+
+    const Info mInfo;
     std::string mName;
+
     std::function<void(void)> mPassChangedCB = [] {};
     Device::SharedPtr mpDevice;
     

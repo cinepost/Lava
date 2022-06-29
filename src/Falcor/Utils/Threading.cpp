@@ -41,7 +41,6 @@ struct ThreadingData {
 }  // namespace
 
 void Threading::start(uint32_t threadCount) {
-    printf("Threading start!\n");
     if (gData.initialized) return;
 
     gData.threads.resize(threadCount);
@@ -49,7 +48,6 @@ void Threading::start(uint32_t threadCount) {
 }
 
 void Threading::shutdown() {
-    printf("Threading shutdown %zu threads!\n", gData.threads.size());
     for (auto& t : gData.threads) {
         if (t.joinable()) t.join();
     }
@@ -71,12 +69,12 @@ Threading::Task Threading::dispatchTask(const std::function<void(void)>& func) {
 Threading::Task::Task() {}
 
 bool Threading::Task::isRunning() {
-    logError("Threading::Task::isRunning() not implemented");
+    LLOG_ERR << "Threading::Task::isRunning() not implemented";
     return true;
 }
 
 void Threading::Task::finish() {
-    logError("Threading::Task::finish() not implemented");
+    LLOG_ERR << "Threading::Task::finish() not implemented";
 }
 
 }  // namespace Falcor

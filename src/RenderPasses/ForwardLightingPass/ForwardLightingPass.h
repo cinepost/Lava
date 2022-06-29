@@ -31,6 +31,7 @@
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
 #include "Experimental/Scene/Lights/EnvMapLighting.h"
@@ -41,7 +42,8 @@ using namespace Falcor;
 class ForwardLightingPass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<ForwardLightingPass>;
-    static const char* kDesc;
+
+    static const Info kInfo;
 
     /** Create a new object
     */
@@ -87,10 +89,6 @@ class ForwardLightingPass : public RenderPass {
     */
     ForwardLightingPass& setSampler(const Sampler::SharedPtr& pSampler);
 
-    /** Get a description of the pass
-    */
-    std::string getDesc() override { return kDesc; }
-
     ForwardLightingPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
  private:
@@ -107,7 +105,7 @@ class ForwardLightingPass : public RenderPass {
     Scene::SharedPtr                mpScene;
     GraphicsVars::SharedPtr         mpVars;
     RasterizerState::SharedPtr      mpRsState;
-    GraphicsProgram::SharedPtr      mpProgram;
+    //GraphicsProgram::SharedPtr      mpProgram;
     RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;
 
     uint2 mFrameDim = { 0, 0 };
@@ -130,7 +128,6 @@ class ForwardLightingPass : public RenderPass {
 
     bool mEnableSuperSampling = false;
     bool mUsePreGenDepth = false;
-    bool mUseSSAO = false;
     bool mUseSimplifiedEnvLighting = false;
     
     bool mDirty = true;

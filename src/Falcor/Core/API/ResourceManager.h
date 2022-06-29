@@ -10,6 +10,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 //#include "boost/asio/thread_pool.hpp"
 
@@ -39,7 +40,7 @@ class dlldecl ResourceManager: public std::enable_shared_from_this<ResourceManag
     void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIDs); 
     void fillMipTail(const Texture::SharedPtr& pTexture);
 
-    const VmaAllocator& allocator() const { return mpDevice->mAllocator; }
+    //const VmaAllocator& allocator() const { return mpDevice->mAllocator; }
 
  protected:
     static SharedPtr create(std::shared_ptr<Device> pDevice);

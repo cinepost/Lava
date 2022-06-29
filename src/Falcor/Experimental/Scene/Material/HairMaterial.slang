@@ -25,88 +25,46 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Math/MathConstants.slangh"
-#include "BCSDFConfig.slangh"
-
 __exported import Experimental.Scene.Material.IMaterial;
-import Experimental.Scene.Material.HairChiang16;
+__exported import Experimental.Scene.Material.HairBSDF;
+import Scene.Material.BasicMaterialData;
 
 /** Implementation of Falcor's standard hair/fur material.
-
-    The implementation uses the scattering function by Chiang et al. 2016,
-    "A Practical and Controllable Hair and Fur Model for Production Path Tracing".
-
-    By overriding the 'BCSDF' define it is possible to select a single-sided
-    Lambertian diffuse BRDF for debugging purposes (see BCSDFConfig.slangh).
 */
 struct HairMaterial : IMaterial
 {
-    float3 eval(const ShadingData sd, const float3 wo)
+    MaterialHeader header;
+    BasicMaterialData data;
+
+    // Specify that the associated `BSDF` type is `HairBSDF`.
+    typedef HairBSDF BSDF;
+
+    HairBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
     {
-#if BCSDF == HairChiang
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
-        HairChiang16 bcsdf;
-        bcsdf.setup(sd);
+        HairBSDFData d = {};
 
-        return bcsdf.eval(wiLocal, woLocal);
-#else
-        // Diffuse BRDF
-        return sd.diffuse * M_1_PI * saturate(dot(sd.N, wo));
-#endif
+        d.IoR = data.IoR;
+        d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
+
+        // Sample base color.
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
+
+        // Sample the specular texture. This encodes additional BSDF parameters.
+        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+
+        d.baseColor = baseColor;
+        d.betaM = spec.x;
+        d.betaN = spec.y;
+        d.alpha = spec.z;
+
+        return HairBSDF(d);
     }
 
-    bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
-    {
-#if BCSDF == HairChiang
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = {};
+    // Normal mapping is not supported by this material.
+    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd) {}
 
-        HairChiang16 bcsdf;
-        bcsdf.setup(sd);
-
-        bool valid = bcsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobe, sg);
-        result.wo = sd.fromLocal(woLocal);
-
-        return valid;
-#else
-        // Diffuse BRDF
-        float3 woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf);
-        result.wo = sd.fromLocal(woLocal);
-        result.weight = sd.diffuse * M_1_PI;
-        result.lobe = (uint)LobeType::DiffuseReflection;
-        return true;
-#endif
-    }
-
-    float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true)
-    {
-#if BCSDF == HairChiang
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
-
-        HairChiang16 bcsdf;
-        bcsdf.setup(sd);
-
-        return bcsdf.evalPdf(wiLocal, woLocal);
-#else
-        // Diffuse BRDF
-        return saturate(dot(sd.N, wo));
-#endif
-    }
-
-
-    // Additional functions
-
-    /** Return the set of available BSDF lobes for the given shading data.
-        \param[in] sd Shading data.
-        \return A combination of LobeType flags (see IBxDF.slang).
-    */
-    uint getBSDFLobes(const ShadingData sd)
-    {
-        // The BSDF currently assumes all diffuse lobes (for animal fur).
-        // TODO: Update this when lobes are classified as diffuse or specular according to roughness.
-        return (uint)LobeType::DiffuseReflection | (uint)LobeType::DiffuseTransmission;
-    }
+    // Alpha testing is not supported by this material.
+    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }
 };

@@ -31,6 +31,7 @@
 #include "Falcor.h"
 #include "FalcorExperimental.h"
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Math/Vector.h"
 
 #include <slang/slang.h>
@@ -47,11 +48,11 @@ using namespace Falcor;
 #define dllpassdecl falcorimport
 #endif
 
-class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared_from_this<RenderPass, TexturesResolvePass> {
+class dllpassdecl TexturesResolvePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<TexturesResolvePass>;
-    using inherit_shared_from_this<RenderPass, TexturesResolvePass>::shared_from_this;
-    static const char* kDesc;
+
+    static const Info kInfo;
 
     /** Create a new object
     */
@@ -61,7 +62,6 @@ class dllpassdecl TexturesResolvePass : public RenderPass, public inherit_shared
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; };
 
     TexturesResolvePass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     TexturesResolvePass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);

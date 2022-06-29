@@ -63,6 +63,12 @@ class OSServices {
     static void stop();
 };
 
+/** Sets the main window handle.
+    This is used to set the parent window when showing message boxes.
+    \param[in] windowHandle Window handle.
+*/
+FALCOR_API void setMainWindowHandle(WindowHandle windowHandle);
+
 /** Retrieves estimated/user-set pixel density of a display.
     \return integer value of number of pixels per inch.
 */
@@ -142,7 +148,7 @@ dlldecl void msgBoxTitle(const std::string& title);
 */
 dlldecl bool findFileInDataDirectories(const std::string& filename, std::string& fullPath);
 
-dlldecl bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath);
+dlldecl bool findFileInDataDirectories(const fs::path& path, fs::path& fullPath);
 
 /** Finds all files in a directory. The arguments must not alias.
     \param[in] searchPath The directory path to search in
@@ -159,7 +165,22 @@ dlldecl bool findFilesInDataDirectories(const std::string& searchPath, const std
     \param[in] fullPath If the file was found, the full path to the file. If the file wasn't found, this is invalid.
     \return true if the file was found, otherwise false
 */
-dlldecl bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath);
+dlldecl bool findFileInShaderDirectories(const fs::path& path, fs::path& fullPath);
+dlldecl bool findFileInShaderDirectories(const fs::path& path, std::string& fullPath);
+
+/** Check if a file path has a given file extension. Does a case-insensitive comparison.
+    \param[in] path The file path.
+    \param[in] ext The file extension.
+    \return True if the path has the given file extension.
+*/
+dlldecl bool hasExtension(const fs::path& path, std::string_view ext);
+
+
+/** Get the file extension from a path.
+    \param[in] path The file path to get the extension from.
+    \return The file extension in lower-case and without the leading '.' character.
+*/
+dlldecl std::string getExtensionFromPath(const fs::path& path);
 
 /** Finds a render pass file.
     \param[in] filename The file to look for
@@ -170,7 +191,7 @@ dlldecl bool findFileInRenderPassDirectories(const std::string& filename, std::s
 
 /** Get a list of all shader directories.
 */
-dlldecl const std::vector<std::string>& getShaderDirectoriesList();
+dlldecl const std::vector<fs::path>& getShaderDirectoriesList();
 
 /** Given a filename, returns the shortest possible path to the file relative to the data directories.
     If the file is not relative to the data directories, return the original filename
@@ -406,6 +427,10 @@ dlldecl uint32_t bitScanReverse(uint32_t a);
 /** Returns index of least significant set bit, or 0 if no bits were set.
 */
 dlldecl uint32_t bitScanForward(uint32_t a);
+
+/** Gets the closest power of two to a number, rounded up.
+*/
+dlldecl uint32_t getNextPowerOf2(uint32_t a);
 
 /** Gets the closest power of two to a number, rounded down.
 */

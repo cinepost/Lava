@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,32 +37,22 @@ BEGIN_NAMESPACE_FALCOR
 /** This enum is shared between CPU/GPU.
     It enumerates the different the different texture LOD modes.
 */
-enum class TexLODMode
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class TexLODMode : uint32_t
 {
     Mip0 = 0,
     RayCones = 1,
-    RayDiffsIsotropic = 2,
-    RayDiffsAnisotropic = 3,
+    RayDiffs = 2,
 };
 
 /** This enum is shared between CPU/GPU.
-    It enumerates the different the ray cone modes. RayTracingGems1 uses the G-buffer to store the surface spread angle. Combo and Unified avoid the G-buffer.
-    Combo uses ray differntials to compute the spread at the first hit and then average edge curvature for all hits after that.
+    Both Combo and Unified avoid computing surface spread from the G-buffer.
+    Combo uses ray differentials to compute the spread at the first hit and then average edge curvature for all hits after that.
     Unified uses interpolated edge curvatures for the first hit and then average edge curvatures for all hits after that.
 */
-enum class RayConeMode
-    // TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class RayConeMode : uint32_t
 {
-    RayTracingGems1 = 0,
-    Combo = 1,
-    Unified = 2,
+    Combo = 0,
+    Unified = 1,
 };
 
 END_NAMESPACE_FALCOR

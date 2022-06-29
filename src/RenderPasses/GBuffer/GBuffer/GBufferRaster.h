@@ -41,13 +41,14 @@ class GBufferRaster : public GBuffer {
  public:
     using SharedPtr = std::shared_ptr<GBufferRaster>;
 
+    static const Info kInfo;
+
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void resolvePerFrameSparseResources(RenderContext* pRenderContext, const RenderData& renderData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    std::string getDesc(void) override { return kDesc; }
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
 
  private:

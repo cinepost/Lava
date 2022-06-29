@@ -73,7 +73,7 @@ class dlldecl ComputeContext : public CopyContext {
         \param[in] pBuffer Structured Buffer containing UAV counter
         \param[in] value Value to clear counter to
     */
-    void clearUAVCounter(Buffer::ConstSharedPtrRef& pBuffer, uint32_t value);
+    void clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value);
 
     /** Submit the command list
     */
@@ -81,8 +81,10 @@ class dlldecl ComputeContext : public CopyContext {
 
  protected:
     ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
-    bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
-    bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
+#ifdef FALCOR_D3D12
+        void prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
+        void applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels);
+#endif
 
     const ComputeVars* mpLastBoundComputeVars = nullptr;
 };

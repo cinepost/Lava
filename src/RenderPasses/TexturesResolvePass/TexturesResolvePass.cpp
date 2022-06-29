@@ -1,9 +1,15 @@
 #include <algorithm>
 #include <chrono>
-#include "TexturesResolvePass.h"
 
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/API/ResourceManager.h"
+
+#include "TexturesResolvePass.h"
+
+
+const RenderPass::Info TexturesResolvePass::kInfo { "TexturesResolve", "Resolves sparse textures tiles to be loaded" };
+
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -11,10 +17,8 @@ extern "C" falcorexport const char* getProjDir() {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("TexturesResolve", "Resolves sparse textures tiles to be loaded", TexturesResolvePass::create);
+    lib.registerPass(TexturesResolvePass::kInfo, TexturesResolvePass::create);
 }
-
-const char* TexturesResolvePass::kDesc = "Creates a depth-buffer using the scene's active camera";
 
 namespace {
     const std::string kProgramFile = "RenderPasses/TexturesResolvePass/TexturesResolvePass.ps.slang";
@@ -46,7 +50,7 @@ TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRende
     return SharedPtr(pTexturesResolvePass);
 }
 
-TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
+TexturesResolvePass::TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     
     //Program::DefineList defines = { { "_MS_DISABLE_ALPHA_TEST", "" } };
     Program::Desc desc;
@@ -104,6 +108,7 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 
 
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
+/*
     initDepth(pContext, renderData);
 
     const auto& pDebugData = renderData[kOutput]->asTexture();
@@ -282,6 +287,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
     std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
 
     LOG_DBG("TexturesResolvePass::execute done");
+    */
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

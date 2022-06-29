@@ -1,5 +1,5 @@
-#ifndef SRC_LAVA_LIB_SCENE_H_
-#define SRC_LAVA_LIB_SCENE_H_
+#ifndef SRC_LAVA_LIB_SCENEBUILDER_H_
+#define SRC_LAVA_LIB_SCENEBUILDER_H_
 
 #include <map>
 #include <future>
@@ -7,6 +7,7 @@
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Scene/SceneBuilder.h" 
+#include "Falcor/Scene/Material/StandardMaterial.h" 
 
 #include "Falcor/Core/API/Texture.h"
 
@@ -37,7 +38,7 @@ class SceneBuilder: public Falcor::SceneBuilder {
     SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags = Flags::Default);
 
  private:
-    Material::SharedPtr mpDefaultMaterial = nullptr;
+    StandardMaterial::SharedPtr mpDefaultMaterial = nullptr;
 
     std::atomic<uint32_t> mUniqueTrianglesCount = 0;
 
@@ -45,4 +46,4 @@ class SceneBuilder: public Falcor::SceneBuilder {
 
 }  // namespace lava
 
-#endif  // SRC_LAVA_LIB_SCENE_H_
+#endif  // SRC_LAVA_LIB_SCENEBUILDER_H_

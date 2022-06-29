@@ -33,6 +33,11 @@
 #include "Utils/CryptoUtils.h"
 #include "Scene.h"
 
+#include "Falcor/Scene/Material/BasicMaterial.h"
+#include "Falcor/Scene/Material/StandardMaterial.h"
+#include "Falcor/Scene/Material/HairMaterial.h"
+#include "Falcor/Scene/Material/ClothMaterial.h"
+
 #ifdef _WIN32
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -89,11 +94,19 @@ private:
     static void writeLight(OutputStream& stream, const Light::SharedPtr& pLight);
     static Light::SharedPtr readLight(InputStream& stream);
 
+    static void writeMaterials(OutputStream& stream, const MaterialSystem::SharedPtr& pMaterials);
     static void writeMaterial(OutputStream& stream, const Material::SharedPtr& pMaterial);
+    static void writeBasicMaterial(OutputStream& stream, const BasicMaterial::SharedPtr& pMaterial);
+    
+    static void readMaterials(Device::SharedPtr pDevice, InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader);
     static Material::SharedPtr readMaterial(Device::SharedPtr pDevice, InputStream& stream, MaterialTextureLoader& materialTextureLoader);
+    static void readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial);
 
-    static void writeVolume(OutputStream& stream, const Volume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
-    static Volume::SharedPtr readVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids);
+    static void writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler);
+    static Sampler::SharedPtr readSampler(Device::SharedPtr pDevice, InputStream& stream);
+
+    static void writeGridVolume(OutputStream& stream, const GridVolume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids);
+    static GridVolume::SharedPtr readGridVolume(Device::SharedPtr pDevice, InputStream& stream, const std::vector<Grid::SharedPtr>& grids);
 
     static void writeGrid(OutputStream& stream, const Grid::SharedPtr& pGrid);
     static Grid::SharedPtr readGrid(Device::SharedPtr pDevice, InputStream& stream);

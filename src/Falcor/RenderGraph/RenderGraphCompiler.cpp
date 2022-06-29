@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor/stdafx.h"
+
+#include "Falcor/Utils/StringUtils.h"
+#include "Falcor/Utils/Algorithm/DirectedGraphTraversal.h"
 #include "RenderGraphCompiler.h"
 #include "RenderGraph.h"
 #include "RenderPasses/ResolvePass.h"
@@ -135,7 +138,6 @@ void RenderGraphCompiler::resolveExecutionOrder() {
     for (auto& node : topologicalSort) {
         if (participatingPasses.find(node) != participatingPasses.end()) {
             const auto pData = mGraph.mNodeData[node];
-            LOG_DBG("!!!");
             mExecutionList.push_back({ node, pData.pPass, pData.name, pData.pPass->reflect(compileData) });
         }
     }
@@ -234,18 +236,10 @@ void RenderGraphCompiler::allocateResources(ResourceCache* pResourceCache) {
         const auto& passReflection = mExecutionList[i].reflector;
 
         auto isResourceUsed = [&](auto field) {
-            if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) && is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Input)) {
-                // This is optional output field. Check if its connected
-                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++) {
-                    const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
-                    if (edgeData.srcField == field.getName()) return true;
-                }
-                return false;
-            }
-
             if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) return true;
-            if(mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++) {
+            if (mGraph.isGraphOutput({ nodeIndex, field.getName() })) return true;
+            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            {
                 const auto& edgeData = mGraph.mEdgeData[pNode->getOutgoingEdge(e)];
                 if (edgeData.srcField == field.getName()) return true;
             }
@@ -393,7 +387,7 @@ void RenderGraphCompiler::compilePasses(RenderContext* pContext) {
         }
 
         if (!changed) {
-            logError("Graph compilation failed.\n" + log);
+            LLOG_ERR << "Graph compilation failed.\n" << log;
             return;
         }
     }

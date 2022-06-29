@@ -80,7 +80,7 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
     }
 
     void release(uint32_t entry) {
-        assert(entry != kInvalidIndex),
+        assert(entry != kInvalidIndex);
         mFreeQueries.push_back(entry);
     }
 

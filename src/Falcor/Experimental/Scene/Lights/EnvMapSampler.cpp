@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "EnvMapSampler.h"
+
 #include "glm/gtc/integer.hpp"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "EnvMapSampler.h"
 
 namespace Falcor {
 

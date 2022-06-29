@@ -28,6 +28,9 @@
 #include <algorithm>
 
 #include "Falcor/stdafx.h"
+
+#include "Dictionary.h"
+#include "Scripting.h"
 #include "ScriptBindings.h"
 
 #include <pybind11/embed.h>

@@ -77,7 +77,7 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
     // The area lights are single-sided by default, so radiance is zero when seen from the back-facing side.
     float cosTheta = dot(ls.normalW, -ls.dir);
     if (cosTheta <= 0.f && (light.singleSided == true)) return false; // To match Houdini
-    ls.Li = light.intensity * (light.surfaceArea * cosTheta / distSqr);
+    ls.Li = light.intensity * (light.surfaceArea * abs(cosTheta) / distSqr);
 
     // Compute the PDF with respect to solid angle. Note this may be +inf.
     ls.pdf = distSqr / (cosTheta * light.surfaceArea);

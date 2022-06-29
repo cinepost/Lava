@@ -27,9 +27,12 @@
  **************************************************************************/
 #include "stdafx.h"
 #include <numeric>
+
+#include "Falcor/Utils/StringUtils.h"
+#include "lava_utils_lib/logging.h"
+
 #include "TimeReport.h"
-#include "Utils/Logger.h"
-#include "Utils/StringUtils.h"
+
 
 namespace Falcor {
 
@@ -44,7 +47,7 @@ void TimeReport::reset() {
 
 void TimeReport::printToLog() {
     for (const auto& [task, duration] : mMeasurements) {
-        logInfo(padStringToLength(task + ":", 25) + " " + std::to_string(duration) + " s");
+        LLOG_INF << padStringToLength(task + ":", 25) << " " << std::to_string(duration)<<+ " s";
     }
 }
 

@@ -33,10 +33,10 @@
 
 #ifdef _DEBUG
     #include <sys/types.h>
-    #include <sys/stat.h>
     #include <sys/ptrace.h>
 #endif
 
+#include <sys/stat.h>
 // #include <gtk/gtk.h>
 // #include <fstream>
 #include <fcntl.h>
@@ -45,6 +45,7 @@
 // #include <algorithm>
 #include <dlfcn.h>
 
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "boost/filesystem.hpp"
@@ -59,6 +60,13 @@ enum class MsgResponseId {
     Abort,
     Ignore
 };
+
+static WindowHandle gMainWindowHandle;
+
+void setMainWindowHandle(WindowHandle windowHandle)
+{
+    gMainWindowHandle = windowHandle;
+}
 
 uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId) {
     return -1;
@@ -353,7 +361,7 @@ DllHandle loadDll(const std::string& libPath) {
     void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
 
     if (!handle) {
-        LOG_ERR("Cannot open library: %s", + dlerror());
+        LLOG_ERR << "Cannot open library: " << dlerror();
         return nullptr;
     }
     

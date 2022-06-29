@@ -30,6 +30,7 @@
 
 #include "Falcor/Falcor.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/RenderGraph/RenderPass.h"
 
 using namespace Falcor;
 
@@ -46,11 +47,13 @@ class AccumulatePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<AccumulatePass>;
     using SharedConstPtr = std::shared_ptr<const AccumulatePass>;
+
+    static const Info kInfo;
+    
     virtual ~AccumulatePass() = default;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual std::string getDesc() override { return "Accumulation pass"; }
     virtual Dictionary getScriptingDictionary() override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pContext, const CompileData& compileData) override;

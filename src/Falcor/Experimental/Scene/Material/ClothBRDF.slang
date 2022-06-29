@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,63 +49,51 @@ struct ClothBRDF : IBxDF
 
     // Implementation of IBxDF interface
 
-    float3 eval(float3 wo, float3 wi)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
-        if (min(wo.z, wi.z) < kMinCosTheta) return float3(0.f);
+        if (min(wi.z, wo.z) < kMinCosTheta) return float3(0.f);
 
-        return evalWeight(wo, wi) * M_1_PI * wi.z;
+        return evalWeight(wi, wo) * M_1_PI * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(float3 wo, out float3 wi, out float pdf, out float3 weight, out uint lobe, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobe, inout S sg)
     {
-        wi = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
+        wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobe = (uint)LobeType::DiffuseReflection;
 
-        if (min(wo.z, wi.z) < kMinCosTheta)
+        if (min(wi.z, wo.z) < kMinCosTheta)
         {
             weight = {};
             return false;
         }
 
-        weight = evalWeight(wo, wi);
+        weight = evalWeight(wi, wo);
         return true;
     }
 
-    float evalPdf(float3 wo, float3 wi)
+    float evalPdf(const float3 wi, const float3 wo)
     {
-        if (min(wo.z, wi.z) < kMinCosTheta) return 0.f;
+        if (min(wi.z, wo.z) < kMinCosTheta) return 0.f;
 
-        return M_1_PI * wi.z;
+        return M_1_PI * wo.z;
     }
 
 
     // Additional functions
 
-    /** Setup the BRDF based on shading data at a hit.
-        \param[in] sd Shading data.
-    */
-    [mutating] void setup(const ShadingData sd)
-    {
-        roughness = sd.linearRoughness;     // TODO: Linear or squared roughness?
-        f0 = sd.specular;                   // TODO: What's appropriate here?
-        diffuseColor = sd.diffuse;          // TODO: Use original baseColor instead.
-        subsurfaceColor = float3(0.5f);     // TODO: Add ShadingData field for this.
-    }
-
-    /** Returns f(wo, wi) * cos(theta_i) / p(wo, wi) = f(wo, wi) * pi.
+    /** Returns f(wi, wo) * cos(theta_o) / p(wi, wo) = f(wi, wo) * pi.
         Both incident and outgoing direction are assumed to be in the positive hemisphere.
     */
-    float3 evalWeight(float3 wo, float3 wi)
+    float3 evalWeight(float3 wi, float3 wo)
     {
         float3 h = normalize(wi + wo);
-        float NoL = wi.z;
-        float NoV = wo.z;
+        float NoO = wo.z;
+        float NoI = wi.z;
         float NoH = h.z;
-        float LoH = saturate(dot(wi, h));
 
         // Specular BRDF
         float D = D_Sheen(roughness, NoH);
-        float V = V_Neubelt(NoV, NoL);
+        float V = V_Neubelt(NoI, NoO);
         float3 F = f0;
         float3 Fr = (D * V) * F;
 
@@ -113,7 +101,7 @@ struct ClothBRDF : IBxDF
         float diffuse = diffuseLambert();
 #if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
         // Energy conservative wrapped diffuse to simulate subsurface scattering.
-        diffuse *= diffuseWrapped(NoL, 0.5);
+        diffuse *= diffuseWrapped(NoO, 0.5);
 #endif
 
         // Note: Currently not multiplying the diffuse term by the Fresnel term as discussed in
@@ -122,8 +110,8 @@ struct ClothBRDF : IBxDF
 
 #if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
         // Cheap subsurface scattering approximation.
-        Fd *= saturate(subsurfaceColor + NoL);
-        float3 weight = Fd / NoL + Fr; // Note: Remove NoL from diffuse again as it'll be applied later.
+        Fd *= saturate(subsurfaceColor + NoO);
+        float3 weight = Fd / NoO + Fr; // Note: Remove NoO from diffuse again as it'll be applied later.
 #else
         float3 weight = (Fd + Fr);
 #endif
@@ -148,9 +136,9 @@ struct ClothBRDF : IBxDF
     /** Microfacet visibility function for cloth.
         Based on Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886".
     */
-    float V_Neubelt(float NoV, float NoL)
+    float V_Neubelt(float NoI, float NoO)
     {
-        return 1.f / (4.f * (NoL + NoV - NoL * NoV));
+        return 1.f / (4.f * (NoO + NoI - NoO * NoI));
     }
 
     float diffuseLambert()
@@ -160,8 +148,8 @@ struct ClothBRDF : IBxDF
 
     /** Energy conserving wrapped diffuse term, does *not* include the divide by pi.
     */
-    float diffuseWrapped(float NoL, float w)
+    float diffuseWrapped(float NoO, float w)
     {
-        return saturate((NoL + w) / ((1.f + w) * (1.f + w)));
+        return saturate((NoO + w) / ((1.f + w) * (1.f + w)));
     }
 };

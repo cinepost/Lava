@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,223 +25,407 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "stdafx.h"
+
+#include "Falcor/Core/API/GpuTimer.h"
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
+
+#include "lava_utils_lib/logging.h"
+
+#include "pybind11/embed.h"
+
+
 #include <sstream>
 #include <fstream>
-
-#include "stdafx.h"
-#include "Profiler.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/GpuTimer.h"
 
 #ifdef _WIN32
 #define USE_PIX
 #include "WinPixEventRuntime/Include/WinPixEventRuntime/pix3.h"
 #endif
 
+#include "Profiler.h"
+
+using namespace pybind11::literals;
+
+
 namespace Falcor {
 
-    bool gProfileEnabled = false;  // TODO: make configurable
+namespace {
+    // With sigma = 0.98, then after 100 frames, a given value's contribution is down to ~1.7% of
+    // the running average, which seems to provide a reasonable trade-off of temporal smoothing
+    // versus setting in to a new value when something has changed.
+    const float kSigma = 0.98f;
 
-    using DeviceProfilerEvents = std::unordered_map<std::string, Profiler::EventData*>;
+    // Size of the event history. The event history is keeping track of event times to allow
+    // for computing statistics (min, max, mean, stddev) over the recent history.
+    const size_t kMaxHistorySize = 512;
+}
 
-    std::unordered_map<Profiler::DeviceEventKey, Profiler::EventData*, Profiler::device_event_key_hash> Profiler::sProfilerEvents;
-    std::vector<Profiler::EventData*> Profiler::sRegisteredEvents;
-    std::string curEventName = "";
-    uint32_t Profiler::sCurrentLevel = 0;
-    uint32_t Profiler::sGpuTimerIndex = 0;
+// Profiler::Stats
 
-    void Profiler::initNewEvent(std::shared_ptr<Device> pDevice, EventData *pEvent, const std::string& name) {
-        pEvent->name = name;
-        sProfilerEvents[std::pair<uint8_t, std::string>(pDevice->uid(), curEventName)] = pEvent;
+pybind11::dict Profiler::Stats::toPython() const {
+    pybind11::dict d;
+
+    d["min"] = min;
+    d["max"] = max;
+    d["mean"] = mean;
+    d["stdDev"] = stdDev;
+
+    return d;
+}
+
+
+Profiler::Stats Profiler::Stats::compute(const float* data, size_t len) {
+    if (len == 0) return {};
+
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::lowest();
+    double sum = 0.0;
+    double sum2 = 0.0;
+
+    for (size_t i = 0; i < len; ++i) {
+        float value = data[i];
+        min = std::min(min, value);
+        max = std::max(max, value);
+        sum += value;
+        sum2 += value * value;
     }
 
-    Profiler::EventData* Profiler::createNewEvent(std::shared_ptr<Device> pDevice, const std::string& name) {
-        EventData *pData = new EventData;
-        initNewEvent(pDevice, pData, name);
-        return pData;
+    double mean = sum / len;
+    double mean2 = sum2 / len;
+    double variance = mean2 - mean * mean;
+    double stdDev = std::sqrt(variance);
+
+    return { min, max, (float)mean, (float)stdDev };
+}
+
+// Profiler::Event
+
+Profiler::Event::Event(const std::string& name): mName(name), mCpuTimeHistory(kMaxHistorySize, 0.f), mGpuTimeHistory(kMaxHistorySize, 0.f) {}
+
+Profiler::Stats Profiler::Event::computeCpuTimeStats() const {
+    return Stats::compute(mCpuTimeHistory.data(), mHistorySize);
+}
+
+Profiler::Stats Profiler::Event::computeGpuTimeStats() const {
+    return Stats::compute(mGpuTimeHistory.data(), mHistorySize);
+}
+
+void Profiler::Event::start(std::shared_ptr<Device> pDevice, uint32_t frameIndex) {
+    if (++mTriggered > 1) {
+        LLOG_WRN <<"Profiler event '{" << mName << "}' was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call.";
+        return;
     }
 
-    Profiler::EventData* Profiler::isEventRegistered(std::shared_ptr<Device> pDevice, const std::string& name) {
-        auto event = sProfilerEvents.find(std::make_pair(pDevice->uid(), name));
-        return (event == sProfilerEvents.end()) ? nullptr : event->second;
+    auto& frameData = mFrameData[frameIndex % 2];
+
+    // Update CPU time.
+    frameData.cpuStartTime = CpuTimer::getCurrentTimePoint();
+
+    // Update GPU time.
+    assert(frameData.pActiveTimer == nullptr);
+    assert(frameData.currentTimer <= frameData.pTimers.size());
+
+    if (frameData.currentTimer == frameData.pTimers.size()) {
+        frameData.pTimers.push_back(GpuTimer::create(pDevice));
     }
+    frameData.pActiveTimer = frameData.pTimers[frameData.currentTimer++].get();
+    frameData.pActiveTimer->begin();
+    frameData.valid = false;
+}
 
-    Profiler::EventData* Profiler::getEvent(std::shared_ptr<Device> pDevice, const std::string& name) {
-        auto event = isEventRegistered(pDevice, name);
-        return event ? event : createNewEvent(pDevice, name);
-    }
+void Profiler::Event::end(uint32_t frameIndex) {
+    if (--mTriggered != 0) return;
 
-    void Profiler::startEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags, bool showInMsg) {
-        if (gProfileEnabled && is_set(flags, Flags::Internal)) {
-            curEventName = curEventName + "#" + name;
-            EventData* pData = getEvent(pDevice, curEventName);
-            pData->triggered++;
-            if (pData->triggered > 1) {
-                logWarning("Profiler event `" + name + "` was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call");
-                return;
-            }
+    auto& frameData = mFrameData[frameIndex % 2];
 
-            pData->showInMsg = showInMsg;
-            pData->level = sCurrentLevel;
-            pData->cpuStart = CpuTimer::getCurrentTimePoint();
-            EventData::FrameData& frame = pData->frameData[sGpuTimerIndex];
-            
-            if (frame.currentTimer >= frame.pTimers.size()) {
-                frame.pTimers.push_back(GpuTimer::create(pDevice));
-            }
-            
-            frame.pTimers[frame.currentTimer]->begin();
-            pData->callStack.push(frame.currentTimer);
-            frame.currentTimer++;
-            sCurrentLevel++;
+    // Update CPU time.
+    frameData.cpuTotalTime += (float)CpuTimer::calcDuration(frameData.cpuStartTime, CpuTimer::getCurrentTimePoint());
 
-            if (!pData->registered) {
-                sRegisteredEvents.push_back(pData);
-                pData->registered = true;
-            }
+    // Update GPU time.
+    assert(frameData.pActiveTimer != nullptr);
+    frameData.pActiveTimer->end();
+    frameData.pActiveTimer = nullptr;
+    frameData.valid = true;
+}
+
+void Profiler::Event::endFrame(uint32_t frameIndex) {
+    // Resolve GPU timers for the current frame measurements.
+    // This is necessary before we readback of results next frame.
+    {
+        auto& frameData = mFrameData[frameIndex % 2];
+        for (auto& pTimer : frameData.pTimers) {
+            pTimer->resolve();
         }
-        #ifdef _WIN32
-        if (is_set(flags, Flags::Pix)) {
-            PIXBeginEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList(), PIX_COLOR(0, 0, 0), name.c_str());
+    }
+
+    // Update CPU/GPU time from last frame measurement.
+    auto& frameData = mFrameData[(frameIndex + 1) % 2];
+
+    // Skip update if there are no measurements last frame.
+    if (!frameData.valid) return;
+
+    mCpuTime = frameData.cpuTotalTime;
+    mGpuTime = 0.f;
+    for (size_t i = 0; i < frameData.currentTimer; ++i) mGpuTime += (float)frameData.pTimers[i]->getElapsedTime();
+    frameData.cpuTotalTime = 0.f;
+    frameData.currentTimer = 0;
+
+    // Update EMA.
+    mCpuTimeAverage = mCpuTimeAverage < 0.f ? mCpuTime : (kSigma * mCpuTimeAverage + (1.f - kSigma) * mCpuTime);
+    mGpuTimeAverage = mGpuTimeAverage < 0.f ? mGpuTime : (kSigma * mGpuTimeAverage + (1.f - kSigma) * mGpuTime);
+
+    // Update history.
+    mCpuTimeHistory[mHistoryWriteIndex] = mCpuTime;
+    mGpuTimeHistory[mHistoryWriteIndex] = mGpuTime;
+    mHistoryWriteIndex = (mHistoryWriteIndex + 1) % kMaxHistorySize;
+    mHistorySize = std::min(mHistorySize + 1, kMaxHistorySize);
+
+    mTriggered = 0;
+}
+
+// Profiler::Capture
+pybind11::dict Profiler::Capture::toPython() const {
+    pybind11::dict pyCapture;
+    pybind11::dict pyEvents;
+
+    pyCapture["frameCount"] = mFrameCount;
+    pyCapture["events"] = pyEvents;
+
+    for (const auto& lane : mLanes) {
+        pybind11::dict pyLane;
+        pyLane["name"] = lane.name;
+        pyLane["stats"] = lane.stats.toPython();
+        pyLane["records"] = lane.records;
+        pyEvents[lane.name.c_str()] = pyLane;
+    }
+
+    return pyCapture;
+}
+
+std::string Profiler::Capture::toJsonString() const {
+    // We use pythons JSON encoder to encode the python dictionary to a JSON string.
+    pybind11::module json = pybind11::module::import("json");
+    pybind11::object dumps = json.attr("dumps");
+    return pybind11::cast<std::string>(dumps(toPython(), "indent"_a = 2));
+}
+
+void Profiler::Capture::writeToFile(const fs::path& path) const {
+    auto json = toJsonString();
+    std::ofstream ofs(path.string());
+    ofs.write(json.data(), json.size());
+}
+
+Profiler::Capture::Capture(size_t reservedEvents, size_t reservedFrames): mReservedFrames(reservedFrames) {
+    // Speculativly allocate event record storage.
+    mLanes.resize(reservedEvents * 2);
+    for (auto& lane : mLanes) lane.records.reserve(reservedFrames);
+}
+
+Profiler::Capture::SharedPtr Profiler::Capture::create(size_t reservedEvents, size_t reservedFrames) {
+    return SharedPtr(new Capture(reservedEvents, reservedFrames));
+}
+
+void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
+    printf("captureEvents\n");
+    if (events.empty()) {
+        printf("no events\n");
+        return;
+    }
+    // Initialize on first capture.
+    if (mEvents.empty()) {
+        mEvents = events;
+        mLanes.resize(mEvents.size() * 2);
+        for (size_t i = 0; i < mEvents.size(); ++i) {
+            auto& pEvent = mEvents[i];
+            mLanes[i * 2].name = pEvent->getName() + "/cpuTime";
+            mLanes[i * 2].records.reserve(mReservedFrames);
+            mLanes[i * 2 + 1].name = pEvent->getName() + "/gpuTime";
+            mLanes[i * 2 + 1].records.reserve(mReservedFrames);
         }
-        #endif
+        printf("%zu events captured first time!!!!\n", events.size());
+        return; // Exit as no data is available on first capture.
     }
 
-    void Profiler::endEvent(std::shared_ptr<Device> pDevice, const std::string& name, Flags flags) {
-        if (gProfileEnabled && is_set(flags, Flags::Internal)) {
-            assert(isEventRegistered(pDevice, curEventName));
-            EventData* pData = getEvent(pDevice, curEventName);
-            pData->triggered--;
-            if (pData->triggered != 0) return;
+    // Record CPU/GPU timing on subsequent captures.
+    for (size_t i = 0; i < mEvents.size(); ++i) {
+        auto& pEvent = mEvents[i];
+        mLanes[i * 2].records.push_back(pEvent->getCpuTime());
+        mLanes[i * 2 + 1].records.push_back(pEvent->getGpuTime());
+    }
 
-            pData->cpuEnd = CpuTimer::getCurrentTimePoint();
-            pData->cpuTotal += CpuTimer::calcDuration(pData->cpuStart, pData->cpuEnd);
+    printf("%zu events captured !!!!\n", events.size());
 
-            pData->frameData[sGpuTimerIndex].pTimers[pData->callStack.top()]->end();
-            pData->callStack.pop();
+    ++mFrameCount;
+}
 
-            sCurrentLevel--;
-            curEventName.erase(curEventName.find_last_of("#"));
+void Profiler::Capture::finalize() {
+    assert(!mFinalized);
+
+    for (auto& lane : mLanes) {
+        lane.stats = Stats::compute(lane.records.data(), lane.records.size());
+    }
+
+    mFinalized = true;
+}
+
+// Profiler
+
+void Profiler::startEvent(const std::string& name, Flags flags) {
+    if (mEnabled && is_set(flags, Flags::Internal)) {
+        // '/' is used as a "path delimiter", so it cannot be used in the event name.
+        if (name.find('/') != std::string::npos) {
+            LLOG_WRN << "Profiler event names must not contain '/'. Ignoring this profiler event.";
+            return;
         }
-        #ifdef _WIN32
-        if (is_set(flags, Flags::Pix)) {
-            PIXEndEvent((ID3D12GraphicsCommandList*)gpDevice->getRenderContext()->getLowLevelData()->getCommandList());
+
+        mCurrentEventName = mCurrentEventName + "/" + name;
+
+        Event* pEvent = getEvent(mCurrentEventName);
+        assert(pEvent != nullptr);
+        if (!mPaused) pEvent->start(mpDevice, mFrameIndex);
+
+        if (std::find(mCurrentFrameEvents.begin(), mCurrentFrameEvents.end(), pEvent) == mCurrentFrameEvents.end()) {
+            mCurrentFrameEvents.push_back(pEvent);
         }
-        #endif
     }
-
-    double Profiler::getEventGpuTime(std::shared_ptr<Device> pDevice, const std::string& name) {
-        const auto& pEvent = getEvent(pDevice, name);
-        return pEvent ? getGpuTime(pEvent) : 0;
-    }
-
-    double Profiler::getEventCpuTime(std::shared_ptr<Device> pDevice, const std::string& name) {
-        const auto& pEvent = getEvent(pDevice, name);
-        return pEvent ? getCpuTime(pEvent) : 0;
-    }
-
-    double Profiler::getGpuTime(const EventData* pData) {
-        double gpuTime = 0;
-        for (size_t i = 0; i < pData->frameData[1 - sGpuTimerIndex].currentTimer; i++) {
-            gpuTime += pData->frameData[1 - sGpuTimerIndex].pTimers[i]->getElapsedTime();
-        }
-        return gpuTime;
-    }
-
-    double Profiler::getCpuTime(const EventData* pData) {
-        return pData->cpuTotal;
-    }
-
-    std::string Profiler::getEventsString() {
-        std::string results("Name\t\t\t\t\tCPU time(ms)\t\t  GPU time(ms)\n");
-
-        for (EventData* pData : sRegisteredEvents) {
-            assert(pData->triggered == 0);
-            if(pData->showInMsg == false) continue;
-
-            double gpuTime = getGpuTime(pData);
-            assert(pData->callStack.empty());
-
-            char event[1000];
-            uint32_t nameIndent = pData->level * 2 + 1;
-            uint32_t cpuIndent = 30 - (nameIndent + (uint32_t)pData->name.substr(pData->name.find_last_of("#") + 1).size());
-            snprintf(event, 1000, "%*s%s %*.2f (%.2f) %14.2f (%.2f)\n", nameIndent, " ", pData->name.substr(pData->name.find_last_of("#") + 1).c_str(), cpuIndent, getCpuTime(pData),
-                     pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
-#if _PROFILING_LOG == 1
-            pData->cpuMs[pData->stepNr] = (float)pData->cpuTotal;
-            pData->gpuMs[pData->stepNr] = (float)gpuTime;
-            pData->stepNr++;
-            
-            if (pData->stepNr == _PROFILING_LOG_BATCH_SIZE) {
-                std::ostringstream logOss, fileOss;
-                logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
-                logInfo(logOss.str());
-                fileOss << "profile_" << pData->name << "_" << pData->filesWritten++;
-                std::ofstream out(fileOss.str().c_str());
-                
-                for (int i = 0; i < _PROFILING_LOG_BATCH_SIZE; ++i) {
-                    out << pData->cpuMs[i] << " " << pData->gpuMs[i] << "\n";
-                }
-                pData->stepNr = 0;
-            }
+    if (is_set(flags, Flags::Pix)) {
+#ifdef FALCOR_D3D12
+        PIXBeginEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
+#else
+        mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
 #endif
-            results += event;
-        }
-
-        return results;
-    }
-
-    void Profiler::endFrame() {
-        for (EventData* pData : sRegisteredEvents) {
-            // Update CPU/GPU time running averages.
-            const double cpuTime = getCpuTime(pData);
-            const double gpuTime = getGpuTime(pData);
-            // With sigma = 0.98, then after 100 frames, a given value's contribution is down to ~1.7% of
-            // the running average, which seems to provide a reasonable trade-off of temporal smoothing
-            // versus setting in to a new value when something has changed.
-            const double sigma = .98;
-            if (pData->cpuRunningAverageMS < 0.) pData->cpuRunningAverageMS = cpuTime;
-            else pData->cpuRunningAverageMS = sigma * pData->cpuRunningAverageMS + (1. - sigma) * cpuTime;
-            if (pData->gpuRunningAverageMS < 0.) pData->gpuRunningAverageMS = gpuTime;
-            else pData->gpuRunningAverageMS = sigma * pData->gpuRunningAverageMS + (1. - sigma) * gpuTime;
-
-            pData->showInMsg = false;
-            pData->cpuTotal = 0;
-            pData->triggered = 0;
-            pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
-            pData->registered = false;
-        }
-        sRegisteredEvents.clear();
-        sGpuTimerIndex = 1 - sGpuTimerIndex;
-    }
-
-#if _PROFILING_LOG == 1
-    void Profiler::flushLog() {
-        for (EventData* pData : sRegisteredEvents) {
-            std::ostringstream logOss, fileOss;
-            logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
-            logInfo(logOss.str());
-            fileOss << "profile_" << pData->name << "_" << pData->filesWritten++;
-            std::ofstream out(fileOss.str().c_str());
-            
-            for (int i = 0; i < pData->stepNr; ++i) {
-                out << pData->cpuMs[i] << " " << pData->gpuMs[i] << "\n";
-            }
-            
-            pData->stepNr = 0;
-        }
-    }
-#endif
-
-    void Profiler::clearEvents() {
-        for (EventData* pData : sRegisteredEvents) {
-            delete pData;
-        }
-
-        sProfilerEvents.clear();
-        sRegisteredEvents.clear();
-        sCurrentLevel = 0;
-        sGpuTimerIndex = 0;
-        curEventName = "";
     }
 }
+
+void Profiler::endEvent(const std::string& name, Flags flags) {
+    if (mEnabled && is_set(flags, Flags::Internal)) {
+        // '/' is used as a "path delimiter", so it cannot be used in the event name.
+        if (name.find('/') != std::string::npos) return;
+
+        Event* pEvent = getEvent(mCurrentEventName);
+        assert(pEvent != nullptr);
+        if (!mPaused) pEvent->end(mFrameIndex);
+
+        mCurrentEventName.erase(mCurrentEventName.find_last_of("/"));
+    }
+
+    if (is_set(flags, Flags::Pix)) {
+#ifdef FALCOR_D3D12
+        PIXEndEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
+#else
+        mpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
+#endif
+    }
+}
+
+Profiler::Event* Profiler::getEvent(const std::string& name) {
+    auto event = findEvent(name);
+    return event ? event : createEvent(name);
+}
+
+void Profiler::endFrame() {
+    if (mPaused) return;
+
+    // Wait for GPU timings to be available from last frame.
+    // We use a single fence here instead of one per event, which gets too inefficient.
+    // TODO: This code should refactored to batch the resolve and readback of timestamps.
+    if (mFenceValue != uint64_t(-1)) mpFence->syncCpu();
+
+    for (Event* pEvent : mCurrentFrameEvents) {
+        pEvent->endFrame(mFrameIndex);
+    }
+
+    // Flush and insert signal for synchronization of GPU timings.
+    auto pRenderContext = mpDevice->getRenderContext();
+    pRenderContext->flush(false);
+    mFenceValue = mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+
+    if (mpCapture) mpCapture->captureEvents(mCurrentFrameEvents);
+
+    mLastFrameEvents = std::move(mCurrentFrameEvents);
+    ++mFrameIndex;
+}
+
+void Profiler::startCapture(size_t reservedFrames) {
+    setEnabled(true);
+    mpCapture = Capture::create(mLastFrameEvents.size(), reservedFrames);
+}
+
+Profiler::Capture::SharedPtr Profiler::endCapture() {
+    Capture::SharedPtr pCapture;
+    std::swap(pCapture, mpCapture);
+    if (pCapture) pCapture->finalize();
+    return pCapture;
+}
+
+bool Profiler::isCapturing() const {
+    return mpCapture != nullptr;
+}
+
+pybind11::dict Profiler::getPythonEvents() const {
+    pybind11::dict result;
+
+    auto addLane = [&result] (std::string name, float value, float average, const Stats& stats) {
+        pybind11::dict d;
+        d["name"] = name;
+        d["value"] = value;
+        d["average"] = average;
+        d["stats"] = stats.toPython();
+        result[name.c_str()] = d;
+    };
+
+    for (const Profiler::Event* pEvent : getEvents()) {
+        addLane(pEvent->getName() + "/cpuTime", pEvent->getCpuTime(), pEvent->getCpuTimeAverage(), pEvent->computeCpuTimeStats());
+        addLane(pEvent->getName() + "/gpuTime", pEvent->getGpuTime(), pEvent->getGpuTimeAverage(), pEvent->computeGpuTimeStats());
+    }
+
+    return result;
+}
+
+const Profiler::SharedPtr& Profiler::instancePtr(std::shared_ptr<Device> pDevice) {
+    static std::array<Profiler::SharedPtr, 256> pInstances;
+    if (!pInstances[pDevice->uid()]) pInstances[pDevice->uid()] = std::make_shared<Profiler>(pDevice);
+    return pInstances[pDevice->uid()];
+}
+
+Profiler::Profiler(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
+    mpFence = GpuFence::create(pDevice);
+}
+
+Profiler::Event* Profiler::createEvent(const std::string& name) {
+    auto pEvent = std::shared_ptr<Event>(new Event(name));
+    mEvents.emplace(name, pEvent);
+    return pEvent.get();
+}
+
+Profiler::Event* Profiler::findEvent(const std::string& name) {
+    auto event = mEvents.find(name);
+    return (event == mEvents.end()) ? nullptr : event->second.get();
+}
+
+ProfilerEvent::ProfilerEvent(std::shared_ptr<Device> pDevice, const std::string& name, Profiler::Flags flags) :mpDevice(pDevice), mName(name), mFlags(flags) { 
+    Profiler::instance(mpDevice).startEvent(mName, mFlags); 
+}
+
+#ifdef SCRIPTING
+    SCRIPT_BINDING(Profiler) {
+    auto endCapture = [] (Profiler* pProfiler) {
+        std::optional<pybind11::dict> result;
+        auto pCapture = pProfiler->endCapture();
+        if (pCapture) result = pCapture->toPython();
+        return result;
+    };
+
+    pybind11::class_<Profiler, Profiler::SharedPtr> profiler(m, "Profiler");
+    profiler.def_property("enabled", &Profiler::isEnabled, &Profiler::setEnabled);
+    profiler.def_property("paused", &Profiler::isPaused, &Profiler::setPaused);
+    profiler.def_property_readonly("isCapturing", &Profiler::isCapturing);
+    profiler.def_property_readonly("events", &Profiler::getPythonEvents);
+    profiler.def("startCapture", &Profiler::startCapture, "reservedFrames"_a = 1000);
+    profiler.def("endCapture", endCapture);
+}
+#endif
+
+}  // namespace Falcor

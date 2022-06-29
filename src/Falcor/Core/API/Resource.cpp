@@ -28,6 +28,7 @@
 #include "Falcor/stdafx.h"
 #include "Resource.h"
 #include "Texture.h"
+#include "Buffer.h"
 
 namespace Falcor {
 
@@ -75,15 +76,12 @@ const std::string to_string(Resource::State state) {
     state_to_str(ResolveSource);
     state_to_str(Present);
     state_to_str(Predication);
-    state_to_str(AccelStructRead);
-    state_to_str(AccelStructWrite);
-    state_to_str(AccelStructBuildInput);
-    state_to_str(AccelStructBuildBlas);
-
     state_to_str(NonPixelShader);
-#ifdef FALCOR_D3D12
+    //state_to_str(AccelStructRead);
+    //state_to_str(AccelStructWrite);
+    //state_to_str(AccelStructBuildInput);
+    //state_to_str(AccelStructBuildBlas);
     state_to_str(AccelerationStructure);
-#endif
 #undef state_to_str
     return s;
 }
@@ -98,7 +96,7 @@ void Resource::invalidateViews() const {
 
 Resource::State Resource::getGlobalState() const {
     if (mState.isGlobal == false) {
-        logWarning("Resource::getGlobalState() - the resource doesn't have a global state. The subresoruces are in a different state, use getSubResourceState() instead");
+        LLOG_WRN << "Resource::getGlobalState() - the resource doesn't have a global state. The subresoruces are in a different state, use getSubResourceState() instead";
         return State::Undefined;
     }
     return mState.global;
@@ -110,7 +108,7 @@ Resource::State Resource::getSubresourceState(uint32_t arraySlice, uint32_t mipL
         uint32_t subResource = pTexture->getSubresourceIndex(arraySlice, mipLevel);
         return (mState.isGlobal) ? mState.global : mState.perSubresource[subResource];
     } else {
-        logWarning("Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead");
+        LLOG_WRN << "Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead";
         assert(mState.isGlobal);
         return mState.global;
     }
@@ -124,7 +122,7 @@ void Resource::setGlobalState(State newState) const {
 void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const {
     const Texture* pTexture = dynamic_cast<const Texture*>(this);
     if (pTexture == nullptr) {
-        logWarning("Calling Resource::setSubresourceState() on an object that is not a texture. This is invalid. Ignoring call");
+        LLOG_WRN << "Calling Resource::setSubresourceState() on an object that is not a texture. This is invalid. Ignoring call";
         return;
     }
 
@@ -135,6 +133,21 @@ void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State
     mState.isGlobal = false;
     mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
 }
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+std::shared_ptr<Texture> Resource::asTexture() {
+    return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr;
+}
+
+std::shared_ptr<const Texture> Resource::asTexture() const {
+    return this ? std::dynamic_pointer_cast<const Texture>(shared_from_this()) : nullptr;
+}
+
+std::shared_ptr<Buffer> Resource::asBuffer() {
+    return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr;
+}
+#pragma GCC pop_options
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Resource) {

@@ -49,7 +49,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     using SharedPtr = std::shared_ptr<Buffer>;
     using WeakPtr = std::weak_ptr<Buffer>;
     using SharedConstPtr = std::shared_ptr<const Buffer>;
-    using ConstSharedPtrRef = const SharedPtr&;
+    //using ConstSharedPtrRef = const SharedPtr&;
     using inherit_shared_from_this<Resource, Buffer>::shared_from_this;
 
     /** Buffer access flags.
@@ -191,6 +191,15 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     */
     static SharedPtr createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
 
+    /** Create a new buffer from an existing D3D12 handle. Available only when D3D12 is the underlying graphics API.
+        \param[in] handle Handle of already allocated resource.
+        \param[in] size The size of the buffer in bytes.
+        \param[in] bindFlags Buffer bind flags. Flags must match the bind flags of the original resource.
+        \param[in] cpuAccess Flags indicating how the buffer can be updated. Flags must match those of the heap the original resource is allocated on.
+        \return A pointer to a new buffer object, or throws an exception if creation failed.
+    */
+    static SharedPtr createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
+
     /** Get a shader-resource view.
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float
         \param[in] elementCount The number of elements to bind
@@ -210,6 +219,26 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     /** Get an unordered access view for the entire resource
     */
     virtual UnorderedAccessView::SharedPtr getUAV() override;
+
+#if FALCOR_ENABLE_CUDA
+        /** Get the CUDA device address for this resource.
+            \return CUDA device address.
+            Throws an exception if the buffer is not shared.
+        */
+        virtual void* getCUDADeviceAddress() const override;
+
+        /** Get the CUDA device address for a view of this resource.
+        */
+        virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const override;
+#endif
+
+    /** Get the size of each element in this buffer.
+
+        For a typed buffer, this will be the size of the format.
+        For a structured buffer, this will be the same value as `getStructSize()`.
+        For a raw buffer, this will be the number of bytes.
+    */
+    uint32_t getElementSize() const;
 
     /** Get a constant buffer view
     */
@@ -249,7 +278,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the UAV counter buffer
     */
-    Buffer::ConstSharedPtrRef getUAVCounter() const { return mpUAVCounter; }
+    const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     /** Map the buffer.
 
@@ -269,12 +298,12 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     */
     bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
         if (offset >= mSize) {
-            logWarning("Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.");
+            LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.";
             return false;
         }
 
         if (offset + size > mSize) {
-            logWarning("Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size");
+            LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset + size will cause an OOB access. Clamping size";
             size = mSize - offset;
         }
         return true;
@@ -311,7 +340,12 @@ protected:
     ConstantBufferView::SharedPtr mpCBV; // For constant-buffers
     Buffer::SharedPtr mpUAVCounter; // For structured-buffers
 
+    mutable void* mCUDAExternalMemory = nullptr;
+    mutable void* mCUDADeviceAddress = nullptr;
+
+#ifdef FALCOR_VK
     VkBufferDeviceAddressInfo mAddressInfo;
+#endif
 
     /** Helper for converting host type to resource format for typed buffers.
         See list of supported formats for typed UAV loads:
@@ -320,63 +354,6 @@ protected:
     template<typename T>
     struct FormatForElementType {};
 
-/*
-#define CASE(TYPE, FORMAT) template<> struct Buffer::FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
-
-    // Guaranteed supported formats on D3D12.
-    CASE(float,     ResourceFormat::R32Float);
-    CASE(uint32_t,  ResourceFormat::R32Uint);
-    CASE(int32_t,   ResourceFormat::R32Int);
-
-    // Optionally supported formats as a set on D3D12. If one is supported all are supported.
-    CASE(float4,    ResourceFormat::RGBA32Float);
-    CASE(uint4,     ResourceFormat::RGBA32Uint);
-    CASE(int4,      ResourceFormat::RGBA32Int);
-    //R16G16B16A16_FLOAT
-    //R16G16B16A16_UINT
-    //R16G16B16A16_SINT
-    //R8G8B8A8_UNORM
-    //R8G8B8A8_UINT
-    //R8G8B8A8_SINT
-    //R16_FLOAT
-    CASE(uint16_t,  ResourceFormat::R16Uint);
-    CASE(int16_t,   ResourceFormat::R16Int);
-    //R8_UNORM
-    CASE(uint8_t,   ResourceFormat::R8Uint);
-    CASE(int8_t,    ResourceFormat::R8Int);
-
-    // Optionally and individually supported formats on D3D12. Query for support individually.
-    //R16G16B16A16_UNORM
-    //R16G16B16A16_SNORM
-    CASE(float2,    ResourceFormat::RG32Float);
-    CASE(uint2,     ResourceFormat::RG32Uint);
-    CASE(int2,      ResourceFormat::RG32Int);
-    //R10G10B10A2_UNORM
-    //R10G10B10A2_UINT
-    //R11G11B10_FLOAT
-    //R8G8B8A8_SNORM
-    //R16G16_FLOAT
-    //R16G16_UNORM
-    //R16G16_UINT
-    //R16G16_SNORM
-    //R16G16_SINT
-    //R8G8_UNORM
-    //R8G8_UINT
-    //R8G8_SNORM
-    //8G8_SINT
-    //R16_UNORM
-    //R16_SNORM
-    //R8_SNORM
-    //A8_UNORM
-    //B5G6R5_UNORM
-    //B5G5R5A1_UNORM
-    //B4G4R4A4_UNORM
-
-    // Additional formats that may be supported on some hardware.
-    CASE(float3,    ResourceFormat::RGB32Float);
-
-#undef CASE
-*/
 };
 
 #define CASE(TYPE, FORMAT) template<> struct Buffer::FormatForElementType<TYPE> { static const ResourceFormat kFormat = FORMAT; }
@@ -438,14 +415,12 @@ protected:
 inline std::string to_string(const std::shared_ptr<Buffer>& buff) {
     std::string s = "Buffer: ";
     s += "cpu access " + to_string(buff->getType());
-    //s += ",map type " + to_string(buff->getType());
     return s;
 }
 
 inline std::string to_string(Buffer *buff) {
     std::string s = "Buffer: ";
     s += "cpu access " + to_string(buff->getType());
-    //s += ",map type " + to_string(buff->getType());
     return s;
 }
 

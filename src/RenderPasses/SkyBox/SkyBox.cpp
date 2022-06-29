@@ -29,8 +29,14 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/euler_angles.hpp"
 
+#include <pybind11/embed.h>
+
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
+
+const RenderPass::Info SkyBox::kInfo { "SkyBox", "Render an environment map. The map can be provided by the user or taken from a scene." };
+
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -42,13 +48,13 @@ static void regSkyBox(pybind11::module& m) {
     pass.def_property("scale", &SkyBox::getScale, &SkyBox::setScale);
     pass.def_property("filter", &SkyBox::getFilter, &SkyBox::setFilter);
     pass.def_property("intensity", &SkyBox::getIntensity, &SkyBox::setIntensity);
+    pass.def_property("opacity", &SkyBox::getOpacity, &SkyBox::setOpacity);
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("SkyBox", "Render an environment map", SkyBox::create);
+    lib.registerPass(SkyBox::kInfo, SkyBox::create);
     ScriptBindings::registerBinding(regSkyBox);
 }
-const char* SkyBox::kDesc = "Render an environment-map. The map can be provided by the user or taken from a scene";
 
 namespace {
 
@@ -60,16 +66,17 @@ namespace {
     const std::string kLoadAsSrgb = "loadAsSrgb";
     const std::string kFilter = "filter";
     const std::string kIntensity = "intensity";
+    const std::string kOpacity = "opacity";
 
 }
 
-SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
+SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice, kInfo) {
     assert(pDevice);
 
     mpCubeScene = Scene::create(pDevice, "SkyBox/cube.obj");
     if (mpCubeScene == nullptr) throw std::runtime_error("SkyBox::SkyBox - Failed to load cube model");
 
-    mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.slang", "vs", "ps");
+    mpProgram = GraphicsProgram::createFromFile(pDevice, "RenderPasses/SkyBox/SkyBox.3d.slang", "vsMain", "psMain");
     mpProgram->addDefines(mpCubeScene->getSceneDefines());
     mpProgram->addDefine("_SKYBOX_SOLID_MODE");
     mpVars = GraphicsVars::create(pDevice, mpProgram->getReflector());
@@ -79,7 +86,7 @@ SkyBox::SkyBox(Device::SharedPtr pDevice): RenderPass(pDevice) {
     mpState = GraphicsState::create(pDevice);
     BlendState::Desc blendDesc(pDevice);
 
-    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(pDevice); i++) {
+    for (uint32_t i = 1; i < Fbo::getMaxColorTargetCount(); i++) {
         blendDesc.setRenderTargetWriteMask(i, false, false, false, false);
     }
 
@@ -109,6 +116,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
         else if (key == kLoadAsSrgb) pSkyBox->mLoadSrgb = value;
         else if (key == kFilter) pSkyBox->setFilter(value);
         else if (key == kIntensity) pSkyBox->setIntensity(value);
+        else if (key == kOpacity) pSkyBox->setOpacity(value);
         else logWarning("Unknown field '" + key + "' in a SkyBox dictionary");
     }
 
@@ -129,6 +137,7 @@ Dictionary SkyBox::getScriptingDictionary() {
     dict[kLoadAsSrgb] = mLoadSrgb;
     dict[kFilter] = mFilter;
     dict[kIntensity] = mIntensity;
+    dict[kOpacity] = mOpacity;
     return dict;
 }
 
@@ -155,7 +164,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
     mpVars["PerFrameCB"]["gViewMat"] = mpScene->getCamera()->getViewMatrix();
     mpVars["PerFrameCB"]["gProjMat"] = mpScene->getCamera()->getProjMatrix();
     mpVars["PerFrameCB"]["gIntensity"] = mIntensity;
-    mpVars["PerFrameCB"]["gTransparency"] = mTransparency;
+    mpVars["PerFrameCB"]["gOpacity"] = mOpacity;
     mpState->setFbo(mpFbo);
     mpCubeScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mpRsState, mpRsState);
 }

@@ -25,87 +25,56 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Utils/Math/MathConstants.slangh"
-
 __exported import Experimental.Scene.Material.IMaterial;
-import Experimental.Scene.Material.ClothBRDF;
-import Utils.Math.MathHelpers;
+__exported import Experimental.Scene.Material.ClothBSDF;
+import Scene.Material.BasicMaterialData;
+import Scene.Material.ShadingUtils;
 
-/** Simple cloth material.
+/** Implementation of a simple cloth material.
 */
 struct ClothMaterial : IMaterial
 {
-    // Implementation of IMaterial interface
+    MaterialHeader header;
+    BasicMaterialData data;
 
-    float3 eval(const ShadingData sd, const float3 wo)
+    // Specify that the associated `BSDF` type is `ClothBSDF`.
+    typedef ClothBSDF BSDF;
+
+    ClothBSDF setupBSDF(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod)
     {
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
-        ClothBRDF brdf;
-        brdf.setup(sd);
+        ClothBRDF brdf = {};
 
-        return brdf.eval(wiLocal, woLocal);
+        // Sample base color.
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
+
+        // Sample the specular texture. This encodes additional BSDF parameters.
+        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+
+        // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
+        // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
+        float f = (data.IoR - 1.f) / (data.IoR + 1.f);
+        float F0 = f * f;
+
+        brdf.diffuseColor = baseColor;
+        brdf.subsurfaceColor = float3(0.5f);    // TODO: Add material parameter for this.
+        brdf.roughness = spec.g;                // TODO: Linear or squared roughness?
+        brdf.f0 = float3(F0);                   // TODO: What's appropriate here?
+
+        return ClothBSDF(brdf);
     }
 
-    bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
+    void modifyTangentSpace(const MaterialSystem ms, const float4 tangentW, const ITextureSampler lod, inout ShadingData sd)
     {
-        return sampleReference(sd, sg, result);
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+        applyNormalMap(sd, data.getNormalMapType(), encodedNormal, tangentW);
     }
 
-    float evalPdf(const ShadingData sd, const float3 wo, bool useImportanceSampling = true)
+    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
     {
-        return evalPdfReference(sd, wo);
-    }
-
-
-    // Additional functions
-
-    /** Return the set of available BSDF lobes for the given shading data.
-        \param[in] sd Shading data.
-        \return A combination of LobeType flags (see IBxDF.slang).
-    */
-    uint getBSDFLobes(const ShadingData sd)
-    {
-        return (uint)LobeType::DiffuseReflection;
-    }
-
-    /** Reference implementation that uses cosine-weighted hemisphere sampling.
-        This is for testing purposes only. Note that transmission is not sampled.
-        \param[in] sd Shading data.
-        \param[in] sg Sample generator.
-        \param[out] result Generated sample. Only valid if true is returned.
-        \return True if a sample was generated, false otherwise.
-    */
-    bool sampleReference<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result)
-    {
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf); // pdf = cos(theta) / pi
-
-        if (min(wiLocal.z, woLocal.z) < kMinCosTheta || result.pdf == 0.f) return false;
-
-        ClothBRDF brdf;
-        brdf.setup(sd);
-
-        result.wo = sd.fromLocal(woLocal);
-        result.weight = brdf.eval(wiLocal, woLocal) / result.pdf;
-        result.lobe = (uint)LobeType::DiffuseReflection;
-
-        return true;
-    }
-
-    /** Evaluates the directional pdf for sampling the given direction using the reference implementation.
-        \param[in] sd Shading data.
-        \param[in] wo Outgoing direction.
-        \return PDF with respect to solid angle for sampling direction wo (0 for delta events).
-    */
-    float evalPdfReference(const ShadingData sd, const float3 wo)
-    {
-        float3 wiLocal = sd.toLocal(sd.V);
-        float3 woLocal = sd.toLocal(wo);
-
-        if (min(wiLocal.z, woLocal.z) < kMinCosTheta) return 0.f;
-
-        return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
+        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
     }
 };

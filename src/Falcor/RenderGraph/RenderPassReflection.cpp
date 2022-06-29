@@ -53,6 +53,10 @@ namespace Falcor
         return *this;
     }
 
+    RenderPassReflection::Field& RenderPassReflection::Field::texture2D(uint2 dims, uint32_t sampleCount, uint32_t mipCount, uint32_t arraySize) {
+        return texture2D(dims.x, dims.y, sampleCount, mipCount, arraySize);
+    }
+
     RenderPassReflection::Field& RenderPassReflection::Field::texture2D(uint32_t width, uint32_t height, uint32_t sampleCount, uint32_t mipCount, uint32_t arraySize)
     {
         mType = Type::Texture2D;
@@ -91,19 +95,19 @@ namespace Falcor
         switch (type)
         {
         case RenderPassReflection::Field::Type::RawBuffer:
-            if(height > 0 || depth > 0 || sampleCount > 0) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0");
+            if(height > 0 || depth > 0 || sampleCount > 0) LLOG_WRN << "RenderPassReflection::Field::resourceType - height, depth, sampleCount for " << to_string(type) << " must be either 0";
             return rawBuffer(width);
         case RenderPassReflection::Field::Type::Texture1D:
-            if (height > 1 || depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - height, depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
+            if (height > 1 || depth > 1 || sampleCount > 1) LLOG_WRN << "RenderPassReflection::Field::resourceType - height, depth, sampleCount for " << to_string(type) << " must be either 0 or 1";
             return texture1D(width, mipCount, arraySize);
         case RenderPassReflection::Field::Type::Texture2D:
-            if (depth > 1) logWarning("RenderPassReflection::Field::resourceType - depth for " + to_string(type) + " must be either 0 or 1");
+            if (depth > 1) LLOG_WRN << "RenderPassReflection::Field::resourceType - depth for " << to_string(type) << " must be either 0 or 1";
             return texture2D(width, height, sampleCount, mipCount, arraySize);
         case RenderPassReflection::Field::Type::Texture3D:
-            if (sampleCount > 1 || mipCount > 1) logWarning("RenderPassReflection::Field::resourceType - sampleCount, mipCount for " + to_string(type) + " must be either 0 or 1");
+            if (sampleCount > 1 || mipCount > 1) LLOG_WRN << "RenderPassReflection::Field::resourceType - sampleCount, mipCount for " << to_string(type) << " must be either 0 or 1";
             return texture3D(width, height, depth, arraySize);
         case RenderPassReflection::Field::Type::TextureCube:
-            if (depth > 1 || sampleCount > 1) logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for " + to_string(type) + " must be either 0 or 1");
+            if (depth > 1 || sampleCount > 1) LLOG_WRN << "RenderPassReflection::Field::resourceType - depth, sampleCount for " << to_string(type) << " must be either 0 or 1";
             return textureCube(width, height, mipCount, arraySize);
         default:
             throw std::runtime_error("RenderPassReflection::Field::resourceType - " + to_string(type) + " is not a valid Field type");
@@ -120,12 +124,12 @@ namespace Falcor
 
     bool RenderPassReflection::Field::isValid() const {
         if (mSampleCount > 1 && mMipCount > 1) {
-            logError("Trying to create a multisampled RenderPassReflection::Field `" + mName + "` with mip-count larger than 1. This is illegal.");
+            LLOG_ERR << "Trying to create a multisampled RenderPassReflection::Field `" << mName << "` with mip-count larger than 1. This is illegal.";
             return false;
         }
 
         if (is_set(mVisibility, Visibility::Internal) && is_set(mFlags, Flags::Optional)) {
-            logError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
+            LLOG_ERR << "Internal resource can't be optional, since there will never be a graph edge that forces their creation";
             return false;
         }
 
@@ -145,7 +149,7 @@ namespace Falcor
                 }
                 else if ((existingF.getVisibility() & field.getVisibility()) != field.getVisibility())
                 {
-                    logError("Trying to add an existing field `" + field.getName() + "` to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition");
+                    LLOG_ERR << "Trying to add an existing field `" << field.getName() << "` to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition";
                 }
                 return existingF;
             }
@@ -182,10 +186,16 @@ namespace Falcor
         return nullptr;
     }
 
+    RenderPassReflection::Field* RenderPassReflection::getField(const std::string& name) {
+        for (auto& field : mFields) {
+            if (field.getName() == name) return &field;
+        }
+        return nullptr;
+    }
+
     RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPassReflection::Field& other) {
         auto err = [&](const std::string& msg) {
-            //const
-             std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
+            std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
 
             s += "base mipCount " + to_string(getMipCount()) + " newField mipCount " + to_string(other.getMipCount());
 

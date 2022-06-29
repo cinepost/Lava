@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,6 @@
     For such triangles, we approximate the average radiance as the average
     of the emission sampled at the three vertices.
 */
-#include "Utils/NVAPI.slangh" // We need this for 64-bit atomics.
 import Scene.Scene;
 import Utils.Geometry.GeometryHelpers;
 
@@ -88,11 +87,12 @@ void gsMain(uint triIdx : SV_PrimitiveID, inout TriangleStream<GsOut> outStream)
     const EmissiveTriangle tri = gLightCollection.getTriangle(triIdx);
 
     // Check if triangle is textured. Cull non-textured triangles.
-    if (!gScene.isEmissiveTextured(tri.materialID)) return;
+    if (!gScene.materials.isEmissiveTextured(tri.materialID)) return;
 
     // Query texture dimensions.
-    float width = 0, height = 0, mips = 0;
-    gScene.materialResources[tri.materialID].emissive.GetDimensions(0, width, height, mips);
+    BasicMaterialData md = gScene.materials.getBasicMaterialData(tri.materialID);
+    TextureInfo texInfo = gScene.materials.getTextureInfo(md.texEmissive);
+    if (min(texInfo.width, texInfo.height) == 0) return;
 
     // Get triangle's bounding box in texture coordinates.
     const float2 uvMin = min(min(tri.texCoords[0], tri.texCoords[1]), tri.texCoords[2]);
@@ -108,7 +108,7 @@ void gsMain(uint triIdx : SV_PrimitiveID, inout TriangleStream<GsOut> outStream)
         // Compute raster position in texture space.
         // We do this by offsetting UV so that it's always positive, scaled by texture dimension.
         float2 uv = tri.texCoords[i];
-        gsOut.vtxTexelPos[i] = (uv - uvOffset) * float2(width, height); // Vertex pos in texels
+        gsOut.vtxTexelPos[i] = (uv - uvOffset) * float2(texInfo.width, texInfo.height); // Vertex pos in texels
 
         // TODO: Check if triangle is too large for viewport.
         // We need to detect that and handle it with a fallback mechanism (print error for now).
@@ -136,7 +136,8 @@ void gsMain(uint triIdx : SV_PrimitiveID, inout TriangleStream<GsOut> outStream)
 void psMain(GsOut gsIn, uint innerCoverage : SV_InnerCoverage)
 {
     // Fetch texel using nearest-neighbor sampling.
-    float3 color = gScene.materialResources[gsIn.materialID].emissive.SampleLevel(gPointSampler, gsIn.uv, 0.f).rgb; // Sample at mip 0
+    BasicMaterialData md = gScene.materials.getBasicMaterialData(gsIn.materialID);
+    float3 color = gScene.materials.sampleTexture(md.texEmissive, gPointSampler, gsIn.uv, 0.f).rgb; // Sample at mip 0
 
 #if INTEGRATOR_PASS == 2
     // Compute texel coverage.
@@ -182,12 +183,12 @@ void psMain(GsOut gsIn, uint innerCoverage : SV_InnerCoverage)
         uint64_t4 f = uint64_t4(val * scale);
 
         // Accumulate using 64-bit atomics.
-        // TODO: Use shader model 6.6 instead of NVAPI when available.
         uint address = gsIn.triIdx * 32;
-        NvInterlockedAddUint64(gTexelSum, address + 0, uint2(f.x, f.x >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 8, uint2(f.y, f.y >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 16, uint2(f.z, f.z >> 32));
-        NvInterlockedAddUint64(gTexelSum, address + 24, uint2(f.w, f.w >> 32));
+        uint64_t originalValue;
+        gTexelSum.InterlockedAdd64(address + 0, f.x, originalValue);
+        gTexelSum.InterlockedAdd64(address + 8, f.y, originalValue);
+        gTexelSum.InterlockedAdd64(address + 16, f.z, originalValue);
+        gTexelSum.InterlockedAdd64(address + 24, f.w, originalValue);
     }
 #else
     #error "Invalid value for INTEGRATOR_PASS"

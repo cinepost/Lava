@@ -33,7 +33,7 @@
 #include "Falcor/Core/Framework.h" 
 #include "Falcor/Scene/Animation/Animatable.h"
 #include "Falcor/Utils/SampleGenerators/CPUSampleGenerator.h"
-#include "Falcor/Core/BufferTypes/ParameterBlock.h"
+#include "Falcor/Core/API/ParameterBlock.h"
 
 namespace Falcor {
 

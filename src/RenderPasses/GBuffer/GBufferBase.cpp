@@ -28,11 +28,8 @@
 #include "GBufferBase.h"
 #include "GBuffer/GBufferRaster.h"
 #include "VBuffer/VBufferRaster.h"
-
-#ifdef FALCOR_D3D
 #include "GBuffer/GBufferRT.h"
 #include "VBuffer/VBufferRT.h"
-#endif  // FALCOR_D3D
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -40,22 +37,17 @@ extern "C" falcorexport const char* getProjDir() {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("GBufferRaster", GBufferRaster::kDesc, GBufferRaster::create);
-    lib.registerClass("VBufferRaster", VBufferRaster::kDesc, VBufferRaster::create);
-
-#ifdef FALCOR_D3D
-    lib.registerClass("GBufferRT", GBufferRT::kDesc, GBufferRT::create);
-    lib.registerClass("VBufferRT", VBufferRT::kDesc, VBufferRT::create);
-#endif  // FALCOR_D3D
+    
+    lib.registerPass(GBufferRaster::kInfo, GBufferRaster::create);
+    lib.registerPass(GBufferRT::kInfo, GBufferRT::create);
+    lib.registerPass(VBufferRaster::kInfo, VBufferRaster::create);
+    lib.registerPass(VBufferRT::kInfo, VBufferRT::create);
 
     Falcor::ScriptBindings::registerBinding(GBufferBase::registerBindings);
-    
-#ifdef FALCOR_D3D
     Falcor::ScriptBindings::registerBinding(GBufferRT::registerBindings);
-#endif  // FALCOR_D3D
 }
 
-GBufferBase::GBufferBase(Device::SharedPtr pDevice): RenderPass(pDevice) {
+GBufferBase::GBufferBase(Device::SharedPtr pDevice, Info info): RenderPass(pDevice, info) {
     assert(pDevice);
 }
 
@@ -165,7 +157,29 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
     }
 }
 
+void GBufferBase::updateFrameDim(const uint2 frameDim) {
+    assert(frameDim.x > 0 && frameDim.y > 0);
+    mFrameDim = frameDim;
+    mInvFrameDim = 1.f / float2(frameDim);
+
+    // Update sample generator for camera jitter.
+    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+}
+
 void GBufferBase::updateSamplePattern() {
     mpSampleGenerator = createSamplePattern(mSamplePattern, mSampleCount);
     if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
+}
+
+Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const {
+    // This helper fetches the render pass output with the given name and verifies it has the correct size.
+    assert(mFrameDim.x > 0 && mFrameDim.y > 0);
+
+    auto pTex = renderData[name]->asTexture();
+    if (!pTex) return nullptr;
+
+    if ((pTex->getWidth() != mFrameDim.x) || (pTex->getHeight() != mFrameDim.y)) {
+        throw std::runtime_error("GBufferBase: Pass output '" + name + "' has mismatching size. All outputs must be of the same size.");
+    }
+    return pTex;
 }

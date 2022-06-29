@@ -48,7 +48,7 @@ class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
     /** Create a new timer object.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device);
+    static SharedPtr create(std::shared_ptr<Device> pDevice);
 
     /** Destroy a new object
     */
@@ -64,13 +64,19 @@ class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
     */
     void end();
 
+     /** Resolve time stamps.
+        This must be called after a pair of begin()/end() calls.
+        A new measurement can be started after calling resolve() even before getElapsedTime() is called.
+    */
+    void resolve();
+
     /** Get the elapsed time in miliseconds between a pair of Begin()/End() calls. \n
         If this function called not after a Begin()/End() pair, zero will be returned and a warning will be logged.
     */
     double getElapsedTime();
 
  private:
-    GpuTimer(std::shared_ptr<Device> device);
+    GpuTimer(std::shared_ptr<Device> pDevice);
 
     enum Status {
         Begin,
@@ -80,14 +86,17 @@ class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
 
     static std::weak_ptr<QueryHeap> spHeap;
     LowLevelContextData::SharedPtr mpLowLevelData;
-    uint32_t mStart;
-    uint32_t mEnd;
-    double mElapsedTime;
+    uint32_t mStart = 0;
+    uint32_t mEnd = 0;
+    double mElapsedTime = 0.0;
+    bool mDataPending = false; ///< Set to true when resolved timings are available for readback.
+
     std::shared_ptr<Device> mpDevice;
 
     void apiBegin();
     void apiEnd();
-    void apiResolve(uint64_t result[2]);
+    void apiResolve();
+    void apiReadback(uint64_t result[2]);
 
 #ifdef FALCOR_D3D12
     Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications

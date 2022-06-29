@@ -26,7 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include <chrono>
+
+#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "DepthPass.h"
+
+const RenderPass::Info DepthPass::kInfo { "DepthPass", "Creates a depth-buffer using the scene's active camera." };
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" falcorexport const char* getProjDir() {
@@ -34,57 +40,40 @@ extern "C" falcorexport const char* getProjDir() {
 }
 
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
-    lib.registerClass("DepthPass", "Creates a depth-buffer using the scene's active camera", DepthPass::create);
+    lib.registerPass(DepthPass::kInfo, DepthPass::create);
 }
 
-const char* DepthPass::kDesc = "Creates a depth-buffer using the scene's active camera";
 
 namespace {
-    const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.ps.slang";
-    const std::string kComputeDownSampleDepthProgramFile = "RenderPasses/DepthPass/DepthPass.HiZ.cs.slang";
+    const std::string kProgramFile = "RenderPasses/DepthPass/DepthPass.3d.slang";
     
     const std::string kDepth = "depth";
-    const std::string kHiMaxZ = "hiMaxZ";
     const std::string kDepthFormat = "depthFormat";
     const std::string kDisableAlphaTest = "disableAlphaTest";
-    const std::string kBuildHiZ = "buildHiZ";
-    const std::string kMaxHiZMipLevel ="maxMipLevels";
 }  // namespace
 
 void DepthPass::parseDictionary(const Dictionary& dict) {
     for (const auto& [key, value] : dict) {
-        if (key == kBuildHiZ) setHiZEnabled(value);
-        else if (key == kMaxHiZMipLevel) setHiZMaxMipLevels(value);
-        //else if (key == kDepthFormat) setDepthBufferFormat(value);
+        if (key == kDepthFormat) setDepthBufferFormat(value);
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
-        else logWarning("Unknown field '" + key + "' in a ForwardLightingPass dictionary");
+        else LLOG_WRN << "Unknown field '" << key << "' in a DepthPass dictionary";
     }
 }
 
 Dictionary DepthPass::getScriptingDictionary() {
     Dictionary d;
     d[kDepthFormat] = mDepthFormat;
-    d[kBuildHiZ] = mHiZenabled;
-    d[kMaxHiZMipLevel] = mHiZMaxMipLevels;
     d[kDisableAlphaTest] = mAlphaTestDisabled;
     return d;
 }
 
 DepthPass::SharedPtr DepthPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    //auto pThis = new DepthPass(pRenderContext->device(), dict);
-
-    //if(pThis) {
-    //    pThis->parseDictionary(dict);
-    //}
-
     return SharedPtr(new DepthPass(pRenderContext->device(), dict));
 }
 
-DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice) {
-    mpDownSampleDepthPass = ComputePass::create(pDevice, kComputeDownSampleDepthProgramFile, "main", {{"MAX_PASS", ""}});
-
+DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     Program::Desc desc;
-    desc.addShaderLibrary(kProgramFile).psEntry("main");
+    desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
     
     auto pProgram = GraphicsProgram::create(pDevice, desc);
 
@@ -112,102 +101,45 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
 }
 
 RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
+    LLOG_DBG << "DepthPass::reflect";
     RenderPassReflection reflector;
-    
-    uint2 frameDims = compileData.defaultTexDims;
-
-    reflector.addOutput(kDepth, "Depth-buffer")
-        .bindFlags(Resource::BindFlags::DepthStencil)
-        .format(mDepthFormat)
-        .texture2D(0, 0, 0);
-
-    uint8_t hiZMipLevelsCount = 1;      
-    if ( compileData.defaultTexDims[0] != 0 && compileData.defaultTexDims[1] != 0 ) {
-        hiZMipLevelsCount = std::min(std::max( Texture::getMaxMipCount({compileData.defaultTexDims[0] / 2, compileData.defaultTexDims[1] / 2, 1}), mHiZMaxMipLevels), mHiZMaxMipLevels);
-    }
-
-    reflector.addOutput(kHiMaxZ, "Hierarchical MaxZ buffer")
-        .flags(RenderPassReflection::Field::Flags::Optional)
-        .bindFlags(ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess)
-        .format(ResourceFormat::R32Float)
-        .texture2D(compileData.defaultTexDims[0] / 2, compileData.defaultTexDims[1] / 2, 1, hiZMipLevelsCount, 1);
-
+    reflector.addOutput(kDepth, "Depth-buffer").bindFlags(Resource::BindFlags::DepthStencil).format(mDepthFormat); //.texture2D(mOutputSize.x, mOutputSize.y);
+    LLOG_DBG << "DepthPass::reflect done";
     return reflector;
 }
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
+    mpVars = nullptr;
+
     if (mpScene) {
-        mpState->getProgram()->addDefines(mpScene->getSceneDefines());
+        auto pProgram = mpState->getProgram();
+        pProgram->addDefines(mpScene->getSceneDefines());
         //mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
+        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+        pProgram->setTypeConformances(mpScene->getTypeConformances());
+        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
     }
-    mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    if (!mpScene) return;
-
     const auto& pDepth = renderData[kDepth]->asTexture();
-
     mpFbo->attachDepthStencilTarget(pDepth);
 
     mpState->setFbo(mpFbo);
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
 
-    mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
-    mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
-
-    mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
-
-    // caclulate hierarchical z buffers
-    auto pHiMaxZ = renderData[kHiMaxZ]->asTexture();
+    //mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
+    //mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
     
-    if (pHiMaxZ) {
-        uint prevMipWidth, prevMipHeight, currMipWidth, currMipHeight;
-
-        mpDownSampleDepthPass["gDepthSampler"] = mpDepthSampler;
-
-        mpDownSampleDepthPass["CB"]["gMipLevel"] = 0;
-        mpDownSampleDepthPass["CB"]["prevMipDim"] = int2({pDepth->getWidth(0), pDepth->getHeight(0)});
-        mpDownSampleDepthPass["CB"]["currMipDim"] = int2({pHiMaxZ->getWidth(0), pHiMaxZ->getHeight(0)});
-
-        mpDownSampleDepthPass["gSourceBuffer"] = pDepth;
-        mpDownSampleDepthPass["gOutputBuffer"].setUav(pHiMaxZ->getUAV(0, 0, 1));
-
-        mpDownSampleDepthPass->execute(pRenderContext, pHiMaxZ->getWidth(0), pHiMaxZ->getHeight(0));
-
-        for(uint32_t mipLevel = 1; mipLevel < pHiMaxZ->getMipCount(); mipLevel++) {
-      
-            prevMipWidth = pHiMaxZ->getWidth(mipLevel - 1);
-            prevMipHeight = pHiMaxZ->getHeight(mipLevel - 1);
-
-            currMipWidth = pHiMaxZ->getWidth(mipLevel);
-            currMipHeight = pHiMaxZ->getHeight(mipLevel);
-
-            mpDownSampleDepthPass["CB"]["gMipLevel"] = mipLevel;
-            mpDownSampleDepthPass["CB"]["prevMipDim"] = int2({prevMipWidth, prevMipHeight});
-            mpDownSampleDepthPass["CB"]["currMipDim"] = int2({currMipWidth, currMipHeight});
-
-            const Texture* pSrcTex = dynamic_cast<const Texture*>(pHiMaxZ.get());
-            const Texture* pDstTex = dynamic_cast<const Texture*>(pHiMaxZ.get());
-
-            const ResourceViewInfo* pSrcViewInfo = &pHiMaxZ->getSRV(mipLevel - 1, 1, 0, 1)->getViewInfo();
-            const ResourceViewInfo* pDstViewInfo = &pHiMaxZ->getUAV(mipLevel, 0, 1)->getViewInfo();
-
-            pRenderContext->resourceBarrier(pSrcTex, Resource::State::CopySource, pSrcViewInfo);
-            pRenderContext->resourceBarrier(pDstTex, Resource::State::CopyDest, pDstViewInfo);
-
-            mpDownSampleDepthPass["gSourceBuffer"].setSrv(pHiMaxZ->getSRV(mipLevel - 1, 1, 0, 1));
-            mpDownSampleDepthPass["gOutputBuffer"].setUav(pHiMaxZ->getUAV(mipLevel, 0, 1));
-            
-            mpDownSampleDepthPass->execute(pRenderContext, currMipWidth, currMipHeight);
-        }
+    if (mpScene) {
+        mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
     }
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {
     if (isDepthStencilFormat(format) == false) {
-        logWarning("DepthPass buffer format must be a depth-stencil format");
+        LLOG_WRN << "DepthPass buffer format must be a depth-stencil format";
     } else {
         mDepthFormat = format;
         mPassChangedCB();
@@ -220,12 +152,6 @@ DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& p
     return *this;
 }
 
-void DepthPass::setHiZEnabled(bool value) { 
-    if(mHiZenabled == value) return;
-
-    mHiZenabled = value;    
-};
-
 void DepthPass::setAlphaTestDisabled(bool value) {
     if(mAlphaTestDisabled == value) return;
 
@@ -236,15 +162,9 @@ void DepthPass::setAlphaTestDisabled(bool value) {
     }
 }
 
-void DepthPass::prepareVars() {
-    assert(mpVars);
-
-    if (!mDirty) return;
-
-    mpState->getProgram()->addDefines(mpSampleGenerator->getDefines());
-
-    bool success = mpSampleGenerator->setShaderData(mpVars["PerFrameCB"]["gSampleGenerator"]);
-    if (!success) throw std::runtime_error("Failed to bind GPU sample generator");
-
-    mDirty = false;
+void DepthPass::setOutputSize(const uint2& outputSize) {
+    if (outputSize != mOutputSize) {
+        mOutputSize = outputSize;
+        requestRecompile();
+    }
 }

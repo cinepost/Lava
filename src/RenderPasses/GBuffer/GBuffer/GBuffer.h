@@ -30,7 +30,6 @@
 
 #include "../GBufferBase.h"
 #include "GBufferParams.slang"
-#include "RenderGraph/RenderPassHelpers.h"
 
 using namespace Falcor;
 
@@ -44,7 +43,7 @@ class GBuffer : public GBufferBase {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
  protected:
-    GBuffer(Device::SharedPtr pDevice);
+    GBuffer(Device::SharedPtr pDevice, Info info);
     virtual void parseDictionary(const Dictionary& dict) override;
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
 

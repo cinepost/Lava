@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -28,269 +28,340 @@
 #ifndef SRC_FALCOR_CORE_PROGRAM_PROGRAM_H_
 #define SRC_FALCOR_CORE_PROGRAM_PROGRAM_H_
 
-#include <string>
-
+#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Shader.h"
 #include "Falcor/Core/Program/ShaderLibrary.h"
 #include "Falcor/Core/Program/ProgramVersion.h"
 
-
 namespace Falcor {
 
-class Device;
-
 /** High-level abstraction of a program class.
-    This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
-    This allows simple usage in case different macros are required - for example static vs. animated models.
+	This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
+	This allows simple usage in case different macros are required - for example static vs. animated models.
 */
-class dlldecl Program : public std::enable_shared_from_this<Program> {
- public:
-    using SharedPtr = std::shared_ptr<Program>;
-    using SharedConstPtr = std::shared_ptr<const Program>;
+class FALCOR_API Program : public std::enable_shared_from_this<Program> {
+public:
+	using SharedPtr = std::shared_ptr<Program>;
+	using SharedConstPtr = std::shared_ptr<const Program>;
 
-    using DefineList = Shader::DefineList;
+	using DefineList = Shader::DefineList;
+	using ArgumentList = std::vector<std::string>;
+	using TypeConformanceList = Shader::TypeConformanceList;
 
-    /** Description of a program to be created.
-    */
-    class dlldecl Desc {
-     public:
-        /** Begin building a description, that initially has no source files or entry points.
-        */
-        Desc();
+	/** Description of a program to be created.
+	*/
+	class FALCOR_API Desc {
+		public:
+			/** Begin building a description, that initially has no source files or entry points.
+			*/
+			Desc();
 
-        /** Begin building a description, based on a single path for source code.
-            This is equivalent to: `Desc().sourceFile(path)`
-        */
-        explicit Desc(std::string const& filename);
+			/** Begin building a description, based on a single path for source code.
+				This is equivalent to: `Desc().addShaderLibrary(path)`
+				\param[in] path Path to the source code.
+			*/
+			explicit Desc(const fs::path& path);
 
-        /** Add a file of source code to use.
-            This also sets the given file as the "active" source for subsequent entry points.
-        */
-        Desc& addShaderLibrary(const std::string& path);
+			/** Add a file of source code to use.
+				This also sets the given file as the "active" source for subsequent entry points.
+				\param[in] path Path to the source code.
+			*/
+			Desc& addShaderLibrary(const fs::path& path);
 
-        /** Add a string of source code to use.
-            This also sets the given string as the "active" source for subsequent entry points.
-        */
-        Desc& addShaderString(const std::string& shader);
+			/** Add a string of source code to use.
+				This also sets the given string as the "active" source for subsequent entry points.
+				\param[in] shader Source code.
+			*/
+			Desc& addShaderString(const std::string& shader);
 
-        /** Adds an entry point based on the "active" source.
-        */
-        Desc& entryPoint(ShaderType shaderType, const std::string& name);
+			/** Adds an entry point based on the "active" source.
+			*/
+			Desc& entryPoint(ShaderType shaderType, const std::string& name);
 
-        Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
-        Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
-        Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
-        Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
-        Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
-        Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
+			bool hasEntryPoint(ShaderType stage) const;
 
-        /** Enable/disable treat-warnings-as-error compilation flag
-        */
-        Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
+			Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
+			Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
+			Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
+			Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
+			Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
+			Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
-        /** Enable/disable pre-processed shader dump
-        */
-        Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+			/** Adds a list of type conformances.
+				The type conformances are linked into all shaders in the program.
+			*/
+			Desc& addTypeConformances(const TypeConformanceList& typeConformances) { mTypeConformances.add(typeConformances); return *this; }
 
-        /** Set the shader model string. This depends on the API you are using.
-            For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1`, `6_2`, or `6_3`. The default is `6_0`. Shader model `6.x` will use dxcompiler, previous shader models use fxc.
-            For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
-        */
-        Desc& setShaderModel(const std::string& sm);
+			/** Enable/disable treat-warnings-as-error compilation flag.
+			*/
+			Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
-        /** Get the compiler flags
-        */
-        Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
+			/** Enable/disable pre-processed shader dump.
+			*/
+			Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
-        /** Set the compiler flags. Replaces any previously set flags.
-        */
-        Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
+			/** Set the shader model string.
+				This should be `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`.
+			*/
+			Desc& setShaderModel(const std::string& sm);
 
+			/** Get the compiler flags.
+			*/
+			Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
 
-        bool hasEntryPoint(ShaderType stage) const;
+			/** Set the compiler flags. Replaces any previously set flags.
+			*/
+			Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
 
-     protected:
-        friend class Program;
-        friend class GraphicsProgram;
-        friend class RtProgram;
+			/** Get additional compiler arguments.
+			*/
+			const ArgumentList& getCompilerArguments() const { return mCompilerArguments; }
 
-        Desc& beginEntryPointGroup();
-        Desc& addDefaultVertexShaderIfNeeded();
+			/** Set additional compiler arguments. Replaces any previously set arguments.
+			*/
+			Desc& setCompilerArguments(const ArgumentList& arguments) { mCompilerArguments = arguments; return *this; }
 
-        struct Source {
-            enum class Type {
-                String,
-                File
-            };
+		protected:
+			friend class Program;
+			friend class RtProgram;
 
-            Source(ShaderLibrary::SharedPtr pLib) : pLibrary(pLib), type(Type::File) {};
-            Source(std::string s) : str(s), type(Type::String) {};
+			Desc& beginEntryPointGroup(const std::string& entryPointNameSuffix = "");
+			Desc& addTypeConformancesToGroup(const TypeConformanceList& typeConformances);
+			uint32_t declareEntryPoint(ShaderType type, const std::string& name);
 
-            Type type;
-            ShaderLibrary::SharedPtr pLibrary;
-            std::string str;
+			struct Source {
+				enum class Type {
+					String,
+					File
+				};
 
-            uint32_t firstEntryPoint = 0;
-            uint32_t entryPointCount = 0;
-        };
+				Source(ShaderLibrary::SharedPtr pLib) : pLibrary(pLib), type(Type::File) {};
+				Source(std::string s) : str(s), type(Type::String) {};
 
+				Type type;
+				ShaderLibrary::SharedPtr pLibrary;
+				std::string str;
 
-        struct EntryPointGroup {
-            uint32_t firstEntryPoint;
-            uint32_t entryPointCount;
-        };
+				std::vector<uint32_t> entryPoints;
+		};
 
-        struct EntryPoint {
-            std::string name;
-            ShaderType stage;
+		struct EntryPointGroup {
+			std::vector<uint32_t> entryPoints;          ///< Indices into `mEntryPoints` for all entry points in the group.
+			TypeConformanceList typeConformances;       ///< Type conformances linked into all shaders in the group.
+			std::string nameSuffix;                     ///< Suffix added to the entry point names by Slang's code generation.
+		};
 
-            int32_t sourceIndex;
-            int32_t groupIndex;
-        };
+		struct EntryPoint {
+			std::string name;                           ///< Name of the entry point in the shader source.
+			std::string exportName;                     ///< Name of the entry point in the generated code.
+			ShaderType stage;
+			int32_t sourceIndex;
+			int32_t groupIndex;                         ///< Entry point group index.
+		};
 
-        std::vector<Source> mSources;
-        std::vector<EntryPointGroup> mGroups;
-        std::vector<EntryPoint> mEntryPoints;
+		std::vector<Source> mSources;
+		std::vector<EntryPointGroup> mGroups;
+		std::vector<EntryPoint> mEntryPoints;
+		TypeConformanceList mTypeConformances;          ///< Type conformances linked into all shaders in the program.
 
-        int32_t mActiveSource = -1;
-        int32_t mActiveGroup = -1;
-        Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
-#ifdef FALCOR_VK
-        std::string mShaderModel = "450";
-#elif defined FALCOR_D3D12
-        std::string mShaderModel = "6_0";
-#endif
-    };
+		int32_t mActiveSource = -1;                     ///< Current source index.
+		int32_t mActiveGroup = -1;                      ///< Current entry point index.
+		Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
+		ArgumentList mCompilerArguments;
+		std::string mShaderModel = "6_3";
+	};
 
-    virtual ~Program() = 0;
+	struct CompilationStats {
+		size_t programVersionCount = 0;
+		size_t programKernelsCount = 0;
+		double programVersionMaxTime = 0.0;
+		double programKernelsMaxTime = 0.0;
+		double programVersionTotalTime = 0.0;
+		double programKernelsTotalTime = 0.0;
+	};
 
-    /** Get the API handle of the active program.
-        \return The active program version, or an exception is thrown on failure.
-    */
-    const ProgramVersion::SharedConstPtr& getActiveVersion() const;
+	virtual ~Program() = 0;
 
-    /** Adds a macro definition to the program. If the macro already exists, it will be replaced.
-        \param[in] name The name of define.
-        \param[in] value Optional. The value of the define string.
-        \return True if any macro definitions were modified.
-    */
-    bool addDefine(const std::string& name, const std::string& value = "");
+	/** Get the API handle of the active program.
+		\return The active program version, or an exception is thrown on failure.
+	*/
+	const ProgramVersion::SharedConstPtr& getActiveVersion() const;
 
-    /** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
-        \param[in] dl List of macro definitions to add.
-        \return True if any macro definitions were modified.
-    */
-    bool addDefines(const DefineList& dl);
+	/** Adds a macro definition to the program. If the macro already exists, it will be replaced.
+		\param[in] name The name of define.
+		\param[in] value Optional. The value of the define string.
+		\return True if any macro definitions were modified.
+	*/
+	bool addDefine(const std::string& name, const std::string& value = "");
 
-    /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
-        \param[in] name The name of define.
-        \return True if any macro definitions were modified.
-    */
-    bool removeDefine(const std::string& name);
+	/** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
+		\param[in] dl List of macro definitions to add.
+		\return True if any macro definitions were modified.
+	*/
+	bool addDefines(const DefineList& dl);
 
-    /** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
-        \param[in] dl List of macro definitions to remove.
-        \return True if any macro definitions were modified.
-    */
-    bool removeDefines(const DefineList& dl);
+	/** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
+		\param[in] name The name of define.
+		\return True if any macro definitions were modified.
+	*/
+	bool removeDefine(const std::string& name);
 
-    /** Removes all macro definitions that matches string comparison from the program.
-        \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
-        \param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
-        \param[in] str The comparing string that is matched against macro names.
-        \return True if any macro definitions were modified.
-    */
-    bool removeDefines(size_t pos, size_t len, const std::string& str);
+	/** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
+		\param[in] dl List of macro definitions to remove.
+		\return True if any macro definitions were modified.
+	*/
+	bool removeDefines(const DefineList& dl);
 
-    /** Set the macro definition list of the active program version.
-        \param[in] dl List of macro definitions.
-        \return True if any macro definition was changed, false otherwise.
-    */
-    bool setDefines(const DefineList& dl);
+	/** Removes all macro definitions that matches string comparison from the program.
+		\param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
+		\param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
+		\param[in] str The comparing string that is matched against macro names.
+		\return True if any macro definitions were modified.
+	*/
+	bool removeDefines(size_t pos, size_t len, const std::string& str);
 
-    /** Get the macro definition list of the active program version.
-    */
-    const DefineList& getDefineList() const { return mDefineList; }
+	/** Set the macro definition list of the active program version.
+		\param[in] dl List of macro definitions.
+		\return True if any macro definition was changed, false otherwise.
+	*/
+	bool setDefines(const DefineList& dl);
 
-    /** Reload and relink all programs.
-        \param[in] forceReload Force reloading all programs.
-        \return True if any program was reloaded, false otherwise.
-    */
-    static bool reloadAllPrograms(bool forceReload = false);
+	/** Add a type conformance to the program.
+		\param[in] typeName The name of the implementation shader type.
+		\param[in] interfaceType The name of the interface type that `typeName` implements.
+		\param[in] id The ID representing the implementation type. If set to -1, Slang will automatically assign an ID for the type.
+		\return True if any type conformances were added to the program.
+	*/
+	bool addTypeConformance(const std::string& typeName, const std::string interfaceType, uint32_t id);
 
-    /** Add a list of defines applied to all programs.
-        \param[in] defineList List of macro definitions.
-    */
-    static void addGlobalDefines(const DefineList& defineList);
+	/** Remove a type conformance from the program. If the type conformance doesn't exist, the function call will be silently ignored.
+		\param[in] typeName The name of the implementation shader type.
+		\param[in] interfaceType The name of the interface type that `typeName` implements.
+		\return True if any type conformances were modified.
+	*/
+	bool removeTypeConformance(const std::string& typeName, const std::string interfaceType);
 
-    /** Remove a list of defines applied to all programs.
-        \param[in] defineList List of macro definitions.
-    */
-    static void removeGlobalDefines(const DefineList& defineList);
+	/** Set the type conformance list of the active program version.
+		\param[in] conformances List of type conformances.
+		\return True if any type conformance was changed, false otherwise.
+	*/
+	bool setTypeConformances(const TypeConformanceList& conformances);
 
-    /** Get the program reflection for the active program.
-        \return Program reflection object, or an exception is thrown on failure.
-    */
-    ProgramReflection::ConstSharedPtrRef getReflector() const { return getActiveVersion()->getReflector(); }
+	/** Get the macro definition list of the active program version.
+	*/
+	const DefineList& getDefineList() const { return mDefineList; }
 
-    uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
-    uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return mDesc.mGroups[groupIndex].entryPointCount; }
-    uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const {
-        return mDesc.mGroups[groupIndex].firstEntryPoint + entryPointIndexInGroup;
-    }
+	/** Reload and relink all programs.
+		\param[in] forceReload Force reloading all programs.
+		\return True if any program was reloaded, false otherwise.
+	*/
+	static bool reloadAllPrograms(bool forceReload = false);
 
- protected:
-    friend class ::Falcor::ProgramVersion;
+	/** Add a list of defines applied to all programs.
+		\param[in] defineList List of macro definitions.
+	*/
+	static void addGlobalDefines(const DefineList& defineList);
 
-    Program() = default;
+	/** Remove a list of defines applied to all programs.
+		\param[in] defineList List of macro definitions.
+	*/
+	static void removeGlobalDefines(const DefineList& defineList);
 
-    void init(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& programDefines);
+	/** Enable/disable global generation of shader debug info.
+		\param[in] enabled Enable/disable.
+	*/
+	static void setGenerateDebugInfoEnabled(bool enabled);
 
-    bool link() const;
+	/** Check if global generation of shader debug info is enabled.
+		\return Returns true if enabled.
+	*/
+	static bool isGenerateDebugInfoEnabled();
 
-    SlangCompileRequest* createSlangCompileRequest(
-        DefineList  const& defineList) const;
+	/** Get the program reflection for the active program.
+		\return Program reflection object, or an exception is thrown on failure.
+	*/
+	const ProgramReflection::SharedPtr& getReflector() const { return getActiveVersion()->getReflector(); }
 
-    bool doSlangReflection(
-        ProgramVersion const*                       pVersion,
-        slang::IComponentType*                      pSlangGlobalScope,
-        std::vector<ComPtr<slang::IComponentType>>  pSlangEntryPointGroups,
-        ProgramReflection::SharedPtr&               pReflector,
-        std::string&                                log) const;
+	uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
+	uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
+	
+	uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const {
+		return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
+	}
 
-    ProgramVersion::SharedPtr preprocessAndCreateProgramVersion(std::string& log) const;
+	static const CompilationStats& getGlobalCompilationStats() { return sCompilationStats; }
+	static void resetGlobalCompilationStats() { sCompilationStats = {}; }
 
-    ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
-        ProgramVersion const* pVersion,
-        ProgramVars    const* pVars,
-        std::string         & log) const;
+protected:
+	friend class ::Falcor::ProgramVersion;
 
-    virtual EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
-        const std::vector<Shader::SharedPtr>& shaders,
-        EntryPointGroupReflection::SharedPtr const& pReflector) const;
+	static void registerProgramForReload(const SharedPtr& pProg);
 
-    // The description used to create this program
-    Desc mDesc;
+	Program(Device::SharedPtr pDevice, Desc const& desc, DefineList const& programDefines);
 
-    DefineList mDefineList;
+	void validateEntryPoints() const;
+	bool link() const;
 
-    // We are doing lazy compilation, so these are mutable
-    mutable bool mLinkRequired = true;
-    mutable std::map<DefineList, ProgramVersion::SharedConstPtr> mProgramVersions;
-    mutable ProgramVersion::SharedConstPtr mpActiveVersion;
-    void markDirty() { mLinkRequired = true; }
+	SlangCompileRequest* createSlangCompileRequest(
+		DefineList  const& defineList) const;
 
-    std::string getProgramDescString() const;
-    static std::vector<std::weak_ptr<Program>> sPrograms;
+	virtual void setUpSlangCompilationTarget(
+		slang::TargetDesc&  ioTargetDesc,
+		char const*&        ioTargetMacroName) const;
 
-    using string_time_map = std::unordered_map<std::string, time_t>;
-    mutable string_time_map mFileTimeMap;
+	bool doSlangReflection(
+		ProgramVersion const*                       pVersion,
+		slang::IComponentType*                      pSlangGlobalScope,
+		std::vector<ComPtr<slang::IComponentType>>  pSlangEntryPointGroups,
+		ProgramReflection::SharedPtr&               pReflector,
+		std::string&                                log) const;
 
-    std::shared_ptr<Device> mpDevice;
+	ProgramVersion::SharedPtr preprocessAndCreateProgramVersion(std::string& log) const;
 
-    bool checkIfFilesChanged();
-    void reset();
+	ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
+		ProgramVersion const* pVersion,
+		ProgramVars    const* pVars,
+		std::string         & log) const;
+
+	virtual EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
+		const std::vector<Shader::SharedPtr>& shaders,
+		EntryPointGroupReflection::SharedPtr const& pReflector) const;
+
+	virtual ProgramKernels::SharedPtr createProgramKernels(
+		const ProgramVersion* pVersion,
+		slang::IComponentType* pSpecializedSlangGlobalScope,
+		const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
+		const ProgramReflection::SharedPtr& pReflector,
+		const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
+		std::string& log,
+		const std::string& name = "") const;
+
+	Device::SharedPtr mpDevice = nullptr;
+
+	// The description used to create this program
+	const Desc mDesc;
+
+	DefineList mDefineList;
+	TypeConformanceList mTypeConformanceList;
+
+	// We are doing lazy compilation, so these are mutable
+	mutable bool mLinkRequired = true;
+	mutable std::map<DefineList, ProgramVersion::SharedConstPtr> mProgramVersions;
+	mutable ProgramVersion::SharedConstPtr mpActiveVersion;
+	void markDirty() { mLinkRequired = true; }
+
+	std::string getProgramDescString() const;
+	static std::vector<std::weak_ptr<Program>> sProgramsForReload;
+	static CompilationStats sCompilationStats;
+
+	using string_time_map = std::unordered_map<std::string, time_t>;
+	mutable string_time_map mFileTimeMap;
+
+	bool checkIfFilesChanged();
+	void reset();
 };
+
+slang::IGlobalSession* getSlangGlobalSession();
 
 }  // namespace Falcor
 

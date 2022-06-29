@@ -4,6 +4,7 @@
 
 #include "Device.h"
 #include "Buffer.h"
+#include "Texture.h"
 #include "VirtualTexturePage.h"
 
 namespace Falcor {
@@ -48,8 +49,9 @@ size_t VirtualTexturePage::usedMemSize() const {
 
 // Allocate Vulkan memory for the virtual page
 void VirtualTexturePage::allocate() {
+/*
     if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
-        LOG_ERR("VirtualTexturePage already allocated !!!");
+        LLOG_ERR << "VirtualTexturePage already allocated !!!";
         return;
     }
 
@@ -79,20 +81,22 @@ void VirtualTexturePage::allocate() {
     mImageMemoryBind.memoryOffset = vmaAllocInfo.offset;
 
     mpTexture->mSparseResidentMemSize += mDevMemSize;
+*/
 }
 
 // Release Vulkan memory allocated for this page
 void VirtualTexturePage::release() {
+/*
     if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
-        LOG_ERR("VirtualTexturePage already released !!!");
+        LLOG_ERR << "VirtualTexturePage already released !!!";
         return;
     }
 
-    //vkFreeMemory(mpDevice->getApiHandle(), mImageMemoryBind.memory, nullptr);
     vmaFreeMemory(mpDevice->allocator(), mAllocation);
 
     mpTexture->mSparseResidentMemSize -= mDevMemSize;
     mImageMemoryBind.memory = VK_NULL_HANDLE;
+*/
 }
 
 }  // namespace Falcor

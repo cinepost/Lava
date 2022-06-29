@@ -25,11 +25,12 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
-#define FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
+#pragma once
 
 #include "RenderPass.h"
-#include "Core/Program/Program.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Core/Program/Program.h"
 
 namespace Falcor
 {
@@ -80,14 +81,14 @@ namespace Falcor
         \param[in] channels List of channels.
         \param[in] bindFlags Optional bind flags. The default is 'ShaderResource' for all inputs.
     */
-    inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource)
+    inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const uint2 dim = {})
     {
         for (const auto& it : channels)
         {
-            auto& buffer = reflector.addInput(it.name, it.desc);
-            buffer.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) buffer.format(it.format);
-            if (it.optional) buffer.flags(RenderPassReflection::Field::Flags::Optional);
+            auto& tex = reflector.addInput(it.name, it.desc).texture2D(dim.x, dim.y);
+            tex.bindFlags(bindFlags);
+            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
         }
     }
 
@@ -96,17 +97,39 @@ namespace Falcor
         \param[in] channels List of channels.
         \param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
     */
-    inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess)
+    inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {})
     {
         for (const auto& it : channels)
         {
-            auto& buffer = reflector.addOutput(it.name, it.desc);
-            buffer.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) buffer.format(it.format);
-            if (it.optional) buffer.flags(RenderPassReflection::Field::Flags::Optional);
+            auto& tex = reflector.addOutput(it.name, it.desc).texture2D(dim.x, dim.y);
+            tex.bindFlags(bindFlags);
+            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
         }
     }
 
-}  // namespace Falcor
+    /** Clears all available channels.
+        \param[in] pRenderContext Render context.
+        \param[in] channels List of channel descriptors.
+        \param[in] renderData Render data containing the channel resources.
+    */
+    inline void clearRenderPassChannels(RenderContext* pRenderContext, const ChannelList& channels, const RenderData& renderData)
+    {
+        for (const auto& channel : channels)
+        {
+            auto pTex = renderData[channel.name]->asTexture();
+            if (pTex)
+            {
+                if (isIntegerFormat(pTex->getFormat()))
+                {
+                    pRenderContext->clearUAV(pTex->getUAV().get(), uint4(0));
+                }
+                else
+                {
+                    pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+                }
+            }
+        }
+    }
 
-#endif  // FALCOR_RENDERGRAPH_RENDERPASS_HELPERS_H_
+}

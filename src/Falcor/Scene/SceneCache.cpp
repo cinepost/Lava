@@ -30,6 +30,8 @@
 #include "SceneCacheStream.h"
 #include "Scene.h"
 
+#include "Falcor/Scene/Material/MaterialTextureLoader.h"
+
 #include "lz4_stream/lz4_stream.h"
 
 namespace Falcor {
@@ -77,7 +79,7 @@ bool SceneCache::hasValidCache(const Key& key) {
 void SceneCache::writeCache(const Scene::SceneData& sceneData, const Key& key) {
     auto cachePath = getCachePath(key);
 
-    logInfo("Writing scene cache to " + cachePath.string());
+    LLOG_INF << "Writing scene cache to " << cachePath.string();
 
     // Create directories if not existing.
     fs::create_directories(cachePath.parent_path());
@@ -102,7 +104,7 @@ void SceneCache::writeCache(const Scene::SceneData& sceneData, const Key& key) {
 Scene::SceneData SceneCache::readCache(Device::SharedPtr pDevice, const Key& key) {
     auto cachePath = getCachePath(key);
 
-    logInfo("Loading scene cache from " + cachePath.string());
+    LLOG_INF << "Loading scene cache from " << cachePath.string();
 
     // Open file.
     std::ifstream fs(cachePath.c_str(), std::ios_base::binary);
@@ -151,9 +153,9 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
     stream.write((uint32_t)sceneData.grids.size());
     for (const auto& pGrid : sceneData.grids) writeGrid(stream, pGrid);
 
-    writeMarker(stream, "Volumes");
-    stream.write((uint32_t)sceneData.volumes.size());
-    for (const auto& pVolume : sceneData.volumes) writeVolume(stream, pVolume, sceneData.grids);
+    writeMarker(stream, "GridVolumes");
+    stream.write((uint32_t)sceneData.gridVolumes.size());
+    for (const auto& pGridVolume : sceneData.gridVolumes) writeGridVolume(stream, pGridVolume, sceneData.grids);
 
     writeMarker(stream, "EnvMap");
     bool hasEnvMap = sceneData.pEnvMap != nullptr;
@@ -161,8 +163,7 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
     if (hasEnvMap) writeEnvMap(stream, sceneData.pEnvMap);
 
     writeMarker(stream, "Materials");
-    stream.write((uint32_t)sceneData.materials.size());
-    for (const auto& pMaterial : sceneData.materials) writeMaterial(stream, pMaterial);
+    writeMaterials(stream, sceneData.pMaterialSystem);
 
     writeMarker(stream, "SceneGraph");
     stream.write((uint32_t)sceneData.sceneGraph.size());
@@ -188,36 +189,33 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
     stream.write(sceneData.meshNames);
     stream.write(sceneData.meshBBs);
     stream.write(sceneData.meshInstanceData);
-    stream.write(sceneData.displacedMeshInstanceCount);
     stream.write((uint32_t)sceneData.meshIdToInstanceIds.size());
-    
-    for (const auto& item : sceneData.meshIdToInstanceIds) {
+    for (const auto& item : sceneData.meshIdToInstanceIds)
+    {
         stream.write(item);
     }
-    
     stream.write((uint32_t)sceneData.meshGroups.size());
-    
-    for (const auto& group : sceneData.meshGroups) {
+    for (const auto& group : sceneData.meshGroups)
+    {
         stream.write(group.meshList);
         stream.write(group.isStatic);
         stream.write(group.isDisplaced);
     }
-
     stream.write((uint32_t)sceneData.cachedMeshes.size());
-    
-    for (const auto& cachedMesh : sceneData.cachedMeshes) {
-        stream.write(cachedMesh.meshId);
+    for (const auto& cachedMesh : sceneData.cachedMeshes)
+    {
+        stream.write(cachedMesh.meshID);
         stream.write(cachedMesh.timeSamples);
         stream.write((uint32_t)cachedMesh.vertexData.size());
         for (const auto& data : cachedMesh.vertexData) stream.write(data);
     }
-
+    stream.write(sceneData.useCompressedHitInfo);
     stream.write(sceneData.has16BitIndices);
     stream.write(sceneData.has32BitIndices);
     stream.write(sceneData.meshDrawCount);
     stream.write(sceneData.meshIndexData);
     stream.write(sceneData.meshStaticData);
-    stream.write(sceneData.meshDynamicData);
+    stream.write(sceneData.meshSkinningData);
 
     writeMarker(stream, "Curves");
     stream.write(sceneData.curveDesc);
@@ -227,13 +225,16 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
     stream.write(sceneData.curveStaticData);
 
     stream.write((uint32_t)sceneData.cachedCurves.size());
-
-    for (const auto& cachedCurve : sceneData.cachedCurves) {
+    for (const auto& cachedCurve : sceneData.cachedCurves)
+    {
+        stream.write(cachedCurve.tessellationMode);
+        stream.write(cachedCurve.geometryID);
         stream.write(cachedCurve.timeSamples);
         stream.write(cachedCurve.indexData);
         stream.write((uint32_t)cachedCurve.vertexData.size());
         for (const auto& data : cachedCurve.vertexData) stream.write(data);
     }
+
 
     writeMarker(stream, "CustomPrimitives");
     stream.write(sceneData.customPrimitiveDesc);
@@ -244,6 +245,7 @@ void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sc
 
 Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStream& stream) {
     Scene::SceneData sceneData;
+    sceneData.pMaterialSystem = MaterialSystem::create(pDevice);
 
     readMarker(stream, "Filename");
     stream.read(sceneData.filename);
@@ -265,9 +267,9 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     sceneData.grids.resize(stream.read<uint32_t>());
     for (auto& pGrid : sceneData.grids) pGrid = readGrid(pDevice, stream);
 
-    readMarker(stream, "Volumes");
-    sceneData.volumes.resize(stream.read<uint32_t>());
-    for (auto& pVolume : sceneData.volumes) pVolume = readVolume(stream, sceneData.grids);
+    readMarker(stream, "GridVolumes");
+    sceneData.gridVolumes.resize(stream.read<uint32_t>());
+    for (auto& pGridVolume : sceneData.gridVolumes) pGridVolume = readGridVolume(pDevice, stream, sceneData.grids);
 
     readMarker(stream, "EnvMap");
     auto hasEnvMap = stream.read<bool>();
@@ -280,11 +282,10 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     // before material textures, as they upload buffers to the GPU when created.
     // Make sure no other GPU operations are executed until calling pMaterialTextureLoader.reset()
     // further down which blocks until all textures are loaded.
-    auto pMaterialTextureLoader = std::make_unique<MaterialTextureLoader>(pDevice, true);
+    auto pMaterialTextureLoader = std::make_unique<MaterialTextureLoader>(sceneData.pMaterialSystem->getTextureManager(), true);
 
     readMarker(stream, "Materials");
-    sceneData.materials.resize(stream.read<uint32_t>());
-    for (auto& pMaterial : sceneData.materials) pMaterial = readMaterial(pDevice, stream, *pMaterialTextureLoader);
+    readMaterials(pDevice, stream, sceneData.pMaterialSystem, *pMaterialTextureLoader);
 
     readMarker(stream, "SceneGraph");
     sceneData.sceneGraph.resize(stream.read<uint32_t>());
@@ -309,7 +310,6 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     stream.read(sceneData.meshNames);
     stream.read(sceneData.meshBBs);
     stream.read(sceneData.meshInstanceData);
-    stream.read(sceneData.displacedMeshInstanceCount);
     sceneData.meshIdToInstanceIds.resize(stream.read<uint32_t>());
     
     for (auto& item : sceneData.meshIdToInstanceIds) {
@@ -317,27 +317,26 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     }
 
     sceneData.meshGroups.resize(stream.read<uint32_t>());
-    
     for (auto& group : sceneData.meshGroups) {
         stream.read(group.meshList);
         stream.read(group.isStatic);
         stream.read(group.isDisplaced);
     }
     sceneData.cachedMeshes.resize(stream.read<uint32_t>());
-
     for (auto& cachedMesh : sceneData.cachedMeshes) {
-        stream.read(cachedMesh.meshId);
+        stream.read(cachedMesh.meshID);
         stream.read(cachedMesh.timeSamples);
         cachedMesh.vertexData.resize(stream.read<uint32_t>());
-        //for (auto& data : cachedMesh.vertexData) stream.read(data);
+        for (auto& data : cachedMesh.vertexData) stream.read(data);
     }
 
+    stream.read(sceneData.useCompressedHitInfo);
     stream.read(sceneData.has16BitIndices);
     stream.read(sceneData.has32BitIndices);
     stream.read(sceneData.meshDrawCount);
     stream.read(sceneData.meshIndexData);
     stream.read(sceneData.meshStaticData);
-    stream.read(sceneData.meshDynamicData);
+    stream.read(sceneData.meshSkinningData);
 
     readMarker(stream, "Curves");
     stream.read(sceneData.curveDesc);
@@ -349,6 +348,8 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     sceneData.cachedCurves.resize(stream.read<uint32_t>());
 
     for (auto& cachedCurve : sceneData.cachedCurves) {
+        stream.read(cachedCurve.tessellationMode);
+        stream.read(cachedCurve.geometryID);
         stream.read(cachedCurve.timeSamples);
         stream.read(cachedCurve.indexData);
         cachedCurve.vertexData.resize(stream.read<uint32_t>());
@@ -505,100 +506,182 @@ Light::SharedPtr SceneCache::readLight(InputStream& stream) {
 
 // Material
 
+void SceneCache::writeMaterials(OutputStream& stream, const MaterialSystem::SharedPtr& pMaterials) {
+    uint32_t materialCount = pMaterials->getMaterialCount();
+    stream.write(materialCount);
+
+    for (uint32_t i = 0; i < materialCount; i++) {
+        auto pMaterial = pMaterials->getMaterial(i);
+        writeMaterial(stream, pMaterial);
+    }
+}
+
 void SceneCache::writeMaterial(OutputStream& stream, const Material::SharedPtr& pMaterial) {
-    auto writeTextureSlot = [&stream, &pMaterial] (Material::TextureSlot slot) {
-        const auto& pTexture = pMaterial->getTexture(slot);
+    // Write common fields.
+    stream.write((uint32_t)pMaterial->getType());
+    stream.write(pMaterial->mName);
+    stream.write(pMaterial->mHeader);
+    stream.write(pMaterial->mUpdates);
+    writeTransform(stream, pMaterial->mTextureTransform);
+
+    auto writeTextureSlot = [&stream, &pMaterial](Material::TextureSlot slot) {
+        auto pTexture = pMaterial->getTexture(slot);
         bool hasTexture = pTexture != nullptr;
         stream.write(hasTexture);
         if (hasTexture) {
-            stream.write(pTexture->getSourceFilename());
+            stream.write(pTexture->getSourcePath());
         }
     };
-
-    stream.write(pMaterial->mName);
-    stream.write(pMaterial->mData);
 
     for (uint32_t slot = 0; slot < (uint32_t)Material::TextureSlot::Count; ++slot) {
         writeTextureSlot(Material::TextureSlot(slot));
     }
-    
-    writeTransform(stream, pMaterial->mTextureTransform);
-    stream.write(pMaterial->mDoubleSided);
+
+    // Write data in derived class.
+    if (auto pBasicMaterial = pMaterial->toBasicMaterial()) writeBasicMaterial(stream, pBasicMaterial);
+    else throw std::runtime_error("Unsupported material type");
+}
+
+void SceneCache::writeBasicMaterial(OutputStream& stream, const BasicMaterial::SharedPtr& pMaterial) {
+    stream.write(pMaterial->mData);
     stream.write(pMaterial->mAlphaRange);
     stream.write(pMaterial->mIsTexturedBaseColorConstant);
     stream.write(pMaterial->mIsTexturedAlphaConstant);
+    stream.write(pMaterial->mDisplacementMapChanged);
+
+    writeSampler(stream, pMaterial->mpDefaultSampler);
+    writeSampler(stream, pMaterial->mpDisplacementMinSampler);
+    writeSampler(stream, pMaterial->mpDisplacementMaxSampler);
 }
 
-Material::SharedPtr SceneCache::readMaterial(Device::SharedPtr pDevice, InputStream& stream, MaterialTextureLoader& materialTextureLoader) {
-    Material::SharedPtr pMaterial = Material::create(pDevice, "");
+void SceneCache::readMaterials(Device::SharedPtr pDevice, InputStream& stream, const MaterialSystem::SharedPtr& pMaterials, MaterialTextureLoader& materialTextureLoader) {
+    uint32_t materialCount = 0;
+    stream.read(materialCount);
 
-    auto readTextureSlot = [&] (Material::TextureSlot slot) {
+    for (uint32_t i = 0; i < materialCount; i++) {
+        auto pMaterial = readMaterial(pDevice, stream, materialTextureLoader);
+        pMaterials->addMaterial(pMaterial);
+    }
+}
+
+
+Material::SharedPtr SceneCache::readMaterial(Device::SharedPtr pDevice, InputStream& stream, MaterialTextureLoader& materialTextureLoader) {
+    // Create derived material class of the right type.
+    Material::SharedPtr pMaterial; {
+        uint32_t type;
+        stream.read(type);
+        switch ((MaterialType)type) {
+            case MaterialType::Standard:
+                pMaterial = StandardMaterial::create(pDevice);
+                break;
+            case MaterialType::Hair:
+                pMaterial = HairMaterial::create(pDevice);
+                break;
+            case MaterialType::Cloth:
+                pMaterial = ClothMaterial::create(pDevice);
+                break;
+            default:
+                throw std::runtime_error("Unsupported material type");
+        }
+    }
+    assert(pMaterial);
+
+    // Read common fields.
+    stream.read(pMaterial->mName);
+    stream.read(pMaterial->mHeader);
+    stream.read(pMaterial->mUpdates);
+    pMaterial->mTextureTransform = readTransform(stream);
+
+    auto readTextureSlot = [&](Material::TextureSlot slot) {
         auto hasTexture = stream.read<bool>();
         if (hasTexture) {
-            auto filename = stream.read<std::string>();
-            materialTextureLoader.loadTexture(pMaterial, slot, filename);
+            auto path = stream.read<fs::path>();
+            materialTextureLoader.loadTexture(pMaterial, slot, path);
         }
     };
 
-    stream.read(pMaterial->mName);
-    stream.read(pMaterial->mData);
     for (uint32_t slot = 0; slot < (uint32_t)Material::TextureSlot::Count; ++slot) {
         readTextureSlot(Material::TextureSlot(slot));
     }
-    pMaterial->mTextureTransform = readTransform(stream);
-    stream.read(pMaterial->mDoubleSided);
-    stream.read(pMaterial->mAlphaRange);
-    stream.read(pMaterial->mIsTexturedBaseColorConstant);
-    stream.read(pMaterial->mIsTexturedAlphaConstant);
+
+    // Read data in derived class.
+    if (auto pBasicMaterial = pMaterial->toBasicMaterial()) readBasicMaterial(stream, materialTextureLoader, pBasicMaterial);
+    else throw std::runtime_error("Unsupported material type");
 
     return pMaterial;
 }
 
-// Volume
+void SceneCache::readBasicMaterial(InputStream& stream, MaterialTextureLoader& materialTextureLoader, const BasicMaterial::SharedPtr& pMaterial) {
+    stream.read(pMaterial->mData);
+    stream.read(pMaterial->mAlphaRange);
+    stream.read(pMaterial->mIsTexturedBaseColorConstant);
+    stream.read(pMaterial->mIsTexturedAlphaConstant);
+    stream.read(pMaterial->mDisplacementMapChanged);
 
-void SceneCache::writeVolume(OutputStream& stream, const Volume::SharedPtr& pVolume, const std::vector<Grid::SharedPtr>& grids) {
-    stream.write(pVolume->mHasAnimation);
-    stream.write(pVolume->mIsAnimated);
-    stream.write(pVolume->mNodeID);
+    pMaterial->mpDefaultSampler = readSampler(pMaterial->device(), stream);
+    pMaterial->mpDisplacementMinSampler = readSampler(pMaterial->device(), stream);
+    pMaterial->mpDisplacementMaxSampler = readSampler(pMaterial->device(), stream);
+}
 
-    stream.write(pVolume->mName);
-    for (const auto& gridSequence : pVolume->mGrids) {
+void SceneCache::writeSampler(OutputStream& stream, const Sampler::SharedPtr& pSampler) {
+    bool valid = pSampler != nullptr;
+    stream.write(valid);
+    if (valid) {
+        stream.write(pSampler->getDesc());
+    }
+}
+
+Sampler::SharedPtr SceneCache::readSampler(Device::SharedPtr pDevice, InputStream& stream) {
+    bool valid = stream.read<bool>();
+    if (valid) {
+        auto desc = stream.read<Sampler::Desc>();
+        return Sampler::create(pDevice, desc);
+    }
+    return nullptr;
+}
+
+// GridVolume
+
+void SceneCache::writeGridVolume(OutputStream& stream, const GridVolume::SharedPtr& pGridVolume, const std::vector<Grid::SharedPtr>& grids) {
+    stream.write(pGridVolume->mHasAnimation);
+    stream.write(pGridVolume->mIsAnimated);
+    stream.write(pGridVolume->mNodeID);
+
+    stream.write(pGridVolume->mName);
+    for (const auto& gridSequence : pGridVolume->mGrids) {
         stream.write((uint32_t)gridSequence.size());
         for (const auto& pGrid : gridSequence) {
             uint32_t id = pGrid ? (uint32_t)std::distance(grids.begin(), std::find(grids.begin(), grids.end(), pGrid)) : uint32_t(-1);
             stream.write(id);
         }
     }
-    stream.write(pVolume->mGridFrame);
-    stream.write(pVolume->mGridFrameCount);
-    stream.write(pVolume->mBounds);
-    stream.write(pVolume->mData);
+    stream.write(pGridVolume->mGridFrame);
+    stream.write(pGridVolume->mGridFrameCount);
+    stream.write(pGridVolume->mBounds);
+    stream.write(pGridVolume->mData);
 }
 
-Volume::SharedPtr SceneCache::readVolume(InputStream& stream, const std::vector<Grid::SharedPtr>& grids) {
-    Volume::SharedPtr pVolume = Volume::create("");
+GridVolume::SharedPtr SceneCache::readGridVolume(Device::SharedPtr pDevice, InputStream& stream, const std::vector<Grid::SharedPtr>& grids) {
+    GridVolume::SharedPtr pGridVolume = GridVolume::create(pDevice, "");
 
-    stream.read(pVolume->mHasAnimation);
-    stream.read(pVolume->mIsAnimated);
-    stream.read(pVolume->mNodeID);
+    stream.read(pGridVolume->mHasAnimation);
+    stream.read(pGridVolume->mIsAnimated);
+    stream.read(pGridVolume->mNodeID);
 
-    stream.read(pVolume->mName);
-
-    for (auto& gridSequence : pVolume->mGrids) {
+    stream.read(pGridVolume->mName);
+    for (auto& gridSequence : pGridVolume->mGrids) {
         gridSequence.resize(stream.read<uint32_t>());
-        
         for (auto& pGrid : gridSequence) {
             auto id = stream.read<uint32_t>();
             pGrid = id == uint32_t(-1) ? nullptr : grids[id];
         }
     }
+    stream.read(pGridVolume->mGridFrame);
+    stream.read(pGridVolume->mGridFrameCount);
+    stream.read(pGridVolume->mBounds);
+    stream.read(pGridVolume->mData);
 
-    stream.read(pVolume->mGridFrame);
-    stream.read(pVolume->mGridFrameCount);
-    stream.read(pVolume->mBounds);
-    stream.read(pVolume->mData);
-
-    return pVolume;
+    return pGridVolume;
 }
 
 // Grid 

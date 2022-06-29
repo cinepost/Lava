@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
-#include "ScenePrimitiveDefines.slangh"
+#include "SceneDefines.slangh"
 
 #ifdef HOST_CODE
 #include "Utils/Math/PackedFormats.h"
@@ -58,33 +58,45 @@ struct GeometryInstanceID
 #endif
 };
 
-/** Flags indicating what primitive types exist in the scene.
-    These enums should match the define constants in ScenePrimitiveDefines.slangh.
+/** Geometry types in the scene.
 */
-enum class PrimitiveTypeFlags : uint32_t
+enum class GeometryType : uint32_t
 {
-    None = 0x0,
-    TriangleMesh = 0x1,
-    DisplacedTriangleMesh = 0x2,
-    Curve = 0x4,
-    Custom = 0x8,
+    None                    = GEOMETRY_TYPE_NONE,
+    TriangleMesh            = GEOMETRY_TYPE_TRIANGLE_MESH,
+    DisplacedTriangleMesh   = GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH,
+    Curve                   = GEOMETRY_TYPE_CURVE,
+    SDFGrid                 = GEOMETRY_TYPE_SDF_GRID,
+    Custom                  = GEOMETRY_TYPE_CUSTOM,
 
-    Procedural = 0x0e,
-    All = 0x0f,
+    Count
+};
+
+/** Flags indicating what geometry types exist in the scene.
+*/
+enum class GeometryTypeFlags : uint32_t
+{
+    TriangleMesh            = (1u << GEOMETRY_TYPE_TRIANGLE_MESH),
+    DisplacedTriangleMesh   = (1u << GEOMETRY_TYPE_DISPLACED_TRIANGLE_MESH),
+    Curve                   = (1u << GEOMETRY_TYPE_CURVE),
+    SDFGrid                 = (1u << GEOMETRY_TYPE_SDF_GRID),
+    Custom                  = (1u << GEOMETRY_TYPE_CUSTOM),
 };
 
 #ifdef HOST_CODE
-enum_class_operators(PrimitiveTypeFlags);
+enum_class_operators(GeometryTypeFlags);
 #endif
 
 enum class MeshFlags : uint32_t
 {
     None = 0x0,
     Use16BitIndices = 0x1,  ///< Indices are in 16-bit format. The default is 32-bit.
-    HasDynamicData = 0x2,   ///< Mesh has dynamic vertex data.
+    IsSkinned = 0x2,        ///< Mesh is skinned and has corresponding vertex data.
     IsFrontFaceCW = 0x4,    ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsDisplaced = 0x8,      ///< Mesh has displacement map.
+    IsAnimated = 0x10,      ///< Mesh is affected by vertex-animations.
 };
+
 
 /** Mesh data stored in 64B.
 */
@@ -94,10 +106,10 @@ struct MeshDesc
     uint ibOffset;          ///< Offset into global index buffer, or zero if non-indexed.
     uint vertexCount;       ///< Vertex count.
     uint indexCount;        ///< Index count, or zero if non-indexed.
-    uint dynamicVbOffset;   ///< Offset into dynamic vertex buffer, or zero if no dynamic data.
+    uint skinningVbOffset;  ///< Offset into skinning data buffer, or zero if no skinning data.
+    uint prevVbOffset;      ///< Offset into previous vertex data buffer, or zero if neither skinned or animated.
     uint materialID;        ///< Material ID.
     uint flags;             ///< See MeshFlags.
-    uint _pad;
 
     uint getTriangleCount() CONST_FUNCTION
     {
@@ -109,9 +121,19 @@ struct MeshDesc
         return (flags & (uint)MeshFlags::Use16BitIndices) != 0;
     }
 
-    bool hasDynamicData() CONST_FUNCTION
+    bool isSkinned() CONST_FUNCTION
     {
-        return (flags & (uint)MeshFlags::HasDynamicData) != 0;
+        return (flags & (uint)MeshFlags::IsSkinned) != 0;
+    }
+
+    bool isAnimated() CONST_FUNCTION
+    {
+        return (flags & (uint)MeshFlags::IsAnimated) != 0;
+    }
+
+    bool isDynamic() CONST_FUNCTION
+    {
+        return isSkinned() || isAnimated();
     }
 
     bool isFrontFaceCW() CONST_FUNCTION
@@ -125,95 +147,55 @@ struct MeshDesc
     }
 };
 
-enum class MeshInstanceFlags
-// TODO: Remove the ifdefs and the include when Slang supports enum type specifiers.
-#ifdef HOST_CODE
-    : uint32_t
-#endif
+enum class GeometryInstanceFlags : uint32_t
 {
     None = 0x0,
+
+    // Mesh flags.
     Use16BitIndices = 0x1,      ///< Indices are in 16-bit format. The default is 32-bit.
-    HasDynamicData = 0x2,       ///< Mesh has dynamic vertex data.
+    IsDynamic = 0x2,            ///< Mesh is dynamic, either through skinning or vertex animations.
     TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
     IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
 };
 
-struct MeshInstanceData
+struct GeometryInstanceData
 {
+    static const uint kTypeBits = 3;
+    static const uint kTypeOffset = 32 - kTypeBits;
+
+    uint flags;             ///< Upper kTypeBits bits are reserved for storing the type.
     uint globalMatrixID;
     uint materialID;
-    uint meshID;
-    uint flags;         ///< See MeshInstanceFlags.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
+    uint geometryID;
 
-    bool hasDynamicData() CONST_FUNCTION
+    uint vbOffset;          ///< Offset into vertex buffer.
+    uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
+
+    uint instanceIndex;     ///< InstanceIndex in TLAS.
+    uint geometryIndex;     ///< GeometryIndex in BLAS.
+
+#ifdef HOST_CODE
+    GeometryInstanceData() = default;
+
+    GeometryInstanceData(GeometryType type)
+        : flags((uint32_t)type << kTypeOffset)
+    {}
+#endif
+
+    GeometryType getType() CONST_FUNCTION
     {
-        return (flags & (uint)MeshInstanceFlags::HasDynamicData) != 0;
+        return GeometryType(flags >> kTypeOffset);
+    }
+
+    bool isDynamic() CONST_FUNCTION
+    {
+        return (flags & (uint)GeometryInstanceFlags::IsDynamic) != 0;
     }
 
     bool isWorldFrontFaceCW() CONST_FUNCTION
     {
-        return (flags & (uint)MeshInstanceFlags::IsWorldFrontFaceCW) != 0;
-    }
-};
-
-/** Mesh instance data packed into 16B.
-*/
-struct PackedMeshInstanceData
-{
-    uint packedIDs[2];  ///< Packed materialID, meshID, globalMatrixID, and flags packed into 64 bits.
-    uint vbOffset;      ///< Offset into global vertex buffer.
-    uint ibOffset;      ///< Offset into global index buffer, or zero if non-indexed.
-
-    // Packed representation
-    // The pack/unpack logic assumes that meshID representation is split between packedIds[0] and packedIds[1]
-    // (i.e., kFlagBigs + kMatrixBits < 32, kFlagsBits + kMatrixBits + kMeshBits > 32)
-    // bit position  31.......................................0
-    // packedIds[1]   |    kMaterialBits   |    kMeshBitsHi   |
-    // packedIDs[0]   | kMeshBitsLo | kMatrixBits | kFlagBits |
-
-    static const uint kMaterialBits = 17;
-    static const uint kMatrixBits = 21;
-    static const uint kMeshBits = 21;
-    static const uint kFlagsBits = 5;
-
-    static const uint kFlagsOffset = 0;
-    static const uint kMatrixOffset = kFlagsOffset + kFlagsBits;
-    static const uint kMeshOffsetLo = kMatrixOffset + kMatrixBits;
-    static const uint kMeshBitsLo = 32 - kMeshOffsetLo;
-    static const uint kMeshOffsetHi = 0;
-    static const uint kMeshBitsHi = kMeshBits - kMeshBitsLo;
-    static const uint kMaterialOffset = kMeshOffsetHi + kMeshBitsHi;
-
-#ifdef HOST_CODE
-    void pack(const MeshInstanceData& d)
-    {
-        vbOffset = d.vbOffset;
-        ibOffset = d.ibOffset;
-
-        assert(d.flags < (1 << kFlagsBits));
-        assert(d.meshID < (1 << kMeshBits));
-        assert(d.globalMatrixID < (1 << kMatrixBits));
-        assert(d.materialID < (1 << kMaterialBits));
-        packedIDs[0] = (d.flags << kFlagsOffset) | (d.globalMatrixID << kMatrixOffset) | ((d.meshID & ((1 << kMeshBitsLo) -1)) << kMeshOffsetLo);
-        packedIDs[1] = (d.meshID >> kMeshBitsLo) | (d.materialID << kMaterialOffset);
-    }
-#endif
-
-    MeshInstanceData unpack()
-    {
-        MeshInstanceData d;
-        d.vbOffset = vbOffset;
-        d.ibOffset = ibOffset;
-
-        d.materialID = (packedIDs[1] >> kMaterialOffset) & ((1 << kMaterialBits) - 1);
-        d.meshID = ((packedIDs[0] >> kMeshOffsetLo) & ((1 << kMeshBitsLo) - 1)) | (((packedIDs[1] >> kMeshOffsetHi) & ((1 << kMeshBitsHi) -1)) << kMeshBitsLo);
-        d.globalMatrixID = (packedIDs[0] >> kMatrixOffset) & ((1 << kMatrixBits) - 1);
-        d.flags = (packedIDs[0] >> kFlagsOffset) & ((1 << kFlagsBits) - 1);
-
-        return d;
+        return (flags & (uint)GeometryInstanceFlags::IsWorldFrontFaceCW) != 0;
     }
 };
 
@@ -223,6 +205,8 @@ struct StaticVertexData
     float3 normal;      ///< Shading normal.
     float4 tangent;     ///< Shading tangent. The bitangent is computed: cross(normal, tangent.xyz) * tangent.w. NOTE: The tangent is *only* valid when tangent.w != 0.
     float2 texCrd;      ///< Texture coordinates.
+
+    float curveRadius;  ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
 };
 
 /** Vertex data packed into 32B for aligned access.
@@ -230,8 +214,9 @@ struct StaticVertexData
 struct PackedStaticVertexData
 {
     float3 position;
-    float3 packedNormalTangent;
-    float2 texCrd;
+    float  texU;
+    float3 packedNormalTangentCurveRadius;
+    float  texV;
 
 #ifdef HOST_CODE
     PackedStaticVertexData() = default;
@@ -239,40 +224,58 @@ struct PackedStaticVertexData
     void pack(const StaticVertexData& v)
     {
         position = v.position;
-        texCrd = v.texCrd;
+        texU = v.texCrd[0];
+        texV = v.texCrd[1];
 
-        packedNormalTangent.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
-        packedNormalTangent.y = asfloat(glm::packHalf2x16({ v.normal.z, v.tangent.w }));
-        packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
+        float packedTangentSignCurveRadius = v.tangent.w;
+
+        if (v.curveRadius > 0.f)
+        {
+            // This is safe because if v.curveRadius > 0 then v.tangent.w != 0 (curves always have valid tangents).
+            assert(v.tangent.w != 0.f);
+            packedTangentSignCurveRadius *= v.curveRadius;
+        }
+
+        packedNormalTangentCurveRadius.x = asfloat(glm::packHalf2x16({ v.normal.x, v.normal.y }));
+        packedNormalTangentCurveRadius.y = asfloat(glm::packHalf2x16({ v.normal.z, packedTangentSignCurveRadius }));
+        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
 
 #else // !HOST_CODE
     [mutating] void pack(const StaticVertexData v)
     {
         position = v.position;
-        texCrd = v.texCrd;
-
+        texU = v.texCrd[0];
+        texV = v.texCrd[1];
+        
         uint3 n = f32tof16(v.normal);
-        uint t_w = f32tof16(v.tangent.w);
 
-        packedNormalTangent.x = asfloat((n.y << 16) | n.x);
-        packedNormalTangent.y = asfloat((t_w << 16) | n.z);
-        packedNormalTangent.z = asfloat(encodeNormal2x16(v.tangent.xyz));
+        float packedTangentSignCurveRadius = v.tangent.w;
+        // This is safe because if v.curveRadius > 0 then v.tangent.w != 0 (curves always have valid tangents).
+        if (v.curveRadius > 0.f) packedTangentSignCurveRadius *= v.curveRadius;
+        uint t_w = f32tof16(packedTangentSignCurveRadius);
+
+        packedNormalTangentCurveRadius.x = asfloat((n.y << 16) | n.x);
+        packedNormalTangentCurveRadius.y = asfloat((t_w << 16) | n.z);
+        packedNormalTangentCurveRadius.z = asfloat(encodeNormal2x16(v.tangent.xyz));
     }
 
     StaticVertexData unpack()
     {
         StaticVertexData v;
         v.position = position;
-        v.texCrd = texCrd;
-
-        v.normal.x = f16tof32(asuint(packedNormalTangent.x) & 0xffff);
-        v.normal.y = f16tof32(asuint(packedNormalTangent.x) >> 16);
-        v.normal.z = f16tof32(asuint(packedNormalTangent.y) & 0xffff);
+        v.texCrd = float2(texU, texV);
+        
+        v.normal.x = f16tof32(asuint(packedNormalTangentCurveRadius.x) & 0xffff);
+        v.normal.y = f16tof32(asuint(packedNormalTangentCurveRadius.x) >> 16);
+        v.normal.z = f16tof32(asuint(packedNormalTangentCurveRadius.y) & 0xffff);
         v.normal = normalize(v.normal);
 
-        v.tangent.xyz = decodeNormal2x16(asuint(packedNormalTangent.z));
-        v.tangent.w = f16tof32(asuint(packedNormalTangent.y) >> 16);
+        v.tangent.xyz = decodeNormal2x16(asuint(packedNormalTangentCurveRadius.z));
+        float packedTangentSignCurveRadius = f16tof32(asuint(packedNormalTangentCurveRadius.y) >> 16);
+        v.tangent.w = sign(packedTangentSignCurveRadius);
+
+        v.curveRadius = abs(packedTangentSignCurveRadius);
 
         return v;
     }
@@ -284,7 +287,7 @@ struct PrevVertexData
     float3 position;
 };
 
-struct DynamicVertexData
+struct SkinningVertexData
 {
     uint4 boneID;
     float4 boneWeight;
@@ -305,6 +308,7 @@ struct VertexData
     float4 tangentW;        ///< Shading tangent in world space (normalized). The last component is guaranteed to be +-1.0 or zero if tangents are missing.
     float2 texC;            ///< Texture coordinate.
     float3 faceNormalW;     ///< Face normal in world space (normalized).
+    float  curveRadius;     ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
     float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
 };
 
@@ -323,21 +327,13 @@ struct CurveDesc
     }
 };
 
-struct CurveInstanceData
-{
-    uint globalMatrixID;
-    uint materialID;
-    uint curveID;
-    uint vbOffset;      ///< Offset into global curve vertex buffer.
-    uint ibOffset;      ///< Offset into global curve index buffer.
-};
-
 struct StaticCurveVertexData
 {
     float3 position;    ///< Position.
     float radius;       ///< Radius of the sphere at curve ends.
     float2 texCrd;      ///< Texture coordinates.
 };
+
 
 struct DynamicCurveVertexData
 {

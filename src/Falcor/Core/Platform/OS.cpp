@@ -54,8 +54,8 @@ uint32_t getLowerPowerOf2(uint32_t a) {
     return 1 << bitScanReverse(a);
 }
 
-inline std::vector<std::string> getInitialShaderDirectories() {
-    std::vector<std::string> developmentDirectories = {
+inline std::vector<fs::path> getInitialShaderDirectories() {
+    std::vector<fs::path> developmentDirectories = {
         // First we search in source folders.
         //std::string(PROJECT_DIR),
         //std::string(PROJECT_DIR) + "../",
@@ -66,7 +66,7 @@ inline std::vector<std::string> getInitialShaderDirectories() {
         //getExecutableDirectory() + "../shaders",
     };
 
-    std::vector<std::string> deploymentDirectories = {
+    std::vector<fs::path> deploymentDirectories = {
         std::string(LAVA_INSTALL_DIR) + "shaders",
         //getExecutableDirectory() + "../shaders"
     };
@@ -92,7 +92,7 @@ inline std::vector<std::string> getInitialRenderPassDirectories() {
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
 
-static std::vector<std::string> gShaderDirectories = getInitialShaderDirectories();
+static std::vector<fs::path> gShaderDirectories = getInitialShaderDirectories();
 static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDirectories();
 
 inline std::vector<std::string> getInitialDataDirectories() {
@@ -184,9 +184,9 @@ bool findFileInDataDirectories(const std::string& filename, std::string& fullPat
     return false;
 }
 
-bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath) {
+bool findFileInDataDirectories(const fs::path& path, fs::path& fullPath) {
     std::string file_path;
-    if (findFileInDataDirectories(filename, file_path)) {
+    if (findFileInDataDirectories(path.string(), file_path)) {
         fullPath = fs::path(file_path);
         return true;
     }
@@ -196,7 +196,7 @@ bool findFileInDataDirectories(const std::string& filename, fs::path& fullPath) 
 bool findFilesInDataDirectories(const std::string& searchPath, const std::regex& regex, std::vector<std::string>& filenames) {
     // Check if searchPath exists
     if (!fs::exists(fs::path(searchPath))) {
-        logWarning("Search path \"" + searchPath + "\" does not exist !!!");
+        LLOG_WRN << "Search path '" << searchPath << "' does not exist !!!";
         return false;
     }
 
@@ -216,26 +216,79 @@ bool findFilesInDataDirectories(const std::string& searchPath, const std::regex&
     return result;
 }
 
-const std::vector<std::string>& getShaderDirectoriesList() {
+const std::vector<fs::path>& getShaderDirectoriesList() {
     return gShaderDirectories;
 }
 
-bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath) {
-    for (const auto& dir : gShaderDirectories) {
-        fullPath = canonicalizeFilename(dir + '/' + filename);
-        if (doesFileExist(fullPath)) {
-            LOG_DBG("Shader: %s found as: %s", filename.c_str(), fullPath.c_str());
+bool findFileInShaderDirectories(const fs::path& path, fs::path& fullPath) {
+    // Check if this is an absolute path.
+    if (path.is_absolute()) {
+        if (fs::exists(path)) {
+            fullPath = fs::canonical(path);
             return true;
         }
     }
+
+    // Search in other paths.
+    for (const auto& dir : gShaderDirectories) {
+        fullPath = dir / path;
+        if (fs::exists(fullPath)) {
+            fullPath = fs::canonical(fullPath);
+            return true;
+        }
+    }
+
     return false;
+}
+
+uint32_t getNextPowerOf2(uint32_t a) {
+    // TODO: With C++20 we could use std::bit_ceil instead.
+    a--;
+    a |= a >> 1;
+    a |= a >> 2;
+    a |= a >> 4;
+    a |= a >> 8;
+    a |= a >> 16;
+    a++;
+    return a;
+}
+
+bool findFileInShaderDirectories(const fs::path& path, std::string& fullPath) {
+    fs::path p;
+    bool result = findFileInShaderDirectories(path, p);
+    fullPath = p.string();
+    return result;
+}
+
+std::string getExtensionFromPath(const fs::path& path) {
+    std::string ext;
+    if (path.has_extension()) {
+        ext = path.extension().string();
+        // Remove the leading '.' from ext.
+        if (ext.size() > 0 && ext[0] == '.') ext.erase(0, 1);
+        // Convert to lower-case.
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](char c) { return std::tolower(c); });
+    }
+    return ext;
+}
+
+bool hasExtension(const fs::path& path, std::string_view ext) {
+    // Remove leading '.' from ext.
+    if (ext.size() > 0 && ext[0] == '.') ext.remove_prefix(1);
+
+    std::string pathExt = getExtensionFromPath(path);
+
+    if (ext.size() != pathExt.size()) return false;
+
+    return std::equal(ext.rbegin(), ext.rend(), pathExt.rbegin(),
+        [](char a, char b) { return std::tolower(a) == std::tolower(b); });
 }
 
 bool findFileInRenderPassDirectories(const std::string& filename, std::string& fullPath) {
     for (const auto& dir : gRenderPassDirectories) {
         fullPath = canonicalizeFilename(dir + '/' + filename);
         if (doesFileExist(fullPath)) {
-            LOG_DBG("RenderPass library: %s found as: %s", filename.c_str(), fullPath.c_str());
+            LLOG_DBG << "RenderPass library: " << filename << " found as: " << fullPath;
             return true;
         }
     }

@@ -26,11 +26,15 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "LightBVHSampler.h"
+
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/io.hpp>
 #include <algorithm>
 #include <numeric>
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/RenderContext.h"
+#include "LightBVHSampler.h"
 
 namespace Falcor {
 
@@ -65,19 +69,19 @@ bool LightBVHSampler::update(RenderContext* pRenderContext) {
     return samplerChanged;
 }
 
-bool LightBVHSampler::prepareProgram(Program* pProgram) const {
+Program::DefineList LightBVHSampler::getDefines() const {
     // Call the base class first.
-    bool varsChanged = EmissiveLightSampler::prepareProgram(pProgram);
+    auto defines = EmissiveLightSampler::getDefines();
 
     // Add our defines. None of these change the program vars.
-    pProgram->addDefine("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
-    pProgram->addDefine("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
-    pProgram->addDefine("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
-    pProgram->addDefine("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
-    pProgram->addDefine("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
-    pProgram->addDefine("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
+    defines.add("_USE_BOUNDING_CONE", mOptions.useBoundingCone ? "1" : "0");
+    defines.add("_USE_LIGHTING_CONE", mOptions.useLightingCone ? "1" : "0");
+    defines.add("_DISABLE_NODE_FLUX", mOptions.disableNodeFlux ? "1" : "0");
+    defines.add("_USE_UNIFORM_TRIANGLE_SAMPLING", mOptions.useUniformTriangleSampling ? "1" : "0");
+    defines.add("_ACTUAL_MAX_TRIANGLES_PER_NODE", std::to_string(mOptions.buildOptions.maxTriangleCountPerLeaf));
+    defines.add("_SOLID_ANGLE_BOUND_METHOD", std::to_string((uint32_t)mOptions.solidAngleBoundMethod));
 
-    return varsChanged;
+    return defines;
 }
 
 bool LightBVHSampler::setShaderData(const ShaderVar& var) const {
@@ -93,13 +97,18 @@ LightBVH::SharedConstPtr LightBVHSampler::getBVH() const {
 
 LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, Scene::SharedPtr pScene, const Options& options)
     : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
-    , mOptions(options) {
+    , mOptions(options) 
+{
+    assert(pRenderContext);
+    mpDevice = pRenderContext->device();
+    assert(mpDevice);
+
     // Create the BVH and builder.
     mpBVHBuilder = LightBVHBuilder::create(mOptions.buildOptions);
     if (!mpBVHBuilder) {
         throw std::runtime_error("Failed to create BVH builder");
     }
-    mpBVH = LightBVH::create(pScene->getLightCollection(pRenderContext));
+    mpBVH = LightBVH::create(mpDevice, pScene->getLightCollection(pRenderContext));
     if (!mpBVH) {
         throw std::runtime_error("Failed to create BVH");
     }

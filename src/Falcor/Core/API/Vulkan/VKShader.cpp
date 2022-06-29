@@ -29,46 +29,51 @@
 #include "Falcor/Core/API/Shader.h"
 #include "Falcor/Core/API/Device.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
 
     struct ShaderData {
-        ISlangBlob* pBlob;
+        //ISlangBlob* pBlob;
+    
+        // new
+        Shader::Blob pBlob;
+        Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+
+        ISlangBlob* getBlob()
+        {
+            if (!pBlob)
+            {
+                Slang::ComPtr<ISlangBlob> pSlangBlob;
+                Slang::ComPtr<ISlangBlob> pDiagnostics;
+
+                if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef())))
+                {
+                    throw std::runtime_error(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
+                }
+                pBlob = Shader::Blob(pSlangBlob.get());
+            }
+            return pBlob.get();
+        }
     };
 
-    Shader::Shader(std::shared_ptr<Device> device, ShaderType type) : mType(type), mpDevice(device) {
-        mpPrivateData = new ShaderData;
+    Shader::Shader(std::shared_ptr<Device> pDevice, ShaderType type) : mType(type), mpDevice(pDevice) {
+       mpPrivateData = std::make_unique<ShaderData>();
     }
 
     Shader::~Shader() {
-        ShaderData* pData = (ShaderData*)mpPrivateData;
-        safe_delete(pData);
+        //ShaderData* pData = (ShaderData*)mpPrivateData;
+        //safe_delete(pData);
     }
 
-    /*
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
-        VkShaderModuleCreateInfo moduleCreateInfo = {};
-        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.codeSize = shaderBlob->getBufferSize();
-        moduleCreateInfo.pCode = (uint32_t*)shaderBlob->getBufferPointer();
-
-        assert(moduleCreateInfo.codeSize % 4 == 0);
-
-        VkShaderModule shaderModule;
-        if (VK_FAILED(vkCreateShaderModule(mpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule))) {
-            logError("Could not create shader!");
-            return false;
-        }
-        mApiHandle = ApiHandle::create(mpDevice, shaderModule);
-        return true;
-    }
-    */
+    // typedef ComPtr<ISlangBlob> Blob;
 
     bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
-        ShaderData* pData = (ShaderData*)mpPrivateData;
+        ShaderData* pData = (ShaderData*)mpPrivateData.get();
         pData->pBlob = shaderBlob.get();
 
         if (pData->pBlob == nullptr) {
-            logError("Shader blob is null !!!");
+            LLOG_ERR << "Shader blob is null !!!";
             return false;
         }
 
@@ -81,40 +86,63 @@ namespace Falcor {
 
         VkShaderModule shaderModule;
         if (VK_FAILED(vkCreateShaderModule(mpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule))) {
-            logError("Could not create shader !!!");
+            LLOG_ERR << "Could not create shader !!!";
             return false;
         }
         mApiHandle = ApiHandle::create(mpDevice, shaderModule);
         return true;
     }
 
+    bool Shader::init(ISlangBlob *pBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
+        ShaderData* pData = (ShaderData*)mpPrivateData.get();
+        pData->pBlob = pBlob;
+
+        if (pData->pBlob == nullptr) {
+            LLOG_ERR << "Shader blob is null !!!";
+            return false;
+        }
+
+        VkShaderModuleCreateInfo moduleCreateInfo = {};
+        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        moduleCreateInfo.codeSize = pBlob->getBufferSize();
+        moduleCreateInfo.pCode = (uint32_t*)pBlob->getBufferPointer();
+
+        assert(moduleCreateInfo.codeSize % 4 == 0);
+
+        VkShaderModule shaderModule;
+        if (VK_FAILED(vkCreateShaderModule(mpDevice->getApiHandle(), &moduleCreateInfo, nullptr, &shaderModule))) {
+            LLOG_ERR << "Could not create shader !!!";
+            return false;
+        }
+        mApiHandle = ApiHandle::create(mpDevice, shaderModule);
+        return true;
+    }
+
+     bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log)
+    {
+        // In GFX, we do not generate actual shader code at program creation.
+        // The actual shader code will only be generated and cached when all specialization arguments
+        // are known, which is right before a draw/dispatch command is issued, and this is done
+        // internally within GFX.
+        // The `Shader` implementation here serves as a helper utility for application code that
+        // uses raw graphics API to get shader kernel code from an ordinary slang source.
+        // Since most users/render-passes do not need to get shader kernel code, we defer
+        // the call to slang's `getEntryPointCode` function until it is actually needed.
+        // to avoid redundant shader compiler invocation.
+        mpPrivateData->pBlob = nullptr;
+        mpPrivateData->pLinkedSlangEntryPoint = slangEntryPoint;
+        if (slangEntryPoint == nullptr) {
+            LLOG_FTL << "slangEntryPoint is NULL";
+            return false;
+        }
+
+        return init(mpPrivateData->getBlob(), entryPointName, flags, log);
+    }
+
+
     ISlangBlob* Shader::getISlangBlob() const {
-        const ShaderData* pData = (ShaderData*)mpPrivateData;
-        return pData->pBlob;
+        return mpPrivateData->getBlob();
+        //return pData->pBlob;
     }
 
 }  // namespace Falcor
-
-/* D3D
-
-bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
-    // Compile the shader
-    ShaderData* pData = (ShaderData*)mpPrivateData;
-    pData->pBlob = shaderBlob.get();
-
-    if (pData->pBlob == nullptr) {
-        return nullptr;
-    }
-
-    mApiHandle = { pData->pBlob->GetBufferPointer(), pData->pBlob->GetBufferSize() };
-    return true;
-}
-
-ID3DBlobPtr Shader::getD3DBlob() const {
-    const ShaderData* pData = (ShaderData*)mpPrivateData;
-    return pData->pBlob;
-}
-
-
-
-*/

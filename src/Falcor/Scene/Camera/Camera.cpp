@@ -73,6 +73,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Movement;
     if (mPrevData.up != mData.up) mChanges |= Changes::Movement;
     if (mPrevData.target != mData.target) mChanges |= Changes::Movement;
+    if (mPrevData.viewMat != mData.viewMat) mChanges |= Changes::Movement;
 
     if (mPrevData.focalDistance != mData.focalDistance) mChanges    |= Changes::FocalDistance;
     if (mPrevData.apertureRadius != mData.apertureRadius) mChanges  |= Changes::Aperture | Changes::Exposure;
@@ -86,6 +87,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
     if (mPrevData.frameHeight != mData.frameHeight) mChanges |= Changes::Frustum;
     if (mPrevData.frameWidth != mData.frameWidth)   mChanges |= Changes::Frustum;
     if (mPrevData.cropRegion != mData.cropRegion)   mChanges |= Changes::Frustum;
+    if (mPrevData.projMat != mData.projMat)         mChanges |= Changes::Frustum;
 
     // Jitter
     if (mPrevData.jitterX != mData.jitterX) mChanges |= Changes::Jitter;
@@ -128,8 +130,8 @@ void Camera::calculateCameraParameters() const {
 
                 float left   = ((mData.cropRegion[0]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
                 float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
-                float top    = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
-                float bottom = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameHeight);
+                float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
+                float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
                 mData.projMat = glm::frustum(left, right, bottom, top, mData.nearZ, mData.farZ);
             } else {
                 // Take the length of look-at vector as half a viewport size
@@ -138,23 +140,19 @@ void Camera::calculateCameraParameters() const {
             }
         }
 
-        // Crop region jitter scale coefficient
-        float invJitterScaleX = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
-        float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
-
         // Build jitter matrix
         // (jitterX and jitterY are expressed as subpixel quantities divided by the screen resolution
         //  for instance to apply an offset of half pixel along the X axis we set jitterX = 0.5f / Width)
         glm::mat4 jitterMat(1.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            2.0f * mData.jitterX * invJitterScaleX, 2.0f * mData.jitterY * invJitterScaleY, 0.0f, 1.0f);
+            2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
         // Apply jitter matrix to the projection matrix
         mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
+        mData.projMatNoJitter = mData.projMat;
         mData.projMat = jitterMat * mData.projMat;
 
         mData.viewProjMat = mData.projMat * mData.viewMat;
-
         mData.invViewProj = glm::inverse(mData.viewProjMat);
 
         // Extract camera space frustum planes from the VP matrix
@@ -262,8 +260,12 @@ void Camera::setJitter(float jitterX, float jitterY) {
 }
 
 void Camera::setJitterInternal(float jitterX, float jitterY) {
-    mData.jitterX = jitterX;
-    mData.jitterY = jitterY;
+    // Crop region jitter scale coefficient
+    float invJitterScaleX = 10.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
+    float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
+
+    mData.jitterX = jitterX;// * invJitterScaleX;
+    mData.jitterY = jitterY;// * invJitterScaleY;
     mDirty = true;
 }
 
@@ -283,6 +285,7 @@ void Camera::updateFromAnimation(const glm::mat4& transform) {
 }
 
 std::string Camera::getScript(const std::string& cameraVar) {
+#ifdef SCRIPTING
     std::string c;
 
     if (hasAnimation() && !isAnimated()) {
@@ -294,8 +297,10 @@ std::string Camera::getScript(const std::string& cameraVar) {
         c += Scripting::makeSetProperty(cameraVar, kTarget, getTarget());
         c += Scripting::makeSetProperty(cameraVar, kUp, getUpVector());
     }
-
     return c;
+#else
+    return "";
+#endif
 }
 
 #ifdef SCRIPTING

@@ -52,15 +52,23 @@ public:
     /** Create a new GPU fence.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, bool shared = false);
 
     /** Get the internal API handle
     */
-    const ApiHandle& getApiHandle() const;// { return mApiHandle; }
+    const ApiHandle& getApiHandle() const { return mApiHandle; }
+
+    /** Get the internal D3D12 handle. Available only when D3D12 is the underlying API.
+    */
+    const D3D12FenceHandle& getD3D12Handle() const;
 
     /** Get the last value the GPU has signaled
     */
     uint64_t getGpuValue() const;
+
+    /** Sets the current GPU value to a specific value (signals the fence from the CPU side).
+    */
+    void setGpuValue(uint64_t val);
 
     /** Get the current CPU value
     */
@@ -77,13 +85,24 @@ public:
     /** Insert a signal command into the command queue. This will increase the internal value
     */
     uint64_t gpuSignal(CommandQueueHandle pQueue);
+
+    /** Must be called to obtain the current value for use in an external semaphore.
+    */
+    uint64_t externalSignal() { return mCpuValue++; }
+
+    /** Creates a shared fence API handle.
+    */
+    SharedResourceApiHandle getSharedApiHandle() const;
+
 private:
-    GpuFence(std::shared_ptr<Device> device) : mCpuValue(0), mpDevice(device) {}
+    GpuFence(std::shared_ptr<Device> pDevice) : mpDevice(pDevice), mCpuValue(0) {}
+    
+    std::shared_ptr<Device> mpDevice;
     uint64_t mCpuValue;
 
     ApiHandle mApiHandle;
     FenceApiData* mpApiData = nullptr;
-    std::shared_ptr<Device> mpDevice;
+    mutable SharedResourceApiHandle mSharedApiHandle = 0;
 };
 
 }  // namespace Falcor

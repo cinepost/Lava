@@ -11,6 +11,26 @@ set( PROJECT_VERSION_MAJOR 0 )
 set( PROJECT_VERSION_MINOR 0 )
 set( PROJECT_VERSION_PATCH 001 )
 
+#### Handle build mode
+# Set a default build type if none was specified
+set(default_build_type "Release")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  set(default_build_type "Debug")
+endif()
+
+if( NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES )
+  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
+
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+option (USE_PROFILING "Enable/Disable renderer performance profiler." OFF)
+if (USE_PROFILING)
+  add_definitions(-DFALCOR_ENABLE_PROFILER)
+endif ()
+
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
 
@@ -76,21 +96,6 @@ elseif(UNIX)
   set( CMAKE_INSTALL_PREFIX "/opt/lava/" )
 endif()
 
-#### Handle build mode
-# Set a default build type if none was specified
-set(default_build_type "Release")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
-  set(default_build_type "Debug")
-endif()
-
-if( NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES )
-  message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-  set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
-
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
-
 # Specify build paths
 set( BUILD_SUBDIR "")
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_SUBDIR)
@@ -108,11 +113,24 @@ if (WIN32 OR APPLE)
   endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(WIN32 OR APPLE)
 
-if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+string( TOLOWER ${CMAKE_BUILD_TYPE} build_type )
+if (build_type STREQUAL "debug")
   add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
 
+option (PROFILING "Enable/Disable renderer performance profiler." OFF)
+option (PROFILING_LOG "Enable/Disable renderer performance profiler logging." OFF)
+
+if (PROFILING)
+  add_definitions(-D_PROFILING_ENABLED)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_PROFILING_ENABLED")
+endif ()
+
+if (PROFILING_LOG)
+  add_definitions(-D_PROFILING_LOG)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_PROFILING_LOG")  
+endif ()
 
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
@@ -156,17 +174,14 @@ set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 #------------------------------------------
 # Our stuff
 #------------------------------------------
-list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/release)
+  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+else()
+  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/debug)
+  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+endif()
 
 add_subdirectory( src )
 add_subdirectory( contrib )
-
-
-#install(
-#    DIRECTORY
-#    ${CMAKE_CURRENT_SOURCE_DIR}/tests
-#    ${CMAKE_CURRENT_SOURCE_DIR}/contrib
-#    DESTINATION ${CMAKE_INSTALL_PREFIX}
-#    USE_SOURCE_PERMISSIONS
-#    FILES_MATCHING PATTERN "*"
-#)

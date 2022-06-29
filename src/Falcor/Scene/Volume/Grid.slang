@@ -35,11 +35,14 @@ struct Grid
     // Grid data.
     int3 minIndex;
     float minValue;
+
     int3 maxIndex;
     float maxValue;
+    
     // NanoVDB data.
     typedef pnanovdb_readaccessor_t Accessor;
     StructuredBuffer<uint> buf;
+    
     // Brick atlas data.
     Texture3D<float2> rangeTex;
     Texture3D<uint4> indirectionTex;

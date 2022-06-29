@@ -79,6 +79,10 @@ Global::SharedPtr Global::create() {
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "rendertype", std::string("unknown"), Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "renderlabel", std::string("unnamed"), Property::Owner::SYS)) return nullptr;
 	
+	if(!pGlobal->declareProperty(Style::IMAGE, Type::BOOL, "tiling", bool(false), Property::Owner::SYS)) return nullptr;
+	if(!pGlobal->declareProperty(Style::IMAGE, Type::INT2, "tilesize", lsd::Int2{256, 256}, Property::Owner::SYS)) return nullptr;
+	if(!pGlobal->declareProperty(Style::IMAGE, Type::INT,  "sampleupdate", 0, Property::Owner::SYS)) return nullptr;
+
 	if(!pGlobal->declareProperty(Style::IMAGE, Type::INT2, "resolution", lsd::Int2{1280, 720}, Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::IMAGE, Type::INT, "samples", 16, Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::IMAGE, Type::FLOAT, "pixelaspect", 1.0, Property::Owner::SYS)) return nullptr;

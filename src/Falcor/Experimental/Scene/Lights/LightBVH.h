@@ -28,9 +28,10 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_LIGHTBVH_H_
 
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/LightCollection.h"
 #include "LightBVHTypes.slang"
-#include "Utils/Math/BBox.h"
+#include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 
 #include <limits>
@@ -80,7 +81,7 @@ public:
     /** Creates an empty LightBVH object. Use a LightBVHBuilder to build the BVH.
         \param[in] pLightCollection The light collection around which the BVH will be built.
     */
-    static SharedPtr create(const LightCollection::SharedConstPtr& pLightCollection);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, const LightCollection::SharedConstPtr& pLightCollection);
 
     /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
         The BVH needs to have been built before trying to refit it.

@@ -23,8 +23,9 @@
 #include "RenderPasses/SkyBox/SkyBox.h"
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
-#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
-#include "RenderPasses/GBuffer/GBuffer/GBufferRaster.h"
+#include "RenderPasses/RTXDIPass/RTXDIPass.h"
+//#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
+#include "RenderPasses/GBuffer/VBuffer/VBufferRaster.h"
 
 #include "aov.h"
 #include "scene_builder.h"
@@ -36,6 +37,7 @@ class MaterialX;
 class Renderer: public std::enable_shared_from_this<Renderer> {
   public:
     struct Config {
+      // Rendering options
       bool useRaytracing = true;
       bool useVirtualTexturing = false;
       bool useAsyncGeometryProcessing = true;
@@ -45,8 +47,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       std::string virtualTexturesCompressorType = "blosclz";
       uint8_t     virtualTexturesCompressionLevel = 9;
 
-      std::string tangentGenerationMode = "none"; //"mikkt";
-      std::string cullMode = "none"; //"back";
+      std::string tangentGenerationMode = "mikkt";
+      std::string cullMode = "back";
     };
 
     enum class SamplePattern : uint32_t {
@@ -75,7 +77,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
       Falcor::uint2 renderRegionDims() const {
         if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
-        return {std::min(imageWidth, renderRegion[2] - renderRegion[0]), std::min(imageHeight, renderRegion[3] - renderRegion[1])};
+        return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
     };
 
@@ -88,13 +90,10 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
   public:
     static SharedPtr create(Device::SharedPtr pDevice);
-    Falcor::Device::SharedPtr device() const { return mpDevice; };
+    inline Falcor::Device::SharedPtr device() const { return mpDevice; };
 
  	  bool loadScript(const std::string& file_name);
- 	  //void renderFrame(const RendererIface::FrameData frame_data);
-
-    //bool addPlane(const RendererIface::PlaneData plane_data);
-    bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
+ 	  bool addMaterialX(Falcor::MaterialX::UniquePtr pMaterialX);
 
   public:
     inline lava::SceneBuilder::SharedPtr sceneBuilder() const { return mpSceneBuilder; };
@@ -194,9 +193,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
     ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
-
-    GBufferRaster::SharedPtr        mpGBufferRasterPass = nullptr;
-    MinimalPathTracer::SharedPtr    mpMinimalPathTracer = nullptr;
     ///
 
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;

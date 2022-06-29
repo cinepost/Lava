@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
+#include "BxDFConfig.slangh"
 
 /** Evaluates the GGX (Trowbridge-Reitz) normal distribution function (D).
 
@@ -86,15 +87,15 @@ float3 sampleGGX_NDF(float alpha, float2 u, out float pdf)
     See http://jcgt.org/published/0007/04/01/paper.pdf
 
     \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] wo View direction in local space, in the positive hemisphere.
+    \param[in] wi Incident direction in local space, in the positive hemisphere.
     \param[in] h Half vector in local space, in the positive hemisphere.
-    \return D_V(h) = G1(wo) * D(h) * max(0,dot(wo,h)) / wo.z
+    \return D_V(h) = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
 */
-float evalPdfGGX_VNDF(float alpha, float3 wo, float3 h)
+float evalPdfGGX_VNDF(float alpha, float3 wi, float3 h)
 {
-    float G1 = evalG1GGX(alpha * alpha, wo.z);
+    float G1 = evalG1GGX(alpha * alpha, wi.z);
     float D = evalNdfGGX(alpha, h.z);
-    return G1 * D * max(0.f, dot(wo, h)) / wo.z;
+    return G1 * D * max(0.f, dot(wi, h)) / wi.z;
 }
 
 /** Samples the GGX (Trowbridge-Reitz) using the distribution of visible normals (VNDF).
@@ -102,17 +103,17 @@ float evalPdfGGX_VNDF(float alpha, float3 wo, float3 h)
     See http://jcgt.org/published/0007/04/01/paper.pdf
 
     \param[in] alpha Isotropic GGX width parameter (should be clamped to small epsilon beforehand).
-    \param[in] wo View direction in local space, in the positive hemisphere.
+    \param[in] wi Incident direction in local space, in the positive hemisphere.
     \param[in] u Uniform random number (2D).
     \param[out] pdf Sampling probability.
     \return Sampled half vector in local space, in the positive hemisphere.
 */
-float3 sampleGGX_VNDF(float alpha, float3 wo, float2 u, out float pdf)
+float3 sampleGGX_VNDF(float alpha, float3 wi, float2 u, out float pdf)
 {
     float alpha_x = alpha, alpha_y = alpha;
 
     // Transform the view vector to the hemisphere configuration.
-    float3 Vh = normalize(float3(alpha_x * wo.x, alpha_y * wo.y, wo.z));
+    float3 Vh = normalize(float3(alpha_x * wi.x, alpha_y * wi.y, wi.z));
 
     // Construct orthonormal basis (Vh,T1,T2).
     float3 T1 = (Vh.z < 0.9999f) ? normalize(cross(float3(0, 0, 1), Vh)) : float3(1, 0, 0); // TODO: fp32 precision
@@ -132,7 +133,7 @@ float3 sampleGGX_VNDF(float alpha, float3 wo, float2 u, out float pdf)
     // Transform the normal back to the ellipsoid configuration. This is our half vector.
     float3 h = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.f, Nh.z)));
 
-    pdf = evalPdfGGX_VNDF(alpha, wo, h);
+    pdf = evalPdfGGX_VNDF(alpha, wi, h);
     return h;
 }
 
@@ -225,33 +226,59 @@ float3 approxSpecularIntegralGGX(float3 specularReflectance, float alpha, float 
     Y.z = alpha * alpha;
     Y.w = alpha * Y.z;
 
+    // Select coefficients based on BRDF version being in use (either separable or correlated G term)
+#if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
     float2x2 M1 = float2x2(
         0.99044f, -1.28514f,
         1.29678f, -0.755907f
     );
 
     float3x3 M2 = float3x3(
-        1.f, 2.92338f, 59.4188f,
+        1.0f, 2.92338f, 59.4188f,
         20.3225f, -27.0302f, 222.592f,
         121.563f, 626.13f, 316.627f
     );
 
     float2x2 M3 = float2x2(
-        0.0365463f, 3.32707,
-        9.0632f, -9.04756
+        0.0365463f, 3.32707f,
+        9.0632f, -9.04756f
     );
 
     float3x3 M4 = float3x3(
-        1.f, 3.59685f, -1.36772f,
+        1.0f, 3.59685f, -1.36772f,
         9.04401f, -16.3174f, 9.22949f,
         5.56589f, 19.7886f, -20.2123f
     );
+#elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
+    float2x2 M1 = float2x2(
+        0.995367f, -1.38839f,
+        -0.24751f, 1.97442f
+    );
+
+    float3x3 M2 = float3x3(
+        1.0f, 2.68132f, 52.366f,
+        16.0932f, -3.98452f, 59.3013f,
+        -5.18731f, 255.259f, 2544.07f
+    );
+
+    float2x2 M3 = float2x2(
+        -0.0564526f, 3.82901f,
+        16.91f, -11.0303f
+    );
+
+    float3x3 M4 = float3x3(
+        1.0f, 4.11118f, -1.37886f,
+        19.3254f, -28.9947f, 16.9514f,
+        0.545386f, 96.0994f, -79.4492f
+    );
+#endif
 
     float bias = dot(mul(M1, X.xy), Y.xy) * rcp(dot(mul(M2, X.xyw), Y.xyw));
     float scale = dot(mul(M3, X.xy), Y.xy) * rcp(dot(mul(M4, X.xzw), Y.xyw));
 
     // This is a hack for specular reflectance of 0
-    bias *= saturate(specularReflectance.g * 50);
+    float specularReflectanceLuma = dot(specularReflectance, float3(1.f / 3.f));
+    bias *= saturate(specularReflectanceLuma * 50.0f);
 
     return mad(specularReflectance, max(0.0, scale), max(0.0, bias));
 }

@@ -25,177 +25,292 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifdef FALCOR_D3D
-
 #include "Falcor.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRT.h"
 
-const char* GBufferRT::kDesc = "Ray traced G-buffer generation pass";
+const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
 
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
+    const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
+    const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
+
+    // Scripting options.
+    const char kUseTraceRayInline[] = "useTraceRayInline";
+    const char kUseDOF[] = "useDOF";
 
     // Ray tracing settings that affect the traversal stack size. Set as small as possible.
     const uint32_t kMaxPayloadSizeBytes = 4;
-    const uint32_t kMaxAttributesSizeBytes = 8;
     const uint32_t kMaxRecursionDepth = 1;
 
     // Scripting options
-    const std::string kLOD = "texLOD";
-
-    const Falcor::Gui::DropdownList kLODModeList =
-    {
-        { (uint32_t)GBufferRT::LODMode::UseMip0, "Mip0" },
-        { (uint32_t)GBufferRT::LODMode::RayDifferentials, "Ray Diff" },
-        { (uint32_t)GBufferRT::LODMode::RayCones, "Ray Cones" },
-    };
+    const std::string kLODMode = "texLOD";
 
     // Additional output channels.
+    const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
     {
-        { "vbuffer",        "gVBuffer",         "Visibility buffer",                true /* optional */, ResourceFormat::RG32Uint    },
-        { "mvec",           "gMotionVectors",   "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
-        { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",       true /* optional */, ResourceFormat::RGBA32Float },
-        { "viewW",          "gViewW",           "View direction in world space",    true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",           "gTime",            "Per-pixel execution time",         true /* optional */, ResourceFormat::R32Uint     },
+        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                    true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                   true /* optional */, ResourceFormat::R32Float     },
+        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                   true /* optional */, ResourceFormat::RG32Float    },
+        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                         true /* optional */, ResourceFormat::RGBA16Float  },
+        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Normal in world space, roughness, and material ID",    true /* optional */, ResourceFormat::RGB10A2Unorm },
+        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                true /* optional */, ResourceFormat::RGBA32Float  },
+        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                   true /* optional */, ResourceFormat::RGBA32Float  },
+        { "emissive",                   "gEmissive",                    "Emissive color",                                       true /* optional */, ResourceFormat::RGBA32Float  },
+        { "viewW",                      "gViewW",                       "View direction in world space",                        true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
+        { "time",                       "gTime",                        "Per-pixel execution time",                             true /* optional */, ResourceFormat::R32Uint      },
+        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                    true /* optional */, ResourceFormat::R32Float     },
     };
 };
 
-void GBufferRT::registerBindings(pybind11::module& m) {
-    pybind11::enum_<GBufferRT::LODMode> lodMode(m, "LODMode");
-    lodMode.value("UseMip0", GBufferRT::LODMode::UseMip0);
-    lodMode.value("RayDifferentials", GBufferRT::LODMode::RayDifferentials);
-    lodMode.value("RayCones", GBufferRT::LODMode::RayCones);
+GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict)
+{
+    return SharedPtr(new GBufferRT(pRenderContext->device(), dict));
 }
 
-RenderPassReflection GBufferRT::reflect(const CompileData& compileData) {
+RenderPassReflection GBufferRT::reflect(const CompileData& compileData)
+{
     RenderPassReflection reflector;
 
-    // Add all outputs as UAVs.
-    addRenderPassOutputs(reflector, kGBufferChannels);
-    addRenderPassOutputs(reflector, kGBufferExtraChannels);
+    // Add all outputs as UAVs. These are all optional.
+    addRenderPassOutputs(reflector, kGBufferChannels, ResourceBindFlags::UnorderedAccess);
+    addRenderPassOutputs(reflector, kGBufferExtraChannels, ResourceBindFlags::UnorderedAccess);
+    reflector.getField(kVBufferName)->format(mVBufferFormat);
 
     return reflector;
 }
 
-void GBufferRT::parseDictionary(const Dictionary& dict) {
-    // Call the base class first.
-    GBuffer::parseDictionary(dict);
-
-    for (const auto& [key, value] : dict) {
-        if (key == kLOD) mLODMode = value;
-        // TODO: Check for unparsed fields, including those parsed in base classes.
-    }
-}
-
-GBufferRT::SharedPtr GBufferRT::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new GBufferRT(dict));
-}
-
-Dictionary GBufferRT::getScriptingDictionary() {
-    Dictionary dict = GBuffer::getScriptingDictionary();
-    dict[kLOD] = mLODMode;
-    return dict;
-}
-
-GBufferRT::GBufferRT(const Dictionary& dict) : GBuffer() {
-    parseDictionary(dict);
-
-    // Create random engine
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
-
-    // Create ray tracing program
-    RtProgram::Desc desc;
-    desc.addShaderLibrary(kProgramFile).setRayGen("rayGen");
-    desc.addHitGroup(0, "closestHit", "anyHit").addMiss(0, "miss");
-    desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    desc.addDefines(mpSampleGenerator->getDefines());
-    mRaytrace.pProgram = RtProgram::create(desc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
-
-    // Set default cull mode
-    setCullMode(mCullMode);
-}
-
-void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
-    GBuffer::setScene(pRenderContext, pScene);
-
-    mRaytrace.pVars = nullptr;
-
-    if (pScene) {
-        mRaytrace.pProgram->addDefines(pScene->getSceneDefines());
-    }
-}
-
-void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData) {
+void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderData)
+{
     GBuffer::execute(pRenderContext, renderData);
 
-    // If there is no scene, clear the output and return.
-    if (mpScene == nullptr) {
-        auto clear = [&](const ChannelDesc& channel) {
-            auto pTex = renderData[channel.name]->asTexture();
-            if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-        };
-        for (const auto& channel : kGBufferChannels) clear(channel);
-        for (const auto& channel : kGBufferExtraChannels) clear(channel);
+    // Update frame dimension based on render pass output.
+    // In this pass all outputs are optional, so we must first find one that exists.
+    Texture::SharedPtr pOutput;
+    auto findOutput = [&](const std::string& name) {
+        auto pTex = renderData[name]->asTexture();
+        if (pTex && !pOutput) pOutput = pTex;
+    };
+    for (const auto& channel : kGBufferChannels) findOutput(channel.name);
+    for (const auto& channel : kGBufferExtraChannels) findOutput(channel.name);
+
+    if (!pOutput)
+    {
+        LLOG_WRN << "GBufferRT::execute() - Render pass has no connected outputs. Is this intended?";
         return;
+    }
+    FALCOR_ASSERT(pOutput);
+    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+
+    // If there is no scene, clear the output and return.
+    if (mpScene == nullptr)
+    {
+        clearRenderPassChannels(pRenderContext, kGBufferChannels, renderData);
+        clearRenderPassChannels(pRenderContext, kGBufferExtraChannels, renderData);
+        return;
+    }
+
+    // Check for scene changes.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
+    {
+        recreatePrograms();
     }
 
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
-    const bool useDOF = mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (useDOF) renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = useDOF ? 2u : 0u;
+    mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+    if (mUseDOF)
+    {
+        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
+    }
 
-    // Set program defines.
-    mRaytrace.pProgram->addDefine("USE_DEPTH_OF_FIELD", useDOF ? "1" : "0");
-    mRaytrace.pProgram->addDefine("USE_RAY_DIFFERENTIALS", mLODMode == LODMode::RayDifferentials ? "1" : "0");
-    mRaytrace.pProgram->addDefine("USE_RAY_CONES", mLODMode == LODMode::RayCones ? "1" : "0");
-    mRaytrace.pProgram->addDefine("DISABLE_ALPHA_TEST", mDisableAlphaTest ? "1" : "0");
+    if (mLODMode == TexLODMode::RayDiffs)
+    {
+        // TODO: Remove this warning when the TexLOD code has been fixed.
+        // logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
+    }
+
+    mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
+
+    mFrameCount++;
+}
+
+Dictionary GBufferRT::getScriptingDictionary()
+{
+    Dictionary dict = GBuffer::getScriptingDictionary();
+    dict[kLODMode] = mLODMode;
+    dict[kUseTraceRayInline] = mUseTraceRayInline;
+    dict[kUseDOF] = mUseDOF;
+    return dict;
+}
+
+void GBufferRT::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+{
+    GBuffer::setScene(pRenderContext, pScene);
+
+    recreatePrograms();
+}
+
+void GBufferRT::recreatePrograms()
+{
+    mRaytrace.pProgram = nullptr;
+    mRaytrace.pVars = nullptr;
+    mpComputePass = nullptr;
+}
+
+void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    if (!mRaytrace.pProgram || !mRaytrace.pVars)
+    {
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        defines.add(mpSampleGenerator->getDefines());
+        defines.add(getShaderDefines(renderData));
+
+        // Create ray tracing program.
+        RtProgram::Desc desc;
+        desc.addShaderLibrary(kProgramRaytraceFile);
+        desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
+        desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
+        desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        RtBindingTable::SharedPtr sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
+        sbt->setRayGen(desc.addRayGen("rayGen"));
+        sbt->setMiss(0, desc.addMiss("miss"));
+        sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("closestHit", "anyHit"));
+
+        // Add hit group with intersection shader for displaced meshes.
+        if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
+        }
+
+        // Add hit group with intersection shader for curves (represented as linear swept spheres).
+        if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
+        }
+
+        // Add hit group with intersection shader for SDF grids.
+        if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
+        {
+            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
+        }
+
+        // Add hit groups for for other procedural primitives here.
+
+        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
+
+        // Bind static resources.
+        ShaderVar var = mRaytrace.pVars->getRootVar();
+        mpSampleGenerator->setShaderData(var);
+    }
+
+    mRaytrace.pProgram->addDefines(getShaderDefines(renderData));
+
+    ShaderVar var = mRaytrace.pVars->getRootVar();
+    setShaderData(var, renderData);
+
+    // Dispatch the rays.
+    mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
+}
+
+void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
+    {
+        throw std::runtime_error("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
+    }
+
+    // Create compute pass.
+    if (!mpComputePass)
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        defines.add(mpSampleGenerator->getDefines());
+        defines.add(getShaderDefines(renderData));
+
+        mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
+
+        // Bind static resources
+        ShaderVar var = mpComputePass->getRootVar();
+        mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpSampleGenerator->setShaderData(var);
+    }
+
+    mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
+
+    ShaderVar var = mpComputePass->getRootVar();
+    setShaderData(var, renderData);
+
+    mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
+}
+
+Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
+{
+    Program::DefineList defines;
+    defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
+    defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+    defines.add("LOD_MODE", std::to_string((uint32_t)mLODMode));
+    defines.add("ADJUST_SHADING_NORMALS", mAdjustShadingNormals ? "1" : "0");
+
+    // Setup ray flags.
+    RayFlags rayFlags = RayFlags::None;
+    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front) rayFlags = RayFlags::CullFrontFacingTriangles;
+    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) rayFlags = RayFlags::CullBackFacingTriangles;
+    defines.add("RAY_FLAGS", std::to_string((uint32_t)rayFlags));
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
-    mRaytrace.pProgram->addDefines(getValidResourceDefines(kGBufferExtraChannels, renderData));
+    defines.add(getValidResourceDefines(kGBufferChannels, renderData));
+    defines.add(getValidResourceDefines(kGBufferExtraChannels, renderData));
+    return defines;
+}
 
-    // Create program vars.
-    if (!mRaytrace.pVars) {
-        mRaytrace.pVars = RtProgramVars::create(mRaytrace.pProgram, mpScene);
-    }
-
-    // Setup ray flags.
-    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front) mGBufferParams.rayFlags = D3D12_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
-    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) mGBufferParams.rayFlags = D3D12_RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
-    else mGBufferParams.rayFlags = D3D12_RAY_FLAG_NONE;
-
-    if (mLODMode == LODMode::RayDifferentials) {
-        // TODO: Remove this warning when the TexLOD code has been fixed.
-        logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
-    }
-
-    mGBufferParams.screenSpacePixelSpreadAngle = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(uint32_t(mGBufferParams.frameSize.y));
-
-    ShaderVar pGlobalVars = mRaytrace.pVars->getRootVar();
-    pGlobalVars["PerFrameCB"]["gParams"].setBlob(mGBufferParams);
-
-    bool success = mpSampleGenerator->setShaderData(pGlobalVars);
-    if (!success) throw std::exception("Failed to bind sample generator");
+void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData)
+{
+    var["gGBufferRT"]["frameDim"] = mFrameDim;
+    var["gGBufferRT"]["invFrameDim"] = mInvFrameDim;
+    var["gGBufferRT"]["frameCount"] = mFrameCount;
+    var["gGBufferRT"]["screenSpacePixelSpreadAngle"] = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(mFrameDim.y);
 
     // Bind output channels as UAV buffers.
-    // TODO: Check if we write all pixels for a buffer, if so remove clear
     auto bind = [&](const ChannelDesc& channel)
     {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0, 0, 0, 0));
-        pGlobalVars[channel.texname] = pTex;
+        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
+        var[channel.texname] = pTex;
     };
     for (const auto& channel : kGBufferChannels) bind(channel);
     for (const auto& channel : kGBufferExtraChannels) bind(channel);
-
-    // Launch the rays.
-    uint3 targetDim = uint3((int)mGBufferParams.frameSize.x, (int)mGBufferParams.frameSize.y, 1u);
-    mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, targetDim);
-
-    mGBufferParams.frameCount++;
 }
 
-#endif  // FALCOR_D3D
+GBufferRT::GBufferRT(Device::SharedPtr pDevice, const Dictionary& dict)
+    : GBuffer(pDevice, kInfo)
+{
+    parseDictionary(dict);
+
+    // Create random engine
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_DEFAULT);
+}
+
+void GBufferRT::parseDictionary(const Dictionary& dict)
+{
+    GBuffer::parseDictionary(dict);
+
+    for (const auto& [key, value] : dict)
+    {
+        if (key == kLODMode) mLODMode = value;
+        else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
+        else if (key == kUseDOF) mUseDOF = value;
+        // TODO: Check for unparsed fields, including those parsed in base classes.
+    }
+}

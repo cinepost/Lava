@@ -121,7 +121,6 @@ void Visitor::operator()(ast::endif const& c) {
 }
 
 void Visitor::operator()(ast::setenv const& c) const {
-    std::cout << "Visitor setenv\n";
     mpSession->cmdSetEnv(c.key, c.value);
 };
 
@@ -130,31 +129,26 @@ void Visitor::operator()(ast::cmd_image const& c) const {
 }
 
 void Visitor::operator()(ast::cmd_quit const& c) const { 
-    std::cout << "LSDVisitor cmd_quit\n";
     //mpSession->cmdQuit();
     //mQuit = true;
     //printf("mQuit set to true\n");
 }
 
 void Visitor::operator()(ast::cmd_start const& c) const {
-    std::cout << "LSDVisitor cmd_start\n";
     if(!mpSession->cmdStart(c.object_type))
         throw std::runtime_error("Error starting new scope !!!");
 }
 
 void Visitor::operator()(ast::cmd_end const& c) const { 
-    std::cout << "LSDVisitor cmd_end\n";
     if(!mpSession->cmdEnd())
         throw std::runtime_error("Error ending current scope !!!");
 }
 
 void Visitor::operator()(ast::cmd_edge const& c) const { 
-    std::cout << "LSDVisitor cmd_edge\n";
     mpSession->cmdEdge(c.src_node_uuid, c.src_node_output_socket, c.dst_node_uuid, c.dst_node_input_socket);
 }
 
 void Visitor::operator()(ast::cmd_socket const& c) const { 
-    std::cout << "LSDVisitor cmd_socket\n";
     if(!mpSession->cmdSocket(c.direction, c.data_type, c.name))
         throw std::runtime_error("Error adding node socket !!!");
 }

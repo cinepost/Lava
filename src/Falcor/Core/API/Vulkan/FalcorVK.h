@@ -108,6 +108,8 @@ inline VkIndexType getVkIndexType(ResourceFormat format) {
     }
 }
 
+inline uint32_t calcAligned(uint32_t size, uint32_t alignment) { return (size + alignment - 1) & ~(alignment - 1); }
+
 using HeapCpuHandle = void*;
 using HeapGpuHandle = void*;
 
@@ -134,6 +136,8 @@ using QueryHeapHandle = VkHandle<VkQueryPool>::SharedPtr;
 
 using GraphicsStateHandle = VkHandle<VkPipeline>::SharedPtr;
 using ComputeStateHandle = VkHandle<VkPipeline>::SharedPtr;
+using RaytracingStateHandle = VkHandle<VkPipeline>::SharedPtr;
+
 using ShaderHandle = VkHandle<VkShaderModule>::SharedPtr;
 using ShaderReflectionHandle = void*;
 using RootSignatureHandle = VkRootSignature::SharedPtr;
@@ -157,6 +161,9 @@ using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 class Device;
 
 uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
+
+// Maximum raytracing attribute size.
+inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
 
 // The max scalars supported by our driver
 #define FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES (14 * sizeof(float))

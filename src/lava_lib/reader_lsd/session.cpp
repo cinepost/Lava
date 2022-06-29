@@ -2,10 +2,12 @@
 #include <mutex>
 #include <limits>
 #include <fstream>
+#include <cstdlib>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
+#include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
@@ -34,6 +36,8 @@ using DisplayType = Display::DisplayType;
 
 
 Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
+	assert(pRenderer);
+
 	auto pSession = Session::UniquePtr(new Session(pRenderer));
 	auto pGlobal = scope::Global::create();
 	if (!pGlobal) {
@@ -48,6 +52,7 @@ Session::UniquePtr Session::create(std::shared_ptr<Renderer> pRenderer) {
 
 Session::Session(std::shared_ptr<Renderer> pRenderer):mFirstRun(true) { 
 	mpRenderer = pRenderer;
+	mpDevice = mpRenderer->device();
 }
 
 Session::~Session() {
@@ -160,8 +165,10 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
 	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
 
-	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
+	auto dims = mCurrentFrameInfo.renderRegionDims();
 
+	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
+	
 	pCamera->setAspectRatio(aspect_ratio);
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
@@ -180,8 +187,131 @@ void Session::cmdQuit() {
 	//mpRendererIface = nullptr;
 }
 
+static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
+	assert(frameInfo.renderRegion[0] <= frameInfo.renderRegion[2]);
+	assert(frameInfo.renderRegion[1] <= frameInfo.renderRegion[3]);
+
+	auto imageRegionDims = frameInfo.renderRegionDims();
+	uint32_t imageRegionWidth = imageRegionDims[0];
+	uint32_t imageRegionHeight = imageRegionDims[1];
+
+	tileSize[0] = std::min(imageRegionWidth, tileSize[0]);
+	tileSize[1] = std::min(imageRegionHeight, tileSize[1]);
+
+	auto hdiv = ldiv((uint32_t)imageRegionWidth, (uint32_t)tileSize[0]);
+	auto vdiv = ldiv((uint32_t)imageRegionHeight, (uint32_t)tileSize[1]);
+
+	tiles.clear();
+	// First put whole tiles
+	for( int x = 0; x < hdiv.quot; x++) {
+		for( int y = 0; y < vdiv.quot; y++) {
+			Int2 offset = {tileSize[0] * x, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+			};
+
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// bottom row tiles
+	if( vdiv.rem > 0) {
+		for ( int x = 0; x < hdiv.quot; x++) {
+			Int2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + tileSize[0] - 1,
+				frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// right row tiles
+	if( hdiv.rem > 0) {
+		for ( int y = 0; y < vdiv.quot; y++) {
+			Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
+			Falcor::uint4 tileRegion = {
+				frameInfo.renderRegion[0] + offset[0],
+				frameInfo.renderRegion[1] + offset[1],
+				frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+				frameInfo.renderRegion[1] + offset[1] + tileSize[1] - 1
+			};
+			tiles.push_back({
+				{tileRegion}, // image rendering region
+				{             // camera crop region
+					tileRegion[0] / (float)frameInfo.imageWidth,
+					tileRegion[1] / (float)frameInfo.imageHeight,
+					(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+					(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+				}
+			});
+		}
+	}
+
+	// last corner tile
+	if ((hdiv.rem >= 1) && (vdiv.rem >=1)) {
+		Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * vdiv.quot};
+		Falcor::uint4 tileRegion = {
+			frameInfo.renderRegion[0] + offset[0],
+			frameInfo.renderRegion[1] + offset[1],
+			frameInfo.renderRegion[0] + offset[0] + hdiv.rem - 1,
+			frameInfo.renderRegion[1] + offset[1] + vdiv.rem - 1
+		};
+		tiles.push_back({
+			{tileRegion}, // image rendering region
+			{             // camera crop region
+				tileRegion[0] / (float)frameInfo.imageWidth,
+				tileRegion[1] / (float)frameInfo.imageHeight,
+				(tileRegion[2] + 1) / (float)frameInfo.imageWidth,
+				(tileRegion[3] + 1) / (float)frameInfo.imageHeight
+			}
+		});
+	}
+}
+
+static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+	if(!pAOVPlane->getImageData(textureData.data())) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	auto renderRegionDims = frameInfo.renderRegionDims();
+	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
+        LLOG_ERR << "Error sending image to display !";
+        return false;
+    }
+    return true;
+};
+
 bool Session::cmdRaytrace() {
 	LLOG_DBG << "cmdRaytrace";
+	PROFILE(mpDevice, "cmdRaytrace");
+
+	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
+
+	Int2 tileSize = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tilesize", Int2{256, 256});
+	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
+
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN");
 
@@ -190,13 +320,20 @@ bool Session::cmdRaytrace() {
 		return false;
 	}
 
+#ifdef _DEBUG
 	mpGlobal->printSummary(std::cout);
+#endif
 
 	if(!mpDisplay) {
 		mpDisplay = createDisplay(mCurrentDisplayInfo);
 		if(!mpDisplay) {
 			return false;
 		}
+	}
+
+	if (!mpDisplay->supportsLiveUpdate()) {
+		// Non interactive display. No need to make intermediate updates
+		sampleUpdateInterval = 0;
 	}
 
 	// Prepare frame data
@@ -212,8 +349,7 @@ bool Session::cmdRaytrace() {
 
 	// Crop region
 	Vector4 crop = mpGlobal->getPropertyValue(ast::Style::IMAGE, "crop", Vector4({0, 0, 0, 0})); // default no crop. houdini crop is: 0-left, 1-right, 2-bottom, 3-top
-	Falcor::float4 cameraCropRegion = {0, 0, 1, 1}; // default full frame
-
+	
 	if((crop[0] > 0.0) || (crop[1] < 1.0) || (crop[2] > 0) || (crop[3] < 1.0)) { 
 		mCurrentFrameInfo.renderRegion = {
 			uint((float)mCurrentFrameInfo.imageWidth * crop[0]), 
@@ -222,18 +358,26 @@ bool Session::cmdRaytrace() {
 			uint((float)mCurrentFrameInfo.imageHeight * (1.0f - crop[2]))
 		};
 
-			if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
-			LLOG_ERR << "Wrong render image crop region: " << to_string(crop) << " !!!";
-				return false;
-			}
-
-		cameraCropRegion = {
-			(float)mCurrentFrameInfo.renderRegion[0] / (float)mCurrentFrameInfo.imageWidth,
-			(float)mCurrentFrameInfo.renderRegion[1] / (float)mCurrentFrameInfo.imageHeight,
-			(float)mCurrentFrameInfo.renderRegion[2] / (float)mCurrentFrameInfo.imageWidth,
-			(float)mCurrentFrameInfo.renderRegion[3] / (float)mCurrentFrameInfo.imageHeight
-		};
+		if((mCurrentFrameInfo.imageWidth == 0) || (mCurrentFrameInfo.imageHeight == 0)) {
+			LLOG_ERR << "Wrong render image region: " << to_string(crop) << " !!!";
+			return false;
+		}
+	} else {
+		// No render region specified so it takes a whole frame
+		mCurrentFrameInfo.renderRegion = {0, 0, resolution[0] - 1, resolution[1] - 1};
 	}
+
+	// Set up tiles if required or one full frame tile
+	std::vector<TileInfo> tiles;
+	if (tiled_rendering_mode) {
+		LLOG_DBG << "Tiles mode";
+		makeImageTiles(mCurrentFrameInfo, to_uint2(tileSize), tiles);
+	} else {
+		LLOG_DBG << "Full frame mode";
+		makeImageTiles(mCurrentFrameInfo, mCurrentFrameInfo.renderRegionDims(), tiles);
+	}
+
+	for(const TileInfo& tileInfo: tiles) LLOG_WRN << to_string(tileInfo);
 
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
@@ -259,46 +403,56 @@ bool Session::cmdRaytrace() {
         return false;
     }
 
-    // Frame rendeing
-    {  
-    	setUpCamera(mpRenderer->currentCamera(), cameraCropRegion);
-
-		mpRenderer->prepareFrame(mCurrentFrameInfo);
-
-		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
-			mpRenderer->renderSample();
-		}
-	}
-
-	LLOG_DBG << "Senging rendered data to display";    
-	AOVPlaneGeometry aov_geometry;
-	if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
-		LLOG_FTL << "No AOV !!!";
-		return false;
-	}
-
 	Falcor::ResourceFormat outputResourceFormat;
 	uint32_t outputChannelsCount = 0;
+	std::vector<uint8_t> textureData;
 
-    std::vector<uint8_t> textureData;
-    textureData.resize( aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel);
-    
-    if(!pMainAOVPlane->getImageData(textureData.data())) {
-    	LLOG_ERR << "Error reading AOV texture data !!!";
-    }
-    
-    // Sending rendered image
-    try {
-    	auto renderRegionDims = mCurrentFrameInfo.renderRegionDims();
-        if (!mpDisplay->sendImageRegion(hImage, mCurrentFrameInfo.renderRegion[0], mCurrentFrameInfo.renderRegion[1],
-        								renderRegionDims[0], renderRegionDims[1], textureData.data())) {
-            LLOG_ERR << "Error sending image to display !";
-        }
-    } catch (std::exception& e) {
-        LLOG_ERR << "Error: " << e.what();
-    }
+    // Frame rendeing
 
+	setUpCamera(mpRenderer->currentCamera());
+    for(const auto& tile: tiles) {
+    	LLOG_DBG << "Rendering " << to_string(tile);
+
+    	Renderer::FrameInfo frameInfo = mCurrentFrameInfo;
+      	frameInfo.renderRegion = tile.renderRegion;
+
+    	mpRenderer->currentCamera()->setCropRegion(tile.cameraCropRegion);
+    	mpRenderer->prepareFrame(frameInfo);
+
+		AOVPlaneGeometry aov_geometry;
+		if(!pMainAOVPlane->getAOVPlaneGeometry(aov_geometry)) {
+			LLOG_FTL << "No AOV !!!";
+			break;
+		}
+
+		uint32_t textureDataSize = aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel;
+		if (textureData.size() != textureDataSize) textureData.resize(textureDataSize);
+
+		long int sampleUpdateIterations = 0;
+		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
+			mpRenderer->renderSample();
+			if (sampleUpdateInterval > 0) {
+				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
+				if (updateIter > sampleUpdateIterations) {
+					LLOG_DBG << "Updating sample " << std::to_string(sample_number);
+					if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+						break;
+					}
+					sampleUpdateIterations = updateIter;
+				}
+			}
+		}
+
+		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+			break;
+		}
+	}
     mpDisplay->closeImage(hImage);
+
+//#ifdef FALCOR_ENABLE_PROFILER
+//    auto profiler = Falcor::Profiler::instance(mpDevice);
+//    profiler.endFrame();
+//#endif
 
 	return true;
 }
@@ -356,18 +510,27 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	Falcor::Light::SharedPtr pLight = nullptr;
 
-	if( (light_type == "distant") || (light_type == "sun") ) {
-		auto pDistantLight = Falcor::DistantLight::create("noname_distant");
+	if(light_type == "distant") {
+		// Directional lights
+		auto pDirectionalLight = Falcor::DirectionalLight::create("noname_distant");
+		pDirectionalLight->setWorldDirection(light_dir);
+
+		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
+	} else if (light_type == "sun") {
+		// Directional lights
+		auto pDistantLight = Falcor::DistantLight::create("noname_sun");
 		pDistantLight->setWorldDirection(light_dir);
 		
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
+		// Point light
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
 	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
+		// Area lights
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
@@ -488,7 +651,7 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 
 	auto pSubContainer = pProp->subContainer();
 	if(!pSubContainer) {
-		LLOG_ERR << "No sub-container for property " << values[0].first;
+		LLOG_WRN << "No sub-container for property " << values[0].first;
 		return;
 	}
 
@@ -666,10 +829,14 @@ bool Session::cmdEnd() {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
 			if( pGeo->isInline()) {
+#ifdef _DEBUG
 				pGeo->bgeo()->printSummary(std::cout);
+#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			} else {
+#ifdef _DEBUG
 				pGeo->bgeo()->printSummary(std::cout);
+#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			}
 			break;
@@ -816,8 +983,6 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
-	assert(pSceneBuilder->device());
-
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
 
 	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
@@ -873,6 +1038,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     bool 			surface_use_metallic_texture = false;
     bool 			surface_use_basenormal_texture = false;
 
+    bool            front_face = false;
+
     float 		 	surface_ior = 1.5;
     float 			surface_metallic = 0.0;
     float 			surface_roughness = 0.5;
@@ -901,18 +1068,21 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
     	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0);
+
+    	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
-    auto pMaterial = Falcor::Material::create(pSceneBuilder->device(), obj_name);
+    auto pMaterial = Falcor::StandardMaterial::create(mpDevice, obj_name);
     pMaterial->setBaseColor({surface_base_color, 1.0});
     pMaterial->setIndexOfRefraction(surface_ior);
     pMaterial->setMetallic(surface_metallic);
     pMaterial->setRoughness(surface_roughness);
-    pMaterial->setReflectivity(surface_reflectivity);
+    //pMaterial->setReflectivity(surface_reflectivity);
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
+    pMaterial->setDoubleSided(!front_face);
 
     LLOG_DBG << "setting material textures";
   	bool loadAsSrgb = true;
@@ -923,8 +1093,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     if(surface_metallic_texture != "" && surface_use_metallic_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::Specular, surface_metallic_texture, false); // load as linear texture
 
-    if(surface_rough_texture != "" && surface_use_roughness_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
+    //if(surface_rough_texture != "" && surface_use_roughness_texture) 
+   // 	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
 
     if(surface_base_normal_texture != "" && surface_use_basenormal_texture) 
     	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture, false); // load as linear texture

@@ -25,19 +25,16 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_SCENE_VOLUME_BRICKED_GRID_H_
-#define SRC_FALCOR_SCENE_VOLUME_BRICKED_GRID_H_
+#pragma once
 
 #include "Falcor/Core/API/Texture.h"
 
-namespace Falcor {
-    
-struct BrickedGrid {
-    Texture::SharedPtr range;
-    Texture::SharedPtr indirection;
-    Texture::SharedPtr atlas;
-};
-
-}  // namespace Falcor
-
-#endif  // SRC_FALCOR_SCENE_VOLUME_BRICKED_GRID_H_
+namespace Falcor
+{
+    struct BrickedGrid
+    {
+        Texture::SharedPtr range;
+        Texture::SharedPtr indirection;
+        Texture::SharedPtr atlas;
+    };
+}

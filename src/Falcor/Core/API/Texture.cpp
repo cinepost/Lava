@@ -125,7 +125,8 @@ Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t 
 Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
     : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
     
-    LOG_DBG("Create texture %zu width %u height %u format %s bindFlags %s", id(), width, height, to_string(format).c_str(),to_string(bindFlags).c_str());
+    LLOG_DBG    << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
+                << " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
 
     assert(width > 0 && height > 0 && depth > 0);
     assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
@@ -150,19 +151,19 @@ typename ViewClass::SharedPtr findViewCommon(Texture* pTexture, uint32_t mostDet
     resMipCount = pTexture->getMipCount();
 
     if (firstArraySlice >= resArraySize) {
-        logWarning("First array slice is OOB when creating resource view. Clamping");
+        LLOG_WRN << "First array slice is OOB when creating resource view. Clamping";
         firstArraySlice = resArraySize - 1;
     }
 
     if (mostDetailedMip >= resMipCount) {
-        logWarning("Most detailed mip is OOB when creating resource view. Clamping");
+        LLOG_WRN << "Most detailed mip is OOB when creating resource view. Clamping";
         mostDetailedMip = resMipCount - 1;
     }
 
     if (mipCount == Resource::kMaxPossible) {
         mipCount = resMipCount - mostDetailedMip;
     } else if (mipCount + mostDetailedMip > resMipCount) {
-        logWarning("Mip count is OOB when creating resource view. Clamping");
+        LLOG_WRN << "Mip count is OOB when creating resource view. Clamping";
         mipCount = resMipCount - mostDetailedMip;
     }
 
@@ -213,7 +214,7 @@ RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArr
 
     auto result = findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
     if (!result) {
-        LOG_ERR("ERROR findViewCommon<RenderTargetView> returned NULL");
+        LLOG_ERR << "ERROR findViewCommon<RenderTargetView> returned NULL";
     }
 
     return result;
@@ -317,13 +318,13 @@ void Texture::uploadInitData(const void* pData, bool autoGenMips) {
     }
 }
 
-void Texture::generateMips(RenderContext* pContext) {
+void Texture::generateMips(RenderContext* pContext, bool minMaxMips) {
     if (mType != Type::Texture2D) {
-        logWarning("Texture::generateMips() was only tested with Texture2Ds");
+        LLOG_WRN << "Texture::generateMips() was only tested with Texture2Ds";
     }
 
     if (mIsSparse) {
-        logWarning("Texture::generateMips() does not work with sparse textures !!!");
+        LLOG_WRN << "Texture::generateMips() does not work with sparse textures !!!";
         return;
     }
 
@@ -332,7 +333,14 @@ void Texture::generateMips(RenderContext* pContext) {
         for (uint32_t a = 0 ; a < mArraySize ; a++) {
             auto srv = getSRV(m, 1, a, 1);
             auto rtv = getRTV(m + 1, a, 1);
-            pContext->blit(srv, rtv);
+            if (!minMaxMips) {
+                pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear);
+            } else {
+                assert(false && "unimplemented");
+                //const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Min, Sampler::ReductionMode::Max, Sampler::ReductionMode::Standard };
+                //const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+                //pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform);
+            }
         }
     }
 
@@ -375,22 +383,18 @@ void Texture::setUDIMTileInfo(const UDIMTileInfo& tileInfo) {
     mUDIMTileInfo = tileInfo;
 }
 
-#ifdef FLACOR_D3D12
-uint32_t Texture::getTextureSizeInBytes() {
-    ID3D12DevicePtr pDevicePtr = mpDevice->getApiHandle();
-    ID3D12ResourcePtr pTexResource = this->getApiHandle();
-
-    D3D12_RESOURCE_ALLOCATION_INFO d3d12ResourceAllocationInfo;
-    D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
-
-    assert(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D);
-    assert(desc.Width == mWidth);
-    assert(desc.Height == mHeight);
-
-    d3d12ResourceAllocationInfo = pDevicePtr->GetResourceAllocationInfo(0, 1, &desc);
-    return (uint32_t)d3d12ResourceAllocationInfo.SizeInBytes;
+bool Texture::compareDesc(const Texture* pOther) const
+{
+    return mWidth == pOther->mWidth &&
+        mHeight == pOther->mHeight &&
+        mDepth == pOther->mDepth &&
+        mMipLevels == pOther->mMipLevels &&
+        mSampleCount == pOther->mSampleCount &&
+        mArraySize == pOther->mArraySize &&
+        mFormat == pOther->mFormat &&
+        mIsSparse == pOther->mIsSparse &&
+        mSparsePageRes == pOther->mSparsePageRes;
 }
-#endif
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Texture) {

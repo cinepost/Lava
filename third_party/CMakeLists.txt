@@ -6,7 +6,7 @@ include(ExternalProject)
 include(ProcessorCount)
 #ProcessorCount(N)
 
-message("Running third party dependencies build...")
+message("Running third party dependencies ${CMAKE_BUILD_TYPE} build...")
 
 set(N 4)
 
@@ -20,9 +20,12 @@ set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/external)
 set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/stamp)
 set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/tmp)
-set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps)
 
-
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/release)
+else()
+  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/debug)
+endif()
 
 set(EXTERNALS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -133,8 +136,8 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/blosc
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/blosc
-
   )
+
 endif()
 
 
@@ -184,8 +187,6 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/boost
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
   )
-
-
 endif()
 
 
@@ -272,8 +273,9 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openexr
   )
+  ExternalProject_Add_StepDependencies(OpenEXR configure OpenVDB Blosc)
+
 endif()
-add_dependencies(OpenEXR Blosc)
 
 
 #######################
@@ -319,6 +321,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
+  ExternalProject_Add_StepDependencies(Assimp configure OpenVDB Blosc)
 
 endif()
 
@@ -385,11 +388,9 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openvdb
   )
   ExternalProject_Get_property(OpenVDB SOURCE_DIR)
+  ExternalProject_Add_StepDependencies(OpenVDB configure Tbb Boost Blosc)
 
 endif()
-
-add_dependencies(OpenVDB Tbb Blosc Boost)
-
 
 
 #######################
@@ -435,11 +436,52 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Blosc PyBind OpenEXR OpenVDB)
 
 endif()
-add_dependencies(OpenImageIO Blosc PyBind OpenEXR OpenVDB)
 
 
+#######################
+# GLFW3
+#######################
+
+set(EXTERNAL_GLFW_VERSION 3.3.7)
+
+set(GLFW_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(glfw3 ${EXTERNAL_GLFW_VERSION} EXACT)
+
+if(glfw_FOUND)
+
+  message("Glfw version ${glfw_VERSION} found ...")
+  add_custom_target( Glfw COMMAND echo "Glfw build exists, skipping rebuild ...")
+
+else()
+
+  message("Glfw not found! Running external build ...")
+  set(GLFW_PREFIX glfw)
+
+  ExternalProject_Add ( Glfw
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${GLFW_PREFIX}
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG ${EXTERNAL_GLFW_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=ON
+    CMAKE_ARGS -D GLFW_BUILD_EXAMPLES:BOOL=OFF
+    CMAKE_ARGS -D GLFW_BUILD_TESTS:BOOL=OFF
+    CMAKE_ARGS -D GLFW_BUILD_DOCS:BOOL=OFF
+    CMAKE_ARGS -D GLFW_INSTALL:BOOL=ON
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/glfw
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/glfw
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/glfw
+  )
+
+endif()
 
 #######################
 # NVPro_Core
@@ -498,6 +540,75 @@ ExternalProject_Add ( VMA
   STAMP_DIR ${EXTERNALS_STAMP_DIR}/vma
 )
 
+#######################
+# RTXGI
+#######################
+
+set(EXTERNAL_RTXGI_VERSION 1.2.11)
+
+set(RTXGI_PREFIX RTXGI)
+
+ExternalProject_Add ( RTXGI
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXGI_PREFIX}
+  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXGI.git
+  GIT_TAG v${EXTERNAL_RTXGI_VERSION}
+  UPDATE_DISCONNECTED true
+  
+  CONFIGURE_COMMAND ""
+
+  #CMAKE_ARGS -D RTXGI_BUILD_SAMPLES:BOOL=OFF
+  #CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+  #CMAKE_ARGS <SOURCE_DIR>
+
+  BUILD_COMMAND ""
+
+  INSTALL_COMMAND
+    ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxgi-sdk ${EXTERNALS_INSTALL_DIR}/rtxgi-sdk
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXGI_PREFIX}
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXGI_PREFIX}
+  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXGI_PREFIX}
+)
+
+#######################
+# RTXDI
+#######################
+
+set(EXTERNAL_RTXDI_VERSION 1.3.0)
+
+set(RTXDI_PREFIX RTXDI)
+
+ExternalProject_Add ( RTXDI
+  PREFIX ${EXTERNALS_SOURCE_DIR}/${RTXDI_PREFIX}
+  GIT_REPOSITORY https://github.com/NVIDIAGameWorks/RTXDI.git
+  GIT_TAG v${EXTERNAL_RTXDI_VERSION}
+  UPDATE_DISCONNECTED true
+  
+  CONFIGURE_COMMAND ""
+
+  #CMAKE_ARGS -D USE_VK=1
+  #CMAKE_ARGS -D DONUT_USE_DXIL_ON_DX12:BOOL=OFF
+  #CMAKE_ARGS -D DONUT_WITH_DX11:BOOL=OFF
+  #CMAKE_ARGS -D DONUT_WITH_VULKAN:BOOL=OFF
+  #CMAKE_ARGS -D DONUT_WITH_LZ4:BOOL=OFF
+  #CMAKE_ARGS -D DONUT_WITH_MINIZ:BOOL=OFF
+  #CMAKE_ARGD -D RTXDI_WITH_RTXGI:BOOL=ON
+  #CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+  #CMAKE_ARGS <SOURCE_DIR>
+
+  BUILD_COMMAND ""
+
+  INSTALL_COMMAND
+    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk ${EXTERNALS_INSTALL_DIR}/rtxdi-sdk
+    COMMAND ${CMAKE_COMMAND} -E copy_directory    <SOURCE_DIR>/rtxdi-sdk/include/rtxdi ${EXTERNALS_INSTALL_DIR}/shaders/rtxdi
+
+  TMP_DIR ${EXTERNALS_TMP_DIR}/${RTXDI_PREFIX}
+  STAMP_DIR ${EXTERNALS_STAMP_DIR}/${RTXDI_PREFIX}
+  BINARY_DIR ${EXTERNALS_BINARY_DIR}/${RTXDI_PREFIX}
+)
+
+ExternalProject_Add_StepDependencies(RTXDI configure RTXGI)
+
 
 
 #######################
@@ -530,6 +641,37 @@ else()
   )
 endif()
 
+#######################
+# NVTT
+#######################
+
+set(NVTT_Source ${CMAKE_CURRENT_SOURCE_DIR}/NvidiaTextureTools/linux)
+
+if(EXISTS  ${EXTERNALS_INSTALL_DIR}/lib/libnvtt.so.30106)
+
+  message("NVTT found ...")
+  add_custom_target( NVTT COMMAND echo "NVTT found ...")
+
+else()
+
+  ExternalProject_Add ( NVTT
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${LZ4_STREAM_PREFIX}
+    UPDATE_DISCONNECTED true
+    
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+
+    INSTALL_COMMAND 
+      COMMAND ${CMAKE_COMMAND} -E copy_directory    ${NVTT_Source}/include/nvtt ${EXTERNALS_INSTALL_DIR}/include/nvtt
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NVTT_Source}/libnvtt.so.30106 ${EXTERNALS_INSTALL_DIR}/lib/libnvtt.so
+  
+    TMP_DIR ${EXTERNALS_TMP_DIR}/nvtt
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/nvtt
+
+  )
+endif()
+
 
 ########################
 # Slang section
@@ -543,15 +685,22 @@ if( Slang_FOUND )
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
 
-set(EXTERNAL_SLANG_VERSION 0.19.14) # last tested version was 0.18.6
+set(EXTERNAL_SLANG_VERSION 0.23.7) # last tested version was 0.18.6
+
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
-set(SLANG_BUILD_LIBS "slang slang-glslang")
+
+set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
+if(NOT DEFINED SLANG_BUILD_TYPE)
+  set( SLANG_BUILD_TYPE CMAKE_BUILD_TYPE)
+endif()
+
+
+if (SLANG_BUILD_TYPE STREQUAL "Release")
   set(SLANG_BUILD_CONFIG release_x64)
   set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
 else()
@@ -559,15 +708,15 @@ else()
   set(SLANG_BIN_DIR ${SLANG_DEBUG_BIN_DIR})
 endif()
 
-set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
-set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
+message("Slang build config " ${SLANG_BUILD_CONFIG})
+
 
 string(REPLACE " " ";" SLANG_BUILD_LIBS_LIST ${SLANG_BUILD_LIBS})
 
 ExternalProject_Add( Slang
   PREFIX ${EXTERNALS_SOURCE_DIR}/${SLANG_PREFIX}
   GIT_REPOSITORY https://github.com/shader-slang/slang.git
-  GIT_REMOTE_NAME releases/tags/v${EXTERNAL_SLANG_VERSION}
+  GIT_TAG v${EXTERNAL_SLANG_VERSION}
   UPDATE_DISCONNECTED ON
   BUILD_IN_SOURCE   TRUE
   LOG_BUILD ON
@@ -586,7 +735,13 @@ ExternalProject_Add( Slang
       -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_generate_version.cmake
     COMMAND ./premake5 gmake --deps=true --build-glslang=true --enable-embed-stdlib=true --arch=x64
   
-  BUILD_COMMAND ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
+  BUILD_COMMAND 
+    #COMMAND ${CMAKE_COMMAND}
+    #  -D SOURCE_DIR=<SOURCE_DIR>
+    #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
+    COMMAND
+      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
+
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
     -D SOURCE_DIR=<SOURCE_DIR>
@@ -600,8 +755,6 @@ ExternalProject_Add( Slang
 
 endif()
 
-
-
 #######################
 
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
@@ -614,7 +767,8 @@ add_dependencies( dummy_target
   Assimp
   OpenVDB
   OpenImageIO
-  NVPro_Core
-  VMA
+  RTXDI
+  RTXGI
   Slang
+  Glfw
 )

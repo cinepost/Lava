@@ -25,298 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-
-/** Utilities for inline ray tracing using DXR 1.1.
-
-    Import this module in your shader and call Scene::setRaytracingShaderData()
-    on the host to bind the necessary resources.
-*/
-#include "Scene/ScenePrimitiveDefines.slangh"
-import Utils.Attributes;
-import Scene.Intersection;
-import Scene.Shading;
-__exported import Scene.Scene;
 __exported import Scene.HitInfo;
-__exported import Scene.SceneRayQueryInterface;
+__exported import Utils.Math.Ray;
 
-/** Return the geometry type for a committed hit.
+// TODO: Use default arguments when slang supports them:
+// bool traceRay(const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
+// bool traceVisibilityRay(const RayDesc ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
+
+/** Interface for scene ray queries.
 */
-PrimitiveTypeFlags getCommittedGeometryType<let Flags : int>(RayQuery<Flags> rayQuery)
+interface ISceneRayQuery
 {
-    GeometryInstanceID instanceID = GeometryInstanceID(rayQuery.CommittedInstanceID(), rayQuery.CommittedGeometryIndex());
-    return gScene.getGeometryInstanceType(instanceID);
-}
+    /** Trace a ray against the scene and return the closest hit point.
+        \param[in] ray Ray.
+        \param[out] hit Hit info (only valid if function returns true).
+        \param[out] hitT Hit distance (only valid if function returns true).
+        \param[in] rayFlags Optional ray flags OR'ed with queries flags.
+        \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
+        \return Returns true if the ray does intersect the scene.
+    */
+    bool traceRay(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask);
 
-/** Return the geometry type for a candidate hit.
-*/
-PrimitiveTypeFlags getCandidateGeometryType<let Flags : int>(RayQuery<Flags> rayQuery)
-{
-    GeometryInstanceID instanceID = GeometryInstanceID(rayQuery.CandidateInstanceID(), rayQuery.CandidateGeometryIndex());
-    return gScene.getGeometryInstanceType(instanceID);
-}
-
-/** Create a TriangleHit for a RayQuery committed hit on triangles.
-    \param[in] rayQuery RayQuery object.
-    \return Committed triangle hit.
-*/
-TriangleHit getCommittedTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery)
-{
-    TriangleHit hit;
-    hit.instanceID = GeometryInstanceID(rayQuery.CommittedInstanceID(), rayQuery.CommittedGeometryIndex());
-    hit.primitiveIndex = rayQuery.CommittedPrimitiveIndex();
-    hit.barycentrics = rayQuery.CommittedTriangleBarycentrics();
-    return hit;
-}
-
-/** Create a TriangleHit for a RayQuery candidate hit on triangles.
-    \param[in] rayQuery RayQuery object.
-    \return Candidate triangle hit.
-*/
-TriangleHit getCandidateTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery)
-{
-    TriangleHit hit;
-    hit.instanceID = GeometryInstanceID(rayQuery.CandidateInstanceID(), rayQuery.CandidateGeometryIndex());
-    hit.primitiveIndex = rayQuery.CandidatePrimitiveIndex();
-    hit.barycentrics = rayQuery.CandidateTriangleBarycentrics();
-    return hit;
-}
-
-// TODO: Pass UseAlphaTest as a template argument.
-bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
-{
-    rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray);
-
-    CurveIntersector::Attribs curveCommittedAttribs;
-    DisplacedTriangleMeshIntersector::Attribs displacedTriangleMeshCommittedAttribs;
-
-    while (rayQuery.Proceed())
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_TRIANGLE_MESH)
-        if (useAlphaTest && rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
-        {
-            // Alpha test for non-opaque geometry.
-            const TriangleHit hit = getCandidateTriangleHit(rayQuery);
-            const VertexData v = gScene.getVertexData(hit);
-            const uint materialID = gScene.getMaterialID(hit.instanceID);
-
-            if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) continue;
-
-            rayQuery.CommitNonOpaqueTriangleHit();
-        }
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        if (rayQuery.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
-        {
-            const GeometryInstanceID instanceID = GeometryInstanceID(rayQuery.CandidateInstanceID(), rayQuery.CandidateGeometryIndex());
-            const uint primitiveIndex = rayQuery.CandidatePrimitiveIndex();
-            const PrimitiveTypeFlags type = gScene.getGeometryInstanceType(instanceID);
-            const Ray raySegment = Ray(ray.Origin, ray.Direction, rayQuery.RayTMin(), rayQuery.CommittedRayT());
-            switch (type)
-            {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-            case PrimitiveTypeFlags::DisplacedTriangleMesh:
-                {
-                    DisplacedTriangleMeshIntersector::Attribs attribs;
-                    float t;
-                    if (DisplacedTriangleMeshIntersector::intersect(raySegment, instanceID, primitiveIndex, attribs, t))
-                    {
-                        rayQuery.CommitProceduralPrimitiveHit(t);
-                        displacedTriangleMeshCommittedAttribs = attribs;
-                    }
-                }
-                break;
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
-            case PrimitiveTypeFlags::Curve:
-                {
-                    CurveIntersector::Attribs attribs;
-                    float t;
-                    if (CurveIntersector::intersect(raySegment, instanceID, primitiveIndex, attribs, t))
-                    {
-                        rayQuery.CommitProceduralPrimitiveHit(t);
-                        curveCommittedAttribs = attribs;
-                    }
-                }
-                break;
-#endif
-            default:
-                // Ignore other types of geometry.
-            }
-        }
-#endif
-    }
-
-    hit = {};
-    hitT = 0.f;
-
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_TRIANGLE_MESH)
-    if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-    {
-        hit = HitInfo(getCommittedTriangleHit(rayQuery));
-        hitT = rayQuery.CommittedRayT();
-        return true;
-    }
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-    if (rayQuery.CommittedStatus() == COMMITTED_PROCEDURAL_PRIMITIVE_HIT)
-    {
-        const GeometryInstanceID instanceID = GeometryInstanceID(rayQuery.CommittedInstanceID(), rayQuery.CommittedGeometryIndex());
-        const uint primitiveIndex = rayQuery.CommittedPrimitiveIndex();
-        const PrimitiveTypeFlags type = gScene.getGeometryInstanceType(instanceID);
-        switch (type)
-        {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-        case PrimitiveTypeFlags::DisplacedTriangleMesh:
-            DisplacedTriangleHit displacedTriangleHit;
-            displacedTriangleHit.instanceID = instanceID;
-            displacedTriangleHit.primitiveIndex = primitiveIndex;
-            displacedTriangleHit.barycentrics = displacedTriangleMeshCommittedAttribs.barycentrics;
-            displacedTriangleHit.displacement = displacedTriangleMeshCommittedAttribs.displacement;
-            hit = HitInfo(displacedTriangleHit);
-            hitT = rayQuery.CommittedRayT();
-            return true;
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
-        case PrimitiveTypeFlags::Curve:
-            CurveHit curveHit;
-            curveHit.instanceID = instanceID;
-            curveHit.primitiveIndex = primitiveIndex;
-            curveHit.barycentrics = curveCommittedAttribs.barycentrics;
-            hit = HitInfo(curveHit);
-            hitT = rayQuery.CommittedRayT();
-            return true;
-#endif
-        default:
-            // Should not happen.
-            return false;
-        }
-    }
-#endif
-
-    return false;
-}
-
-bool traceSceneRay<let UseAlphaTest : int>(const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
-{
-    // TODO: Use a constant expression to derive static ray flags.
-
-    if (UseAlphaTest)
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        RayQuery<RAY_FLAG_NONE> rayQuery;
-#else
-        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
-#endif
-        return traceSceneRayImpl(true, rayQuery, ray, hit, hitT, rayFlags, instanceInclusionMask);
-    }
-    else
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        RayQuery<RAY_FLAG_FORCE_OPAQUE> rayQuery;
-#else
-        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayQuery;
-#endif
-        return traceSceneRayImpl(false, rayQuery, ray, hit, hitT, rayFlags, instanceInclusionMask);
-    }
-}
-
-bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, RayQuery<Flags> rayQuery, const RayDesc ray, uint rayFlags, uint instanceInclusionMask)
-{
-    rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray);
-
-    while (rayQuery.Proceed())
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_TRIANGLE_MESH)
-        if (useAlphaTest && rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
-        {
-            // Alpha test for non-opaque geometry.
-            const TriangleHit hit = getCandidateTriangleHit(rayQuery);
-            const VertexData v = gScene.getVertexData(hit);
-            const uint materialID = gScene.getMaterialID(hit.instanceID);
-
-            if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) continue;
-
-            rayQuery.CommitNonOpaqueTriangleHit();
-        }
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        if (rayQuery.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
-        {
-            const GeometryInstanceID instanceID = GeometryInstanceID(rayQuery.CandidateInstanceID(), rayQuery.CandidateGeometryIndex());
-            const uint primitiveIndex = rayQuery.CandidatePrimitiveIndex();
-            const PrimitiveTypeFlags type = gScene.getGeometryInstanceType(instanceID);
-            const Ray raySegment = Ray(ray.Origin, ray.Direction, rayQuery.RayTMin(), rayQuery.CommittedRayT());
-            switch (type)
-            {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_DISPLACED_TRIANGLE_MESH)
-            case PrimitiveTypeFlags::DisplacedTriangleMesh:
-                {
-                    DisplacedTriangleMeshIntersector::Attribs attribs;
-                    float t;
-                    if (DisplacedTriangleMeshIntersector::intersect(raySegment, instanceID, primitiveIndex, attribs, t))
-                    {
-                        rayQuery.CommitProceduralPrimitiveHit(t);
-                    }
-                }
-                break;
-#endif
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_CURVE)
-            case PrimitiveTypeFlags::Curve:
-                {
-                    CurveIntersector::Attribs attribs;
-                    float t;
-                    if (CurveIntersector::intersect(raySegment, instanceID, primitiveIndex, attribs, t))
-                    {
-                        rayQuery.CommitProceduralPrimitiveHit(t);
-                    }
-                }
-                break;
-#endif
-            default:
-                // Ignore other types of geometry.
-            }
-        }
-#endif
-    }
-
-    return rayQuery.CommittedStatus() == COMMITTED_NOTHING;
-}
-
-bool traceSceneVisibilityRay<let UseAlphaTest : int>(const RayDesc ray, uint rayFlags, uint instanceInclusionMask)
-{
-    // TODO: Use a constant expression to derive static ray flags.
-
-    if (UseAlphaTest)
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-#else
-        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-#endif
-        return traceSceneVisibilityRayImpl(true, rayQuery, ray, rayFlags, instanceInclusionMask);
-    }
-    else
-    {
-#if IS_SET(SCENE_PRIMITIVE_TYPE_FLAGS, PRIMITIVE_TYPE_PROCEDURAL)
-        RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-#else
-        RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-#endif
-        return traceSceneVisibilityRayImpl(false, rayQuery, ray, rayFlags, instanceInclusionMask);
-    }
-}
-
-/** Scene ray query implementation.
-*/
-struct SceneRayQuery<let UseAlphaTest : int> : ISceneRayQuery
-{
-    bool traceRay(const RayDesc ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
-    {
-        return traceSceneRay<UseAlphaTest>(ray, hit, hitT, rayFlags, instanceInclusionMask);
-    }
-
-    bool traceVisibilityRay(const RayDesc ray, uint rayFlags, uint instanceInclusionMask)
-    {
-        return traceSceneVisibilityRay<UseAlphaTest>(ray, rayFlags, instanceInclusionMask);
-    }
-}
+    /** Trace a visibility ray against the scene.
+        \param[in] ray Ray.
+        \param[in] rayFlags Optional ray flags OR'ed with queries flags.
+        \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
+        \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
+    */
+    bool traceVisibilityRay(const Ray ray, uint rayFlags, uint instanceInclusionMask);
+};

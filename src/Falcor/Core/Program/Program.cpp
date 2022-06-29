@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,929 +25,1124 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "Program.h"
-#include "slang/slang.h"
+#include "stdafx.h"
+
 #include "Falcor/Utils/StringUtils.h"
-#include "Falcor/Utils/Debug/debug.h"
+#include <slang/slang.h>
+
+#include "Falcor/Core/API/ParameterBlock.h"
+#include "Falcor/Utils/Timing/CpuTimer.h"
+#include "Program.h"
 
 namespace Falcor {
 
-const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
+const std::string kSupportedShaderModels[] = { "6_0", "6_1", "6_2", "6_3", "6_4", "6_5"
+//#if FALCOR_ENABLE_D3D12_AGILITY_SDK
+	, "6_6"
+//#endif
+};
 
 static Program::DefineList sGlobalDefineList;
-
-static Shader::SharedPtr createShaderFromBlob(std::shared_ptr<Device> pDevice, const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log) {
-    std::string errorMsg;
-    auto pShader = Shader::create(pDevice, shaderBlob, shaderType, entryPointName, flags, log);
-    return pShader;
-}
+static bool sGenerateDebugInfo;
 
 Program::Desc::Desc() = default;
 
-Program::Desc::Desc(std::string const& path) {
-    addShaderLibrary(path);
+Program::Desc::Desc(const fs::path& path) {
+	addShaderLibrary(path);
 }
 
-Program::Desc& Program::Desc::addShaderLibrary(std::string const& path) {
-    Source source(ShaderLibrary::create(path));
-    source.firstEntryPoint = uint32_t(mEntryPoints.size());
+Program::Desc& Program::Desc::addShaderLibrary(const fs::path& path) {
+	Source source(ShaderLibrary::create(path));
 
-    mActiveSource = (int32_t) mSources.size();
-    mSources.emplace_back(std::move(source));
-    return *this;
+	mActiveSource = (int32_t)mSources.size();
+	mSources.emplace_back(std::move(source));
+	return *this;
 }
 
 Program::Desc& Program::Desc::addShaderString(const std::string& shader) {
-    mActiveSource = (int32_t) mSources.size();
-    mSources.emplace_back(shader);
+	mActiveSource = (int32_t)mSources.size();
+	mSources.emplace_back(shader);
 
-    return *this;
+	return *this;
 }
 
-Program::Desc& Program::Desc::beginEntryPointGroup() {
-    EntryPointGroup group;
-    group.firstEntryPoint = uint32_t(mEntryPoints.size());
-    group.entryPointCount = 0;
+Program::Desc& Program::Desc::beginEntryPointGroup(const std::string& entryPointNameSuffix) {
+	mActiveGroup = (int32_t)mGroups.size();
+	mGroups.push_back(EntryPointGroup());
+	mGroups[mActiveGroup].nameSuffix = entryPointNameSuffix;
 
-    mActiveGroup = (int32_t) mGroups.size();
-    mGroups.push_back(group);
-
-    return *this;
+	return *this;
 }
 
 Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name) {
-    if(name.size() == 0)
-        return *this;
+	assert(!name.empty() && "Missing entry point name.");
 
-    if(mActiveSource < 0) {
-        throw std::runtime_error("Cannot add an entry point without first adding a source file/library");
-    }
+	if (mActiveGroup < 0) {
+		beginEntryPointGroup();
+	}
 
-    if(mActiveGroup < 0) {
-        beginEntryPointGroup();
-    }
-
-    EntryPoint entryPoint;
-    entryPoint.stage = shaderType;
-    entryPoint.name = name;
-
-    entryPoint.sourceIndex = mActiveSource;
-    entryPoint.groupIndex = mActiveGroup;
-
-    mGroups[mActiveGroup].entryPointCount++;
-    mSources[mActiveSource].entryPointCount++;
-
-    mEntryPoints.push_back(entryPoint);
-
-    return *this;
-}
-
-Program::Desc& Program::Desc::addDefaultVertexShaderIfNeeded() {
-    // Don't set default vertex shader if one was set already.
-    if(hasEntryPoint(ShaderType::Vertex)) {
-        return *this;
-    }
-    return addShaderLibrary("Scene/Raster.slang").entryPoint(ShaderType::Vertex, "defaultVS");
-}
-
-Program::Desc& Program::Desc::setShaderModel(const std::string& sm) {
-    // Check that the model is supported
-    bool b = false;
-    for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++) {
-        if (kSupportedShaderModels[i] == sm) {
-            b = true;
-            break;
-        }
-    }
-
-    if (b == false) {
-        std::string warn = "Unsupported shader-model `" + sm + "` requested. Supported shader-models are ";
-        for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++) {
-            warn += kSupportedShaderModels[i];
-            warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
-        }
-        warn += "\nThis is not an error, but if something goes wrong try using one of the supported models.";
-        logWarning(warn);
-    }
-
-    mShaderModel = sm;
-    return *this;
+	uint32_t entryPointIndex = declareEntryPoint(shaderType, name);
+	mGroups[mActiveGroup].entryPoints.push_back(entryPointIndex);
+	return *this;
 }
 
 bool Program::Desc::hasEntryPoint(ShaderType stage) const {
-    for(auto& entryPoint : mEntryPoints) {
-        if(entryPoint.stage == stage) {
-            return true;
-        }
-    }
-    return false;
+	for (auto& entryPoint : mEntryPoints) {
+		if (entryPoint.stage == stage) {
+			return true;
+		}
+	}
+	return false;
+}
+
+Program::Desc& Program::Desc::addTypeConformancesToGroup(const TypeConformanceList& typeConformances) {
+	assert(mActiveGroup >= 0);
+	mGroups[mActiveGroup].typeConformances.add(typeConformances);
+	return *this;
+}
+
+uint32_t Program::Desc::declareEntryPoint(ShaderType type, const std::string& name) {
+	assert(!name.empty());
+	assert(mActiveGroup >= 0 && mActiveGroup < mGroups.size());
+
+	if (mActiveSource < 0) {
+		throw std::runtime_error("Cannot declare an entry point without first adding a source file/library");
+	}
+
+	EntryPoint entryPoint;
+	entryPoint.stage = type;
+	entryPoint.name = name;
+	entryPoint.exportName = name + mGroups[mActiveGroup].nameSuffix;
+	entryPoint.sourceIndex = mActiveSource;
+	entryPoint.groupIndex = mActiveGroup;
+
+	uint32_t index = (uint32_t)mEntryPoints.size();
+	mEntryPoints.push_back(entryPoint);
+	mSources[mActiveSource].entryPoints.push_back(index);
+
+	return index;
+}
+
+Program::Desc& Program::Desc::setShaderModel(const std::string& sm) {
+	// Check that the model is supported
+	bool b = false;
+	for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++) {
+		if (kSupportedShaderModels[i] == sm) {
+			b = true;
+			break;
+		}
+	}
+
+	if (b == false) {
+		std::string warn = "Unsupported shader-model '" + sm + "' requested. Supported shader-models are ";
+		for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++) {
+			warn += kSupportedShaderModels[i];
+			warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
+		}
+		warn += "\nThis is not an error, but if something goes wrong try using one of the supported models.";
+		LLOG_WRN << warn;
+	}
+
+	mShaderModel = sm;
+	return *this;
 }
 
 // Program
-std::vector<std::weak_ptr<Program>> Program::sPrograms;
+std::vector<std::weak_ptr<Program>> Program::sProgramsForReload;
+Program::CompilationStats Program::sCompilationStats;
 
-void Program::init(std::shared_ptr<Device> pDevice, Desc const& desc, DefineList const& defineList) {
-    mDesc = desc;
-    mDefineList = defineList;
-    mpDevice = pDevice;
-
-    sPrograms.push_back(shared_from_this());
+void Program::registerProgramForReload(const SharedPtr& pProg) {
+	sProgramsForReload.push_back(pProg);
 }
 
-Program::~Program() { }
+Program::Program(Device::SharedPtr pDevice, Desc const& desc, DefineList const& defineList)
+	: mpDevice(pDevice)
+	, mDesc(desc)
+	, mDefineList(defineList)
+	, mTypeConformanceList(desc.mTypeConformances)
+{
+	validateEntryPoints();
+}
+
+void Program::validateEntryPoints() const {
+	// Check that all exported entry point names are unique for each shader type.
+	// They don't necessarily have to be, but it could be an indication of the program not created correctly.
+	using NameTypePair = std::pair<std::string, ShaderType>;
+	std::set<NameTypePair> entryPointNamesAndTypes;
+
+	for (const auto& e : mDesc.mEntryPoints) {
+		if (!entryPointNamesAndTypes.insert(NameTypePair(e.exportName, e.stage)).second) {
+			LLOG_WRN << "Duplicate program entry points '" << e.exportName << "' of type " << to_string(e.stage);
+		}
+	}
+}
+
+Program::~Program() {}
 
 std::string Program::getProgramDescString() const {
-    std::string desc;
+	std::string desc;
 
-    int32_t groupCount = (int32_t) mDesc.mGroups.size();
+	int32_t groupCount = (int32_t)mDesc.mGroups.size();
 
-    for(auto& src : mDesc.mSources) {
-        switch (src.type) {
-            case Desc::Source::Type::File:
-                desc += src.pLibrary->getFilename();
-                break;
-            case Desc::Source::Type::String:
-                desc += "Created from string";
-                break;
-            default:
-                should_not_get_here();
-        }
+	for (size_t i = 0; i < mDesc.mSources.size(); i++) {
+		const auto& src = mDesc.mSources[i];
+		if (i != 0) desc += " ";
+		switch (src.type) {
+			case Desc::Source::Type::File:
+				desc += src.pLibrary->getPath().string();
+				break;
+			case Desc::Source::Type::String:
+				desc += "Created from string";
+				break;
+			default:
+				FALCOR_UNREACHABLE();
+		}
 
-        uint32_t entryPointCount = src.entryPointCount;
-        desc += "(";
-        for( uint32_t ee = 0; ee < entryPointCount; ++ee ) {
-            auto& entryPoint = mDesc.mEntryPoints[src.firstEntryPoint + ee];
+		desc += "(";
+		for (size_t ee = 0; ee < src.entryPoints.size(); ++ee) {
+			auto& entryPoint = mDesc.mEntryPoints[src.entryPoints[ee]];
 
-            if(ee != 0) desc += ", ";
-            desc += entryPoint.name;
-        }
-        desc += ")";
-    }
+			if (ee != 0) desc += ", ";
+			desc += entryPoint.exportName;
+		}
+		desc += ")";
+	}
 
-    return desc;
+	return desc;
 }
 
 bool Program::addDefine(const std::string& name, const std::string& value) {
-    // Make sure that it doesn't exist already
-    if(mDefineList.find(name) != mDefineList.end()) {
-        if(mDefineList[name] == value) {
-            // Same define
-            return false;
-        }
-    }
-    markDirty();
-    mDefineList[name] = value;
-    return true;
+	// Make sure that it doesn't exist already
+	if (mDefineList.find(name) != mDefineList.end()) {
+		if (mDefineList[name] == value) {
+			// Same define
+			return false;
+		}
+	}
+	markDirty();
+	mDefineList[name] = value;
+	return true;
 }
 
 bool Program::addDefines(const DefineList& dl) {
-    bool dirty = false;
-    for (auto it : dl) {
-        if (addDefine(it.first, it.second)) {
-            dirty = true;
-        }
-    }
-    return dirty;
+	bool dirty = false;
+	for (auto it : dl) {
+		if (addDefine(it.first, it.second)) {
+			dirty = true;
+		}
+	}
+	return dirty;
 }
 
 bool Program::removeDefine(const std::string& name) {
-    if(mDefineList.find(name) != mDefineList.end()) {
-        markDirty();
-        mDefineList.erase(name);
-        return true;
-    }
-    return false;
+	if (mDefineList.find(name) != mDefineList.end()) {
+		markDirty();
+		mDefineList.erase(name);
+		return true;
+	}
+	return false;
 }
 
 bool Program::removeDefines(const DefineList& dl) {
-    bool dirty = false;
-    for (auto it : dl) {
-        if (removeDefine(it.first)) {
-            dirty = true;
-        }
-    }
-    return dirty;
+	bool dirty = false;
+	for (auto it : dl) {
+		if (removeDefine(it.first)) {
+			dirty = true;
+		}
+	}
+	return dirty;
 }
 
 bool Program::removeDefines(size_t pos, size_t len, const std::string& str) {
-    bool dirty = false;
-    for (auto it = mDefineList.cbegin(); it != mDefineList.cend();) {
-        if (pos < it->first.length() && it->first.compare(pos, len, str) == 0) {
-            markDirty();
-            it = mDefineList.erase(it);
-            dirty = true;
-        } else {
-            ++it;
-        }
-    }
-    return dirty;
+	bool dirty = false;
+	for (auto it = mDefineList.cbegin(); it != mDefineList.cend();) {
+		if (pos < it->first.length() && it->first.compare(pos, len, str) == 0) {
+			markDirty();
+			it = mDefineList.erase(it);
+			dirty = true;
+		} else {
+			++it;
+		}
+	}
+	return dirty;
 }
 
 bool Program::setDefines(const DefineList& dl) {
-    if (dl != mDefineList) {
-        markDirty();
-        mDefineList = dl;
-        return true;
-    }
-    return false;
+	if (dl != mDefineList) {
+		markDirty();
+		mDefineList = dl;
+		return true;
+	}
+	return false;
+}
+
+bool Program::addTypeConformance(const std::string& typeName, const std::string interfaceType, uint32_t id) {
+	Shader::TypeConformance conformance = Shader::TypeConformance(typeName, interfaceType);
+	if (mTypeConformanceList.find(conformance) == mTypeConformanceList.end()) {
+		markDirty();
+		mTypeConformanceList.add(typeName, interfaceType, id);
+		return true;
+	}
+	return false;
+}
+
+bool Program::removeTypeConformance(const std::string& typeName, const std::string interfaceType) {
+	Shader::TypeConformance conformance = Shader::TypeConformance(typeName, interfaceType);
+	if (mTypeConformanceList.find(conformance) != mTypeConformanceList.end()) {
+		markDirty();
+		mTypeConformanceList.remove(typeName, interfaceType);
+		return true;
+	}
+	return false;
+}
+
+bool Program::setTypeConformances(const TypeConformanceList& conformances) {
+	if (conformances != mTypeConformanceList) {
+		markDirty();
+		mTypeConformanceList = conformances;
+		return true;
+	}
+	return false;
 }
 
 bool Program::checkIfFilesChanged() {
-    if(mpActiveVersion == nullptr) {
-        // We never linked, so nothing really changed
-        return false;
-    }
+	if (mpActiveVersion == nullptr) {
+		// We never linked, so nothing really changed
+		return false;
+	}
 
-    // Have any of the files we depend on changed?
-    for(auto& entry : mFileTimeMap) {
-        auto& path = entry.first;
-        auto& modifiedTime = entry.second;
+	// Have any of the files we depend on changed?
+	for (auto& entry : mFileTimeMap) {
+		auto& path = entry.first;
+		auto& modifiedTime = entry.second;
 
-        if( modifiedTime != getFileModifiedTime(path) ) {
-            return true;
-        }
-    }
-    return false;
+		if (modifiedTime != getFileModifiedTime(path)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 const ProgramVersion::SharedConstPtr& Program::getActiveVersion() const {
-    if (mLinkRequired) {
-        LOG_DBG("Program link required");
-        const auto& it = mProgramVersions.find(mDefineList);
-        if (it == mProgramVersions.end()) {
-            // Note that link() updates mActiveProgram only if the operation was successful.
-            // On error we get false, and mActiveProgram points to the last successfully compiled version.
-            if (link() == false) {
-                throw std::runtime_error("Program linkage failed");
-            } else {
-                mProgramVersions[mDefineList] = mpActiveVersion;
-            }
-        } else {
-            mpActiveVersion = it->second;
-        }
-        mLinkRequired = false;
-    }
-    assert(mpActiveVersion);
-    return mpActiveVersion;
+	if (mLinkRequired) {
+		const auto& it = mProgramVersions.find(mDefineList);
+		if (it == mProgramVersions.end()) {
+			// Note that link() updates mActiveProgram only if the operation was successful.
+			// On error we get false, and mActiveProgram points to the last successfully compiled version.
+			if (link() == false) {
+				throw std::runtime_error("Program linkage failed");
+			} else {
+				mProgramVersions[mDefineList] = mpActiveVersion;
+			}
+		} else {
+			mpActiveVersion = it->second;
+		}
+		mLinkRequired = false;
+	}
+	assert(mpActiveVersion);
+	return mpActiveVersion;
 }
 
 slang::IGlobalSession* createSlangGlobalSession() {
-    slang::IGlobalSession* result = nullptr;
-    slang::createGlobalSession(&result);
-    return result;
+	slang::IGlobalSession* result = nullptr;
+	slang::createGlobalSession(&result);
+	return result;
 }
 
 slang::IGlobalSession* getSlangGlobalSession() {
-    static slang::IGlobalSession* pSlangGlobalSession = createSlangGlobalSession();
-    return pSlangGlobalSession;
+	static slang::IGlobalSession* pSlangGlobalSession = createSlangGlobalSession();
+	return pSlangGlobalSession;
 }
 
 // Translation a Falcor `ShaderType` to the corresponding `SlangStage`
 SlangStage getSlangStage(ShaderType type) {
-    switch(type) {
-        case ShaderType::Vertex:        return SLANG_STAGE_VERTEX;
-        case ShaderType::Pixel:         return SLANG_STAGE_PIXEL;
-        case ShaderType::Geometry:      return SLANG_STAGE_GEOMETRY;
-        case ShaderType::Hull:          return SLANG_STAGE_HULL;
-        case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
-        case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
-        case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
-        case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
-        case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;
-        case ShaderType::ClosestHit:    return SLANG_STAGE_CLOSEST_HIT;
-        case ShaderType::Miss:          return SLANG_STAGE_MISS;
-        case ShaderType::Callable:      return SLANG_STAGE_CALLABLE;
-        default:
-            should_not_get_here();
-            return SLANG_STAGE_NONE;
-    }
+	switch (type) {
+		case ShaderType::Vertex:        return SLANG_STAGE_VERTEX;
+		case ShaderType::Pixel:         return SLANG_STAGE_PIXEL;
+		case ShaderType::Geometry:      return SLANG_STAGE_GEOMETRY;
+		case ShaderType::Hull:          return SLANG_STAGE_HULL;
+		case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
+		case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
+		case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
+		case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
+		case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;
+		case ShaderType::ClosestHit:    return SLANG_STAGE_CLOSEST_HIT;
+		case ShaderType::Miss:          return SLANG_STAGE_MISS;
+		case ShaderType::Callable:      return SLANG_STAGE_CALLABLE;
+		default:
+			FALCOR_UNREACHABLE();
+			return SLANG_STAGE_NONE;
+	}
 }
 
 static std::string getSlangProfileString(const std::string& shaderModel) {
-    return "glsl_" + shaderModel;
+	return "sm_" + shaderModel;
 }
 
-SlangCompileRequest* Program::createSlangCompileRequest(const DefineList&   defineList) const {
-    slang::IGlobalSession* pSlangGlobalSession = getSlangGlobalSession();
-    assert(pSlangGlobalSession);
+void Program::setUpSlangCompilationTarget(
+	slang::TargetDesc&  ioTargetDesc,
+	char const*&        ioTargetMacroName) const
+{
+#ifdef FALCOR_D3D12
+	ioTargetDesc.format = SLANG_DXIL;
+	ioTargetMacroName = "FALCOR_D3D";
+#else
+	switch (mpDevice->getApiHandle()->getDeviceInfo().deviceType) {
+		case gfx::DeviceType::DirectX12:
+			ioTargetDesc.format = SLANG_DXIL;
+			ioTargetMacroName = "FALCOR_D3D";
+			break;
+		case gfx::DeviceType::Vulkan:
+			ioTargetDesc.format = SLANG_SPIRV;
+			ioTargetMacroName = "FALCOR_VK";
+			break;
+		default:
+			FALCOR_UNREACHABLE();
+	}
+#endif
+}
 
-    slang::SessionDesc sessionDesc;
+SlangCompileRequest* Program::createSlangCompileRequest(const DefineList& defineList) const {
+	slang::IGlobalSession* pSlangGlobalSession = getSlangGlobalSession();
+	FALCOR_ASSERT(pSlangGlobalSession);
 
-    // Add our media search paths as `#include` search paths for Slang.
-    //
-    // Note: Slang allows application to plug in a callback API to
-    // implement file I/O, and this could be used instead of specifying
-    // the data directories to Slang.
-    //
-    std::vector<const char*> slangSearchPaths;
-    for (auto& path : getShaderDirectoriesList()) {
-        slangSearchPaths.push_back(path.c_str());
-    }
-    sessionDesc.searchPaths = slangSearchPaths.data();
-    sessionDesc.searchPathCount = (SlangInt) slangSearchPaths.size();
+	slang::SessionDesc sessionDesc;
 
-    slang::TargetDesc targetDesc;
-    targetDesc.format = SLANG_TARGET_UNKNOWN;
-    targetDesc.profile = pSlangGlobalSession->findProfile(getSlangProfileString(mDesc.mShaderModel).c_str());
+	// Add our shader search paths as `#include` search paths for Slang.
+	//
+	// Note: Slang allows application to plug in a callback API to
+	// implement file I/O, and this could be used instead of specifying
+	// the data directories to Slang.
+	//
+	std::vector<std::string> searchPaths;
+	std::vector<const char*> slangSearchPaths;
+	
+	for (auto& path : getShaderDirectoriesList()) {
+		searchPaths.push_back(path.string());
+		slangSearchPaths.push_back(searchPaths.back().data());
+	}
 
-    if (targetDesc.profile == SLANG_PROFILE_UNKNOWN) {
-        logError("Can't find Slang profile for shader model " + mDesc.mShaderModel);
-        return nullptr;
-    }
+	sessionDesc.searchPaths = slangSearchPaths.data();
+	sessionDesc.searchPathCount = (SlangInt)slangSearchPaths.size();
 
-    // Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
-    bool flagFast = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModeFast);
-    bool flagPrecise = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModePrecise);
-    
-    if (flagFast && flagPrecise) {
-        logWarning("Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring 'FloatingPointModeFast'.");
-        flagFast = false;
-    }
+	slang::TargetDesc targetDesc;
+	targetDesc.format = SLANG_TARGET_UNKNOWN;
+	targetDesc.profile = pSlangGlobalSession->findProfile(getSlangProfileString(mDesc.mShaderModel).c_str());
 
-    SlangFloatingPointMode slangFpMode = SLANG_FLOATING_POINT_MODE_DEFAULT;
-    if (flagFast) slangFpMode = SLANG_FLOATING_POINT_MODE_FAST;
-    else if (flagPrecise) slangFpMode = SLANG_FLOATING_POINT_MODE_PRECISE;
+	if (targetDesc.profile == SLANG_PROFILE_UNKNOWN) {
+		LLOG_ERR << "Can't find Slang profile for shader model " << mDesc.mShaderModel;
+		return nullptr;
+	}
 
-    targetDesc.floatingPointMode = slangFpMode;
+	// Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
+	bool flagFast = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModeFast);
+	bool flagPrecise = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModePrecise);
+	
+	if (flagFast && flagPrecise) {
+		LLOG_WRN << "Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring 'FloatingPointModeFast'.";
+		flagFast = false;
+	}
 
-    const char* targetMacroName;
+	SlangFloatingPointMode slangFpMode = SLANG_FLOATING_POINT_MODE_DEFAULT;
+	if (flagFast) slangFpMode = SLANG_FLOATING_POINT_MODE_FAST;
+	else if (flagPrecise) slangFpMode = SLANG_FLOATING_POINT_MODE_PRECISE;
 
-    targetMacroName = "FALCOR_VK";
-    targetDesc.format = SLANG_SPIRV;
+	targetDesc.floatingPointMode = slangFpMode;
 
+	targetDesc.forceGLSLScalarBufferLayout = true;
 
-    // Pass any `#define` flags along to Slang, since we aren't doing our
-    // own preprocessing any more.
-    //
-    std::vector<slang::PreprocessorMacroDesc> slangDefines;
-    const auto addSlangDefine = [&slangDefines] (const char* name, const char* value) {
-        slangDefines.push_back({ name, value });
-    };
+	const char* targetMacroName;
 
-    // Add global defines.
-    for (const auto& shaderDefine : sGlobalDefineList) {
-        addSlangDefine(shaderDefine.first.c_str(), shaderDefine.second.c_str());
-    }
+	// Pick the right target based on the current graphics API
+	setUpSlangCompilationTarget(targetDesc, targetMacroName);
 
-    // Add program specific defines.
-    for (const auto& shaderDefine : getDefineList()) {
-        addSlangDefine(shaderDefine.first.c_str(), shaderDefine.second.c_str());
-    }
+	// Pass any `#define` flags along to Slang, since we aren't doing our
+	// own preprocessing any more.
+	//
+	std::vector<slang::PreprocessorMacroDesc> slangDefines;
+	const auto addSlangDefine = [&slangDefines](const char* name, const char* value) {
+		slangDefines.push_back({ name, value });
+	};
 
-    // Add a `#define`s based on the target and shader model.
-    addSlangDefine(targetMacroName, "1");
+	// Add global defines.
+	for (const auto& shaderDefine : sGlobalDefineList) {
+		addSlangDefine(shaderDefine.first.c_str(), shaderDefine.second.c_str());
+	}
 
-    std::string sm = "__SM_" + mDesc.mShaderModel + "__";
-    addSlangDefine(sm.c_str(), "1");
+	// Add program specific defines.
+	for (const auto& shaderDefine : getDefineList()) {
+		addSlangDefine(shaderDefine.first.c_str(), shaderDefine.second.c_str());
+	}
 
-    addSlangDefine("__VULKAN__", "1");
+	// Add a `#define`s based on the target and shader model.
+	addSlangDefine(targetMacroName, "1");
 
-    sessionDesc.preprocessorMacros = slangDefines.data();
-    sessionDesc.preprocessorMacroCount = (SlangInt) slangDefines.size();
+	std::string sm = "__SM_" + mDesc.mShaderModel + "__";
+	addSlangDefine(sm.c_str(), "1");
 
-    sessionDesc.targets = &targetDesc;
-    sessionDesc.targetCount = 1;
+	sessionDesc.preprocessorMacros = slangDefines.data();
+	sessionDesc.preprocessorMacroCount = (SlangInt)slangDefines.size();
 
-    // We always use row-major matrix layout (and when we invoke fxc/dxc we pass in the
-    // appropriate flags to request this behavior), so we need to inform Slang that
-    // this is what we want/expect so that it can compute correct reflection information.
-    //
-    sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+	sessionDesc.targets = &targetDesc;
+	sessionDesc.targetCount = 1;
 
-    ComPtr<slang::ISession> pSlangSession;
-    pSlangGlobalSession->createSession(
-        sessionDesc,
-        pSlangSession.writeRef());
-    assert(pSlangSession);
+	// We always use row-major matrix layout in Falcor so by default that's what we pass to Slang
+	// to allow it to compute correct reflection information. Slang then invokes the downstream compiler.
+	// Column major option can be useful when compiling external shader sources that don't depend
+	// on anything Falcor.
+	bool useColumnMajor = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::MatrixLayoutColumnMajor);
+	sessionDesc.defaultMatrixLayoutMode = useColumnMajor ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
 
-    mFileTimeMap.clear();
+	ComPtr<slang::ISession> pSlangSession;
+	pSlangGlobalSession->createSession(
+		sessionDesc,
+		pSlangSession.writeRef());
+	FALCOR_ASSERT(pSlangSession);
 
-    SlangCompileRequest* pSlangRequest = nullptr;
-    pSlangSession->createCompileRequest(&pSlangRequest);
-    assert(pSlangRequest);
+	mFileTimeMap.clear();
 
-    // Enable/disable intermediates dump
-    bool dumpIR = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::DumpIntermediates);
-    spSetDumpIntermediates(pSlangRequest, dumpIR);
+	SlangCompileRequest* pSlangRequest = nullptr;
+	pSlangSession->createCompileRequest(
+		&pSlangRequest);
+	FALCOR_ASSERT(pSlangRequest);
 
-    if (is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::GenerateDebugInfo)) {
-        spSetDebugInfoLevel(pSlangRequest, SLANG_DEBUG_INFO_LEVEL_STANDARD);
-    }
+	// Enable/disable intermediates dump
+	bool dumpIR = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::DumpIntermediates);
+	spSetDumpIntermediates(pSlangRequest, dumpIR);
 
-    // Configure any flags for the Slang compilation step
-    SlangCompileFlags slangFlags = 0;
+	if (sGenerateDebugInfo || is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::GenerateDebugInfo)) {
+		spSetDebugInfoLevel(pSlangRequest, SLANG_DEBUG_INFO_LEVEL_STANDARD);
+	}
 
-    // When we invoke the Slang compiler front-end, skip code generation step
-    // so that the compiler does not complain about missing arguments for
-    // specialization parameters.
-    //
-    slangFlags |= SLANG_COMPILE_FLAG_NO_CODEGEN;
+	// Configure any flags for the Slang compilation step
+	SlangCompileFlags slangFlags = 0;
 
-    spSetCompileFlags(pSlangRequest, slangFlags);
+	// When we invoke the Slang compiler front-end, skip code generation step
+	// so that the compiler does not complain about missing arguments for
+	// specialization parameters.
+	//
+	slangFlags |= SLANG_COMPILE_FLAG_NO_CODEGEN;
 
-    // Now lets add all our input shader code, one-by-one
-    int translationUnitsAdded = 0;
+	spSetCompileFlags(pSlangRequest, slangFlags);
 
-    // TODO: All of the sources in a program (or at least all of those
-    // in an entry point group) should be considered as a single
-    // translation unit for Slang (so that they can see and resolve
-    // definitions).
-    //
-    for (auto src : mDesc.mSources) {
-        // Register the translation unit with Slang
-        int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
-        assert(translationUnitIndex == translationUnitsAdded);
-        translationUnitsAdded++;
+	// Set additional command line arguments.
+	if (!mDesc.mCompilerArguments.empty()) {
+		std::vector<const char*> args;
+		for (const auto& arg : mDesc.mCompilerArguments) args.push_back(arg.c_str());
+		spProcessCommandLineArguments(pSlangRequest, args.data(), (int)args.size());
+	}
 
-        // Add source code to the translation unit
-        if (src.type == Desc::Source::Type::File) {
-            // If this is not an HLSL or a SLANG file, display a warning
-            if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false)) {
-                logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
-            }
-            std::string fullpath;
-            if (!findFileInShaderDirectories(src.pLibrary->getFilename(), fullpath)) {
-                logError("Can't find file " + src.pLibrary->getFilename());
-                spDestroyCompileRequest(pSlangRequest);
-                return nullptr;
-            }
-            spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullpath.c_str());
-        } else {
-            assert(src.type == Desc::Source::Type::String);
-            spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, "", src.str.c_str());
-        }
-    }
+	// Now lets add all our input shader code, one-by-one
+	int translationUnitsAdded = 0;
 
-    // Now we make a separate pass and add the entry points.
-    // Each entry point references the index of the source
-    // it uses, and luckily, the Slang API can use these
-    // indices directly.
-    for(auto& entryPoint : mDesc.mEntryPoints) {
-        auto& group = mDesc.mGroups[entryPoint.groupIndex];
+	// TODO: All of the sources in a program (or at least all of those
+	// in an entry point group) should be considered as a single
+	// translation unit for Slang (so that they can see and resolve
+	// definitions).
+	//
+	for (auto src : mDesc.mSources) {
+		// Register the translation unit with Slang
+		int translationUnitIndex = spAddTranslationUnit(pSlangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
+		FALCOR_ASSERT(translationUnitIndex == translationUnitsAdded);
+		translationUnitsAdded++;
 
-        spAddEntryPoint(
-            pSlangRequest,
-            entryPoint.sourceIndex,
-            entryPoint.name.c_str(),
-            getSlangStage(entryPoint.stage));
-    }
+		// Add source code to the translation unit
+		if (src.type == Desc::Source::Type::File) {
+			// If this is not an HLSL or a SLANG file, display a warning
+			const auto& path = src.pLibrary->getPath();
+			if (!(hasExtension(path, "hlsl") || hasExtension(path, "slang"))) {
+				LLOG_WRN << "Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders";
+			}
 
-    return pSlangRequest;
+			fs::path fullPath;
+			if (!findFileInShaderDirectories(path, fullPath)){
+				LLOG_ERR << "Can't find file " << src.pLibrary->getPath().string();
+				spDestroyCompileRequest(pSlangRequest);
+				return nullptr;
+			}
+			spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullPath.string().c_str());
+		} else {
+			FALCOR_ASSERT(src.type == Desc::Source::Type::String);
+			spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, "", src.str.c_str());
+		}
+	}
+
+	// Now we make a separate pass and add the entry points.
+	// Each entry point references the index of the source
+	// it uses, and luckily, the Slang API can use these
+	// indices directly.
+	for (auto& entryPoint : mDesc.mEntryPoints) {
+		spAddEntryPoint(
+			pSlangRequest,
+			entryPoint.sourceIndex,
+			entryPoint.name.c_str(),
+			getSlangStage(entryPoint.stage));
+	}
+
+	return pSlangRequest;
 }
 
 bool Program::doSlangReflection(
-    ProgramVersion const*                       pVersion,
-    slang::IComponentType*                      pSlangGlobalScope,
-    std::vector<ComPtr<slang::IComponentType>>  pSlangLinkedEntryPoints,
-    ProgramReflection::SharedPtr&               pReflector,
-    std::string&                                log) const
+	ProgramVersion const*                       pVersion,
+	slang::IComponentType*                      pSlangGlobalScope,
+	std::vector<ComPtr<slang::IComponentType>>  pSlangLinkedEntryPoints,
+	ProgramReflection::SharedPtr&               pReflector,
+	std::string&                                log) const
 {
-    auto pSlangGlobalScopeLayout = pSlangGlobalScope->getLayout();
+	auto pSlangGlobalScopeLayout = pSlangGlobalScope->getLayout();
 
-    // TODO: actually need to reflect the entry point groups!
+	// TODO: actually need to reflect the entry point groups!
 
-    std::vector<slang::EntryPointLayout*> pSlangEntryPointReflectors;
+	std::vector<slang::EntryPointLayout*> pSlangEntryPointReflectors;
 
-    for( auto pSlangLinkedEntryPoint : pSlangLinkedEntryPoints ) {
-        auto pSlangEntryPointLayout = pSlangLinkedEntryPoint->getLayout()->getEntryPointByIndex(0);
-        pSlangEntryPointReflectors.push_back(pSlangEntryPointLayout);
-    }
+	for( auto pSlangLinkedEntryPoint : pSlangLinkedEntryPoints )
+	{
+		auto pSlangEntryPointLayout = pSlangLinkedEntryPoint->getLayout()->getEntryPointByIndex(0);
+		pSlangEntryPointReflectors.push_back(pSlangEntryPointLayout);
+	}
 
-    pReflector = ProgramReflection::create(
-        pVersion,
-        pSlangGlobalScopeLayout,
-        pSlangEntryPointReflectors,
-        log);
+	pReflector = ProgramReflection::create(
+		pVersion,
+		pSlangGlobalScopeLayout,
+		pSlangEntryPointReflectors,
+		log);
 
-    return true;
+	return true;
 }
 
 static ComPtr<slang::IComponentType> doSlangSpecialization(
-    slang::IComponentType*                      pSlangProgram,
-    ParameterBlock::SpecializationArgs const&   specializationArgs,
-    std::string&                                log)
+	slang::IComponentType*                      pSlangProgram,
+	ParameterBlock::SpecializationArgs const&   specializationArgs,
+	std::string&                                log)
 {
-    ComPtr<slang::IBlob> pSlangDiagnostics;
-    ComPtr<slang::IComponentType> pSpecializedSlangProgram;
-    bool failed = SLANG_FAILED(pSlangProgram->specialize(
-        specializationArgs.data(),
-        specializationArgs.size(),
-        pSpecializedSlangProgram.writeRef(),
-        pSlangDiagnostics.writeRef()));
+	ComPtr<slang::IBlob> pSlangDiagnostics;
+	ComPtr<slang::IComponentType> pSpecializedSlangProgram;
+	bool failed = SLANG_FAILED(pSlangProgram->specialize(
+		specializationArgs.data(),
+		specializationArgs.size(),
+		pSpecializedSlangProgram.writeRef(),
+		pSlangDiagnostics.writeRef()));
 
-    if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0) {
-        log += (char const*) pSlangDiagnostics->getBufferPointer();
-    }
+	if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0) {
+		log += (char const*)pSlangDiagnostics->getBufferPointer();
+	}
 
-    return failed ? nullptr : pSpecializedSlangProgram;
+	return failed ? nullptr : pSpecializedSlangProgram;
 }
 
 ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
-    ProgramVersion const* pVersion,
-    ProgramVars    const* pVars,
-    std::string         & log) const
+	ProgramVersion const* pVersion,
+	ProgramVars    const* pVars,
+	std::string         & log) const
 {
-    auto pSlangGlobalScope = pVersion->getSlangGlobalScope();
-    auto pSlangSession = pSlangGlobalScope->getSession();
+	CpuTimer timer;
+	timer.update();
 
-    // Global-scope specialization parameters apply to all the entry points
-    // in a `Program`. We will collect the arguments for global specialization
-    // parameters here, using the global `ProgramVars`.
-    //
-    ParameterBlock::SpecializationArgs specializationArgs;
-    pVars->collectSpecializationArgs(specializationArgs);
+	auto pSlangGlobalScope = pVersion->getSlangGlobalScope();
+	auto pSlangSession = pSlangGlobalScope->getSession();
 
-    // Next we instruct Slang to specialize the global scope based on
-    // the global specialization arguments.
-    //
-    ComPtr<slang::IComponentType> pSpecializedSlangGlobalScope = doSlangSpecialization(
-        pSlangGlobalScope,
-        specializationArgs,
-        log);
+#ifdef FALCOR_D3D12
+	// Global-scope specialization parameters apply to all the entry points
+	// in a `Program`. We will collect the arguments for global specialization
+	// parameters here, using the global `ProgramVars`.
+	//
+	ParameterBlock::SpecializationArgs specializationArgs;
+	pVars->collectSpecializationArgs(specializationArgs);
 
-    if (!pSpecializedSlangGlobalScope) {
-        return nullptr;
-    }
+	// Next we instruct Slang to specialize the global scope based on
+	// the global specialization arguments.
+	//
+	ComPtr<slang::IComponentType> pSpecializedSlangGlobalScope = doSlangSpecialization(
+		pSlangGlobalScope,
+		specializationArgs,
+		log);
+	if (!pSpecializedSlangGlobalScope) {
+		return nullptr;
+	}
 
-    uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
-    std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
+#else
+	slang::IComponentType* pSpecializedSlangGlobalScope = pSlangGlobalScope;
+#endif
+	// Create a composite component type that represents all type conformances
+	// linked into the `ProgramVersion`.
+	auto createTypeConformanceComponentList = [&](const TypeConformanceList& typeConformances) -> ComPtr<slang::IComponentType> {
+		ComPtr<slang::IComponentType> pTypeConformancesCompositeComponent;
+		std::vector<ComPtr<slang::ITypeConformance>> typeConformanceComponentList;
+		std::vector<slang::IComponentType*> typeConformanceComponentRawPtrList;
 
-    for( uint32_t ee = 0; ee < allEntryPointCount; ++ee ) {
-        auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
+		for (auto& typeConformance : typeConformances) {
+			ComPtr<slang::IBlob> pSlangDiagnostics;
 
-        slang::IComponentType* componentTypes[] = {pSpecializedSlangGlobalScope, pSlangEntryPoint};
+			ComPtr<slang::ITypeConformance> pTypeConformanceComponent;
+			auto slangType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mTypeName.c_str());
+			auto slangInterfaceType = pSlangGlobalScope->getLayout()->findTypeByName(typeConformance.first.mInterfaceName.c_str());
+			
+			if (!slangType || !slangInterfaceType) {
+				// If the specified type is not in the current program context, quietly ignore the conformance.
+				continue;
+			}
+			
+			pSlangSession->createTypeConformanceComponentType(
+				slangType,
+				slangInterfaceType,
+				pTypeConformanceComponent.writeRef(),
+				(SlangInt)typeConformance.second,
+				pSlangDiagnostics.writeRef());
+			
+			if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0) {
+				log += (char const*)pSlangDiagnostics->getBufferPointer();
+			}
 
-        ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
-        ComPtr<slang::IBlob> pSlangDiagnostics;
-        pSlangSession->createCompositeComponentType(
-            componentTypes,
-            2,
-            pLinkedSlangEntryPoint.writeRef(),
-            pSlangDiagnostics.writeRef());
+			if (pTypeConformanceComponent) {
+				typeConformanceComponentList.push_back(pTypeConformanceComponent);
+				typeConformanceComponentRawPtrList.push_back(pTypeConformanceComponent.get());
+			}
+		}
 
-        pLinkedEntryPoints.push_back(pLinkedSlangEntryPoint);
-    }
+		if (!typeConformanceComponentList.empty()) {
+			ComPtr<slang::IBlob> pSlangDiagnostics;
+			pSlangSession->createCompositeComponentType(
+				&typeConformanceComponentRawPtrList[0],
+				(SlangInt)typeConformanceComponentRawPtrList.size(),
+				pTypeConformancesCompositeComponent.writeRef(),
+				pSlangDiagnostics.writeRef());
+		}
+		return pTypeConformancesCompositeComponent;
+	};
 
-    // Once specialization and linking are completed we need to
-    // re-run the reflection step.
-    //
-    // A key guarantee we get from Slang is that the relative
-    // ordering of parameters at the global scope or within a
-    // given entry-point group will not change, so that when
-    // `ParameterBlock`s and their descriptor tables/sets are allocated
-    // using the unspecialized `ProgramReflection`, they will still
-    // be valid to bind to the specialized program.
-    //
-    // Still, the specialized reflector may differ from the
-    // unspecialized reflector in a few key ways:
-    //
-    // * There may be additional registers/bindings allocated for
-    //   the global scope to account for the data required by
-    //   specialized shader parameters (e.g., now that we know
-    //   an `IFoo` parameter should actually be a `Bar`, we need
-    //   to allocate those `Bar` resources somewhere).
-    //
-    // * As a result of specialized global-scope parameters taking
-    //   up additional bindings/registers, the bindings/registers
-    //   allocated to entry points and entry-point groups may be
-    //   shifted.
-    //
-    // Note: Because of interactions between how `SV_Target` outputs
-    // and `u` register bindings work in Slang today (as a compatibility
-    // feature for Shader Model 5.0 and below), we need to make sure
-    // that the entry points are included in the component type we use
-    // for reflection.
-    //
-    // TODO: Once the behavior is fixed in Slang for SM 5.1+, we can
-    // eliminate this step and use `pSpecializedSlangGlobalScope` instead
-    // of `pSpecializedSlangProgram`, so long as we are okay with dropping
-    // support for SM5.0 and below.
-    //
-    ComPtr<slang::IComponentType> pSpecializedSlangProgram;
-    {
-        // We are going to compose the global scope (specialized) with
-        // all the entry points. Note that we do *not* use the "linked"
-        // versions of the entry points because those already incorporate
-        // the global scope, and we'd end up with multiple copies of
-        // the global scope in that case.
-        //
-        std::vector<slang::IComponentType*> componentTypesForProgram;
-        componentTypesForProgram.push_back(pSpecializedSlangGlobalScope);
-        
-        for( uint32_t ee = 0; ee < allEntryPointCount; ++ee ) {
-            // TODO: Eventually this would need to use the specialized
-            // (but not linked) version of each entry point.
-            //
-            auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
-            componentTypesForProgram.push_back(pSlangEntryPoint);
-        }
-        
-        pSlangSession->createCompositeComponentType(
-            componentTypesForProgram.data(),
-            componentTypesForProgram.size(),
-            pSpecializedSlangProgram.writeRef());
-    }
+	// Create one composite component type for the type conformances of each entry point group.
+	// The type conformances for each group is the combination of the global and group type conformances.
+	std::vector<ComPtr<slang::IComponentType>> typeConformancesCompositeComponents;
+	typeConformancesCompositeComponents.reserve(getEntryPointGroupCount());
+	
+	for (const auto& group : mDesc.mGroups) {
+		TypeConformanceList typeConformances = mTypeConformanceList;
+		typeConformances.add(group.typeConformances);
+		typeConformancesCompositeComponents.emplace_back(createTypeConformanceComponentList(typeConformances));
+	}
 
-    ProgramReflection::SharedPtr pReflector;
-    doSlangReflection(pVersion, pSpecializedSlangProgram, pLinkedEntryPoints, pReflector, log);
+	// Create a `IComponentType` for each entry point.
+	uint32_t allEntryPointCount = uint32_t(mDesc.mEntryPoints.size());
 
-    // In order to construct the `ProgramKernels` we need to extract
-    // the kernels for each entry-point group.
-    //
-    std::vector<EntryPointGroupKernels::SharedPtr> entryPointGroups;
+	std::vector<ComPtr<slang::IComponentType>> pTypeConformanceSpecializedEntryPoints;
+	std::vector<slang::IComponentType*> pTypeConformanceSpecializedEntryPointsRawPtr;
+	std::vector<ComPtr<slang::IComponentType>> pLinkedEntryPoints;
 
-    // TODO: Because we aren't actually specializing entry-point groups,
-    // we will again loop over the original unspecialized entry point
-    // groups from the `Program::Desc`, and assume that they line up
-    // one-to-one with the entries in `pLinkedEntryPointGroups`.
-    //
-    uint32_t entryPointGroupCount = uint32_t(mDesc.mGroups.size());
-    
-    for( uint32_t gg = 0; gg < entryPointGroupCount; ++gg ) {
-        auto entryPointGroupDesc = mDesc.mGroups[gg];
+	for (uint32_t ee = 0; ee < allEntryPointCount; ++ee) {
+		auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
 
-        // For each entry-point group we will collect the compiled kernel
-        // code for its constituent entry points, using the "linked"
-        // version of the entry-point group.
-        //
-        auto groupEntryPointCount = entryPointGroupDesc.entryPointCount;
-        std::vector<Shader::SharedPtr> shaders;
-        
-        for(uint32_t ee = 0; ee < groupEntryPointCount; ++ee) {
-            auto entryPointIndex = entryPointGroupDesc.firstEntryPoint + ee;
+		int32_t groupIndex = mDesc.mEntryPoints[ee].groupIndex;
+		assert(groupIndex >= 0 && groupIndex < typeConformancesCompositeComponents.size());
 
-            auto pLinkedEntryPoint = pLinkedEntryPoints[entryPointIndex];
-            auto entryPointDesc = mDesc.mEntryPoints[entryPointIndex];
+		ComPtr<slang::IBlob> pSlangDiagnostics;
 
-            Shader::Blob blob;
-            ComPtr<slang::IBlob> pSlangDiagnostics;
-            bool failed = SLANG_FAILED(pLinkedEntryPoint->getEntryPointCode(
-                /* entryPointIndex: */ 0,
-                /* targetIndex: */ 0,
-                blob.writeRef(),
-                pSlangDiagnostics.writeRef()));
+		ComPtr<slang::IComponentType> pTypeComformanceSpecializedEntryPoint;
+		
+		if (typeConformancesCompositeComponents[groupIndex]) {
+			slang::IComponentType* componentTypes[] = { pSlangEntryPoint, typeConformancesCompositeComponents[groupIndex] };
+			pSlangSession->createCompositeComponentType(
+				componentTypes,
+				2,
+				pTypeComformanceSpecializedEntryPoint.writeRef(),
+				pSlangDiagnostics.writeRef());
+		} else {
+			pTypeComformanceSpecializedEntryPoint = pSlangEntryPoint;
+		}
+		pTypeConformanceSpecializedEntryPoints.push_back(pTypeComformanceSpecializedEntryPoint);
+		pTypeConformanceSpecializedEntryPointsRawPtr.push_back(pTypeComformanceSpecializedEntryPoint.get());
 
-            if (pSlangDiagnostics && pSlangDiagnostics->getBufferSize() > 0) {
-                log += (char const*) pSlangDiagnostics->getBufferPointer();
-            }
+		ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+		{
+			slang::IComponentType* componentTypes[] = { pSpecializedSlangGlobalScope, pTypeComformanceSpecializedEntryPoint };
 
-            if (failed) {                
-                return nullptr;
-            }
-            
-            Shader::SharedPtr shader = createShaderFromBlob(mpDevice, blob, entryPointDesc.stage, entryPointDesc.name, mDesc.getCompilerFlags(), log);
-            
-            if (!shader) {
-                return nullptr;
-            }
-            shaders.emplace_back(std::move(shader));
-        }
+			pSlangSession->createCompositeComponentType(
+				componentTypes,
+				2,
+				pLinkedSlangEntryPoint.writeRef(),
+				pSlangDiagnostics.writeRef());
+		}
+		pLinkedEntryPoints.push_back(pLinkedSlangEntryPoint);
+	}
 
-        auto pGroupReflector = pReflector->getEntryPointGroup(gg);
+	// Once specialization and linking are completed we need to
+	// re-run the reflection step.
+	//
+	// A key guarantee we get from Slang is that the relative
+	// ordering of parameters at the global scope or within a
+	// given entry-point group will not change, so that when
+	// `ParameterBlock`s and their descriptor tables/sets are allocated
+	// using the unspecialized `ProgramReflection`, they will still
+	// be valid to bind to the specialized program.
+	//
+	// Still, the specialized reflector may differ from the
+	// unspecialized reflector in a few key ways:
+	//
+	// * There may be additional registers/bindings allocated for
+	//   the global scope to account for the data required by
+	//   specialized shader parameters (e.g., now that we know
+	//   an `IFoo` parameter should actually be a `Bar`, we need
+	//   to allocate those `Bar` resources somewhere).
+	//
+	// * As a result of specialized global-scope parameters taking
+	//   up additional bindings/registers, the bindings/registers
+	//   allocated to entry points and entry-point groups may be
+	//   shifted.
+	//
+	// Note: Because of interactions between how `SV_Target` outputs
+	// and `u` register bindings work in Slang today (as a compatibility
+	// feature for Shader Model 5.0 and below), we need to make sure
+	// that the entry points are included in the component type we use
+	// for reflection.
+	//
+	// TODO: Once the behavior is fixed in Slang for SM 5.1+, we can
+	// eliminate this step and use `pSpecializedSlangGlobalScope` instead
+	// of `pSpecializedSlangProgram`, so long as we are okay with dropping
+	// support for SM5.0 and below.
+	//
+	ComPtr<slang::IComponentType> pSpecializedSlangProgram;
+	{
+		// We are going to compose the global scope (specialized) with
+		// all the entry points. Note that we do *not* use the "linked"
+		// versions of the entry points because those already incorporate
+		// the global scope, and we'd end up with multiple copies of
+		// the global scope in that case.
+		//
+		std::vector<slang::IComponentType*> componentTypesForProgram;
+		componentTypesForProgram.push_back(pSpecializedSlangGlobalScope);
 
-        auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
-        entryPointGroups.push_back(pEntryPointGroupKernels);
-    }
+		for (uint32_t ee = 0; ee < allEntryPointCount; ++ee) {
+			// TODO: Eventually this would need to use the specialized
+			// (but not linked) version of each entry point.
+			//
+			auto pSlangEntryPoint = pVersion->getSlangEntryPoint(ee);
+			componentTypesForProgram.push_back(pSlangEntryPoint);
+		}
 
-    return ProgramKernels::create(
-            mpDevice,
-            pVersion,
-            pReflector,
-            entryPointGroups,
-            log,
-            getProgramDescString());
+		// Add type conformances for all entry point groups.
+		// TODO: Is it correct to put all these in the global scope?
+		for (auto pTypeConformancesComposite : typeConformancesCompositeComponents) {
+			if (pTypeConformancesComposite) {
+				componentTypesForProgram.push_back(pTypeConformancesComposite);
+			}
+		}
+
+		pSlangSession->createCompositeComponentType(
+			componentTypesForProgram.data(),
+			componentTypesForProgram.size(),
+			pSpecializedSlangProgram.writeRef());
+	}
+
+	ProgramReflection::SharedPtr pReflector;
+	doSlangReflection(pVersion, pSpecializedSlangProgram, pLinkedEntryPoints, pReflector, log);
+
+	// Create Shader objects for each entry point and cache them here.
+	std::vector<Shader::SharedPtr> allShaders;
+
+	for (uint32_t i = 0; i < allEntryPointCount; i++) {
+		auto pLinkedEntryPoint = pLinkedEntryPoints[i];
+		auto entryPointDesc = mDesc.mEntryPoints[i];
+
+		Shader::SharedPtr shader = Shader::create(mpDevice, pLinkedEntryPoint, entryPointDesc.stage, entryPointDesc.exportName, mDesc.getCompilerFlags(), log);
+		if (!shader) return nullptr;
+
+		allShaders.push_back(std::move(shader));
+	}
+
+	// In order to construct the `ProgramKernels` we need to extract
+	// the kernels for each entry-point group.
+	//
+	std::vector<EntryPointGroupKernels::SharedPtr> entryPointGroups;
+
+	// TODO: Because we aren't actually specializing entry-point groups,
+	// we will again loop over the original unspecialized entry point
+	// groups from the `Program::Desc`, and assume that they line up
+	// one-to-one with the entries in `pLinkedEntryPointGroups`.
+	//
+	uint32_t entryPointGroupCount = uint32_t(mDesc.mGroups.size());
+	
+	for (uint32_t gg = 0; gg < entryPointGroupCount; ++gg) {
+		auto entryPointGroupDesc = mDesc.mGroups[gg];
+		// For each entry-point group we will collect the compiled kernel
+		// code for its constituent entry points, using the "linked"
+		// version of the entry-point group.
+		//
+		std::vector<Shader::SharedPtr> shaders;
+
+		for (auto entryPointIndex : entryPointGroupDesc.entryPoints) {
+			shaders.push_back(allShaders[entryPointIndex]);
+		}
+		
+		auto pGroupReflector = pReflector->getEntryPointGroup(gg);
+		auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
+		entryPointGroups.push_back(pEntryPointGroupKernels);
+	}
+
+	auto descStr = getProgramDescString();
+	ProgramKernels::SharedPtr pProgramKernels = createProgramKernels(
+		pVersion,
+		pSpecializedSlangGlobalScope,
+		pTypeConformanceSpecializedEntryPointsRawPtr,
+		pReflector,
+		entryPointGroups,
+		log,
+		descStr);
+
+	timer.update();
+	double time = timer.delta();
+	sCompilationStats.programKernelsCount++;
+	sCompilationStats.programKernelsTotalTime += time;
+	sCompilationStats.programKernelsMaxTime = std::max(sCompilationStats.programKernelsMaxTime, time);
+	LLOG_DBG << "Created program kernels in " << std::to_string(time) << " s: " << descStr;
+
+	return pProgramKernels;
 }
 
-ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const {
-    TimeReport timeReport;
+ProgramKernels::SharedPtr Program::createProgramKernels(
+	const ProgramVersion* pVersion,
+	slang::IComponentType* pSpecializedSlangGlobalScope,
+	const std::vector<slang::IComponentType*>& pTypeConformanceSpecializedEntryPoints,
+	const ProgramReflection::SharedPtr& pReflector,
+	const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
+	std::string& log,
+	const std::string& name) const
+{
+	return ProgramKernels::create(
+		mpDevice,
+		pVersion,
+		pSpecializedSlangGlobalScope,
+		pTypeConformanceSpecializedEntryPoints,
+		pReflector,
+		uniqueEntryPointGroups,
+		log,
+		name);
+}
 
-    auto pSlangRequest = createSlangCompileRequest(mDefineList);
-    if (pSlangRequest == nullptr) {
-        LOG_ERR("Error creating slang compile request !!!");
-        return nullptr;
-    }
+ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion( std::string& log) const {
+	CpuTimer timer;
+	timer.update();
 
-    timeReport.measure("Program::preprocessAndCreateProgramVersion createCompileRequest");
+	auto pSlangRequest = createSlangCompileRequest(mDefineList);
+	if (pSlangRequest == nullptr) return nullptr;
 
-    SlangResult slangResult = spCompile(pSlangRequest);
-    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompile");
-    log += spGetDiagnosticOutput(pSlangRequest);
-    
-    if(SLANG_FAILED(slangResult)) {
-        LOG_ERR("Slang compilation failed: %s", log.c_str());
-        spDestroyCompileRequest(pSlangRequest);
-        return nullptr;
-    }
+	SlangResult slangResult = spCompile(pSlangRequest);
+	log += spGetDiagnosticOutput(pSlangRequest);
+	
+	if (SLANG_FAILED(slangResult)) {
+		spDestroyCompileRequest(pSlangRequest);
+		return nullptr;
+	}
 
-    ComPtr<slang::IComponentType> pSlangGlobalScope;
-    spCompileRequest_getProgram(
-        pSlangRequest,
-        pSlangGlobalScope.writeRef());
-    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getProgram");
+	ComPtr<slang::IComponentType> pSlangGlobalScope;
+	spCompileRequest_getProgram(
+		pSlangRequest,
+		pSlangGlobalScope.writeRef());
 
-    ComPtr<slang::ISession> pSlangSession(pSlangGlobalScope->getSession());
-    timeReport.measure("Program::preprocessAndCreateProgramVersion pSlangSession");
+	ComPtr<slang::ISession> pSlangSession(pSlangGlobalScope->getSession());
 
-    std::vector<ComPtr<slang::IComponentType>> pSlangEntryPoints;
-    uint32_t entryPointCount = (uint32_t) mDesc.mEntryPoints.size();
-    
-    for( uint32_t ee = 0; ee < entryPointCount; ++ee ) {
-        auto entryPointDesc = mDesc.mEntryPoints[ee];
+	// Prepare entry points.
+	std::vector<ComPtr<slang::IComponentType>> pSlangEntryPoints;
+	uint32_t entryPointCount = (uint32_t)mDesc.mEntryPoints.size();
+	for (uint32_t ee = 0; ee < entryPointCount; ++ee) {
+		ComPtr<slang::IComponentType> pSlangEntryPoint;
+		spCompileRequest_getEntryPoint(
+			pSlangRequest,
+			ee,
+			pSlangEntryPoint.writeRef());
 
-        ComPtr<slang::IComponentType> pSlangEntryPoint;
-        spCompileRequest_getEntryPoint(
-            pSlangRequest,
-            ee,
-            pSlangEntryPoint.writeRef());
+		// Rename entry point in the generated code if the exported name differs from the source name.
+		// This makes it possible to generate different specializations of the same source entry point,
+		// for example by setting different type conformances.
+		const auto& entryPointDesc = mDesc.mEntryPoints[ee];
+		if (entryPointDesc.exportName != entryPointDesc.name) {
+			ComPtr<slang::IComponentType> pRenamedEntryPoint;
+			pSlangEntryPoint->renameEntryPoint(entryPointDesc.exportName.c_str(), pRenamedEntryPoint.writeRef());
+			pSlangEntryPoints.push_back(pRenamedEntryPoint);
+		} else {
+			pSlangEntryPoints.push_back(pSlangEntryPoint);
+		}
+	}
 
-        pSlangEntryPoints.push_back(pSlangEntryPoint);
-    }
+	// Extract list of files referenced, for dependency-tracking purposes.
+	int depFileCount = spGetDependencyFileCount(pSlangRequest);
+	
+	for (int ii = 0; ii < depFileCount; ++ii) {
+		std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
+		mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
+	}
 
-    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getEntryPoint's");
+	// Note: the `ProgramReflection` needs to be able to refer back to the
+	// `ProgramVersion`, but the `ProgramVersion` can't be initialized
+	// until we have its reflection. We cut that dependency knot by
+	// creating an "empty" program first, and then initializing it
+	// after the reflection is created.
+	//
+	// TODO: There is no meaningful semantic difference between `ProgramVersion`
+	// and `ProgramReflection`: they are one-to-one. Ideally in a future version
+	// of Falcor they could be the same object.
+	//
+	ProgramVersion::SharedPtr pVersion = ProgramVersion::createEmpty(const_cast<Program*>(this), pSlangGlobalScope);
 
-    // Extract list of files referenced, for dependency-tracking purposes
-    int depFileCount = spGetDependencyFileCount(pSlangRequest);
-    timeReport.measure("Program::preprocessAndCreateProgramVersion spGetDependencyFileCount's");
-    
-    for(int ii = 0; ii < depFileCount; ++ii) {
-        std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
-        mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
-    }
+	// Note: Because of interactions between how `SV_Target` outputs
+	// and `u` register bindings work in Slang today (as a compatibility
+	// feature for Shader Model 5.0 and below), we need to make sure
+	// that the entry points are included in the component type we use
+	// for reflection.
+	//
+	// TODO: Once Slang drops that behavior for SM 5.1+, we should be able
+	// to just use `pSlangGlobalScope` for the reflection step instead
+	// of `pSlangProgram`.
+	//
+	ComPtr<slang::IComponentType> pSlangProgram;
+	spCompileRequest_getProgram(
+		pSlangRequest,
+		pSlangProgram.writeRef());
 
-    timeReport.measure("Program::preprocessAndCreateProgramVersion dependency-tracking time stamps");
+	ProgramReflection::SharedPtr pReflector;
+	if (!doSlangReflection(pVersion.get(), pSlangGlobalScope, pSlangEntryPoints, pReflector, log)) {
+		return nullptr;
+	}
 
-    // Note: the `ProgramReflection` needs to be able to refer back to the
-    // `ProgramVersion`, but the `ProgramVersion` can't be initialized
-    // until we have its reflection. We cut that dependency knot by
-    // creating an "empty" program first, and then initializing it
-    // after the reflection is created.
-    //
-    // TODO: There is no meaningful semantic difference between `ProgramVersion`
-    // and `ProgramReflection`: they are one-to-one. Ideally in a future version
-    // of Falcor they could be the same object.
-    //
-    ProgramVersion::SharedPtr pVersion = ProgramVersion::createEmpty(const_cast<Program*>(this), pSlangGlobalScope);
+	auto descStr = getProgramDescString();
+	pVersion->init(
+		mDefineList,
+		pReflector,
+		descStr,
+		pSlangEntryPoints);
 
-    // Note: Because of interactions between how `SV_Target` outputs
-    // and `u` register bindings work in Slang today (as a compatibility
-    // feature for Shader Model 5.0 and below), we need to make sure
-    // that the entry points are included in the component type we use
-    // for reflection.
-    //
-    // TODO: Once Slang drops that behavior for SM 5.1+, we should be able
-    // to just use `pSlangGlobalScope` for the reflection step instead
-    // of `pSlangProgram`.
-    //
-    ComPtr<slang::IComponentType> pSlangProgram;
-    spCompileRequest_getProgram(
-        pSlangRequest,
-        pSlangProgram.writeRef());
-    timeReport.measure("Program::preprocessAndCreateProgramVersion spCompileRequest_getProgram");
+	timer.update();
+	double time = timer.delta();
+	sCompilationStats.programVersionCount++;
+	sCompilationStats.programVersionTotalTime += time;
+	sCompilationStats.programVersionMaxTime = std::max(sCompilationStats.programVersionMaxTime, time);
+	LLOG_DBG << "Created program version in " << std::to_string(timer.delta()) << " s: " << descStr;
 
-    ProgramReflection::SharedPtr pReflector;
-    
-    if( !doSlangReflection(pVersion.get(), pSlangGlobalScope, pSlangEntryPoints, pReflector, log) ) {
-        return nullptr;
-    }
-
-    timeReport.measure("Program::preprocessAndCreateProgramVersion doSlangReflection");
-
-    pVersion->init(
-        mDefineList,
-        pReflector,
-        getProgramDescString(),
-        pSlangEntryPoints);
-
-    timeReport.measure("Program::preprocessAndCreateProgramVersion pVersion->init");
-    timeReport.addTotal("Program::preprocessAndCreateProgramVersion done in");
-    timeReport.printToLog();
-
-    return pVersion;
+	return pVersion;
 }
 
 EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
-    const std::vector<Shader::SharedPtr>& shaders,
-    EntryPointBaseReflection::SharedPtr const& pReflector) const
+	const std::vector<Shader::SharedPtr>& shaders,
+	EntryPointBaseReflection::SharedPtr const& pReflector) const
 {
-    return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Rasterization, shaders);
+	return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Rasterization, shaders);
 }
 
 bool Program::link() const {
-    while(1) {
-        // Create the program
-        std::string log;
+	while (1) {
+		// Create the program
+		std::string log;
+		auto pVersion = preprocessAndCreateProgramVersion(log);
 
-        auto pVersion = preprocessAndCreateProgramVersion(log);
+		if (pVersion == nullptr) {
+			std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
+			LLOG_ERR << error;
 
-        if (pVersion == nullptr) {
-            std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
-            LOG_ERR("%s", error.c_str());
-            logError(error, Logger::MsgBox::RetryAbort);
-            //throw std::runtime_error("Failed to link program");
+			// Continue loop to keep trying...
+		} else {
+			if (!log.empty()) {
+				std::string warn = "Warnings in program:\n" + getProgramDescString() + "\n" + log;
+				LLOG_WRN << warn;
+			}
 
-            // Continue loop to keep trying...
-        } else {
-            if (!log.empty()) {
-                std::string warn = "Warnings in program:\n" + getProgramDescString() + "\n" + log;
-                LOG_WARN("%s", warn.c_str());
-                logWarning(warn);
-            }
+			mpActiveVersion = pVersion;
+			return true;
+		}
 
-            mpActiveVersion = pVersion;
-            return true;
-        }
-
-        char choice;
-        std::cout << "Would you like to try again ? (Y/N)" << std::endl;
-        std::cin >> choice;
-        if ( choice =='N' || choice =='n' ){
-            break;
-        }
-    }
-    return false;
+		char choice;
+		std::cout << "Would you like to try again ? (Y/N)" << std::endl;
+		std::cin >> choice;
+		if ( choice =='N' || choice =='n' ){
+			break;
+		}
+	}
+	return false;
 }
 
 void Program::reset() {
-    mpActiveVersion = nullptr;
-    mProgramVersions.clear();
-    mFileTimeMap.clear();
-    mLinkRequired = true;
+	mpActiveVersion = nullptr;
+	mProgramVersions.clear();
+	mFileTimeMap.clear();
+	mLinkRequired = true;
 }
 
 bool Program::reloadAllPrograms(bool forceReload) {
-    bool hasReloaded = false;
+	bool hasReloaded = false;
 
-    // The `sPrograms` array stores weak pointers, and we will
-    // use this step as a chance to clean up the contents of
-    // the array that might have changed to `nullptr` because
-    // the `Program` has been deleted.
-    //
-    // We will do this cleanup in a single pass without creating
-    // a copy of the array by tracking two iterators: one for
-    // reading and one for writing. The write iterator will
-    // be explicit:
-    //
-    auto writeIter = sPrograms.begin();
-    //
-    // The read iterator will be implicit in our loop over the
-    // entire array of programs:
-    //
-    for(auto& pWeakProgram : sPrograms) {
-        // We will skip any programs where the weak pointer
-        // has changed to `nullptr` because the object was
-        // already deleted.
-        //
-        auto pProgram = pWeakProgram.lock();
-        if(!pProgram)
-            continue;
+	// The `sProgramsForReload` array stores weak pointers, and we will
+	// use this step as a chance to clean up the contents of
+	// the array that might have changed to `nullptr` because
+	// the `Program` has been deleted.
+	//
+	// We will do this cleanup in a single pass without creating
+	// a copy of the array by tracking two iterators: one for
+	// reading and one for writing. The write iterator will
+	// be explicit:
+	//
+	auto writeIter = sProgramsForReload.begin();
+	//
+	// The read iterator will be implicit in our loop over the
+	// entire array of programs:
+	//
+	for (auto& pWeakProgram : sProgramsForReload) {
+		// We will skip any programs where the weak pointer
+		// has changed to `nullptr` because the object was
+		// already deleted.
+		//
+		auto pProgram = pWeakProgram.lock();
+		if (!pProgram) continue;
 
-        // Now we know that we have a valid (non-null) `Program`,
-        // so we wnat to keep it in the array for next time.
-        //
-        *writeIter++ = pProgram;
+		// Now we know that we have a valid (non-null) `Program`,
+		// so we wnat to keep it in the array for next time.
+		//
+		*writeIter++ = pProgram;
 
-        // Next we check if any of the files that affected the
-        // compilation of `pProgram` has been changed. If not,
-        // we can skip further processing of this program
-        // (unless forceReload flag is set).
-        //
-        if(!(pProgram->checkIfFilesChanged() || forceReload))
-            continue;
+		// Next we check if any of the files that affected the
+		// compilation of `pProgram` has been changed. If not,
+		// we can skip further processing of this program
+		// (unless forceReload flag is set).
+		//
+		if (!(pProgram->checkIfFilesChanged() || forceReload)) continue;
 
-        // If any files have changed, then we need to reset
-        // the caches of compiled information for the program.
-        //
-        pProgram->reset();
+		// If any files have changed, then we need to reset
+		// the caches of compiled information for the program.
+		//
+		pProgram->reset();
 
-        hasReloaded = true;
-    }
+		hasReloaded = true;
+	}
 
-    // Once we are done, we will have written a compacted
-    // version of `sPrograms` (skipping the null elements)
-    // to the first N elements of the vector. To make the
-    // vector only contain those first N elements, we
-    // then need to erase everything past the last point
-    // we wrote to.
-    //
-    sPrograms.erase(writeIter, sPrograms.end());
+	// Once we are done, we will have written a compacted
+	// version of `sProgramsForReload` (skipping the null elements)
+	// to the first N elements of the vector. To make the
+	// vector only contain those first N elements, we
+	// then need to erase everything past the last point
+	// we wrote to.
+	//
+	sProgramsForReload.erase(writeIter, sProgramsForReload.end());
 
-    return hasReloaded;
+	return hasReloaded;
 }
 
 void Program::addGlobalDefines(const DefineList& defineList) {
-    sGlobalDefineList.add(defineList);
-    reloadAllPrograms(true);
+	sGlobalDefineList.add(defineList);
+	reloadAllPrograms(true);
 }
 
 void Program::removeGlobalDefines(const DefineList& defineList) {
-    sGlobalDefineList.remove(defineList);
-    reloadAllPrograms(true);
+	sGlobalDefineList.remove(defineList);
+	reloadAllPrograms(true);
+}
+
+void Program::setGenerateDebugInfoEnabled(bool enabled) {
+	sGenerateDebugInfo = enabled;
+}
+
+bool Program::isGenerateDebugInfoEnabled() {
+	return sGenerateDebugInfo;
 }
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Program) {
-    pybind11::class_<Program, Program::SharedPtr>(m, "Program");
+	pybind11::class_<Program, Program::SharedPtr>(m, "Program");
 }
 #endif
 

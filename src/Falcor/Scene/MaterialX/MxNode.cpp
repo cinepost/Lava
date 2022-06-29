@@ -65,7 +65,7 @@ MxNode::SharedPtr MxNode::create(const TypeCreateInfo& info, const std::string& 
     if (pNode) {
         const auto& mxLibrary = MxGeneratorsLibrary::instance();
 
-        LOG_DBG("Created MxNode %s at %s ...", to_string(pNode->info()).c_str(), pNode->path().c_str());
+        LLOG_DBG << "Created MxNode " << to_string(pNode->info()) << " at " <<  pNode->path();
     }
 
     return SharedPtr(pNode);

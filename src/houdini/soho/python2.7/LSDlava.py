@@ -113,14 +113,7 @@ def initializeFeatures(settings):
     Renderer("renderer", "verbose", "int", "lv_verbose", skipdefault=False)
     Renderer("renderer", "vexprofile", "int", "lv_vexprofile")
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")
-
-    Renderer("renderer", "use_ssao", "bool", "lv_ambient_occlusion", skipdefault=False)
-    Renderer("renderer", "ssao_distance", "float", "lv_ambient_occlusion_distance", skipdefault=False)
-    Renderer("renderer", "ssao_factor", "float", "lv_ambient_occlusion_factor", skipdefault=False)
-    Renderer("renderer", "ssao_precision", "float", "lv_ambient_occlusion_precision", skipdefault=False)
-    Renderer("renderer", "ssao_bent_normals", "bool", "lv_ambient_occlusion_bent_normals", skipdefault=False)
-    Renderer("renderer", "ssao_bounce_approx", "bool", "lv_ambient_occlusion_bounce_approx", skipdefault=False)
-
+    
     # -- Image --
     Image("image", "background", "string", "lv_background")
     Image("image", "backgroundchannels", "string", "lv_backgroundchannels")
@@ -129,8 +122,12 @@ def initializeFeatures(settings):
     Image("image", "bgenable", "bool", "lv_bgenable")
     Image("image", "bgscale", "bool", "lv_bgscale")
     Image("image", "bgzscale", "float", "lv_bgzscale")
-    Image("image", "bucket", "int", "lv_bucketsize")
-    Image("image", "bucketthreadcolor", "bool", "lv_bucketthreadcolor")
+
+    Image("image", "tiling", "bool", "lv_image_tiling", skipdefault=False)
+    Image("image", "tilesize", "int", "lv_image_tile_size", skipdefault=False)
+    Image("image", "sampleupdate", "int", "lv_sample_update_interval", skipdefault=False)
+    Image("image", "iprtilesize", "int", "lv_iprbucketsize")
+
     Image("image", "checkpointcachesize", "int", "lv_checkpointcachesize")
     Image("image", "checkpointname", "string", "lv_checkpointname")
     Image("image", "checkpointperiod", "float", "lv_checkpointperiod")
@@ -141,7 +138,6 @@ def initializeFeatures(settings):
     Image("image", "exrdatawindowpadding", "int", "lv_exrdatawindowpadding")
     Image("image", "exrdatawindowplanes", "string", "lv_exrdatawindowplanes")
     Image("image", "exrdatawindowthreshold", "float", "lv_exrdatawindowthreshold")
-    Image("image", "iprbucket", "int", "lv_iprbucketsize")
     Image("image", "jitter", "float", "lv_jitter")
     Image("image", "matchdeeppixelfilter", "bool", "lv_matchdeeppixelfilter")
     Image("image", "opacitylimit", "float", "lv_opacitylimit")
@@ -209,7 +205,7 @@ def initializeFeatures(settings):
     Object("lightcategories", "string", "lightcategories")
     Object("lightmask", "oplist", "lightmask")
     Object("lpetag", "string", "lv_lpetag")
-    Object("matte", "bool", "lv_matte")
+    Object("matte", "bool", "vm_matte")
     Object("maxindirectraysamples", "int", "lv_maxindirectraysamples")
     Object("maxraysamples", "int", "lv_maxraysamples")
     Object("metavolume", "bool", "lv_metavolume")

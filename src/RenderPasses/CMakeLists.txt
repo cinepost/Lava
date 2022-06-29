@@ -5,10 +5,8 @@ message("Render passes build dir: ${PASS_LIBRARY_OUTPUT_DIRECTORY}")
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 
 include_directories( 
-    ${PROJECT_SOURCE_DIR}/deps
-    ${PROJECT_SOURCE_DIR}/deps/include/VulkanMemoryAllocator
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core
-    ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvp
+    ${EXTERNALS_INSTALL_DIR}
+
 )
 # external passes (can also be made built-in)
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)
@@ -62,35 +60,14 @@ function (makeRenderPassLib)
     	falcor_lib
         ${ARGS_DEPS}
     	${PYTHON_LIBRARIES}
+        lava_utils_lib
     )
 
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
-    
-
-    #if (WIN32)
-    #file(
-    #    COPY ${ARGS_NAME}
-    #    DESTINATION ${SHADERS_OUTPUT_DIRECTORY} 
-    #    FILES_MATCHING
-    #        PATTERN "*.slang*"
-    #)
-    #else()
-    #add_custom_command(
-    #    TARGET ${PASS_LIB} 
-    #    #POST_BUILD
-    #    PRE_LINK
-    #    COMMAND rsync
-    #    ARGS -r --include='*.slang' --include='*/' --exclude='*'
-    #        ${CMAKE_CURRENT_SOURCE_DIR}/${ARGS_NAME}
-    #        ${SHADERS_OUTPUT_DIRECTORY}
-    #    COMMENT "Copying ${ARGS_NAME} shaders"
-    #)
-    #endif (WIN32)
 
     # Install render-pass library
-    
     install( 
         TARGETS ${PASS_LIB} 
         DESTINATION "render_passes" 
@@ -117,30 +94,34 @@ function (makeRenderPassLib)
 endfunction()
 
 # Now make bundled render passes
-makeRenderPassLib(NAME "Utils")
+
+
+makeRenderPassLib(NAME "AccumulatePass")
 makeRenderPassLib(NAME "DepthPass")
-makeRenderPassLib(NAME "BlitPass")
 makeRenderPassLib(NAME "TexturesResolvePass")
-makeRenderPassLib(NAME "HBAO")
 makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "SkyBox")
+makeRenderPassLib(NAME "RTXDIPass")
+makeRenderPassLib(NAME "PathTracer")
 
-makeRenderPassLib(NAME "WhittedRayTracer")
-makeRenderPassLib(NAME "MinimalPathTracer")
-makeRenderPassLib(NAME "MegakernelPathTracer")
+#makeRenderPassLib(NAME "WhittedRayTracer")
+#makeRenderPassLib(NAME "MinimalPathTracer")
+#makeRenderPassLib(NAME "MegakernelPathTracer")
 
 #makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
 
 #makeRenderPassLib(NAME "PixelInspectorPass")
-makeRenderPassLib(NAME "AccumulatePass")
 #makeRenderPassLib(NAME "Antialiasing")
 #makeRenderPassLib(NAME "ErrorMeasurePass")
 #makeRenderPassLib(NAME "DebugPasses")
 #makeRenderPassLib(NAME "BSDFViewer")
 #makeRenderPassLib(NAME "SVGFPass")
+#makeRenderPassLib(NAME "HBAO")
+#makeRenderPassLib(NAME "Utils")
+#makeRenderPassLib(NAME "BlitPass")
 
 # Render passes with dependecies
 makeRenderPassLib(NAME "GBuffer" DEPS DepthPass TexturesResolvePass)
 #makeRenderPassLib(NAME "SSAO" DEPS Utils)
-makeRenderPassLib(NAME "CSM" DEPS Utils)
+#makeRenderPassLib(NAME "CSM" DEPS Utils)

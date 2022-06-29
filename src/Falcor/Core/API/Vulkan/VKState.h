@@ -28,6 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_VULKAN_VKSTATE_H_
 #define SRC_FALCOR_CORE_API_VULKAN_VKSTATE_H_
 
+#include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Core/API/GraphicsStateObject.h"
 
 namespace Falcor {

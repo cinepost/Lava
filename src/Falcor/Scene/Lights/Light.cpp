@@ -26,8 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Core/Program/ProgramReflection.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Utils/Color/ColorHelpers.slang"
+
 #include "Light.h"
-#include "Utils/Color/ColorHelpers.slang"
 
 namespace Falcor {
 
@@ -75,7 +79,7 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
-    if (mPrevData.singleSided != mData.singleSided) mChanges != Changes::Intensity;
+    if (mPrevData.singleSided != mData.singleSided) mChanges != (Changes::Intensity | Changes::Direction);
 
     if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;

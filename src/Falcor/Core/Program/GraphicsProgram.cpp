@@ -26,22 +26,28 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Core/API/Device.h"
 #include "GraphicsProgram.h"
 
 namespace Falcor {
 
-    GraphicsProgram::SharedPtr GraphicsProgram::create(std::shared_ptr<Device> device, const Desc& desc, const Program::DefineList& programDefines) {
-        SharedPtr pProg = SharedPtr(new GraphicsProgram);
+    GraphicsProgram::SharedPtr GraphicsProgram::create(Device::SharedPtr pDevice, const Desc& desc, const Program::DefineList& programDefines) {
         Desc d = desc;
-        d.addDefaultVertexShaderIfNeeded();
-        pProg->init(device, d, programDefines);
+        auto pProg = SharedPtr(new GraphicsProgram(pDevice, d, programDefines));
+        registerProgramForReload(pProg);
         return pProg;
     }
 
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(std::shared_ptr<Device> device, const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines) {
-        Desc d(filename);
-        d.vsEntry(vsEntry).psEntry(psEntry).addDefaultVertexShaderIfNeeded();
-        return create(device, d, programDefines);
+    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(Device::SharedPtr pDevice, const fs::path& path, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines) {
+        Desc d(path);
+        d.vsEntry(vsEntry).psEntry(psEntry);
+        return create(pDevice, d, programDefines);
+    }
+
+    GraphicsProgram::GraphicsProgram(Device::SharedPtr pDevice, const Desc& desc, const Program::DefineList& programDefines)
+        : Program(pDevice, desc, programDefines)
+    {
     }
 
 #ifdef SCRIPTING

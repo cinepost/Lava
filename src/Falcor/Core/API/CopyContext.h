@@ -61,19 +61,26 @@ class dlldecl CopyContext {
         GpuFence::SharedPtr mpFence;
         Buffer::SharedPtr mpBuffer;
         CopyContext* mpContext;
+        uint32_t mRowCount;
+#ifdef FALCOR_GFX
+        uint32_t mRowSize;
+        uint32_t mActualRowSize;
+        uint32_t mDepth;
+#endif
 
 #ifdef FALCOR_D3D12
-        uint32_t mRowCount;
         ResourceFormat mTextureFormat;
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
-#elif defined(FALCOR_VK)
+#endif
+
+#ifdef FALCOR_VK 
         size_t mDataSize;
 #endif
     };
 
     virtual ~CopyContext();
 
-    std::shared_ptr<Device> device() { return mpDevice; };
+    inline std::shared_ptr<Device> device() const { return mpDevice; };
 
     /** Create a copy context.
         \param[in] queue Command queue handle.

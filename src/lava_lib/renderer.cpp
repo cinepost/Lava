@@ -2,18 +2,27 @@
 
 #include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Threading.h"
+#include "Falcor/RenderGraph/RenderPassLibrary.h"
+
+#include "Falcor/Utils/SampleGenerators/StratifiedSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/DxSamplePattern.h"
+#include "Falcor/Utils/SampleGenerators/HaltonSamplePattern.h"
+
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 #include "Falcor/Utils/ConfigStore.h"
 #include "Falcor/Utils/Debug/debug.h"
-
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
 #include "lava_utils_lib/logging.h"
 
-namespace Falcor {  IFramework* gpFramework = nullptr; } // TODO: probably it's safe to remove now...
+namespace Falcor {  
+    IFramework* gpFramework = nullptr;  // TODO: probably it's safe to remove now...
+}
 
 namespace lava {
 
@@ -29,21 +38,18 @@ Renderer::SharedPtr Renderer::create(Device::SharedPtr pDevice) {
 
 
 Renderer::Renderer(Device::SharedPtr pDevice): mpDevice(pDevice), mIfaceAquired(false), mpClock(nullptr), mpFrameRate(nullptr), mActiveGraph(0), mInited(false), mGlobalDataInited(false) {
-	LLOG_DBG << "Renderer::Renderer";
-    mMainAOVPlaneExist = false;
+	mMainAOVPlaneExist = false;
 }
 
 bool Renderer::init(const Config& config) {
 	if(mInited) return true;
 
-	LLOG_DBG << "Renderer::init";
-
-    mCurrentConfig = config;
+	mCurrentConfig = config;
 
     Falcor::OSServices::start();
 
 #ifdef SCRIPTING
-	Falcor::Scripting::start();
+    Falcor::Scripting::start();
     Falcor::ScriptBindings::registerBinding(Renderer::registerBindings);
 #endif
 
@@ -57,6 +63,8 @@ bool Renderer::init(const Config& config) {
     if (mCurrentConfig.useRaytracing) {
         sceneBuilderFlags |= SceneBuilder::Flags::UseRaytracing;
     }
+
+    //sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
@@ -85,11 +93,8 @@ Renderer::~Renderer() {
     
     mpSampler = nullptr;
 
-#ifdef SCRIPTING
     Falcor::Scripting::shutdown();
-#endif
-
-    Falcor::RenderPassLibrary::instance(mpDevice).shutdown();
+    Falcor::RenderPassLibrary::instance().shutdown();
 
     mpTargetFBO.reset();
 
@@ -101,7 +106,7 @@ Renderer::~Renderer() {
 }
 
 AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
-    LLOG_WRN << "Adding aov " << info.name;
+    LLOG_DBG << "Adding aov " << info.name;
     if (mAOVPlanes.find(info.name) != mAOVPlanes.end()) {
         LLOG_ERR << "AOV plane named \"" << info.name << "\" already exist !";
         return nullptr;
@@ -120,7 +125,7 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 }
 
 AOVPlane::SharedPtr Renderer::getAOVPlane(const AOVName& name) {
-    LLOG_WRN << "Getting aov " << name;
+    LLOG_DBG << "Getting aov " << name;
     if (mAOVPlanes.find(name) == mAOVPlanes.end()) {
         LLOG_ERR << "No AOV plane named \"" << name << "\" exist !";
         return nullptr;
@@ -212,26 +217,12 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     // Depth pass
     Falcor::Dictionary depthPassDictionary;
     depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
-    depthPassDictionary["maxMipLevels"] = (uint8_t)5;
-
 
     mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
     mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
     mpDepthPass->setScene(pRenderContext, pScene);
     mpDepthPass->setCullMode(cullMode);
     mpRenderGraph->addPass(mpDepthPass, "DepthPass");
-
-    // Test GBuffer pass
-    mpGBufferRasterPass = GBufferRaster::create(pRenderContext);
-    auto gbuffer_pass = mpRenderGraph->addPass(mpGBufferRasterPass, "GBufferRasterPass");
-
-    // Test pathtracer pass
-    Falcor::Dictionary minimalPathTracerPassDictionary;
-    mpMinimalPathTracer = MinimalPathTracer::create(pRenderContext, minimalPathTracerPassDictionary);
-    mpMinimalPathTracer->setScene(pRenderContext, pScene);
-
-    auto ptracer_pass = mpRenderGraph->addPass(mpMinimalPathTracer, "MinimalPathTracerPass");
-
 
     // Forward lighting
     Falcor::Dictionary lightingPassDictionary;
@@ -243,22 +234,37 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpLightingPass->setScene(pRenderContext, pScene);
     mpLightingPass->setColorFormat(ResourceFormat::RGBA32Float);
 
-    auto pass2 = mpRenderGraph->addPass(mpLightingPass, "LightingPass");
+    mpRenderGraph->addPass(mpLightingPass, "LightingPass");
 
+    // VBuffer
+    Falcor::Dictionary vbufferPassDictionary;
+    auto pVBufferPass =VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+    pVBufferPass->setScene(pRenderContext, pScene);
+
+    mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+
+    // RTXDIPass
+    Falcor::Dictionary rtxdiPassDictionary;
+    auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
+    pRTXDIPass->setScene(pRenderContext, pScene);
+
+    mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
 
     // SkyBox
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
-    mpSkyBoxPass->setTransparency(0.0f);
+    mpSkyBoxPass->setOpacity(1.0f);
 
     mpSkyBoxPass->setScene(pRenderContext, pScene);
-    auto pass3 = mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
+    mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 
     pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
     
-    mpRenderGraph->addEdge("DepthPass.depth", "LightingPass.depth");
-    mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+    mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
+
+    mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
+    mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
     
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     
@@ -268,8 +274,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     std::string log;
     bool result = mpRenderGraph->compile(pRenderContext, log);
     if(!result) {
-        LLOG_ERR << "Error compiling rendering graph !!!";
-        LLOG_ERR << log;
+        LLOG_ERR << "Error compiling rendering graph !!!\n" << log;
         mpRenderGraph = nullptr;
     }
     LLOG_DBG << "createRenderGraph done";
@@ -370,18 +375,15 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(Renderer::SamplePattern
 
 void Renderer::finalizeScene(const FrameInfo& frame_info) {
     // finalize camera
-    mInvFrameDim = 1.f / float2({frame_info.imageWidth, frame_info.imageHeight});
+    auto renderRegionDims = frame_info.renderRegionDims();
 
-    if(!mpSampleGenerator) {
+    if(!mpSampleGenerator || (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+        auto mInvRegionDim = 1.f / float2({renderRegionDims[0], renderRegionDims[1]});
         mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_info.imageSamples);
+        mpCamera->setPatternGenerator(mpSampleGenerator, mInvRegionDim);
     }
 
-    if (mpSampleGenerator) {
-        mpCamera->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
-    }
-
-    //mpCamera->setAspectRatio(static_cast<float>(frame_info.imageWidth) / static_cast<float>(frame_info.imageHeight));
-    mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), 0);
+    mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), frame_info.frameNumber);
 }
 
 void Renderer::bindAOVPlanesToResources() {
@@ -411,15 +413,19 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
         return false;
     }
 
+    auto renderRegionDims = frame_info.renderRegionDims();
     finalizeScene(frame_info);
 
     if (!mpRenderGraph) {
         createRenderGraph(frame_info);
         bindAOVPlanesToResources();
-    } else if ((mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || (mCurrentFrameInfo.renderRegion != frame_info.renderRegion)) {
+    } else if (
+        (mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || 
+        (mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || 
+        (mCurrentFrameInfo.renderRegionDims() != renderRegionDims)) {
+        
         // Change rendering graph frame dimensions
-        auto graphRenderRegion = mCurrentFrameInfo.renderRegionDims();
-        mpRenderGraph->resize(graphRenderRegion[0], graphRenderRegion[1], Falcor::ResourceFormat::RGBA32Float);
+        mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
 
         std::string compilationLog;
         if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
@@ -427,6 +433,10 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
             return false;
         }
         bindAOVPlanesToResources();
+    }
+
+    for(auto &pair: mAOVPlanes) {
+        pair.second->reset();
     }
 
     mCurrentSampleNumber = 0;
@@ -453,7 +463,7 @@ void Renderer::renderSample() {
     }
 
     mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-
+    
     double currentTime = 0;
     pScene->update(pRenderContext, currentTime);
 

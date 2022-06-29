@@ -635,7 +635,8 @@ elseif(NOT OPENVDB_USE_STATIC_LIBS)
 endif()
 
 if(OpenVDB_USES_BLOSC)
-  find_package(Blosc REQUIRED)
+  find_package(Blosc)
+  #find_package(Blosc REQUIRED)
 endif()
 
 if(OpenVDB_USES_ZLIB)

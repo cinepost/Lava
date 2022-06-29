@@ -57,29 +57,39 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
         \param[in] queue Command queue handle. Can be nullptr.
         \return A new object, or throws an expception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue);
+    static SharedPtr create(std::shared_ptr<Device> pDevice, CommandQueueType type, CommandQueueHandle queue);
 
     void flush();
 
     const CommandListHandle& getCommandList() const { return mpList; }
     const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
+    const D3D12CommandListHandle& getD3D12CommandList() const;
+    const D3D12CommandQueueHandle& getD3D12CommandQueue() const;
     const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
     const GpuFence::SharedPtr& getFence() const { return mpFence; }
     LowLevelContextApiData* getApiData() const { return mpApiData; }
 
+#ifdef FALCOR_D3D12
     // Used in DXR
     void setCommandList(CommandListHandle pList) { mpList = pList; }
+#endif
+#ifdef FALCOR_GFX
+    void closeCommandBuffer();
+    void openCommandBuffer();
+    void beginDebugEvent(const char* name);
+    void endDebugEvent();
+#endif
 
  protected:
-    LowLevelContextData(std::shared_ptr<Device> device, CommandQueueType type, CommandQueueHandle queue);
+    LowLevelContextData(std::shared_ptr<Device> pDevice, CommandQueueType type, CommandQueueHandle queue);
 
+    std::shared_ptr<Device> mpDevice; 
     LowLevelContextApiData* mpApiData = nullptr;
     CommandQueueType mType;
     CommandListHandle mpList;
     CommandQueueHandle mpQueue;  // Can be nullptr
     CommandAllocatorHandle mpAllocator;
     GpuFence::SharedPtr mpFence;
-    std::shared_ptr<Device> mpDevice; 
 };
 
 inline std::string to_string(LowLevelContextData::CommandQueueType typ) {

@@ -27,8 +27,16 @@
  **************************************************************************/
 import Scene.Scene;
 import Scene.ShadingData;
+import Experimental.Scene.Material.IBSDF;
 import Utils.Math.MathHelpers;
 
+/** Implementation of image-based lighting using an environment map probe.
+
+    The code assumes the material can be approximated by a diffuse lobe
+    plus a GGX microfacet specular lobe. Only reflection is supported.
+    Note that the actual material may be different so the result can be
+    arbitrarily wrong.
+*/
 struct EnvMapLighting
 {
     Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term. The u-axis is NdotV=cos(theta) and the v-axis is GGX alpha, both in [0,1].
@@ -38,9 +46,9 @@ struct EnvMapLighting
     Texture2D specularTexture;  ///< Texture containing pre-integrated specular (LD) term
     SamplerState sampler;
 
-    float linearRoughnessToLod(float linearRoughness, float mipCount)
+    float roughnessToLod(float roughness, float mipCount)
     {
-        return sqrt(linearRoughness) * (mipCount - 1);
+        return roughness * (mipCount - 1.f);
     }
 
     float3 getDiffuseDominantDir(float3 N, float3 V, float ggxAlpha)
@@ -53,26 +61,27 @@ struct EnvMapLighting
 
     float3 getSpecularDominantDir(float3 N, float3 R, float ggxAlpha)
     {
-        float smoothness = 1 - ggxAlpha;
+        float smoothness = 1.f - ggxAlpha;
         float factor = smoothness * (sqrt(smoothness) + ggxAlpha);
         return normalize(lerp(N, R, factor));
     }
 
-    float3 evalDiffuse(ShadingData sd)
+    float3 evalDiffuse(const ShadingData sd, const BSDFProperties bsdfProperties)
     {
-        float3 dominantDir = getDiffuseDominantDir(sd.N, sd.V, sd.ggxAlpha);
+        float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
+        float3 dominantDir = getDiffuseDominantDir(sd.N, sd.V, ggxAlpha);
         float2 uv = world_to_latlong_map(gScene.envMap.toLocal(dominantDir));
 
         float width, height, mipCount;
         diffuseTexture.GetDimensions(0, width, height, mipCount);
 
         float3 diffuseLighting = diffuseTexture.SampleLevel(sampler, uv, 0).rgb;
-        float preintegratedDisneyBRDF = dfgTexture.SampleLevel(dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).z;
+        float preintegratedDisneyBRDF = dfgTexture.SampleLevel(dfgSampler, float2(dot(sd.N, sd.V), ggxAlpha), 0).z;
 
-        return diffuseLighting * preintegratedDisneyBRDF * sd.diffuse.rgb * gScene.envMap.getIntensity();
+        return diffuseLighting * preintegratedDisneyBRDF * bsdfProperties.diffuseReflectionAlbedo * gScene.envMap.getIntensity();
     }
 
-    float3 evalSpecular(ShadingData sd, float3 L)
+    float3 evalSpecular(const ShadingData sd, const BSDFProperties bsdfProperties, const float3 L)
     {
         float dfgWidth, dfgHeight;
         dfgTexture.GetDimensions(dfgWidth, dfgHeight);
@@ -80,16 +89,16 @@ struct EnvMapLighting
         float width, height, mipCount;
         specularTexture.GetDimensions(0, width, height, mipCount);
 
-        float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.ggxAlpha);
+        float ggxAlpha = bsdfProperties.roughness * bsdfProperties.roughness;
+        float3 dominantDir = getSpecularDominantDir(sd.N, L, ggxAlpha);
         float2 uv = world_to_latlong_map(gScene.envMap.toLocal(dominantDir));
 
-        float mipLevel = linearRoughnessToLod(sd.ggxAlpha, mipCount);
+        float mipLevel = roughnessToLod(bsdfProperties.roughness, mipCount);
 
         float3 ld = specularTexture.SampleLevel(sampler, uv, mipLevel).rgb;
-
-        float2 dfg = dfgTexture.SampleLevel(dfgSampler, float2(sd.NdotV, sd.ggxAlpha), 0).xy;
+        float2 dfg = dfgTexture.SampleLevel(dfgSampler, float2(dot(sd.N, sd.V), ggxAlpha), 0).xy;
 
         // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
-        return ld * (sd.specular * dfg.x + dfg.y) * gScene.envMap.getIntensity();
+        return ld * (bsdfProperties.specularReflectance * dfg.x + dfg.y) * gScene.envMap.getIntensity();
     }
 }

@@ -29,6 +29,8 @@
 #define SRC_FALCOR_UTILS_SAMPLING_SAMPLEGNERATOR_H_
 
 #include "Falcor/Core/Program/Program.h"
+#include "Falcor/Core/Program/ShaderVar.h"
+
 #include "SampleGeneratorType.slangh"
 
 namespace Falcor {

@@ -10,6 +10,7 @@
 #include "types.h"
 #include "boost/variant.hpp"
 
+#include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
 
@@ -112,6 +113,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
+    void reset() { if (mpAccumulatePass) mpAccumulatePass->reset(); }; // reset associated accumulator
 
     inline bool isBound() const;
 
@@ -139,7 +141,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string                         mAccumulatePassInputName;
     std::string                         mAccumulatePassOutputName;
 
-    Falcor::Resource::Type              mType = Falcor::Resource::Type::Undefined;
+    Falcor::Resource::Type              mType;
 
   friend class Renderer;
 };

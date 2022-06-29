@@ -33,6 +33,8 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/RenderGraph/RenderPass.h"
+
 
 using namespace Falcor;
 
@@ -48,7 +50,7 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
  public:
     using SharedPtr = std::shared_ptr<DepthPass>;
     using inherit_shared_from_this<RenderPass, DepthPass>::shared_from_this;
-    static const char* kDesc;
+    static const Info kInfo;
 
     /** Create a new object
     */
@@ -58,32 +60,23 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; };
 
     DepthPass& setDepthBufferFormat(ResourceFormat format);
     DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
     void setAlphaTestDisabled(bool value);
-    void setHiZEnabled(bool value);
-    void setHiZMaxMipLevels(uint8_t maxMipLevels) { mHiZMaxMipLevels = maxMipLevels; };
+    void setOutputSize(const uint2& outputSize);
 
  private:
     DepthPass(Device::SharedPtr pDevice, const Dictionary& dict);
     void parseDictionary(const Dictionary& dict);
-
-    void prepareVars();
 
     uint32_t mFrameSampleCount = 16;
     uint32_t mSuperSampleCount = 1;  // MSAA stuff
 
     uint32_t mSampleNumber = 0;
 
-    // HiZ stuff
-    bool        mHiZenabled = false;
-    uint8_t     mHiZMaxMipLevels = 5;
-
-    ComputePass::SharedPtr              mpDownSampleDepthPass;
     Sampler::SharedPtr                  mpDepthSampler;
     SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
 
@@ -96,8 +89,10 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
     ResourceFormat              mDepthFormat = ResourceFormat::D32Float;
-    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
+    RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::Back;
     Scene::SharedPtr            mpScene;
+    uint2 mOutputSize = {};
+    bool mUseAlphaTest = false;
 
     bool mDirty = false;
 };

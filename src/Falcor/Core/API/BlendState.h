@@ -78,7 +78,7 @@ public:
     */
     class dlldecl Desc {
      public:
-        Desc(std::shared_ptr<Device> device);
+        Desc(std::shared_ptr<Device> pDevice);
         friend class BlendState;
 
         /** Set the constant blend factor

@@ -37,8 +37,10 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#include "Falcor/Utils/Debug/debug.h"
+//#include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/Framework.h"
+
+/*
 
 // Core/API
 #include "Falcor/Core/API/BlendState.h"
@@ -106,13 +108,14 @@
 // Scene
 //#include "Falcor/Scene/Scene.h"
 //#include "Falcor/Scene/Importer.h"
-#include "Falcor/Scene/Camera/Camera.h"
-#include "Falcor/Scene/Camera/CameraController.h"
-#include "Falcor/Scene/Lights/Light.h"
-#include "Falcor/Scene/Material/Material.h"
-#include "Falcor/Scene/Animation/Animation.h"
-#include "Falcor/Scene/Animation/AnimationController.h"
-#include "Falcor/Scene/ParticleSystem/ParticleSystem.h"
+
+//#include "Falcor/Scene/Camera/Camera.h"
+//#include "Falcor/Scene/Camera/CameraController.h"
+//#include "Falcor/Scene/Lights/Light.h"
+//#include "Falcor/Scene/Material/Material.h"
+//#include "Falcor/Scene/Animation/Animation.h"
+//#include "Falcor/Scene/Animation/AnimationController.h"
+//#include "Falcor/Scene/ParticleSystem/ParticleSystem.h"
 
 // Utils
 #include "Falcor/Utils/Math/AABB.h"
@@ -143,6 +146,8 @@
 #include "Falcor/Utils/Timing/TimeReport.h"
 #include "Falcor/Utils/Debug/DebugConsole.h"
 #include "Falcor/Utils/Debug/PixelDebug.h"
+
+*/
 
 #define FALCOR_MAJOR_VERSION 4
 #define FALCOR_REVISION 1

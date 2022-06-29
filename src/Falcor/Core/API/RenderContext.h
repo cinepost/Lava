@@ -34,7 +34,13 @@
 
 #include "ComputeContext.h"
 #include "Sampler.h"
+#include "ShaderTable.h"
+#include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Core/State/GraphicsState.h"
+#include "Falcor/Core/API/BlitContext.h"
+#include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
+
+#include <slang/slang-gfx.h>
 
 namespace Falcor {
 
@@ -66,6 +72,16 @@ class dlldecl RenderContext : public ComputeContext {
         SamplePositions = 0x80,             /// <Set the programmable sample positions
         All             = uint32_t(-1)
     };
+
+    /** Controls how an acceleration structure should be copied.
+    */
+    enum class RtAccelerationStructureCopyMode
+    {
+        Clone,                ///<Standard clone
+        Compact,              ///<Compact acceleration structure and store the result at destination.
+    };
+
+    static uint4 kMaxRect;
 
     ~RenderContext();
 
@@ -156,23 +172,26 @@ class dlldecl RenderContext : public ComputeContext {
     void drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset);
 
     /** Blits (low-level copy) an SRV into an RTV.
-        \param[in] pSrc Source view to copy from
-        \param[in] pDst Target view to copy to
-        \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down]
-        \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down]
+        The source and destination rectangles get clamped to the dimensions of the view.
+        The upper range is non-inclusive. To blit from the top-left 16x16 texels, specify srcRect = uint4(0,0,16,16).
+        \param[in] pSrc Source view to copy from.
+        \param[in] pDst Target view to copy to.
+        \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down].
+        \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down].
     */
-    void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect = uint4(-1), const uint4& dstRect = uint4(-1), Sampler::Filter = Sampler::Filter::Linear);
+    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect = kMaxRect, uint4 dstRect = kMaxRect, Sampler::Filter = Sampler::Filter::Linear);
 
     /** Complex blits (low-level copy) an SRV into an RTV.
-        \param[in] pSrc Source view to copy from
-        \param[in] pDst Target view to copy to
-        \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down]
-        \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down]
-        \param[in] componentsReduction Reduction mode for each of the input components (Standard, Min, Max).  Comparison reduction mode is not supported.
+        The source and destination rectangles get clamped to the dimensions of the view.
+        The upper range is non-inclusive. To blit from the top-left 16x16 texels, specify srcRect = uint4(0,0,16,16).
+        \param[in] pSrc Source view to copy from.
+        \param[in] pDst Target view to copy to.
+        \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down].
+        \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down].
+        \param[in] componentsReduction Reduction mode for each of the input components (Standard, Min, Max). Comparison reduction mode is not supported.
         \param[in] componentsTransform Linear combination factors of the input components for each output component.
     */
-    void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
-
+    void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
     /** Submit the command list
     */
@@ -199,16 +218,28 @@ class dlldecl RenderContext : public ComputeContext {
     */
     void raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
 
+    /** Build an acceleration structure.
+    */
+    void buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs);
+
+    /** Copy an acceleration structure.
+    */
+    void copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RtAccelerationStructureCopyMode mode);
+
 private:
     RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
-    bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
-    bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
 
-    StateBindFlags mBindFlags = StateBindFlags::All;
-    GraphicsVars* mpLastBoundGraphicsVars = nullptr;
+    Falcor::BlitContext& getBlitContext();
+
+#ifdef FALCOR_D3D12
+        void applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);
+        void prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
+#endif
+        StateBindFlags mBindFlags = StateBindFlags::All;
+        GraphicsVars* mpLastBoundGraphicsVars = nullptr;
 };
 
-enum_class_operators(RenderContext::StateBindFlags);
+FALCOR_ENUM_CLASS_OPERATORS(RenderContext::StateBindFlags);
 
 }  // namespace Falcor
 

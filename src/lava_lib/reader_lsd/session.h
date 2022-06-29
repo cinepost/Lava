@@ -13,6 +13,8 @@
 #include "scope.h"
 #include "display.h"
 
+#include "Falcor/Utils/Math/Vector.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Scene/MaterialX/MxTypes.h"
 
@@ -24,7 +26,7 @@ namespace lsd {
 class Session {
   public:
  	  using UniquePtr = std::unique_ptr<Session>;
-    static UniquePtr create(std::shared_ptr<Renderer> pRenderer);    
+    static UniquePtr create(Renderer::SharedPtr pRenderer);    
     ~Session();
 
     struct DisplayInfo {
@@ -49,6 +51,11 @@ class Session {
       double      cameraFrameHeight = 1.0;
 
       Renderer::SamplePattern samplePattern = Renderer::SamplePattern::Stratified;
+    };
+
+    struct TileInfo {
+      Falcor::uint4   renderRegion;
+      Falcor::float4  cameraCropRegion;
     };
 
   public:
@@ -100,7 +107,8 @@ class Session {
     ast::IPRMode mIPRmode = ast::IPRMode::GENERATE;
 
     bool  mFirstRun = true; // This variable used to detect subsequent cmd_raytrace calls for multy-frame and IPR modes 
-    std::shared_ptr<Renderer> 	    mpRenderer = nullptr;
+    Renderer::SharedPtr 	         mpRenderer = nullptr;
+    Device::SharedPtr              mpDevice   = nullptr;
 
     std::map<std::string, std::string>  mEnvmap;
 
@@ -123,6 +131,17 @@ class Session {
     std::unordered_map<std::string, std::variant<uint32_t, std::shared_future<uint32_t>>>	mMeshMap;     // maps detail(mesh) name to SceneBuilder mesh id	or it's async future
     std::unordered_map<std::string, uint32_t> mLightsMap;     // maps detail(mesh) name to SceneBuilder mesh id 
 };
+
+static inline std::string to_string(const Session::TileInfo& tileInfo) {
+  return "TileInfo: region[" + std::to_string(tileInfo.renderRegion[0]) 
+                    + ", " +  std::to_string(tileInfo.renderRegion[1]) 
+                    + ", " +  std::to_string(tileInfo.renderRegion[2])
+                    + ", " +  std::to_string(tileInfo.renderRegion[3]) + "]"
+                    + "[" + std::to_string(tileInfo.cameraCropRegion[0])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[1])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[2])
+                    + ", " +  std::to_string(tileInfo.cameraCropRegion[3]) + "]";
+}
 
 }  // namespace lsd
 

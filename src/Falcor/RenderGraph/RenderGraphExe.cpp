@@ -26,6 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "RenderGraphExe.h"
 
 namespace Falcor {
@@ -36,7 +39,7 @@ namespace Falcor {
 
         for (const auto& pass : mExecutionList) {
             PROFILE(pDevice, pass.name);
-
+            
             RenderData renderData(pass.name, mpResourceCache, ctx.pGraphDictionary, ctx.defaultTexDims, ctx.defaultTexFormat, frameNumber, sampleNumber);
             pass.pPass->execute(ctx.pRenderContext, renderData);
         }

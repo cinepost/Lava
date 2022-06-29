@@ -58,7 +58,6 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Texture3D,              ///< 3D texture. Can be bound as render-target, shader-resource and UAV
         TextureCube,            ///< Texture-cube. Can be bound as render-target, shader-resource and UAV
         Texture2DMultisample,   ///< 2D multi-sampled texture. Can be bound as render-target, shader-resource and UAV
-        Undefined
     };
 
     /** Resource state. Keeps track of how the resource was last used
@@ -85,17 +84,16 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         Predication,
         PixelShader,
         NonPixelShader,
-        //AccelerationStructure,
-        AccelStructRead,
-        AccelStructWrite,
-        AccelStructBuildInput,
-        AccelStructBuildBlas,
-        //AccelStructCopy
+        AccelerationStructure,
+        //AccelStructRead,
+        //AccelStructWrite,
+        //AccelStructBuildInput,
+        //AccelStructBuildBlas,
     };
 
     using SharedPtr = std::shared_ptr<Resource>;
     using SharedConstPtr = std::shared_ptr<const Resource>;
-    using ConstSharedPtrRef = const SharedPtr&;
+    //using ConstSharedPtrRef = const SharedPtr&;
 
     /** Default value used in create*() methods
     */
@@ -103,7 +101,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     virtual ~Resource() = 0;
 
-    std::shared_ptr<Device> device() { return mpDevice; }
+    //std::shared_ptr<Device> device() { return mpDevice; }
     std::shared_ptr<Device> device() const { return mpDevice; }
 
     size_t id() { return mID; }
@@ -132,11 +130,14 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-    /** Creates a shared resource API handle.
+    const D3D12ResourceHandle& getD3D12Handle() const;
+
+    /** Get a shared resource API handle.
+
+        The handle will be created on-demand if it does not already exist.
+        Throws if a shared handle cannot be created for this resource.
     */
-#ifdef FALCOR_D3D12
-    SharedResourceApiHandle createSharedApiHandle();
-#endif
+    SharedResourceApiHandle getSharedApiHandle() const;
 
     struct ViewInfoHashFunc {
         std::size_t operator()(const ResourceViewInfo& v) const {
@@ -172,18 +173,21 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Conversions to derived classes
     */
-    std::shared_ptr<Texture> asTexture() {
-        return this ? ((mType != Type::Buffer) ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr) : nullptr;
-    }
+    std::shared_ptr<Texture> asTexture();
+    std::shared_ptr<const Texture> asTexture() const;
+    std::shared_ptr<Buffer> asBuffer();
 
-    std::shared_ptr<const Texture> asTexture() const {
-        if (mType != Type::Buffer) return std::dynamic_pointer_cast<const Texture>(shared_from_this());
-        return nullptr;
-    }
+#if FALCOR_ENABLE_CUDA
+    /** Get the CUDA device address for this resource.
+        \return CUDA device address.
+        Throws an exception if the resource is not shared.
+    */
+    virtual void* getCUDADeviceAddress() const = 0;
 
-    std::shared_ptr<Buffer> asBuffer() {
-        return this ? ((mType == Type::Buffer) ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr) : nullptr;
-    }
+    /** Get the CUDA device address for a view of this resource.
+    */
+    virtual void* getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const = 0;
+#endif
 
  private:
     static std::atomic<size_t> newResourceID;
@@ -193,7 +197,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     Resource(std::shared_ptr<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
 
-    Type mType = Type::Undefined;
+    Type mType ;
     BindFlags mBindFlags;
 
     struct {
@@ -210,6 +214,11 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     size_t mSize = 0;
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
+
+#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+    mutable D3D12ResourceHandle mpD3D12Handle;
+#endif
+    mutable SharedResourceApiHandle mSharedApiHandle = 0;
 
     std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,67 +25,64 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
-#define SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
+#pragma once
+
+#include "Falcor/Core/API/Device.h"
 
 #include "StateGraph.h"
-#include "Falcor/Core/API/ComputeStateObject.h"
-#include "Falcor/Core/Program/ComputeProgram.h"
+#include "Core/API/ComputeStateObject.h"
+#include "Core/Program/ComputeProgram.h"
 
-namespace Falcor {
+namespace Falcor
+{
+    class ComputeVars;
 
-class Device;
-class ComputeVars;
-
-/** Compute state.
-    This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
-    The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
-*/
-class dlldecl ComputeState {
- public:
-    using SharedPtr = std::shared_ptr<ComputeState>;
-    using SharedConstPtr = std::shared_ptr<const ComputeState>;
-    ~ComputeState() = default;
-
-    /** Create a new state object.
-        \return A new object, or an exception is thrown if creation failed.
+    /** Compute state.
+        This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
+        The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
     */
-    static SharedPtr create(std::shared_ptr<Device> device) { return SharedPtr(new ComputeState(device)); }
+    class FALCOR_API ComputeState
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ComputeState>;
+        using SharedConstPtr = std::shared_ptr<const ComputeState>;
+        ~ComputeState() = default;
 
-    /** Copy constructor. Useful if you need to make minor changes to an already existing object
-    */
-    SharedPtr operator=(const SharedPtr& other);
+        /** Create a new state object.
+            \return A new object, or an exception is thrown if creation failed.
+        */
+        static SharedPtr create(Device::SharedPtr pDevice) { return SharedPtr(new ComputeState(pDevice)); }
 
-    /** Bind a program to the pipeline
-    */
-    ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
+        /** Copy constructor. Useful if you need to make minor changes to an already existing object
+        */
+        SharedPtr operator=(const SharedPtr& other);
 
-    /** Get the currently bound program
-    */
-    ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
+        /** Bind a program to the pipeline
+        */
+        ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
 
-    /** Get the active compute state object
-    */
-    ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
-    
- private:
-    ComputeState(std::shared_ptr<Device> device);
+        /** Get the currently bound program
+        */
+        ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
 
-    std::shared_ptr<Device> mpDevice;
-    ComputeProgram::SharedPtr mpProgram;
-    ComputeStateObject::Desc mDesc;
+        /** Get the active compute state object
+        */
+        ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
 
-    struct CachedData {
-        const ProgramKernels* pProgramKernels = nullptr;
-        const RootSignature* pRootSig = nullptr;
+    private:
+        ComputeState(Device::SharedPtr pDevice);
+
+        Device::SharedPtr mpDevice = nullptr;
+        ComputeProgram::SharedPtr mpProgram;
+        ComputeStateObject::Desc mDesc;
+
+        struct CachedData
+        {
+            const ProgramKernels* pProgramKernels = nullptr;
+        };
+        CachedData mCachedData;
+
+        using _StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
+        _StateGraph::SharedPtr mpCsoGraph;
     };
-    
-    CachedData mCachedData;
-
-    using _StateGraph = StateGraph<ComputeStateObject::SharedPtr, void*>;
-    _StateGraph::SharedPtr mpCsoGraph;
-};
-
-}  // namespace Flacor
-
-#endif  // SRC_FALCOR_CORE_STATE_COMPUTESTATE_H_
+}

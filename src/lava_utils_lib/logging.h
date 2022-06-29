@@ -22,6 +22,8 @@
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 
+#define USE_ASYNCRONOUS_CONSOLE_SINK 1
+
 // Logging macro or static inline to stay within namespace boundaries
 
 #define LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
@@ -39,7 +41,14 @@ namespace ut { namespace log {
 typedef boost::log::sources::severity_channel_logger_mt<boost::log::trivial::severity_level, std::string> global_logger_type;
 
 // basic text based sink. TODO: asyncronous sink
-typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> text_sink;
+#if USE_ASYNCRONOUS_CONSOLE_SINK
+    typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> console_sink;
+#else
+    // We use synchronous sink mainly for console log in debug build
+    typedef boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> console_sink;
+#endif
+
+typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> file_sink;
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_INIT(global_logger, global_logger_type) {
 	global_logger_type logger = global_logger_type(boost::log::keywords::channel = "global_logger");

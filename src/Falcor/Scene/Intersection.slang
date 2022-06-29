@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,28 +25,177 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Utils.Helpers;
+import Scene.Scene;
+import Scene.Displacement.DisplacementMapping;
+import Scene.SDFs.SDFGrid;
+import Utils.Geometry.IntersectionHelpers;
+import Utils.Geometry.GeometryHelpers;
+__exported import Utils.Math.Ray;
 
-#ifndef ENABLE_CURVE_SPHERE_JOINTS
-#define ENABLE_CURVE_SPHERE_JOINTS 0
-#endif
-
-/** Linear swept sphere intersection function wrapper.
-    \param[in] rayOrigin Ray origin position.
-    \param[in] rayDir Unit ray direction vector.
-    \param[in] sphereA Sphere (3D position + radius) at one end point.
-    \param[in] sphereB Sphere at the other end point.
-    \param[out] result The closest intersection distance t, and a parameter u for linear interpolation (between 0 and 1).
-    \return True if the ray intersects the linear swept sphere segment.
+/** Helper for intersecting rays against displaced triangle meshes.
 */
-bool intersectLinearSweptSphere(float3 rayOrigin, float3 rayDir, float4 sphereA, float4 sphereB, out float2 result)
+struct DisplacedTriangleMeshIntersector
 {
-    bool useSphereJoints;
-#if ENABLE_CURVE_SPHERE_JOINTS
-    useSphereJoints = true;
-#else
-    useSphereJoints = false;
-#endif
+    /** Intersection attributes.
+    */
+    struct Attribs
+    {
+        float2 barycentrics;
+        float displacement;
+    };
 
-    return intersectLinearSweptSphereHan19(rayOrigin, rayDir, sphereA, sphereB, useSphereJoints, result);
+    /** Intersects a ray with a displaced triangle.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveIndex Primitive index.
+        \param[out] attribs Intersection attributes.
+        \param[out] t Intersection t.
+        \return True if the ray intersects the displaced triangle.
+    */
+    static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveIndex, out Attribs attribs, out float t)
+    {
+        const uint materialID = gScene.getMaterialID(instanceID);
+        const uint3 indices = gScene.getIndices(instanceID, primitiveIndex);
+        const StaticVertexData vertices[3] = { gScene.getVertex(indices[0]), gScene.getVertex(indices[1]), gScene.getVertex(indices[2]) };
+        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+
+        DisplacementData displacementData;
+        gScene.materials.loadDisplacementData(materialID, displacementData);
+
+        DisplacementIntersection result;
+        if (intersectDisplacedTriangle(ray, vertices, worldMat, displacementData, result))
+        {
+            attribs.barycentrics = result.barycentrics;
+            attribs.displacement = result.displacement;
+            t = result.t;
+            return true;
+        }
+
+        return false;
+    }
+};
+
+/** Helper for intersecting rays against curves.
+*/
+struct CurveIntersector
+{
+    static const bool kUseSphereJoints = true;
+
+    /** Intersection attributes.
+    */
+    struct Attribs
+    {
+        float2 barycentrics;
+    }
+
+    /** Intersects a ray with a curve.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveIndex Primitive index.
+        \param[out] attribs Intersection attributes.
+        \param[out] t Intersection t.
+        \return True if the ray intersects the curve.
+    */
+    static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveIndex, out Attribs attribs, out float t)
+    {
+        attribs = {};
+        t = {};
+
+        uint v0Index = gScene.getFirstCurveVertexIndex(instanceID, primitiveIndex);
+        const StaticCurveVertexData v0 = gScene.getCurveVertex(v0Index);
+        const StaticCurveVertexData v1 = gScene.getCurveVertex(v0Index + 1);
+
+        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+        const float4 sphereA = transformSphere(float4(v0.position, v0.radius), worldMat);
+        const float4 sphereB = transformSphere(float4(v1.position, v1.radius), worldMat);
+
+        const float rayLength = length(ray.dir);
+        const float invRayLength = 1.f / rayLength;
+        float3 unitRayDir = ray.dir * invRayLength;
+
+        float2 result;
+        bool isHit = intersectLinearSweptSphereHan19(ray.origin, unitRayDir, sphereA, sphereB, kUseSphereJoints, result);
+
+        if (isHit)
+        {
+            t = result.x * invRayLength;
+            bool isInRayExtent = (t >= ray.tMin && t <= ray.tMax);
+            if (isInRayExtent)
+            {
+                // Back-face culling.
+                float4 sphere = sphereA + result.y * (sphereB - sphereA);
+                float3 hitPos = ray.origin + result.x * ray.dir;
+                float3 normal = normalize(hitPos - sphere.xyz);
+
+                if (dot(ray.dir, normal) < -1e-6f)
+                {
+                    // To avoid numerical issues, reprojecting from hitPos = ray.origin + t * ray.dir.
+                    hitPos = sphere.xyz + sphere.w * normal;
+                    attribs.barycentrics = curveHitPosToUV(hitPos, sphereA, sphereB);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+};
+
+/** Helper for intersecting rays against SDF grids.
+*/
+struct SDFGridIntersector
+{
+    /** Intersects a ray with an SDF grid.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveID The primitive ID of the AABB that was hit.
+        \param[out] hitData SDFGridHitData that contains hit point information.
+        \param[out] t Intersection t.
+        \return True if the ray intersects the SDF grid.
+    */
+    static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveID, out SDFGridHitData hitData, out float t)
+    {
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        SDFGrid sdfGrid;
+        gScene.getSDFGrid(instanceID, sdfGrid);
+
+        // Load Matrices.
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+
+        // Convert ray origin and direction to local space.
+        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
+        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+
+        return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, t, hitData);
+    }
+
+    /** Intersects a ray with an SDF grid, does not return information about the intersection.
+        \param[in] ray Ray in world-space.
+        \param[in] instanceID Geometry instance ID.
+        \param[in] primitiveID The primitive ID of the AABB that was hit.
+        \return True if the ray intersects the SDF grid.
+    */
+    static bool intersectAny(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveID)
+    {
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        SDFGrid sdfGrid;
+        gScene.getSDFGrid(instanceID, sdfGrid);
+
+        // Load Matrices.
+        float4x4 worldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
+        float3x3 worldInvTransposeMat = gScene.loadInverseTransposeWorldMatrix(instance.globalMatrixID);
+
+        // Convert ray origin and direction to local space.
+        float3 rayOrigLocal = mul(worldInvTransposeMat, ray.origin - worldMat[3].xyz);
+        float3 rayDirLocal = mul(worldInvTransposeMat, ray.dir);
+
+#if SCENE_SDF_OPTIMIZE_VISIBILITY_RAYS
+        return sdfGrid.intersectSDFAny(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID);
+#else
+        float dummyT;
+        SDFGridHitData dummyHitData;
+        return sdfGrid.intersectSDF(rayOrigLocal, rayDirLocal, ray.tMin, ray.tMax, primitiveID, dummyT, dummyHitData);
+#endif
+    }
 }

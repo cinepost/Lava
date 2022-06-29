@@ -32,22 +32,20 @@
 
 namespace Falcor {
     
-class dlldecl ResolvePass : public RenderPass, public inherit_shared_from_this<RenderPass, ResolvePass> {
+class dlldecl ResolvePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<ResolvePass>;
-    using inherit_shared_from_this<RenderPass, ResolvePass>::shared_from_this;
-    static const char* kDesc;
+    static const Info kInfo;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dictionary = {});
 
     void setFormat(ResourceFormat format) { mFormat = format; }
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual std::string getDesc() override { return kDesc; }
 
  private:
     ResolvePass(Device::SharedPtr pDevice);
-    ResourceFormat mFormat;
+    ResourceFormat mFormat = ResourceFormat::Unknown;
 };
 
 }  // namespace Falcor

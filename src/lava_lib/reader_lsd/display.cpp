@@ -243,6 +243,16 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
     pDisplay->mDriverName = display_driver_name;
     pDisplay->mDisplayType = display_type;
 
+    switch (pDisplay->mDisplayType) {
+        case DisplayType::IP:
+        case DisplayType::MD:
+        case DisplayType::HOUDINI:
+            pDisplay->mLiveUpdateSupport = true;
+            break;
+        default:
+            break;
+    }
+
     return SharedPtr(pDisplay);
 }
 

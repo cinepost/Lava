@@ -102,17 +102,23 @@ namespace Falcor
         {ResourceFormat::D32FloatS8X24,      "D32FloatS8X24",   8,              2,  FormatType::Float,      {true,   true,  false,},        {1, 1},                                                  {32, 8, 24, 0  }},
         {ResourceFormat::D24UnormS8,         "D24UnormS8",      4,              2,  FormatType::Unorm,      {true,   true,  false,},        {1, 1},                                                  {24, 8, 0, 0   }},
 
+        {ResourceFormat::BC1Unorm,           "BC1Unorm",        8,              3,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
+        {ResourceFormat::BC1UnormSrgb,       "BC1UnormSrgb",    8,              3,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         {ResourceFormat::BC1RGBUnorm,        "BC1RGBUnorm",     8,              3,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         {ResourceFormat::BC1RGBSrgb,         "BC1RGBSrgb",      8,              3,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         {ResourceFormat::BC1RGBAUnorm,       "BC1RGBAUnorm",    8,              3,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         {ResourceFormat::BC1RGBASrgb,        "BC1RGBASrgb",     8,              3,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
 
+        {ResourceFormat::BC2Unorm,           "BC2Unorm",        16,             4,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
+        {ResourceFormat::BC2UnormSrgb,       "BC2UnormSrgb",    16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC2RGBAUnorm,       "BC2RGBAUnorm",    16,             4,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC2RGBASrgb,        "BC2RGBASrgb",     16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         
+        {ResourceFormat::BC3UnormSrgb,       "BC3UnormSrgb",    16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC3RGBAUnorm,       "BC3RGBAUnorm",    16,             4,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC3RGBASrgb,        "BC3RGBASrgb",     16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         
+        {ResourceFormat::BC3Unorm,           "BC3Unorm",        16,             4,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC4Unorm,           "BC4Unorm",        8,              1,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         {ResourceFormat::BC4Snorm,           "BC4Snorm",        8,              1,  FormatType::Snorm,      {false,  false, true, },        {4, 4},                                                  {64, 0, 0, 0   }},
         
@@ -122,11 +128,14 @@ namespace Falcor
         {ResourceFormat::BC6HS16,            "BC6HS16",         16,             3,  FormatType::Float,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC6HU16,            "BC6HU16",         16,             3,  FormatType::Float,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC7Unorm,           "BC7Unorm",        16,             4,  FormatType::Unorm,      {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
+        {ResourceFormat::BC7UnormSrgb,       "BC7UnormSrgb",    16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
         {ResourceFormat::BC7Srgb,            "BC7Srgb",         16,             4,  FormatType::UnormSrgb,  {false,  false, true, },        {4, 4},                                                  {128, 0, 0, 0  }},
+        
     };
 
     static_assert(arraysize(kFormatDesc) == (uint32_t)ResourceFormat::BC7Srgb + 1, "Format desc table has a wrong size");
 
+#ifdef SCRIPTING
     SCRIPT_BINDING(ResourceFormat)
     {
         // Resource formats
@@ -136,4 +145,5 @@ namespace Falcor
             resourceFormat.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
         }
     }
+#endif
 }

@@ -26,8 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
+
+#include "Falcor/Core/API/Device.h"
+
 #include "GraphicsStateObject.h"
-#include "Core/API/Device.h"
+
 
 namespace Falcor {
 
@@ -37,28 +40,36 @@ DepthStencilState::SharedPtr GraphicsStateObject::spDefaultDepthStencilState;
 
 bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& other) const {
     bool b = true;
-    b = b && (mpLayout         == other.mpLayout);
-    b = b && (mFboDesc         == other.mFboDesc);
-    b = b && (mpProgram        == other.mpProgram);
-    b = b && (mSampleMask      == other.mSampleMask);
-    b = b && (mpRootSignature  == other.mpRootSignature);
-    b = b && (mPrimType        == other.mPrimType);
+    b = b && (mpLayout                  == other.mpLayout);
+    b = b && (mFboDesc                  == other.mFboDesc);
+    b = b && (mpProgram                 == other.mpProgram);
+    b = b && (mSampleMask               == other.mSampleMask);
+    b = b && (mPrimType                 == other.mPrimType);
 
-    if (mpRasterizerState) {
+    if (mpRasterizerState)
+    {
         b = b && (mpRasterizerState == other.mpRasterizerState);
-    } else {
+    }
+    else
+    {
         b = b && (other.mpRasterizerState == nullptr || other.mpRasterizerState == spDefaultRasterizerState);
     }
 
-    if (mpBlendState) {
+    if (mpBlendState)
+    {
         b = b && (mpBlendState == other.mpBlendState);
-    } else {
+    }
+    else
+    {
         b = b && (other.mpBlendState == nullptr || other.mpBlendState == spDefaultBlendState);
     }
 
-    if (mpDepthStencilState) {
+    if (mpDepthStencilState)
+    {
         b = b && (mpDepthStencilState == other.mpDepthStencilState);
-    } else {
+    }
+    else
+    {
         b = b && (other.mpDepthStencilState == nullptr || other.mpDepthStencilState == spDefaultDepthStencilState);
     }
 
@@ -92,7 +103,7 @@ GraphicsStateObject::SharedPtr GraphicsStateObject::create(std::shared_ptr<Devic
     return SharedPtr(new GraphicsStateObject(pDevice, desc));
 }
 
-GraphicsStateObject::Desc::Desc (std::shared_ptr<Device> pDevice): mFboDesc(pDevice) {
+GraphicsStateObject::Desc::Desc (Device::SharedPtr pDevice): mFboDesc(pDevice) {
 
 }
 

@@ -179,6 +179,8 @@ namespace Falcor::ScriptBindings {
         }                                                           \
     } gScriptBinding##Name;                                         \
     static void ScriptBinding##Name(pybind11::module& m) /* over to the user for the braces */
+#define SCRIPT_BINDING_DEPENDENCY(_name)                                     \
+    ScriptBindings::resolveDeferredBinding(#_name, m);
 #else
 #define SCRIPT_BINDING(Name) static_assert(false, "Using SCRIPT_BINDING() in a static-library is not supported. The C++ linker usually doesn't pull static-initializers into the EXE. " \
     "Call 'registerBinding()' yourself from a code that is guarenteed to run.");

@@ -30,8 +30,8 @@
 
 namespace Falcor {
 
-bool EmissiveLightSampler::prepareProgram(Program* pProgram) const {
-    return pProgram->addDefine("_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType));
+Program::DefineList EmissiveLightSampler::getDefines() const {
+    return {{ "_EMISSIVE_LIGHT_SAMPLER_TYPE", std::to_string((uint32_t)mType) }};
 }
 
 #ifdef SCRIPTING

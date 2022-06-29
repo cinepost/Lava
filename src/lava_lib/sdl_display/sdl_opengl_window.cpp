@@ -6,12 +6,14 @@
 
 #include "sdl_opengl_window.h"
 
+
 SDLOpenGLWindow::SDLOpenGLWindow(const std::string &_name, int _x, int _y,int _width, int _height, int _ppp, GLenum pixelType, GLenum pixelFormat, GLenum texFormat) {
   m_name=_name;
   m_x=_x;
   m_y=_y;
   m_width=_width;
   m_height=_height;
+
   init();
 
   m_pixelFormat = pixelFormat;
@@ -225,7 +227,9 @@ void SDLOpenGLWindow::createSurface() {
     
     uniform int displayMode;
     uniform int backgroundMode;
-    
+    uniform int showFalseColors;
+    uniform int frameNumber;
+
     vec3 exposure(vec3 colour, float relative_fstop) {
        return colour * pow(2.0,relative_fstop);
     }
@@ -253,6 +257,36 @@ void SDLOpenGLWindow::createSurface() {
       texDispColor.rgb = pow(texDispColor.rgb, vec3(1.0/gamma));
       texDispColor.rgb = exposure(texDispColor.rgb,exposureLevel);
     
+      if (showFalseColors == 1) {
+        switch(displayMode) {
+          case 0: // rgb display
+          case 5: // greyscale display
+            if ((texBaseColor.r < 0.0) || (texBaseColor.g < .0) || (texBaseColor.g <.0)) {
+              float u = screenCoord.x + frameNumber * .01;
+              u = u - floor(u);
+              texDispColor.rgb = vec3(.65*cos(6.283*(u+vec3(0.,-.33333,.33333)))+.65);
+            }
+            break;
+          case 1: // red channel display
+            if (texBaseColor.r < 0.0) {
+              texDispColor.rgb = vec3(0, 0, 1);
+            }
+            break;
+          case 2:  // green channel display
+            if (texBaseColor.g < 0.0) {
+              texDispColor.rgb = vec3(1, 0, 0);
+            }
+            break;
+          case 3: // blue channel display
+            if (texBaseColor.b < 0.0) {
+              texDispColor.rgb = vec3(0, 1, 0);
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
       switch(backgroundMode) {
         case 0: // Black background
           outColor.rgb = texDispColor.rgb;
@@ -265,7 +299,7 @@ void SDLOpenGLWindow::createSurface() {
         case 2: // Checkerboard background
         default:
           vec3 checkerColor = checkerPattern(gl_FragCoord.xy , vec2(16), vec3(0.5, 0.5, 0.5), vec3(0.25, 0.25, 0.25));
-          outColor.rgb = checkerColor * (1.0 - texBaseColor.a) + texDispColor.rgb * texBaseColor.a;
+          outColor.rgb = checkerColor * (1.0 - texBaseColor.a) + texDispColor.rgb;
           outColor.a = 1.0f;
           break;
       }
@@ -307,15 +341,22 @@ void SDLOpenGLWindow::createSurface() {
   m_scaleUniform = glGetUniformLocation(m_shaderProgram, "scale");
   glUniform1f(m_scaleUniform, m_scale);
   m_modeUniform = glGetUniformLocation(m_shaderProgram, "displayMode");
-  glUniform1i(m_modeUniform, 0);
+  glUniform1i(m_modeUniform, to_int(mRenderMode));
+
   m_backgroundModeUniform = glGetUniformLocation(m_shaderProgram, "backgroundMode");
-  glUniform1i(m_backgroundModeUniform, 0);
+  glUniform1i(m_backgroundModeUniform, to_int(mBackgroundMode));
+
+  m_showFalseColorsUniform = glGetUniformLocation(m_shaderProgram, "showFalseColors");
+  glUniform1i(m_showFalseColorsUniform, mShowFalseColors);
 
   m_gammaUniform = glGetUniformLocation(m_shaderProgram, "gamma");
   glUniform1f(m_gammaUniform, m_gamma);
 
   m_exposureUniform = glGetUniformLocation(m_shaderProgram, "exposureLevel");
   glUniform1f(m_exposureUniform, m_exposure);
+
+  m_frameNumberUniform = glGetUniformLocation(m_shaderProgram, "frameNumber");
+  glUniform1i(m_frameNumberUniform, mFrameNumber);
 
   glGenTextures(1, &m_texture);
   glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -343,6 +384,13 @@ void SDLOpenGLWindow::createGLContext() {
   if(!m_glContext) {
     printf("SDL_GL_CreateContext failed: %s\n", SDL_GetError());
   }
+}
+
+void SDLOpenGLWindow::swapWindow() {
+  glUniform1i(m_frameNumberUniform, mFrameNumber);
+  mFrameNumber ++;
+  if(mFrameNumber > 500) mFrameNumber = 0;
+  SDL_GL_SwapWindow(m_window);
 }
 
 void SDLOpenGLWindow::resizeWindow(int width, int height) {
@@ -448,6 +496,15 @@ void SDLOpenGLWindow::setBackgroundMode(BackgroundMode _m) {
     default: 
       glUniform1i(m_backgroundModeUniform,2); 
       break;
+  }
+}
+
+void SDLOpenGLWindow::showFalseColors(bool m) { 
+  mShowFalseColors = m;
+  if (mShowFalseColors) {
+    glUniform1i(m_showFalseColorsUniform, true);
+  }else{
+    glUniform1i(m_showFalseColorsUniform, false);
   }
 }
 

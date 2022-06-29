@@ -28,6 +28,8 @@
 #ifndef SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 #define SRC_FALCOR_EXPERIMENTAL_SCENE_LIGHTS_ENVMAPSAMPLER_H_
 
+#include "Falcor/RenderGraph/BasePasses/ComputePass.h"
+#include "Falcor/Utils/Timing/Profiler.h"
 #include "Falcor/Scene/Lights/EnvMap.h"
 
 namespace Falcor {

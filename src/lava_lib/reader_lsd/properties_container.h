@@ -200,7 +200,7 @@ std::string to_string(const Value& val);
 }  // namespace lava
 
 using Value = lava::lsd::Property::Value;
-static inline std::string value_type_to_string(const Value& val) {
+static inline std::string to_string(const Value& val) {
     if (val.type() == typeid(std::string)) return "string";
     if (val.type() == typeid(bool)) return "bool";
     if (val.type() == typeid(int)) return "int";
@@ -217,7 +217,7 @@ static inline std::string value_type_to_string(const Value& val) {
 }
 
 using Type = lava::lsd::Property::Type;
-static inline std::string property_type_to_string(const Type& t) {
+static inline std::string to_string(const Type& t) {
     switch(t) {
         case Type::INT: return "int";
         case Type::INT2: return "int2";

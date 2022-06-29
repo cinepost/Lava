@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <mutex>
 #include <thread>
+#include <numeric>
 
 #ifdef _WIN32
 #include <filesystem>
@@ -41,8 +42,13 @@ namespace fs = boost::filesystem;
 #include "SceneCache.h"
 #include "mikktspace/mikktspace.h"
 
+#include "Falcor/Scene/Material/StandardMaterial.h"
+#include "Falcor/Utils/Timing/TimeReport.h"
+#include "Falcor/Utils/StringUtils.h"
 #include "Falcor/Utils/ConfigStore.h"
 #include "Importer.h"
+
+#include "lava_utils_lib/logging.h"
 
 std::mutex g_meshes_mutex;
 std::mutex g_materials_mutex;
@@ -73,8 +79,20 @@ const float kMaxTexelError = 0.5f;
 class MikkTSpaceWrapper {
   public:
     static std::vector<float4> generateTangents(const SceneBuilder::Mesh& mesh) {
-        if (!mesh.normals.pData || !mesh.positions.pData || !mesh.texCrds.pData || !mesh.pIndices) {
-            logWarning("Can't generate tangent space. The mesh '" + std::string(mesh.name) + "' doesn't have positions/normals/texCrd/indices.");
+        if (!mesh.positions.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have positions !!!";
+            return {};
+        }
+        if (!mesh.normals.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have normals !!!";
+            return {};
+        }
+        if (!mesh.texCrds.pData) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
+            return {};
+        }
+        if (mesh.pIndices) {
+            LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
             return {};
         }
 
@@ -93,7 +111,7 @@ class MikkTSpaceWrapper {
         context.m_pUserData = &wrapper;
 
         if (genTangSpaceDefault(&context) == false) {
-            logError("Failed to generate MikkTSpace tangents for the mesh '" + std::string(mesh.name) + "'.");
+            LLOG_ERR << "Failed to generate MikkTSpace tangents for the mesh '" << std::string(mesh.name);
             return {};
         }
 
@@ -167,6 +185,7 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
     mpFence = GpuFence::create(mpDevice);
+    mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
 };
 
 SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags) {
@@ -193,10 +212,10 @@ Scene::SharedPtr SceneBuilder::getScene() {
     // If no meshes were added, we create a dummy mesh to keep the scene generation working.
     // Scenes with no meshes can be useful for example when using volumes in isolation.
     if (mMeshes.empty()) {
-        logWarning("Scene contains no meshes. Creating a dummy mesh.");
+        LLOG_WRN << "Scene contains no meshes. Creating a dummy mesh.";
         // Add a dummy (degenerate) mesh.
         auto dummyMesh = TriangleMesh::createDummy();
-        auto dummyMaterial = Material::create(mpDevice, "Dummy");
+        auto dummyMaterial = StandardMaterial::create(mpDevice, "Dummy");
         auto meshID = addTriangleMesh(dummyMesh, dummyMaterial);
         Node dummyNode = { "Dummy", glm::identity<glm::mat4>(), glm::identity<glm::mat4>() };
         auto nodeID = addNode(dummyNode);
@@ -211,6 +230,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
     prepareDisplacementMaps();
 
     prepareSceneGraph();
+    prepareMeshes();
     removeUnusedMeshes();
     flattenStaticMeshInstances();
     pretransformStaticMeshes();
@@ -223,6 +243,7 @@ Scene::SharedPtr SceneBuilder::getScene() {
     createGlobalBuffers();
     createCurveGlobalBuffers();
     collectVolumeGrids();
+    removeDuplicateSDFGrids();
 
     timeReport.measure("Post processing geometry");
 
@@ -235,13 +256,18 @@ Scene::SharedPtr SceneBuilder::getScene() {
     // Prepare scene resources.
     createSceneGraph();
     createMeshData();
-    createMeshInstanceData();
     createMeshBoundingBoxes();
+    createCurveData();
+    calculateCurveBoundingBoxes();
 
-    if (!mCurves.empty()) {
-        createCurveData();
-        calculateCurveBoundingBoxes();
-    }
+    // Create instance data.
+    uint32_t tlasInstanceIndex = 0;
+    createMeshInstanceData(tlasInstanceIndex);
+    createCurveInstanceData(tlasInstanceIndex);
+    // Adjust instance indices of SDF grid instances.
+    for (auto& sdfInstanceData : mSceneData.sdfGridInstances) sdfInstanceData.instanceIndex = tlasInstanceIndex++;
+
+    mSceneData.useCompressedHitInfo = is_set(mFlags, Flags::UseCompressedHitInfo);
 
     // Write scene cache if requested.
     if (mWriteSceneCache) {
@@ -320,7 +346,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     };
 
     auto missing_element_warning = [&](const std::string& element) {
-        logWarning("The mesh '" + mesh.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
+        LLOG_WRN << "The mesh '" << mesh.name << "' is missing the element " << element 
+        << ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.";
     };
 
     if (mesh.topology != Vao::Topology::TriangleList) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nOnly triangle list topology is supported.");
@@ -329,7 +356,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     if (mesh.faceCount == 0) throw_on_missing_element("faces");
     if (mesh.vertexCount == 0) throw_on_missing_element("vertices");
     if (mesh.indexCount == 0 || !mesh.pIndices) throw_on_missing_element("indices");
-//    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
+    if (mesh.indexCount != mesh.faceCount * 3) throw std::runtime_error("Error when adding the mesh '" + mesh.name + "' to the scene.\nUnexpected face/vertex count.");
 
     if (mesh.positions.pData == nullptr) throw_on_missing_element("positions");
     if (mesh.normals.pData == nullptr) missing_element_warning("normals");
@@ -383,55 +410,95 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     //
     const uint32_t invalidIndex = 0xffffffff;
     std::vector<std::pair<Mesh::Vertex, uint32_t>> vertices;
-    vertices.reserve(mesh.vertexCount);
     std::vector<uint32_t> indices(mesh.indexCount);
-    std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
-    if (pAttributeIndices) {
+    if (pAttributeIndices)
+    {
         pAttributeIndices->reserve(mesh.vertexCount);
     }
 
-    for (uint32_t face = 0; face < mesh.faceCount; face++) {
-        for (uint32_t vert = 0; vert < 3; vert++) {
-            const Mesh::Vertex v = mesh.getVertex(face, vert);
-            const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
+    if (mesh.mergeDuplicateVertices)
+    {
+        vertices.reserve(mesh.vertexCount);
 
-            // Iterate over vertex list to check if it already exists.
-            assert(origIndex < heads.size());
-            uint32_t index = heads[origIndex];
-            bool found = false;
+        std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
-            while (index != invalidIndex) {
-                if (compareVertices(v, vertices[index].first)) {
-                    found = true;
-                    break;
+        for (uint32_t face = 0; face < mesh.faceCount; face++)
+        {
+            for (uint32_t vert = 0; vert < 3; vert++)
+            {
+                const Mesh::Vertex v = mesh.getVertex(face, vert);
+                const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
+
+                // Iterate over vertex list to check if it already exists.
+                assert(origIndex < heads.size());
+                uint32_t index = heads[origIndex];
+                bool found = false;
+
+                while (index != invalidIndex)
+                {
+                    if (compareVertices(v, vertices[index].first))
+                    {
+                        found = true;
+                        break;
+                    }
+                    index = vertices[index].second;
                 }
-                index = vertices[index].second;
-            }
 
-            // Insert new vertex if we couldn't find it.
-            if (!found) {
-                assert(vertices.size() < std::numeric_limits<uint32_t>::max());
-                index = (uint32_t)vertices.size();
-                vertices.push_back({ v, heads[origIndex] });
+                // Insert new vertex if we couldn't find it.
+                if (!found)
+                {
+                    assert(vertices.size() < std::numeric_limits<uint32_t>::max());
+                    index = (uint32_t)vertices.size();
+                    vertices.push_back({ v, heads[origIndex] });
 
-                if (pAttributeIndices) {
-                    pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
-                    assert(vertices.size() == pAttributeIndices->size());
+                    if (pAttributeIndices)
+                    {
+                        pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
+                        assert(vertices.size() == pAttributeIndices->size());
+                    }
+
+                    heads[origIndex] = index;
                 }
 
-                heads[origIndex] = index;
+                // Store new vertex index.
+                indices[face * 3 + vert] = index;
             }
-
-            // Store new vertex index.
-            indices[face * 3 + vert] = index;
         }
+    }
+    else
+    {
+        vertices = { mesh.vertexCount, std::make_pair(Mesh::Vertex{}, invalidIndex) };
+
+        for (uint32_t face = 0; face < mesh.faceCount; face++)
+        {
+            for (uint32_t vert = 0; vert < 3; vert++)
+            {
+                const Mesh::Vertex v = mesh.getVertex(face, vert);
+                const uint32_t index = mesh.getAttributeIndex(mesh.positions, face, vert);
+
+                assert(index < vertices.size());
+                vertices[index].first = v;
+
+                if (pAttributeIndices)
+                {
+                    pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
+                }
+            }
+        }
+
+        if (pAttributeIndices)
+        {
+            assert(vertices.size() == pAttributeIndices->size());
+        }
+
+        indices.assign(mesh.pIndices, mesh.pIndices + mesh.indexCount);
     }
 
     assert(vertices.size() > 0);
     assert(indices.size() == mesh.indexCount);
     if (vertices.size() != mesh.vertexCount) {
-        logDebug("Mesh with name '" + mesh.name + "' had original vertex count " + std::to_string(mesh.vertexCount) + ", new vertex count " + std::to_string(vertices.size()));
+        LLOG_DBG << "Mesh with name '" << mesh.name << "' had original vertex count " << std::to_string(mesh.vertexCount) << ", new vertex count " + std::to_string(vertices.size());
     }
 
     // Validate vertex data to check for invalid numbers and missing tangent frame.
@@ -440,8 +507,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     for (const auto& v : vertices) {
         validateVertex(v.first, invalidCount, zeroCount);
     }
-    if (invalidCount > 0) logWarning("The mesh '" + mesh.name + "' has inf/nan vertex attributes at " + std::to_string(invalidCount) + " vertices. Please fix the asset.");
-    if (zeroCount > 0) logWarning("The mesh '" + mesh.name + "' has zero-length normals/tangents at " + std::to_string(zeroCount) + " vertices. Please fix the asset.");
+    if (invalidCount > 0) LLOG_WRN << "The mesh '" << mesh.name << "' has inf/nan vertex attributes at " << std::to_string(invalidCount) << " vertices. Please fix the asset.";
+    if (zeroCount > 0) LLOG_WRN << "The mesh '" << mesh.name << "' has zero-length normals/tangents at " << std::to_string(zeroCount) << " vertices. Please fix the asset.";
 
     // If the non-indexed vertices build flag is set, we will de-index the data below.
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
@@ -458,7 +525,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
     // Copy vertices into processed mesh.
     processedMesh.staticData.reserve(vertexCount);
-    if (mesh.hasBones()) processedMesh.dynamicData.reserve(vertexCount);
+    if (mesh.hasBones()) processedMesh.skinningData.reserve(vertexCount);
 
     for (uint32_t i = 0; i < vertexCount; i++) {
         uint32_t index = isIndexed ? i : indices[i];
@@ -470,16 +537,17 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
         s.normal = v.normal;
         s.texCrd = v.texCrd;
         s.tangent = v.tangent;
+        s.curveRadius = v.curveRadius;
         processedMesh.staticData.push_back(s);
 
         if (mesh.hasBones()) {
-            DynamicVertexData d;
-            d.boneWeight = v.boneWeights;
-            d.boneID = v.boneIDs;
-            d.staticIndex = i; // This references the local vertex here and gets updated in addProcessedMesh().
-            d.bindMatrixID = 0; // This will be initialized in createMeshData().
-            d.skeletonMatrixID = 0; // This will be initialized in createMeshData().
-            processedMesh.dynamicData.push_back(d);
+            SkinningVertexData s;
+            s.boneWeight = v.boneWeights;
+            s.boneID = v.boneIDs;
+            s.staticIndex = i; // This references the local vertex here and gets updated in addProcessedMesh().
+            s.bindMatrixID = 0; // This will be initialized in createMeshData().
+            s.skeletonMatrixID = 0; // This will be initialized in createMeshData().
+            processedMesh.skinningData.push_back(s);
         }
     }
 
@@ -512,19 +580,21 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
 
     spec.vertexCount = (uint32_t)mesh.staticData.size();
     spec.staticVertexCount = (uint32_t)mesh.staticData.size();
-    spec.dynamicVertexCount = (uint32_t)mesh.dynamicData.size();
+    spec.skinningVertexCount = (uint32_t)mesh.skinningData.size();
 
     spec.indexData = std::move(mesh.indexData);
     spec.staticData = std::move(mesh.staticData);
-    spec.dynamicData = std::move(mesh.dynamicData);
+    spec.skinningData = std::move(mesh.skinningData);
 
     if (isIndexed) {
         spec.indexCount = (uint32_t)mesh.indexCount;
         spec.use16BitIndices = mesh.use16BitIndices;
     }
 
-    if (!spec.dynamicData.empty()) {
-        spec.hasDynamicData = true;
+    if (!spec.skinningData.empty()) {
+        assert(spec.skinningVertexCount > 0);
+        spec.hasSkinningData = true;
+        spec.prevVertexCount = spec.skinningVertexCount;
     }
 
     uint32_t ret = 0;
@@ -639,15 +709,19 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
+    return mSceneData.pMaterialSystem->addMaterial(pMaterial);
+}
 
-    // Reuse previously added materials
-    if (auto it = std::find(mSceneData.materials.begin(), mSceneData.materials.end(), pMaterial); it != mSceneData.materials.end()) {
-        return (uint32_t)std::distance(mSceneData.materials.begin(), it);
+void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path) {
+    assert(pMaterial);
+    if (!mpMaterialTextureLoader) {
+        mpMaterialTextureLoader.reset(new MaterialTextureLoader(mSceneData.pMaterialSystem->getTextureManager(), !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
     }
+    mpMaterialTextureLoader->loadTexture(pMaterial, slot, path);
+}
 
-    mSceneData.materials.push_back(pMaterial);
-    assert(mSceneData.materials.size() <= std::numeric_limits<uint32_t>::max());
-    return (uint32_t)mSceneData.materials.size() - 1;
+void SceneBuilder::waitForMaterialTextureLoading() {
+    mpMaterialTextureLoader.reset();
 }
 
 Material::SharedPtr SceneBuilder::getMaterial(const std::string& name) const {
@@ -737,15 +811,7 @@ uint32_t SceneBuilder::addNode(const Node& node) {
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID) {
-    if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
-    if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
-
-    mSceneGraph[nodeID].meshes.push_back(meshID);
-
-    mMeshes[meshID].instances.push_back({});
-    MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
-    instance.nodeId = nodeID;
-    instance.overrideMaterial = false;
+    addMeshInstance(nodeID, meshID, nullptr);
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial) {
@@ -757,10 +823,13 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     mMeshes[meshID].instances.push_back({});
     MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
     instance.nodeId = nodeID;
-    instance.materialId = addMaterial(pMaterial);
-    instance.overrideMaterial = true;
+    instance.overrideMaterial = pMaterial ? true : false;
 
-    LOG_DBG("SceneBuilder::addMeshInstance added mesh instance with material id %u", instance.materialId);
+    if (pMaterial) {
+        instance.materialId = addMaterial(pMaterial);
+    }
+
+    LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
 }
 
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
@@ -806,25 +875,25 @@ void SceneBuilder::setNodeInterpolationMode(uint32_t nodeID, Animation::Interpol
 
 // Volumes
 
-Volume::SharedPtr SceneBuilder::getVolume(const std::string& name) const {
-    for (const auto& pVolume : mSceneData.volumes) {
-        if (pVolume->getName() == name) return pVolume;
+GridVolume::SharedPtr SceneBuilder::getGridVolume(const std::string& name) const {
+    for (const auto& pGridVolume : mSceneData.gridVolumes) {
+        if (pGridVolume->getName() == name) return pGridVolume;
     }
     return nullptr;
 }
 
-uint32_t SceneBuilder::addVolume(const Volume::SharedPtr& pVolume, uint32_t nodeID) {
-    assert(pVolume);
-    if (nodeID != kInvalidNode && nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addVolume() - nodeID " + std::to_string(nodeID) + " is out of range");
+uint32_t SceneBuilder::addGridVolume(const GridVolume::SharedPtr& pGridVolume, uint32_t nodeID) {
+    assert(pGridVolume);
+    assert((nodeID == kInvalidNode || nodeID < mSceneGraph.size()) && "'nodeID' is out of range");
 
     if (nodeID != kInvalidNode) {
-        pVolume->setHasAnimation(true);
-        pVolume->setNodeID(nodeID);
+        pGridVolume->setHasAnimation(true);
+        pGridVolume->setNodeID(nodeID);
     }
 
-    mSceneData.volumes.push_back(pVolume);
-    assert(mSceneData.volumes.size() <= std::numeric_limits<uint32_t>::max());
-    return (uint32_t)mSceneData.volumes.size() - 1;
+    mSceneData.gridVolumes.push_back(pGridVolume);
+    assert(mSceneData.gridVolumes.size() <= std::numeric_limits<uint32_t>::max());
+    return (uint32_t)mSceneData.gridVolumes.size() - 1;
 }
 
 // Lights
@@ -986,13 +1055,42 @@ bool SceneBuilder::mergeNodes(uint32_t dstNodeID, uint32_t srcNodeID) {
     return true;
 }
 
-void SceneBuilder::prepareDisplacementMaps() {
-    for (const auto& pMaterial : mSceneData.materials) {
-        // Remove displacement maps if requested by scene flags.
-        if (is_set(mFlags, Flags::DontUseDisplacement)) pMaterial->clearTexture(Material::TextureSlot::Displacement);
+void SceneBuilder::prepareMeshes() {
+    // Initialize any mesh properties that depend on the scene modifications to be finished.
 
-        // Remove normal maps for materials using displacement.
-        if (pMaterial->getDisplacementMap() != nullptr) pMaterial->clearTexture(Material::TextureSlot::Normal);
+    // Set mesh properties related to vertex animations
+    for (auto& m : mMeshes) m.isAnimated = false;
+    for (auto& cache : mSceneData.cachedMeshes) {
+        auto& mesh = mMeshes[cache.meshID];
+        assert(!mesh.isDynamic());
+        mesh.isAnimated = true;
+        mesh.prevVertexCount = mesh.staticVertexCount;
+    }
+    for (auto& cache : mSceneData.cachedCurves)
+    {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere) {
+            auto& mesh = mMeshes[cache.geometryID];
+            assert(!mesh.isDynamic());
+            mesh.isAnimated = true;
+            mesh.prevVertexCount = mesh.staticVertexCount;
+        }
+    }
+}
+
+
+void SceneBuilder::prepareDisplacementMaps() {
+    for (const auto& pMaterial : mSceneData.pMaterialSystem->getMaterials()) {
+        if (pMaterial->getTexture(Material::TextureSlot::Displacement) != nullptr) {
+            // Remove displacement maps if requested by scene flags.
+            if (is_set(mFlags, Flags::DontUseDisplacement)) {
+                pMaterial->clearTexture(Material::TextureSlot::Displacement);
+            }
+
+            // Remove normal maps for materials using displacement.
+            if (pMaterial->hasTextureSlot(Material::TextureSlot::Normal)) {
+                pMaterial->clearTexture(Material::TextureSlot::Normal);
+            }
+        }
     }
 }
 
@@ -1009,7 +1107,7 @@ void SceneBuilder::prepareSceneGraph() {
 
     for (const auto& light : mSceneData.lights) addAnimatable(light.get(), light->getName());
     for (const auto& camera : mSceneData.cameras) addAnimatable(camera.get(), camera->getName());
-    for (const auto& volume : mSceneData.volumes) addAnimatable(volume.get(), volume->getName());
+    for (const auto& gridVolume : mSceneData.gridVolumes) addAnimatable(gridVolume.get(), gridVolume->getName());
 
     for (const auto& mesh : mMeshes) {
         if (mesh.skeletonNodeID != kInvalidNode)
@@ -1028,14 +1126,14 @@ void SceneBuilder::removeUnusedMeshes() {
     for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
         auto& mesh = mMeshes[meshID];
         if (mesh.instances.empty()) {
-            logWarning("Mesh with ID " + std::to_string(meshID) + " named '" + mesh.name + "' is not referenced by any scene graph nodes.");
+            LLOG_WRN << "Mesh with ID " << std::to_string(meshID) << " named '" << mesh.name << "' is not referenced by any scene graph nodes.";
             unusedCount++;
         }
     }
 
     // Rebuild mesh list and scene graph only if one or more meshes need to be removed.
     if (unusedCount > 0) {
-        logWarning("Scene has " + std::to_string(unusedCount) + " unused meshes that will be removed.");
+        LLOG_WRN << "Scene has " << std::to_string(unusedCount) << " unused meshes that will be removed.";
 
         const size_t meshCount = mMeshes.size();
         MeshList meshes;
@@ -1090,7 +1188,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
         }
 
         assert(!mesh.instances.empty());
-        assert(mesh.dynamicData.empty() && mesh.dynamicVertexCount == 0);
+        assert(mesh.skinningData.empty() && mesh.skinningVertexCount == 0);
 
         // i is the current index into mesh.instances in the loop below.
         // It is only incremented when skipping over an instance that is not being flattened.
@@ -1175,7 +1273,7 @@ void SceneBuilder::flattenStaticMeshInstances() {
         std::move(newMeshes.begin(), newMeshes.end(), std::back_inserter(mMeshes));
     }
 
-    if (flattenedInstanceCount > 0) logInfo("Flattened " + std::to_string(flattenedInstanceCount) + " static instances.");
+    if (flattenedInstanceCount > 0) LLOG_INF << "Flattened " << std::to_string(flattenedInstanceCount) << " static instances.";
 }
 
 void SceneBuilder::optimizeSceneGraph() {
@@ -1190,7 +1288,7 @@ void SceneBuilder::optimizeSceneGraph() {
         if (collapseNodes(node.parent, nodeID)) removedNodes++;
     }
 
-    if (removedNodes > 0) logInfo("Optimized scene graph by removing " + std::to_string(removedNodes) + " internal static nodes");
+    if (removedNodes > 0) LLOG_INF << "Optimized scene graph by removing " << std::to_string(removedNodes) << " internal static nodes";
 
     // Merge identical static nodes.
     // We build a set of unique nodes. If a node is identical to one of the
@@ -1236,7 +1334,7 @@ void SceneBuilder::optimizeSceneGraph() {
         }
     }
 
-    if (mergedNodes > 0) logInfo("Optimized scene graph by merging " + std::to_string(mergedNodes) + " identical static nodes");
+    if (mergedNodes > 0) LLOG_INF << "Optimized scene graph by merging " << std::to_string(mergedNodes) << " identical static nodes";
 }
 
 void SceneBuilder::pretransformStaticMeshes() {
@@ -1256,7 +1354,7 @@ void SceneBuilder::pretransformStaticMeshes() {
         assert(!mesh.instances.empty());
         if (mesh.instances.size() > 1 || isNodeAnimated(mesh.instances[0].nodeId) || mesh.isDynamic()) continue;
 
-        assert(mesh.dynamicData.empty());
+        assert(mesh.skinningData.empty());
         mesh.isStatic = true;
 
         // Compute the object->world transform for the node.
@@ -1308,7 +1406,9 @@ void SceneBuilder::pretransformStaticMeshes() {
         mesh.instances[0].nodeId = identityNodeID;
     }
 
-    if (transformedMeshCount > 0) logInfo("Pre-transformed " + std::to_string(transformedMeshCount) + " static meshes to world space");
+    if (transformedMeshCount > 0) {
+        LLOG_INF << "Pre-transformed "<< std::to_string(transformedMeshCount) << " static meshes to world space";
+    }
 }
 
 void SceneBuilder::flipTriangleWinding(MeshSpec& mesh) {
@@ -1362,7 +1462,9 @@ void SceneBuilder::unifyTriangleWinding() {
         flippedMeshCount++;
     }
 
-    if (flippedMeshCount > 0) logInfo("Flipped triangle winding for " + std::to_string(flippedMeshCount) + " out of " + std::to_string(mMeshes.size()) + " meshes");
+    if (flippedMeshCount > 0) {
+        LLOG_INF << "Flipped triangle winding for " + std::to_string(flippedMeshCount) << " out of " << std::to_string(mMeshes.size()) << " meshes";
+    }
 }
 
 void SceneBuilder::calculateMeshBoundingBoxes() {
@@ -1416,7 +1518,8 @@ void SceneBuilder::createMeshGroups() {
         uint32_t nodeID = mesh.instances[0].nodeId;
 
         // Mark displaced meshes.
-        if (mSceneData.materials[mesh.materialId]->getDisplacementMap() != nullptr) mesh.isDisplaced = true;
+        const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId);
+        if (pMaterial->isDisplaced()) mesh.isDisplaced = true;
 
         if (mesh.isStatic && mesh.isDisplaced) staticDisplacedMeshes.push_back(meshID);
         else if (mesh.isStatic) staticMeshes.push_back(meshID);
@@ -1446,7 +1549,8 @@ void SceneBuilder::createMeshGroups() {
         if (mesh.instances.size() <= 1) continue; // Only processing instanced meshes here
 
         // Mark displaced meshes.
-        if (mSceneData.materials[mesh.materialId]->getDisplacementMap() != nullptr) mesh.isDisplaced = true;
+        const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId);
+        if (pMaterial->isDisplaced()) mesh.isDisplaced = true;
 
         instances inst({mesh.instances.begin()->nodeId, mesh.instances.end()->nodeId});
         if (mesh.isDisplaced) {
@@ -1473,10 +1577,10 @@ void SceneBuilder::createMeshGroups() {
     if ((instancedCount + displacedInstancedCount) != instancedMeshCount ||
         (instancedMeshes.size() + displacedInstancedMeshes.size()) != instancedMeshCount) throw std::logic_error("Error in instanced mesh grouping logic");
 
-    logInfo("Found " + std::to_string(staticMeshes.size()) + " static non-instanced meshes, arranged in 1 mesh group.");
-    logInfo("Found " + std::to_string(staticDisplacedMeshes.size()) + " displaced non-instanced meshes, arranged in 1 mesh group.");
-    logInfo("Found " + std::to_string(nonInstancedDynamicMeshCount) + " dynamic non-instanced meshes, arranged in " + std::to_string(nodeToMeshList.size()) + " mesh groups.");
-    logInfo("Found " + std::to_string(instancedMeshCount) + " instanced meshes, arranged in " + std::to_string(instancesToMeshList.size()) + " mesh groups.");
+    LLOG_INF << "Found " << std::to_string(staticMeshes.size()) << " static non-instanced meshes, arranged in 1 mesh group.";
+    LLOG_INF << "Found " << std::to_string(staticDisplacedMeshes.size()) << " displaced non-instanced meshes, arranged in 1 mesh group.";
+    LLOG_INF << "Found " << std::to_string(nonInstancedDynamicMeshCount) << " dynamic non-instanced meshes, arranged in " << std::to_string(nodeToMeshList.size()) << " mesh groups.";
+    LLOG_INF << "Found " << std::to_string(instancedMeshCount) << " instanced meshes, arranged in " << std::to_string(instancesToMeshList.size()) << " mesh groups.";
 
     // Build final result. Format is a list of Mesh ID's per mesh group.
 
@@ -1554,8 +1658,8 @@ std::pair<std::optional<uint32_t>, std::optional<uint32_t>> SceneBuilder::splitM
         spec.isStatic = mesh.isStatic;
         spec.isFrontFaceCW = mesh.isFrontFaceCW;
         spec.instances = mesh.instances;
-        assert(mesh.hasDynamicData == false);
-        assert(mesh.dynamicVertexCount == 0);
+        assert(mesh.isDynamic() == false);
+        assert(mesh.skinningVertexCount == 0);
         return spec;
     };
 
@@ -1573,7 +1677,10 @@ std::pair<std::optional<uint32_t>, std::optional<uint32_t>> SceneBuilder::splitM
     if (leftMesh.getTriangleCount() == 0) return { std::nullopt, meshID };
     else if (rightMesh.getTriangleCount() == 0) return { meshID, std::nullopt };
 
-    logDebug("Mesh '" + mesh.name + "' with " + std::to_string(mesh.getTriangleCount()) + " triangles was split into two meshes with " + std::to_string(leftMesh.getTriangleCount()) + " and " + std::to_string(rightMesh.getTriangleCount()) + " triangles, respectively.");
+    LLOG_DBG << "Mesh '"<< mesh.name << "' with " << std::to_string(mesh.getTriangleCount())
+             << " triangles was split into two meshes with " << std::to_string(leftMesh.getTriangleCount()) 
+             << " and " << std::to_string(rightMesh.getTriangleCount()) << " triangles, respectively.";
+
 
     // Store new meshes.
     // The left mesh replaces the existing mesh.
@@ -1883,37 +1990,39 @@ void SceneBuilder::sortMeshes() {
 void SceneBuilder::createGlobalBuffers() {
     assert(mSceneData.meshIndexData.empty());
     assert(mSceneData.meshStaticData.empty());
-    assert(mSceneData.meshDynamicData.empty());
+    assert(mSceneData.meshSkinningData.empty());
 
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
     // Count total number of vertex and index data elements.
     size_t totalIndexDataCount = 0;
     size_t totalStaticVertexCount = 0;
-    size_t totalDynamicVertexCount = 0;
+    size_t totalSkinningVertexCount = 0;
 
     for (const auto& mesh : mMeshes) {
         totalIndexDataCount += mesh.indexData.size();
         totalStaticVertexCount += mesh.staticData.size();
-        totalDynamicVertexCount += mesh.dynamicData.size();
+        totalSkinningVertexCount += mesh.skinningData.size();
+        mSceneData.prevVertexCount += mesh.prevVertexCount;
     }
 
     // Check the range. We currently use 32-bit offsets.
     if (totalIndexDataCount > std::numeric_limits<uint32_t>::max() ||
         totalStaticVertexCount > std::numeric_limits<uint32_t>::max() ||
-        totalDynamicVertexCount > std::numeric_limits<uint32_t>::max())
+        totalSkinningVertexCount > std::numeric_limits<uint32_t>::max())
     {
         throw std::runtime_error("Trying to build a scene that exceeds supported mesh data size.");
     }
 
     mSceneData.meshIndexData.reserve(totalIndexDataCount);
     mSceneData.meshStaticData.reserve(totalStaticVertexCount);
-    mSceneData.meshDynamicData.reserve(totalDynamicVertexCount);
+    mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
 
     // Copy all vertex and index data into the global buffers.
     for (auto& mesh : mMeshes) {
         mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
-        mesh.dynamicVertexOffset = (uint32_t)mSceneData.meshDynamicData.size();
+        mesh.skinningVertexOffset = (uint32_t)mSceneData.meshSkinningData.size();
+        mesh.prevVertexOffset = mesh.skinningVertexOffset;
 
         // Insert the static vertex data in the global array.
         // The vertices are automatically converted to their packed format in this step.
@@ -1924,20 +2033,38 @@ void SceneBuilder::createGlobalBuffers() {
             mSceneData.meshIndexData.insert(mSceneData.meshIndexData.end(), mesh.indexData.begin(), mesh.indexData.end());
         }
 
-        if (mesh.isDynamic()) {
-            assert(!mesh.dynamicData.empty());
-            mSceneData.meshDynamicData.insert(mSceneData.meshDynamicData.end(), mesh.dynamicData.begin(), mesh.dynamicData.end());
+        if (mesh.isSkinned()) {
+            assert(!mesh.skinningData.empty());
+            mSceneData.meshSkinningData.insert(mSceneData.meshSkinningData.end(), mesh.skinningData.begin(), mesh.skinningData.end());
 
             // Patch vertex index references.
-            for (uint32_t i = 0; i < mesh.dynamicData.size(); ++i) {
-                mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i].staticIndex += mesh.staticVertexOffset;
+            for (uint32_t i = 0; i < mesh.skinningData.size(); ++i) {
+                mSceneData.meshSkinningData[mesh.skinningVertexOffset + i].staticIndex += mesh.staticVertexOffset;
             }
         }
 
         // Free the mesh local data.
         mesh.indexData.clear();
         mesh.staticData.clear();
-        mesh.dynamicData.clear();
+        mesh.skinningData.clear();
+    }
+
+    // Initialize offsets for prev vertex data for vertex-animated meshes
+    uint32_t prevOffset = (uint32_t)mSceneData.meshSkinningData.size();
+    for (auto& cache : mSceneData.cachedMeshes)
+    {
+        auto& mesh = mMeshes[cache.meshID];
+        mesh.prevVertexOffset = prevOffset;
+        prevOffset += mesh.prevVertexCount;
+    }
+    for (auto& cache : mSceneData.cachedCurves)
+    {
+        if (cache.tessellationMode != CurveTessellationMode::LinearSweptSphere)
+        {
+            auto& mesh = mMeshes[cache.geometryID];
+            mesh.prevVertexOffset = prevOffset;
+            prevOffset += mesh.prevVertexCount;
+        }
     }
 }
 
@@ -1986,67 +2113,11 @@ void SceneBuilder::optimizeMaterials() {
     // NOTE: This code has to be updated if the texture usage changes.
 
     if (is_set(mFlags, Flags::DontOptimizeMaterials)) return;
-
-    // Gather a list of all textures to analyze.
-    std::vector<std::pair<Material::SharedPtr, Material::TextureSlot>> materialSlots;
-    std::vector<Texture::SharedPtr> textures;
-    size_t maxCount = mSceneData.materials.size() * (size_t)Material::TextureSlot::Count;
-    materialSlots.reserve(maxCount);
-    textures.reserve(maxCount);
-
-    for (const auto& material : mSceneData.materials) {
-        for (uint32_t i = 0; i < (uint32_t)Material::TextureSlot::Count; i++) {
-            auto texSlot = (Material::TextureSlot)i;
-            if (auto texture = material->getTexture(texSlot)) {
-                materialSlots.push_back({ material, texSlot });
-                textures.push_back(texture);
-            }
-        }
-    }
-
-    if (textures.empty()) return;
-
-    // Analyze the textures.
-    logInfo("Analyzing " + std::to_string(textures.size()) + " material textures");
-
-    TextureAnalyzer::SharedPtr pAnalyzer = TextureAnalyzer::create(mpDevice);
-    auto pResults = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
-    pAnalyzer->analyze(mpDevice->getRenderContext(), textures, pResults);
-
-    // Copy result to staging buffer for readback.
-    // This is mostly to avoid a full flush and the associated perf warning.
-    // We do not have any other useful GPU work, but unrelated GPU tasks can be in flight.
-    auto pResultsStaging = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
-    mpDevice->getRenderContext()->copyResource(pResultsStaging.get(), pResults.get());
-    mpDevice->getRenderContext()->flush(false);
-    mpFence->gpuSignal(mpDevice->getRenderContext()->getLowLevelData()->getCommandQueue());
-
-    // Wait for results to become available. Then optimize the materials.
-    mpFence->syncCpu();
-    const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map(Buffer::MapType::Read));
-    Material::TextureOptimizationStats stats = {};
-
-    for (size_t i = 0; i < textures.size(); i++) {
-        materialSlots[i].first->optimizeTexture(materialSlots[i].second, results[i], stats);
-    }
-
-    pResultsStaging->unmap();
-
-    // Log optimization stats.
-    if (size_t totalRemoved = std::accumulate(stats.texturesRemoved.begin(), stats.texturesRemoved.end(), 0ull); totalRemoved > 0) {
-        logInfo("Optimized materials by removing " + std::to_string(totalRemoved) + " constant textures");
-        for (size_t slot = 0; slot < (size_t)Material::TextureSlot::Count; slot++) {
-            logInfo(padStringToLength("  " + to_string((Material::TextureSlot)slot) + ":", 26) + std::to_string(stats.texturesRemoved[slot]));
-            logInfo(padStringToLength("  " + to_string((Material::TextureSlot)slot) + ":", 26) + std::to_string(stats.texturesRemoved[slot]));
-        }
-    }
-
-    if (stats.disabledAlpha > 0) logInfo("Optimized materials by disabling alpha test for " + std::to_string(stats.disabledAlpha) + " materials");
-    if (stats.constantNormalMaps > 0) logWarning("Scene has " + std::to_string(stats.constantNormalMaps) + " normal maps of constant value. Please update the asset to optimize performance.");
+    mSceneData.pMaterialSystem->optimizeMaterials();
 }
 
 void SceneBuilder::removeDuplicateMaterials() {
-    return; // TODO: recalculate material ids on all mesh/instances after duplicates removal
+    return; 
 
     // This pass identifies materials with identical set of parameters.
     // It should run after optimizeMaterials() as materials with different
@@ -2055,34 +2126,25 @@ void SceneBuilder::removeDuplicateMaterials() {
 
     if (is_set(mFlags, Flags::DontMergeMaterials)) return;
 
-    std::vector<Material::SharedPtr> uniqueMaterials;
-    std::vector<uint32_t> idMap(mSceneData.materials.size());
-
-    // Find unique set of materials.
-    for (uint32_t id = 0; id < mSceneData.materials.size(); ++id) {
-        const auto& pMaterial = mSceneData.materials[id];
-        auto it = std::find_if(uniqueMaterials.begin(), uniqueMaterials.end(), [&pMaterial](const auto& m) { return *m == *pMaterial; });
-        if (it == uniqueMaterials.end()) {
-            idMap[id] = (uint32_t)uniqueMaterials.size();
-            uniqueMaterials.push_back(pMaterial);
-        } else {
-            logInfo("Removing duplicate material '" + pMaterial->getName() + "' (duplicate of '" + (*it)->getName() + "')");
-            idMap[id] = (uint32_t)std::distance(uniqueMaterials.begin(), it);
-        }
-    }
+    std::vector<uint32_t> idMap;
+    size_t removed = mSceneData.pMaterialSystem->removeDuplicateMaterials(idMap);
 
     // Reassign material IDs.
-    for (auto& mesh : mMeshes) {
-        mesh.materialId = idMap[mesh.materialId];
-    }
+    if (removed > 0) {
+        for (auto& mesh : mMeshes) {
+            mesh.materialId = idMap[mesh.materialId];
+        }
 
-    mSceneData.materials = uniqueMaterials;
+        //for (auto& sdfGridInstance : mSceneData.sdfGridInstances) {
+        //    sdfGridInstance.materialID = idMap[sdfGridInstance.materialID];
+        //}
+    }
 }
 
 void SceneBuilder::collectVolumeGrids() {
     // Collect grids from volumes.
     std::set<Grid::SharedPtr> uniqueGrids;
-    for (auto& volume : mSceneData.volumes) {
+    for (auto& volume : mSceneData.gridVolumes) {
         auto grids = volume->getAllGrids();
         uniqueGrids.insert(grids.begin(), grids.end());
     }
@@ -2090,11 +2152,12 @@ void SceneBuilder::collectVolumeGrids() {
 }
 
 void SceneBuilder::quantizeTexCoords() {
+    return;
     // Match texture coordinate quantization for textured emissives to format of PackedEmissiveTriangle.
     // This is to avoid mismatch when sampling and evaluating emissive triangles.
     // Note that non-emissive meshes are unmodified and use full precision texcoords.
     for (auto& mesh : mMeshes) {
-        const auto& pMaterial = mSceneData.materials[mesh.materialId];
+        const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId)->toBasicMaterial();
         if (pMaterial->getEmissiveTexture() != nullptr) {
             // Quantize texture coordinates to fp16. Also track the bounds and max error.
             float2 minTexCrd = float2(std::numeric_limits<float>::infinity());
@@ -2103,11 +2166,13 @@ void SceneBuilder::quantizeTexCoords() {
 
             for (uint32_t i = 0; i < mesh.staticVertexCount; ++i) {
                 auto& v = mSceneData.meshStaticData[mesh.staticVertexOffset + i];
-                float2 texCrd = v.texCrd;
+                float2 texCrd = {v.texU, v.texV};
                 minTexCrd = min(minTexCrd, texCrd);
                 maxTexCrd = max(maxTexCrd, texCrd);
-                v.texCrd = f16tof32(f32tof16(texCrd));
-                maxError = max(maxError, abs(v.texCrd - texCrd));
+                const auto t = f16tof32(f32tof16(texCrd));
+                v.texU = t[0];
+                v.texV = t[1];
+                maxError = max(maxError, abs(float2({v.texU, v.texV}) - texCrd));
             }
 
             // Issue warning if quantization errors are too large.
@@ -2133,6 +2198,56 @@ void SceneBuilder::quantizeTexCoords() {
     }
 }
 
+void SceneBuilder::updateSDFGridID(uint32_t oldID, uint32_t newID)
+{
+    // This is a helper function to update all the references to a specific SDF grid ID
+    // to a new SDF grid ID.
+
+    for (Scene::SDFGridDesc& sdfGridDesc : mSceneData.sdfGridDesc)
+    {
+        if (sdfGridDesc.sdfGridID == oldID) sdfGridDesc.sdfGridID = newID;
+    }
+
+    for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstances)
+    {
+        if (sdfGridInstance.geometryID == oldID)
+        {
+            sdfGridInstance.geometryID = newID;
+            InternalNode& node = mSceneGraph[sdfGridInstance.globalMatrixID];
+            std::replace(node.sdfGrids.begin(), node.sdfGrids.end(), oldID, newID);
+        }
+    }
+}
+
+void SceneBuilder::removeDuplicateSDFGrids() {
+    // Removes duplicate SDF grids.
+
+    std::vector<SDFGrid::SharedPtr> uniqueSDFGrids;
+    std::unordered_set<uint32_t> removedIDs;
+
+    for (uint32_t i = 0; i < mSceneData.sdfGrids.size(); i++) {
+        if (removedIDs.count(i) > 0)
+            continue;
+
+        const SDFGrid::SharedPtr& pSDFGridA = mSceneData.sdfGrids[i];
+        uniqueSDFGrids.push_back(pSDFGridA);
+
+        if (removedIDs.size() > 0)
+            updateSDFGridID(i, i - (uint32_t)removedIDs.size());
+
+        for (uint32_t j = i + 1; j < mSceneData.sdfGrids.size(); j++) {
+            const SDFGrid::SharedPtr& pSDFGridB = mSceneData.sdfGrids[j];
+
+            if (pSDFGridA == pSDFGridB) {
+                removedIDs.insert(j);
+                updateSDFGridID(j, i);
+            }
+        }
+    }
+
+    mSceneData.sdfGrids = std::move(uniqueSDFGrids);
+}
+
 void SceneBuilder::createMeshData() {
     assert(mSceneData.meshDesc.empty());
 
@@ -2147,39 +2262,43 @@ void SceneBuilder::createMeshData() {
         meshData[meshID].ibOffset = mesh.indexOffset;
         meshData[meshID].vertexCount = mesh.vertexCount;
         meshData[meshID].indexCount = mesh.indexCount;
-        meshData[meshID].dynamicVbOffset = mesh.hasDynamicData ? mesh.dynamicVertexOffset : 0;
-        assert(mesh.dynamicVertexCount == 0 || mesh.dynamicVertexCount == mesh.staticVertexCount);
+        meshData[meshID].skinningVbOffset = mesh.hasSkinningData ? mesh.skinningVertexOffset : 0;
+        meshData[meshID].prevVbOffset = mesh.isDynamic() ? mesh.prevVertexOffset : 0;
+        assert(mesh.skinningVertexCount == 0 || mesh.skinningVertexCount == mesh.staticVertexCount);
 
         mSceneData.meshNames.push_back(mesh.name);
 
         uint32_t meshFlags = 0;
         meshFlags |= mesh.use16BitIndices ? (uint32_t)MeshFlags::Use16BitIndices : 0;
-        meshFlags |= mesh.hasDynamicData ? (uint32_t)MeshFlags::HasDynamicData : 0;
+        meshFlags |= mesh.isSkinned() ? (uint32_t)MeshFlags::IsSkinned : 0;
         meshFlags |= mesh.isFrontFaceCW ? (uint32_t)MeshFlags::IsFrontFaceCW : 0;
         meshFlags |= mesh.isDisplaced ? (uint32_t)MeshFlags::IsDisplaced : 0;
+        meshFlags |= mesh.isAnimated ? (uint32_t)MeshFlags::IsAnimated : 0;
         meshData[meshID].flags = meshFlags;
 
         if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
         else mSceneData.has32BitIndices = true;
 
-        if (mesh.hasDynamicData) {
+        if (mesh.isSkinned())
+        {
             // Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
             assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNode);
 
-            for (uint32_t i = 0; i < mesh.vertexCount; i++) {
-                DynamicVertexData& d = mSceneData.meshDynamicData[mesh.dynamicVertexOffset + i];
+            for (uint32_t i = 0; i < mesh.vertexCount; i++)
+            {
+                SkinningVertexData& s = mSceneData.meshSkinningData[mesh.skinningVertexOffset + i];
 
                 // The bind matrix is per mesh, so just take it from the first instance
-                d.bindMatrixID = (uint32_t)mesh.instances[0].nodeId;
+                s.bindMatrixID = (uint32_t)mesh.instances[0].nodeId;
 
                 // If a skeleton's world transform node is not explicitly set, it is the same transform as the instance (Assimp behavior)
-                d.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0].nodeId : mesh.skeletonNodeID;
+                s.skeletonMatrixID = mesh.skeletonNodeID == kInvalidNode ? (uint32_t)mesh.instances[0].nodeId : mesh.skeletonNodeID;
             }
         }
     }
 }
 
-void SceneBuilder::createMeshInstanceData() {
+void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
     // Setup all mesh instances.
     //
     // Mesh instances are added in the same order as the meshes in the mesh groups.
@@ -2240,7 +2359,9 @@ void SceneBuilder::createMeshInstanceData() {
 
         assert(instanceCount > 0);
         for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-            for (const uint32_t meshID : meshList) {
+            uint32_t blasGeometryIndex = 0;
+            for (const uint32_t meshID : meshList)
+            {
                 const auto& mesh = mMeshes[meshID];
 
                 // Figure out node ID to use for the current mesh instance.
@@ -2254,33 +2375,33 @@ void SceneBuilder::createMeshInstanceData() {
                     ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
                     : firstMesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
-                instanceData.push_back({});
-                auto& meshInstance = instanceData.back();
                 const auto& instance = mesh.instances[instanceIdx];
-                meshInstance.globalMatrixID = nodeID;
-                meshInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
-                meshInstance.meshID = meshID;
-                meshInstance.vbOffset = mesh.staticVertexOffset;
-                meshInstance.ibOffset = mesh.indexOffset;
+                GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
+                geomInstance.globalMatrixID = nodeID;
+                geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
+                geomInstance.geometryID = meshID;
+                geomInstance.vbOffset = mesh.staticVertexOffset;
+                geomInstance.ibOffset = mesh.indexOffset;
+                geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
+                geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
+                geomInstance.instanceIndex = tlasInstanceIndex;
+                geomInstance.geometryIndex = blasGeometryIndex;
+                instanceData.push_back(geomInstance);
 
-                uint32_t instanceFlags = 0;
-                instanceFlags |= mesh.use16BitIndices ? (uint32_t)MeshInstanceFlags::Use16BitIndices : 0;
-                instanceFlags |= mesh.hasDynamicData ? (uint32_t)MeshInstanceFlags::HasDynamicData : 0;
-                meshInstance.flags = instanceFlags;
+                blasGeometryIndex++;
             }
+            tlasInstanceIndex++;
         }
 
         drawCount += instanceCount * meshList.size();
     }
 
-    // Set number of displaced meshes.
-    mSceneData.displacedMeshInstanceCount = hasDisplaced ? uint32_t(instanceData.size() - displacedMeshInstanceOffset) : 0u;
-
     // Create mapping of mesh IDs to their instance IDs.
     mSceneData.meshIdToInstanceIds.resize(mMeshes.size());
-    for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++) {
+    for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++)
+    {
         const auto& instance = instanceData[instanceID];
-        mSceneData.meshIdToInstanceIds[instance.meshID].push_back(instanceID);
+        mSceneData.meshIdToInstanceIds[instance.geometryID].push_back(instanceID);
     }
 
     // Setup mesh groups. This just copies our final list.
@@ -2292,10 +2413,10 @@ void SceneBuilder::createMeshInstanceData() {
 
 void SceneBuilder::createCurveData() {
     auto& curveData = mSceneData.curveDesc;
-    auto& instanceData = mSceneData.curveInstanceData;
     curveData.resize(mCurves.size());
 
-    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++) {
+    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
+    {
         // Curve data.
         const auto& curve = mCurves[curveID];
         curveData[curveID].materialID = curve.materialId;
@@ -2304,18 +2425,38 @@ void SceneBuilder::createCurveData() {
         curveData[curveID].ibOffset = curve.indexOffset;
         curveData[curveID].vertexCount = curve.vertexCount;
         curveData[curveID].indexCount = curve.indexCount;
-
-        // Curve instance data.
-        for (const auto& instance : curve.instances) {
-            instanceData.push_back({});
-            auto& curveInstance = instanceData.back();
-            curveInstance.globalMatrixID = instance;
-            curveInstance.materialID = curve.materialId;
-            curveInstance.curveID = curveID;
-            curveInstance.vbOffset = curve.staticVertexOffset;
-            curveInstance.ibOffset = curve.indexOffset;
-        }
     }
+}
+
+void SceneBuilder::createCurveInstanceData(uint32_t& tlasInstanceIndex) {
+    auto& instanceData = mSceneData.curveInstanceData;
+
+    uint32_t blasGeometryIndex = 0;
+    size_t maxInstanceCount = 0;
+
+    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
+    {
+        const auto& curve = mCurves[curveID];
+        size_t instanceCount = curve.instances.size();
+        if (instanceCount > 1) throw std::runtime_error("Instanced curves are currently not supported!");
+        maxInstanceCount = std::max(maxInstanceCount, instanceCount);
+        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++)
+        {
+            GeometryInstanceData instance(GeometryType::Curve);
+            instance.globalMatrixID = curve.instances[instanceIdx];
+            instance.materialID = curve.materialId;
+            instance.geometryID = curveID;
+            instance.vbOffset = curve.staticVertexOffset;
+            instance.ibOffset = curve.indexOffset;
+            instance.instanceIndex = tlasInstanceIndex + (uint32_t)instanceIdx;
+            instance.geometryIndex = blasGeometryIndex;
+            instanceData.push_back(instance);
+        }
+
+        blasGeometryIndex++;
+    }
+
+    tlasInstanceIndex += (uint32_t)maxInstanceCount;
 }
 
 void SceneBuilder::createSceneGraph() {
@@ -2357,17 +2498,85 @@ void SceneBuilder::calculateCurveBoundingBoxes() {
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(SceneBuilder) {
+    SCRIPT_BINDING_DEPENDENCY(Scene)
+    SCRIPT_BINDING_DEPENDENCY(TriangleMesh)
+    SCRIPT_BINDING_DEPENDENCY(Material)
+    SCRIPT_BINDING_DEPENDENCY(Light)
+    SCRIPT_BINDING_DEPENDENCY(Transform)
+    SCRIPT_BINDING_DEPENDENCY(EnvMap)
+    SCRIPT_BINDING_DEPENDENCY(Animation)
+    SCRIPT_BINDING_DEPENDENCY(AABB)
+    SCRIPT_BINDING_DEPENDENCY(GridVolume)
+
     pybind11::enum_<SceneBuilder::Flags> flags(m, "SceneBuilderFlags");
     flags.value("Default", SceneBuilder::Flags::Default);
-    flags.value("RemoveDuplicateMaterials", SceneBuilder::Flags::RemoveDuplicateMaterials);
+    flags.value("DontMergeMaterials", SceneBuilder::Flags::DontMergeMaterials);
     flags.value("UseOriginalTangentSpace", SceneBuilder::Flags::UseOriginalTangentSpace);
     flags.value("AssumeLinearSpaceTextures", SceneBuilder::Flags::AssumeLinearSpaceTextures);
     flags.value("DontMergeMeshes", SceneBuilder::Flags::DontMergeMeshes);
-    flags.value("BuffersAsShaderResource", SceneBuilder::Flags::BuffersAsShaderResource);
     flags.value("UseSpecGlossMaterials", SceneBuilder::Flags::UseSpecGlossMaterials);
     flags.value("UseMetalRoughMaterials", SceneBuilder::Flags::UseMetalRoughMaterials);
     flags.value("NonIndexedVertices", SceneBuilder::Flags::NonIndexedVertices);
+    flags.value("Force32BitIndices", SceneBuilder::Flags::Force32BitIndices);
+    flags.value("RTDontMergeStatic", SceneBuilder::Flags::RTDontMergeStatic);
+    flags.value("RTDontMergeDynamic", SceneBuilder::Flags::RTDontMergeDynamic);
+    flags.value("RTDontMergeInstanced", SceneBuilder::Flags::RTDontMergeInstanced);
+    flags.value("FlattenStaticMeshInstances", SceneBuilder::Flags::FlattenStaticMeshInstances);
+    flags.value("DontOptimizeGraph", SceneBuilder::Flags::DontOptimizeGraph);
+    flags.value("DontOptimizeMaterials", SceneBuilder::Flags::DontOptimizeMaterials);
+    flags.value("DontUseDisplacement", SceneBuilder::Flags::DontUseDisplacement);
+    flags.value("UseCompressedHitInfo", SceneBuilder::Flags::UseCompressedHitInfo);
+    flags.value("TessellateCurvesIntoPolyTubes", SceneBuilder::Flags::TessellateCurvesIntoPolyTubes);
+    flags.value("UseCache", SceneBuilder::Flags::UseCache);
+    flags.value("RebuildCache", SceneBuilder::Flags::RebuildCache);
     ScriptBindings::addEnumBinaryOperators(flags);
+
+    pybind11::class_<SceneBuilder, SceneBuilder::SharedPtr> sceneBuilder(m, "SceneBuilder");
+    sceneBuilder.def_property_readonly("flags", &SceneBuilder::getFlags);
+    sceneBuilder.def_property_readonly("materials", &SceneBuilder::getMaterials);
+    sceneBuilder.def_property_readonly("gridVolumes", &SceneBuilder::getGridVolumes);
+    sceneBuilder.def_property_readonly("volumes", &SceneBuilder::getGridVolumes); // PYTHONDEPRECATED
+    sceneBuilder.def_property_readonly("lights", &SceneBuilder::getLights);
+    sceneBuilder.def_property_readonly("cameras", &SceneBuilder::getCameras);
+    sceneBuilder.def_property_readonly("animations", &SceneBuilder::getAnimations);
+    sceneBuilder.def_property("renderSettings", pybind11::overload_cast<void>(&SceneBuilder::getRenderSettings, pybind11::const_), &SceneBuilder::setRenderSettings);
+    sceneBuilder.def_property("envMap", &SceneBuilder::getEnvMap, &SceneBuilder::setEnvMap);
+    sceneBuilder.def_property("selectedCamera", &SceneBuilder::getSelectedCamera, &SceneBuilder::setSelectedCamera);
+    sceneBuilder.def_property("cameraSpeed", &SceneBuilder::getCameraSpeed, &SceneBuilder::setCameraSpeed);
+    sceneBuilder.def("importScene", [] (SceneBuilder* pSceneBuilder, const std::filesystem::path& path, const pybind11::dict& dict, const std::vector<Transform>& instances) {
+        SceneBuilder::InstanceMatrices instanceMatrices;
+        for (const auto& instance : instances)
+        {
+            instanceMatrices.push_back(instance.getMatrix());
+        }
+        pSceneBuilder->import(path, instanceMatrices, Dictionary(dict));
+    }, "path"_a, "dict"_a = pybind11::dict(), "instances"_a = std::vector<Transform>());
+    sceneBuilder.def("addTriangleMesh", &SceneBuilder::addTriangleMesh, "triangleMesh"_a, "material"_a);
+    sceneBuilder.def("addSDFGrid", &SceneBuilder::addSDFGrid, "sdfGrid"_a, "material"_a);
+    sceneBuilder.def("addMaterial", &SceneBuilder::addMaterial, "material"_a);
+    sceneBuilder.def("getMaterial", &SceneBuilder::getMaterial, "name"_a);
+    sceneBuilder.def("loadMaterialTexture", &SceneBuilder::loadMaterialTexture, "material"_a, "slot"_a, "path"_a);
+    sceneBuilder.def("waitForMaterialTextureLoading", &SceneBuilder::waitForMaterialTextureLoading);
+    sceneBuilder.def("addGridVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = SceneBuilder::kInvalidNode);
+    sceneBuilder.def("addVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = SceneBuilder::kInvalidNode); // PYTHONDEPRECATED
+    sceneBuilder.def("getGridVolume", &SceneBuilder::getGridVolume, "name"_a);
+    sceneBuilder.def("getVolume", &SceneBuilder::getGridVolume, "name"_a); // PYTHONDEPRECATED
+    sceneBuilder.def("addLight", &SceneBuilder::addLight, "light"_a);
+    sceneBuilder.def("getLight", &SceneBuilder::getLight, "name"_a);
+    sceneBuilder.def("addCamera", &SceneBuilder::addCamera, "camera"_a);
+    sceneBuilder.def("addAnimation", &SceneBuilder::addAnimation, "animation"_a);
+    sceneBuilder.def("createAnimation", &SceneBuilder::createAnimation, "animatable"_a, "name"_a, "duration"_a);
+    sceneBuilder.def("addNode", [] (SceneBuilder* pSceneBuilder, const std::string& name, const Transform& transform, uint32_t parent) {
+        assert(pSceneBuilder && "'pSceneBuilder' is missing");
+        SceneBuilder::Node node;
+        node.name = name;
+        node.transform = transform.getMatrix();
+        node.parent = parent;
+        return pSceneBuilder->addNode(node);
+    }, "name"_a, "transform"_a = Transform(), "parent"_a = SceneBuilder::kInvalidNode);
+    sceneBuilder.def("addMeshInstance", &SceneBuilder::addMeshInstance);
+    sceneBuilder.def("addSDFGridInstance", &SceneBuilder::addSDFGridInstance);
+    sceneBuilder.def("addCustomPrimitive", &SceneBuilder::addCustomPrimitive);
 }
 #endif  // SCRIPTING
 

@@ -84,6 +84,13 @@ const glm::float4x4& Transform::getMatrix() const {
     return mMatrix;
 }
 
+bool Transform::operator==(const Transform& other) const {
+    if (mTranslation != other.mTranslation) return false;
+    if (mScaling != other.mScaling) return false;
+    if (mRotation != other.mRotation) return false;
+    return true;
+}
+
 #ifdef SCRIPTING
 SCRIPT_BINDING(Transform) {
     auto init = [](const pybind11::kwargs& args) {

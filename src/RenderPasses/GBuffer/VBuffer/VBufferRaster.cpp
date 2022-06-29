@@ -27,15 +27,17 @@
  **************************************************************************/
 #include "VBufferRaster.h"
 #include "Scene/HitInfo.h"
-#include "RenderGraph/RenderPassHelpers.h"
-#include "RenderGraph/RenderPassStandardFlags.h"
 
-const char* VBufferRaster::kDesc = "Rasterized V-buffer generation pass";
+#include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
+#include "Falcor/RenderGraph/RenderPassStandardFlags.h"
+
+const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buffer generation pass." };
 
 namespace
 {
     const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
-    const std::string kShaderModel = "6_1";
+    const std::string kShaderModel = "6_2";
 
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
@@ -44,7 +46,7 @@ namespace
 
     const ChannelList kVBufferExtraChannels =
     {
-        { "mvec",             "gMotionVectors",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
     };
 
     const std::string kDepthName = "depth";
@@ -53,9 +55,14 @@ namespace
 RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil);
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat);
-    addRenderPassOutputs(reflector, kVBufferExtraChannels, Resource::BindFlags::UnorderedAccess);
+    auto texDims = compileData.defaultTexDims;
+
+    // Add the required outputs. These always exist.
+    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);
+    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
+    
+    // Add all the other outputs.
+    addRenderPassOutputs(reflector, kVBufferExtraChannels, Resource::BindFlags::UnorderedAccess, texDims);
 
     return reflector;
 }
@@ -63,7 +70,7 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
 VBufferRaster::SharedPtr VBufferRaster::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new VBufferRaster(pRenderContext->device(), dict));
 }
-VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice) {
+VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) : GBufferBase(pDevice, kInfo) {
     parseDictionary(dict);
 
     // Check for required features.
@@ -101,35 +108,34 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedP
     mRaster.pVars = nullptr;
 
     if (pScene) {
-        if (pScene->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
+        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
         {
             throw std::runtime_error("VBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
         }
 
         mRaster.pProgram->addDefines(pScene->getSceneDefines());
+        mRaster.pProgram->setTypeConformances(pScene->getTypeConformances());
     }
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     GBufferBase::execute(pRenderContext, renderData);
-
-    // Clear depth and output buffer.
-    auto pDepth = renderData[kDepthName]->asTexture();
+    
+    // Update frame dimension based on render pass output.
     auto pOutput = renderData[kVBufferName]->asTexture();
+    assert(pOutput);
+    updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
+    
+    // Clear depth and output buffer.
+    auto pDepth = getOutput(renderData, kDepthName);
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
     pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
-
+    
     // Clear extra output buffers.
-    auto clear = [&](const ChannelDesc& channel)
-    {
-        auto pTex = renderData[channel.name]->asTexture();
-        if (pTex) pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-    };
-    for (const auto& channel : kVBufferExtraChannels) clear(channel);
-
+    //clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
+    
     // If there is no scene, we're done.
-    if (mpScene == nullptr)
-    {
+    if (mpScene == nullptr) {
         return;
     }
 
@@ -141,8 +147,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pProgram->addDefines(getValidResourceDefines(kVBufferExtraChannels, renderData));
 
     // Create program vars.
-    if (!mRaster.pVars)
-    {
+    if (!mRaster.pVars) {
         mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
     }
 
@@ -152,9 +157,8 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
 
     // Bind extra channels as UAV buffers.
-    for (const auto& channel : kVBufferExtraChannels)
-    {
-        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+    for (const auto& channel : kVBufferExtraChannels) {
+        Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         mRaster.pVars[channel.texname] = pTex;
     }
 
