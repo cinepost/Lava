@@ -63,6 +63,10 @@ namespace Falcor
         */
         bool isEqual(const Material::SharedPtr& pOther) const override;
 
+        /** 
+        */
+        bool hasUDIMTextures() const override;
+
         /** Set the alpha mode.
         */
         void setAlphaMode(AlphaMode alphaMode) override;

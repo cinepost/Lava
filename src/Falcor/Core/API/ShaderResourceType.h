@@ -25,26 +25,29 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_SHADERRESOURCETYPE_H_
+#define SRC_FALCOR_CORE_API_SHADERRESOURCETYPE_H_
 
-namespace Falcor
-{
-    enum class ShaderResourceType
-    {
-        TextureSrv,
-        TextureUav,
-        RawBufferSrv,
-        RawBufferUav,
-        TypedBufferSrv,
-        TypedBufferUav,
-        Cbv,
-        StructuredBufferUav,
-        StructuredBufferSrv,
-        AccelerationStructureSrv,
-        Dsv,
-        Rtv,
-        Sampler,
+namespace Falcor {
 
-        Count
-    };
+enum class ShaderResourceType {
+  TextureSrv,
+  TextureUav,
+  RawBufferSrv,
+  RawBufferUav,
+  TypedBufferSrv,
+  TypedBufferUav,
+  Cbv,
+  StructuredBufferUav,
+  StructuredBufferSrv,
+  AccelerationStructureSrv,
+  Dsv,
+  Rtv,
+  Sampler,
+
+  Count
+};
+
 }
+
+#endif  // SRC_FALCOR_CORE_API_SHADERRESOURCETYPE_H_

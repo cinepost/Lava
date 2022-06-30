@@ -135,7 +135,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const std:
 Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags) {
     fs::path fullPath;
     if (!findFileInDataDirectories(path, fullPath)) {
-        LLOG_WRN << "Error when loading image file. Can't find image file " << path;
+        LLOG_WRN << "Error when loading texture. Can't find file " << path;
         return nullptr;
     }
 
@@ -147,7 +147,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
         }
         catch (const std::exception& e)
         {
-            LLOG_ERR << "Error loading '" << fullPath << "': " << e.what();
+            LLOG_ERR << "Error loading texture '" << fullPath << "': " << e.what();
         }
     } else {
         Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(pDevice, fullPath, kTopDown);
@@ -169,8 +169,8 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 }
 
 
-Texture::Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
-    : Resource(device, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
+Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
+    : Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
     
     LLOG_DBG    << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
                 << " format " << to_string(format) << " bindFlags " << to_string(bindFlags);

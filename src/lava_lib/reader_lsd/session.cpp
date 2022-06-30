@@ -997,11 +997,11 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		try {
 			mesh_id = f.get();	
 		} catch(const std::exception& e) {
-        	std::cerr << "Exception from the thread: " << e.what() << '\n';
+        	LLOG_ERR << "Exception from the thread: " << e.what();
         	return false;
     	}
 	} catch (...) {
-		logError("Unable to get mesh id for object: " + obj_name);
+		LLOG_ERR << "Unable to get mesh id for object: " << obj_name;
 	}
 
 	if (mesh_id == std::numeric_limits<uint32_t>::max()) {
@@ -1028,14 +1028,14 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
     
     Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
-    std::string 	surface_base_color_texture = "";
-    std::string 	surface_base_normal_texture = "";
-    std::string 	surface_metallic_texture = "";
-    std::string 	surface_rough_texture = "";
+    std::string 	surface_base_color_texture_path  = "";
+    std::string 	surface_base_normal_texture_path = "";
+    std::string 	surface_metallic_texture_path    = "";
+    std::string 	surface_roughness_texture_path   = "";
 
-    bool 			surface_use_basecolor_texture = false;
-    bool 			surface_use_roughness_texture = false;
-    bool 			surface_use_metallic_texture = false;
+    bool 			surface_use_basecolor_texture  = false;
+    bool 			surface_use_roughness_texture  = false;
+    bool 			surface_use_metallic_texture   = false;
     bool 			surface_use_basenormal_texture = false;
 
     bool            front_face = false;
@@ -1051,10 +1051,10 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
-    	surface_base_color_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
-    	surface_base_normal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
-    	surface_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
-    	surface_rough_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
+    	surface_base_color_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_texture", std::string());
+    	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
+    	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
+    	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
 
     	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
     	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
@@ -1084,20 +1084,28 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setEmissiveFactor(emissive_factor);
     pMaterial->setDoubleSided(!front_face);
 
-    LLOG_DBG << "setting material textures";
-  	bool loadAsSrgb = true;
+    LLOG_DBG << "Setting textures for material: " << pMaterial->getName();
+  	//bool loadAsSrgb = true;
 
-    if(surface_base_color_texture != "" && surface_use_basecolor_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture, true); // load as srgb texture
+    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
+    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, true); // load as srgb texture
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path);
+    }
 
-    if(surface_metallic_texture != "" && surface_use_metallic_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Metallic, surface_metallic_texture, false); // load as linear texture
+    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
+    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, false); // load as linear texture
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path);
+    }
 
-    if(surface_rough_texture != "" && surface_use_roughness_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_rough_texture, false); // load as linear texture
+    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
+    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, false); // load as linear texture
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path);
+    }
 
-    if(surface_base_normal_texture != "" && surface_use_basenormal_texture) 
-    	pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture, false); // load as linear texture
+    if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
+    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, false); // load as linear texture
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path);
+    }
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);

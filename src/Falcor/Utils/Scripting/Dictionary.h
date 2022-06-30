@@ -43,88 +43,85 @@ namespace Falcor {
 
 #ifdef SCRIPTING
 class __attribute__((visibility("default"))) Dictionary {
-    public:
-        using Container = pybind11::dict;
-        using SharedPtr = std::shared_ptr<Dictionary>;
+	public:
+		using Container = pybind11::dict;
+		using SharedPtr = std::shared_ptr<Dictionary>;
 
-        Dictionary() = default;
-        Dictionary(const Container& c) : mMap(c) {}
+		Dictionary() = default;
+		Dictionary(const Container& c) : mMap(c) {}
 
-        class Value
-        {
-        public:
-            Value(const Container& container, const std::string& name) : mContainer(container), mName(name) {};
-            Value(const Container& container = {}) : Value(container, std::string()) {}
+		class Value {
+			public:
+				Value(const Container& container, const std::string& name) : mContainer(container), mName(name) {};
+				Value(const Container& container = {}) : Value(container, std::string()) {}
 
-            template<typename T>
-            void operator=(const T& t) { mContainer[mName.c_str()] = t; }
+				template<typename T>
+				void operator=(const T& t) { mContainer[mName.c_str()] = t; }
 
-            template<typename T>
-            operator T() const { return mContainer[mName.c_str()].cast<T>(); }
+				template<typename T>
+				operator T() const { return mContainer[mName.c_str()].cast<T>(); }
 
-        private:
-            std::string mName;
-            const Container& mContainer;
-        };
+			private:
+				std::string mName;
+				const Container& mContainer;
+		};
 
-        template<typename ContainerType>
-        class IteratorT
-        {
-        public:
-            IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mpContainer(pContainer), mIt(it) {}
+		template<typename ContainerType>
+		class IteratorT {
+			public:
+				IteratorT(ContainerType* pContainer, const pybind11::detail::dict_iterator& it) : mpContainer(pContainer), mIt(it) {}
 
-            bool operator==(const IteratorT& other) const { return other.mIt == mIt; }
-            bool operator!=(const IteratorT& other) const { return other.mIt != mIt; }
-            IteratorT& operator++() { mIt++; return *this; }
-            IteratorT operator++(int) { ++mIt; return *this; }
+				bool operator==(const IteratorT& other) const { return other.mIt == mIt; }
+				bool operator!=(const IteratorT& other) const { return other.mIt != mIt; }
+				IteratorT& operator++() { mIt++; return *this; }
+				IteratorT operator++(int) { ++mIt; return *this; }
 
-            std::pair<std::string, Value> operator*()
-            {
-                std::string key = mIt->first.cast<std::string>();
-                return { key, Value(*mpContainer, key) };
-            }
-        private:
-            pybind11::detail::dict_iterator mIt;
-            ContainerType* mpContainer;
-        };
+				std::pair<std::string, Value> operator*() {
+					std::string key = mIt->first.cast<std::string>();
+					return { key, Value(*mpContainer, key) };
+				}
+			private:
+				pybind11::detail::dict_iterator mIt;
+				ContainerType* mpContainer;
+		};
 
-        // Create a new dictionary.
-        // \return A new object, or throws an exception if creation failed.
-        //
-        static SharedPtr create() { return SharedPtr(new Dictionary); }
+		// Create a new dictionary.
+		// \return A new object, or throws an exception if creation failed.
+		//
+		static SharedPtr create() { return SharedPtr(new Dictionary); }
 
-        using Iterator = IteratorT<Container>;
-        using ConstIterator = IteratorT<const Container>;
+		using Iterator = IteratorT<Container>;
+		using ConstIterator = IteratorT<const Container>;
 
-        Value operator[](const std::string& name) { return Value(mMap, name); }
-        const Value operator[](const std::string& name) const { return Value(mMap, name); }
+		Value operator[](const std::string& name) { return Value(mMap, name); }
+		const Value operator[](const std::string& name) const { return Value(mMap, name); }
 
-        ConstIterator begin() const { return ConstIterator(&mMap, mMap.begin()); }
-        ConstIterator end() const { return ConstIterator(&mMap, mMap.end()); }
+		ConstIterator begin() const { return ConstIterator(&mMap, mMap.begin()); }
+		ConstIterator end() const { return ConstIterator(&mMap, mMap.end()); }
 
-        Iterator begin() { return Iterator(&mMap, mMap.begin()); }
-        Iterator end() { return Iterator(&mMap, mMap.end()); }
+		Iterator begin() { return Iterator(&mMap, mMap.begin()); }
+		Iterator end() { return Iterator(&mMap, mMap.end()); }
 
-        size_t size() const { return mMap.size(); }
+		size_t size() const { return mMap.size(); }
 
-        bool keyExists(const std::string& key) const
-        {
-            return mMap.contains(key.c_str());
-        }
+		bool keyExists(const std::string& key) const {
+			return mMap.contains(key.c_str());
+		}
 
-        std::string toString() const
-        {
-            return pybind11::str(static_cast<pybind11::dict>(mMap));
-        }
-    private:
-        Container mMap;
-    };
+		std::string toString() const {
+			return pybind11::str(static_cast<pybind11::dict>(mMap));
+		}
+	private:
+		Container mMap;
+};
 
-#endif  // scripting
+#else   // Scripting
 
 class Dictionary: public InternalDictionary {
 
 };
+
+#endif  // Scripting
 
 }  // namespace Falcor
 

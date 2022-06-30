@@ -237,7 +237,7 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
         deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
     } else {
-        LLOG_ERR << "No texture space left for " <<  ltxFilename;
+        LLOG_ERR << "No texture memory left for texture " <<  ltxFilename;
         pTex = nullptr;
     }
     

@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_IMAGE_IMAGEIO_H_
+#define SRC_FALCOR_UTILS_IMAGE_IMAGEIO_H_
 
 #include "Falcor/Core/Framework.h"
 #include "Falcor/Core/API/Device.h"
@@ -33,90 +34,91 @@
 #include "Utils/Image/Bitmap.h"
 #include "Core/API/Texture.h"
 
-namespace Falcor
-{
-    class dlldecl ImageIO
-    {
-    public:
-        enum class CompressionMode
-        {
-            /** Stores RGB data with 1 bit of alpha.
-                8 bytes per block.
-            */
-            BC1,
+namespace Falcor {
 
-            /** Stores RGBA data. Combines BC1 for RGB with 4 bits of alpha.
-                16 bytes per block.
-            */
-            BC2,
+class dlldecl ImageIO {
+	public:
+		enum class CompressionMode {
+			/** Stores RGB data with 1 bit of alpha.
+				8 bytes per block.
+			*/
+			BC1,
 
-            /** Stores RGBA data. Combines BC1 for RGB and BC4 for alpha.
-                16 bytes per block.
-            */
-            BC3,
+			/** Stores RGBA data. Combines BC1 for RGB with 4 bits of alpha.
+				16 bytes per block.
+			*/
+			BC2,
 
-            /** Stores a single grayscale channel.
-                8 bytes per block.
-            */
-            BC4,
+			/** Stores RGBA data. Combines BC1 for RGB and BC4 for alpha.
+				16 bytes per block.
+			*/
+			BC3,
 
-            /** Stores two channels using BC4 for each channel.
-                16 bytes per block.
-            */
-            BC5,
+			/** Stores a single grayscale channel.
+				8 bytes per block.
+			*/
+			BC4,
 
-            /** Stores RGB 16-bit floating point data.
-                16 bytes per block.
-            */
-            BC6,
+			/** Stores two channels using BC4 for each channel.
+				16 bytes per block.
+			*/
+			BC5,
 
-            /** Stores 8-bit RGB or RGBA data.
-                16 bytes per block.
-            */
-            BC7,
+			/** Stores RGB 16-bit floating point data.
+				16 bytes per block.
+			*/
+			BC6,
 
-            /** No compression mode specified.
-            */
-            None
-        };
+			/** Stores 8-bit RGB or RGBA data.
+				16 bytes per block.
+			*/
+			BC7,
+
+			/** No compression mode specified.
+			*/
+			None
+		};
 
 #ifdef WIN32
-        /** Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
-            Throws an exception if the DDS file is malformed.
-            \param[in] path Path of file to load.
-            \return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
-        */
-        static Bitmap::UniqueConstPtr loadBitmapFromDDS(const fs::path& path); // top down = true
+		/** Load a DDS file to a Bitmap. If the file contains an image array and/or mips, only the first image will be loaded.
+			Throws an exception if the DDS file is malformed.
+			\param[in] path Path of file to load.
+			\return Bitmap object containing image data if loading was successful. Otherwise, nullptr.
+		*/
+		static Bitmap::UniqueConstPtr loadBitmapFromDDS(const fs::path& path); // top down = true
 
-        /** Load a DDS file to a Texture.
-            Throws an exception if the DDS file is malformed.
-            \param[in] path Path of file to load.
-            \param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
-            \return Texture object containing image data if loading was successful. Otherwise, nullptr.
-        */
-        static Texture::SharedPtr loadTextureFromDDS(Device::SharedPtr pDevice, const fs::path& path, bool loadAsSrgb);
+		/** Load a DDS file to a Texture.
+			Throws an exception if the DDS file is malformed.
+			\param[in] path Path of file to load.
+			\param[in] loadAsSrgb If true, convert the image format property to a corresponding sRGB format if available. Image data is not changed.
+			\return Texture object containing image data if loading was successful. Otherwise, nullptr.
+		*/
+		static Texture::SharedPtr loadTextureFromDDS(Device::SharedPtr pDevice, const fs::path& path, bool loadAsSrgb);
 
-        /** Saves a bitmap to a DDS file.
-            Throws an exception if path is invalid or the image cannot be saved.
-            \param[in] path Path to save to.
-            \param[in] bitmap Bitmap object to save.
-            \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-        */
-        static void saveToDDS(const fs::path& path, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None, bool generateMips = false);
+		/** Saves a bitmap to a DDS file.
+			Throws an exception if path is invalid or the image cannot be saved.
+			\param[in] path Path to save to.
+			\param[in] bitmap Bitmap object to save.
+			\param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+			\param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
+		*/
+		static void saveToDDS(const fs::path& path, const Bitmap& bitmap, CompressionMode mode = CompressionMode::None, bool generateMips = false);
 
-        /** Saves a Texture to a DDS file. All mips and array images are saved.
-            Throws an exception if the path is invalid or the image cannot be saved.
+		/** Saves a Texture to a DDS file. All mips and array images are saved.
+			Throws an exception if the path is invalid or the image cannot be saved.
 
-            TODO: Support exporting single subresource. Options for one or all are probably enough?
+			TODO: Support exporting single subresource. Options for one or all are probably enough?
 
-            \param[in] pContext Copy context used to read texture data from the GPU.
-            \param[in] path Path to save to.
-            \param[in] pBitmap Bitmap object to save.
-            \param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
-            \param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
-        */
-        static void saveToDDS(CopyContext* pContext, const fs::path& path, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
+			\param[in] pContext Copy context used to read texture data from the GPU.
+			\param[in] path Path to save to.
+			\param[in] pBitmap Bitmap object to save.
+			\param[in] mode Block compression mode. By default, will save data as-is and will not decompress if already compressed.
+			\param[in] if true, generate and save full mipmap chain; requires the caller to have initialized COM.
+		*/
+		static void saveToDDS(CopyContext* pContext, const fs::path& path, const Texture::SharedPtr& pTexture, CompressionMode mode = CompressionMode::None, bool generateMips = false);
 #endif  // WIN32
-    };
-}
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_IMAGE_IMAGEIO_H_

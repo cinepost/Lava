@@ -39,22 +39,28 @@ BEGIN_NAMESPACE_FALCOR
     In the future we'll add a 'Procedural' mode here, where the handle
     refers to a procedural texture identified by a unique ID.
 */
-struct TextureHandle
-{
-    uint32_t packedData = 0;
+struct TextureHandle {
 
-    enum class Mode
-    {
+    uint32_t packedData = 0;
+    uint32_t packedUDIMData = 0;
+
+    enum class Mode {
         Uniform,
         Texture,
+        UDIM_Texture,
+        UDIM_Tile,
 
         Count // Must be last
     };
 
-    static const uint kTextureIDBits = 30;
-    static const uint kModeBits = 2;
+    static const uint kTextureIDBits = 29;
+    static const uint kModeBits = 3;
 
     static const uint kModeOffset = kTextureIDBits;
+
+    static const uint kUDIMTileNumXBits = 4;
+    static const uint kUDIMTileNumYBits = 4;
+    static const uint kUDIMTileBits = 1;
 
     /** Set mode.
     */
@@ -72,6 +78,14 @@ struct TextureHandle
     */
     uint getTextureID() CONST_FUNCTION { return EXTRACT_BITS(kTextureIDBits, 0, packedData); }
 
+    /**
+    */
+    bool isUDIMTexture() CONST_FUNCTION { return getMode() == Mode::UDIM_Texture; }
+
+    /**
+    */
+    bool isUDIMTile() CONST_FUNCTION { return getMode() == Mode::UDIM_Tile; }
+
 #ifdef HOST_CODE
     bool operator==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }
     bool operator!=(const TextureHandle& rhs) const { return packedData != rhs.packedData; }
@@ -80,8 +94,7 @@ struct TextureHandle
 
 /** Struct storing information about a material texture.
 */
-struct TextureInfo
-{
+struct TextureInfo {
     uint width;
     uint height;
     uint depth;

@@ -4,11 +4,11 @@
 
 namespace Falcor {
 
-#ifdef FALCOR_VK
+#if FALCOR_GFX_VK
 
 bool isRGB32fSupported(std::shared_ptr<Device> pDevice) {
     VkFormatProperties p;
-    vkGetPhysicalDeviceFormatProperties(pDevice->getApiHandle(), VK_FORMAT_R32G32B32_SFLOAT, &p);
+    vkGetPhysicalDeviceFormatProperties(pDevice->getApiNativeHandle(), VK_FORMAT_R32G32B32_SFLOAT, &p);
     return p.optimalTilingFeatures != 0;
 }
 

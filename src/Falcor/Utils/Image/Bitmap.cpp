@@ -112,13 +112,13 @@ Bitmap::UniqueConstPtr Bitmap::createFromFileOIIO(std::shared_ptr<Device> pDevic
         oiio::ImageBuf tmpBuffRGB(fullpath);
 
         if (bpp == 24) {
-            LLOG_WRN << "Converting 24-bit texture to 32-bit";
+            LLOG_WRN << "Converting 24-bit texture to 32-bit using OIIO";
             bpp = 32;
             srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
         }
         else if (bpp == 96 && (isRGB32fSupported(pDevice) == false))
         {
-            LLOG_WRN << "Converting 96-bit texture to 128-bit";
+            LLOG_WRN << "Converting 96-bit texture to 128-bit using OIIO";
             bpp = 128;
             srcBuff = oiio::ImageBufAlgo::channels(tmpBuffRGB, 4, channelorder, channelvalues, channelnames);
         }
@@ -231,7 +231,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(std::shared_ptr<Device> pDevice, c
         FreeImage_Unload(pDib);
         pDib = pNew;
     }
-
+    
     uint32_t bytesPerPixel = bpp / 8;
 
     pBmp->mpData = new uint8_t[pBmp->mHeight * pBmp->mWidth * bytesPerPixel];

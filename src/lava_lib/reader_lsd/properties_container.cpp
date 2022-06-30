@@ -401,6 +401,90 @@ const PropertiesContainer PropertiesContainer::filterProperties(ast::Style style
     return container;
 }
 
+Falcor::Dictionary PropertiesContainer::to_dict(ast::Style style, bool recursive) const {
+    Falcor::Dictionary dict;
+
+    for(auto const& item: mPropertiesMap) {
+        auto const& key = item.first;
+        auto const& prop = item.second;
+        if (key.first == style) {
+            switch (valueType(prop.value())) {
+                case Property::Type::BOOL:
+                    dict[key.second] = static_cast<bool>(prop.get<bool>());
+                    break;
+                
+                case Property::Type::INT:
+                    dict[key.second] = static_cast<int32_t>(prop.get<int>());
+                    break;
+                
+                case Property::Type::FLOAT:
+                    dict[key.second] = static_cast<float>(prop.get<double>());
+                    break;
+
+                case Property::Type::INT2:
+                    {
+                        auto tmp = prop.get<Int2>();
+                        dict[key.second] = Falcor::int2({tmp[0], tmp[1]});
+                    }
+                    break;
+                
+                case Property::Type::INT3:
+                    {
+                        auto tmp = prop.get<Int3>();
+                        dict[key.second] = Falcor::int3({tmp[0], tmp[1], tmp[2]});
+                    }
+                    break;
+                
+                case Property::Type::INT4:
+                    {
+                        auto tmp = prop.get<Int4>();
+                        dict[key.second] = Falcor::int4({tmp[0], tmp[1], tmp[2], tmp[3]});
+                    }
+                    break;
+                
+                case Property::Type::VECTOR2:
+                    {
+                        auto tmp = prop.get<Vector2>();
+                        dict[key.second] = Falcor::float2({tmp[0], tmp[1]});
+                    }
+                    break;
+                
+                case Property::Type::VECTOR3:
+                    {
+                        auto tmp = prop.get<Vector3>();
+                        dict[key.second] = Falcor::float3({tmp[0], tmp[1], tmp[2]});
+                    }
+                    break;
+                
+                case Property::Type::VECTOR4:
+                    {
+                        auto tmp = prop.get<Vector4>();
+                        dict[key.second] = Falcor::float4({tmp[0], tmp[1], tmp[2], tmp[3]});
+                    }
+                    break;
+
+                case Property::Type::STRING:
+                    dict[key.second] = static_cast<std::string>(prop.get<std::string>());
+                    break;
+                
+                case Property::Type::MATRIX3:
+                    assert(false && "Unimplemented value type Matrix3 !");
+                    break;
+                
+                case Property::Type::MATRIX4:
+                    assert(false && "Unimplemented value type Matrix4 !");
+                    break;
+                
+                default:
+                    assert(false && "Unsupported value type !!!");
+                    break;
+            }
+        }
+    }
+
+    return dict;
+}
+
 const void PropertiesContainer::printSummary(std::ostream& os, uint indent) const { 
     for( auto const& [key, prop]: mPropertiesMap) {
         indentStream(os, indent) << (prop.isUserProperty() ? "user" : "sys ") << " property " << to_string(key) << " type: " << to_string(prop.type()) << " value: " << to_string(prop.value()) << "\n";

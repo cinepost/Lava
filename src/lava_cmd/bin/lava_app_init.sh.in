@@ -6,8 +6,8 @@ then
     export LAVA_HOME=@LAVA_INST_DIR@
 fi
 
-export LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$H/dsolib:$LAVA_HOME/lib:$LAVA_HOME/3rdparty/lib:$LAVA_HOME/render_passes:$LD_LIBRARY_PATH
-export PATH=$HFS/bin:$PATH:$LAVA_HOME/3rdparty/bin:$LAVA_HOME/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$H/dsolib:$LAVA_HOME/lib:$LAVA_HOME/3rdparty/lib:$LAVA_HOME/render_passes
+export PATH=$PATH:$HFS/bin:$LAVA_HOME/3rdparty/bin:$LAVA_HOME/bin
 export HIH=$HIH
 export HOSTNAME=$HOSTNAME
 

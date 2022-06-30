@@ -163,6 +163,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     CommandQueueHandle getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
 
+#if FALCOR_GFX_VK
+    VkQueue            getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const;
+#endif  // FALCOR_GFX_VK
+
     /** Get the API queue type.
         \return API queue type, or throws an exception if type is unknown.
     */
@@ -171,6 +175,10 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Get the native API handle
     */
     inline const DeviceHandle& getApiHandle() { return mApiHandle; }
+
+#if FALCOR_GFX_VK
+    inline VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
+#endif
 
     /** Get a D3D12 handle for user code that wants to call D3D12 directly.
         \return A valid ID3D12Device* value for all backend that are using D3D12, otherwise nullptr.
@@ -224,9 +232,20 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool isFeatureSupported(SupportedFeatures flags) const;
 
     void releaseResource(ApiObjectHandle pResource);
+
 #ifdef FALCOR_GFX
-        void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
-#endif
+    void releaseResource(ISlangUnknown* pResource) { releaseResource(ApiObjectHandle(pResource)); }
+
+    gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
+
+
+#if FALCOR_GFX_VK
+    inline VkInstance       getVkInstance() const { return mVkInstance; };
+    inline VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
+    inline VkDevice         getVkDevice() const { return mVkDevice; };
+    inline VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
+#endif  // FALCOR_GFX_VK
+#endif  // FALCOR_GFX
 
 #ifdef FALCOR_VK
     uint32_t getVkMemoryType(GpuMemoryHeap::Type falcorType, uint32_t memoryTypeBits) const;
@@ -245,15 +264,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     
     const VkPhysicalDeviceLimits& getPhysicalDeviceLimits() const;
     uint32_t  getDeviceVendorID() const;
-
-    VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
-    VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
-    VkDevice         getVkDevice() const { return mVkDevice; };
-    VkInstance       getVkInstance() const { return mVkInstance; };
-
-    uint32_t         getSwapchainImageCount() const {return mSwapChainImageCount; }
-
-#endif
+#endif  // FALCOR_VK
 
     inline DeviceApiData* apiData() const { return mpApiData; };
 
@@ -268,11 +279,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Return the current index of the back buffer being rendered to.
     */
     uint32_t getCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
-
-#ifdef FALCOR_GFX
-        gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
-#endif
-
 
  private:
     Device(Window::SharedPtr pWindow, const Desc& desc);
@@ -307,13 +313,13 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool mIsWindowOccluded = false;
     GpuFence::SharedPtr mpFrameFence;
 
-#ifdef FALCOR_VK
+#if FALCOR_GFX_VK
     VkPhysicalDevice    mVkPhysicalDevice = VK_NULL_HANDLE;
     VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
     VkDevice            mVkDevice         = VK_NULL_HANDLE;
     VkInstance          mVkInstance       = VK_NULL_HANDLE;
 
-    uint32_t            mSwapChainImageCount = 0;
+    std::vector<VkQueue>            mCmdNativeQueues[kQueueTypeCount];
 #endif
 
     Window::SharedPtr mpWindow = nullptr;
@@ -322,6 +328,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     size_t mFrameID = 0;
     std::list<QueryHeap::SharedPtr> mTimestampQueryHeaps;
     double mGpuTimestampFrequency;
+
     std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
     bool mHeadless = false;
@@ -387,6 +394,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
 #ifdef FALCOR_GFX
     gfx::IDevice::Desc mIDesc; // device creation gfx::IDevice::Desc
 #endif
+
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
 
     NullResourceViews mNullViews;

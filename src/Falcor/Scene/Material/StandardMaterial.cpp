@@ -45,6 +45,7 @@ namespace Falcor {
         mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = specGloss ? TextureSlotInfo{ "metallic", TextureChannelFlags::Red, true } : TextureSlotInfo{ "metallic", TextureChannelFlags::Green | TextureChannelFlags::Blue, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Emissive] = { "emissive", TextureChannelFlags::RGB, true };
+        mTextureSlotInfo[(uint32_t)TextureSlot::Roughness] = { "roughness", TextureChannelFlags::Red, true };
         mTextureSlotInfo[(uint32_t)TextureSlot::Transmission] = { "transmission", TextureChannelFlags::RGB, true };
     }
 

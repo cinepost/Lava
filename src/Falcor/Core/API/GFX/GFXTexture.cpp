@@ -158,7 +158,8 @@ Texture::~Texture() {
 }
 
 void Texture::updateSparseBindInfo() {
-    /*
+#if FALCOR_GFX_VK
+
     assert(mImage != VK_NULL_HANDLE);
 
     if (!mIsSparse) {
@@ -176,6 +177,7 @@ void Texture::updateSparseBindInfo() {
     // Update sparse bind info
     mBindSparseInfo = {};
     mBindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+
     // todo: Semaphore for queue submission
     // bindSparseInfo.signalSemaphoreCount = 1;
     // bindSparseInfo.pSignalSemaphores = &bindSparseSemaphore;
@@ -199,14 +201,11 @@ void Texture::updateSparseBindInfo() {
 
     // --------------------
     // Bind to queue
-    auto queue = mpDevice->getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0);
+    VkQueue nativeQueue = mpDevice->getCommandQueueNativeHandle(LowLevelContextData::CommandQueueType::Direct, 0);
 
-    // todo: in draw?
-    vkQueueBindSparse(queue, 1, &mBindSparseInfo, VK_NULL_HANDLE);
-    
     //todo: use sparse bind semaphore
-    vkQueueWaitIdle(queue);
-    */
+    vkQueueWaitIdle(nativeQueue);
+#endif  // FALCOR_GFX_VK
 }
 
 }  // namespace Falcor

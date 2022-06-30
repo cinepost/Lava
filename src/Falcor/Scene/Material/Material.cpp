@@ -36,7 +36,7 @@ namespace Falcor {
 
 namespace {
 
-    static_assert(sizeof(TextureHandle) == 4);
+    static_assert(sizeof(TextureHandle) == 8);
     static_assert(sizeof(MaterialHeader) == 8);
     static_assert(sizeof(MaterialPayload) == 120);
     static_assert(sizeof(MaterialDataBlob) == 128);
@@ -246,6 +246,7 @@ SCRIPT_BINDING(Material) {
     textureSlot.value("Specular", Material::TextureSlot::Specular);
     textureSlot.value("Emissive", Material::TextureSlot::Emissive);
     textureSlot.value("Normal", Material::TextureSlot::Normal);
+    textureSlot.value("Roughness", Material::TextureSlot::Roughness);
     textureSlot.value("Transmission", Material::TextureSlot::Transmission);
     textureSlot.value("Displacement", Material::TextureSlot::Displacement);
 

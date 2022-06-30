@@ -139,6 +139,10 @@ namespace Falcor {
         */
         virtual bool isEqual(const Material::SharedPtr& pOther) const = 0;
 
+        /**
+        */
+        virtual bool hasUDIMTextures() const { return false; }
+
         /** Set the double-sided flag. This flag doesn't affect the cull state, just the shading.
         */
         virtual void setDoubleSided(bool doubleSided);
@@ -325,6 +329,7 @@ namespace Falcor {
             tostr(Metallic);
             tostr(Emissive);
             tostr(Normal);
+            tostr(Roughness);
             tostr(Transmission);
             tostr(Displacement);
 #undef tostr

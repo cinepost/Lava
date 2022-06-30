@@ -334,7 +334,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	bool isUDIMTile() const { return mUDIMTileInfo.isUDIMTile; }
 
  protected:
-	Texture(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
+	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 	
 	void apiInit(const void* pData, bool autoGenMips);
 	void uploadInitData(const void* pData, bool autoGenMips);
@@ -363,6 +363,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	uint32_t mMipTailStart;                                          // First mip level in mip tail
 	uint32_t mMemoryTypeIndex;                                       // @todo: Comment
 
+#if FALCOR_GFX_VK
 	// Vulkan
 	VkImage mImage = VK_NULL_HANDLE;
 	VkMemoryRequirements mMemRequirements;
@@ -376,7 +377,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
 
 	VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
-
+#endif  // FALCOR_GFX_VK
+	
 	bool mSparseBindDirty = true;
 
 	friend class Device;

@@ -8,6 +8,9 @@ include(ProcessorCount)
 
 message("Running third party dependencies ${CMAKE_BUILD_TYPE} build...")
 
+#we need git executable
+find_package(Git REQUIRED)
+
 set(N 4)
 
 set( CMAKE_MODULE_PATH 
@@ -273,7 +276,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openexr
   )
-  ExternalProject_Add_StepDependencies(OpenEXR configure OpenVDB Blosc)
+  ExternalProject_Add_StepDependencies(OpenEXR configure Tbb OpenVDB Blosc)
 
 endif()
 
@@ -321,7 +324,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
-  ExternalProject_Add_StepDependencies(Assimp configure OpenVDB Blosc)
+  ExternalProject_Add_StepDependencies(Assimp configure Tbb OpenVDB Blosc)
 
 endif()
 
@@ -357,7 +360,7 @@ else()
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OPENVDB_PREFIX}
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
     GIT_TAG v${EXTERNAL_OPENVDB_VERSION}
-    UPDATE_DISCONNECTED true
+    #UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D USE_NANOVDB:BOOL=ON
     CMAKE_ARGS -D USE_BLOSC:BOOL=OFF
@@ -436,7 +439,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Blosc PyBind OpenEXR OpenVDB)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB)
 
 endif()
 
