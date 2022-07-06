@@ -48,6 +48,7 @@ const FileDialogFilterVec Scripting::kFileExtensionFilters = { { "py", "Script F
 bool Scripting::sRunning = false;
 
 bool Scripting::start() {
+#ifdef SCRIPTING
     if (!sRunning) {
         sRunning = true;
 #ifdef _WIN32
@@ -63,19 +64,24 @@ bool Scripting::start() {
         }
         catch (const std::exception& e)
         {
-            logError("Can't start the python interpreter. Exception says " + std::string(e.what()));
+            LLOG_ERR << "Can't start the python interpreter. Exception says " << std::string(e.what());
             return false;
         }
     }
 
     return true;
+#else  // SCRIPTING
+    return true;
+#endif // SCRIPTING
 }
 
 void Scripting::shutdown() {
+#ifdef SCRIPTING
     if (sRunning) {
         sRunning = false;
         pybind11::finalize_interpreter();
     }
+#endif // SCRIPTING
 }
 
 class RedirectStream {

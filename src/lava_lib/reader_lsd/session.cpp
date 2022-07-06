@@ -291,10 +291,16 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 }
 
 static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+	if (!pAOVPlane) return false;
+	if (!pDisplay) return false;
+
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
 	if(!pAOVPlane->getImageData(textureData.data())) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
 	}
+	LLOG_DBG << "Image data read done!";
+	
 	auto renderRegionDims = frameInfo.renderRegionDims();
 	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
         LLOG_ERR << "Error sending image to display !";
@@ -434,7 +440,7 @@ bool Session::cmdRaytrace() {
 			if (sampleUpdateInterval > 0) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
-					LLOG_DBG << "Updating sample " << std::to_string(sample_number);
+					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
 					if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
 						break;
 					}
@@ -443,11 +449,16 @@ bool Session::cmdRaytrace() {
 			}
 		}
 
+		LLOG_DBG << "Rendering image samples done !";
+
 		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
 			break;
 		}
 	}
+
+	LLOG_DBG << "Closing display...";
     mpDisplay->closeImage(hImage);
+    LLOG_DBG << "Display closed!";
 
 //#ifdef FALCOR_ENABLE_PROFILER
 //    auto profiler = Falcor::Profiler::instance(mpDevice);

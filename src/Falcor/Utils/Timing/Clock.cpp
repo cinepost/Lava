@@ -67,7 +67,7 @@ Clock& Clock::setFramerate(uint32_t fps) {
     mFramerate = fps;
     mTicksPerFrame = 0;
     if(fps) {
-        if (kTicksPerSecond % fps) logWarning("Clock::setFramerate() - requested FPS can't be accurately representated. Expect roudning errors");
+        if (kTicksPerSecond % fps) LLOG_WRN << "Clock::setFramerate() - requested FPS can't be accurately representated. Expect roudning errors";
         mTicksPerFrame = kTicksPerSecond / fps;
     }
 
@@ -185,7 +185,7 @@ void Clock::start() {
     auto loadTexture = [](std::shared_ptr<Device> pDevice, const std::string& tex) {
         auto pTex = Texture::createFromFile(pDevice, "Framework/Textures/" + tex, false, true);
         if (!pTex) {
-            LOG_ERR("Error loading texture: Framework/Textures/%s", tex.c_str());
+            LLOG_ERR << "Error loading texture: Framework/Textures/" << tex;
             #ifdef _WIN32 
             throw std::exception("Failed to load texture");
             #else

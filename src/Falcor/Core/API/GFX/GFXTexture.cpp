@@ -54,6 +54,12 @@ gfx::IResource::Type getResourceType(Texture::Type type) {
 }
 
 uint64_t Texture::getTextureSizeInBytes() const {
+
+    if(mIsUDIMTexture) {
+        // UDIM textures are just placeholders with no GPU data allocated.
+        return 0;
+    }
+
     // get allocation info for resource description
     size_t outSizeBytes = 0, outAlignment = 0;
 

@@ -33,42 +33,41 @@
 namespace Falcor {
 
 ShaderResourceView::SharedPtr ShaderResourceView::getNullView(Device::SharedPtr pDevice, ShaderResourceView::Dimension dimension) {
-    auto nullViews = pDevice->nullResourceViews();
-    assert((size_t)dimension < nullViews.srv.size() && nullViews.srv[(size_t)dimension]);
-    return nullViews.srv[(size_t)dimension];
+	auto nullViews = pDevice->nullResourceViews();
+	assert((size_t)dimension < nullViews.srv.size() && nullViews.srv[(size_t)dimension]);
+	return nullViews.srv[(size_t)dimension];
 }
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView(Device::SharedPtr pDevice, UnorderedAccessView::Dimension dimension) {
-    auto nullViews = pDevice->nullResourceViews();
-    assert((size_t)dimension < nullViews.uav.size() && nullViews.uav[(size_t)dimension]);
-    return nullViews.uav[(size_t)dimension];
+	auto nullViews = pDevice->nullResourceViews();
+	assert((size_t)dimension < nullViews.uav.size() && nullViews.uav[(size_t)dimension]);
+	return nullViews.uav[(size_t)dimension];
 }
 
 DepthStencilView::SharedPtr DepthStencilView::getNullView(Device::SharedPtr pDevice, DepthStencilView::Dimension dimension) {
-    auto nullViews = pDevice->nullResourceViews();
-    assert((size_t)dimension < nullViews.dsv.size() && nullViews.dsv[(size_t)dimension]);
-    return nullViews.dsv[(size_t)dimension];
+	auto nullViews = pDevice->nullResourceViews();
+	assert((size_t)dimension < nullViews.dsv.size() && nullViews.dsv[(size_t)dimension]);
+	return nullViews.dsv[(size_t)dimension];
 }
 
 RenderTargetView::SharedPtr RenderTargetView::getNullView(Device::SharedPtr pDevice, RenderTargetView::Dimension dimension) {
-    auto nullViews = pDevice->nullResourceViews();
-    assert((size_t)dimension < nullViews.rtv.size() && nullViews.rtv[(size_t)dimension]);
-    return nullViews.rtv[(size_t)dimension];
+	auto nullViews = pDevice->nullResourceViews();
+	assert((size_t)dimension < nullViews.rtv.size() && nullViews.rtv[(size_t)dimension]);
+	return nullViews.rtv[(size_t)dimension];
 }
 
 ConstantBufferView::SharedPtr ConstantBufferView::getNullView(Device::SharedPtr pDevice) {
-    auto nullViews = pDevice->nullResourceViews();
-    return nullViews.cbv;
+	auto nullViews = pDevice->nullResourceViews();
+	return nullViews.cbv;
 }
 
 #ifdef SCRIPTING
-    FALCOR_SCRIPT_BINDING(ResourceView)
-    {
-        pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
-        pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
-        pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
-        pybind11::class_<ConstantBufferView, ConstantBufferView::SharedPtr>(m, "ConstantBufferView");
-        pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
-    }
+	FALCOR_SCRIPT_BINDING(ResourceView) {
+		pybind11::class_<ShaderResourceView, ShaderResourceView::SharedPtr>(m, "ShaderResourceView");
+		pybind11::class_<RenderTargetView, RenderTargetView::SharedPtr>(m, "RenderTargetView");
+		pybind11::class_<UnorderedAccessView, UnorderedAccessView::SharedPtr>(m, "UnorderedAccessView");
+		pybind11::class_<ConstantBufferView, ConstantBufferView::SharedPtr>(m, "ConstantBufferView");
+		pybind11::class_<DepthStencilView, DepthStencilView::SharedPtr>(m, "DepthStencilView");
+	}
 #endif
 }

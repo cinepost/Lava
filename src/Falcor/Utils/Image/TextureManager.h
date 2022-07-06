@@ -72,11 +72,11 @@ public:
 		static const uint32_t kInvalidID = std::numeric_limits<uint32_t>::max();
 
 		Mode mMode = Mode::Texture;
-		bool mIsUdimTile = false;
-
+		
 		inline uint32_t getID() const { return id; }
 		inline bool isValid() const { return id != kInvalidID; }
-		inline bool isUDIMTile() const { return mIsUdimTile; }
+		inline bool isUDIMTile() const { return mMode == Mode::UDIM_Tile; }
+		inline bool isUDIMTexture() const { return mMode == Mode::UDIM_Texture; }
 		inline Mode mode() const { return mMode; }
 
 		explicit operator bool() const { return isValid(); }
@@ -151,10 +151,12 @@ public:
 	*/
 	size_t getTextureDescCount() const;
 
-	/** Get udim texture tiles desc count.
-		\return Number of texture descs.
+
+	/** Get UDIM texture desc count.
+	  \return Number of UDIM texture descs.
 	*/
-	size_t getUDIMTextureTilesDescCount() const;
+
+	size_t getUDIMTextureDescCount() const { return mUDIMTextureDescCount; }
 
 	bool hasUDIMTextures() const { return mHasUDIMTextures; };
 
@@ -166,15 +168,6 @@ public:
 		\param[in] descCount Size of descriptor array.
 	*/
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
-
-	/** Bind all udim tile textures into a shader var.
-		The shader var should refer to a Texture2D descriptor array of fixed size.
-		The array must be large enough, otherwise an exception is thrown.
-		This restriction will go away when unbounded descriptor arrays are supported (see #1321).
-		\param[in] var Shader var for descriptor array.
-		\param[in] descCount Size of descriptor array.
-	*/
-	void setUDIMShaderData(const ShaderVar& var, const size_t descCount) const;
 
 private:
 	TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount);
@@ -209,7 +202,7 @@ private:
 
 	// Internal state. Do not access outside of critical section.
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
-	std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim tile texture descs, indexed by handle ID.
+	std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim texture tile descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
@@ -218,6 +211,7 @@ private:
 
 	AsyncTextureLoader mAsyncTextureLoader;                     ///< Utility for asynchronous texture loading.
 	size_t mLoadRequestsInProgress = 0;                         ///< Number of load requests currently in progress.
+	size_t mUDIMTextureDescCount = 0;                           ///< Number of managed UDIM textures
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 };

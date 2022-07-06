@@ -64,9 +64,11 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	};
 
 	struct UDIMTileInfo {
-		bool isUDIMTile = false;
+		Texture::SharedPtr pTileTexture = nullptr;
 		uint32_t u = 0;
 		uint32_t v = 0;
+
+		bool operator==(const UDIMTileInfo& other) const { return ((u == other.u) && (v == other.v) && (pTileTexture == other.pTileTexture)); }
 	};
 
 	~Texture();
@@ -185,6 +187,12 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		\return A pointer to a new texture, or throws an exception if creation failed.
 	*/
 	static SharedPtr create2DMS(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
+
+	/** Create UDIM pseudo texture.
+		This is just a placeholder. No actual data uploaded and no graphics API code executed.
+	*/ 
+	static SharedPtr createUDIMFromFile(std::shared_ptr<Device> pDevice, const std::string& filename);
+	static SharedPtr createUDIMFromFile(std::shared_ptr<Device> pDevice, const fs::path& path);
 
 	/** Create a new texture object from a file.
 		\param[in] filename Filename of the image. Can also include a full path or relative path from a data directory.
@@ -329,9 +337,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
 
-	void setUDIMTileInfo(const UDIMTileInfo& tileInfo);
-
-	bool isUDIMTile() const { return mUDIMTileInfo.isUDIMTile; }
+	bool isUDIMTexture() const { return mIsUDIMTexture; }
 
  protected:
 	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
@@ -350,8 +356,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	uint32_t mArraySize = 0;
 	ResourceFormat mFormat = ResourceFormat::Unknown;
 
-	UDIMTileInfo mUDIMTileInfo;
-
+	std::array<UDIMTileInfo, 100> mUDIMTileInfos;
+	bool mIsUDIMTexture = false;
 	bool mIsSparse = false;
 	
 	uint3 mSparsePageRes = int3(0);

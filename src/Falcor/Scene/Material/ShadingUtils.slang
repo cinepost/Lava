@@ -40,8 +40,7 @@ float3 rgbToNormal(float3 rgb)
 
 /** Convert RG to normal (unnormalized).
 */
-float3 rgToNormal(float2 rg)
-{
+float3 rgToNormal(float2 rg) {
     float3 n;
     n.xy = rg * 2 - 1;
 
@@ -52,8 +51,7 @@ float3 rgToNormal(float2 rg)
 }
 
 // TODO: this function is broken an may return negative values.
-float getMetallic(float3 diffuse, float3 spec)
-{
+float getMetallic(float3 diffuse, float3 spec) {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
     // We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
     // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels will end up with the same metallic value
@@ -75,19 +73,18 @@ float getMetallic(float3 diffuse, float3 spec)
     \param[in] encodedNormal Encoded normal loaded from normal map.
     \param[in] tangent Tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w != 0.
 */
-void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3 encodedNormal, const float4 tangentW)
-{
+void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3 encodedNormal, const float4 tangentW) {
     float3 mapN = {};
-    switch (type)
-    {
-    case NormalMapType::RGB:
-        mapN = rgbToNormal(encodedNormal);
-        break;
-    case NormalMapType::RG:
-        mapN = rgToNormal(encodedNormal.rg);
-        break;
-    default:
-        return;
+    
+    switch (type) {
+        case NormalMapType::RGB:
+            mapN = rgbToNormal(encodedNormal);
+            break;
+        case NormalMapType::RG:
+            mapN = rgToNormal(encodedNormal.rg);
+            break;
+        default:
+            return;
     }
 
     // Note if the normal ends up being parallel to the tangent, the tangent frame cannot be orthonormalized.
@@ -105,8 +102,7 @@ void applyNormalMap(inout ShadingData sd, const NormalMapType type, const float3
     \param[in] tangent Interpolated tangent in world space (xyz) and bitangent sign (w). The tangent is *only* valid when w is != 0.
     \return True if a valid tangent space was computed based on the supplied tangent.
 */
-bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
-{
+bool computeTangentSpace(inout ShadingData sd, const float4 tangentW) {
     // Check that tangent space exists and can be safely orthonormalized.
     // Otherwise invent a tanget frame based on the normal.
     // We check that:
@@ -120,13 +116,11 @@ bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
     bool nonZero = dot(tangentW.xyz, tangentW.xyz) > 0.f;
 
     bool valid = tangentW.w != 0.f && nonZero && nonParallel;
-    if (valid)
-    {
+    
+    if (valid) {
         sd.T = normalize(tangentW.xyz - sd.N * NdotT);
         sd.B = cross(sd.N, sd.T) * tangentW.w;
-    }
-    else
-    {
+    } else {
         sd.T = perp_stark(sd.N);
         sd.B = cross(sd.N, sd.T);
     }
@@ -137,8 +131,7 @@ bool computeTangentSpace(inout ShadingData sd, const float4 tangentW)
 /** Helper function to adjust the shading normal to reduce black pixels due to back-facing view direction.
     Note: This breaks the reciprocity of the BSDF!
 */
-void adjustShadingNormal(inout ShadingData sd, VertexData v)
-{
+void adjustShadingNormal(inout ShadingData sd, VertexData v) {
     float3 Ng = sd.frontFacing ? v.faceNormalW : -v.faceNormalW;
     float3 Ns = sd.N;
 
@@ -146,8 +139,8 @@ void adjustShadingNormal(inout ShadingData sd, VertexData v)
     // This is to avoid the view vector from becoming back-facing.
     const float kCosThetaThreshold = 0.1f;
     float cosTheta = dot(sd.V, Ns);
-    if (cosTheta <= kCosThetaThreshold)
-    {
+
+    if (cosTheta <= kCosThetaThreshold) {
         float t = saturate(cosTheta * (1.f / kCosThetaThreshold));
         sd.N = normalize(lerp(Ng, Ns, t));
         computeTangentSpace(sd, v.tangentW);

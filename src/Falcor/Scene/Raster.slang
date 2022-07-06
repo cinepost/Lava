@@ -29,8 +29,7 @@
 __exported import Scene.Scene;
 __exported import Scene.Shading;
 
-struct VSIn
-{
+struct VSIn {
     // Packed vertex attributes, see PackedStaticVertexData
     float3 pos                      : POSITION;
     float  texU                     : TEXCOORD_U;
@@ -43,8 +42,7 @@ struct VSIn
     // System values
     uint vertexID                   : SV_VertexID;
 
-    StaticVertexData unpack()
-    {
+    StaticVertexData unpack() {
         PackedStaticVertexData v;
         v.position = pos;
         v.packedNormalTangentCurveRadius = packedNormalTangentCurveRadius;
@@ -58,8 +56,7 @@ struct VSIn
 #define INTERPOLATION_MODE linear
 #endif
 
-struct VSOut
-{
+struct VSOut {
     INTERPOLATION_MODE float3 normalW    : NORMAL;      ///< Shading normal in world space (not normalized!).
     INTERPOLATION_MODE float4 tangentW   : TANGENT;     ///< Shading tangent in world space (not normalized!).
     INTERPOLATION_MODE float2 texC       : TEXCRD;      ///< Texture coordinate.
@@ -73,8 +70,7 @@ struct VSOut
     float4 posH : SV_POSITION;
 };
 
-VSOut defaultVS(VSIn vIn)
-{
+VSOut defaultVS(VSIn vIn) {
     VSOut vOut;
     const GeometryInstanceID instanceID = { vIn.instanceID };
 
@@ -94,11 +90,12 @@ VSOut defaultVS(VSIn vIn)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vIn.pos;
     GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
-    if (instance.isDynamic())
-    {
+    
+    if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
         prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
+    
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
     vOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
 
@@ -110,8 +107,7 @@ VSOut defaultVS(VSIn vIn)
     \param[in] faceNormalW Face normal in world space (normalized).
     \return VertexData struct.
 */
-VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
-{
+VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW) {
     VertexData v;
     v.posW = vsOut.posW;
     v.texC = vsOut.texC;
@@ -129,8 +125,7 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
     \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
     \return Shading data struct.
 */
-ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, L lod)
-{
+ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, L lod) {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
     return gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
@@ -142,8 +137,7 @@ ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleInde
     \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
     \return True if hit should be ignored/discarded.
 */
-bool alphaTest<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, L lod)
-{
+bool alphaTest<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, L lod) {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
     return gScene.materials.alphaTest(v, vsOut.materialID, lod);

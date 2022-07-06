@@ -34,7 +34,7 @@ bool checkVaoParams(const Vao::BufferVec& vbDesc, const VertexLayout* pLayout, B
 	// TODO: Check number of vertex buffers match with pLayout.
 	if (pIB) {
 		if (ibFormat != ResourceFormat::R16Uint && ibFormat != ResourceFormat::R32Uint) {
-			logError("Invalid index buffer format (" + to_string(ibFormat) + ")");
+			LLOG_ERR << "Invalid index buffer format (" << to_string(ibFormat) << ")";
 			return false;
 		}
 	}

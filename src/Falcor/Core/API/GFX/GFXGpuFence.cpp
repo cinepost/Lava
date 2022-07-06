@@ -32,90 +32,79 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/GpuFence.h"
 
-namespace Falcor
-{
-    struct FenceApiData
-    {
-        Slang::ComPtr<gfx::IFence> gfxFence;
-        D3D12FenceHandle d3d12Handle;
-    };
+namespace Falcor {
 
-    GpuFence::~GpuFence()
-    {
-        safe_delete(mpApiData);
-    }
+struct FenceApiData {
+	Slang::ComPtr<gfx::IFence> gfxFence;
+	D3D12FenceHandle d3d12Handle;
+};
 
-    GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice, bool shared)
-    {
-        FALCOR_ASSERT(pDevice);
-        SharedPtr pFence = SharedPtr(new GpuFence(pDevice));
-        pFence->mpApiData = new FenceApiData;
-        gfx::IFence::Desc fenceDesc = {};
-        if (SLANG_FAILED(pDevice->getApiHandle()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef())))
-        {
-            throw std::runtime_error("Failed to create a fence object");
-        }
-        pFence->mApiHandle = pFence->mpApiData->gfxFence;
-
-        pFence->mCpuValue++;
-
-#if FALCOR_D3D12_AVAILABLE
-        gfx::InteropHandle nativeHandle = {};
-        pFence->mpApiData->gfxFence->getNativeHandle(&nativeHandle);
-        FALCOR_ASSERT(nativeHandle.api == gfx::InteropHandleAPI::D3D12);
-        pFence->mpApiData->d3d12Handle = D3D12FenceHandle((ID3D12Fence*)nativeHandle.handleValue);
-#endif
-        return pFence;
-    }
-
-    uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue)
-    {
-        pQueue->executeCommandBuffers(0, nullptr, mpApiData->gfxFence.get(), mCpuValue);
-        mCpuValue++;
-        return mCpuValue - 1;
-    }
-
-    void GpuFence::syncGpu(CommandQueueHandle /*pQueue*/)
-    {
-    }
-
-    void GpuFence::syncCpu(std::optional<uint64_t> val)
-    {
-        auto waitValue = val ? val.value() : mCpuValue - 1;
-        gfx::IFence* gfxFence = mpApiData->gfxFence.get();
-        uint64_t currentValue = 0;
-        gfxFence->getCurrentValue(&currentValue);
-        if (currentValue < waitValue)
-        {
-            mpDevice->getApiHandle()->waitForFences(1, &gfxFence, &waitValue, true, -1);
-        }
-    }
-
-    uint64_t GpuFence::getGpuValue() const
-    {
-        uint64_t currentValue = 0;
-        mpApiData->gfxFence->getCurrentValue(&currentValue);
-        return currentValue;
-    }
-
-    void GpuFence::setGpuValue(uint64_t val)
-    {
-        mpApiData->gfxFence->setCurrentValue(val);
-    }
-
-    SharedResourceApiHandle GpuFence::getSharedApiHandle() const
-    {
-        gfx::InteropHandle sharedHandle;
-        mpApiData->gfxFence->getSharedHandle(&sharedHandle);
-        return (SharedResourceApiHandle)sharedHandle.handleValue;
-    }
-
-    const D3D12FenceHandle& GpuFence::getD3D12Handle() const
-    {
-#if FALCOR_D3D12_AVAILABLE
-        return mpApiData->d3d12Handle;
-#else
-        throw std::runtime_error("D3D12 is not available.");
-#endif
-    }
+GpuFence::~GpuFence() {
+	safe_delete(mpApiData);
 }
+
+GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice, bool shared) {
+	FALCOR_ASSERT(pDevice);
+	SharedPtr pFence = SharedPtr(new GpuFence(pDevice));
+	pFence->mpApiData = new FenceApiData;
+	gfx::IFence::Desc fenceDesc = {};
+
+	if (SLANG_FAILED(pDevice->getApiHandle()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef()))) {
+		throw std::runtime_error("Failed to create a fence object");
+	}
+	pFence->mApiHandle = pFence->mpApiData->gfxFence;
+
+	pFence->mCpuValue++;
+
+#if FALCOR_D3D12_AVAILABLE
+	gfx::InteropHandle nativeHandle = {};
+	pFence->mpApiData->gfxFence->getNativeHandle(&nativeHandle);
+	FALCOR_ASSERT(nativeHandle.api == gfx::InteropHandleAPI::D3D12);
+	pFence->mpApiData->d3d12Handle = D3D12FenceHandle((ID3D12Fence*)nativeHandle.handleValue);
+#endif
+	return pFence;
+}
+
+uint64_t GpuFence::gpuSignal(CommandQueueHandle pQueue) {
+	pQueue->executeCommandBuffers(0, nullptr, mpApiData->gfxFence.get(), mCpuValue);
+	mCpuValue++;
+	return mCpuValue - 1;
+}
+
+void GpuFence::syncGpu(CommandQueueHandle /*pQueue*/) { }
+
+void GpuFence::syncCpu(std::optional<uint64_t> val) {
+	auto waitValue = val ? val.value() : mCpuValue - 1;
+	gfx::IFence* gfxFence = mpApiData->gfxFence.get();
+	uint64_t currentValue = 0;
+	gfxFence->getCurrentValue(&currentValue);
+	if (currentValue < waitValue) {
+		mpDevice->getApiHandle()->waitForFences(1, &gfxFence, &waitValue, true, -1);
+	}
+}
+
+uint64_t GpuFence::getGpuValue() const {
+	uint64_t currentValue = 0;
+	mpApiData->gfxFence->getCurrentValue(&currentValue);
+	return currentValue;
+}
+
+void GpuFence::setGpuValue(uint64_t val) {
+	mpApiData->gfxFence->setCurrentValue(val);
+}
+
+SharedResourceApiHandle GpuFence::getSharedApiHandle() const {
+	gfx::InteropHandle sharedHandle;
+	mpApiData->gfxFence->getSharedHandle(&sharedHandle);
+	return (SharedResourceApiHandle)sharedHandle.handleValue;
+}
+
+const D3D12FenceHandle& GpuFence::getD3D12Handle() const {
+#if FALCOR_D3D12_AVAILABLE
+	return mpApiData->d3d12Handle;
+#else
+	throw std::runtime_error("D3D12 is not available.");
+#endif
+}
+
+}  // namespace Falcor

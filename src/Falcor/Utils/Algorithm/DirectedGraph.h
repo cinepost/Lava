@@ -34,6 +34,8 @@
 
 #include "Falcor/Core/Framework.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
 
 class DirectedGraph {
@@ -64,7 +66,7 @@ class DirectedGraph {
     */
     std::unordered_set<uint32_t> removeNode(uint32_t id) {
         if (mNodes.find(id) == mNodes.end()) {
-            logWarning("Can't remove node from DirectGraph, node ID doesn't exist");
+            LLOG_WRN << "Can't remove node from DirectGraph, node ID doesn't exist";
             return {};
         }
 
@@ -86,12 +88,12 @@ class DirectedGraph {
     */
     uint32_t addEdge(uint32_t srcNode, uint32_t dstNode) {
         if (mNodes.find(srcNode) == mNodes.end()) {
-            logWarning("Can't add an edge to DirectGraph, src node ID doesn't exist");
+            LLOG_WRN << "Can't add an edge to DirectGraph, src node ID doesn't exist";
             return kInvalidID;
         }
 
         if (mNodes.find(dstNode) == mNodes.end()) {
-            logWarning("Can't add an edge to DirectGraph, src node ID doesn't exist");
+            LLOG_WRN << "Can't add an edge to DirectGraph, src node ID doesn't exist";
             return kInvalidID;
         }
 
@@ -106,7 +108,7 @@ class DirectedGraph {
     */
     void removeEdge(uint32_t edgeId) {
         if (mEdges.find(edgeId) == mEdges.end()) {
-            logWarning("Can't remove edge from DirectedGraph, edge ID doesn't exist");
+            LLOG_WRN << "Can't remove edge from DirectedGraph, edge ID doesn't exist";
             return;
         }
 
@@ -157,7 +159,7 @@ class DirectedGraph {
     */
     const Node* getNode(uint32_t nodeId) const {
         if (doesNodeExist(nodeId) == false) {
-            logWarning("DirectGraph::getNode() - node ID doesn't exist");
+            LLOG_WRN << "DirectGraph::getNode() - node ID doesn't exist";
             return nullptr;
         }
         return &mNodes.at(nodeId);
@@ -167,7 +169,7 @@ class DirectedGraph {
     */
     const Edge* getEdge(uint32_t edgeId) {
         if (doesEdgeExist(edgeId) == false) {
-            logWarning("DirectGraph::getEdge() - edge ID doesn't exist");
+            LLOG_WRN << "DirectGraph::getEdge() - edge ID doesn't exist";
             return nullptr;
         }
         return &mEdges[edgeId];

@@ -157,6 +157,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
 
+        /*
         if (light.shadowType == uint(LightShadowType.RayTraced) ) {
             
             // Test visibility by tracing a shadow ray.
@@ -170,6 +171,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
+        */
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }

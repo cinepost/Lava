@@ -40,7 +40,8 @@ static_assert(sizeof(LightData) % 16 == 0, "LightData struct size should be a mu
 
 static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
     if (cbOffset.getByteOffset() != cppOffset) {
-        logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset.getByteOffset()) + ", C++ data offset is " + std::to_string(cppOffset));
+        LLOG_ERR << "Light::" << std::string(structName) << ":: " << std::string(field) << " CB offset mismatch. CB offset is " << std::to_string(cbOffset.getByteOffset()) 
+        << ", C++ data offset is " << std::to_string(cppOffset);
         return false;
     }
     return true;
@@ -123,7 +124,7 @@ PointLight::PointLight(const std::string& name) : Light(name, LightType::Point) 
 void PointLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) { 
         // NaNs propagate
-        logWarning("Can't set light direction to zero length vector. Ignoring call.");
+        LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
     }
     mData.dirW = normalize(dir);
@@ -174,7 +175,7 @@ DirectionalLight::SharedPtr DirectionalLight::create(const std::string& name) {
 void DirectionalLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) // NaNs propagate
     {
-        logWarning("Can't set light direction to zero length vector. Ignoring call.");
+        LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
     }
     mData.dirW = normalize(dir);
@@ -206,7 +207,7 @@ void DistantLight::setAngle(float angle) {
 void DistantLight::setWorldDirection(const float3& dir) {
     if (!(glm::length(dir) > 0.f)) // NaNs propagate
     {
-        logWarning("Can't set light direction to zero length vector. Ignoring call.");
+        LLOG_WRN << "Can't set light direction to zero length vector. Ignoring call.";
         return;
     }
     mData.dirW = normalize(dir);
@@ -304,8 +305,7 @@ void SphereLight::update() {
 
 
 #ifdef SCRIPTING
-SCRIPT_BINDING(Light)
-{
+SCRIPT_BINDING(Light) {
     pybind11::class_<Light, Animatable, Light::SharedPtr> light(m, "Light");
     light.def_property_readonly("name", &Light::getName);
     light.def_property("active", &Light::isActive, &Light::setActive);

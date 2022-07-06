@@ -49,7 +49,7 @@ PixelDebug::SharedPtr PixelDebug::create(std::shared_ptr<Device> pDevice, uint32
 void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim) {
     mFrameDim = frameDim;
     if (mRunning) {
-        logError("PixelDebug::beginFrame() - Logging is already running, did you forget to call endFrame()? Ignoring call.");
+        LLOG_ERR << "PixelDebug::beginFrame() - Logging is already running, did you forget to call endFrame()? Ignoring call.";
         return;
     }
     mRunning = true;
@@ -85,7 +85,7 @@ void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim
 
 void PixelDebug::endFrame(RenderContext* pRenderContext) {
     if (!mRunning) {
-        logError("PixelDebug::endFrame() - Logging is not running, did you forget to call beginFrame()? Ignoring call.");
+        LLOG_ERR << "PixelDebug::endFrame() - Logging is not running, did you forget to call beginFrame()? Ignoring call.";
         return;
     }
     mRunning = false;

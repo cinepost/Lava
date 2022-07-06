@@ -150,7 +150,7 @@ namespace Falcor {
     TriangleMesh::SharedPtr TriangleMesh::createFromFile(const std::string& filename, bool smoothNormals) {
         std::string fullPath;
         if (!findFileInDataDirectories(filename, fullPath)) {
-            logWarning("Error when loading triangle mesh. Can't find mesh file '" + filename + "'");
+            LLOG_WRN << "Error when loading triangle mesh. Can't find mesh file '" << filename << "'";
             return nullptr;
         }
 
@@ -163,7 +163,7 @@ namespace Falcor {
 
         auto scene = importer.ReadFile(fullPath.c_str(), flags);
         if (!scene) {
-            logWarning("Failed to load triangle mesh from '" + fullPath + "' (" + importer.GetErrorString() + ")");
+            LLOG_WRN << "Failed to load triangle mesh from '" << fullPath << "' (" << importer.GetErrorString() << ")";
             return nullptr;
         }
 

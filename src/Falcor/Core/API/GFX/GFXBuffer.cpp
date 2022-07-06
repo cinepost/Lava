@@ -36,153 +36,136 @@
 #define GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT ( 256 )
 #define GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT ( 512 )
 
-namespace Falcor
-{
-    namespace
-    {
-        void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Resource::BindFlags bindFlags, Buffer::CpuAccess cpuAccess)
-        {
-            bufDesc.sizeInBytes = size;
-            switch (cpuAccess)
-            {
-            case Buffer::CpuAccess::None:
-                bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
-                break;
-            case Buffer::CpuAccess::Read:
-                bufDesc.memoryType = gfx::MemoryType::ReadBack;
-                break;
-            case Buffer::CpuAccess::Write:
-                bufDesc.memoryType = gfx::MemoryType::Upload;
-                break;
-            default:
-                FALCOR_UNREACHABLE();
-                break;
-            }
-            getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
-        }
-    }
+namespace Falcor {
 
-    Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
-    {
+namespace {
+
+void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Resource::BindFlags bindFlags, Buffer::CpuAccess cpuAccess) {
+	bufDesc.sizeInBytes = size;
+	switch (cpuAccess) {
+		case Buffer::CpuAccess::None:
+			bufDesc.memoryType = gfx::MemoryType::DeviceLocal;
+			break;
+		case Buffer::CpuAccess::Read:
+			bufDesc.memoryType = gfx::MemoryType::ReadBack;
+			break;
+		case Buffer::CpuAccess::Write:
+			bufDesc.memoryType = gfx::MemoryType::Upload;
+			break;
+		default:
+			FALCOR_UNREACHABLE();
+			break;
+	}
+	getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
+}
+
+}  // namespace
+
+Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess) {
 #if FALCOR_D3D12_AVAILABLE
-        gfx::IBufferResource::Desc bufDesc = {};
-        prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
+	gfx::IBufferResource::Desc bufDesc = {};
+	prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
 
-        gfx::InteropHandle existingHandle = {};
-        existingHandle.api = gfx::InteropHandleAPI::D3D12;
-        existingHandle.handleValue = (uint64_t)handle.GetInterfacePtr();
-        Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
-        FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferFromNativeHandle(existingHandle, bufDesc, gfxBuffer.writeRef()));
+	gfx::InteropHandle existingHandle = {};
+	existingHandle.api = gfx::InteropHandleAPI::D3D12;
+	existingHandle.handleValue = (uint64_t)handle.GetInterfacePtr();
+	Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
+	FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferFromNativeHandle(existingHandle, bufDesc, gfxBuffer.writeRef()));
 
-        Slang::ComPtr<gfx::IResource> apiHandle;
-        apiHandle = static_cast<gfx::IResource*>(gfxBuffer.get());
-        return Buffer::createFromApiHandle(pDevice, apiHandle, size, bindFlags, cpuAccess);
+	Slang::ComPtr<gfx::IResource> apiHandle;
+	apiHandle = static_cast<gfx::IResource*>(gfxBuffer.get());
+	return Buffer::createFromApiHandle(pDevice, apiHandle, size, bindFlags, cpuAccess);
 #else
-        throw std::runtime_error("D3D12 is not available.");
-#endif
-    }
-
-    Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess)
-    {
-        FALCOR_ASSERT(pDevice);
-        Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
-
-        // Create the buffer
-        gfx::IBufferResource::Desc bufDesc = {};
-        prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
-
-        Slang::ComPtr<gfx::IBufferResource> pApiHandle;
-        iDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
-        FALCOR_ASSERT(pApiHandle);
-
-        return pApiHandle;
-    }
-
-    size_t getBufferDataAlignment(const Buffer* pBuffer)
-    {
-        // This in order of the alignment size
-        const auto& bindFlags = pBuffer->getBindFlags();
-        if (is_set(bindFlags, Buffer::BindFlags::Constant)) return GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-        if (is_set(bindFlags, Buffer::BindFlags::Index)) return sizeof(uint32_t); // This actually depends on the size of the index, but we can handle losing 2 bytes
-
-        return GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-    }
-
-    void Buffer::apiInit(bool hasInitData)
-    {
-        if (mCpuAccess != CpuAccess::None && is_set(mBindFlags, BindFlags::Shared))
-        {
-            throw std::runtime_error("Can't create shared resource with CPU access other than 'None'.");
-        }
-
-        if (mBindFlags == BindFlags::Constant)
-        {
-            mSize = align_to((size_t)GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mSize);
-        }
-
-        if (mCpuAccess == CpuAccess::Write)
-        {
-            mState.global = Resource::State::GenericRead;
-            if (hasInitData == false) // Else the allocation will happen when updating the data
-            {
-                FALCOR_ASSERT(mpDevice);
-                mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
-                mApiHandle = mDynamicData.pResourceHandle;
-                mGpuVaOffset = mDynamicData.offset;
-            }
-        }
-        else if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None)
-        {
-            mState.global = Resource::State::CopyDest;
-            mApiHandle = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
-        }
-        else
-        {
-            mState.global = Resource::State::Common;
-            if (is_set(mBindFlags, BindFlags::AccelerationStructure)) mState.global = Resource::State::AccelerationStructure;
-            mApiHandle = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
-        }
-    }
-
-    void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size)
-    {
-        void* pData = nullptr;
-        static_cast<gfx::IBufferResource*>(apiHandle.get())->map(nullptr, &pData);
-        return pData;
-    }
-
-    uint64_t Buffer::getGpuAddress() const
-    {
-        gfx::IBufferResource* bufHandle = static_cast<gfx::IBufferResource*>(mApiHandle.get());
-        FALCOR_ASSERT(bufHandle);
-        // slang-gfx backend does not includ the mGpuVaOffset.
-        return mGpuVaOffset + bufHandle->getDeviceAddress();
-    }
-
-    void Buffer::unmap()
-    {
-        // Only unmap read buffers, write buffers are persistently mapped.
-        if (mpStagingResource)
-        {
-            static_cast<gfx::IBufferResource*>(mpStagingResource->mApiHandle.get())->unmap(nullptr);
-        }
-        else if (mCpuAccess == CpuAccess::Read)
-        {
-            static_cast<gfx::IBufferResource*>(mApiHandle.get())->unmap(nullptr);
-        }
-    }
-
-#if FALCOR_ENABLE_CUDA
-    void* Buffer::getCUDADeviceAddress() const
-    {
-        throw RuntimeError("Texture::getCUDADeviceAddress() - unimplemented");
-        return nullptr;
-    }
-
-    void* Buffer::getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const
-    {
-        throw RuntimeError("Texture::getCUDADeviceAddress() - unimplemented");
-        return nullptr;
-    }
+	throw std::runtime_error("D3D12 is not available.");
 #endif
 }
+
+Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess) {
+	FALCOR_ASSERT(pDevice);
+	Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
+
+	// Create the buffer
+	gfx::IBufferResource::Desc bufDesc = {};
+	prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
+
+	Slang::ComPtr<gfx::IBufferResource> pApiHandle;
+	iDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
+	FALCOR_ASSERT(pApiHandle);
+
+	return pApiHandle;
+}
+
+size_t getBufferDataAlignment(const Buffer* pBuffer) {
+	// This in order of the alignment size
+	const auto& bindFlags = pBuffer->getBindFlags();
+	if (is_set(bindFlags, Buffer::BindFlags::Constant)) return GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+	if (is_set(bindFlags, Buffer::BindFlags::Index)) return sizeof(uint32_t); // This actually depends on the size of the index, but we can handle losing 2 bytes
+
+	return GFX_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+}
+
+void Buffer::apiInit(bool hasInitData) {
+	if (mCpuAccess != CpuAccess::None && is_set(mBindFlags, BindFlags::Shared)) {
+		throw std::runtime_error("Can't create shared resource with CPU access other than 'None'.");
+	}
+
+	if (mBindFlags == BindFlags::Constant) {
+		mSize = align_to((size_t)GFX_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mSize);
+	}
+
+	if (mCpuAccess == CpuAccess::Write) {
+		mState.global = Resource::State::GenericRead;
+		if (hasInitData == false) {
+			// Else the allocation will happen when updating the data
+			FALCOR_ASSERT(mpDevice);
+			mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
+			mApiHandle = mDynamicData.pResourceHandle;
+			mGpuVaOffset = mDynamicData.offset;
+		}
+	}
+	else if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None)
+	{
+		mState.global = Resource::State::CopyDest;
+		mApiHandle = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
+	} else {
+		mState.global = Resource::State::Common;
+		if (is_set(mBindFlags, BindFlags::AccelerationStructure)) mState.global = Resource::State::AccelerationStructure;
+		mApiHandle = createBuffer(mpDevice, mState.global, mSize, mBindFlags, mCpuAccess);
+	}
+}
+
+void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
+	void* pData = nullptr;
+	static_cast<gfx::IBufferResource*>(apiHandle.get())->map(nullptr, &pData);
+	return pData;
+}
+
+uint64_t Buffer::getGpuAddress() const {
+	gfx::IBufferResource* bufHandle = static_cast<gfx::IBufferResource*>(mApiHandle.get());
+	FALCOR_ASSERT(bufHandle);
+	// slang-gfx backend does not includ the mGpuVaOffset.
+	return mGpuVaOffset + bufHandle->getDeviceAddress();
+}
+
+void Buffer::unmap() {
+	// Only unmap read buffers, write buffers are persistently mapped.
+	if (mpStagingResource) {
+		static_cast<gfx::IBufferResource*>(mpStagingResource->mApiHandle.get())->unmap(nullptr);
+	} else if (mCpuAccess == CpuAccess::Read) {
+		static_cast<gfx::IBufferResource*>(mApiHandle.get())->unmap(nullptr);
+	}
+}
+
+#if FALCOR_ENABLE_CUDA
+void* Buffer::getCUDADeviceAddress() const {
+	throw std::runtime_error("Texture::getCUDADeviceAddress() - unimplemented");
+	return nullptr;
+}
+
+void* Buffer::getCUDADeviceAddress(ResourceViewInfo const& viewInfo) const {
+	throw std::runtime_error("Texture::getCUDADeviceAddress() - unimplemented");
+	return nullptr;
+}
+#endif
+
+}  // namespace Falcor

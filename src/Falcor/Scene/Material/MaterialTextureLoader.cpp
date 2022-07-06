@@ -30,40 +30,41 @@
 
 namespace Falcor {
 
-    MaterialTextureLoader::MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb)
-        : mpTextureManager(pTextureManager)
-        , mUseSrgb(useSrgb)
-    {
-    }
-
-    MaterialTextureLoader::~MaterialTextureLoader() {
-        assignTextures();
-    }
-
-    void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path) {
-        assert(pMaterial);
-        if (!pMaterial->hasTextureSlot(slot)) {
-            LLOG_WRN << "MaterialTextureLoader::loadTexture() - Material '" << pMaterial->getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call.";
-            return;
-        }
-
-        bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
-
-        // Request texture to be loaded.
-        auto handle = mpTextureManager->loadTexture(path, true, srgb);
-
-        // Store assignment to material for later.
-        mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
-    }
-
-    void MaterialTextureLoader::assignTextures() {
-        mpTextureManager->waitForAllTexturesLoading();
-
-        // Assign textures to materials.
-        for (const auto& assignment : mTextureAssignments)
-        {
-            auto pTexture = mpTextureManager->getTexture(assignment.handle);
-            assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
-        }
-    }
+MaterialTextureLoader::MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb)
+	: mpTextureManager(pTextureManager)
+	, mUseSrgb(useSrgb)
+{
 }
+
+MaterialTextureLoader::~MaterialTextureLoader() {
+	assignTextures();
+}
+
+void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path) {
+	assert(pMaterial);
+	if (!pMaterial->hasTextureSlot(slot)) {
+		LLOG_WRN << "MaterialTextureLoader::loadTexture() - Material '" << pMaterial->getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call.";
+		return;
+	}
+
+	bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
+
+	// Request texture to be loaded.
+	auto handle = mpTextureManager->loadTexture(path, true, srgb);
+
+	// Store assignment to material for later.
+	mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
+}
+
+void MaterialTextureLoader::assignTextures() {
+	mpTextureManager->waitForAllTexturesLoading();
+
+	// Assign textures to materials.
+	for (const auto& assignment : mTextureAssignments) {
+	  // Assign generic handle
+		auto pTexture = mpTextureManager->getTexture(assignment.handle);
+		assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
+	}
+}
+
+}  // namespace Falcor

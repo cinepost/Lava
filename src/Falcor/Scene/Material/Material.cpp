@@ -182,7 +182,12 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
     if (pTexture) {
         auto h = pOwner->getTextureManager()->addTexture(pTexture);
         assert(h);
-        handle.setTextureID(h.getID());
+        if (pTexture->isUDIMTexture()) {
+            handle.setTextureID(0);
+            handle.setMode(TextureHandle::Mode::UDIM_Texture);
+        } else {
+            handle.setTextureID(h.getID());
+        }
     } else {
         handle.setMode(TextureHandle::Mode::Uniform);
     }

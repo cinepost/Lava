@@ -57,7 +57,6 @@
 #endif  // BUILDING_SHARED_DLL
 
 #include "Falcor/Core/ErrorHandling.h"
-//#include "Falcor/Core/Errors.h"
 
 #include <stdint.h>
 #include <iostream>
@@ -82,7 +81,6 @@ namespace fs = boost::filesystem;
 #endif
 
 #include "Falcor/Core/FalcorConfig.h"
-#include "Falcor/Utils/Logger.h"
 #include "Falcor/Utils/Math/Vector.h"
 #include "lava_utils_lib/logging.h"
 

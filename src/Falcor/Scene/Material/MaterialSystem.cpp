@@ -43,7 +43,6 @@ namespace {
 	const std::string kMaterialDataName = "materialData";
 	const std::string kMaterialSamplersName = "materialSamplers";
 	const std::string kMaterialTexturesName = "materialTextures";
-	const std::string kMaterialUDIMTilesTexturesName = "materialUDIMTilesTextures";
 	const std::string kMaterialBuffersName = "materialBuffers";
 
 	const size_t kMaxSamplerCount = 1ull << MaterialHeader::kSamplerIDBits;
@@ -71,8 +70,10 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 
 	// Create a default texture sampler.
 	Sampler::Desc desc;
-	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-	desc.setMaxAnisotropy(8);
+	desc.setFilterMode(Sampler::Filter::Cubic, Sampler::Filter::Cubic, Sampler::Filter::Cubic);
+	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+	desc.setMaxAnisotropy(16);
+	desc.setLodParams(0.0f, 1000.0f, -0.5f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
 }
 
@@ -84,11 +85,6 @@ void MaterialSystem::finalize() {
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count;
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
-
-	mUDIMTextureTileDescCount = 0;
-	if (mpTextureManager->hasUDIMTextures()) {
-		mUDIMTextureTileDescCount = mpTextureManager->getUDIMTextureTilesDescCount();
-	}
 }
 
 void MaterialSystem::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {
@@ -220,12 +216,6 @@ size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {
 
 bool MaterialSystem::hasUDIMTextures() const {
 	return mpTextureManager->hasUDIMTextures();
-
-	for(const auto &material: mMaterials) {
-		if(material->hasUDIMTextures()) return true;
-	}
-
-	return false;
 }
 
 void MaterialSystem::optimizeMaterials() {
@@ -341,7 +331,6 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
 		mpTextureManager->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
-		mpTextureManager->setUDIMShaderData(mpMaterialsBlock[kMaterialUDIMTilesTexturesName], mUDIMTextureTileDescCount);
 	}
 
 	// Update buffers.
@@ -394,7 +383,6 @@ Shader::DefineList MaterialSystem::getDefaultDefines() {
 	Shader::DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", "0");
-	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_TILES_DESC_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", "0");
 
@@ -405,7 +393,6 @@ Shader::DefineList MaterialSystem::getDefines() const {
 	Shader::DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
-	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_TILES_DESC_COUNT", std::to_string(mUDIMTextureTileDescCount));
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", std::to_string(mBufferDescCount));
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", mSpecGlossMaterialCount > 0 ? "1" : "0");
 

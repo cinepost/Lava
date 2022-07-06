@@ -262,7 +262,7 @@ void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyze
                 channelMask = TextureChannelFlags::RGB;
                 break;
             default:
-                logWarning("BasicMaterial::optimizeTexture() - Unsupported normal map mode");
+                LLOG_WRN << "BasicMaterial::optimizeTexture() - Unsupported normal map mode";
                 channelMask = TextureChannelFlags::RGBA;
                 break;
         }

@@ -29,6 +29,8 @@
 #include "BlendState.h"
 #include "FBO.h"
 
+#include "lava_utils_lib/logging.h"
+
 namespace Falcor {
 
 BlendState::SharedPtr BlendState::create(const Desc& desc) {
@@ -43,7 +45,7 @@ BlendState::~BlendState() = default;
 
 BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc) {
     if(rtIndex >= mRtDesc.size()) {
-        logError("Error when setting blend state RT parameters. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+        LLOG_ERR << "Error when setting blend state RT parameters. Invalid render-target index " << std::to_string(rtIndex) << ". Must be smaller than " << std::to_string(mRtDesc.size()) << ".";
         return *this;
     }
     mRtDesc[rtIndex].rgbBlendOp = rgbOp;
@@ -57,7 +59,7 @@ BlendState::Desc& BlendState::Desc::setRtParams(uint32_t rtIndex, BlendOp rgbOp,
 
 BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha) {
     if(rtIndex >= mRtDesc.size()) {
-        logError("Error when setting blend state RT write-mask. Invalid render-target index " + std::to_string(rtIndex) + ". Must be smaller than " + std::to_string(mRtDesc.size()) + ".");
+        LLOG_ERR << "Error when setting blend state RT write-mask. Invalid render-target index " << std::to_string(rtIndex) << ". Must be smaller than " << std::to_string(mRtDesc.size()) << ".";
         return *this;
     }
     mRtDesc[rtIndex].writeMask.writeRed = writeRed;

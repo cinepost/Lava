@@ -301,7 +301,7 @@ void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinity
 
     int32_t result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuMask);
     if (result != 0) {
-        logError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
+        LLOG_ERR << "setThreadAffinity() - pthread_setaffinity_np() failed with error code " << threadErrorToString(result);
     }
 }
 
@@ -325,14 +325,14 @@ void setThreadPriority(std::thread::native_handle_type thread, ThreadPriorityTyp
     }
 
     if (result != 0) {
-        logError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
+        LLOG_ERR << "setThreadPriority() - pthread_setschedprio() failed with error code " << threadErrorToString(result);
     }
 }
 
 time_t getFileModifiedTime(const std::string& filename) {
     struct stat s;
     if (stat(filename.c_str(), &s) != 0) {
-        logError("Can't get file time for '" + filename + "'");
+        LLOG_ERR << "Can't get file time for '" << filename << "'";
         return 0;
     }
 
