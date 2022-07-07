@@ -45,6 +45,7 @@ class Engine;
 class Sampler;
 class Device;
 class RenderContext;
+class TextureManager;
 class ResourceManager;
 class VirtualTexturePage;
 
@@ -339,7 +340,16 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isUDIMTexture() const { return mIsUDIMTexture; }
 
- protected:
+	const std::array<UDIMTileInfo, 100>& getUDIMTileInfos() const { return mUDIMTileInfos; }
+
+	void setUDIM_ID(uint16_t id);
+
+	uint16_t getUDIM_ID() const { return mUDIM_ID; }
+
+  private:
+  	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
+
+  protected:
 	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 	
 	void apiInit(const void* pData, bool autoGenMips);
@@ -359,7 +369,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	std::array<UDIMTileInfo, 100> mUDIMTileInfos;
 	bool mIsUDIMTexture = false;
 	bool mIsSparse = false;
-	
+	uint16_t mUDIM_ID = 0;
+
 	uint3 mSparsePageRes = int3(0);
 	uint32_t mSparsePagesCount = 0;
 	std::atomic<size_t> mSparseResidentMemSize = 0;
@@ -390,6 +401,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	friend class Device;
 	friend class Engine;
 	friend class ResourceManager;
+	friend class TextureManager;
 	friend class VirtualTexturePage;
 };
 

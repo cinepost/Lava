@@ -43,6 +43,7 @@ namespace {
 	const std::string kMaterialDataName = "materialData";
 	const std::string kMaterialSamplersName = "materialSamplers";
 	const std::string kMaterialTexturesName = "materialTextures";
+	const std::string kMaterialUDIMTilesTableName = "udimTextureTilesTable";
 	const std::string kMaterialBuffersName = "materialBuffers";
 
 	const size_t kMaxSamplerCount = 1ull << MaterialHeader::kSamplerIDBits;
@@ -70,10 +71,10 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 
 	// Create a default texture sampler.
 	Sampler::Desc desc;
-	desc.setFilterMode(Sampler::Filter::Cubic, Sampler::Filter::Cubic, Sampler::Filter::Cubic);
+	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
 	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 	desc.setMaxAnisotropy(16);
-	desc.setLodParams(0.0f, 1000.0f, -0.5f);
+	desc.setLodParams(0.0f, 1000.0f, 0.0f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
 }
 
@@ -83,8 +84,14 @@ void MaterialSystem::finalize() {
 	// Note we allocate more descriptors here than is typically needed as many materials do not use all texture slots,
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
-	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count;
+
+	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + mpTextureManager->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
+	mUDIMTextureCount = mpTextureManager->getUDIMTexturesCount();
+
+	printf("MaterialSystem::finalize-------------\n");
+	printf("udimTilesCount: %zu\n", mpTextureManager->getUDIMTextureTilesCount());
+	printf("mTextureDescCount: %zu\n", mTextureDescCount);
 }
 
 void MaterialSystem::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {
@@ -330,7 +337,9 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
+		mpTextureManager->finalize();
 		mpTextureManager->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+		mpTextureManager->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 
 	// Update buffers.
@@ -383,6 +392,7 @@ Shader::DefineList MaterialSystem::getDefaultDefines() {
 	Shader::DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", "0");
+	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", "0");
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", "0");
 
@@ -393,6 +403,7 @@ Shader::DefineList MaterialSystem::getDefines() const {
 	Shader::DefineList defines;
 	defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
 	defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
+	defines.add("MATERIAL_SYSTEM_UDIM_TEXTURE_COUNT", std::to_string(mUDIMTextureCount));
 	defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", std::to_string(mBufferDescCount));
 	defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", mSpecGlossMaterialCount > 0 ? "1" : "0");
 

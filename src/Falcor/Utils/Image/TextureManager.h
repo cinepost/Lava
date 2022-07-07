@@ -156,7 +156,9 @@ public:
 	  \return Number of UDIM texture descs.
 	*/
 
-	size_t getUDIMTextureDescCount() const { return mUDIMTextureDescCount; }
+	size_t getUDIMTextureTilesCount() const { return mUDIMTextureTilesCount; }
+
+	size_t getUDIMTexturesCount() const { return mUDIMTexturesCount; }
 
 	bool hasUDIMTextures() const { return mHasUDIMTextures; };
 
@@ -168,6 +170,10 @@ public:
 		\param[in] descCount Size of descriptor array.
 	*/
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
+
+	void setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const;
+
+	void finalize();
 
 private:
 	TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount);
@@ -202,16 +208,18 @@ private:
 
 	// Internal state. Do not access outside of critical section.
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
-	std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim texture tile descs, indexed by handle ID.
+	//std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim texture tile descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
 
 	bool mHasUDIMTextures = false;
+	bool mDirty = true;
 
 	AsyncTextureLoader mAsyncTextureLoader;                     ///< Utility for asynchronous texture loading.
 	size_t mLoadRequestsInProgress = 0;                         ///< Number of load requests currently in progress.
-	size_t mUDIMTextureDescCount = 0;                           ///< Number of managed UDIM textures
+	size_t mUDIMTextureTilesCount = 0;                          ///< Number of managed UDIM tile textures
+	size_t mUDIMTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 };

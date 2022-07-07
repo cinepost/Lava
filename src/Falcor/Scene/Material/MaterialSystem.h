@@ -202,7 +202,9 @@ class dlldecl MaterialSystem {
 		uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
 		TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
 		size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+		size_t mUDIMTextureTileDescCount = 0;												///< Number of udim textures tiles in GPU descriptor array.
 		size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+		size_t mUDIMTextureCount = 0;
 
 		bool mSamplersChanged = false;                              ///< Flag indicating if samplers were added/removed since last update.
 		bool mBuffersChanged = false;                               ///< Flag indicating if buffers were added/removed since last update.

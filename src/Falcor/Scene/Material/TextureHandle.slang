@@ -42,7 +42,8 @@ BEGIN_NAMESPACE_FALCOR
 struct TextureHandle {
 
     uint32_t packedData = 0;
-    uint32_t packedUDIMData = 0;
+    uint16_t udimID = 0;
+    uint16_t _pad;
 
     enum class Mode {
         Uniform,
@@ -57,10 +58,6 @@ struct TextureHandle {
     static const uint kModeBits = 3;
 
     static const uint kModeOffset = kTextureIDBits;
-
-    static const uint kUDIMTileNumXBits = 4;
-    static const uint kUDIMTileNumYBits = 4;
-    static const uint kUDIMTileBits = 1;
 
     /** Set mode.
     */

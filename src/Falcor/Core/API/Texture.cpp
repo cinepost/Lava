@@ -480,6 +480,24 @@ uint64_t Texture::getTexelCount() const {
 	return count;
 }
 
+void Texture::setUDIM_ID(uint16_t id) {
+	if(!mIsUDIMTexture) {
+		LLOG_ERR << "Unable to set texture UDIM ID to Non-UDIM texture !";
+		return;
+	}
+	mUDIM_ID = id;
+}
+
+void Texture::addUDIMTileTexture(const UDIMTileInfo& udim_tile_info) {
+	if(!mIsUDIMTexture) {
+		LLOG_ERR << "Unable to add UDIM texture tile to Non-UDIM texture !";
+		return;
+	}
+
+	assert((udim_tile_info.u + udim_tile_info.v * 10) < 100);
+	mUDIMTileInfos[udim_tile_info.u + udim_tile_info.v * 10] = udim_tile_info;
+}
+
 bool Texture::compareDesc(const Texture* pOther) const {
 	return mWidth == pOther->mWidth &&
 		mHeight == pOther->mHeight &&

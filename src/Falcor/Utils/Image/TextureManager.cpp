@@ -52,7 +52,8 @@ TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount
 	, mMaxTextureCount(std::min(maxTextureCount, kMaxTextureHandleCount))
 	, mAsyncTextureLoader(mpDevice, threadCount)
 {
-	mUDIMTextureDescCount = 0;
+	mUDIMTextureTilesCount = 0;
+	mUDIMTexturesCount = 0;
 }
 
 TextureManager::~TextureManager() {}
@@ -126,8 +127,8 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 					std::ldiv_t ldivresult;
   				ldivresult = ldiv(udim_tile_number,10);
 
-					size_t udim_tile_u_number = ldivresult.quot;
-					size_t udim_tile_v_number = ldivresult.rem;
+					size_t udim_tile_u_number = ldivresult.rem;
+					size_t udim_tile_v_number = ldivresult.quot;
 
 					udim_tile_fileinfos.push_back(std::make_pair(entry.path(), Falcor::uint2({udim_tile_u_number, udim_tile_v_number})));
 				} else {
@@ -211,25 +212,30 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 			mKeyToHandle[textureKey] = handle;
 
 			// Add to texture-to-handle map.
-			if (pTexture) mTextureToHandle[pTexture.get()] = handle;
+			if (pTexture) {
+				mTextureToHandle[pTexture.get()] = handle;
+				mUDIMTexturesCount++;
+			}
 
 		} else {
 
 			// Load UDIM texture tiles
-			Texture::SharedPtr pTexture = Texture::createUDIMFromFile(mpDevice, fullPath);
+			Texture::SharedPtr pUDIMTexture = Texture::createUDIMFromFile(mpDevice, fullPath);
 
 			// Add epmty texture tileset desc.
-			TextureDesc desc = { TextureState::Loaded, pTexture };
+			TextureDesc desc = { TextureState::Loaded, pUDIMTexture };
 			handle = addDesc(desc, TextureHandle::Mode::UDIM_Texture);
 		
 			// Add UDIM tileset to key-to-handle map.
 			mKeyToHandle[textureKey] = handle;
 
 			// Add to texture-to-handle map.
-			if (pTexture) mTextureToHandle[pTexture.get()] = handle;
+			if (pUDIMTexture) mTextureToHandle[pUDIMTexture.get()] = handle;
 
 			for( const auto& i: udim_tile_fileinfos) {
 				const auto& udim_tile_fullpath = i.first;
+				const Falcor::uint2& udim_tile_pos = i.second;
+
 				const TextureKey udimTileTextureKey(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 
 				TextureHandle udim_tile_handle;
@@ -241,7 +247,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 
 					Texture::SharedPtr pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 
-					LLOG_DBG << "Loaded UDIM texture tile: " << udim_tile_fullpath;
+					LLOG_DBG << "Loaded UDIM texture tile: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
 					
 					TextureDesc udim_tile_desc = { TextureState::Loaded, pUdimTileTex };
 					udim_tile_handle = addDesc(udim_tile_desc, TextureHandle::Mode::UDIM_Tile);
@@ -253,11 +259,15 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 					if (pUdimTileTex) {
 						mHasUDIMTextures = true;
 						mTextureToHandle[pUdimTileTex.get()] = udim_tile_handle;
+						
+						if (pUDIMTexture) {
+							pUDIMTexture->addUDIMTileTexture({pUdimTileTex, udim_tile_pos[0], udim_tile_pos[1]});
+							mUDIMTextureTilesCount ++;
+						}
 					}
 				}
 			}
 		}
-		mUDIMTextureDescCount ++;
 
 		mCondition.notify_all();
 #endif
@@ -331,6 +341,19 @@ size_t TextureManager::getTextureDescCount() const {
 	return mTextureDescs.size();
 }
 
+void TextureManager::finalize() {
+	if (!mDirty) return;
+
+	for (size_t i = 0; i < mTextureDescs.size(); i++) {
+		const auto& pTex = mTextureDescs[i].pTexture;
+		if(pTex && pTex->isUDIMTexture()) {
+			pTex->setUDIM_ID(i);
+		}
+	}
+
+	mDirty = false;
+}
+
 void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount) const {
 	std::lock_guard<std::mutex> lock(mMutex);
 
@@ -339,17 +362,39 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	}
 
 	Texture::SharedPtr nullTexture;
+
+  size_t ii = 0; // Current material system textures index
+
+  // Fill in textures
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && !pTex->isUDIMTexture()) {
-			var[i] = mTextureDescs[i].pTexture;
+			var[ii] = pTex;
 		} else {
-			var[i] = nullTexture;
+			var[ii] = nullTexture;
 		}
+		ii++;
 	}
 
-	for (size_t i = mTextureDescs.size(); i < descCount; i++) {
+	// Fill the array tail
+	for (size_t i = ii; i < descCount; i++) {	
 		var[i] = nullTexture;
+	}
+}
+
+void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const {
+	for (size_t i = 0; i < mTextureDescs.size(); i++) {
+		const auto& pTex = mTextureDescs[i].pTexture;
+		if(pTex && pTex->isUDIMTexture()) {
+			for( const auto& tileInfo: pTex->getUDIMTileInfos()) {
+				if( tileInfo.pTileTexture ) {
+					auto const& it = mTextureToHandle.find(tileInfo.pTileTexture.get());
+					if(it != mTextureToHandle.end()) {
+						var[static_cast<size_t>(pTex->getUDIM_ID()) * 100 + tileInfo.u + tileInfo.v * 10] = it->second.id;
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -367,34 +412,18 @@ TextureManager::TextureHandle TextureManager::addDesc(const TextureDesc& desc, T
 			throw std::runtime_error("Out of texture handles");
 		}
 
-		switch (mode) {
-			case TextureHandle::Mode::UDIM_Tile:
-				handle.id = static_cast<uint32_t>(mTextureTileDescs.size());
-				handle.mMode = mode;
-				mTextureTileDescs.emplace_back(desc);
-			case TextureHandle::Mode::Texture:
-			case TextureHandle::Mode::UDIM_Texture:
-			default:
-				handle.id = static_cast<uint32_t>(mTextureDescs.size());
-				handle.mMode = mode;
-				mTextureDescs.emplace_back(desc);
-		}
+		handle.id = static_cast<uint32_t>(mTextureDescs.size());
+		handle.mMode = mode;
+		mTextureDescs.emplace_back(desc);
+		
 	}
 
 	return handle;
 }
 
 TextureManager::TextureDesc& TextureManager::getDesc(const TextureHandle& handle) {
-	switch (handle.mMode) {
-		case TextureHandle::Mode::UDIM_Tile:
-			assert(handle && handle.id < mTextureTileDescs.size());
-			return mTextureTileDescs[handle.id];
-		case TextureHandle::Mode::Texture:
-		case TextureHandle::Mode::UDIM_Texture:
-		default:
-			assert(handle && handle.id < mTextureDescs.size());
+	assert(handle && handle.id < mTextureDescs.size());
 	return mTextureDescs[handle.id];
-	}
 }
 
 }  // namespace Falcor
