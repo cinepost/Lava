@@ -28,42 +28,36 @@
 #include "stdafx.h"
 #include "Importer.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        static std::vector<Importer::Desc> sImporters;
-        static std::unordered_map<std::string, Importer::ImportFunction> sImportFunctions;
-        static FileDialogFilterVec sFileExtensionsFilters;
-    }
+namespace Falcor {
 
-    const FileDialogFilterVec& Importer::getFileExtensionFilters()
-    {
-        return sFileExtensionsFilters;
-    }
+namespace {
+	static std::vector<Importer::Desc> sImporters;
+	static std::unordered_map<std::string, Importer::ImportFunction> sImportFunctions;
+	static FileDialogFilterVec sFileExtensionsFilters;
+}
 
-    bool Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict)
-    {
-        auto ext = getExtensionFromFile(filename);
-        auto it = sImportFunctions.find(ext);
-        if (it == sImportFunctions.end())
-        {
-            logError("Error when loading '" + filename + "'. Unknown file extension.");
-            return false;
-        }
-        return it->second(filename, builder, instances, dict);
-    }
+const FileDialogFilterVec& Importer::getFileExtensionFilters() {
+	return sFileExtensionsFilters;
+}
 
-    void Importer::registerImporter(const Desc& desc)
-    {
-        sImporters.push_back(desc);
+bool Importer::import(const std::string& filename, SceneBuilder& builder, const SceneBuilder::InstanceMatrices& instances, const Dictionary& dict) {
+	auto ext = getExtensionFromFile(filename);
+	auto it = sImportFunctions.find(ext);
+	if (it == sImportFunctions.end()) {
+		LLOG_ERR << "Error when loading '" << filename << "'. Unknown file extension.";
+		return false;
+	}
+	return it->second(filename, builder, instances, dict);
+}
 
-        for (const auto& ext : desc.extensions)
-        {
-            assert(sImportFunctions.find(ext) == sImportFunctions.end());
-            sImportFunctions[ext] = desc.import;
-            sFileExtensionsFilters.push_back(ext);
-        }
-    }
+void Importer::registerImporter(const Desc& desc) {
+	sImporters.push_back(desc);
+
+	for (const auto& ext : desc.extensions) {
+		assert(sImportFunctions.find(ext) == sImportFunctions.end());
+		sImportFunctions[ext] = desc.import;
+		sFileExtensionsFilters.push_back(ext);
+	}
+}
 
 }  // namespace Falcor

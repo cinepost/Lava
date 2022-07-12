@@ -116,17 +116,17 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 #endif
 
     // pixel position
-    int2 ipos = int2(vsOut.posH.xy);
+    int2 pixel = int2(vsOut.posH.xy);
 
     // pseudo-random sample generator
-    SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
+    SampleGenerator sg = SampleGenerator.create(pixel, gSampleNumber);
 
     // screen space texture coordinates gradient
     float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
     float2 gradY = ddy_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
     
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-    
+
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
@@ -157,6 +157,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
 
+        /*
         if (light.shadowType == uint(LightShadowType.RayTraced) ) {
             
             // Test visibility by tracing a shadow ray.
@@ -170,6 +171,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
+        */
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }

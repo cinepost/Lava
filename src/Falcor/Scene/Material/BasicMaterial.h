@@ -63,6 +63,10 @@ namespace Falcor
         */
         bool isEqual(const Material::SharedPtr& pOther) const override;
 
+        /** 
+        */
+        bool hasUDIMTextures() const override;
+
         /** Set the alpha mode.
         */
         void setAlphaMode(AlphaMode alphaMode) override;
@@ -110,13 +114,13 @@ namespace Falcor
         */
         Texture::SharedPtr getBaseColorTexture() const { return getTexture(TextureSlot::BaseColor); }
 
-        /** Set the specular texture.
+        /** Set the metallic texture.
         */
-        void setSpecularTexture(const Texture::SharedPtr& pSpecular) { setTexture(TextureSlot::Specular, pSpecular); }
+        void setMetallicTexture(const Texture::SharedPtr& pMetallic) { setTexture(TextureSlot::Metallic, pMetallic); }
 
-        /** Get the specular texture.
+        /** Get the metallic texture.
         */
-        Texture::SharedPtr getSpecularTexture() const { return getTexture(TextureSlot::Specular); }
+        Texture::SharedPtr getMetallicTexture() const { return getTexture(TextureSlot::Metallic); }
 
         /** Set the roughness texture.
         */
@@ -176,19 +180,19 @@ namespace Falcor
 
         /** Set the base color.
         */
-        void setBaseColor(const float4& color);
+        void setBaseColor(const float3& color);
 
         /** Get the base color.
         */
-        float4 getBaseColor() const { return (float4)mData.baseColor; }
+        float3 getBaseColor() const { return (float3)mData.baseColor; }
 
         /** Set the specular parameters.
         */
-        void setSpecularParams(const float4& color);
+        void setReflectivity(const float& reflectivity);
 
         /** Get the specular parameters.
         */
-        float4 getSpecularParams() const { return (float4)mData.specular; }
+        float getReflectivity() const { return (float)mData.reflectivity; }
 
         /** Set the transmission color.
         */
@@ -270,6 +274,7 @@ namespace Falcor
         void updateEmissiveFlag();
 
         virtual void setEmissiveColor(const float3& color) {}
+        virtual void setMetallic(float metallic) {}
 
         BasicMaterialData mData;                    ///< Material parameters.
 

@@ -116,10 +116,10 @@ namespace Falcor {
         try {
             return std::stoi(mValue);
         } catch (const std::invalid_argument& e) {
-            logWarning("Unable to convert " + mValue + " to int. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to int. Exception: " << e.what();
             return -1;
         } catch (const std::out_of_range& e) {
-            logWarning("Unable to convert " + mValue + " to int. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to int. Exception: " << e.what();
             return -1;
         }
     }
@@ -128,10 +128,10 @@ namespace Falcor {
         try {
             return std::stoul(mValue);
         } catch (const std::invalid_argument& e) {
-            logWarning("Unable to convert " + mValue + " to unsigned. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to unsigned. Exception: " << e.what();
             return -1;
         } catch (const std::out_of_range& e) {
-            logWarning("Unable to convert " + mValue + " to unsigned. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to unsigned. Exception: " << e.what();
             return -1;
         }
     }
@@ -140,10 +140,10 @@ namespace Falcor {
         try {
             return std::stoull(mValue);
         } catch (const std::invalid_argument& e) {
-            logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to unsigned 64. Exception: " << e.what();
             return -1;
         } catch (const std::out_of_range& e) {
-            logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to unsigned 64. Exception: " << e.what();
             return -1;
         }
     }
@@ -152,10 +152,10 @@ namespace Falcor {
         try {
             return std::stof(mValue);
         } catch (const std::invalid_argument& e) {
-            logWarning("Unable to convert " + mValue + " to float. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to float. Exception: " << e.what();
             return -1;
         } catch (const std::out_of_range& e) {
-            logWarning("Unable to convert " + mValue + " to float. Exception: " + e.what());
+            LLOG_WRN << "Unable to convert " << mValue << " to float. Exception: " << e.what();
             return -1;
         }
     }

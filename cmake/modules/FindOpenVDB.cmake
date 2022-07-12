@@ -485,7 +485,8 @@ endif()
 
 # Add standard dependencies
 
-find_package(TBB REQUIRED COMPONENTS tbb)
+#find_package(TBB REQUIRED COMPONENTS tbb)
+find_package(TBB COMPONENTS tbb)
 
 if(NOT OPENVDB_USE_STATIC_LIBS AND NOT Boost_USE_STATIC_LIBS)
   # @note  Both of these must be set for Boost 1.70 (VFX2020) to link against
@@ -496,13 +497,15 @@ if(NOT OPENVDB_USE_STATIC_LIBS AND NOT Boost_USE_STATIC_LIBS)
   set(Boost_USE_STATIC_LIBS OFF)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS iostreams system)
+#find_package(Boost REQUIRED COMPONENTS iostreams system)
+find_package(Boost COMPONENTS iostreams system)
 
 # Add deps for pyopenvdb
 # @todo track for numpy
 
 if(pyopenvdb IN_LIST OpenVDB_FIND_COMPONENTS)
-  find_package(PythonLibs REQUIRED)
+  #find_package(PythonLibs REQUIRED)
+  find_package(PythonLibs)
 
   # Boost python handling - try and find both python and pythonXx (version suffixed).
   # Prioritize the version suffixed library, failing if neither exist.

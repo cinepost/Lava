@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "aov.h"
 #include "renderer.h"
 
@@ -28,12 +30,18 @@ bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
 bool AOVPlane::getImageData(uint8_t* pData) const {
     assert(pData);
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     if (!mpTexture) {
         LLOG_ERR << "No texture associated to AOV plane " << mInfo.name << " !!!";
         return false;
     }
 
     mpTexture->readTextureData(0, 0, pData);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "AOV plane " << name() << " date read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+
     return true;
 }
 

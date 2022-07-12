@@ -78,7 +78,7 @@ bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, 
     // (with that large data sets, we probably want that for efficiency reasons anyway).
     const uint32_t maxElementCount = kGroupSize * kGroupSize * 2;
     if (elementCount > maxElementCount) {
-        logError("PrefixSum::execute() - Maximum supported element count is " + std::to_string(maxElementCount) + ". Aborting.");
+        LLOG_ERR << "PrefixSum::execute() - Maximum supported element count is " << std::to_string(maxElementCount) << ". Aborting.";
         return false;
     }
 
@@ -131,7 +131,7 @@ bool PrefixSum::execute(RenderContext* pRenderContext, Buffer::SharedPtr pData, 
     // Copy total sum to separate destination buffer, if specified.
     if (pTotalSumBuffer) {
         if (pTotalSumOffset + 4 > pTotalSumBuffer->getSize()) {
-            logError("PrefixSum::execute() - Results buffer is too small. Aborting.");
+            LLOG_ERR << "PrefixSum::execute() - Results buffer is too small. Aborting.";
             return false;
         }
 

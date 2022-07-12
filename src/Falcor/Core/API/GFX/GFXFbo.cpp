@@ -33,148 +33,128 @@
 
 namespace Falcor {
 
-    struct FboData {
-        bool mHandleDirty = true;
-    };
+struct FboData {
+	bool mHandleDirty = true;
+};
 
-    namespace
-    {
-        void releaseFboHandleIfEmpty(Device::SharedPtr pDevice,  FboHandle& apiHandle, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments)
-        {
-            if (depthStencil.pTexture)
-            {
-                return;
-            }
-            for (auto& attachment : colorAttachments)
-            {
-                if (attachment.pTexture)
-                {
-                    return;
-                }
-            }
-            pDevice->releaseResource(apiHandle);
-        }
+namespace {
 
-    }
+void releaseFboHandleIfEmpty(Device::SharedPtr pDevice,  FboHandle& apiHandle, Fbo::Attachment& depthStencil, std::vector<Fbo::Attachment>& colorAttachments) {
+	if (depthStencil.pTexture) {
+		return;
+	}
 
-    Fbo::Fbo(Device::SharedPtr pDevice): mpDevice(pDevice), mTempDesc(pDevice)
-    {
-        mpPrivateData = std::make_unique<FboData>();
-        mColorAttachments.resize(getMaxColorTargetCount());
-    }
-
-    Fbo::~Fbo()
-    {
-        mpDevice->releaseResource(mApiHandle);
-    }
-
-    const Fbo::ApiHandle& Fbo::getApiHandle() const
-    {
-        if (mpPrivateData->mHandleDirty)
-        {
-            initApiHandle();
-        }
-        return mApiHandle;
-    }
-
-    uint32_t Fbo::getMaxColorTargetCount()
-    {
-        return 8;
-    }
-
-    void Fbo::applyColorAttachment(uint32_t rtIndex)
-    {
-        mpPrivateData->mHandleDirty = true;
-        releaseFboHandleIfEmpty(mpDevice, mApiHandle, mDepthStencil, mColorAttachments);
-    }
-
-    void Fbo::applyDepthAttachment()
-    {
-        mpPrivateData->mHandleDirty = true;
-        releaseFboHandleIfEmpty(mpDevice, mApiHandle, mDepthStencil, mColorAttachments);
-    }
-
-    void Fbo::initApiHandle() const
-    {
-        mpPrivateData->mHandleDirty = false;
-
-        gfx::IFramebufferLayout::Desc layoutDesc = {};
-        std::vector<gfx::IFramebufferLayout::AttachmentLayout> attachmentLayouts;
-        gfx::IFramebufferLayout::AttachmentLayout depthAttachmentLayout = {};
-        gfx::IFramebuffer::Desc desc = {};
-        if (mDepthStencil.pTexture)
-        {
-            auto texture = static_cast<gfx::ITextureResource*>(mDepthStencil.pTexture->getApiHandle().get());
-            depthAttachmentLayout.format = texture->getDesc()->format;
-            depthAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
-            layoutDesc.depthStencil = &depthAttachmentLayout;
-        }
-        desc.depthStencilView = getDepthStencilView()->getApiHandle();
-        desc.renderTargetCount = 0;
-        std::vector<gfx::IResourceView*> renderTargetViews;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++)
-        {
-            gfx::IFramebufferLayout::AttachmentLayout renderAttachmentLayout = {};
-
-            if (mColorAttachments[i].pTexture)
-            {
-                auto texture = static_cast<gfx::ITextureResource*>(mColorAttachments[i].pTexture->getApiHandle().get());
-                renderAttachmentLayout.format = texture->getDesc()->format;
-                renderAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
-                attachmentLayouts.push_back(renderAttachmentLayout);
-                renderTargetViews.push_back(getRenderTargetView(i)->getApiHandle());
-                desc.renderTargetCount = i + 1;
-            }
-            else
-            {
-                auto dimension = mColorAttachments[i].arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
-                renderAttachmentLayout.format = gfx::Format::R8G8B8A8_UNORM;
-                renderAttachmentLayout.sampleCount = 1;
-                renderTargetViews.push_back(RenderTargetView::getNullView(mpDevice, dimension)->getApiHandle());
-                attachmentLayouts.push_back(renderAttachmentLayout);
-            }
-        }
-        desc.renderTargetViews = renderTargetViews.data();
-        layoutDesc.renderTargetCount = desc.renderTargetCount;
-        layoutDesc.renderTargets = attachmentLayouts.data();
-
-        // Push FBO handle to deferred release queue so it remains valid
-        // for pending GPU commands.
-        mpDevice->releaseResource(mApiHandle);
-
-        Slang::ComPtr<gfx::IFramebufferLayout> fboLayout;
-        FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef()));
-
-        desc.layout = fboLayout.get();
-        FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef()));
-    }
-
-    RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const
-    {
-        const auto& rt = mColorAttachments[rtIndex];
-        if (rt.pTexture)
-        {
-            return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
-        }
-        else
-        {
-            // TODO: mColorAttachments doesn't contain enough information to fully determine the view dimension. Assume 2D for now.
-            auto dimension = rt.arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
-            return RenderTargetView::getNullView(mpDevice, dimension);
-        }
-    }
-
-    DepthStencilView::SharedPtr Fbo::getDepthStencilView() const
-    {
-        if (mDepthStencil.pTexture)
-        {
-            return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
-        }
-        else
-        {
-            // TODO: mDepthStencil doesn't contain enough information to fully determine the view dimension.  Assume 2D for now.
-            auto dimension = mDepthStencil.arraySize > 1 ? DepthStencilView::Dimension::Texture2DArray : DepthStencilView::Dimension::Texture2D;
-            return DepthStencilView::getNullView(mpDevice, dimension);
-        }
-    }
+	for (auto& attachment : colorAttachments) {
+		if (attachment.pTexture) {
+			return;
+		}
+	}
+	pDevice->releaseResource(apiHandle);
 }
+
+}
+
+Fbo::Fbo(Device::SharedPtr pDevice): mpDevice(pDevice), mTempDesc(pDevice) {
+	mpPrivateData = std::make_unique<FboData>();
+	mColorAttachments.resize(getMaxColorTargetCount());
+}
+
+Fbo::~Fbo() {
+	mpDevice->releaseResource(mApiHandle);
+}
+
+const Fbo::ApiHandle& Fbo::getApiHandle() const {
+	if (mpPrivateData->mHandleDirty) {
+		initApiHandle();
+	}
+	return mApiHandle;
+}
+
+uint32_t Fbo::getMaxColorTargetCount() {
+	return 8;
+}
+
+void Fbo::applyColorAttachment(uint32_t rtIndex) {
+	mpPrivateData->mHandleDirty = true;
+	releaseFboHandleIfEmpty(mpDevice, mApiHandle, mDepthStencil, mColorAttachments);
+}
+
+void Fbo::applyDepthAttachment() {
+	mpPrivateData->mHandleDirty = true;
+	releaseFboHandleIfEmpty(mpDevice, mApiHandle, mDepthStencil, mColorAttachments);
+}
+
+void Fbo::initApiHandle() const {
+	mpPrivateData->mHandleDirty = false;
+
+	gfx::IFramebufferLayout::Desc layoutDesc = {};
+	std::vector<gfx::IFramebufferLayout::TargetLayout> attachmentLayouts;
+	gfx::IFramebufferLayout::TargetLayout depthAttachmentLayout = {};
+	gfx::IFramebuffer::Desc desc = {};
+	
+	if (mDepthStencil.pTexture) {
+		auto texture = static_cast<gfx::ITextureResource*>(mDepthStencil.pTexture->getApiHandle().get());
+		depthAttachmentLayout.format = texture->getDesc()->format;
+		depthAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+		layoutDesc.depthStencil = &depthAttachmentLayout;
+	}
+	
+	desc.depthStencilView = getDepthStencilView()->getApiHandle();
+	desc.renderTargetCount = 0;
+	std::vector<gfx::IResourceView*> renderTargetViews;
+	
+	for (uint32_t i = 0; i < static_cast<uint32_t>(mColorAttachments.size()); i++) {
+		gfx::IFramebufferLayout::TargetLayout renderAttachmentLayout = {};
+
+		if (mColorAttachments[i].pTexture) {
+			auto texture = static_cast<gfx::ITextureResource*>(mColorAttachments[i].pTexture->getApiHandle().get());
+			renderAttachmentLayout.format = texture->getDesc()->format;
+			renderAttachmentLayout.sampleCount = texture->getDesc()->sampleDesc.numSamples;
+			attachmentLayouts.push_back(renderAttachmentLayout);
+			renderTargetViews.push_back(getRenderTargetView(i)->getApiHandle());
+			desc.renderTargetCount = i + 1;
+		} else {
+			auto dimension = mColorAttachments[i].arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
+			renderAttachmentLayout.format = gfx::Format::R8G8B8A8_UNORM;
+			renderAttachmentLayout.sampleCount = 1;
+			renderTargetViews.push_back(RenderTargetView::getNullView(mpDevice, dimension)->getApiHandle());
+			attachmentLayouts.push_back(renderAttachmentLayout);
+		}
+	}
+	desc.renderTargetViews = renderTargetViews.data();
+	layoutDesc.renderTargetCount = desc.renderTargetCount;
+	layoutDesc.renderTargets = attachmentLayouts.data();
+
+	// Push FBO handle to deferred release queue so it remains valid
+	// for pending GPU commands.
+	mpDevice->releaseResource(mApiHandle);
+
+	Slang::ComPtr<gfx::IFramebufferLayout> fboLayout;
+	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebufferLayout(layoutDesc, fboLayout.writeRef()));
+
+	desc.layout = fboLayout.get();
+	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createFramebuffer(desc, mApiHandle.writeRef()));
+}
+
+RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
+	const auto& rt = mColorAttachments[rtIndex];
+	if (rt.pTexture) {
+		return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
+	} else {
+		// TODO: mColorAttachments doesn't contain enough information to fully determine the view dimension. Assume 2D for now.
+		auto dimension = rt.arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
+		return RenderTargetView::getNullView(mpDevice, dimension);
+	}
+}
+
+DepthStencilView::SharedPtr Fbo::getDepthStencilView() const {
+	if (mDepthStencil.pTexture) {
+		return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
+	} else {
+		// TODO: mDepthStencil doesn't contain enough information to fully determine the view dimension.  Assume 2D for now.
+		auto dimension = mDepthStencil.arraySize > 1 ? DepthStencilView::Dimension::Texture2DArray : DepthStencilView::Dimension::Texture2D;
+		return DepthStencilView::getNullView(mpDevice, dimension);
+	}
+}
+
+}  // namespace Falcor

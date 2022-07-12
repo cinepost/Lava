@@ -37,60 +37,85 @@
 
 #include "Falcor/Utils/Debug/debug.h"
 
+/*
+namespace pybind11::detail {
+	// Casting float16_t <-> float.
+	template<>
+	struct type_caster<Falcor::float16_t> {
+		public:
+			PYBIND11_TYPE_CASTER(Falcor::float16_t, _("float16_t"));
+			using float_caster = type_caster<float>;
+
+			bool load(handle src, bool convert) {
+				float_caster caster;
+				if (caster.load(src, convert)) {
+					this->value = Falcor::float16_t(float(caster));
+					return true;
+				}
+				return false;
+			}
+
+			static handle cast(Falcor::float16_t src, return_value_policy policy, handle parent) {
+				return float_caster::cast(float(src), policy, parent);
+			}
+	};
+}
+*/
 
 namespace Falcor::ScriptBindings {
 
 namespace {
-    /** `gRegisterFuncs` is declared as pointer so that we can ensure it can be explicitly
-        allocated when registerBinding() is called. (The C++ static objectinitialization fiasco.)
-    */
-    std::unique_ptr<std::vector<RegisterBindingFunc>> gRegisterFuncs;
+	/** `gRegisterFuncs` is declared as pointer so that we can ensure it can be explicitly
+		allocated when registerBinding() is called. (The C++ static objectinitialization fiasco.)
+	*/
+	std::unique_ptr<std::vector<RegisterBindingFunc>> gRegisterFuncs;
 }
 
 void registerBinding(RegisterBindingFunc f) {
-    if (Scripting::isRunning()) {
-        try {
-            auto m = pybind11::module::import("falcor");
-            f(m);
-            // Re-import falcor
-            pybind11::exec("from falcor import *");
-        }
-        catch (const std::exception& e)
-        {
-            PyErr_SetString(PyExc_ImportError, e.what());
-            logError(e.what());
-            return;
-        }
-    } else {
-        if (!gRegisterFuncs) gRegisterFuncs.reset(new std::vector<RegisterBindingFunc>());
-        gRegisterFuncs->push_back(f);
-    }
+	if (Scripting::isRunning()) {
+		try {
+			auto m = pybind11::module::import("falcor");
+			f(m);
+			// Re-import falcor
+			pybind11::exec("from falcor import *");
+		}
+		catch (const std::exception& e)
+		{
+			PyErr_SetString(PyExc_ImportError, e.what());
+			LLOG_ERR << e.what();
+			return;
+		}
+	} else {
+		if (!gRegisterFuncs) gRegisterFuncs.reset(new std::vector<RegisterBindingFunc>());
+		gRegisterFuncs->push_back(f);
+	}
 }
 
 template<typename VecT, typename...Args>
 VecT makeVec(Args...args)
 {
-    return VecT(args...);
+	return VecT(args...);
 }
 
 template<typename VecT, typename...Args>
 void addVecType(pybind11::module& m, const std::string name) {
-    auto ctor = [](Args...components) { return makeVec<VecT>(components...); };
-    auto repr = [](const VecT& v) { return Falcor::to_string(v); };
-    auto vecStr = [](const VecT& v) {
-        std::string vec = "[" + std::to_string(v[0]);
-        for (int i = 1; i < v.length(); i++) {
-            vec += ", " + std::to_string(v[i]);
-        }
-        vec += "]";
-        return vec;
-    };
-    pybind11::class_<VecT>(m, name.c_str())
-        .def(pybind11::init(ctor))
-        .def("__repr__", repr)
-        .def("__str__", vecStr);
+	auto ctor = [](Args...components) { return makeVec<VecT>(components...); };
+	auto repr = [](const VecT& v) { return Falcor::to_string(v); };
+	auto vecStr = [](const VecT& v) {
+		std::string vec = "[" + std::to_string(v[0]);
+		for (int i = 1; i < v.length(); i++) {
+			vec += ", " + std::to_string(v[i]);
+		}
+		vec += "]";
+		return vec;
+	};
+	pybind11::class_<VecT>(m, name.c_str())
+		.def(pybind11::init(ctor))
+		.def("__repr__", repr)
+		.def("__str__", vecStr);
 }
 
+<<<<<<< HEAD
 // PYBIND11_EMBEDDED_MODULE(falcor, m) {
 //     // bool2, bool3, bool4
 //     addVecType<bool2, bool, bool>(m, "bool2");
@@ -117,5 +142,46 @@ void addVecType(pybind11::module& m, const std::string name) {
 //         for (auto f : *gRegisterFuncs) f(m);
 //     }
 // }
+=======
+#ifdef SCRIPTING
+PYBIND11_EMBEDDED_MODULE(falcor, m) {
+	// bool2, bool3, bool4
+	addVecType<bool2, bool, bool>(m, "bool2");
+	addVecType<bool3, bool, bool, bool>(m, "bool3");
+	addVecType<bool4, bool, bool, bool, bool>(m, "bool4");
+
+	// float2, float3, float4
+	addVecType<float2, float, float>(m, "float2");
+	addVecType<float3, float, float, float>(m, "float3");
+	addVecType<float4, float, float, float, float>(m, "float4");
+
+	// int2, int3, int4
+	addVecType<int2, int32_t, int32_t>(m, "int2");
+	addVecType<int3, int32_t, int32_t, int32_t>(m, "int3");
+	addVecType<int4, int32_t, int32_t, int32_t, int32_t>(m, "int4");
+
+	// uint2, uint3, uint4
+	addVecType<uint2, uint32_t, uint32_t>(m, "uint2");
+	addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
+	addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
+
+	// float3x3, float4x4
+	// Note: We register these as simple data types without any operations because semantics may change in the future.
+	pybind11::class_<glm::float3x3>(m, "float3x3");
+	pybind11::class_<glm::float4x4>(m, "float4x4");
+
+/*
+	// float16_t types
+	addVecType<float16_t2, false>(m, "float16_t2");
+	addVecType<float16_t3, false>(m, "float16_t3");
+	addVecType<float16_t4, false>(m, "float16_t4");
+*/
+
+	if (gRegisterFuncs) {
+		for (auto f : *gRegisterFuncs) f(m);
+	}
+}
+#endif  // SCRIPTING
+>>>>>>> gfx
 
 }  // namespace Falcor::ScriptBindings

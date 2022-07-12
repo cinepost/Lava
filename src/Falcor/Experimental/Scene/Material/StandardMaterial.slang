@@ -73,9 +73,8 @@ struct StandardMaterial : IMaterial
         if (data.getShadingModel() == ShadingModel::MetalRough)
 #endif
         {
-            float metallic = ms.sampleTexture(data.texSpecular, s, sd.uv, float4(1.f), lod).r * data.metallic;
+            float metallic = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod).r * data.metallic;
 
-            // G - Roughness; B - Metallic
             d.diffuse = lerp(baseColor, float3(0), metallic);
             d.specular = lerp(float3(F0), baseColor, metallic);
             d.roughness = ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
@@ -84,14 +83,14 @@ struct StandardMaterial : IMaterial
 #if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
         else // ShadingModel::SpecGloss
         {
-            // Sample the specular texture.
-            // Depending on the shading model this encodes the material parameters differently.
-            const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+            float metallic = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod).r * data.metallic;
+
+            const float reflecttint = 0.0f;
 
             d.diffuse = baseColor;
-            d.specular = spec.rgb;
-            d.roughness = 1 - spec.a;
-            d.metallic = getMetallic(d.diffuse, d.specular);
+            d.specular = lerp(float3(1), baseColor, reflecttint);
+            d.roughness = 1 - ms.sampleTexture(data.texRoughness, s, sd.uv, float4(1.f), lod).r * data.roughness;
+            d.metallic = metallic;
         }
 #endif
         StandardBSDF bsdf = {};
@@ -117,7 +116,9 @@ struct StandardMaterial : IMaterial
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
     {
-        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
+        // TODO: handle dedicated opacity texture;
+        return 1.0f;
+        //SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        //return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
     }
 };

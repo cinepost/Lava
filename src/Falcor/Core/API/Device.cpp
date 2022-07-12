@@ -276,7 +276,12 @@ void Device::cleanup() {
     mpRenderContext->flush(true);
 
     // Release all the bound resources. Need to do that before deleting the RenderContext
-    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
+    for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) {
+        mCmdQueues[i].clear();
+#if FALCOR_GFX_VK
+        mCmdNativeQueues[i].clear();
+#endif
+    }
 
     if(mHeadless) {
         mpOffscreenFbo.reset();

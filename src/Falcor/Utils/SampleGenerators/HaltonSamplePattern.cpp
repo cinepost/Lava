@@ -30,20 +30,20 @@
 
 namespace Falcor {
 
-    const float2 HaltonSamplePattern::kPattern[8] = 
-  { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
-    { 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
-    { 3.0f / 4.0f - 0.5f, 1.0f / 9.0f - 0.5f },
-    { 1.0f / 8.0f - 0.5f, 4.0f / 9.0f - 0.5f },
-    { 5.0f / 8.0f - 0.5f, 7.0f / 9.0f - 0.5f },
-    { 3.0f / 8.0f - 0.5f, 2.0f / 9.0f - 0.5f },
-    { 7.0f / 8.0f - 0.5f, 5.0f / 9.0f - 0.5f },
-    { 0.5f / 8.0f - 0.5f, 8.0f / 9.0f - 0.5f } };
+const float2 HaltonSamplePattern::kPattern[8] = 
+{ { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
+{ 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
+{ 3.0f / 4.0f - 0.5f, 1.0f / 9.0f - 0.5f },
+{ 1.0f / 8.0f - 0.5f, 4.0f / 9.0f - 0.5f },
+{ 5.0f / 8.0f - 0.5f, 7.0f / 9.0f - 0.5f },
+{ 3.0f / 8.0f - 0.5f, 2.0f / 9.0f - 0.5f },
+{ 7.0f / 8.0f - 0.5f, 5.0f / 9.0f - 0.5f },
+{ 0.5f / 8.0f - 0.5f, 8.0f / 9.0f - 0.5f } };
 
-    HaltonSamplePattern::HaltonSamplePattern(uint32_t sampleCount) {
-        // FIXME: Support arbitrary sample counts by computing the sequence instead of using a table
-        if (sampleCount < 1 || sampleCount > 8) logWarning("HaltonSamplePattern() requires sampleCount in the range [1,8]. Clamping to that range.");
-        mSampleCount = std::max(1u, std::min(8u, sampleCount));
-    }
+HaltonSamplePattern::HaltonSamplePattern(uint32_t sampleCount) {
+	// FIXME: Support arbitrary sample counts by computing the sequence instead of using a table
+	if (sampleCount < 1 || sampleCount > 8) LLOG_WRN << "HaltonSamplePattern() requires sampleCount in the range [1,8]. Clamping to that range.";
+	mSampleCount = std::max(1u, std::min(8u, sampleCount));
+}
 
 }  // namespace Falcor

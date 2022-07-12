@@ -118,7 +118,7 @@ ResourceFormat ResourceManager::compressedFormat(ResourceFormat format) {
 }
 
 Texture::SharedPtr ResourceManager::createSparseTexture2D(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, Texture::BindFlags bindFlags) {
-    bindFlags = Texture::updateBindFlags(mpDevice, bindFlags, false, mipLevels, format, "SparseTexture2D");
+    //bindFlags = Texture::updateBindFlags(mpDevice, bindFlags, false, mipLevels, format, "SparseTexture2D");
     Texture::SharedPtr pTexture = Texture::SharedPtr(new Texture(mpDevice, width, height, 1, arraySize, mipLevels, 1, format, Texture::Type::Texture2D, bindFlags));
 
     if(pTexture) {
@@ -237,7 +237,7 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
     if(deviceMemRequiredSize <= deviceCacheMemSizeLeft) {
         deviceCacheMemSizeLeft = deviceCacheMemSize - deviceMemRequiredSize;
     } else {
-        LLOG_ERR << "No texture space left for " <<  ltxFilename;
+        LLOG_ERR << "No texture memory left for texture " <<  ltxFilename;
         pTex = nullptr;
     }
     

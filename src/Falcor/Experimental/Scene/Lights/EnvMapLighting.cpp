@@ -31,110 +31,103 @@
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
 
-namespace Falcor
-{
-    namespace
-    {
-        const char* kShader = "Experimental/Scene/Lights/EnvMapIntegration.ps.slang";
+namespace Falcor {
+	
+namespace {
 
-        Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::SharedPtr& pPass, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
-            auto pDevice = pContext->device();
-            pPass["gInputTex"] = pTexture;
-            pPass["gSampler"] = pSampler;
-            pPass["DataCB"]["gSampleCount"] = sampleCount;
+const char* kShader = "Experimental/Scene/Lights/EnvMapIntegration.ps.slang";
 
-            // Output texture
-            Fbo::SharedPtr pFbo = Fbo::create2D(pDevice, size, size, Fbo::Desc(pDevice).setColorTarget(0, format));
+Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::SharedPtr& pPass, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+	auto pDevice = pContext->device();
+	pPass["gInputTex"] = pTexture;
+	pPass["gSampler"] = pSampler;
+	pPass["DataCB"]["gSampleCount"] = sampleCount;
 
-            // Execute
-            pPass->execute(pContext, pFbo);
-            return pFbo->getColorTexture(0);
-        }
+	// Output texture
+	Fbo::SharedPtr pFbo = Fbo::create2D(pDevice, size, size, Fbo::Desc(pDevice).setColorTarget(0, format));
 
-        Texture::SharedPtr integrateDFG(RenderContext* pContext, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
-            auto pPass = FullScreenPass::create(pContext->device(), std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
-            return executeSingleMip(pContext, pPass, nullptr, nullptr, size, format, sampleCount);
-        }
-
-        Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
-            auto pPass = FullScreenPass::create(pContext->device(), std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
-            return executeSingleMip(pContext, pPass, pTexture, pSampler, size, format, sampleCount);
-        }
-
-        Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount)
-        {
-            auto pDevice = pContext->device();
-            auto pPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
-            pPass["gInputTex"] = pTexture;
-            pPass["gSampler"] = pSampler;
-            pPass["DataCB"]["gSampleCount"] = sampleCount;
-
-            Texture::SharedPtr pOutput = Texture::create2D(pDevice, size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
-
-            // Execute on each mip level
-            uint32_t mipCount = pOutput->getMipCount();
-            for (uint32_t i = 0; i < mipCount; i++)
-            {
-                Fbo::SharedPtr pFbo = Fbo::create(pDevice);
-                pFbo->attachColorTarget(pOutput, 0, i);
-
-                // Roughness to integrate for on current mip level
-                pPass["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
-                pPass->execute(pContext, pFbo);
-            }
-
-            return pOutput;
-        }
-    }
-
-    EnvMapLighting::EnvMapLighting(RenderContext* pContext, const EnvMap::SharedPtr& pEnvMap, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
-        : mpEnvMap(pEnvMap)
-        , mDiffSampleCount(diffSamples)
-        , mSpecSampleCount(specSamples)
-    {
-        auto pDevice = pContext->device();
-        mpDFGSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
-        mpDFGTexture = integrateDFG(pContext, 128, ResourceFormat::RGBA16Float, 128);
-
-        auto pEnvTexture = pEnvMap->getEnvMap();
-        auto pEnvSampler = pEnvMap->getEnvSampler();
-
-        mpSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
-        mpDiffuseTexture = integrateDiffuseLD(pContext, pEnvTexture, pEnvSampler, diffSize, preFilteredFormat, diffSamples);
-        mpSpecularTexture = integrateSpecularLD(pContext, pEnvTexture, pEnvSampler, specSize, preFilteredFormat, specSamples);
-    }
-
-    EnvMapLighting::SharedPtr EnvMapLighting::create(RenderContext* pContext, const EnvMap::SharedPtr& pEnvMap, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
-    {
-        if (pEnvMap->getEnvMap()->getMipCount() == 1)
-        {
-            logWarning("Environment map texture sould have a valid mip chain.");
-        }
-
-        return SharedPtr(new EnvMapLighting(pContext, pEnvMap, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat));
-    }
-
-    void EnvMapLighting::setShaderData(const ShaderVar& var)
-    {
-        if(!var.isValid()) return;
-
-        var["dfgTexture"] = mpDFGTexture;
-        var["dfgSampler"] = mpDFGSampler;
-
-        var["diffuseTexture"] = mpDiffuseTexture;
-        var["specularTexture"] = mpSpecularTexture;
-        var["sampler"] = mpSampler;
-    }
-
-    uint64_t EnvMapLighting::getMemoryUsageInBytes() const
-    {
-        uint64_t m = 0;
-        m += mpDFGTexture->getTextureSizeInBytes();
-        m += mpDiffuseTexture->getTextureSizeInBytes();
-        m += mpSpecularTexture->getTextureSizeInBytes();
-        return m;
-    }
+	// Execute
+	pPass->execute(pContext, pFbo);
+	return pFbo->getColorTexture(0);
 }
+
+Texture::SharedPtr integrateDFG(RenderContext* pContext, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+	auto pPass = FullScreenPass::create(pContext->device(), std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
+	return executeSingleMip(pContext, pPass, nullptr, nullptr, size, format, sampleCount);
+}
+
+Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+	auto pPass = FullScreenPass::create(pContext->device(), std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
+	return executeSingleMip(pContext, pPass, pTexture, pSampler, size, format, sampleCount);
+}
+
+Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, uint32_t size, ResourceFormat format, uint32_t sampleCount) {
+	auto pDevice = pContext->device();
+	auto pPass = FullScreenPass::create(pDevice, std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
+	pPass["gInputTex"] = pTexture;
+	pPass["gSampler"] = pSampler;
+	pPass["DataCB"]["gSampleCount"] = sampleCount;
+
+	Texture::SharedPtr pOutput = Texture::create2D(pDevice, size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+
+	// Execute on each mip level
+	uint32_t mipCount = pOutput->getMipCount();
+	for (uint32_t i = 0; i < mipCount; i++) {
+		Fbo::SharedPtr pFbo = Fbo::create(pDevice);
+		pFbo->attachColorTarget(pOutput, 0, i);
+
+		// Roughness to integrate for on current mip level
+		pPass["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
+		pPass->execute(pContext, pFbo);
+	}
+
+	return pOutput;
+}
+
+}  // namespace
+
+EnvMapLighting::EnvMapLighting(RenderContext* pContext, const EnvMap::SharedPtr& pEnvMap, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
+	: mpEnvMap(pEnvMap)
+	, mDiffSampleCount(diffSamples)
+	, mSpecSampleCount(specSamples)
+{
+	auto pDevice = pContext->device();
+	mpDFGSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+	mpDFGTexture = integrateDFG(pContext, 128, ResourceFormat::RGBA16Float, 128);
+
+	auto pEnvTexture = pEnvMap->getEnvMap();
+	auto pEnvSampler = pEnvMap->getEnvSampler();
+
+	mpSampler = Sampler::create(pDevice, Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+	mpDiffuseTexture = integrateDiffuseLD(pContext, pEnvTexture, pEnvSampler, diffSize, preFilteredFormat, diffSamples);
+	mpSpecularTexture = integrateSpecularLD(pContext, pEnvTexture, pEnvSampler, specSize, preFilteredFormat, specSamples);
+}
+
+EnvMapLighting::SharedPtr EnvMapLighting::create(RenderContext* pContext, const EnvMap::SharedPtr& pEnvMap, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat) {
+	if (pEnvMap->getEnvMap()->getMipCount() == 1) {
+		LLOG_WRN << "Environment map texture sould have a valid mip chain.";
+	}
+
+	return SharedPtr(new EnvMapLighting(pContext, pEnvMap, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat));
+}
+
+void EnvMapLighting::setShaderData(const ShaderVar& var) {
+	if(!var.isValid()) return;
+
+	var["dfgTexture"] = mpDFGTexture;
+	var["dfgSampler"] = mpDFGSampler;
+
+	var["diffuseTexture"] = mpDiffuseTexture;
+	var["specularTexture"] = mpSpecularTexture;
+	var["sampler"] = mpSampler;
+}
+
+uint64_t EnvMapLighting::getMemoryUsageInBytes() const {
+	uint64_t m = 0;
+	m += mpDFGTexture->getTextureSizeInBytes();
+	m += mpDiffuseTexture->getTextureSizeInBytes();
+	m += mpSpecularTexture->getTextureSizeInBytes();
+	return m;
+}
+
+}  // namespace Falcor

@@ -158,12 +158,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
  	  bool mIfaceAquired = false;
     bool mGlobalDataInited = false;
 
-    //RendererIface::GlobalData   mGlobalData;
-    //RendererIface::DisplayData  mDisplayData;
-
- 	  //Display::SharedPtr 			    mpDisplay;
-    //std::map<RendererIface::PlaneData::Channel, RendererIface::PlaneData> mPlanes;
-
     Falcor::Camera::SharedPtr       mpCamera;
 
  	  Falcor::Fbo::SharedPtr 		      mpTargetFBO;		///< The FBO available to renderers
@@ -201,6 +195,10 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
     bool mMainAOVPlaneExist = false;
     bool mInited = false;
+
+  private:
+    // RenderFrame private
+    Scene* _mpScene = nullptr;
 
     friend class RendererIface;
 }; 

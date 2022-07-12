@@ -212,15 +212,23 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
 
     gfx::IDevice::Desc iDesc;
 
+
+#ifdef FALCOR_GFX_VK
+
+    // VkInstance
     iDesc.existingDeviceHandles.handles[0].api = gfx::InteropHandleAPI::Vulkan;
     VkInstance instance = vulkanInstance();
     iDesc.existingDeviceHandles.handles[0].handleValue = reinterpret_cast<uint64_t>(instance);
 
+    // VkPhysicalDevice
     iDesc.existingDeviceHandles.handles[1].api = gfx::InteropHandleAPI::Vulkan;
     iDesc.existingDeviceHandles.handles[1].handleValue = reinterpret_cast<uint64_t>(mPhysicalDevices[gpuId]);
 
+    // VkDevice here is 0, to be created by GFX
     iDesc.existingDeviceHandles.handles[2].api = gfx::InteropHandleAPI::Vulkan;
     iDesc.existingDeviceHandles.handles[2].handleValue = 0;
+
+#endif  // FALCOR_GFX_VK
 
     pDevice = Device::create(nullptr, iDesc, desc);
     //pDevice = Device::create(nullptr, desc);

@@ -75,7 +75,7 @@ namespace Falcor {
 
         // Check texture array/mip/sample count.
         if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1) {
-            logError("ComputeParallelReduction::execute() - Input texture is unsupported. Aborting.");
+            LLOG_ERR << "ComputeParallelReduction::execute() - Input texture is unsupported. Aborting.";
             return false;
         }
 
@@ -94,7 +94,7 @@ namespace Falcor {
                 formatType = FORMAT_TYPE_UINT;
                 break;
             default:
-                logError("ComputeParallelReduction::execute() - Input texture format unsupported. Aborting.");
+                LLOG_ERR << "ComputeParallelReduction::execute() - Input texture format unsupported. Aborting.";
                 return false;
         }
 
@@ -104,7 +104,7 @@ namespace Falcor {
             (formatType == FORMAT_TYPE_SINT && (!std::is_integral<typename T::value_type>::value || !std::is_signed<typename T::value_type>::value)) ||
             (formatType == FORMAT_TYPE_UINT && (!std::is_integral<typename T::value_type>::value || !std::is_unsigned<typename T::value_type>::value)))
         {
-            logError("ComputeParallelReduction::execute() - Template type T is not compatible with resource format. Aborting.");
+            LLOG_ERR << "ComputeParallelReduction::execute() - Template type T is not compatible with resource format. Aborting.";
             return false;
         }
 
@@ -156,7 +156,7 @@ namespace Falcor {
         // Copy the result to GPU buffer.
         if (pResultBuffer) {
             if (resultOffset + 16 > pResultBuffer->getSize()) {
-                logError("ComputeParallelReduction::execute() - Results buffer is too small. Aborting.");
+                LLOG_ERR << "ComputeParallelReduction::execute() - Results buffer is too small. Aborting.";
                 return false;
             }
 

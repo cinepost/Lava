@@ -4,8 +4,16 @@ message("Running SuperBuild.cmake")
 
 list(APPEND 3RD_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 
+if( DEFINED DEPS_BUILD_TYPE)
+  list(APPEND 3RD_ARGS "-DDEPS_BUILD_TYPE=${DEPS_BUILD_TYPE}")
+else()
+  list(APPEND 3RD_ARGS "-DDEPS_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+endif()
+
 if( DEFINED SLANG_BUILD_TYPE)
   list(APPEND 3RD_ARGS "-DSLANG_BUILD_TYPE=${SLANG_BUILD_TYPE}")
+else()
+  list(APPEND 3RD_ARGS "-DSLANG_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 endif()
 
 # Third party external projects

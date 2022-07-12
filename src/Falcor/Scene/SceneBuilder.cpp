@@ -91,10 +91,13 @@ class MikkTSpaceWrapper {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have texture coordinates !!!";
             return {};
         }
+
+        /* TODO: Is this still relevant !?
         if (mesh.pIndices) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
             return {};
         }
+        */
 
         // Generate new tangent space.
         SMikkTSpaceInterface mikktspace = {};
@@ -647,7 +650,7 @@ SceneBuilder::ProcessedCurve SceneBuilder::processCurve(const Curve& curve) cons
     };
 
     auto missing_element_warning = [&](const std::string& element) {
-        logWarning("The curve '" + curve.name + "' is missing the element " + element + ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.");
+        LLOG_WRN << "The curve '" << curve.name << "' is missing the element " << element << ". This is not an error, the element will be filled with zeros which may result in incorrect rendering.";
     };
 
     if (curve.pMaterial == nullptr) throw_on_missing_element("material");
@@ -761,7 +764,7 @@ Animation::SharedPtr SceneBuilder::createAnimation(Animatable::SharedPtr pAnimat
     uint32_t nodeID = pAnimatable->getNodeID();
 
     if (nodeID != kInvalidNode && isNodeAnimated(nodeID)) {
-        logWarning("Animatable object is already animated.");
+        LLOG_WRN << "Animatable object is already animated.";
         return nullptr;
     }
     if (nodeID == kInvalidNode) nodeID = addNode(Node{ name, glm::identity<glm::mat4>(), glm::identity<glm::mat4>() });
@@ -786,7 +789,7 @@ uint32_t SceneBuilder::addNode(const Node& node) {
             }
             // Check the assumption that transforms are affine. Note that glm is column-major.
             if (m[0][3] != 0.f || m[1][3] != 0.f || m[2][3] != 0.f || m[3][3] != 1.f) {
-                logWarning("SceneBuilder::addNode() - Node '" + node.name + "' " + field + " matrix is not affine. Setting last row to (0,0,0,1).");
+                LLOG_WRN << "SceneBuilder::addNode() - Node '" << node.name << "' " << field << " matrix is not affine. Setting last row to (0,0,0,1).";
                 m[0][3] = m[1][3] = m[2][3] = 0.f;
                 m[3][3] = 1.f;
             }
@@ -1785,7 +1788,7 @@ bool SceneBuilder::needsSplit(const MeshGroup& meshGroup, size_t& triangleCount)
         // TODO: Implement mesh splitting to handle this case.
         const auto& mesh = mMeshes[meshGroup.meshList[0]];
         assert(mesh.getTriangleCount() == triangleCount);
-        logWarning("Mesh '" + mesh.name + "' has " + std::to_string(triangleCount) + " triangles, expect extraneous GPU memory usage.");
+        LLOG_WRN << "Mesh '" << mesh.name << "' has " << std::to_string(triangleCount) << " triangles, expect extraneous GPU memory usage.";
 
         return false;
     }
@@ -1945,7 +1948,9 @@ void SceneBuilder::optimizeGeometry() {
         //auto groups = splitMeshGroupMedian(meshGroup);
         auto groups = splitMeshGroupMidpointMeshes(meshGroup);
 
-        if (groups.size() > 1) logWarning("SceneBuilder::optimizeGeometry() performance warning - Mesh group was split into " + std::to_string(groups.size()) + " groups");
+        if (groups.size() > 1) {
+            LLOG_WRN << "SceneBuilder::optimizeGeometry() performance warning - Mesh group was split into " << std::to_string(groups.size()) << " groups";
+        }
 
         optimizedGroups.insert(
             optimizedGroups.end(),
@@ -2178,7 +2183,7 @@ void SceneBuilder::quantizeTexCoords() {
             // Issue warning if quantization errors are too large.
             float2 maxAbsCrd = max(abs(minTexCrd), abs(maxTexCrd));
             if (maxAbsCrd.x > HLF_MAX || maxAbsCrd.y > HLF_MAX) {
-                logWarning("Texture coordinates for emissive textured mesh '" + mesh.name + "' are outside the representable range, expect rendering errors.");
+                LLOG_WRN << "Texture coordinates for emissive textured mesh '" << mesh.name << "' are outside the representable range, expect rendering errors.";
             } else {
                 // Compute maximum quantization error in texels.
                 // The texcoords are used for all texture channels so taking the maximum dimensions.
@@ -2187,31 +2192,25 @@ void SceneBuilder::quantizeTexCoords() {
                 float maxTexelError = std::max(maxError.x, maxError.y);
 
                 if (maxTexelError > kMaxTexelError) {
-                    std::ostringstream oss;
-                    oss << "Texture coordinates for emissive textured mesh '" << mesh.name << "' have a large quantization error of " << maxTexelError << " texels. "
+                    LLOG_WRN << "Texture coordinates for emissive textured mesh '" << mesh.name << "' have a large quantization error of " << maxTexelError << " texels. "
                         << "The coordinate range is [" << minTexCrd.x << ", " << maxTexCrd.x << "] x [" << minTexCrd.y << ", " << maxTexCrd.y << "] for maximum texture dimensions ("
                         << maxTexDim.x << ", " << maxTexDim.y << ").";
-                    logWarning(oss.str());
                 }
             }
         }
     }
 }
 
-void SceneBuilder::updateSDFGridID(uint32_t oldID, uint32_t newID)
-{
+void SceneBuilder::updateSDFGridID(uint32_t oldID, uint32_t newID) {
     // This is a helper function to update all the references to a specific SDF grid ID
     // to a new SDF grid ID.
 
-    for (Scene::SDFGridDesc& sdfGridDesc : mSceneData.sdfGridDesc)
-    {
+    for (Scene::SDFGridDesc& sdfGridDesc : mSceneData.sdfGridDesc) {
         if (sdfGridDesc.sdfGridID == oldID) sdfGridDesc.sdfGridID = newID;
     }
 
-    for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstances)
-    {
-        if (sdfGridInstance.geometryID == oldID)
-        {
+    for (GeometryInstanceData& sdfGridInstance : mSceneData.sdfGridInstances) {
+        if (sdfGridInstance.geometryID == oldID) {
             sdfGridInstance.geometryID = newID;
             InternalNode& node = mSceneGraph[sdfGridInstance.globalMatrixID];
             std::replace(node.sdfGrids.begin(), node.sdfGrids.end(), oldID, newID);
@@ -2279,13 +2278,11 @@ void SceneBuilder::createMeshData() {
         if (mesh.use16BitIndices) mSceneData.has16BitIndices = true;
         else mSceneData.has32BitIndices = true;
 
-        if (mesh.isSkinned())
-        {
+        if (mesh.isSkinned()) {
             // Dynamic (skinned) meshes can only be instanced if an explicit skeleton transform node is specified.
             assert(mesh.instances.size() == 1 || mesh.skeletonNodeID != kInvalidNode);
 
-            for (uint32_t i = 0; i < mesh.vertexCount; i++)
-            {
+            for (uint32_t i = 0; i < mesh.vertexCount; i++) {
                 SkinningVertexData& s = mSceneData.meshSkinningData[mesh.skinningVertexOffset + i];
 
                 // The bind matrix is per mesh, so just take it from the first instance
@@ -2360,8 +2357,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
         assert(instanceCount > 0);
         for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
             uint32_t blasGeometryIndex = 0;
-            for (const uint32_t meshID : meshList)
-            {
+            for (const uint32_t meshID : meshList) {
                 const auto& mesh = mMeshes[meshID];
 
                 // Figure out node ID to use for the current mesh instance.
@@ -2398,8 +2394,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
 
     // Create mapping of mesh IDs to their instance IDs.
     mSceneData.meshIdToInstanceIds.resize(mMeshes.size());
-    for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++)
-    {
+    for (uint32_t instanceID = 0; instanceID < (uint32_t)instanceData.size(); instanceID++) {
         const auto& instance = instanceData[instanceID];
         mSceneData.meshIdToInstanceIds[instance.geometryID].push_back(instanceID);
     }
@@ -2415,8 +2410,7 @@ void SceneBuilder::createCurveData() {
     auto& curveData = mSceneData.curveDesc;
     curveData.resize(mCurves.size());
 
-    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
-    {
+    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++) {
         // Curve data.
         const auto& curve = mCurves[curveID];
         curveData[curveID].materialID = curve.materialId;
@@ -2434,14 +2428,13 @@ void SceneBuilder::createCurveInstanceData(uint32_t& tlasInstanceIndex) {
     uint32_t blasGeometryIndex = 0;
     size_t maxInstanceCount = 0;
 
-    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++)
-    {
+    for (uint32_t curveID = 0; curveID < mCurves.size(); curveID++) {
         const auto& curve = mCurves[curveID];
         size_t instanceCount = curve.instances.size();
         if (instanceCount > 1) throw std::runtime_error("Instanced curves are currently not supported!");
         maxInstanceCount = std::max(maxInstanceCount, instanceCount);
-        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++)
-        {
+
+        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
             GeometryInstanceData instance(GeometryType::Curve);
             instance.globalMatrixID = curve.instances[instanceIdx];
             instance.materialID = curve.materialId;
@@ -2545,8 +2538,7 @@ SCRIPT_BINDING(SceneBuilder) {
     sceneBuilder.def_property("cameraSpeed", &SceneBuilder::getCameraSpeed, &SceneBuilder::setCameraSpeed);
     sceneBuilder.def("importScene", [] (SceneBuilder* pSceneBuilder, const std::filesystem::path& path, const pybind11::dict& dict, const std::vector<Transform>& instances) {
         SceneBuilder::InstanceMatrices instanceMatrices;
-        for (const auto& instance : instances)
-        {
+        for (const auto& instance : instances) {
             instanceMatrices.push_back(instance.getMatrix());
         }
         pSceneBuilder->import(path, instanceMatrices, Dictionary(dict));

@@ -44,22 +44,22 @@ namespace Falcor {
 namespace {
 
 Buffer::SharedPtr createStructuredFromType(
-    std::shared_ptr<Device> pDevice,
-    const ReflectionType* pType,
-    const std::string& varName,
-    uint32_t elementCount,
-    ResourceBindFlags bindFlags,
-    Buffer::CpuAccess cpuAccess,
-    const void* pInitData,
-    bool createCounter)
+	std::shared_ptr<Device> pDevice,
+	const ReflectionType* pType,
+	const std::string& varName,
+	uint32_t elementCount,
+	ResourceBindFlags bindFlags,
+	Buffer::CpuAccess cpuAccess,
+	const void* pInitData,
+	bool createCounter)
 {
-    const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
-    if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
-        throw std::runtime_error("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.");
-    }
+	const ReflectionResourceType* pResourceType = pType->unwrapArray()->asResourceType();
+	if (!pResourceType || pResourceType->getType() != ReflectionResourceType::Type::StructuredBuffer) {
+		throw std::runtime_error("Can't create a structured buffer from the variable `" + varName + "`. The variable is not a structured buffer.");
+	}
 
-    assert(pResourceType->getSize() <= UINT32_MAX);
-    return Buffer::createStructured(pDevice, (uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	assert(pResourceType->getSize() <= UINT32_MAX);
+	return Buffer::createStructured(pDevice, (uint32_t)pResourceType->getSize(), elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 }  // namespace
@@ -72,118 +72,118 @@ Buffer::Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags
 }
 
 Buffer::SharedPtr Buffer::create(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, cpuAccess));
-    pBuffer->apiInit(pInitData != nullptr);
-    if (pInitData) pBuffer->setBlob(pInitData, 0, size);
-    return pBuffer;
+	Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, cpuAccess));
+	pBuffer->apiInit(pInitData != nullptr);
+	if (pInitData) pBuffer->setBlob(pInitData, 0, size);
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createTyped(std::shared_ptr<Device> pDevice, ResourceFormat format, uint32_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess, const void* pInitData) {
-    size_t size = elementCount * getFormatBytesPerBlock(format);
-    SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
-    assert(pBuffer);
+	size_t size = elementCount * getFormatBytesPerBlock(format);
+	SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
+	assert(pBuffer);
 
-    pBuffer->mFormat = format;
-    pBuffer->mElementCount = elementCount;
-    return pBuffer;
+	pBuffer->mFormat = format;
+	pBuffer->mElementCount = elementCount;
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createStructured(
-    std::shared_ptr<Device> pDevice,
-    uint32_t structSize,
-    uint32_t elementCount,
-    ResourceBindFlags bindFlags,
-    CpuAccess cpuAccess,
-    const void* pInitData,
-    bool createCounter)
+	std::shared_ptr<Device> pDevice,
+	uint32_t structSize,
+	uint32_t elementCount,
+	ResourceBindFlags bindFlags,
+	CpuAccess cpuAccess,
+	const void* pInitData,
+	bool createCounter)
 {
-    size_t size = structSize * elementCount;
-    Buffer::SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
-    assert(pBuffer);
+	size_t size = structSize * elementCount;
+	Buffer::SharedPtr pBuffer = create(pDevice, size, bindFlags, cpuAccess, pInitData);
+	assert(pBuffer);
 
-    pBuffer->mElementCount = elementCount;
-    pBuffer->mStructSize = structSize;
-    static const uint32_t zero = 0;
-    
-    if (createCounter) {
-        pBuffer->mpUAVCounter = Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-    }
-    return pBuffer;
+	pBuffer->mElementCount = elementCount;
+	pBuffer->mStructSize = structSize;
+	static const uint32_t zero = 0;
+	
+	if (createCounter) {
+		pBuffer->mpUAVCounter = Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+	}
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createStructured(
-    std::shared_ptr<Device> pDevice,
-    const ShaderVar& shaderVar,
-    uint32_t elementCount,
-    ResourceBindFlags bindFlags,
-    CpuAccess cpuAccess,
-    const void* pInitData,
-    bool createCounter)
+	std::shared_ptr<Device> pDevice,
+	const ShaderVar& shaderVar,
+	uint32_t elementCount,
+	ResourceBindFlags bindFlags,
+	CpuAccess cpuAccess,
+	const void* pInitData,
+	bool createCounter)
 {
-    return createStructuredFromType(pDevice, shaderVar.getType().get(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	return createStructuredFromType(pDevice, shaderVar.getType().get(), "<Unknown ShaderVar>", elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Buffer::createStructured(
-    std::shared_ptr<Device> pDevice,
-    const Program* pProgram,
-    const std::string& name,
-    uint32_t elementCount,
-    ResourceBindFlags bindFlags,
-    CpuAccess cpuAccess,
-    const void* pInitData,
-    bool createCounter)
+	std::shared_ptr<Device> pDevice,
+	const Program* pProgram,
+	const std::string& name,
+	uint32_t elementCount,
+	ResourceBindFlags bindFlags,
+	CpuAccess cpuAccess,
+	const void* pInitData,
+	bool createCounter)
 {
-    const auto& pDefaultBlock = pProgram->getReflector()->getDefaultParameterBlock();
-    const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
-    if (pVar == nullptr) {
-        throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
-    }
-    return createStructuredFromType(pDevice, pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
+	const auto& pDefaultBlock = pProgram->getReflector()->getDefaultParameterBlock();
+	const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
+	if (pVar == nullptr) {
+		throw std::runtime_error("Can't find a structured buffer named `" + name + "` in the program");
+	}
+	return createStructuredFromType(pDevice, pVar->getType().get(), name, elementCount, bindFlags, cpuAccess, pInitData, createCounter);
 }
 
 Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags) {
-    assert(pBaseResource->asBuffer()); // Only aliasing buffers for now
-    CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
-    if (cpuAccess != CpuAccess::None) {
-        LLOG_ERR << "Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" << to_string(cpuAccess) << " which is illegal. Aliased resource must have CpuAccess::None";
-        return nullptr;
-    }
+	assert(pBaseResource->asBuffer()); // Only aliasing buffers for now
+	CpuAccess cpuAccess = pBaseResource->asBuffer() ? pBaseResource->asBuffer()->getCpuAccess() : CpuAccess::None;
+	if (cpuAccess != CpuAccess::None) {
+		LLOG_ERR << "Buffer::aliasResource() - trying to alias a buffer with CpuAccess::" << to_string(cpuAccess) << " which is illegal. Aliased resource must have CpuAccess::None";
+		return nullptr;
+	}
 
-    if ((pBaseResource->getBindFlags() & bindFlags) != bindFlags) {
-        LLOG_ERR << "Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " << 
-        to_string(bindFlags) << "\nAliased = " << to_string(pBaseResource->getBindFlags());
-        return nullptr;
-    }
+	if ((pBaseResource->getBindFlags() & bindFlags) != bindFlags) {
+		LLOG_ERR << "Buffer::aliasResource() - requested buffer bind-flags don't match the aliased resource bind flags.\nRequested = " << 
+		to_string(bindFlags) << "\nAliased = " << to_string(pBaseResource->getBindFlags());
+		return nullptr;
+	}
 
-    if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize()) {
-        LLOG_ERR << "Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " <<
-            to_string(size) << ", offset = " << to_string(offset) << ". Aliased resource size = " << to_string(pBaseResource->getSize());
-        return nullptr;
-    }
+	if (offset >= pBaseResource->getSize() || (offset + size) >= pBaseResource->getSize()) {
+		LLOG_ERR << "Buffer::aliasResource() - requested offset and size don't fit inside the alias resource dimensions. Requesed size = " <<
+			to_string(size) << ", offset = " << to_string(offset) << ". Aliased resource size = " << to_string(pBaseResource->getSize());
+		return nullptr;
+	}
 
-    SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, CpuAccess::None));
-    pBuffer->mpAliasedResource = pBaseResource;
-    pBuffer->mApiHandle = pBaseResource->getApiHandle();
-    pBuffer->mGpuVaOffset = offset;
-    return pBuffer;
+	SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, CpuAccess::None));
+	pBuffer->mpAliasedResource = pBaseResource;
+	pBuffer->mApiHandle = pBaseResource->getApiHandle();
+	pBuffer->mGpuVaOffset = offset;
+	return pBuffer;
 }
 
 Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
-    assert(handle);
-    Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, cpuAccess));
-    pBuffer->mApiHandle = handle;
-    return pBuffer;
+	assert(handle);
+	Buffer::SharedPtr pBuffer = SharedPtr(new Buffer(pDevice, size, bindFlags, cpuAccess));
+	pBuffer->mApiHandle = handle;
+	return pBuffer;
 }
 
 Buffer::~Buffer() {
-    if (mpAliasedResource) return;
+	if (mpAliasedResource) return;
 
-    if (mDynamicData.pResourceHandle) {
-        mpDevice->getUploadHeap()->release(mDynamicData);
-    } else {
-        mpDevice->releaseResource(mApiHandle);
-    }
+	if (mDynamicData.pResourceHandle) {
+		mpDevice->getUploadHeap()->release(mDynamicData);
+	} else {
+		mpDevice->releaseResource(mApiHandle);
+	}
 }
 
 template<typename ViewClass>
@@ -191,118 +191,121 @@ using CreateFuncType = std::function<typename ViewClass::SharedPtr(Buffer* pBuff
 
 template<typename ViewClass, typename ViewMapType>
 typename ViewClass::SharedPtr findViewCommon(Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount, ViewMapType& viewMap, CreateFuncType<ViewClass> createFunc) {
-    ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
+	ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
 
-    if (viewMap.find(view) == viewMap.end()) {
-        viewMap[view] = createFunc(pBuffer, firstElement, elementCount);
-    }
+	if (viewMap.find(view) == viewMap.end()) {
+		viewMap[view] = createFunc(pBuffer, firstElement, elementCount);
+	}
 
-    return viewMap[view];
+	return viewMap[view];
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV(uint32_t firstElement, uint32_t elementCount) {
-    auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-        return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-    };
+	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
+		return ShaderResourceView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
+	};
 
-    return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
+	return findViewCommon<ShaderResourceView>(this, firstElement, elementCount, mSrvs, createFunc);
 }
 
 ShaderResourceView::SharedPtr Buffer::getSRV() {
-    return getSRV(0);
+	return getSRV(0);
 }
 
 UnorderedAccessView::SharedPtr Buffer::getUAV(uint32_t firstElement, uint32_t elementCount) {
-    auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
-        return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
-    };
+	auto createFunc = [](Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount) {
+		return UnorderedAccessView::create(pBuffer->device(), std::static_pointer_cast<Buffer>(pBuffer->shared_from_this()), firstElement, elementCount);
+	};
 
-    return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
+	return findViewCommon<UnorderedAccessView>(this, firstElement, elementCount, mUavs, createFunc);
 }
 
 
 
 UnorderedAccessView::SharedPtr Buffer::getUAV() {
-    return getUAV(0);
+	return getUAV(0);
 }
 
 bool Buffer::setBlob(const void* pData, size_t offset, size_t size) {
-    if (offset + size > mSize) {
-        LLOG_ERR << "Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call";
-        return false;
-    }
+	if (offset + size > mSize) {
+		LLOG_ERR << "Error when setting blob to buffer. Blob to large and will result in an overflow. Ignoring call";
+		return false;
+	}
 
-    if (mCpuAccess == CpuAccess::Write) {
-        uint8_t* pDst = (uint8_t*)map(MapType::WriteDiscard) + offset;
-        std::memcpy(pDst, pData, size);
-    } else {
-        mpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
-    }
-    return true;
+	if (mCpuAccess == CpuAccess::Write) {
+		uint8_t* pDst = (uint8_t*)map(MapType::WriteDiscard) + offset;
+		std::memcpy(pDst, pData, size);
+	} else {
+		mpDevice->getRenderContext()->updateBuffer(this, pData, offset, size);
+	}
+	return true;
 }
 // Buffer::MapType::Read
 void* Buffer::map(MapType type) {
-    //LOG_WARN("map buffer %zu", mID);
-    if (type == MapType::Write) {
-        if (mCpuAccess != CpuAccess::Write) {
-            LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
-            return nullptr;
-        }
-        return mDynamicData.pData;
-    } else if (type == MapType::WriteDiscard) {
-        if (mCpuAccess != CpuAccess::Write) {
-            LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
-            return nullptr;
-        }
+	if (type == MapType::Write) {
+		if (mCpuAccess != CpuAccess::Write) {
+			LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
+			return nullptr;
+		}
+		return mDynamicData.pData;
+	} else if (type == MapType::WriteDiscard) {
+		if (mCpuAccess != CpuAccess::Write) {
+			LLOG_ERR << "Trying to map a buffer for write, but it wasn't created with the write permissions";
+			return nullptr;
+		}
 
-        // Allocate a new buffer
-        if (mDynamicData.pResourceHandle) {
-            mpDevice->getUploadHeap()->release(mDynamicData);
-        }
+		// Allocate a new buffer
+		if (mDynamicData.pResourceHandle) {
+			mpDevice->getUploadHeap()->release(mDynamicData);
+		}
 
-        mpCBV = nullptr;
-        mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
-        mApiHandle = mDynamicData.pResourceHandle;
-        mGpuVaOffset = mDynamicData.offset;
-        invalidateViews();
-        return mDynamicData.pData;
-    } else {
-        assert(type == MapType::Read);
+		mpCBV = nullptr;
+		mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
+		mApiHandle = mDynamicData.pResourceHandle;
+		mGpuVaOffset = mDynamicData.offset;
+		invalidateViews();
+		return mDynamicData.pData;
+	} else {
+		printf("_1\n");
+		assert(type == MapType::Read);
 
-        if (mCpuAccess == CpuAccess::Write) {
-            // Buffers on the upload heap are already mapped, just return the ptr.
-            assert(mDynamicData.pResourceHandle);
-            assert(mDynamicData.pData);
-            return mDynamicData.pData;
-        } else if (mCpuAccess == CpuAccess::Read) {
-            assert(mBindFlags == BindFlags::None);
-            return mapBufferApi(mApiHandle, mSize);
-        } else {
-            // For buffers without CPU access we must copy the contents to a staging buffer.
-            LLOG_WRN << "Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work";
-            if (mpStagingResource == nullptr) {
-                mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-            }
+		if (mCpuAccess == CpuAccess::Write) {
+			printf("_1_1\n");
+			// Buffers on the upload heap are already mapped, just return the ptr.
+			assert(mDynamicData.pResourceHandle);
+			assert(mDynamicData.pData);
+			return mDynamicData.pData;
+		} else if (mCpuAccess == CpuAccess::Read) {
+			printf("_1_2\n");
+			assert(mBindFlags == BindFlags::None);
+			return mapBufferApi(mApiHandle, mSize);
+		} else {
+			printf("_1_3\n");
+			// For buffers without CPU access we must copy the contents to a staging buffer.
+			LLOG_WRN << "Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work";
+			if (mpStagingResource == nullptr) {
+				mpStagingResource = Buffer::create(mpDevice, mSize, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+			}
 
-            // Copy the buffer and flush the pipeline
-            RenderContext* pContext = mpDevice->getRenderContext();
-            assert(mGpuVaOffset == 0);
-            pContext->copyResource(mpStagingResource.get(), this);
-            pContext->flush(true);
+			// Copy the buffer and flush the pipeline
+			RenderContext* pContext = mpDevice->getRenderContext();
+			assert(mGpuVaOffset == 0);
+			pContext->copyResource(mpStagingResource.get(), this);
+			pContext->flush(true);
 
-            return mpStagingResource->map(MapType::Read);
-        }
-    }
+			return mpStagingResource->map(MapType::Read);
+		}
+	}
 }
 
 ConstantBufferView::SharedPtr Buffer::getCBV() {
-    if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, std::static_pointer_cast<Buffer>(shared_from_this()));
-    return mpCBV;
+	if (!mpCBV) mpCBV = ConstantBufferView::create(mpDevice, std::static_pointer_cast<Buffer>(shared_from_this()));
+	return mpCBV;
 }
 
 #ifdef SCRIPTING
 SCRIPT_BINDING(Buffer) {
-    pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
+	pybind11::class_<Buffer, Buffer::SharedPtr>(m, "Buffer");
 }
 #endif
 

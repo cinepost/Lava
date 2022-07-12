@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "renderer.h"
 
 #include "Falcor/Core/API/ResourceManager.h"
@@ -403,6 +405,8 @@ void Renderer::bindAOVPlanesToResources() {
 }
 
 bool Renderer::prepareFrame(const FrameInfo& frame_info) {
+    _mpScene = nullptr;
+
     if (!mInited) {
         LLOG_ERR << "Renderer not initialized !!!";
         return false;
@@ -441,15 +445,25 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 
     mCurrentSampleNumber = 0;
     mCurrentFrameInfo = frame_info;
+
+    auto pScene = mpSceneBuilder->getScene();
+    if (pScene) {
+        _mpScene = pScene.get();
+    }
 }
 
 void Renderer::renderSample() {
-    if (!mpRenderGraph) return;
+    auto start = std::chrono::high_resolution_clock::now();
+
     if ((mCurrentFrameInfo.imageSamples > 0) && mCurrentSampleNumber >= mCurrentFrameInfo.imageSamples) return;
 
-    auto pScene = mpSceneBuilder->getScene();
-    if (!pScene) {
-        LLOG_ERR << "Unable to get scene from scene builder !!!";
+    if (!mpRenderGraph) {
+        LLOG_ERR << "RenderGraph not ready for rendering !!!";
+        return;
+    }
+
+    if (!_mpScene) {
+        LLOG_ERR << "Scene not ready for rendering !!!";
         return;
     }
 
@@ -463,11 +477,16 @@ void Renderer::renderSample() {
     }
 
     mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-    
+    pRenderContext->flush(true);
+
     double currentTime = 0;
-    pScene->update(pRenderContext, currentTime);
+    _mpScene->update(pRenderContext, currentTime);
 
     mCurrentSampleNumber++;
+
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "Sample " << mCurrentSampleNumber << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 }
 
 bool Renderer::getAOVPlaneImageData(const AOVName& name, uint8_t* pData) {

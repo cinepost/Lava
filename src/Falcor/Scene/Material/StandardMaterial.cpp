@@ -28,10 +28,9 @@
 #include "stdafx.h"
 #include "StandardMaterial.h"
 
-namespace Falcor
-{
-    StandardMaterial::SharedPtr StandardMaterial::create(Device::SharedPtr pDevice, const std::string& name, ShadingModel shadingModel)
-    {
+namespace Falcor {
+
+    StandardMaterial::SharedPtr StandardMaterial::create(Device::SharedPtr pDevice, const std::string& name, ShadingModel shadingModel) {
         return SharedPtr(new StandardMaterial(pDevice, name, shadingModel));
     }
 
@@ -42,70 +41,59 @@ namespace Falcor
         bool specGloss = getShadingModel() == ShadingModel::SpecGloss;
 
         // Setup additional texture slots.
-        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { specGloss ? "diffuse" : "baseColor", TextureChannelFlags::RGBA, true };
-        mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = specGloss ? TextureSlotInfo{ "specular", TextureChannelFlags::RGBA, true } : TextureSlotInfo{ "spec", TextureChannelFlags::Green | TextureChannelFlags::Blue, false };
+        mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { specGloss ? "diffuse" : "baseColor", TextureChannelFlags::RGB, true };
+        mTextureSlotInfo[(uint32_t)TextureSlot::Metallic] = specGloss ? TextureSlotInfo{ "metallic", TextureChannelFlags::Red, true } : TextureSlotInfo{ "metallic", TextureChannelFlags::Green | TextureChannelFlags::Blue, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Emissive] = { "emissive", TextureChannelFlags::RGB, true };
+        mTextureSlotInfo[(uint32_t)TextureSlot::Roughness] = { "roughness", TextureChannelFlags::Red, true };
         mTextureSlotInfo[(uint32_t)TextureSlot::Transmission] = { "transmission", TextureChannelFlags::RGB, true };
     }
 
-    void StandardMaterial::setShadingModel(ShadingModel model)
-    {
+    void StandardMaterial::setShadingModel(ShadingModel model) {
         if(model != ShadingModel::MetalRough && model != ShadingModel::SpecGloss) {
             throw std::runtime_error("ShadingModel must be MetalRough or SpecGloss");
         }
 
-        if (getShadingModel() != model)
-        {
+        if (getShadingModel() != model) {
             mData.setShadingModel(model);
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void StandardMaterial::setRoughness(float roughness)
-    {
-        if (getShadingModel() != ShadingModel::MetalRough)
-        {
+    void StandardMaterial::setRoughness(float roughness) {
+        if (getShadingModel() != ShadingModel::MetalRough) {
             LLOG_WRN << "Ignoring setRoughness(). Material '" << mName << "' does not use the metallic/roughness shading model.";
             return;
         }
 
-        if (mData.specular[1] != (float16_t)roughness)
-        {
-            mData.specular[1] = (float16_t)roughness;
+        if (mData.roughness != (float16_t)roughness) {
+            mData.roughness = (float16_t)roughness;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void StandardMaterial::setMetallic(float metallic)
-    {
-        if (getShadingModel() != ShadingModel::MetalRough)
-        {
+    void StandardMaterial::setMetallic(float metallic) {
+        if (getShadingModel() != ShadingModel::MetalRough) {
             LLOG_WRN << "Ignoring setMetallic(). Material '" << mName << "' does not use the metallic/roughness shading model.";
             return;
         }
 
-        if (mData.metallic != (float16_t)metallic)
-        {
+        if (mData.metallic != (float16_t)metallic) {
             mData.metallic = (float16_t)metallic;
             markUpdates(UpdateFlags::DataChanged);
         }
     }
 
-    void StandardMaterial::setEmissiveColor(const float3& color)
-    {
-        if (mData.emissive != (float16_t3)color)
-        {
+    void StandardMaterial::setEmissiveColor(const float3& color) {
+        if (mData.emissive != (float16_t3)color) {
             mData.emissive = (float16_t3)color;
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveFlag();
         }
     }
 
-    void StandardMaterial::setEmissiveFactor(float factor)
-    {
-        if (mData.emissiveFactor != factor)
-        {
+    void StandardMaterial::setEmissiveFactor(float factor) {
+        if (mData.emissiveFactor != factor) {
             mData.emissiveFactor = factor;
             markUpdates(UpdateFlags::DataChanged);
             updateEmissiveFlag();
@@ -113,9 +101,8 @@ namespace Falcor
     }
 
 #ifdef SCRIPTING
-    SCRIPT_BINDING(StandardMaterial)
-    {
-        //FALCOR_SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
+    SCRIPT_BINDING(StandardMaterial) {
+        SCRIPT_BINDING_DEPENDENCY(BasicMaterial)
 
         pybind11::enum_<ShadingModel> shadingModel(m, "ShadingModel");
         shadingModel.value("MetalRough", ShadingModel::MetalRough);
@@ -135,4 +122,5 @@ namespace Falcor
         m.attr("Material") = m.attr("StandardMaterial"); // PYTHONDEPRECATED
     }
 #endif
-}
+
+}  // namespace Falcor

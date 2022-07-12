@@ -117,7 +117,7 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
         else if (key == kFilter) pSkyBox->setFilter(value);
         else if (key == kIntensity) pSkyBox->setIntensity(value);
         else if (key == kOpacity) pSkyBox->setOpacity(value);
-        else logWarning("Unknown field '" + key + "' in a SkyBox dictionary");
+        else LLOG_WRN << "Unknown field '" << key << "' in a SkyBox dictionary";
     }
 
     std::shared_ptr<Texture> pTexture;

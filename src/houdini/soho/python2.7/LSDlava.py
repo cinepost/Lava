@@ -110,6 +110,9 @@ def initializeFeatures(settings):
     Renderer("renderer", "uvpostprocess", "string", "lv_uvpostprocess")
     Renderer("renderer", "uvshadingquality", "float", "lv_uvshadingquality")
     Renderer("renderer", "uvtype", "string", "lv_uvtype")
+
+    Renderer("renderer", "udim_file_mask", "string", "lv_udim_file_mask", skipdefault=False)
+
     Renderer("renderer", "verbose", "int", "lv_verbose", skipdefault=False)
     Renderer("renderer", "vexprofile", "int", "lv_vexprofile")
     Renderer("renderer", "volumecomponents", "string", "lv_volumecomponents")

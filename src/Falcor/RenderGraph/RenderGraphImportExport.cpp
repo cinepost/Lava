@@ -58,9 +58,11 @@ void runScriptFile(const std::string& filename, const std::string& custom) {
 }  // namespace
 
 bool loadFailed(std::exception e, const std::string& filename) {
-    logError(e.what(), Logger::MsgBox::None);
-    auto res = msgBox(std::string("Error when importing graph from file `" + filename + "`\n" + e.what() + "\n\nWould you like to try and reload the file?").c_str(), MsgBoxType::YesNo);
-    return (res == MsgBoxButton::No);
+    LLOG_ERR << e.what();
+
+    return false;
+    //auto res = msgBox(std::string("Error when importing graph from file `" + filename + "`\n" + e.what() + "\n\nWould you like to try and reload the file?").c_str(), MsgBoxType::YesNo);
+    //return (res == MsgBoxButton::No);
 }
 
 RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName) {

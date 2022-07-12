@@ -47,10 +47,10 @@ struct ClothMaterial : IMaterial
         ClothBRDF brdf = {};
 
         // Sample base color.
-        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
+        const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;
 
         // Sample the specular texture. This encodes additional BSDF parameters.
-        const float4 spec = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+        const float4 spec = ms.sampleTexture(data.texMetallic, s, sd.uv, float4(1.f), lod) * data.reflectivity;
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
@@ -74,7 +74,10 @@ struct ClothMaterial : IMaterial
 
     float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
     {
-        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
+        // TODO: handle dedicated opacity texture;
+        return 1.0f;
+
+        //SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
+        //return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
     }
 };

@@ -66,6 +66,7 @@ class dlldecl Bitmap : public std::enable_shared_from_this<Bitmap> {
     */
     static UniqueConstPtr createFromFileOIIO(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
     static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown);
+    static UniqueConstPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& fullpath, bool isTopDown);
 
     /** Store a memory buffer to a PNG file.
         \param[in] filename Output filename. Can include a path - absolute or relative to the executable directory.

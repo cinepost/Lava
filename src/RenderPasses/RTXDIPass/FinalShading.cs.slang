@@ -51,9 +51,12 @@ struct FinalShading
 
     uint2 frameDim;
 
+
     void execute(const uint2 pixel)
     {
         if (any(pixel >= frameDim)) return;
+
+        const HitInfo hit = HitInfo(vbuffer[pixel]);
 
         float3 color = {};
         float3 emission = {};
@@ -140,8 +143,6 @@ struct FinalShading
         if (is_valid(gDiffuseIllumination)) gDiffuseIllumination[pixel] = float4(diffuseIllumination, hitT);
         if (is_valid(gSpecularReflectance)) gSpecularReflectance[pixel] = float4(specularReflectance, 1.f);
         if (is_valid(gSpecularIllumination)) gSpecularIllumination[pixel] = float4(specularIllumination, hitT);
-
-        //gColor[pixel] = float4(sd.N, 1.f);
     }
 };
 

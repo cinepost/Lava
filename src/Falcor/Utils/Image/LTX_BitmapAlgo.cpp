@@ -73,8 +73,8 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
     uint32_t currentPageOffset = 0;
 
     // write mip level 0
-    LOG_WARN("Writing mip level 0 tiles %u %u ...", pagesCountX, pagesCountY);
-    LOG_WARN("Partial page dims: %u %u %u", partialPageDims.x, partialPageDims.y, partialPageDims.z);
+    LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+    LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
     pagesCount += pagesCountX * pagesCountY * pagesCountZ;
     for(uint32_t z = 0; z < pagesCountZ; z++) {
@@ -139,7 +139,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
                     int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                            compressed_page_data.data(), compressed_page_data.size());
 
-                    LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                     fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                     compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
@@ -184,9 +184,9 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 
         pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-        LOG_WARN("Writing mip level %u tiles %u %u ...", mipLevel, pagesCountX, pagesCountY);
-        LOG_WARN("Mip level width %u height %u ...", mipLevelWidth, mipLevelHeight);
-        LOG_WARN("Partial page dims: %u %u %u", partialPageDims.x, partialPageDims.y, partialPageDims.z);
+        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+        LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
+        LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
         partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
@@ -263,7 +263,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
                         int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                             compressed_page_data.data(), compressed_page_data.size());
 
-                        LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                         fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                         compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
@@ -347,7 +347,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
     uint32_t currentPageOffset = 0;
 
     // write mip level 0
-    LOG_WARN("Writing POT texture mip level 0 tiles %u %u ...", pagesCountX, pagesCountY);
+    LLOG_DBG << "Writing POT texture mip level 0 tiles " << pagesCountX << " " << pagesCountY;
 
     pagesCount += pagesCountX * pagesCountY * pagesCountZ;
     for(uint32_t z = 0; z < pagesCountZ; z++) {
@@ -379,7 +379,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
                     int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                         compressed_page_data.data(), compressed_page_data.size());
 
-                    LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                     fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                     compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
@@ -415,8 +415,8 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
         pagesCountZ = mipLevelDepth / page_depth;
         pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-        LOG_WARN("Writing mip level %u tiles %u %u ...", mipLevel, pagesCountX, pagesCountY);
-        LOG_WARN("Mip level width %u height %u ...", mipLevelWidth, mipLevelHeight);
+        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+        LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
 
         tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
         bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
@@ -464,7 +464,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
                         int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                             compressed_page_data.data(), compressed_page_data.size());
 
-                        LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                         fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                         compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
@@ -575,8 +575,8 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
     uint32_t currentPageOffset = 0;
 
     // write mip level 0
-    LOG_WARN("Writing mip level 0 tiles %u %u ...", pagesCountX, pagesCountY);
-    LOG_WARN("Partial page dims: %u %u %u", partialPageDims.x, partialPageDims.y, partialPageDims.z);
+    LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+    LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
     oiio::ImageBuf A(oiio::ImageSpec(img_width, img_height, 4, oiio::TypeDesc::UINT8));
     oiio::ImageBufAlgo::checker( A, 128, 128,1, dbg_cls_dark[0], dbg_cls_light[0], 0, 0, 0);
@@ -644,7 +644,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
                     int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                            compressed_page_data.data(), compressed_page_data.size());
 
-                    LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                     fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                     compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
@@ -683,9 +683,9 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
         if( partialPageDims.y != 0) pagesCountY++;
         if( partialPageDims.z != 0) pagesCountZ++;
 
-        LOG_WARN("Writing mip level %u tiles %u %u ...", mipLevel, pagesCountX, pagesCountY);
-        LOG_WARN("Mip level width %u height %u ...", mipLevelWidth, mipLevelHeight);
-        LOG_WARN("Partial page dims: %u %u %u", partialPageDims.x, partialPageDims.y, partialPageDims.z);
+        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " <<  pagesCountY;
+        LLOG_DBG << "Mip level width " << mipLevelWidth << " " << mipLevelHeight;
+        LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
         partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
@@ -756,7 +756,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
                         int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
                             compressed_page_data.data(), compressed_page_data.size());
 
-                        LOG_WARN("Compressed page: %u size is: %u offset: %u ftell: %zu", currentPageId, cbytes, currentPageOffset, ftell(pFile));
+                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
 
                         fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
                         compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;

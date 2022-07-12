@@ -38,35 +38,6 @@ namespace Falcor {
 	class Program;
 	class RtStateObject;
 	class RtProgramVars;
-/*
-	class IShaderTable : public ISlangUnknown {
-	public:
-		// Specifies the bytes to overwrite into a record in the shader table.
-		struct ShaderRecordOverwrite {
-			size_t  offset;  // Offset within the shader record.
-			size_t  size;    // Number of bytes to overwrite.
-			uint8_t data[8]; // Content to overwrite.
-		};
-
-		struct Desc {
-			int rayGenShaderCount;
-			const char** rayGenShaderEntryPointNames;
-			const ShaderRecordOverwrite* rayGenShaderRecordOverwrites;
-
-			int missShaderCount;
-			const char** missShaderEntryPointNames;
-			const ShaderRecordOverwrite* missShaderRecordOverwrites;
-
-			int hitGroupCount;
-			const char** hitGroupNames;
-			const ShaderRecordOverwrite* hitGroupRecordOverwrites;
-
-			Program* program;
-		};
-	};
-
-	using ShaderTablePtr = std::shared_ptr<IShaderTable>;
-*/
 
 	/** This class represents the GPU shader table for raytracing programs.
 		We are using the following layout for the shader table:

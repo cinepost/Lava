@@ -85,7 +85,7 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = value;
         else if (key == kSubFrameCount) mSubFrameCount = value;
-        else logWarning("Unknown field '" + key + "' in AccumulatePass dictionary");
+        else LLOG_WRN << "Unknown field '" << key << "' in AccumulatePass dictionary";
     }
 
     // Create accumulation programs.

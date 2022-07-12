@@ -96,7 +96,7 @@ RTXDI::RTXDI(const Scene::SharedPtr& pScene, const Options& options): mpScene(pS
     mpPixelDebug = PixelDebug::create(pScene->device());
 
     setOptions(options);
-    if (!isInstalled()) logWarning("RTXDI SDK is not installed.");
+    if (!isInstalled()) LLOG_WRN << "RTXDI SDK is not installed.";
 }
 
 void RTXDI::setOptions(const Options& options) {
@@ -610,8 +610,8 @@ void RTXDI::loadShaders() {
     auto pReflector = mpReflectTypes->getProgram()->getReflector();
     assert(pReflector->findType("PackedPolymorphicLight"));
     assert(pReflector->findType("PackedSurfaceData"));
-    if (pReflector->findType("PackedPolymorphicLight")->getByteSize() % 16 != 0) logWarning("PackedPolymorphicLight struct size is not a multiple of 16B.");
-    if (pReflector->findType("PackedSurfaceData")->getByteSize() % 16 != 0) logWarning("PackedSurfaceData struct size is not a multiple of 16B.");
+    if (pReflector->findType("PackedPolymorphicLight")->getByteSize() % 16 != 0) LLOG_WRN << "PackedPolymorphicLight struct size is not a multiple of 16B.";
+    if (pReflector->findType("PackedSurfaceData")->getByteSize() % 16 != 0) LLOG_WRN << "PackedSurfaceData struct size is not a multiple of 16B.";
 
     // Helper for creating compute passes.
     auto createComputePass = [&](const std::string& file, const std::string& entryPoint) {

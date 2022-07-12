@@ -43,8 +43,7 @@ import Utils.Geometry.GeometryHelpers;
     The BSDF has interfaces for sampling and evaluation, as well as for
     querying its properties at the hit.
 */
-struct ShadingData
-{
+struct ShadingData {
     // Geometry data
     float3  posW;                   ///< Shading hit position in world space.
     float3  V;                      ///< Direction to the eye at shading hit.
@@ -71,8 +70,7 @@ struct ShadingData
         \param[in] viewside True if the origin should be on the view side (reflection) or false otherwise (transmission).
         \return Ray origin of the new ray.
     */
-    float3 computeNewRayOrigin(bool viewside = true)
-    {
+    float3 computeNewRayOrigin(bool viewside = true) {
         return computeRayOrigin(posW, (frontFacing == viewside) ? faceN : -faceN);
     }
 
@@ -80,8 +78,7 @@ struct ShadingData
         \param[in] v Vector in local space.
         \return Vector in world space.
     */
-    float3 fromLocal(float3 v)
-    {
+    float3 fromLocal(float3 v) {
         return T * v.x + B * v.y + N * v.z;
     }
 
@@ -89,8 +86,7 @@ struct ShadingData
         \param[in] v Vector in world space.
         \return Vector in local space.
     */
-    float3 toLocal(float3 v)
-    {
+    float3 toLocal(float3 v) {
         return float3(dot(v, T), dot(v, B), dot(v, N));
     }
 };

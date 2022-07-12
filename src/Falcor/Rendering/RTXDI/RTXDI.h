@@ -103,7 +103,7 @@ public:
     /** Configuration options, with generally reasonable defaults.
     */
     struct Options {
-        Mode mode = Mode::NoResampling; ///< RTXDI sampling mode.
+        Mode mode = Mode::SpatialResampling; ///< RTXDI sampling mode.
 
         // Light presampling options.
         uint32_t presampledTileCount = 128;         ///< Number of precomputed light tiles.
@@ -114,7 +114,7 @@ public:
         uint32_t localLightCandidateCount = 24;     ///< Number of initial local light candidate samples.
         uint32_t infiniteLightCandidateCount = 8;   ///< Number of initial infinite light candidate samples.
         uint32_t envLightCandidateCount = 8;        ///< Number of initial environment light candidate samples.
-        uint32_t brdfCandidateCount = 1;            ///< Number of initial brdf candidate samples.
+        uint32_t brdfCandidateCount = 2;            ///< Number of initial brdf candidate samples.
         float brdfCutoff = 0.f;                     ///< Value in range[0, 1] to determine how much to shorten BRDF rays. 0 to disable shortening.
         bool testCandidateVisibility = true;        ///< Test visibility on selected candidate sample before doing resampling.
 
@@ -125,7 +125,7 @@ public:
 
         // Spatial resampling options.
         float samplingRadius = 30.0f;               ///< Screen-space radius for spatial resampling, measured in pixels.
-        uint32_t spatialSampleCount = 1;            ///< Number of neighbor pixels considered for resampling.
+        uint32_t spatialSampleCount = 4;            ///< Number of neighbor pixels considered for resampling.
         uint32_t spatialIterations = 5;             ///< Number of spatial resampling passes (only used in SpatialResampling mode, Spatiotemporal mode always uses 1 iteration).
 
         // Temporal resampling options.

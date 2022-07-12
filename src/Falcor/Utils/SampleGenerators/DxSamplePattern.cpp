@@ -28,20 +28,20 @@
 #include "stdafx.h"
 #include "DxSamplePattern.h"
 
-namespace Falcor
-{
-    const float2 DxSamplePattern::kPattern[] = { { 1.0f / 16.0f, -3.0f / 16.0f },
-    { -1.0f / 16.0f, 3.0f / 16.0f },
-    { 5.0f / 16.0f, 1.0f / 16.0f },
-    { -3.0f / 16.0f, -5.0f / 16.0f },
-    { -5.0f / 16.0f, 5.0f / 16.0f },
-    { -7.0f / 16.0f, -1.0f / 16.0f },
-    { 3.0f / 16.0f, 7.0f / 16.0f },
-    { 7.0f / 16.0f, -7.0f / 16.0f } };
+namespace Falcor {
 
-    DxSamplePattern::DxSamplePattern(uint32_t sampleCount)
-    {
-        // FIXME: Support other sample counts
-        if (sampleCount != kSampleCount) logWarning("DxSamplePattern() currently requires sampleCount = 8. Using that number.");
-    }
+const float2 DxSamplePattern::kPattern[] = { { 1.0f / 16.0f, -3.0f / 16.0f },
+{ -1.0f / 16.0f, 3.0f / 16.0f },
+{ 5.0f / 16.0f, 1.0f / 16.0f },
+{ -3.0f / 16.0f, -5.0f / 16.0f },
+{ -5.0f / 16.0f, 5.0f / 16.0f },
+{ -7.0f / 16.0f, -1.0f / 16.0f },
+{ 3.0f / 16.0f, 7.0f / 16.0f },
+{ 7.0f / 16.0f, -7.0f / 16.0f } };
+
+DxSamplePattern::DxSamplePattern(uint32_t sampleCount) {
+    // FIXME: Support other sample counts
+    if (sampleCount != kSampleCount) LLOG_WRN << "DxSamplePattern() currently requires sampleCount = 8. Using that number.";
 }
+
+}  // namespace Falcor
