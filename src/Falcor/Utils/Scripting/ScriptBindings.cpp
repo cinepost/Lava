@@ -115,34 +115,6 @@ void addVecType(pybind11::module& m, const std::string name) {
 		.def("__str__", vecStr);
 }
 
-<<<<<<< HEAD
-// PYBIND11_EMBEDDED_MODULE(falcor, m) {
-//     // bool2, bool3, bool4
-//     addVecType<bool2, bool, bool>(m, "bool2");
-//     addVecType<bool3, bool, bool, bool>(m, "bool3");
-//     addVecType<bool4, bool, bool, bool, bool>(m, "bool4");
-
-//     // float2, float3, float4
-//     addVecType<float2, float, float>(m, "float2");
-//     addVecType<float3, float, float, float>(m, "float3");
-//     addVecType<float4, float, float, float, float>(m, "float4");
-
-//     // int2, int3, int4
-//     addVecType<int2, int32_t, int32_t>(m, "int2");
-//     addVecType<int3, int32_t, int32_t, int32_t>(m, "int3");
-//     addVecType<int4, int32_t, int32_t, int32_t, int32_t>(m, "int4");
-
-//     // uint2, uint3, uint4
-//     addVecType<uint2, uint32_t, uint32_t>(m, "uint2");
-//     addVecType<uint3, uint32_t, uint32_t, uint32_t>(m, "uint3");
-//     addVecType<uint4, uint32_t, uint32_t, uint32_t, uint32_t>(m, "uint4");
-
-//     if (gRegisterFuncs)
-//     {
-//         for (auto f : *gRegisterFuncs) f(m);
-//     }
-// }
-=======
 #ifdef SCRIPTING
 PYBIND11_EMBEDDED_MODULE(falcor, m) {
 	// bool2, bool3, bool4
@@ -182,6 +154,5 @@ PYBIND11_EMBEDDED_MODULE(falcor, m) {
 	}
 }
 #endif  // SCRIPTING
->>>>>>> gfx
 
 }  // namespace Falcor::ScriptBindings
