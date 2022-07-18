@@ -185,7 +185,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
     // Virtual textures resolve render graph
-    if(!vtoff) {
+    if(pScene->materialSystem()->hasSparseTextures()) {
         auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
         mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 

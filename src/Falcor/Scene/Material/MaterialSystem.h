@@ -184,9 +184,11 @@ class dlldecl MaterialSystem {
 
 		/** Get texture manager. This holds all textures.
 		*/
-		const TextureManager::SharedPtr& getTextureManager() { return mpTextureManager; }
+		const TextureManager::SharedPtr& textureManager() { return mpDevice->textureManager(); }
+		const TextureManager::SharedPtr& getTextureManager() { return mpDevice->textureManager(); }
 
 		bool hasUDIMTextures() const;
+		bool hasSparseTextures() const;
 
 	private:
 		MaterialSystem(Device::SharedPtr pDevice);
@@ -200,7 +202,6 @@ class dlldecl MaterialSystem {
 		std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
 		std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
 		uint32_t mSpecGlossMaterialCount = 0;                       ///< Number of standard materials using the SpecGloss shading model.
-		TextureManager::SharedPtr mpTextureManager;                 ///< Texture manager holding all material textures.
 		size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
 		size_t mUDIMTextureTileDescCount = 0;												///< Number of udim textures tiles in GPU descriptor array.
 		size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).

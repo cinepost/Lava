@@ -196,7 +196,7 @@ Texture::SharedPtr ResourceManager::createSparseTextureFromFile(const std::strin
             LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
             tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
-            if (!LTX_Bitmap::convertToKtxFile(mpDevice, fullpath.string(), ltxFilename, tlcParms, true)) {
+            if (!LTX_Bitmap::convertToLtxFile(mpDevice, fullpath.string(), ltxFilename, tlcParms, true)) {
                 LLOG_ERR << "Error converting texture to " << ltxFilename;
             } else {
                 LLOG_DBG << "Conversion done for " << ltxFilename;
@@ -288,7 +288,7 @@ void ResourceManager::loadPages(const Texture::SharedPtr& pTexture, const std::v
 
     // read data and fill pages
     auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
-    std::string ltxFilename = pLtxBitmap->getFilename();
+    std::string ltxFilename = pLtxBitmap->getFileName();
     auto pFile = fopen(ltxFilename.c_str(), "rb");
     std::vector<uint8_t> tmpPage(65536);
     auto pTmpPageData = tmpPage.data();

@@ -51,6 +51,7 @@ using namespace Falcor;
 class dllpassdecl TexturesResolvePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<TexturesResolvePass>;
+    using TextureSlot = Material::TextureSlot;
 
     static const Info kInfo;
 

@@ -1094,28 +1094,26 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
     pMaterial->setDoubleSided(!front_face);
-
-    LLOG_DBG << "Setting textures for material: " << pMaterial->getName();
+  	
   	//bool loadAsSrgb = true;
+    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", true);
+    loadTexturesAsSparse = true;
+    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
     if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, true); // load as srgb texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
     }
 
     // add a mesh instance to a node

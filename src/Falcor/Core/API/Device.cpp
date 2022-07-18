@@ -27,7 +27,10 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 
+#include <thread>
+
 #include "Falcor/Core/API/ResourceManager.h"
+#include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "Device.h"
@@ -38,11 +41,6 @@ namespace Falcor {
     
 void createNullViews(Device::SharedPtr pDevice);
 void releaseNullViews(Device::SharedPtr pDevice);
-//void createNullBufferViews(Device::SharedPtr pDevice);
-//void releaseNullBufferViews(Device::SharedPtr pDevice);
-//void createNullTypedBufferViews(Device::SharedPtr pDevice);
-//void releaseNullTypedBufferViews(Device::SharedPtr pDevice);
-//void releaseStaticResources(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
@@ -118,6 +116,12 @@ bool Device::init() {
 
     mpResourceManager = ResourceManager::create(shared_from_this());
     assert(mpResourceManager);
+
+    size_t maxTextureCount = 1024 * 10;
+    size_t threadCount = std::thread::hardware_concurrency();
+    mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
+    assert(mpTextureManager);
+
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
     // create default sampler

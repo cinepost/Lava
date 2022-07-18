@@ -55,6 +55,7 @@ struct DeviceApiData;
 class Fbo;
 class Sampler;
 class ResourceManager;
+class TextureManager;
 class RenderContext;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
@@ -128,7 +129,8 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     void cleanup();
 
-    std::shared_ptr<ResourceManager> resourceManager() const { return mpResourceManager; }
+    inline std::shared_ptr<ResourceManager>& resourceManager() { return mpResourceManager; }
+    inline std::shared_ptr<TextureManager>& textureManager() { return mpTextureManager; }
 
     /** Enable/disable vertical sync
     */
@@ -400,6 +402,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     NullResourceViews mNullViews;
 
     std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
+    std::shared_ptr<TextureManager>  mpTextureManager = nullptr;
 
     friend class DeviceManager;
     friend class ResourceManager;

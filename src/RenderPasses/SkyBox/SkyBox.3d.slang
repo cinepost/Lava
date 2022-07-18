@@ -62,6 +62,7 @@ void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : S
 
 [shader("fragment")]
 float4 psMain(float3 dir : NORMAL) : SV_TARGET {
+    return float4(0,0,0,0); // TODO: remove!!!
 
     float3 intensity = gIntensity * gOpacity;
 
