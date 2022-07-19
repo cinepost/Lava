@@ -1,3 +1,4 @@
+add_subdirectory( gfx_lib) # Patched Slang GFX library
 add_subdirectory( Falcor ) # core framework rendering library
 add_subdirectory( RenderPasses ) # falcor rendering framework rendering passes plugins
 

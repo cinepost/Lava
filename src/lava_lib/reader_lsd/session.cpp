@@ -1097,7 +1097,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
   	
   	//bool loadAsSrgb = true;
     bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", true);
-    loadTexturesAsSparse = true;
+    loadTexturesAsSparse = false;//true;
+
     LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
     if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {

@@ -40,6 +40,7 @@
 #define FALCOR_NVAPI_AVAILABLE 0
 #endif
 
+
 using namespace gfx;
 
 #include "Falcor/Core/API/Device.h"

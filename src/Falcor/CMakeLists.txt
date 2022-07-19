@@ -10,6 +10,8 @@ file( GLOB SOURCES
     ./Core/API/*.cpp
     #./Core/API/Vulkan/*.cpp
     ./Core/API/GFX/*.cpp
+    ./Core/API/GFX_LIB/*.cpp
+    ./Core/API/GFX_LIB/vulkan/*.cpp
     ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
     ./Core/Platform/Linux/Linux.cpp
@@ -145,7 +147,7 @@ add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
-find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
+#find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
@@ -176,6 +178,7 @@ add_definitions(-DFALCOR_DLL)
 
 target_link_libraries(
     falcor_lib
+    gfx_lib
     avutil
     avformat
     swscale
@@ -183,7 +186,7 @@ target_link_libraries(
     Blosc::blosc
     ${assimp_LIBRARIES}
     ${SLANG_LIBRARY}
-    ${SLANG_GFX_LIBRARY}
+    //${SLANG_GFX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Python3_LIBRARIES}

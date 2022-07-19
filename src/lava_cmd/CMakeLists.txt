@@ -30,6 +30,7 @@ add_executable ( lava_cmd ${SOURCES} )
 set_target_properties( lava_cmd PROPERTIES OUTPUT_NAME "lava-bin" )
  
 target_link_libraries( lava_cmd
+	gfx_lib
 	lava_lib
 	lava_utils_lib
 	falcor_lib 

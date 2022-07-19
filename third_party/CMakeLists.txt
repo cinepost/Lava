@@ -687,7 +687,7 @@ set(EXTERNAL_SLANG_VERSION 0.24.8) # last tested version was 0.18.6
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
 
-set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
+set(SLANG_BUILD_LIBS "slang slang-glslang")
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")

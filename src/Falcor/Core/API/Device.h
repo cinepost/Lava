@@ -42,6 +42,10 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
+#ifdef FALCOR_GFX
+#include <slang/slang-gfx.h>
+#endif
+
 namespace Falcor {
 
 #ifdef _DEBUG

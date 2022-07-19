@@ -349,10 +349,10 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
-    LLOG_WRN << "Draw...";
+    //LLOG_WRN << "Draw...";
     for (const auto& draw : mDrawArgs) {
 
-        LLOG_WRN << "draw";
+        //LLOG_WRN << "draw";
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
