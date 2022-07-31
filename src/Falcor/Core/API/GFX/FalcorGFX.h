@@ -41,8 +41,8 @@
 #include "lava_utils_lib/logging.h"
 
 #include <slang/slang.h>
-#include <slang/slang-gfx.h>
 #include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
 
 //#define None 0L
 //#define Bool int
@@ -53,12 +53,13 @@
 //#include "GLFW/glfw3.h"
 //#include "GLFW/glfw3native.h"
 
-//#ifndef _WIN32
-//#undef None
-//#undef Status
-//#undef Bool
-//#undef Always
-//#endif
+// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
+#undef None
+#undef Status
+#undef Bool
+#undef Always
+#endif
 
 #if defined(FALCOR_GFX_D3D12) || defined (FALCOR_GFX_VK)
 #define FALCOR_GFX
@@ -131,30 +132,31 @@ inline std::string convertBlobToString(BlobType* pBlob)
 //TODO: (yhe) Figure out why this is still required.
 #pragma comment(lib, "comsuppw.lib")
 
-namespace Falcor
-{
-    /** Flags passed to TraceRay(). These must match the device side.
-    */
-    enum class RayFlags : uint32_t
-    {
-        None,
-        ForceOpaque = 0x1,
-        ForceNonOpaque = 0x2,
-        AcceptFirstHitAndEndSearch = 0x4,
-        SkipClosestHitShader = 0x8,
-        CullBackFacingTriangles = 0x10,
-        CullFrontFacingTriangles = 0x20,
-        CullOpaque = 0x40,
-        CullNonOpaque = 0x80,
-        SkipTriangles = 0x100,
-        SkipProceduralPrimitives = 0x200,
-    };
-    FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
+namespace Falcor {
 
-    // Maximum raytracing attribute size.
-    inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
+/** Flags passed to TraceRay(). These must match the device side.
+*/
+enum class RayFlags : uint32_t {
+    None,
+    ForceOpaque = 0x1,
+    ForceNonOpaque = 0x2,
+    AcceptFirstHitAndEndSearch = 0x4,
+    SkipClosestHitShader = 0x8,
+    CullBackFacingTriangles = 0x10,
+    CullFrontFacingTriangles = 0x20,
+    CullOpaque = 0x40,
+    CullNonOpaque = 0x80,
+    SkipTriangles = 0x100,
+    SkipProceduralPrimitives = 0x200,
+};
+FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
 
-    using ApiObjectHandle = Slang::ComPtr<ISlangUnknown>;
+// Maximum raytracing attribute size.
+inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
+
+using ApiObjectHandle = Slang::ComPtr<ISlangUnknown>;
+
+class Device;
 
 #ifdef WIN32
 using WindowHandle = HWND;
@@ -212,7 +214,7 @@ struct WindowHandle {
     using RasterizerStateHandle = void*;
     using BlendStateHandle = void*;
 
-    inline constexpr uint32_t getMaxViewportCount() { return 8; }
+    inline uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) { return 8; }
 
     /*! @} */
 }

@@ -81,9 +81,10 @@ class dlldecl ComputeContext : public CopyContext {
 
  protected:
     ComputeContext(std::shared_ptr<Device> pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue);
-#ifdef FALCOR_D3D12
-        void prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
-        void applyComputeVars(ComputeVars* pVars, const ProgramKernels* pProgramKernels);
+
+#if defined(FALCOR_VK)
+    bool prepareForDispatch(ComputeState* pState, ComputeVars* pVars);
+    bool applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature);
 #endif
 
     const ComputeVars* mpLastBoundComputeVars = nullptr;

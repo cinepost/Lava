@@ -35,7 +35,7 @@
 
 namespace Falcor {
 
-Fbo::Fbo(std::shared_ptr<Device> pDevice): mpDevice(pDevice), mTempDesc(pDevice) {
+Fbo::Fbo(Device::SharedPtr pDevice): mpDevice(pDevice), mTempDesc(pDevice) {
     mColorAttachments.resize(getMaxColorTargetCount(pDevice));
 }
 
@@ -48,7 +48,7 @@ const Fbo::ApiHandle& Fbo::getApiHandle() const {
     return mApiHandle;
 }
 
-uint32_t Fbo::getMaxColorTargetCount(std::shared_ptr<Device> pDevice) {
+uint32_t Fbo::getMaxColorTargetCount(Device::SharedPtr pDevice) {
     int count = pDevice->getPhysicalDeviceLimits().maxFragmentOutputAttachments;
     return count;
 }
@@ -111,7 +111,8 @@ RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const {
     if (rt.pTexture) {
         return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
     } else {
-        return RenderTargetView::getNullView(mpDevice);
+         auto dimension = rt.arraySize > 1 ? RenderTargetView::Dimension::Texture2DArray : RenderTargetView::Dimension::Texture2D;
+        return RenderTargetView::getNullView(mpDevice, dimension);
     }
 }
 
@@ -119,7 +120,8 @@ DepthStencilView::SharedPtr Fbo::getDepthStencilView() const {
     if (mDepthStencil.pTexture) {
         return mDepthStencil.pTexture->getDSV(mDepthStencil.mipLevel, mDepthStencil.firstArraySlice, mDepthStencil.arraySize);
     } else {
-        return DepthStencilView::getNullView(mpDevice);
+        auto dimension = mDepthStencil.arraySize > 1 ? DepthStencilView::Dimension::Texture2DArray : DepthStencilView::Dimension::Texture2D;
+        return DepthStencilView::getNullView(mpDevice, dimension);
     }
 }
 

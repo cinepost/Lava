@@ -53,7 +53,7 @@
 
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Core/API/Vulkan/VKSmartHandle.h"
-
+#include "lava_utils_lib/logging.h"
 
 namespace Falcor {
 
@@ -133,6 +133,9 @@ using SamplerHandle = VkHandle<VkSampler>::SharedPtr;
 using GpuAddress = size_t;
 using DescriptorSetApiHandle = VkDescriptorSet;
 using QueryHeapHandle = VkHandle<VkQueryPool>::SharedPtr;
+using QueryPoolHandle = VkHandle<VkQueryPool>::SharedPtr;
+//using AccelerationStructureHandle = VkAccelerationStructureKHR;
+using AccelerationStructureHandle = VkHandle<VkAccelerationStructureKHR>::SharedPtr;
 
 using GraphicsStateHandle = VkHandle<VkPipeline>::SharedPtr;
 using ComputeStateHandle = VkHandle<VkPipeline>::SharedPtr;
@@ -160,7 +163,19 @@ static const uint32_t kDefaultSwapChainBuffers = 5;
 using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 class Device;
 
-uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
+#ifdef WIN32
+using WindowHandle = HWND;
+#else
+struct WindowHandle {
+    //Display* pDisplay;
+    //Window window;
+
+    void*       pDisplay;
+    uint32_t    window;
+};
+#endif
+
+inline uint32_t getMaxViewportCount(std::shared_ptr<Device> device);
 
 // Maximum raytracing attribute size.
 inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
@@ -178,7 +193,7 @@ inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
 { \
     auto r = a; \
     if (VK_FAILED(r)) { \
-        LOG_ERR("Vulkan call %s failed!", #a); \
+        LLOG_ERR << "Vulkan call " <<  #a << " failed!"; \
         /* logError("Vulkan call failed.\n"#a); */ \
     } \
 }
@@ -186,6 +201,6 @@ inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
 #define vk_call(a) a
 #endif
 
-#define UNSUPPORTED_IN_VULKAN(msg_) {logWarning(msg_ + std::string(" is not supported in Vulkan. Ignoring call."));}
+#define UNSUPPORTED_IN_VULKAN(msg_) {LLOG_WRN << msg_ << " is not supported in Vulkan. Ignoring call.";}
 
 #endif  // SRC_FALCOR_CORE_API_VULKAN_FALCORVK_H_

@@ -5,8 +5,6 @@ include_directories(
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source
 )
 
-message( "M!!!!!!!!!!!" ${CMAKE_THIRD_PARTY_SOURCE_DIR} )
-
 file( GLOB SOURCES
     ./*.cpp
     ./vulkan/*.cpp
@@ -18,6 +16,12 @@ file( GLOB SOURCES
     ${CMAKE_THIRD_PARTY_SOURCE_DIR}/external/slang/src/Slang/source/core/slang-signal.cpp
 )
 
+# Find Boost libs
+set(Boost_NO_SYSTEM_PATHS ON)
+set(BOOST_ROOT ${DEPS_DIR})
+find_package( Boost COMPONENTS log REQUIRED )
+include_directories( ${Boost_INCLUDE_DIRS} )
+
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
 
@@ -25,6 +29,7 @@ add_library( gfx_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     gfx_lib
+    lava_utils_lib
     ${SLANG_LIBRARY}
 )
 

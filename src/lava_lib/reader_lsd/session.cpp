@@ -5,7 +5,6 @@
 #include <cstdlib>
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/MaterialX/MxNode.h"
@@ -579,15 +578,11 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			//pLightProbe = LightProbe::create(pDevice->getRenderContext());
 		} else {
     		bool loadAsSrgb = false;
-    		//uint32_t diffSampleCount = 8192; // preintegration
-    		//uint32_t specSampleCount = 8192; // preintegration
-    		auto pResourceManager = pDevice->resourceManager();
-    		if (pResourceManager) {
-        		auto pEnvMapTexture = pResourceManager->createTextureFromFile(texture_file_name, true, loadAsSrgb);
-    			EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    			pEnvMap->setTint(light_color);
-    			pSceneBuilder->setEnvMap(pEnvMap);
-    		}
+    		
+    		auto pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
+    		EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    		pEnvMap->setTint(light_color);
+    		pSceneBuilder->setEnvMap(pEnvMap);
     	}
     	return;
 	} else { 
@@ -1097,7 +1092,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
   	
   	//bool loadAsSrgb = true;
     bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", true);
-    loadTexturesAsSparse = false;//true;
+    loadTexturesAsSparse = true;
 
     LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 

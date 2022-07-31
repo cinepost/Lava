@@ -527,10 +527,15 @@ namespace Falcor {
 		FALCOR_ASSERT(interopHandles.handles[0].api == gfx::InteropHandleAPI::D3D12);
 		return reinterpret_cast<ID3D12Device*>(interopHandles.handles[0].handleValue);
 	}
-#else
-	const D3D12DeviceHandle Device::getD3D12Handle() {
-		return nullptr;
+#endif
+
+//#else
+//	const D3D12DeviceHandle Device::getD3D12Handle() {
+//		return nullptr;
+//	}
+//#endif // FALCOR_D3D12_AVAILABLE
+
+	Device::~Device() { 
 	}
-#endif // FALCOR_D3D12_AVAILABLE
 
 } // namespace Falcor

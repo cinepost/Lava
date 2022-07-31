@@ -2,6 +2,7 @@
 #pragma once
 
 #include "vk-module.h"
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
 namespace gfx {
 
@@ -76,6 +77,7 @@ namespace gfx {
     \
     x(vkGetBufferMemoryRequirements) \
     x(vkGetImageMemoryRequirements) \
+    x(vkGetImageSparseMemoryRequirements) \
     \
     x(vkCmdBindPipeline) \
     x(vkCmdClearAttachments) \

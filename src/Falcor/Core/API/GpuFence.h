@@ -52,15 +52,17 @@ public:
     /** Create a new GPU fence.
         \return A new object, or throws an exception if creation failed.
     */
-    static SharedPtr create(std::shared_ptr<Device> pDevice, bool shared = false);
+    static SharedPtr create(std::shared_ptr<Device> pDevice);
 
     /** Get the internal API handle
     */
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
-
+    const ApiHandle& getApiHandle() const;
+    
+#ifdef FALCOR_D3D12
     /** Get the internal D3D12 handle. Available only when D3D12 is the underlying API.
     */
     const D3D12FenceHandle& getD3D12Handle() const;
+#endif
 
     /** Get the last value the GPU has signaled
     */
@@ -90,9 +92,11 @@ public:
     */
     uint64_t externalSignal() { return mCpuValue++; }
 
+#ifdef FALCOR_GFX
     /** Creates a shared fence API handle.
     */
     SharedResourceApiHandle getSharedApiHandle() const;
+#endif
 
 private:
     GpuFence(std::shared_ptr<Device> pDevice) : mpDevice(pDevice), mCpuValue(0) {}
@@ -102,7 +106,10 @@ private:
 
     ApiHandle mApiHandle;
     FenceApiData* mpApiData = nullptr;
+
+#ifdef FALCOR_GFX
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
+#endif
 };
 
 }  // namespace Falcor

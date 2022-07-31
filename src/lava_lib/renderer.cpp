@@ -2,7 +2,6 @@
 
 #include "renderer.h"
 
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Threading.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
@@ -80,8 +79,6 @@ bool Renderer::init(const Config& config) {
 Renderer::~Renderer() {
     if(!mInited)
         return;
-
-    mpDevice->resourceManager()->printStats();
 
     mpRenderGraph = nullptr;
 

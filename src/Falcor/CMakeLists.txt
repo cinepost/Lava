@@ -1,18 +1,14 @@
 set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
 
+set(BACKEND_TYPE Vulkan)
+
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
 )
 
 file( GLOB SOURCES
-    #./*.cpp
     ./Core/*.cpp
     ./Core/API/*.cpp
-    #./Core/API/Vulkan/*.cpp
-    ./Core/API/GFX/*.cpp
-    ./Core/API/GFX_LIB/*.cpp
-    ./Core/API/GFX_LIB/vulkan/*.cpp
-    ./Core/API/Embree/*.cpp
     ./Core/Platform/*.cpp
     ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
@@ -47,6 +43,23 @@ file( GLOB SOURCES
 
     ${PROJECT_SOURCE_DIR}/third_party/mikktspace/mikktspace.c
 )
+
+string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
+if(backend_type STREQUAL "vulkan")
+    file( GLOB BACKEND_API_SOURCES
+        ./Core/API/Vulkan/*.cpp
+    )
+elseif(backend_type STREQUAL "gfx")
+    add_definitions(-D_FLACOR_API_BACKEND_GFX)
+    file( GLOB BACKEND_API_SOURCES 
+        ./Core/API/GFX/*.cpp
+        ./Core/API/GFX_LIB/*.cpp
+        ./Core/API/GFX_LIB/vulkan/*.cpp
+    )
+else()
+     message( FATAL_ERROR "Unsupported backend type specified !!!" )
+endif()
+list (APPEND SOURCES ${BACKEND_API_SOURCES})
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
 
@@ -172,21 +185,22 @@ find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_DIR}/lib )
 # GLFW3
 find_package(glfw3 3.3 REQUIRED)
 
-
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 
 target_link_libraries(
     falcor_lib
-    gfx_lib
     avutil
     avformat
     swscale
     stdc++fs
     Blosc::blosc
+    glfw
+    OpenSSL::SSL
+    OpenImageIO::OpenImageIO
+    OpenVDB::openvdb
     ${assimp_LIBRARIES}
     ${SLANG_LIBRARY}
-    //${SLANG_GFX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Python3_LIBRARIES}
@@ -195,12 +209,16 @@ target_link_libraries(
     ${FREEIMAGE_LIBRARIES}
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
-    OpenImageIO::OpenImageIO
-    OpenVDB::openvdb
     ${LZ4_LIBRARY}
-    OpenSSL::SSL
-    glfw
+    //${SLANG_GFX_LIBRARY}
 )
+
+if(backend_type STREQUAL "gfx")
+target_link_libraries(
+    falcor_lib
+    gfx_lib
+)
+endif()
 
 # Copy/install all needed shaders
 set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders)

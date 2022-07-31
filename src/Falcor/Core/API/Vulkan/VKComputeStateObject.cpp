@@ -42,7 +42,7 @@ void ComputeStateObject::apiInit() {
     initVkShaderStageInfo(mDesc.getProgramKernels(), shaderStageInfos);
     assert(shaderStageInfos.size() == 1);
 
-    VkComputePipelineCreateInfo info = {};
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.pNext = nullptr;
     info.flags = 0;
     info.basePipelineHandle = VK_NULL_HANDLE;

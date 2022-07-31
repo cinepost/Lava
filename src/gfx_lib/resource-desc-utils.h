@@ -1,6 +1,6 @@
 #pragma once
 
-#include <slang/slang-gfx.h>
+#include "slang-gfx.h"
 
 #include "core/slang-math.h"
 

@@ -29,7 +29,6 @@
 
 #include <thread>
 
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/RenderContext.h"
 
@@ -67,8 +66,7 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::Desc& 
     return pDevice;
 }
 
-#ifdef FALCOR_GFX
-Device::SharedPtr Device::create(const gfx::IDevice::Desc& idesc, const Device::Desc& desc) {
+Device::SharedPtr Device::create(const Device::IDesc& idesc, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(nullptr, desc));
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
@@ -79,7 +77,7 @@ Device::SharedPtr Device::create(const gfx::IDevice::Desc& idesc, const Device::
     return pDevice;
 }
 
-Device::SharedPtr Device::create(Window::SharedPtr pWindow, const gfx::IDevice::Desc& idesc, const Device::Desc& desc) {
+Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(pWindow, desc));
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
@@ -89,7 +87,6 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const gfx::IDevice::
 
     return pDevice;
 }
-#endif
 
 /**
  * Initialize device
@@ -113,9 +110,6 @@ bool Device::init() {
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
 
     createNullViews();
-
-    mpResourceManager = ResourceManager::create(shared_from_this());
-    assert(mpResourceManager);
 
     size_t maxTextureCount = 1024 * 10;
     size_t threadCount = std::thread::hardware_concurrency();
@@ -374,7 +368,7 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
     }
 #endif
 
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX)
+#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX) && !defined(FALCOR_VK)
 #error Verify state handling on swapchain resize for this API
 #endif
 

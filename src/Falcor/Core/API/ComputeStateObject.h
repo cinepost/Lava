@@ -29,7 +29,10 @@
 #define SRC_FALCOR_CORE_API_COMPUTESTATEOBJECT_H_
 
 #include "Falcor/Core/Program/ProgramVersion.h"
-//#include "Falcor/Core/API/RootSignature.h"
+
+#if defined(FALCOR_VK)
+#include "Falcor/Core/API/RootSignature.h"
+#endif
 
 namespace Falcor {
 
@@ -43,6 +46,9 @@ class dlldecl ComputeStateObject {
 
     class dlldecl Desc {
         public:
+#if defined(FALCOR_VK)
+            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
+#endif
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
 #if FALCOR_D3D12_AVAILABLE
              /** Set a D3D12 root signature to use instead of the one that comes with the program kernel.
@@ -59,6 +65,8 @@ class dlldecl ComputeStateObject {
          ProgramKernels::SharedConstPtr mpProgram;
 #if FALCOR_D3D12_AVAILABLE
          D3D12RootSignature::SharedConstPtr mpD3D12RootSignatureOverride;
+#elif defined(FALCOR_VK)
+         RootSignature::SharedPtr mpRootSignature;
 #endif
     };
 
@@ -72,7 +80,9 @@ class dlldecl ComputeStateObject {
 
     const ApiHandle& getApiHandle() { return mApiHandle; }
 
+#if FALCOR_D3D12_AVAILABLE
     const D3D12ComputeStateHandle& getD3D12Handle();
+#endif
 
     const Desc& getDesc() const { return mDesc; }
 

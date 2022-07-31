@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "stdafx.h"
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/GpuFence.h"
@@ -39,11 +39,13 @@ struct FenceApiData {
 	D3D12FenceHandle d3d12Handle;
 };
 
+const GpuFence::ApiHandle& GpuFence::getApiHandle() const { return mApiHandle; }
+
 GpuFence::~GpuFence() {
 	safe_delete(mpApiData);
 }
 
-GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice, bool shared) {
+GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice) {
 	FALCOR_ASSERT(pDevice);
 	SharedPtr pFence = SharedPtr(new GpuFence(pDevice));
 	pFence->mpApiData = new FenceApiData;
@@ -99,12 +101,10 @@ SharedResourceApiHandle GpuFence::getSharedApiHandle() const {
 	return (SharedResourceApiHandle)sharedHandle.handleValue;
 }
 
-const D3D12FenceHandle& GpuFence::getD3D12Handle() const {
 #if FALCOR_D3D12_AVAILABLE
+const D3D12FenceHandle& GpuFence::getD3D12Handle() const {
 	return mpApiData->d3d12Handle;
-#else
-	throw std::runtime_error("D3D12 is not available.");
-#endif
 }
+#endif
 
 }  // namespace Falcor

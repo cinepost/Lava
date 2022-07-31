@@ -16,6 +16,11 @@ else()
   list(APPEND 3RD_ARGS "-DSLANG_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 endif()
 
+list(APPEND SRC_ARGS "-DFALCOR_API_BACKEND=${FALCOR_API_BACKEND}")
+
+message("Using Falcor backend: " ${FALCOR_API_BACKEND})
+
+
 # Third party external projects
 ExternalProject_Add( third_party
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/third_party
@@ -31,7 +36,7 @@ ExternalProject_Add( third_party
 ExternalProject_Add( ep_src
   DEPENDS third_party
   SOURCE_DIR ${PROJECT_SOURCE_DIR}
-  CMAKE_ARGS -DUSE_SUPERBUILD=OFF
+  CMAKE_ARGS -DUSE_SUPERBUILD=OFF ${SRC_ARGS}
   INSTALL_COMMAND ""
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}
 )

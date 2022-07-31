@@ -18,19 +18,53 @@
 
 #include "vk-helper-functions.h"
 
-namespace gfx
-{
+#include "Falcor/Core/API/Texture.h"
+#include "lava_utils_lib/logging.h"
+
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+
+#define VMA_IMPLEMENTATION
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+
+namespace gfx {
 
 using namespace Slang;
 
-namespace vk
-{
+namespace vk {
 
-DeviceImpl::~DeviceImpl()
-{
+static glm::uvec3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
+    glm::uvec3 res;
+    res.x = extent.width / granularity.width + ((extent.width % granularity.width) ? 1u : 0u);
+    res.y = extent.height / granularity.height + ((extent.height % granularity.height) ? 1u : 0u);
+    res.z = extent.depth / granularity.depth + ((extent.depth % granularity.depth) ? 1u : 0u);
+    return res;
+}
+
+static uint32_t _getVkMemoryTypeNative(const VkPhysicalDeviceMemoryProperties& deviceMemoryProperties, uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr) {
+    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+        if ((typeBits & 1) == 1) {
+            if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                if (memTypeFound) {
+                    *memTypeFound = true;
+                }
+                return i;
+            }
+        }
+        typeBits >>= 1;
+    }
+
+    if (memTypeFound) {
+        *memTypeFound = false;
+        return 0;
+    } else {
+        throw std::runtime_error("Could not find a matching Vulkan memory type !!!");
+    }
+}
+
+DeviceImpl::~DeviceImpl() {
     // Check the device queue is valid else, we can't wait on it..
-    if (m_deviceQueue.isValid())
-    {
+    if (m_deviceQueue.isValid()) {
         waitForGpu();
     }
 
@@ -38,8 +72,7 @@ DeviceImpl::~DeviceImpl()
     shaderCache.free();
     m_deviceObjectsWithPotentialBackReferences.clearAndDeallocate();
 
-    if (m_api.vkDestroySampler)
-    {
+    if (m_api.vkDestroySampler) {
         m_api.vkDestroySampler(m_device, m_defaultSampler, nullptr);
     }
 
@@ -49,8 +82,9 @@ DeviceImpl::~DeviceImpl()
 
     m_emptyFramebuffer = nullptr;
 
-    if (m_device != VK_NULL_HANDLE)
-    {
+    vmaDestroyAllocator(mVmaAllocator);
+
+    if (m_device != VK_NULL_HANDLE) {
         if (m_desc.existingDeviceHandles.handles[2].handleValue == 0)
             m_api.vkDestroyDevice(m_device, nullptr);
         m_device = VK_NULL_HANDLE;
@@ -75,13 +109,11 @@ VkBool32 DeviceImpl::handleDebugMessage(
     DebugMessageType msgType = DebugMessageType::Info;
 
     char const* severity = "message";
-    if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
-    {
+    if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
         severity = "warning";
         msgType = DebugMessageType::Warning;
     }
-    if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
-    {
+    if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
         severity = "error";
         msgType = DebugMessageType::Error;
     }
@@ -113,8 +145,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DeviceImpl::debugMessageCallback(
         ->handleDebugMessage(flags, objType, srcObject, location, msgCode, pLayerPrefix, pMsg);
 }
 
-Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles)
-{
+Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles) {
     outHandles->handles[0].handleValue = (uint64_t)m_api.m_instance;
     outHandles->handles[0].api = InteropHandleAPI::Vulkan;
     outHandles->handles[1].handleValue = (uint64_t)m_api.m_physicalDevice;
@@ -124,16 +155,13 @@ Result DeviceImpl::getNativeDeviceHandles(InteropHandles* outHandles)
     return SLANG_OK;
 }
 
-Result DeviceImpl::initVulkanInstanceAndDevice(
-    const InteropHandle* handles, bool useValidationLayer)
-{
+Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, bool useValidationLayer) {
     m_features.clear();
 
     m_queueAllocCount = 0;
 
     VkInstance instance = VK_NULL_HANDLE;
-    if (handles[0].handleValue == 0)
-    {
+    if (handles[0].handleValue == 0) {
         VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
         applicationInfo.pApplicationName = "slang-gfx";
         applicationInfo.pEngineName = "slang-gfx";
@@ -148,8 +176,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
 
         // Software (swiftshader) implementation currently does not support surface extension,
         // so only use it with a hardware implementation.
-        if (!m_api.m_module->isSoftware())
-        {
+        if (!m_api.m_module->isSoftware()) {
             instanceExtensions.add(VK_KHR_SURFACE_EXTENSION_NAME);
             // Note: this extension is not yet supported by nvidia drivers, disable for now.
             // instanceExtensions.add("VK_GOOGLE_surfaceless_query");
@@ -168,8 +195,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
         instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.getCount();
         instanceCreateInfo.ppEnabledExtensionNames = &instanceExtensions[0];
 
-        if (useValidationLayer)
-        {
+        if (useValidationLayer) {
             // Depending on driver version, validation layer may or may not exist.
             // Newer drivers comes with "VK_LAYER_KHRONOS_validation", while older
             // drivers provide only the deprecated
@@ -184,8 +210,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_api.vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.getBuffer());
 
             const char* layerNames[] = { nullptr };
-            for (auto& layer : availableLayers)
-            {
+            for (auto& layer : availableLayers) {
                 if (strncmp(
                     layer.layerName,
                     "VK_LAYER_KHRONOS_validation",
@@ -197,10 +222,8 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             }
             // On older drivers, only "VK_LAYER_LUNARG_standard_validation" exists,
             // so we try to use it if we can't find "VK_LAYER_KHRONOS_validation".
-            if (!layerNames[0])
-            {
-                for (auto& layer : availableLayers)
-                {
+            if (!layerNames[0]) {
+                for (auto& layer : availableLayers) {
                     if (strncmp(
                         layer.layerName,
                         "VK_LAYER_LUNARG_standard_validation",
@@ -218,58 +241,45 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             }
         }
         uint32_t apiVersionsToTry[] = { VK_API_VERSION_1_2, VK_API_VERSION_1_1, VK_API_VERSION_1_0 };
-        for (auto apiVersion : apiVersionsToTry)
-        {
+        for (auto apiVersion : apiVersionsToTry) {
             applicationInfo.apiVersion = apiVersion;
-            if (m_api.vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS)
-            {
+            if (m_api.vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS) {
                 break;
             }
         }
-    }
-    else
-    {
+    } else {
         instance = (VkInstance)handles[0].handleValue;
     }
     if (!instance)
         return SLANG_FAIL;
     SLANG_RETURN_ON_FAIL(m_api.initInstanceProcs(instance));
-    if (useValidationLayer && m_api.vkCreateDebugReportCallbackEXT)
-    {
-        VkDebugReportFlagsEXT debugFlags =
-            VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
-
-        VkDebugReportCallbackCreateInfoEXT debugCreateInfo = {
-            VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT };
+    if (useValidationLayer && m_api.vkCreateDebugReportCallbackEXT) {
+        VkDebugReportFlagsEXT debugFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+        VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT };
         debugCreateInfo.pfnCallback = &debugMessageCallback;
         debugCreateInfo.pUserData = this;
         debugCreateInfo.flags = debugFlags;
 
-        SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateDebugReportCallbackEXT(
-            instance, &debugCreateInfo, nullptr, &m_debugReportCallback));
+        SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateDebugReportCallbackEXT( instance, &debugCreateInfo, nullptr, &m_debugReportCallback));
     }
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     Index selectedDeviceIndex = 0;
-    if (handles[1].handleValue == 0)
-    {
+    if (handles[1].handleValue == 0) {
         uint32_t numPhysicalDevices = 0;
-        SLANG_VK_RETURN_ON_FAIL(
-            m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, nullptr));
+        SLANG_VK_RETURN_ON_FAIL( m_api.vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, nullptr));
 
         List<VkPhysicalDevice> physicalDevices;
         physicalDevices.setCount(numPhysicalDevices);
         SLANG_VK_RETURN_ON_FAIL(m_api.vkEnumeratePhysicalDevices(
             instance, &numPhysicalDevices, physicalDevices.getBuffer()));
 
-        if (m_desc.adapter)
-        {
+        if (m_desc.adapter) {
             selectedDeviceIndex = -1;
 
             String lowerAdapter = String(m_desc.adapter).toLower();
 
-            for (Index i = 0; i < physicalDevices.getCount(); ++i)
-            {
+            for (Index i = 0; i < physicalDevices.getCount(); ++i) {
                 auto physicalDevice = physicalDevices[i];
 
                 VkPhysicalDeviceProperties basicProps = {};
@@ -277,23 +287,19 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
 
                 String lowerName = String(basicProps.deviceName).toLower();
 
-                if (lowerName.indexOf(lowerAdapter) != Index(-1))
-                {
+                if (lowerName.indexOf(lowerAdapter) != Index(-1)) {
                     selectedDeviceIndex = i;
                     break;
                 }
             }
-            if (selectedDeviceIndex < 0)
-            {
+            if (selectedDeviceIndex < 0) {
                 // Device not found
                 return SLANG_FAIL;
             }
         }
 
         physicalDevice = physicalDevices[selectedDeviceIndex];
-    }
-    else
-    {
+    } else {
         physicalDevice = (VkPhysicalDevice)handles[1].handleValue;
     }
 
@@ -314,16 +320,22 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pEnabledFeatures = &m_api.m_deviceFeatures;
 
+    bool sparseBindingAvailable = false;
+
     // Get the device features (doesn't use, but useful when debugging)
-    if (m_api.vkGetPhysicalDeviceFeatures2)
-    {
+    if (m_api.vkGetPhysicalDeviceFeatures2) {
         VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
         deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         m_api.vkGetPhysicalDeviceFeatures2(m_api.m_physicalDevice, &deviceFeatures2);
+    
+        sparseBindingAvailable = deviceFeatures2.features.sparseBinding != 0;
     }
 
     VkPhysicalDeviceProperties basicProps = {};
     m_api.vkGetPhysicalDeviceProperties(m_api.m_physicalDevice, &basicProps);
+
+    // Get device memory properties
+    m_api.vkGetPhysicalDeviceMemoryProperties(m_api.m_physicalDevice, &m_memoryProperties);
 
     // Compute timestamp frequency.
     m_info.timestampFrequency = uint64_t(1e9 / basicProps.limits.timestampPeriod);
@@ -332,16 +344,17 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
     const uint32_t majorVersion = VK_VERSION_MAJOR(basicProps.apiVersion);
     const uint32_t minorVersion = VK_VERSION_MINOR(basicProps.apiVersion);
 
+    m_basicProps = basicProps;
+
     auto& extendedFeatures = m_api.m_extendedFeatures;
 
     // API version check, can't use vkGetPhysicalDeviceProperties2 yet since this device might not
     // support it
-    if (VK_MAKE_VERSION(majorVersion, minorVersion, 0) >= VK_API_VERSION_1_1 &&
-        m_api.vkGetPhysicalDeviceProperties2 && m_api.vkGetPhysicalDeviceFeatures2)
-    {
+    if (VK_MAKE_VERSION(majorVersion, minorVersion, 0) >= VK_API_VERSION_1_1 && m_api.vkGetPhysicalDeviceProperties2 && m_api.vkGetPhysicalDeviceFeatures2) {
         // Get device features
         VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
         deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 
         // Inline uniform block
         extendedFeatures.inlineUniformBlockFeatures.pNext = deviceFeatures2.pNext;
@@ -400,25 +413,26 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
 
         m_api.vkGetPhysicalDeviceFeatures2(m_api.m_physicalDevice, &deviceFeatures2);
 
-        if (deviceFeatures2.features.shaderResourceMinLod)
-        {
+        if (deviceFeatures2.features.shaderResourceMinLod) {
             m_features.add("shader-resource-min-lod");
         }
-        if (deviceFeatures2.features.shaderFloat64)
-        {
+        if (deviceFeatures2.features.shaderFloat64) {
             m_features.add("double");
         }
-        if (deviceFeatures2.features.shaderInt64)
-        {
+        if (deviceFeatures2.features.shaderInt64) {
             m_features.add("int64");
         }
-        if (deviceFeatures2.features.shaderInt16)
-        {
+        if (deviceFeatures2.features.shaderInt16) {
             m_features.add("int16");
         }
+        if (deviceFeatures2.features.sparseBinding) {
+            m_features.add("sparse-binding");
+        }
+
+        deviceCreateInfo.pNext = &deviceFeatures2;
+
         // If we have float16 features then enable
-        if (extendedFeatures.float16Features.shaderFloat16)
-        {
+        if (extendedFeatures.float16Features.shaderFloat16) {
             // Link into the creation features
             extendedFeatures.float16Features.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.float16Features;
@@ -430,8 +444,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("half");
         }
 
-        if (extendedFeatures.storage16BitFeatures.storageBuffer16BitAccess)
-        {
+        if (extendedFeatures.storage16BitFeatures.storageBuffer16BitAccess) {
             // Link into the creation features
             extendedFeatures.storage16BitFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.storage16BitFeatures;
@@ -453,8 +466,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("atomic-int64");
         }
 
-        if (extendedFeatures.atomicFloatFeatures.shaderBufferFloat32AtomicAdd)
-        {
+        if (extendedFeatures.atomicFloatFeatures.shaderBufferFloat32AtomicAdd) {
             // Link into the creation features
             extendedFeatures.atomicFloatFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.atomicFloatFeatures;
@@ -463,8 +475,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("atomic-float");
         }
 
-        if (extendedFeatures.timelineFeatures.timelineSemaphore)
-        {
+        if (extendedFeatures.timelineFeatures.timelineSemaphore) {
             // Link into the creation features
             extendedFeatures.timelineFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.timelineFeatures;
@@ -472,8 +483,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("timeline-semaphore");
         }
 
-        if (extendedFeatures.extendedDynamicStateFeatures.extendedDynamicState)
-        {
+        if (extendedFeatures.extendedDynamicStateFeatures.extendedDynamicState) {
             // Link into the creation features
             extendedFeatures.extendedDynamicStateFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.extendedDynamicStateFeatures;
@@ -481,8 +491,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("extended-dynamic-states");
         }
 
-        if (extendedFeatures.shaderSubgroupExtendedTypeFeatures.shaderSubgroupExtendedTypes)
-        {
+        if (extendedFeatures.shaderSubgroupExtendedTypeFeatures.shaderSubgroupExtendedTypes) {
             extendedFeatures.shaderSubgroupExtendedTypeFeatures.pNext =
                 (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.shaderSubgroupExtendedTypeFeatures;
@@ -490,8 +499,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("shader-subgroup-extended-types");
         }
 
-        if (extendedFeatures.accelerationStructureFeatures.accelerationStructure)
-        {
+        if (extendedFeatures.accelerationStructureFeatures.accelerationStructure) {
             extendedFeatures.accelerationStructureFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.accelerationStructureFeatures;
             deviceExtensions.add(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
@@ -499,16 +507,14 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("acceleration-structure");
         }
 
-        if (extendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline)
-        {
+        if (extendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline) {
             extendedFeatures.rayTracingPipelineFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.rayTracingPipelineFeatures;
             deviceExtensions.add(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
             m_features.add("ray-tracing-pipeline");
         }
 
-        if (extendedFeatures.rayQueryFeatures.rayQuery)
-        {
+        if (extendedFeatures.rayQueryFeatures.rayQuery) {
             extendedFeatures.rayQueryFeatures.pNext = (void*)deviceCreateInfo.pNext;
             deviceCreateInfo.pNext = &extendedFeatures.rayQueryFeatures;
             deviceExtensions.add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
@@ -542,73 +548,60 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
             m_features.add("robustness2");
         }
 
-        VkPhysicalDeviceProperties2 extendedProps = {
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = {
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
+        VkPhysicalDeviceProperties2 extendedProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
         extendedProps.pNext = &rtProps;
         m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &extendedProps);
         m_api.m_rtProperties = rtProps;
 
         uint32_t extensionCount = 0;
-        m_api.vkEnumerateDeviceExtensionProperties(
-            m_api.m_physicalDevice, NULL, &extensionCount, NULL);
+        m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, NULL);
         Slang::List<VkExtensionProperties> extensions;
         extensions.setCount(extensionCount);
-        m_api.vkEnumerateDeviceExtensionProperties(
-            m_api.m_physicalDevice, NULL, &extensionCount, extensions.getBuffer());
+        m_api.vkEnumerateDeviceExtensionProperties( m_api.m_physicalDevice, NULL, &extensionCount, extensions.getBuffer());
 
         HashSet<String> extensionNames;
-        for (const auto& e : extensions)
-        {
+        for (const auto& e : extensions) {
             extensionNames.Add(e.extensionName);
         }
 
-        if (extensionNames.Contains("VK_KHR_external_memory"))
-        {
+        if (extensionNames.Contains("VK_KHR_external_memory")) {
             deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
+
 #if SLANG_WINDOWS_FAMILY
-            if (extensionNames.Contains("VK_KHR_external_memory_win32"))
-            {
+            if (extensionNames.Contains("VK_KHR_external_memory_win32")) {
                 deviceExtensions.add(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
             }
 #endif
             m_features.add("external-memory");
         }
-        if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME))
-        {
+
+        if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
             deviceExtensions.add(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
             m_features.add("conservative-rasterization-3");
             m_features.add("conservative-rasterization-2");
             m_features.add("conservative-rasterization-1");
         }
-        if (extensionNames.Contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME))
-        {
+        if (extensionNames.Contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
             deviceExtensions.add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-            if (extensionNames.Contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
-            {
+            if (extensionNames.Contains(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
                 deviceExtensions.add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
             }
         }
-        if (extensionNames.Contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME))
-        {
+        if (extensionNames.Contains(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
             deviceExtensions.add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
         }
     }
-    if (m_api.m_module->isSoftware())
-    {
+    if (m_api.m_module->isSoftware()) {
         m_features.add("software-device");
-    }
-    else
-    {
+    } else {
         m_features.add("hardware-device");
     }
 
     m_queueFamilyIndex = m_api.findQueue(VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     assert(m_queueFamilyIndex >= 0);
 
-    if (handles[2].handleValue == 0)
-    {
+    if (handles[2].handleValue == 0) {
         float queuePriority = 0.0f;
         VkDeviceQueueCreateInfo queueCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
         queueCreateInfo.queueFamilyIndex = m_queueFamilyIndex;
@@ -620,22 +613,31 @@ Result DeviceImpl::initVulkanInstanceAndDevice(
         deviceCreateInfo.enabledExtensionCount = uint32_t(deviceExtensions.getCount());
         deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.getBuffer();
 
-        if (m_api.vkCreateDevice(m_api.m_physicalDevice, &deviceCreateInfo, nullptr, &m_device) !=
-            VK_SUCCESS)
+        if (m_api.vkCreateDevice(m_api.m_physicalDevice, &deviceCreateInfo, nullptr, &m_device) != VK_SUCCESS) {
             return SLANG_FAIL;
-    }
-    else
-    {
+        }
+
+    } else {
         m_device = (VkDevice)handles[2].handleValue;
     }
 
     SLANG_RETURN_ON_FAIL(m_api.initDeviceProcs(m_device));
 
+    VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
+    vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    vmaAllocatorCreateInfo.physicalDevice = physicalDevice;
+    vmaAllocatorCreateInfo.device = m_device;
+    vmaAllocatorCreateInfo.instance = instance;
+    vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
+    vmaAllocatorCreateInfo.pRecordSettings = nullptr;
+ 
+    SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mVmaAllocator));
+
     return SLANG_OK;
 }
 
-SlangResult DeviceImpl::initialize(const Desc& desc)
-{
+SlangResult DeviceImpl::initialize(const Desc& desc) {
     // Initialize device info.
     {
         m_info.apiName = "Vulkan";
@@ -651,8 +653,7 @@ SlangResult DeviceImpl::initialize(const Desc& desc)
     SLANG_RETURN_ON_FAIL(RendererBase::initialize(desc));
     SlangResult initDeviceResult = SLANG_OK;
 
-    for (int forceSoftware = 0; forceSoftware <= 1; forceSoftware++)
-    {
+    for (int forceSoftware = 0; forceSoftware <= 1; forceSoftware++) {
         initDeviceResult = m_module.init(forceSoftware != 0);
         if (initDeviceResult != SLANG_OK)
             continue;
@@ -876,8 +877,7 @@ SlangResult DeviceImpl::readTextureResource(
 
     // Write out the data from the buffer
     void* mappedData = nullptr;
-    SLANG_RETURN_ON_FAIL(
-        m_api.vkMapMemory(m_device, staging.m_memory, 0, bufferSize, 0, &mappedData));
+    SLANG_RETURN_ON_FAIL(m_api.vkMapMemory(m_device, staging.m_memory, 0, bufferSize, 0, &mappedData));
 
     ::memcpy(blob->m_data.getBuffer(), mappedData, bufferSize);
     m_api.vkUnmapMemory(m_device, staging.m_memory);
@@ -888,9 +888,7 @@ SlangResult DeviceImpl::readTextureResource(
     return SLANG_OK;
 }
 
-SlangResult DeviceImpl::readBufferResource(
-    IBufferResource* inBuffer, Offset offset, Size size, ISlangBlob** outBlob)
-{
+SlangResult DeviceImpl::readBufferResource(IBufferResource* inBuffer, Offset offset, Size size, ISlangBlob** outBlob) {
     BufferResourceImpl* buffer = static_cast<BufferResourceImpl*>(inBuffer);
 
     RefPtr<ListBlob> blob = new ListBlob();
@@ -930,8 +928,7 @@ Result DeviceImpl::getAccelerationStructurePrebuildInfo(
     const IAccelerationStructure::BuildInputs& buildInputs,
     IAccelerationStructure::PrebuildInfo* outPrebuildInfo)
 {
-    if (!m_api.vkGetAccelerationStructureBuildSizesKHR)
-    {
+    if (!m_api.vkGetAccelerationStructureBuildSizesKHR) {
         return SLANG_E_NOT_AVAILABLE;
     }
     VkAccelerationStructureBuildSizesInfoKHR sizeInfo = {
@@ -950,11 +947,8 @@ Result DeviceImpl::getAccelerationStructurePrebuildInfo(
     return SLANG_OK;
 }
 
-Result DeviceImpl::createAccelerationStructure(
-    const IAccelerationStructure::CreateDesc& desc, IAccelerationStructure** outAS)
-{
-    if (!m_api.vkCreateAccelerationStructureKHR)
-    {
+Result DeviceImpl::createAccelerationStructure(const IAccelerationStructure::CreateDesc& desc, IAccelerationStructure** outAS) {
+    if (!m_api.vkCreateAccelerationStructureKHR) {
         return SLANG_E_NOT_AVAILABLE;
     }
     RefPtr<AccelerationStructureImpl> resultAS = new AccelerationStructureImpl();
@@ -1025,13 +1019,11 @@ void DeviceImpl::_transitionImageLayout(
         commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
-uint32_t DeviceImpl::getQueueFamilyIndex(ICommandQueue::QueueType queueType)
-{
-    switch (queueType)
-    {
-    case ICommandQueue::QueueType::Graphics:
-    default:
-        return m_queueFamilyIndex;
+uint32_t DeviceImpl::getQueueFamilyIndex(ICommandQueue::QueueType queueType) {
+    switch (queueType) {
+        case ICommandQueue::QueueType::Graphics:
+        default:
+            return m_queueFamilyIndex;
     }
 }
 
@@ -1046,60 +1038,56 @@ void DeviceImpl::_transitionImageLayout(
     _transitionImageLayout(commandBuffer, image, format, desc, oldLayout, newLayout);
 }
 
-Result DeviceImpl::getTextureAllocationInfo(
-    const ITextureResource::Desc& descIn, Size* outSize, Size* outAlignment)
-{
+Result DeviceImpl::getTextureAllocationInfo(const ITextureResource::Desc& descIn, Size* outSize, Size* outAlignment) {
     TextureResource::Desc desc = fixupTextureDesc(descIn);
 
     const VkFormat format = VulkanUtil::getVkFormat(desc.format);
-    if (format == VK_FORMAT_UNDEFINED)
-    {
+    if (format == VK_FORMAT_UNDEFINED) {
         assert(!"Unhandled image format");
         return SLANG_FAIL;
     }
     const int arraySize = calcEffectiveArraySize(desc);
 
     VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    switch (desc.type)
-    {
-    case IResource::Type::Texture1D:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_1D;
-        imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), 1, 1 };
-        break;
-    }
-    case IResource::Type::Texture2D:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent =
-            VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
-        break;
-    }
-    case IResource::Type::TextureCube:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent =
-            VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
-        imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-        break;
-    }
-    case IResource::Type::Texture3D:
-    {
-        // Can't have an array and 3d texture
-        assert(desc.arraySize <= 1);
+    switch (desc.type) {
+        case IResource::Type::Texture1D:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_1D;
+            imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), 1, 1 };
+            break;
+        }
+        case IResource::Type::Texture2D:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.extent =
+                VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
+            break;
+        }
+        case IResource::Type::TextureCube:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.extent =
+                VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
+            imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            break;
+        }
+        case IResource::Type::Texture3D:
+        {
+            // Can't have an array and 3d texture
+            assert(desc.arraySize <= 1);
 
-        imageInfo.imageType = VK_IMAGE_TYPE_3D;
-        imageInfo.extent = VkExtent3D{
-            uint32_t(descIn.size.width),
-            uint32_t(descIn.size.height),
-            uint32_t(descIn.size.depth) };
-        break;
-    }
-    default:
-    {
-        assert(!"Unhandled type");
-        return SLANG_FAIL;
-    }
+            imageInfo.imageType = VK_IMAGE_TYPE_3D;
+            imageInfo.extent = VkExtent3D{
+                uint32_t(descIn.size.width),
+                uint32_t(descIn.size.height),
+                uint32_t(descIn.size.depth) };
+            break;
+        }
+        default:
+        {
+            assert(!"Unhandled type");
+            return SLANG_FAIL;
+        }
     }
 
     imageInfo.mipLevels = desc.numMipLevels;
@@ -1126,26 +1114,26 @@ Result DeviceImpl::getTextureAllocationInfo(
     return SLANG_OK;
 }
 
-Result DeviceImpl::getTextureRowAlignment(Size* outAlignment)
-{
+Result DeviceImpl::getTextureRowAlignment(Size* outAlignment) {
     *outAlignment = 1;
     return SLANG_OK;
 }
 
-Result DeviceImpl::createTextureResource(
-    const ITextureResource::Desc& descIn,
-    const ITextureResource::SubresourceData* initData,
-    ITextureResource** outResource)
-{
+SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() const {
+    return mVmaAllocator;
+}
+
+Result DeviceImpl::createTextureResource( const ITextureResource::Desc& descIn, const std::shared_ptr<Falcor::Texture>& pTexture, const ITextureResource::SubresourceData* initData, ITextureResource** outResource) {
+    assert(pTexture);
     TextureResource::Desc desc = fixupTextureDesc(descIn);
 
     const VkFormat format = VulkanUtil::getVkFormat(desc.format);
-    if (format == VK_FORMAT_UNDEFINED)
-    {
+    if (format == VK_FORMAT_UNDEFINED) {
         assert(!"Unhandled image format");
         return SLANG_FAIL;
     }
 
+    const bool sparse = descIn.sparse;
     const int arraySize = calcEffectiveArraySize(desc);
 
     RefPtr<TextureResourceImpl> texture(new TextureResourceImpl(desc, this));
@@ -1153,46 +1141,44 @@ Result DeviceImpl::createTextureResource(
     // Create the image
 
     VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    switch (desc.type)
-    {
-    case IResource::Type::Texture1D:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_1D;
-        imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), 1, 1 };
-        break;
-    }
-    case IResource::Type::Texture2D:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent =
-            VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
-        break;
-    }
-    case IResource::Type::TextureCube:
-    {
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent =
-            VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
-        imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-        break;
-    }
-    case IResource::Type::Texture3D:
-    {
-        // Can't have an array and 3d texture
-        assert(desc.arraySize <= 1);
+    
+    switch (desc.type) {
+        case IResource::Type::Texture1D:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_1D;
+            imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), 1, 1 };
+            break;
+        }
+        case IResource::Type::Texture2D:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
+            break;
+        }
+        case IResource::Type::TextureCube:
+        {
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
+            imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            break;
+        }
+        case IResource::Type::Texture3D:
+        {
+            // Can't have an array and 3d texture
+            assert(desc.arraySize <= 1);
 
-        imageInfo.imageType = VK_IMAGE_TYPE_3D;
-        imageInfo.extent = VkExtent3D{
-            uint32_t(descIn.size.width),
-            uint32_t(descIn.size.height),
-            uint32_t(descIn.size.depth) };
-        break;
-    }
-    default:
-    {
-        assert(!"Unhandled type");
-        return SLANG_FAIL;
-    }
+            imageInfo.imageType = VK_IMAGE_TYPE_3D;
+            imageInfo.extent = VkExtent3D{
+                uint32_t(descIn.size.width),
+                uint32_t(descIn.size.height),
+                uint32_t(descIn.size.depth) };
+            break;
+        }
+        default:
+        {
+            assert(!"Unhandled type");
+            return SLANG_FAIL;
+        }
     }
 
     imageInfo.mipLevels = desc.numMipLevels;
@@ -1206,45 +1192,258 @@ Result DeviceImpl::createTextureResource(
 
     imageInfo.samples = (VkSampleCountFlagBits)desc.sampleDesc.numSamples;
 
-    VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = {
-        VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
+    if (sparse) {
+        imageInfo.flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
+    }
+
+    VkExternalMemoryImageCreateInfo externalMemoryImageCreateInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
+
 #if SLANG_WINDOWS_FAMILY
-    VkExternalMemoryHandleTypeFlags extMemoryHandleType =
-        VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-    if (descIn.isShared)
-    {
+    VkExternalMemoryHandleTypeFlags extMemoryHandleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+    if (descIn.isShared) {
         externalMemoryImageCreateInfo.pNext = nullptr;
         externalMemoryImageCreateInfo.handleTypes = extMemoryHandleType;
         imageInfo.pNext = &externalMemoryImageCreateInfo;
     }
 #endif
+
     SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateImage(m_device, &imageInfo, nullptr, &texture->m_image));
 
     VkMemoryRequirements memRequirements;
     m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &memRequirements);
 
+///////////////////////////////
+
+    printf("!!!!!!!!!!!!!!!!!!!!\n");
+    if (sparse) {
+        std::cout << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize << std::endl;
+        // Check requested image size against hardware sparse limit            
+        if (memRequirements.size > m_basicProps.limits.sparseAddressSpaceSize) {
+            LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";
+            return SLANG_FAIL;
+        };
+
+        // Get sparse memory requirements
+        // Count
+        uint32_t sparseMemoryReqsCount = 32;
+        std::vector<VkSparseImageMemoryRequirements> sparseMemoryReqs(sparseMemoryReqsCount);
+        m_api.vkGetImageSparseMemoryRequirements(m_device, texture->m_image, &sparseMemoryReqsCount, NULL);
+        
+        if (sparseMemoryReqsCount == 0) {
+            LLOG_ERR << "Error: No memory requirements for the sparse image !!!";
+            return SLANG_FAIL;
+        }
+        sparseMemoryReqs.resize(sparseMemoryReqsCount);
+        // Get actual requirements
+        m_api.vkGetImageSparseMemoryRequirements(m_device, texture->m_image, &sparseMemoryReqsCount, sparseMemoryReqs.data());
+
+        std::cout << "Sparse image memory requirements: " << sparseMemoryReqsCount << std::endl;
+        
+        for (auto reqs : sparseMemoryReqs) {
+            std::cout << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " << reqs.formatProperties.imageGranularity.depth << std::endl;
+            std::cout << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod << std::endl;
+            std::cout << "\t Mip tail size: " << reqs.imageMipTailSize << std::endl;
+            std::cout << "\t Mip tail offset: " << reqs.imageMipTailOffset << std::endl;
+            std::cout << "\t Mip tail stride: " << reqs.imageMipTailStride << std::endl;
+            
+            //todo:multiple reqs
+            pTexture->mMipTailStart = reqs.imageMipTailFirstLod;
+        }
+
+        // Get sparse image requirements for the color aspect
+        VkSparseImageMemoryRequirements sparseMemoryReq;
+        bool colorAspectFound = false;
+        for (auto reqs : sparseMemoryReqs) {
+            if (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+                sparseMemoryReq = reqs;
+                colorAspectFound = true;
+                break;
+            }
+        }
+        if (!colorAspectFound) {
+            LLOG_ERR << "Error: Could not find sparse image memory requirements for color aspect bit !!!";
+            return SLANG_FAIL;
+        }
+
+        // Calculate number of required sparse memory bindings by alignment
+        assert((memRequirements.size % memRequirements.alignment) == 0);
+        //mMemoryTypeIndex = vulkanDevice->getMemoryType(sparseImageMemoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        pTexture->mMemoryTypeIndex = _getVkMemoryTypeNative(m_memoryProperties, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        // Get sparse bindings
+        uint32_t sparseBindsCount = static_cast<uint32_t>(memRequirements.size / memRequirements.alignment);
+        std::vector<VkSparseMemoryBind> sparseMemoryBinds(sparseBindsCount);
+
+        pTexture->mSparseImageMemoryRequirements = sparseMemoryReq;
+
+        pTexture->mSparsePageRes = {
+            sparseMemoryReq.formatProperties.imageGranularity.width,
+            sparseMemoryReq.formatProperties.imageGranularity.width,
+            sparseMemoryReq.formatProperties.imageGranularity.width
+        };
+
+        printf("mSparsePageRes %u %u %u\n", pTexture->mSparsePageRes.x, pTexture->mSparsePageRes.y, pTexture->mSparsePageRes.z);
+        
+        // The mip tail contains all mip levels > sparseMemoryReq.imageMipTailFirstLod
+        // Check if the format has a single mip tail for all layers or one mip tail for each layer
+        // @todo: Comment
+        pTexture->mMipTailInfo.singleMipTail = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
+        pTexture->mMipTailInfo.alignedMipSize = sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT;
+
+        uint32_t pageIndex = 0;
+        // Sparse bindings for each mip level of all layers outside of the mip tail
+        for (uint32_t layer = 0; layer < pTexture->getArraySize(); layer++) {
+
+            // sparseMemoryReq.imageMipTailFirstLod is the first mip level that's stored inside the mip tail
+            uint32_t currentMipBase = 0;
+            for (uint32_t mipLevel = 0; mipLevel < sparseMemoryReq.imageMipTailFirstLod; mipLevel++) {
+                VkExtent3D extent;
+                extent.width = std::max(imageInfo.extent.width >> mipLevel, 1u);
+                extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
+                extent.depth = std::max(imageInfo.extent.depth >> mipLevel, 1u);
+
+                printf("Mip level width %u height %u ...\n", extent.width, extent.height);
+
+                // Aligned sizes by image granularity
+                VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;
+                glm::uvec3 sparseBindCounts = alignedDivision(extent, imageGranularity);
+                glm::uvec3 lastBlockExtent;
+                lastBlockExtent.x = (extent.width % imageGranularity.width) ? extent.width % imageGranularity.width : imageGranularity.width;
+                lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
+                lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
+
+                printf("apiInit mip level %u sparse binds count: %u %u %u\n", mipLevel, sparseBindCounts.x, sparseBindCounts.y, sparseBindCounts.z);
+
+                // @todo: Comment
+                const auto& texMemRequirements = pTexture->mMemRequirements; 
+                for (uint32_t z = 0; z < sparseBindCounts.z; z++) {
+                    for (uint32_t y = 0; y < sparseBindCounts.y; y++) {
+                        for (uint32_t x = 0; x < sparseBindCounts.x; x++) {
+                            // Offset
+                            VkOffset3D offset;
+                            offset.x = x * imageGranularity.width;
+                            offset.y = y * imageGranularity.height;
+                            offset.z = z * imageGranularity.depth;
+                            
+                            // Size of the page
+                            VkExtent3D extent;
+                            extent.width = (x == sparseBindCounts.x - 1) ? lastBlockExtent.x : imageGranularity.width;
+                            extent.height = (y == sparseBindCounts.y - 1) ? lastBlockExtent.y : imageGranularity.height;
+                            extent.depth = (z == sparseBindCounts.z - 1) ? lastBlockExtent.z : imageGranularity.depth;
+
+                            // Add new virtual page
+                            pTexture->addTexturePage(pageIndex++, {offset.x, offset.y, offset.z}, {extent.width, extent.height, extent.depth}, texMemRequirements.alignment, texMemRequirements.memoryTypeBits, mipLevel, layer);
+                            
+                            //pageIndex++;
+                        }
+                    }
+                }
+                pTexture->mMipBases[mipLevel] = currentMipBase;
+                
+                pTexture->mSparsePagesCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
+                currentMipBase = pTexture->mSparsePagesCount;
+            }
+
+            // @todo: proper comment
+            // @todo: store in mip tail and properly release
+            // @todo: Only one block for single mip tail
+
+            
+            if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
+                std::cout << "Layer " << layer << "single mip tail" << std::endl;
+                // Allocate memory for the layer mip tail
+                VkMemoryAllocateInfo memAllocInfo = {};
+                memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                memAllocInfo.pNext = NULL;
+                memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+                memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+
+                VkDeviceMemory deviceMemory;
+                if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+                    LLOG_ERR << "Could not allocate memory !!!";
+                    return SLANG_FAIL;
+                }
+
+                // (Opaque) sparse memory binding
+                VkSparseMemoryBind sparseMemoryBind{};
+                sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset + layer * sparseMemoryReq.imageMipTailStride;
+                sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
+                sparseMemoryBind.memory = deviceMemory;
+
+                pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+
+                pTexture->mMipBases[sparseMemoryReq.imageMipTailFirstLod] = pTexture->mSparsePagesCount;                    
+                //mSparsePagesCount += 1;
+            }
+
+        } // end layers and mips
+
+        // Check if format has one mip tail for all layers
+        if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
+            std::cout << "One mip tail for all mip layers " << std::endl;
+            // Allocate memory for the mip tail
+            VkMemoryAllocateInfo memAllocInfo = {};
+            memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            memAllocInfo.pNext = NULL;
+            memAllocInfo.allocationSize = sparseMemoryReq.imageMipTailSize;
+            memAllocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+
+            VkDeviceMemory deviceMemory;
+            if ( m_api.vkAllocateMemory(m_device, &memAllocInfo, nullptr, &deviceMemory) != VK_SUCCESS ) {
+                LLOG_ERR << "Could not allocate memory !!!";
+                return SLANG_FAIL;
+            }
+
+            // (Opaque) sparse memory binding
+            VkSparseMemoryBind sparseMemoryBind{};
+            sparseMemoryBind.resourceOffset = sparseMemoryReq.imageMipTailOffset;
+            sparseMemoryBind.size = sparseMemoryReq.imageMipTailSize;
+            sparseMemoryBind.memory = deviceMemory;
+
+            pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+        }
+
+        std::cout << "Texture info:" << std::endl;
+        std::cout << "\tDim: " << pTexture->mWidth << " x " << pTexture->mHeight << std::endl;
+        std::cout << "\tVirtual pages: " << pTexture->mPages.size() << std::endl;
+        std::cout << "\tSingle mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No") << std::endl;
+        std::cout << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod << std::endl;
+        std::cout << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize << std::endl;
+
+        // Create signal semaphore for sparse binding
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreCreateInfo.pNext = NULL;
+        semaphoreCreateInfo.flags = 0;
+
+        if ( m_api.vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &pTexture->mBindSparseSemaphore) != VK_SUCCESS ) {
+            LLOG_ERR << "Could not create semaphore !!!";
+            return SLANG_FAIL;
+        }
+
+        // Prepare bind sparse info for reuse in queue submission
+        pTexture->updateSparseBindInfo();
+    }
+///////////////////////////////
+
     // Allocate the memory
     VkMemoryPropertyFlags reqMemoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    int memoryTypeIndex =
-        m_api.findMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemoryProperties);
+    int memoryTypeIndex = m_api.findMemoryTypeIndex(memRequirements.memoryTypeBits, reqMemoryProperties);
     assert(memoryTypeIndex >= 0);
 
-    VkMemoryPropertyFlags actualMemoryProperites =
-        m_api.m_deviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
+    VkMemoryPropertyFlags actualMemoryProperites = m_api.m_deviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
     VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = memoryTypeIndex;
+
 #if SLANG_WINDOWS_FAMILY
-    VkExportMemoryWin32HandleInfoKHR exportMemoryWin32HandleInfo = {
-        VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-    VkExportMemoryAllocateInfoKHR exportMemoryAllocateInfo = {
-        VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
-    if (descIn.isShared)
-    {
+    VkExportMemoryWin32HandleInfoKHR exportMemoryWin32HandleInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+    VkExportMemoryAllocateInfoKHR exportMemoryAllocateInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
+    
+    if (descIn.isShared) {
         exportMemoryWin32HandleInfo.pNext = nullptr;
         exportMemoryWin32HandleInfo.pAttributes = nullptr;
-        exportMemoryWin32HandleInfo.dwAccess =
-            DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
+        exportMemoryWin32HandleInfo.dwAccess = DXGI_SHARED_RESOURCE_READ | DXGI_SHARED_RESOURCE_WRITE;
         exportMemoryWin32HandleInfo.name = NULL;
 
         exportMemoryAllocateInfo.pNext =
@@ -1255,15 +1454,16 @@ Result DeviceImpl::createTextureResource(
         allocInfo.pNext = &exportMemoryAllocateInfo;
     }
 #endif
-    SLANG_VK_RETURN_ON_FAIL(
-        m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &texture->m_imageMemory));
+    
+    if(!sparse) {
+        SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &texture->m_imageMemory));
 
-    // Bind the memory to the image
-    m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
+        // Bind the memory to the image
+        m_api.vkBindImageMemory(m_device, texture->m_image, texture->m_imageMemory, 0);
+    }
 
     VKBufferHandleRAII uploadBuffer;
-    if (initData)
-    {
+    if (initData && !sparse) {
         List<TextureResource::Extents> mipSizes;
 
         VkCommandBuffer commandBuffer = m_deviceQueue.getCommandBuffer();
@@ -1273,8 +1473,7 @@ Result DeviceImpl::createTextureResource(
         // Calculate how large the buffer has to be
         Size bufferSize = 0;
         // Calculate how large an array entry is
-        for (int j = 0; j < numMipMaps; ++j)
-        {
+        for (int j = 0; j < numMipMaps; ++j) {
             const TextureResource::Extents mipSize = calcMipSize(desc.size, j);
 
             auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
@@ -1306,10 +1505,8 @@ Result DeviceImpl::createTextureResource(
             dstDataStart = dstData;
 
             Offset dstSubresourceOffset = 0;
-            for (int i = 0; i < arraySize; ++i)
-            {
-                for (Index j = 0; j < mipSizes.getCount(); ++j)
-                {
+            for (int i = 0; i < arraySize; ++i) {
+                for (Index j = 0; j < mipSizes.getCount(); ++j) {
                     const auto& mipSize = mipSizes[j];
 
                     int subResourceIndex = subResourceCounter++;
@@ -1325,13 +1522,11 @@ Result DeviceImpl::createTextureResource(
                     const uint8_t* srcLayer = (const uint8_t*)initSubresource.data;
                     uint8_t* dstLayer = dstData + dstSubresourceOffset;
 
-                    for (int k = 0; k < mipSize.depth; k++)
-                    {
+                    for (int k = 0; k < mipSize.depth; k++) {
                         const uint8_t* srcRow = srcLayer;
                         uint8_t* dstRow = dstLayer;
 
-                        for (GfxCount l = 0; l < numRows; l++)
-                        {
+                        for (GfxCount l = 0; l < numRows; l++) {
                             ::memcpy(dstRow, srcRow, dstRowSizeInBytes);
 
                             dstRow += dstRowSizeInBytes;
@@ -1358,10 +1553,8 @@ Result DeviceImpl::createTextureResource(
 
         {
             Offset srcOffset = 0;
-            for (int i = 0; i < arraySize; ++i)
-            {
-                for (Index j = 0; j < mipSizes.getCount(); ++j)
-                {
+            for (int i = 0; i < arraySize; ++i) {
+                for (Index j = 0; j < mipSizes.getCount(); ++j) {
                     const auto& mipSize = mipSizes[j];
 
                     auto rowSizeInBytes = calcRowSize(desc.format, mipSize.width);
@@ -1409,12 +1602,10 @@ Result DeviceImpl::createTextureResource(
             *texture->getDesc(),
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             defaultLayout);
-    }
-    else
-    {
+    } else {
+        // No init data or sparse texture
         auto defaultLayout = VulkanUtil::getImageLayoutFromState(desc.defaultState);
-        if (defaultLayout != VK_IMAGE_LAYOUT_UNDEFINED)
-        {
+        if (defaultLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
             _transitionImageLayout(
                 texture->m_image,
                 format,
@@ -1428,9 +1619,7 @@ Result DeviceImpl::createTextureResource(
     return SLANG_OK;
 }
 
-Result DeviceImpl::createBufferResource(
-    const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource)
-{
+Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource) {
     BufferResource::Desc desc = fixupBufferDesc(descIn);
 
     const Size bufferSize = desc.sizeInBytes;
@@ -1438,30 +1627,25 @@ Result DeviceImpl::createBufferResource(
     VkMemoryPropertyFlags reqMemoryProperties = 0;
 
     VkBufferUsageFlags usage = _calcBufferUsageFlags(desc.allowedStates);
-    if (m_api.m_extendedFeatures.bufferDeviceAddressFeatures.bufferDeviceAddress)
-    {
+    
+    if (m_api.m_extendedFeatures.bufferDeviceAddressFeatures.bufferDeviceAddress) {
         usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     }
-    if (desc.allowedStates.contains(ResourceState::ShaderResource) &&
-        m_api.m_extendedFeatures.accelerationStructureFeatures.accelerationStructure)
-    {
+    
+    if (desc.allowedStates.contains(ResourceState::ShaderResource) && m_api.m_extendedFeatures.accelerationStructureFeatures.accelerationStructure) {
         usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
     }
-    if (initData)
-    {
+
+    if (initData) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
-    if (desc.allowedStates.contains(ResourceState::ConstantBuffer) ||
-        desc.memoryType == MemoryType::Upload || desc.memoryType == MemoryType::ReadBack)
-    {
-        reqMemoryProperties =
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    if (desc.allowedStates.contains(ResourceState::ConstantBuffer) || desc.memoryType == MemoryType::Upload || desc.memoryType == MemoryType::ReadBack) {
+        reqMemoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     }
 
     RefPtr<BufferResourceImpl> buffer(new BufferResourceImpl(desc, this));
-    if (desc.isShared)
-    {
+    if (desc.isShared) {
         SLANG_RETURN_ON_FAIL(buffer->m_buffer.init(
             m_api,
             desc.sizeInBytes,
@@ -1469,9 +1653,7 @@ Result DeviceImpl::createBufferResource(
             reqMemoryProperties,
             desc.isShared,
             VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT));
-    }
-    else
-    {
+    } else {
         SLANG_RETURN_ON_FAIL(
             buffer->m_buffer.init(m_api, desc.sizeInBytes, usage, reqMemoryProperties));
     }

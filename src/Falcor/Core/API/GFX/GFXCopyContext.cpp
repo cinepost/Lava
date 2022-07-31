@@ -35,8 +35,8 @@
 #include "GFXResource.h"
 
 #include <slang/slang.h>
-#include <slang/slang-gfx.h>
 #include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"

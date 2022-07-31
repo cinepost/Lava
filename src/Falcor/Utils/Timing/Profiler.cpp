@@ -291,10 +291,12 @@ void Profiler::startEvent(const std::string& name, Flags flags) {
         }
     }
     if (is_set(flags, Flags::Pix)) {
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         PIXBeginEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
-#else
+#elif defined(FALCOR_GFX)
         mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
+#else 
+        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
 #endif
     }
 }
@@ -312,10 +314,12 @@ void Profiler::endEvent(const std::string& name, Flags flags) {
     }
 
     if (is_set(flags, Flags::Pix)) {
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         PIXEndEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
-#else
+#elif defined(FALCOR_GFX)
         mpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
+#else 
+        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
 #endif
     }
 }

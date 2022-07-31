@@ -30,7 +30,7 @@
 
 #include "stdafx.h"
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/RtAccelerationStructure.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"

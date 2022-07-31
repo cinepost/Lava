@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_VULKAN_VKLOWLEVELCONTEXTAPIDATA_H_
 #define SRC_FALCOR_CORE_API_VULKAN_VKLOWLEVELCONTEXTAPIDATA_H_
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 #if FALCOR_D3D12_AVAILABLE
 #include "Core/API/Shared/D3D12DescriptorPool.h"

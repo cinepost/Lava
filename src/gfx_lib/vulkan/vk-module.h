@@ -2,7 +2,7 @@
 #pragma once
 
 #include <slang/slang.h>
-#include "../slang-com-helper.h"
+#include <slang/slang-com-helper.h>
 
 #if SLANG_WINDOWS_FAMILY
 #   define VK_USE_PLATFORM_WIN32_KHR 1
@@ -14,6 +14,11 @@
 
 #include <vulkan/vulkan.h>
 
+#if VK_USE_PLATFORM_XLIB_KHR
+#include <X11/Xlib.h>
+#include <vulkan/vulkan_xlib.h>
+#endif
+
 // Undef xlib macros
 #ifdef Always
 #    undef Always
@@ -23,6 +28,15 @@
 #endif
 
 namespace gfx {
+
+namespace vk {
+
+#if !VK_USE_PLATFORM_XLIB_KHR
+typedef void Display;
+typedef int Window;
+#endif
+
+}
 
 struct VulkanModule
 {

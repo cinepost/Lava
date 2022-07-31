@@ -240,7 +240,7 @@ endif()
 # OpenEXR
 #######################
 
-set(EXTERNAL_OPENEXR_VERSION 2.5.7)
+set(EXTERNAL_OPENEXR_VERSION 2.5.8)
 set(OpenEXR_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT)
 
@@ -765,6 +765,7 @@ add_dependencies( dummy_target
   OpenImageIO
   RTXDI
   RTXGI
+  VMA
   Slang
   Glfw
 )

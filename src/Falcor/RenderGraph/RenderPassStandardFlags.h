@@ -30,6 +30,10 @@
 
 #include "Falcor/Core/Framework.h"
 
+#if defined(FALCOR_GFX)
+#include "Falcor/Core/API/GFX/FalcorGFX.h"
+#endif
+
 namespace Falcor {
 
 /** Flags to indicate what have changed since last frame.

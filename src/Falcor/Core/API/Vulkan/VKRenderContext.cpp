@@ -36,6 +36,8 @@
 #include "Falcor/Core/Program/RtProgram.h"
 #include "Falcor/Core/Program/ProgramVars.h"
 
+#include "VKRtAccelerationStructure.h"
+
 namespace Falcor {
 	
 VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
@@ -55,7 +57,7 @@ void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) 
 }
 
 void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth, bool clearStencil) {
-	resourceBarrier(pDsv->getResource(), Resource::State::CopyDest);
+	resourceBarrier(pDsv->getResource().get(), Resource::State::CopyDest);
 
 	VkClearDepthStencilValue val;
 	val.depth = depth;
@@ -172,7 +174,7 @@ bool RenderContext::prepareForDraw(GraphicsState* pState, GraphicsVars* pVars) {
 	}
 	if (is_set(StateBindFlags::SamplePositions, mBindFlags)) {
 		if (pState->getFbo() && pState->getFbo()->getSamplePositions().size()) {
-			logWarning("The Vulkan backend doesn't support programmable sample positions");
+			LLOG_WRN << "The Vulkan backend doesn't support programmable sample positions";
 		}
 	}
 	if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags)) {
@@ -227,7 +229,7 @@ void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVa
 
 template<uint32_t offsetCount, typename ViewType>
 void initBlitData(const ViewType* pView, const uint4& rect, VkImageSubresourceLayers& layer, VkOffset3D offset[offsetCount]) {
-	const Texture* pTex = dynamic_cast<const Texture*>(pView->getResource());
+	const Texture* pTex = dynamic_cast<const Texture*>(pView->getResource().get());
 
 	layer.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Can't blit depth texture
 	const auto& viewInfo = pView->getViewInfo();
@@ -246,11 +248,10 @@ void initBlitData(const ViewType* pView, const uint4& rect, VkImageSubresourceLa
 		offset[1].z = 1;
 	}
 }
-
-void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter) {
-	const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource());
-	resourceBarrier(pSrc->getResource(), Resource::State::CopySource, &pSrc->getViewInfo());
-	resourceBarrier(pDst->getResource(), Resource::State::CopyDest, &pDst->getViewInfo());
+void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter) {
+	const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource().get());
+	resourceBarrier(pSrc->getResource().get(), Resource::State::CopySource, &pSrc->getViewInfo());
+	resourceBarrier(pDst->getResource().get(), Resource::State::CopyDest, &pDst->getViewInfo());
 
 	if (pTexture && pTexture->getSampleCount() > 1) {
 		// Resolve
@@ -284,7 +285,7 @@ void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::S
 	mCommandsPending = true;
 }
 
-void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uint4& srcRect, const uint4& dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
+void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
 { 
 	// TODO: Implement complex blit here...
 }
@@ -318,54 +319,28 @@ void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t
 	mCommandsPending = true;
 }
 
-void RenderContext::dispatchRays( int raygenShaderIndex, gfx::IShaderTable* shaderTable, uint32_t width, uint32_t height, uint32_t depth) {
-/*
-    auto vkApi = m_commandBuffer->m_renderer->m_api;
-    auto vkCommandBuffer = m_commandBuffer->m_commandBuffer;
+void RenderContext::buildAccelerationStructure(const RtAccelerationStructure::BuildDesc& desc, uint32_t postBuildInfoCount, RtAccelerationStructurePostBuildInfoDesc* pPostBuildInfoDescs) {
+    RtAccelerationStructure::BuildDesc buildDesc = {};
+    buildDesc.dest = desc.dest;
+    buildDesc.scratchData = desc.scratchData;
+    buildDesc.source = desc.source ? desc.source : nullptr;
+    buildDesc.inputs = desc.inputs; //translator.translate(desc.inputs);
 
-    bindRenderState(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+    std::vector<AccelerationStructureQueryDesc> queryDescs(postBuildInfoCount);
+    for (uint32_t i = 0; i < postBuildInfoCount; i++) {
+        queryDescs[i].firstQueryIndex = pPostBuildInfoDescs[i].index;
+        queryDescs[i].queryPool = pPostBuildInfoDescs[i].pool->getRtQueryPool();
+        queryDescs[i].queryType = getVKAccelerationStructurePostBuildQueryType(pPostBuildInfoDescs[i].type);
+    }
+    //auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
+    //rtEncoder->buildAccelerationStructure(buildDesc, (int)postBuildInfoCount, queryDescs.data());
+    mCommandsPending = true;
+}
 
-    auto rtProps = vkApi.m_rtProperties;
-    auto shaderTableImpl = (ShaderTableImpl*)shaderTable;
-    auto alignedHandleSize = VulkanUtil::calcAligned(rtProps.shaderGroupHandleSize, rtProps.shaderGroupHandleAlignment);
-
-    auto shaderTableBuffer = shaderTableImpl->getOrCreateBuffer(
-        m_currentPipeline,
-        m_commandBuffer->m_transientHeap,
-        static_cast<ResourceCommandEncoder*>(this));
-
-    VkStridedDeviceAddressRegionKHR raygenSBT;
-    raygenSBT.deviceAddress = shaderTableBuffer->getDeviceAddress();
-    raygenSBT.stride = VulkanUtil::calcAligned(alignedHandleSize, rtProps.shaderGroupBaseAlignment);
-    raygenSBT.size = raygenSBT.stride;
-
-    VkStridedDeviceAddressRegionKHR missSBT;
-    missSBT.deviceAddress = raygenSBT.deviceAddress + raygenSBT.size;
-    missSBT.stride = alignedHandleSize;
-    missSBT.size = shaderTableImpl->m_missTableSize;
-
-    VkStridedDeviceAddressRegionKHR hitSBT;
-    hitSBT.deviceAddress = missSBT.deviceAddress + missSBT.size;
-    hitSBT.stride = alignedHandleSize;
-    hitSBT.size = shaderTableImpl->m_hitTableSize;
-
-    // TODO: Are callable shaders needed?
-    VkStridedDeviceAddressRegionKHR callableSBT;
-    callableSBT.deviceAddress = 0;
-    callableSBT.stride = 0;
-    callableSBT.size = 0;
-
-    vkApi.vkCmdTraceRaysKHR(
-        vkCommandBuffer,
-        &raygenSBT,
-        &missSBT,
-        &hitSBT,
-        &callableSBT,
-        (uint32_t)width,
-        (uint32_t)height,
-        (uint32_t)depth
-    );
-*/
+void RenderContext::copyAccelerationStructure(RtAccelerationStructure* dest, RtAccelerationStructure* source, RenderContext::RtAccelerationStructureCopyMode mode) {
+    //auto rtEncoder = getLowLevelData()->getApiData()->getRayTracingCommandEncoder();
+    //rtEncoder->copyAccelerationStructure(dest->getApiHandle(), source->getApiHandle(), getGFXAcclerationStructureCopyMode(mode));
+    mCommandsPending = true;
 }
 
 }

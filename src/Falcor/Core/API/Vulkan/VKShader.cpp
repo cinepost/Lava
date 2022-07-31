@@ -31,6 +31,8 @@
 
 #include "lava_utils_lib/logging.h"
 
+#include <slang/slang.h>
+
 namespace Falcor {
 
     struct ShaderData {
@@ -38,17 +40,18 @@ namespace Falcor {
     
         // new
         Shader::Blob pBlob;
-        Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+        //Slang::ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
+        ComPtr<slang::IComponentType> pLinkedSlangEntryPoint;
 
-        ISlangBlob* getBlob()
-        {
-            if (!pBlob)
-            {
-                Slang::ComPtr<ISlangBlob> pSlangBlob;
-                Slang::ComPtr<ISlangBlob> pDiagnostics;
+        ISlangBlob* getBlob() {
+            if (!pBlob) {
+                //Slang::ComPtr<ISlangBlob> pSlangBlob;
+                //Slang::ComPtr<ISlangBlob> pDiagnostics;
 
-                if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef())))
-                {
+                ComPtr<ISlangBlob> pSlangBlob;
+                ComPtr<ISlangBlob> pDiagnostics;
+
+                if (SLANG_FAILED(pLinkedSlangEntryPoint->getEntryPointCode(0, 0, pSlangBlob.writeRef(), pDiagnostics.writeRef()))) {
                     throw std::runtime_error(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
                 }
                 pBlob = Shader::Blob(pSlangBlob.get());
@@ -66,6 +69,7 @@ namespace Falcor {
         //safe_delete(pData);
     }
 
+/*
     // typedef ComPtr<ISlangBlob> Blob;
 
     bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
@@ -117,9 +121,8 @@ namespace Falcor {
         mApiHandle = ApiHandle::create(mpDevice, shaderModule);
         return true;
     }
-
-     bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log)
-    {
+*/
+    bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::string& entryPointName, CompilerFlags flags, std::string& log) {
         // In GFX, we do not generate actual shader code at program creation.
         // The actual shader code will only be generated and cached when all specialization arguments
         // are known, which is right before a draw/dispatch command is issued, and this is done
@@ -136,13 +139,13 @@ namespace Falcor {
             return false;
         }
 
-        return init(mpPrivateData->getBlob(), entryPointName, flags, log);
+        return true;
     }
 
-
+/*
     ISlangBlob* Shader::getISlangBlob() const {
         return mpPrivateData->getBlob();
         //return pData->pBlob;
     }
-
+*/
 }  // namespace Falcor

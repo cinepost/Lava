@@ -124,7 +124,7 @@ public:
 	*/
 	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, std::string udim_mask = "<UDIM>", bool loadAsSparse = false);
 
-	static Texture::SharedPtr loadSparseTexture(std::shared_ptr<Device> pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
+	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
 
 	/** Wait for a requested texture to load.
 		If the handle is valid, the call blocks until the texture is loaded (or failed to load).

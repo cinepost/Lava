@@ -34,7 +34,11 @@
 
 #define FALCOR_ENABLE_RTXDI 1
 
+#if defined(_FLACOR_API_BACKEND_GFX)
 #define FALCOR_GFX_VK 1
+#else
+#define FALCOR_VK 1
+#endif
 
 #define FALCOR_MAX_DEVICES 32
 

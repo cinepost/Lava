@@ -230,8 +230,8 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
 
 #endif  // FALCOR_GFX_VK
 
-    pDevice = Device::create(nullptr, iDesc, desc);
-    //pDevice = Device::create(nullptr, desc);
+    Window::SharedPtr pWindow = nullptr;
+    pDevice = Device::create(pWindow, iDesc, desc);
     if (!pDevice) {
         LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";
         return nullptr;

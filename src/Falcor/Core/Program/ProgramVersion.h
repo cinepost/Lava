@@ -32,6 +32,8 @@
 
 #if FALCOR_D3D12_AVAILABLE
 #include "Falcor/Core/API/Shared/D3D12RootSignature.h"
+#elif defined(FALCOR_VK)
+#include "Falcor/Core/API/RootSignature.h"
 #endif
 
 #include <slang/slang.h>
@@ -180,8 +182,10 @@ namespace Falcor
         */
         const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
 
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         D3D12RootSignature::SharedPtr const& getD3D12RootSignature() const { return mpRootSignature; }
+#elif defined(FALCOR_VK)
+        RootSignature::SharedPtr const& getRootSignature() const { return mpRootSignature; }
 #endif
 
         std::shared_ptr<const ProgramVersion> getProgramVersion() const;
@@ -212,8 +216,10 @@ namespace Falcor
 
         ProgramVersion const* mpVersion = nullptr;
 
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         D3D12RootSignature::SharedPtr mpRootSignature;
+#elif defined(FALCOR_VK)
+        RootSignature::SharedPtr mpRootSignature;
 #endif
     };
 

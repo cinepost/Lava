@@ -107,7 +107,7 @@ TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPt
 	return handle;
 }
 
-Texture::SharedPtr TextureManager::loadSparseTexture(Device::SharedPtr pDevice, const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags) {
+Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags) {
 	std::string ext = path.extension().string();
 
 	if (ext == ".dds") {
@@ -141,7 +141,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(Device::SharedPtr pDevice, 
 		LTX_Bitmap::TLCParms tlcParms;
 		tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
 		tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
-		if (!LTX_Bitmap::convertToLtxFile(pDevice, path.string(), ltxPath.string(), tlcParms, true)) {
+		if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
 			LLOG_ERR << "Error converting texture to " << ltxPath;
 			return nullptr;
 		} else {
@@ -149,7 +149,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(Device::SharedPtr pDevice, 
 		}
 	}
 	
-	auto pLtxBitmap = LTX_Bitmap::createFromFile(pDevice, ltxPath, true);
+	auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
   if (!pLtxBitmap) {
     LLOG_ERR << "Error loading converted ltx bitmap from " << ltxPath;
     return nullptr;
@@ -162,14 +162,14 @@ Texture::SharedPtr TextureManager::loadSparseTexture(Device::SharedPtr pDevice, 
 
   uint32_t arraySize = 1;
   Texture::SharedPtr pTexture = Texture::SharedPtr(
-  	new Texture(pDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
+  	new Texture(mpDevice, pLtxBitmap->getWidth(), pLtxBitmap->getHeight(), 1, arraySize, pLtxBitmap->getMipLevelsCount(), 1, texFormat, Texture::Type::Texture2D, bindFlags)
   );
 
-  if(pTexture) {
-  	pTexture->setSourceFilename(ltxPath.string());
-    pTexture->mIsSparse = true;
-  }
+  if( ! pTexture ) return nullptr;
 
+  pTexture->setSourceFilename(ltxPath.string());
+  pTexture->mIsSparse = true;
+  
 	try {
     pTexture->apiInit(nullptr, generateMipLevels);
   } catch (const std::runtime_error& e) {
@@ -191,6 +191,10 @@ Texture::SharedPtr TextureManager::loadSparseTexture(Device::SharedPtr pDevice, 
   //}
   
   // Sparse bitmaps tracking
+  auto it = mTextureLTXBitmapsMap.find(pTexture->id());
+  if (it == mTextureLTXBitmapsMap.end()) {
+      mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
+  }
   //mTextureLTXBitmapsMap[pTexture->id()] = std::move(pLtxBitmap);
   
 	return pTexture;
@@ -205,7 +209,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 
   auto it = mTextureLTXBitmapsMap.find(textureID);
   if (it == mTextureLTXBitmapsMap.end()) {
-      LLOG_ERR << "Non LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
+      LLOG_ERR << "No LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
       return;
   }
 
@@ -350,7 +354,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 			if(!loadAsSparse) {
 				pTexture = Texture::createFromFile(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 			} else {
-				pTexture = loadSparseTexture(mpDevice, fullPath, generateMipLevels, loadAsSRGB, bindFlags);
+				pTexture = loadSparseTexture(fullPath, generateMipLevels, loadAsSRGB, bindFlags);
 				if(pTexture) mHasSparseTextures = true;
 			}
 
@@ -405,7 +409,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 					if(!loadAsSparse) {
 						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
-						pUdimTileTex = loadSparseTexture(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
+						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 						if(pUdimTileTex) mHasSparseTextures = true;
 					}
 

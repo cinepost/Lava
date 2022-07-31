@@ -45,7 +45,6 @@ namespace fs = boost::filesystem;
 #include "LTX_BitmapUtils.h"
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "lava_utils_lib/logging.h"

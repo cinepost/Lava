@@ -36,7 +36,8 @@
 
 namespace Falcor {
 
-gfx::IResource::Type getResourceType(Texture::Type type) {
+namespace {
+inline gfx::IResource::Type getResourceType(Texture::Type type) {
     switch (type) {
         case Texture::Type::Texture1D:
             return gfx::IResource::Type::Texture1D;
@@ -51,6 +52,8 @@ gfx::IResource::Type getResourceType(Texture::Type type) {
             assert(false);
             return gfx::IResource::Type::Unknown;
     }
+}
+
 }
 
 uint64_t Texture::getTextureSizeInBytes() const {
@@ -81,6 +84,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
     gfx::ITextureResource::Desc desc = {};
 
     // base description
+    desc.sparse = mIsSparse;
 
     // type
     desc.type = getResourceType(mType); // same as resource dimension in D3D12
@@ -136,8 +140,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
     FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
     // create resource
-    Slang::ComPtr<gfx::ITextureResource> textureResource =
-        mpDevice->getApiHandle()->createTextureResource(desc, nullptr);
+    Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getApiHandle()->createTextureResource(desc, shared_from_this(), nullptr);
     FALCOR_ASSERT(textureResource);
 
     mApiHandle = textureResource;

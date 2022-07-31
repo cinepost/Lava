@@ -4,6 +4,13 @@
 #include "vk-base.h"
 #include "vk-framebuffer.h"
 
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+
+namespace Falcor {
+    class Texture;
+}
+
 namespace gfx
 {
 
@@ -34,6 +41,7 @@ public:
         const IRenderPassLayout::Desc& desc, IRenderPassLayout** outRenderPassLayout) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
         const ITextureResource::Desc& desc,
+        const std::shared_ptr<Falcor::Texture>& pTexture,
         const ITextureResource::SubresourceData* initData,
         ITextureResource** outResource) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL createBufferResource(
@@ -120,8 +128,12 @@ public:
 
     virtual SLANG_NO_THROW const DeviceInfo& SLANG_MCALL getDeviceInfo() const override;
 
-    virtual SLANG_NO_THROW Result SLANG_MCALL
-        getNativeDeviceHandles(InteropHandles* outHandles) override;
+    virtual SLANG_NO_THROW Result SLANG_MCALL getNativeDeviceHandles(InteropHandles* outHandles) override;
+
+    const VkPhysicalDeviceProperties& basicProperties() const { return m_basicProps; }
+    const VkPhysicalDeviceMemoryProperties& memoryProperties() const { return m_memoryProperties; }
+
+    virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
 
     ~DeviceImpl();
 
@@ -179,7 +191,11 @@ public:
 
     Desc m_desc;
 
+    VkPhysicalDeviceProperties m_basicProps;
+    VkPhysicalDeviceMemoryProperties m_memoryProperties;
+
     DescriptorSetAllocator descriptorSetAllocator;
+    VmaAllocator    mVmaAllocator;
 
     uint32_t m_queueAllocCount;
 

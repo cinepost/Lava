@@ -182,7 +182,7 @@ Texture::SharedPtr Texture::createFromFile(Device::SharedPtr pDevice, const fs::
 
 
 Texture::Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
-	: Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format) {
+	: Resource(pDevice, type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format), mIsSparse(false) {
 	
 	LLOG_DBG << "Create texture " << std::to_string(id()) << " width " << std::to_string(width) << " height " << std::to_string(height) 
 		<< " format " << to_string(format) << " bindFlags " << to_string(bindFlags);
@@ -496,6 +496,19 @@ void Texture::addUDIMTileTexture(const UDIMTileInfo& udim_tile_info) {
 
 	assert((udim_tile_info.u + udim_tile_info.v * 10) < 100);
 	mUDIMTileInfos[udim_tile_info.u + udim_tile_info.v * 10] = udim_tile_info;
+}
+
+bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer) {
+  auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer);
+  if (!pPage) return false;
+
+  pPage->mMemoryTypeBits = memoryTypeBits;
+  pPage->mDevMemSize = size;
+  pPage->mIndex = index;
+  pPage->mID = static_cast<uint32_t>(mPages.size());
+    
+  mPages.push_back(pPage);
+  return true;
 }
 
 bool Texture::compareDesc(const Texture* pOther) const {

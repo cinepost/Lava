@@ -51,8 +51,7 @@ namespace Falcor {
         return res;
     }
 
-    struct TextureApiData {
-    };
+    struct TextureApiData {};
 
     Texture::~Texture() {
         LLOG_DBG << "Deleting texture (resource id " << std::to_string(id()) << (mSourceFilename.empty() ? "" : (" )with source name: " + mSourceFilename));

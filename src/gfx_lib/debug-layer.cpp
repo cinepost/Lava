@@ -1,7 +1,7 @@
 #include "debug-layer.h"
 #include "renderer-shared.h"
 
-#include <slang/slang-gfx.h>
+#include "slang-gfx.h"
 
 
 using namespace Slang;
@@ -344,6 +344,7 @@ Result DebugDevice::createTransientResourceHeap(
 
 Result DebugDevice::createTextureResource(
     const ITextureResource::Desc& desc,
+    const std::shared_ptr<Falcor::Texture>& pTexture,
     const ITextureResource::SubresourceData* initData,
     ITextureResource** outResource)
 {
@@ -351,7 +352,7 @@ Result DebugDevice::createTextureResource(
 
     RefPtr<DebugTextureResource> outObject = new DebugTextureResource();
     auto result =
-        baseObject->createTextureResource(desc, initData, outObject->baseObject.writeRef());
+        baseObject->createTextureResource(desc, pTexture, initData, outObject->baseObject.writeRef());
     if (SLANG_FAILED(result))
         return result;
     returnComPtr(outResource, outObject);
@@ -521,6 +522,11 @@ Result DebugDevice::createFramebufferLayout(
     returnComPtr(outFrameBuffer, outObject);
     return result;
 }
+
+SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DebugDevice::getVmaAllocator() const {
+    return baseObject->getVmaAllocator();
+}
+
 
 Result DebugDevice::createFramebuffer(IFramebuffer::Desc const& desc, IFramebuffer** outFrameBuffer)
 {

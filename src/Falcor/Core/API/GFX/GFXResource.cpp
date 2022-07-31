@@ -33,127 +33,125 @@
 namespace Falcor {
 
 void Resource::apiSetName() {
-    mApiHandle->setDebugName(mName.c_str());
+	mApiHandle->setDebugName(mName.c_str());
 }
 
 SharedResourceApiHandle Resource::getSharedApiHandle() const {
-    return SharedResourceApiHandle();
+	return SharedResourceApiHandle();
 }
 
 gfx::ResourceState getGFXResourceState(Resource::State state) {
-    switch (state) {
-        case Resource::State::Undefined:
-            return gfx::ResourceState::Undefined;
-        case Resource::State::PreInitialized:
-            return gfx::ResourceState::PreInitialized;
-        case Resource::State::Common:
-            return gfx::ResourceState::General;
-        case Resource::State::VertexBuffer:
-            return gfx::ResourceState::VertexBuffer;
-        case Resource::State::ConstantBuffer:
-            return gfx::ResourceState::ConstantBuffer;
-        case Resource::State::IndexBuffer:
-            return gfx::ResourceState::IndexBuffer;
-        case Resource::State::RenderTarget:
-            return gfx::ResourceState::RenderTarget;
-        case Resource::State::UnorderedAccess:
-            return gfx::ResourceState::UnorderedAccess;
-        case Resource::State::DepthStencil:
-            return gfx::ResourceState::DepthWrite;
-        case Resource::State::ShaderResource:
-            return gfx::ResourceState::ShaderResource;
-        case Resource::State::StreamOut:
-            return gfx::ResourceState::StreamOutput;
-        case Resource::State::IndirectArg:
-            return gfx::ResourceState::IndirectArgument;
-        case Resource::State::CopyDest:
-            return gfx::ResourceState::CopyDestination;
-        case Resource::State::CopySource:
-            return gfx::ResourceState::CopySource;
-        case Resource::State::ResolveDest:
-            return gfx::ResourceState::ResolveDestination;
-        case Resource::State::ResolveSource:
-            return gfx::ResourceState::ResolveSource;
-        case Resource::State::Present:
-            return gfx::ResourceState::Present;
-        case Resource::State::GenericRead:
-            return gfx::ResourceState::General;
-        case Resource::State::Predication:
-            return gfx::ResourceState::General;
-        case Resource::State::PixelShader:
-            return gfx::ResourceState::ShaderResource;
-        case Resource::State::NonPixelShader:
-            return gfx::ResourceState::ShaderResource;
-        case Resource::State::AccelerationStructure:
-            return gfx::ResourceState::AccelerationStructure;
-        default:
-            assert(false);
-            return gfx::ResourceState::Undefined;
-    }
+	switch (state) {
+		case Resource::State::Undefined:
+			return gfx::ResourceState::Undefined;
+		case Resource::State::PreInitialized:
+			return gfx::ResourceState::PreInitialized;
+		case Resource::State::Common:
+			return gfx::ResourceState::General;
+		case Resource::State::VertexBuffer:
+			return gfx::ResourceState::VertexBuffer;
+		case Resource::State::ConstantBuffer:
+			return gfx::ResourceState::ConstantBuffer;
+		case Resource::State::IndexBuffer:
+			return gfx::ResourceState::IndexBuffer;
+		case Resource::State::RenderTarget:
+			return gfx::ResourceState::RenderTarget;
+		case Resource::State::UnorderedAccess:
+			return gfx::ResourceState::UnorderedAccess;
+		case Resource::State::DepthStencil:
+			return gfx::ResourceState::DepthWrite;
+		case Resource::State::ShaderResource:
+			return gfx::ResourceState::ShaderResource;
+		case Resource::State::StreamOut:
+			return gfx::ResourceState::StreamOutput;
+		case Resource::State::IndirectArg:
+			return gfx::ResourceState::IndirectArgument;
+		case Resource::State::CopyDest:
+			return gfx::ResourceState::CopyDestination;
+		case Resource::State::CopySource:
+			return gfx::ResourceState::CopySource;
+		case Resource::State::ResolveDest:
+			return gfx::ResourceState::ResolveDestination;
+		case Resource::State::ResolveSource:
+			return gfx::ResourceState::ResolveSource;
+		case Resource::State::Present:
+			return gfx::ResourceState::Present;
+		case Resource::State::GenericRead:
+			return gfx::ResourceState::General;
+		case Resource::State::Predication:
+			return gfx::ResourceState::General;
+		case Resource::State::PixelShader:
+			return gfx::ResourceState::ShaderResource;
+		case Resource::State::NonPixelShader:
+			return gfx::ResourceState::ShaderResource;
+		case Resource::State::AccelerationStructure:
+			return gfx::ResourceState::AccelerationStructure;
+		default:
+			assert(false);
+			return gfx::ResourceState::Undefined;
+	}
 }
 
 void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates) {
-    defaultState = gfx::ResourceState::General;
-    allowedStates = gfx::ResourceStateSet(defaultState);
+	defaultState = gfx::ResourceState::General;
+	allowedStates = gfx::ResourceStateSet(defaultState);
 
-    // setting up the following flags requires Slang gfx resourece states to have integral type
-    if (is_set(flags, Resource::BindFlags::UnorderedAccess)) {
-        allowedStates.add(gfx::ResourceState::UnorderedAccess);
-    }
+	// setting up the following flags requires Slang gfx resourece states to have integral type
+	if (is_set(flags, Resource::BindFlags::UnorderedAccess)) {
+		allowedStates.add(gfx::ResourceState::UnorderedAccess);
+	}
 
-    if (is_set(flags, Resource::BindFlags::ShaderResource)) {
-        allowedStates.add(gfx::ResourceState::ShaderResource);
-    }
+	if (is_set(flags, Resource::BindFlags::ShaderResource)) {
+		allowedStates.add(gfx::ResourceState::ShaderResource);
+	}
 
-    if (is_set(flags, Resource::BindFlags::RenderTarget)) {
-        allowedStates.add(gfx::ResourceState::RenderTarget);
-    }
+	if (is_set(flags, Resource::BindFlags::RenderTarget)) {
+		allowedStates.add(gfx::ResourceState::RenderTarget);
+	}
 
-    if (is_set(flags, Resource::BindFlags::DepthStencil)) {
-        allowedStates.add(gfx::ResourceState::DepthWrite);
-    }
+	if (is_set(flags, Resource::BindFlags::DepthStencil)) {
+		allowedStates.add(gfx::ResourceState::DepthWrite);
+	}
 
-    if (is_set(flags, Resource::BindFlags::Vertex)) {
-        allowedStates.add(gfx::ResourceState::VertexBuffer);
-        allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
-    }
+	if (is_set(flags, Resource::BindFlags::Vertex)) {
+		allowedStates.add(gfx::ResourceState::VertexBuffer);
+		allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+	}
 
-    if (is_set(flags, Resource::BindFlags::Index)) {
-        allowedStates.add(gfx::ResourceState::IndexBuffer);
-        allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
-    }
+	if (is_set(flags, Resource::BindFlags::Index)) {
+		allowedStates.add(gfx::ResourceState::IndexBuffer);
+		allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
+	}
 
-    if (is_set(flags, Resource::BindFlags::IndirectArg)) {
-        allowedStates.add(gfx::ResourceState::IndirectArgument);
-    }
+	if (is_set(flags, Resource::BindFlags::IndirectArg)) {
+		allowedStates.add(gfx::ResourceState::IndirectArgument);
+	}
 
-    if (is_set(flags, Resource::BindFlags::Constant)) {
-        allowedStates.add(gfx::ResourceState::ConstantBuffer);
-    }
+	if (is_set(flags, Resource::BindFlags::Constant)) {
+		allowedStates.add(gfx::ResourceState::ConstantBuffer);
+	}
 
-    if (is_set(flags, Resource::BindFlags::AccelerationStructure)) {
-        allowedStates.add(gfx::ResourceState::AccelerationStructure);
-        allowedStates.add(gfx::ResourceState::ShaderResource);
-        allowedStates.add(gfx::ResourceState::UnorderedAccess);
-        defaultState = gfx::ResourceState::AccelerationStructure;
-    }
+	if (is_set(flags, Resource::BindFlags::AccelerationStructure)) {
+		allowedStates.add(gfx::ResourceState::AccelerationStructure);
+		allowedStates.add(gfx::ResourceState::ShaderResource);
+		allowedStates.add(gfx::ResourceState::UnorderedAccess);
+		defaultState = gfx::ResourceState::AccelerationStructure;
+	}
 
-    allowedStates.add(gfx::ResourceState::CopyDestination);
-    allowedStates.add(gfx::ResourceState::CopySource);
+	allowedStates.add(gfx::ResourceState::CopyDestination);
+	allowedStates.add(gfx::ResourceState::CopySource);
 }
 
-const D3D12ResourceHandle& Resource::getD3D12Handle() const {
 #if FALCOR_D3D12_AVAILABLE
-    if (!mpD3D12Handle) {
-        gfx::InteropHandle handle = {};
-        FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
-        assert(handle.api == gfx::InteropHandleAPI::D3D12);
-        mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
-    }
-    return mpD3D12Handle;
-#else
-    throw std::runtime_error("D3D12 is not available.");
-#endif
+const D3D12ResourceHandle& Resource::getD3D12Handle() const {
+	if (!mpD3D12Handle) {
+		gfx::InteropHandle handle = {};
+		FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
+		assert(handle.api == gfx::InteropHandleAPI::D3D12);
+		mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
+	}
+	return mpD3D12Handle;
 }
-    
+#endif
+	
 } // namespace Falcor

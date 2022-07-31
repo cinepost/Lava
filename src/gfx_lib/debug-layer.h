@@ -1,8 +1,8 @@
 #pragma once
 
-#include <slang/slang-gfx.h>
+#include "slang-gfx.h"
 
-#include "slang-com-ptr.h"
+#include <slang/slang-com-ptr.h>
 #include "core/slang-com-object.h"
 #include "command-encoder-com-forward.h"
 
@@ -56,8 +56,10 @@ public:
         ITransientResourceHeap** outHeap) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
         const ITextureResource::Desc& desc,
+        const std::shared_ptr<Falcor::Texture>& pTexture,
         const ITextureResource::SubresourceData* initData,
         ITextureResource** outResource) override;
+    virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureFromNativeHandle(
         InteropHandle handle,
         const ITextureResource::Desc& srcDesc,

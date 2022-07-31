@@ -1,9 +1,10 @@
 #include <algorithm>
 #include <chrono>
 
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
-#include "Falcor/Core/API/ResourceManager.h"
+#include "Falcor/Utils/Image/TextureManager.h"
 
 #include "TexturesResolvePass.h"
 
@@ -227,6 +228,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::Back);
 	pContext->flush(true);
 
+	auto pTextureManager = mpScene->materialSystem()->textureManager();
+
 	// Test resolved data
 	const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
 
@@ -258,7 +261,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 			if (pOutPagesData[i + pagesStartOffset] != 0)
 				pageIDs.push_back(i + pagesStartOffset);
 		}
-		mpDevice->resourceManager()->loadPages(pTexture, pageIDs); 
+		pTextureManager->loadPages(pTexture, pageIDs); 
 
 		pagesStartOffset += texturePagesCount;
 	}

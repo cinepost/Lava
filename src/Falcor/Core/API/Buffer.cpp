@@ -168,6 +168,7 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
 	return pBuffer;
 }
 
+#ifdef FALCOR_GFX
 Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
 	assert(handle);
@@ -175,6 +176,7 @@ Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, A
 	pBuffer->mApiHandle = handle;
 	return pBuffer;
 }
+#endif
 
 Buffer::~Buffer() {
 	if (mpAliasedResource) return;

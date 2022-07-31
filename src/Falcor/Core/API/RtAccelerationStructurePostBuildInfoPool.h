@@ -36,6 +36,10 @@
 #include "Core/API/Buffer.h"
 #endif
 
+#if defined(FALCOR_VK)
+#include "RtQueryPool.h"
+#endif
+
 namespace Falcor {
 
 enum class RtAccelerationStructurePostBuildInfoQueryType {
@@ -43,6 +47,16 @@ enum class RtAccelerationStructurePostBuildInfoQueryType {
   SerializationSize,
   CurrentSize,
 };
+
+#if defined(FALCOR_VK)
+
+struct AccelerationStructureQueryDesc {
+    RtQueryPool::QueryType queryType;
+    RtQueryPool* queryPool; 
+    int firstQueryIndex;
+};
+
+#endif
 
 class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
   public:
@@ -62,6 +76,8 @@ class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
     uint64_t getBufferAddress(uint32_t index);
 #elif defined(FALCOR_GFX)
     gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
+#elif defined(FALCOR_VK)
+    RtQueryPool* getRtQueryPool() const { return mpRtQueryPool.get(); }
 #endif
 
   protected:
@@ -77,10 +93,15 @@ class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
     Buffer::SharedPtr mpPostbuildInfoStagingBuffer;
     const void* mMappedPostBuildInfo = nullptr;
     bool mStagingBufferUpToDate = false;
+
 #elif defined(FALCOR_GFX)
     Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
     bool mNeedFlush = true;
+#elif defined(FALCOR_VK)
+    RtQueryPool::SharedPtr mpRtQueryPool;
+    bool mNeedFlush = true;
 #endif
+
 };
 
 struct RtAccelerationStructurePostBuildInfoDesc {

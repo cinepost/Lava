@@ -1,4 +1,11 @@
-add_subdirectory( gfx_lib) # Patched Slang GFX library
+
+message( "GFX LIB " ${FALCOR_API_BACKEND} )
+
+string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
+if(backend_type STREQUAL "gfx")
+	add_subdirectory( gfx_lib ) # Patched Slang GFX library
+endif()
+
 add_subdirectory( Falcor ) # core framework rendering library
 add_subdirectory( RenderPasses ) # falcor rendering framework rendering passes plugins
 

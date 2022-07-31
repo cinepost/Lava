@@ -194,7 +194,7 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
 
     /** Get the maximum number of color targets
     */
-    static uint32_t getMaxColorTargetCount();
+    static uint32_t getMaxColorTargetCount(std::shared_ptr<Device> pDevice = nullptr);
 
     /** Get an attached color texture. If no texture is attached will return nullptr.
     */
@@ -292,7 +292,10 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     mutable bool mIsZeroAttachment = false;
 
     mutable ApiHandle mApiHandle = {};
+
+#if defined(FALCOR_GFX)
     std::unique_ptr<FboData> mpPrivateData;
+#endif
 
     std::shared_ptr<Device> mpDevice;
 };

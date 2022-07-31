@@ -1296,11 +1296,11 @@ public:
 
     // Ray tracing acceleration structure
     struct TlasData {
-#ifdef FALCOR_VK
-        TopLevelAccelerationStructure::SharedPtr pTlasObject;
-#else
+//#ifdef FALCOR_VK
+//        TopLevelAccelerationStructure::SharedPtr pTlasObject;
+//#else
         RtAccelerationStructure::SharedPtr pTlasObject;
-#endif
+//#endif
 
         Buffer::SharedPtr pTlasBuffer;
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
@@ -1316,14 +1316,14 @@ public:
     /** Describes one BLAS.
     */
     struct BlasData {
-#ifdef FALCOR_VK
-        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
-        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
-#else
+//#ifdef FALCOR_VK
+//        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
+//        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
+//#else
         RtAccelerationStructurePrebuildInfo prebuildInfo = {};
         RtAccelerationStructureBuildInputs buildInputs = {};
         std::vector<RtGeometryDesc> geomDescs;
-#endif
+//#endif
 
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 
