@@ -332,15 +332,15 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isSparse() const { return mIsSparse; };
 
-	const std::vector<VirtualTexturePage::SharedPtr>& pages();
+	inline const std::vector<VirtualTexturePage::SharedPtr>& sparseDataPages() { return mSparseDataPages; };
 
 	uint32_t memoryTypeIndex() const { return mMemoryTypeIndex; }
 
 	static uint8_t getMaxMipCount(const uint3& size);
 
-	uint3 getSparsePageRes() const { return mSparsePageRes; }
+	uint3 sparseDataPageRes() const { return mSparsePageRes; }
 
-	uint32_t getSparsePagesCount() const { return mSparsePagesCount; }
+	inline uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
 
 	uint32_t getMipTailStart() const;
 
@@ -396,7 +396,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		VkMemoryRequirements mMemRequirements;
 
 		VkBindSparseInfo mBindSparseInfo;                               // Sparse queue binding information
-		std::vector<VirtualTexturePage::SharedPtr> mPages;              // Contains all virtual pages of the texture
+		std::vector<VirtualTexturePage::SharedPtr> mSparseDataPages;    // Contains all virtual pages of the texture
 		std::vector<VkSparseImageMemoryBind> mSparseImageMemoryBinds;   // Sparse image memory bindings of all memory-backed virtual tables
 		std::vector<VkSparseMemoryBind> mOpaqueMemoryBinds;             // Sparse ópaque memory bindings for the mip tail (if present)
 		VkSparseImageMemoryBindInfo mImageMemoryBindInfo;               // Sparse image memory bind info

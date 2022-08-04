@@ -66,7 +66,6 @@ MaterialSystem::SharedPtr MaterialSystem::create(Device::SharedPtr pDevice) {
 
 MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	mpFence = GpuFence::create(mpDevice);
-	//mpTextureManager = TextureManager::create(mpDevice, kMaxTextureCount);
 	mMaterialCountByType.resize((size_t)MaterialType::Count, 0);
 
 	// Create a default texture sampler.

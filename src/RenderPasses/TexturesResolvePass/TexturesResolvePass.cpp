@@ -172,7 +172,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				textureData.mipTailStart = pTexture->getMipTailStart();
 				textureData.pagesStartOffset = currPagesStartOffset;
 
-				auto pageRes = pTexture->getSparsePageRes();
+				auto pageRes = pTexture->sparseDataPageRes();
 				textureData.pageSizeW = pageRes.x;
 				textureData.pageSizeH = pageRes.y;
 				textureData.pageSizeD = pageRes.z;
@@ -182,7 +182,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				memcpy(&textureData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
 
 				currTextureResolveID++;
-				currPagesStartOffset += pTexture->getSparsePagesCount();
+				currPagesStartOffset += pTexture->sparseDataPagesCount();
 				virtualTexturesDataMap[textureID] = textureData; 
 				texturesMap[textureID] = pTexture;
 			
@@ -250,7 +250,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	uint32_t pagesStartOffset = 0;
 	for (auto const& [textureID, pTexture] :texturesMap) {
-		uint32_t texturePagesCount = pTexture->getSparsePagesCount();
+		uint32_t texturePagesCount = pTexture->sparseDataPagesCount();
 		printf("Analyzing %u pages for texture %u\n", texturePagesCount, textureID);
 
 		std::vector<uint32_t> pageIDs;
@@ -269,6 +269,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	auto done = std::chrono::high_resolution_clock::now();
 	std::cout << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << std::endl;
 	std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
+
+	pContext->flush(true);
 
 	LLOG_DBG << "TexturesResolvePass::execute done";
 }

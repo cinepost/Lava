@@ -41,6 +41,7 @@ namespace gfx {
     x(vkGetDeviceQueue) \
     x(vkQueueSubmit) \
     x(vkQueueWaitIdle) \
+    x(vkQueueBindSparse) \
     x(vkCreateBuffer) \
     x(vkAllocateMemory) \
     x(vkMapMemory) \

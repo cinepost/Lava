@@ -74,6 +74,9 @@
 // It will be removed once we have conclusions on performance.
 #define CURVE_BACKFACE_CULLING_USING_ANYHIT 0
 
+namespace lava {
+    class Renderer;
+}
 
 namespace Falcor {
 
@@ -1373,6 +1376,8 @@ public:
     bool mFinalized = false;                            ///< True if scene is ready to be bound to the GPU.
 
     std::shared_ptr<Device> mpDevice;
+
+    friend class lava::Renderer;
 };
 
 enum_class_operators(Scene::UpdateFlags);

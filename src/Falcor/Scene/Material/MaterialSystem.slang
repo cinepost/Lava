@@ -241,11 +241,15 @@ struct MaterialSystem
     */
     float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) {
         //return float4(1, 1, 0, 1);
+        return materialTextures[1].SampleLevel(s, uv, 0.0);
+        return float4(handle.getTextureID(), 0, 0, 1);
         
         switch (handle.getMode()) {
             case TextureHandle::Mode::Uniform:
+                return float4(0 ,handle.getTextureID(), 0, 1);
                 return uniformValue;
             case TextureHandle::Mode::Texture:
+                //return materialTextures[handle.getTextureID()].SampleLevel(s, uv, 0.0);
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
             case TextureHandle::Mode::UDIM_Texture:
                 return float4(1, 1, 0, 1);

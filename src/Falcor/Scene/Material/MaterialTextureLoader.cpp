@@ -58,6 +58,8 @@ void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Ma
 
 	// Store assignment to material for later.
 	mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
+
+	LLOG_DBG << (loadAsSparse ? "Sparse" : "Simple") << " texture " << path.string() << " with handle mode " << to_string(handle.mode()) << " in assignment";
 }
 
 void MaterialTextureLoader::assignTextures() {

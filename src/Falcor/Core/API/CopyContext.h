@@ -142,10 +142,6 @@ class dlldecl CopyContext {
     */
     void updateTexturePage(const VirtualTexturePage* pPage, const void* pData);
 
-    /** Update texture page data
-    */
-    void updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer);
-
     /** Uodate texture image data (used to fill mip tail data)
     */
     void updateMipTailData(const Texture* pTexture, const int3& offset, const uint3& extent, uint8_t mipLevel, const void* pData);
@@ -187,6 +183,10 @@ class dlldecl CopyContext {
     bool subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
     void apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel);
     void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uint3& offset = uint3(0), const uint3& size = uint3(-1));
+
+    /** Update texture page data
+    */
+    void updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer);
 
     bool mCommandsPending = false;
     LowLevelContextData::SharedPtr mpLowLevelData;

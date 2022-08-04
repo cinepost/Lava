@@ -485,24 +485,23 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 	return result;
 }
 
-void LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
-	if (pageNum >= mHeader.pagesCount ) {
-		LLOG_ERR << "LTX_Bitmap::readPageData pageNum exceeds pages count !!!";
-		return;
-	}
-
+bool LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
+	bool result = false;
 	auto pFile = fopen(mFilePath.string().c_str(), "rb");
-	readPageData(pageNum, pData, pFile);
+	result = readPageData(pageNum, pData, pFile);
 	fclose(pFile);
+	return result;
 }
 
 // This version uses previously opened file. On large scenes this saves us at least 50% time
-void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
+bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 	assert(pFile);
 
+	LLOG_DBG << "LTX_Bitmap::readPageData " << std::to_string(pageNum);
+
 	if (pageNum >= mHeader.pagesCount ) {
-		LLOG_ERR << "LTX_Bitmap::readPageData pageNum exceeds pages count !!!";
-		return;
+		LLOG_ERR << "LTX_Bitmap::readPageData pageNum (" << std::to_string(pageNum) << ") exceeds pages count (" << std::to_string(mHeader.pagesCount) << ") !!!";
+		return false;
 	}
 
 	if (mTopLevelCompression == LTX_Header::TopLevelCompression::NONE) {
@@ -510,7 +509,7 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		fseek(pFile, mHeader.dataOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
 		fread(pData, 1, mHeader.pageDataSize, pFile);
 	} else {
-		// read compressed page fata
+		// read compressed page data
 		std::vector<unsigned char> tmp(65536);
 
 		size_t page_data_offset = mHeader.dataOffset + mCompressedPageDataOffset[pageNum];
@@ -522,7 +521,7 @@ void LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		LLOG_DBG << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 
 				 << " offset " <<std::to_string(page_data_offset) << " decomp size: " << std::to_string(nbytes);
 	}
-
+	return true;
 }
 
 void LTX_Bitmap::readPagesData(std::vector<std::pair<size_t, void*>>& pages, bool unsorted) const {

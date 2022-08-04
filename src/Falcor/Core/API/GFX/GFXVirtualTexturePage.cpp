@@ -11,49 +11,54 @@ namespace Falcor {
 
 // Allocate Vulkan memory for the virtual page
 void VirtualTexturePage::allocate() {
-    if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
-        LLOG_ERR << "VirtualTexturePage already allocated !!!";
-        return;
-    }
+	if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
+		LLOG_ERR << "VirtualTexturePage already allocated !!!";
+		return;
+	}
 
-    VkMemoryAllocateInfo memAllocInfo = {};
-    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memAllocInfo.pNext = NULL;
-    memAllocInfo.allocationSize = mDevMemSize;
-    memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
-    
-    //if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
-    //    throw std::runtime_error("Error allocating memory for virtual texture page !!!");
-    //}
+	VkMemoryAllocateInfo memAllocInfo = {};
+	memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memAllocInfo.pNext = NULL;
+	memAllocInfo.allocationSize = mDevMemSize;
+	memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
+	
+	//if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
+	//    throw std::runtime_error("Error allocating memory for virtual texture page !!!");
+	//}
 
-    VkMemoryRequirements memRequirements = {};
-    memRequirements.size = mDevMemSize;
-    memRequirements.alignment = mDevMemSize;
-    memRequirements.memoryTypeBits = mMemoryTypeBits;
+	VkMemoryRequirements memRequirements = {};
+	memRequirements.size = mDevMemSize;
+	memRequirements.alignment = mDevMemSize;
+	memRequirements.memoryTypeBits = mMemoryTypeBits;
 
-    VmaAllocationCreateInfo vmaMemAllocInfo = {};
-    vmaMemAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	VmaAllocationCreateInfo vmaMemAllocInfo = {};
+	vmaMemAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    VmaAllocationInfo vmaAllocInfo = {};
+	VmaAllocationInfo vmaAllocInfo = {};
 
-    vmaAllocateMemory(mpDevice->allocator(), &memRequirements, &vmaMemAllocInfo, &mAllocation, &vmaAllocInfo);   
+	VkResult result = vmaAllocateMemory(mpDevice->allocator(), &memRequirements, &vmaMemAllocInfo, &mAllocation, &vmaAllocInfo);
 
-    mImageMemoryBind.memory = vmaAllocInfo.deviceMemory;
-    mImageMemoryBind.memoryOffset = vmaAllocInfo.offset;
+	if( result != VK_SUCCESS ){
+		LLOG_ERR << "Error allocating virtual page memory !!! VkResult: " << to_string(result);
+		return;
+	}   
 
-    mpTexture->mSparseResidentMemSize += mDevMemSize;
+	mImageMemoryBind.memory = vmaAllocInfo.deviceMemory;
+	mImageMemoryBind.memoryOffset = vmaAllocInfo.offset;
+
+	mpTexture->mSparseResidentMemSize += mDevMemSize;
 }
 
 // Release Vulkan memory allocated for this page
 void VirtualTexturePage::release() {
-    if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
-        LLOG_ERR << "VirtualTexturePage already released !!!";
-        return;
-    }
-    vmaFreeMemory(mpDevice->allocator(), mAllocation);
+	if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
+		LLOG_ERR << "VirtualTexturePage already released !!!";
+		return;
+	}
+	vmaFreeMemory(mpDevice->allocator(), mAllocation);
 
-    mpTexture->mSparseResidentMemSize -= mDevMemSize;
-    mImageMemoryBind.memory = VK_NULL_HANDLE;
+	mpTexture->mSparseResidentMemSize -= mDevMemSize;
+	mImageMemoryBind.memory = VK_NULL_HANDLE;
 }
 
 }  // namespace Falcor

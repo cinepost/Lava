@@ -66,6 +66,7 @@ bool Renderer::init(const Config& config) {
     }
 
     //sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();

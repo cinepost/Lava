@@ -146,8 +146,8 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 
     
  protected:
-    void readPageData (size_t pageNum, void *pData) const;
-    void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
+    bool readPageData (size_t pageNum, void *pData) const;
+    bool readPageData (size_t pageNum, void *pData, FILE *pFile) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
     friend class ResourceManager;

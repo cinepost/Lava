@@ -9,11 +9,20 @@
 
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
+
+#if defined(FALCOR_GFX_VK) 
+namespace gfx {
+	namespace vk {
+		class DeviceImpl;
+	}
+}
+#endif
+
 namespace Falcor {
 
 class Device;
 class Texture;
-class ResourceManager;
+class TextureManager;
 
 // Virtual texture page as a part of the partially resident texture
 // Contains memory bindings, offsets and status information
@@ -33,23 +42,28 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		void allocate();
 		void release();
 
-		uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
-		VkOffset3D offsetVK() const { return mOffset; }
-		uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
-		VkExtent3D extentVK() const { return mExtent; }
+		inline uint3 offset() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+		inline const VkOffset3D& offsetVK() const { return mOffset; }
+		inline uint3 extent() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+		inline const VkExtent3D& extentVK() const { return mExtent; }
+
+#if defined(FALCOR_GFX)
+		inline gfx::ITextureResource::Offset3D offsetGFX() const { return {mOffset.x, mOffset.y, mOffset.z}; }
+		inline gfx::ITextureResource::Extents extentGFX() const { return {mExtent.width, mExtent.height, mExtent.depth}; }
+#endif
 
 		size_t usedMemSize() const;
 
-		const uint32_t width() const { return mExtent.width; }
-		const uint32_t height() const { return mExtent.height; }
-		const uint32_t depth() const { return mExtent.depth; }
+		inline const uint32_t width() const { return mExtent.width; }
+		inline const uint32_t height() const { return mExtent.height; }
+		inline const uint32_t depth() const { return mExtent.depth; }
 
-		const uint32_t mipLevel() const { return mMipLevel; }
-		const uint32_t index() const { return mIndex; }
+		inline const uint32_t mipLevel() const { return mMipLevel; }
+		inline const uint32_t index() const { return mIndex; }
 
-		const uint32_t id() const { return mID; }
+		inline const uint32_t id() const { return mID; }
 
-		const std::shared_ptr<Texture> texture() const { return mpTexture; }
+		inline const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
  	protected:
 		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
@@ -63,14 +77,17 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 		VkDeviceSize mDevMemSize;                   // Page memory size in bytes
 		uint32_t mMipLevel;                         // Mip level that this page belongs to
 		uint32_t mLayer;                            // Array layer that this page belongs to
-		uint32_t mIndex;    												// Texture page index 
-		uint32_t mID;       												// Global page id
+		uint32_t mIndex;    												// Texture related page index 
+		uint32_t mID;       												// Global page id (Texture manager index)
 		uint32_t mMemoryTypeBits;
 
 		VmaAllocation mAllocation;
 
 		friend class Texture;
-		friend class ResourceManager;
+		friend class TextureManager;
+#if defined(FALCOR_GFX_VK)
+		friend class gfx::vk::DeviceImpl;
+#endif
 };
 
 }  // namespace Falcor

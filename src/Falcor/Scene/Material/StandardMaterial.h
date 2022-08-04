@@ -25,100 +25,104 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Scene/Material/BasicMaterial.h"
+#ifndef SRC_FALCOR_SCENE_MATERIAL_STANDARDMATERIAL_H_
+#define SRC_FALCOR_SCENE_MATERIAL_STANDARDMATERIAL_H_
 
-namespace Falcor
-{
-    /** Class representing the standard material.
+#include "Falcor/Scene/Material/BasicMaterial.h"
 
-        Texture channel layout:
+namespace Falcor {
 
-        ShadingModel::MetalRough
-            BaseColor
-                - RGB - Base Color
-                - A   - Opacity
-            Specular
-                - R   - Unused
-                - G   - Roughness
-                - B   - Metallic
-                - A   - Unused
+/** Class representing the standard material.
 
-        ShadingModel::SpecGloss
-            BaseColor
-                - RGB - Diffuse Color
-                - A   - Opacity
-            Specular
-                - RGB - Specular Color
-                - A   - Gloss
+	Texture channel layout:
 
-        In all shading models:
+	ShadingModel::MetalRough
+		BaseColor
+			- RGB - Base Color
+			- A   - Opacity
+		Specular
+			- R   - Unused
+			- G   - Roughness
+			- B   - Metallic
+			- A   - Unused
 
-            Normal
-                - 3-Channel standard normal map, or 2-Channel BC5 format
-            Emissive
-                - RGB - Emissive Color
-                - A   - Unused
-            Transmission
-                - RGB - Transmission color
-                - A   - Unused
+	ShadingModel::SpecGloss
+		BaseColor
+			- RGB - Diffuse Color
+			- A   - Opacity
+		Specular
+			- RGB - Specular Color
+			- A   - Gloss
 
-        See additional texture channels defined in BasicMaterial.
-    */
-    class dlldecl StandardMaterial : public BasicMaterial
-    {
-    public:
-        using SharedPtr = std::shared_ptr<StandardMaterial>;
+	In all shading models:
 
-        /** Create a new standard material.
-            \param[in] name The material name.
-            \param[in] model Shading model.
-        */
-        static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
+		Normal
+			- 3-Channel standard normal map, or 2-Channel BC5 format
+		Emissive
+			- RGB - Emissive Color
+			- A   - Unused
+		Transmission
+			- RGB - Transmission color
+			- A   - Unused
 
-        /** Get the shading model.
-        */
-        ShadingModel getShadingModel() const { return mData.getShadingModel(); }
+	See additional texture channels defined in BasicMaterial.
+*/
+class dlldecl StandardMaterial : public BasicMaterial {
+	public:
+		using SharedPtr = std::shared_ptr<StandardMaterial>;
 
-        /** Set the roughness.
-            Only available for metallic/roughness shading model.
-        */
-        void setRoughness(float roughness);
+		/** Create a new standard material.
+			\param[in] name The material name.
+			\param[in] model Shading model.
+		*/
+		static SharedPtr create(Device::SharedPtr pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough);
 
-        /** Get the roughness.
-            Only available for metallic/roughness shading model.
-        */
-        float getRoughness() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.roughness : 0.f; }
+		/** Get the shading model.
+		*/
+		ShadingModel getShadingModel() const { return mData.getShadingModel(); }
 
-        /** Set the metallic value.
-            Only available for metallic/roughness shading model.
-        */
-        void setMetallic(float metallic) override;
+		/** Set the roughness.
+			Only available for metallic/roughness shading model.
+		*/
+		void setRoughness(float roughness);
 
-        /** Get the metallic value.
-            Only available for metallic/roughness shading model.
-        */
-        float getMetallic() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.metallic : 0.f; }
+		/** Get the roughness.
+			Only available for metallic/roughness shading model.
+		*/
+		float getRoughness() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.roughness : 0.f; }
 
-        /** Set the emissive color.
-        */
-        void setEmissiveColor(const float3& color) override;
+		/** Set the metallic value.
+			Only available for metallic/roughness shading model.
+		*/
+		void setMetallic(float metallic) override;
 
-        /** Set the emissive factor.
-        */
-        void setEmissiveFactor(float factor);
+		/** Get the metallic value.
+			Only available for metallic/roughness shading model.
+		*/
+		float getMetallic() const { return getShadingModel() == ShadingModel::MetalRough ? (float)mData.metallic : 0.f; }
 
-        /** Get the emissive color.
-        */
-        float3 getEmissiveColor() const { return (float3)mData.emissive; }
+		/** Set the emissive color.
+		*/
+		void setEmissiveColor(const float3& color) override;
 
-        /** Get the emissive factor.
-        */
-        float getEmissiveFactor() const { return mData.emissiveFactor; }
+		/** Set the emissive factor.
+		*/
+		void setEmissiveFactor(float factor);
 
-    protected:
-        StandardMaterial(Device::SharedPtr pDevice, const std::string& name, ShadingModel shadingModel);
+		/** Get the emissive color.
+		*/
+		float3 getEmissiveColor() const { return (float3)mData.emissive; }
 
-        void setShadingModel(ShadingModel model);
-    };
-}
+		/** Get the emissive factor.
+		*/
+		float getEmissiveFactor() const { return mData.emissiveFactor; }
+
+	protected:
+		StandardMaterial(Device::SharedPtr pDevice, const std::string& name, ShadingModel shadingModel);
+
+		void setShadingModel(ShadingModel model);
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_MATERIAL_STANDARDMATERIAL_H_

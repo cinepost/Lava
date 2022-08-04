@@ -114,12 +114,19 @@ bool Material::hasTextureSlotData(const TextureSlot slot) const {
 }
 
 bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) {
+    if(!pTexture) {
+        LLOG_WRN << "Null texture provided for material '" << getName() << "' at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
+    }
+
     if (!hasTextureSlot(slot)) {
         LLOG_WRN << "Material '" << getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
         return false;
     }
 
-    if (pTexture == getTexture(slot)) return false;
+    if (pTexture == getTexture(slot)) {
+        LLOG_WRN << "Material '" << getName() << "' already have texture at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";
+        return false;
+    }
 
     assert((size_t)slot < mTextureSlotInfo.size());
     mTextureSlotData[(size_t)slot].pTexture = pTexture;
@@ -187,9 +194,11 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
             handle.udimID = pTexture->getUDIM_ID();
             handle.setMode(TextureHandle::Mode::UDIM_Texture);
         } else {
+            LLOG_WRN << "Setting from handle texture id " << to_string(h.getID());
             handle.setTextureID(h.getID());
         }
     } else {
+        LLOG_ERR << "No texture for slot!";
         handle.setMode(TextureHandle::Mode::Uniform);
     }
 
@@ -197,6 +206,7 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
 }
 
 void Material::updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle) {
+    LLOG_WRN << "Checking texture for slot " << to_string(slot);
     auto pTexture = getTexture(slot);
     updateTextureHandle(pOwner, pTexture, handle);
 };

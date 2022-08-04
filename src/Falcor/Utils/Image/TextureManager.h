@@ -68,6 +68,7 @@ public:
 	struct TextureHandle {
 
 		enum class Mode {
+			Uniform,
 			Texture,       ///< Normal texture.
 			UDIM_Texture,  ///< UDIM texture. No actual data/resource associated.
 			UDIM_Tile,     ///< UDIM tile texture.
@@ -184,7 +185,7 @@ public:
 
 	void finalize();
 
-	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIDs);
+	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
 
 private:
 	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
@@ -219,7 +220,6 @@ private:
 
 	// Internal state. Do not access outside of critical section.
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
-	//std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim texture tile descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
@@ -237,8 +237,21 @@ private:
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
 
 	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;
-	std::vector<std::shared_ptr<VirtualTexturePage>>  mTextureDataPages;
+	std::vector<std::shared_ptr<VirtualTexturePage>>  mSparseDataPages;
 };
+
+inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
+#define mode_2_string(a) case TextureManager::TextureHandle::Mode::a: return #a;
+  switch (mode) {
+      mode_2_string(Texture);
+      mode_2_string(UDIM_Texture);
+      mode_2_string(UDIM_Tile);
+    default:
+      assert();
+      return "Unknown TextureHandle::Mode";
+  }
+#undef mode_2_string
+}
 
 }  // namespace Falcor
 

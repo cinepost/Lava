@@ -40,6 +40,7 @@
 
 #include "lava_utils_lib/logging.h"
 
+
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
@@ -207,7 +208,7 @@ namespace Falcor {
 
     void Texture::apiInit(const void* pData, bool autoGenMips) {
         if (mImage != VK_NULL_HANDLE) {
-            LOG_WARN("Texture api already initialized !!!");
+            LLOG_WRN << "Texture api already initialized !!!";
             return;
         }
 

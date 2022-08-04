@@ -47,6 +47,16 @@
 
 namespace Falcor {
 
+uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
+	uint32_t perW = getFormatWidthCompressionRatio(format);
+	uint32_t bw = align_to(perW, w) / perW;
+
+	uint32_t perH = getFormatHeightCompressionRatio(format);
+	uint32_t bh = align_to(perH, h) / perH;
+
+	uint32_t size = bh * bw * d * getFormatBytesPerBlock(format);
+	return size;
+}
 
 void CopyContext::bindDescriptorHeaps() { }
 
@@ -368,11 +378,83 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+  assert(pPage);
+  assert(pData);
 
+  if(!pPage->isResident()) {
+    LLOG_ERR << "Unable to update non-resident texture page !!!";
+    return;
+  }
+
+  const Texture* pTexture = pPage->texture().get();
+  //updateSubresourceData(pTexture, pPage->mipLevel(), pData, pPage->offset(), pPage->extent());
+  //return;
+
+  ///////////////////////////////////////////////////////
+
+  resourceBarrier(pTexture, Resource::State::CopyDest);
+
+	uint8_t* dataPtr = (uint8_t*)pData;
+	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+	gfx::ITextureResource::Offset3D gfxOffset = pPage->offsetGFX();
+	gfx::ITextureResource::Extents gfxSize = pPage->extentGFX();
+	gfx::FormatInfo formatInfo = {};
+	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
+
+	gfx::SubresourceRange subresourceRange = {};
+	subresourceRange.baseArrayLayer = 0;
+	subresourceRange.mipLevel = pPage->mipLevel();
+	subresourceRange.layerCount = 1;
+	subresourceRange.mipLevelCount = 1;
+
+	//if (!copyRegion) {
+	//	gfxSize.width = align_to(formatInfo.blockWidth, pTexture->getWidth(subresourceRange.mipLevel));
+	//	gfxSize.height = align_to(formatInfo.blockHeight, pTexture->getHeight(subresourceRange.mipLevel));
+	//	gfxSize.depth = pTexture->getDepth(subresourceRange.mipLevel);
+	//}
+
+	gfx::ITextureResource::SubresourceData data = {};
+	data.data = (uint8_t*)pData;
+	data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
+	data.strideZ = 0;//data.strideY * (gfxSize.height / formatInfo.blockHeight);
+
+	resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
+	return;
+  ///////////////////////////////////////////////////////
+
+
+  const auto& page_extent = pPage->extentGFX();
+  size_t dataSize = (size_t)getMipLevelPackedDataSize(pTexture, page_extent.width, page_extent.height, page_extent.depth, pTexture->getFormat());
+
+  LLOG_WRN << "updateTexturePage dataSize " << std::to_string(dataSize);
+
+  Buffer::SharedPtr pStagingBuffer = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
+  if (! pStagingBuffer) {
+  	LLOG_ERR << "No staging buffer!";
+  }
+
+  updateTexturePage(pPage, pStagingBuffer);
+  //gfx::ITextureResource* texture = static_cast<gfx::ITextureResource*>(pStagingBuffer->getApiHandle().get());
+  //mpDevice->getApiHandle()->updateTexurePageData(texture, pData, pPage->offsetGFX(), pPage->extentGFX(), pPage->mipLevel());
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
+	assert(pPage);
+  assert(pStagingBuffer);
 
+  if(!pPage->isResident()) {
+    LLOG_ERR << "Unable to update non-resident texture page !!!";
+    return;
+  }
+
+	auto pTexture = pPage->texture();
+	gfx::IBufferResource* buffer = static_cast<gfx::IBufferResource*>(pStagingBuffer->getApiHandle().get());
+	gfx::ITextureResource* texture = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+
+	textureBarrier(pTexture.get(), Resource::State::CopyDest);
+  bufferBarrier(pStagingBuffer.get(), Resource::State::CopySource);
+	mpDevice->getApiHandle()->updateTexurePageData(texture, buffer, pPage->offsetGFX(), pPage->extentGFX(), pPage->mipLevel());
+	mCommandsPending = true;
 }
 
 }  // namespace Falcor

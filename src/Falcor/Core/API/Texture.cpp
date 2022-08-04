@@ -292,8 +292,9 @@ ShaderResourceView::SharedPtr Texture::getSRV(uint32_t mostDetailedMip, uint32_t
 		return ShaderResourceView::create(pTexture->device(), pTexture->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
 	};
 
-	if(mIsSparse)
+	if(mIsSparse) {
 		updateSparseBindInfo();
+	}
 
 	return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
@@ -462,10 +463,6 @@ uint8_t Texture::getMaxMipCount(const uint3& size) {
 	return 1 + uint8_t(glm::log2(static_cast<float>(glm::max(glm::max(size[0], size[1]), size[2]))));
 }
 
-const std::vector<VirtualTexturePage::SharedPtr>& Texture::pages() {
-	return mPages;
-}
-
 uint64_t Texture::getTexelCount() const {
 	assert(!mIsUDIMTexture);
 
@@ -505,9 +502,11 @@ bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const ui
   pPage->mMemoryTypeBits = memoryTypeBits;
   pPage->mDevMemSize = size;
   pPage->mIndex = index;
-  pPage->mID = static_cast<uint32_t>(mPages.size());
+  
+  // This would be initialized in TextureManager
+  //pPage->mID = static_cast<uint32_t>(mSparseDataPages.size());
     
-  mPages.push_back(pPage);
+  mSparseDataPages.push_back(pPage);
   return true;
 }
 
