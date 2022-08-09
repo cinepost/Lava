@@ -273,7 +273,8 @@ namespace Falcor {
 	FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	apiHandle = mpApiData->pDevice->createTextureResource(desc, nullptr);
+	std::shared_ptr<Falcor::Texture> pTexture;
+	apiHandle = mpApiData->pDevice->createTextureResource(desc, pTexture, nullptr);
 	FALCOR_ASSERT(apiHandle);
 
 	return true;
@@ -453,11 +454,12 @@ namespace Falcor {
 		for (auto& queue : mCmdQueues) {
 			queue.push_back(pData->pQueue);
 		}
+
 #if FALCOR_GFX_VK
 		for (auto& queue : mCmdNativeQueues) {
 		  gfx::InteropHandle handle = {};
     	FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
-    	assert(handle.api == gfx::InteropHandleAPI::Vulkan);
+    	//assert(handle.api == gfx::InteropHandleAPI::Vulkan);
     	queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
 		}
 #endif

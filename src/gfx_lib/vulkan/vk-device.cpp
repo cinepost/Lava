@@ -355,8 +355,10 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 	// support it
 	if (VK_MAKE_VERSION(majorVersion, minorVersion, 0) >= VK_API_VERSION_1_1 && m_api.vkGetPhysicalDeviceProperties2 && m_api.vkGetPhysicalDeviceFeatures2) {
 		// Get device features
-		VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
-		deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		VkPhysicalDeviceFeatures2 deviceFeatures2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+		deviceFeatures2.features.multiViewport = VK_TRUE;
+    deviceFeatures2.features.multiDrawIndirect = VK_TRUE;
+		deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
 		deviceFeatures2.features.sparseBinding = sparseBindingAvailable ? VK_TRUE : VK_FALSE;
 
 		// Inline uniform block
@@ -1132,7 +1134,6 @@ Result DeviceImpl::createTextureResource(
 	const ITextureResource::SubresourceData* initData, 
 	ITextureResource** outResource) 
 {
-	assert(pTexture.get());
 	TextureResource::Desc desc = fixupTextureDesc(descIn);
 
 	const VkFormat format = VulkanUtil::getVkFormat(desc.format);
@@ -1201,8 +1202,7 @@ Result DeviceImpl::createTextureResource(
 
 	imageInfo.samples = (VkSampleCountFlagBits)desc.sampleDesc.numSamples;
 
-	if (sparse) {
-		assert(pTextureManager);
+	if (pTexture && sparse) {
 		imageInfo.pQueueFamilyIndices = nullptr;
     imageInfo.queueFamilyIndexCount = 0;
 		imageInfo.flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
@@ -1225,7 +1225,7 @@ Result DeviceImpl::createTextureResource(
 
   ///////// texture barrier /////////////
 
-	if (sparse) {
+	if (pTexture && sparse) {
     // transition layout
     
 		_transitionImageLayout(
@@ -1244,10 +1244,13 @@ Result DeviceImpl::createTextureResource(
 	VkMemoryRequirements memRequirements;
 	m_api.vkGetImageMemoryRequirements(m_device, texture->m_image, &memRequirements);
 
-///////////////////////////////
+////////////// sparse texture section /////////////////
 
-	if (sparse) {
+	if (pTexture && sparse) {
+#ifdef _DEBUG
 		std::cout << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize << std::endl;
+#endif		
+
 		// Check requested image size against hardware sparse limit            
 		if (memRequirements.size > m_basicProps.limits.sparseAddressSpaceSize) {
 			LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";
@@ -1256,7 +1259,7 @@ Result DeviceImpl::createTextureResource(
 
 		// Get sparse memory requirements
 		// Count
-		uint32_t sparseMemoryReqsCount = 32;
+		uint32_t sparseMemoryReqsCount = 0;
 		std::vector<VkSparseImageMemoryRequirements> sparseMemoryReqs(sparseMemoryReqsCount);
 		m_api.vkGetImageSparseMemoryRequirements(m_device, texture->m_image, &sparseMemoryReqsCount, sparseMemoryReqs.data());
 		
@@ -1283,11 +1286,10 @@ Result DeviceImpl::createTextureResource(
 		}
 
 		// Get sparse image requirements for the color aspect
-		VkSparseImageMemoryRequirements sparseMemoryReq;
 		bool colorAspectFound = false;
 		for (auto reqs : sparseMemoryReqs) {
 			if (reqs.formatProperties.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-				sparseMemoryReq = reqs;
+				pTexture->mSparseImageMemoryRequirements = reqs;
 				colorAspectFound = true;
 				break;
 			}
@@ -1297,16 +1299,12 @@ Result DeviceImpl::createTextureResource(
 			return SLANG_FAIL;
 		}
 
+		VkSparseImageMemoryRequirements& sparseMemoryReq = pTexture->mSparseImageMemoryRequirements;
+
 		// Calculate number of required sparse memory bindings by alignment
 		assert((memRequirements.size % memRequirements.alignment) == 0);
 		//mMemoryTypeIndex = vulkanDevice->getMemoryType(sparseImageMemoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		pTexture->mMemoryTypeIndex = _getVkMemoryTypeNative(m_memoryProperties, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		// Get sparse bindings
-		uint32_t sparseBindsCount = static_cast<uint32_t>(memRequirements.size / memRequirements.alignment);
-		std::vector<VkSparseMemoryBind> sparseMemoryBinds(sparseBindsCount);
-
-		pTexture->mSparseImageMemoryRequirements = sparseMemoryReq;
 
 		pTexture->mSparsePageRes = {
 			sparseMemoryReq.formatProperties.imageGranularity.width,
@@ -1325,6 +1323,7 @@ Result DeviceImpl::createTextureResource(
 		pTexture->mMemRequirements = memRequirements;
 
 		uint32_t pageIndex = 0;
+		pTexture->mSparsePagesCount = 0;
 		// Sparse bindings for each mip level of all layers outside of the mip tail
 		for (uint32_t layer = 0; layer < pTexture->getArraySize(); layer++) {
 
@@ -1336,7 +1335,9 @@ Result DeviceImpl::createTextureResource(
 				extent.height = std::max(imageInfo.extent.height >> mipLevel, 1u);
 				extent.depth = std::max(imageInfo.extent.depth >> mipLevel, 1u);
 
+#ifdef _DEBUG
 				printf("Mip level width %u height %u ...\n", extent.width, extent.height);
+#endif
 
 				// Aligned sizes by image granularity
 				VkExtent3D imageGranularity = sparseMemoryReq.formatProperties.imageGranularity;
@@ -1346,7 +1347,9 @@ Result DeviceImpl::createTextureResource(
 				lastBlockExtent.y = (extent.height % imageGranularity.height) ? extent.height % imageGranularity.height : imageGranularity.height;
 				lastBlockExtent.z = (extent.depth % imageGranularity.depth) ? extent.depth % imageGranularity.depth : imageGranularity.depth;
 
+#ifdef _DEBUG
 				printf("apiInit mip level %u sparse binds count: %u %u %u\n", mipLevel, sparseBindCounts.x, sparseBindCounts.y, sparseBindCounts.z);
+#endif
 
 				// @todo: Comment
 				const auto& texMemRequirements = pTexture->mMemRequirements; 
@@ -1373,7 +1376,7 @@ Result DeviceImpl::createTextureResource(
 				pTexture->mMipBases[mipLevel] = currentMipBase;
 				
 				pTexture->mSparsePagesCount += sparseBindCounts.x * sparseBindCounts.y * sparseBindCounts.z;
-				currentMipBase = pageIndex; //pTexture->mSparsePagesCount;
+				currentMipBase = pTexture->mSparsePagesCount;
 			}
 
 			// @todo: proper comment
@@ -1405,7 +1408,7 @@ Result DeviceImpl::createTextureResource(
 				pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 
 				pTexture->mMipBases[sparseMemoryReq.imageMipTailFirstLod] = pTexture->mSparsePagesCount;                    
-				//mSparsePagesCount += 1;
+				pTexture->mSparsePagesCount += 1;
 			}
 
 		} // end layers and mips
@@ -1454,10 +1457,10 @@ Result DeviceImpl::createTextureResource(
 		}
 
 		// Prepare bind sparse info for reuse in queue submission
-		//pTexture->updateSparseBindInfo();
+		//updateSparseBindInfo(pTexture.get());
 
 		/////////////////////////////////////////////////////////
-
+		/*
 		// Update list of memory-backed sparse image memory binds
 		auto& sparseImageMemoryBinds = pTexture->mSparseImageMemoryBinds;
 		sparseImageMemoryBinds.clear();
@@ -1472,8 +1475,8 @@ Result DeviceImpl::createTextureResource(
 		bindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
 
 		// todo: Semaphore for queue submission
-		// bindSparseInfo.signalSemaphoreCount = 1;
-		// bindSparseInfo.pSignalSemaphores = &bindSparseSemaphore;
+		bindSparseInfo.signalSemaphoreCount = 1;
+		bindSparseInfo.pSignalSemaphores = &pTexture->mBindSparseSemaphore;
 
 		// Image memory binds
 		auto& imageMemeoryBindInfo = pTexture->mImageMemoryBindInfo;
@@ -1501,8 +1504,9 @@ Result DeviceImpl::createTextureResource(
 
 		//todo: use sparse bind semaphore
 		m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
-
+		
 		/////////////////////////////////////////////////////////
+		*/
 	}
 ///////////////////////////////
 
@@ -1723,8 +1727,8 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	pTexture->mBindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
 
 	// todo: Semaphore for queue submission
-	// bindSparseInfo.signalSemaphoreCount = 1;
-	// bindSparseInfo.pSignalSemaphores = &bindSparseSemaphore;
+	//bindSparseInfo.signalSemaphoreCount = 1;
+	//bindSparseInfo.pSignalSemaphores = &pTexture->bindSparseSemaphore;
 
 	// Image memory binds
 	pTexture->mImageMemoryBindInfo = {};

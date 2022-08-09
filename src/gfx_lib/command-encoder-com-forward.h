@@ -41,7 +41,7 @@
         ResourceState srcState,                                                                         \
         SubresourceRange srcSubresource,                                                                \
         ITextureResource::Offset3D srcOffset,                                                           \
-        ITextureResource::Extents extent) override                                                         \
+        ITextureResource::Extents extent) override                                                      \
     {                                                                                                   \
         ResourceCommandEncoderBase::copyTextureToBuffer(                                                \
             dst, dstOffset, dstSize, dstRowStride, src, srcState, srcSubresource, srcOffset, extent);   \
@@ -50,12 +50,22 @@
         ITextureResource* dst,                                                                          \
         SubresourceRange subResourceRange,                                                              \
         ITextureResource::Offset3D offset,                                                              \
-        ITextureResource::Extents extent,                                                                  \
+        ITextureResource::Extents extent,                                                               \
         ITextureResource::SubresourceData* subResourceData,                                             \
         GfxCount subResourceDataCount) override                                                         \
     {                                                                                                   \
         ResourceCommandEncoderBase::uploadTextureData(                                                  \
             dst, subResourceRange, offset, extent, subResourceData, subResourceDataCount);              \
+    }                                                                                                   \
+    virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(                                      \
+        ITextureResource* dst,                                                                          \
+        ITextureResource::Offset3D offset,                                                              \
+        ITextureResource::Extents extent,                                                               \
+        uint32_t mipLevel,                                                                              \
+        ITextureResource::SubresourceData* subResourceData) override                                    \
+    {                                                                                                   \
+        ResourceCommandEncoderBase::uploadTexturePageData(                                              \
+            dst, offset, extent, mipLevel, subResourceData);                                            \
     }                                                                                                   \
     virtual SLANG_NO_THROW void SLANG_MCALL uploadBufferData(                                           \
         IBufferResource* dst, Offset offset, Size size, void* data) override                            \

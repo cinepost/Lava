@@ -459,7 +459,6 @@ uint32_t Texture::getMipTailStart() const {
 
 // static
 uint8_t Texture::getMaxMipCount(const uint3& size) {
-	assert(!mIsUDIMTexture);
 	return 1 + uint8_t(glm::log2(static_cast<float>(glm::max(glm::max(size[0], size[1]), size[2]))));
 }
 

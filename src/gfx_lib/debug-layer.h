@@ -399,6 +399,12 @@ public:
         ITextureResource::Extents extent,
         ITextureResource::SubresourceData* subResourceData,
         GfxCount subResourceDataCount);
+    virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(
+        ITextureResource* dst,
+        ITextureResource::Offset3D offset,
+        ITextureResource::Extents extent,
+        uint32_t mipLevel,
+        ITextureResource::SubresourceData* subResourceData);
     virtual SLANG_NO_THROW void SLANG_MCALL clearResourceView(
         IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags);
     virtual SLANG_NO_THROW void SLANG_MCALL resolveResource(

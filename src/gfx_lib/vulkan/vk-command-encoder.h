@@ -96,6 +96,13 @@ public:
         ITextureResource::SubresourceData* subResourceData,
         GfxCount subResourceDataCount) override;
 
+    virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(
+        ITextureResource* dst,
+        ITextureResource::Offset3D offset,
+        ITextureResource::Extents extent,
+        uint32_t mipLevel,
+        ITextureResource::SubresourceData* subResourceData) override;
+
     void _clearColorImage(TextureResourceViewImpl* viewImpl, ClearValue* clearValue);
 
     void _clearDepthImage(

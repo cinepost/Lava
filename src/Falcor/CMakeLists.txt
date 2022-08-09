@@ -75,6 +75,7 @@ find_package( Python3 COMPONENTS Development )
 include_directories( ${Python3_INCLUDE_DIRS} )
 
 # Assimp
+message( "Deps root " ${DEPS_DIR})
 set(assimp_ROOT ${DEPS_DIR})
 find_package(assimp 5.0.0 REQUIRED)
 
@@ -195,7 +196,7 @@ target_link_libraries(
     swscale
     stdc++fs
     Blosc::blosc
-    glfw
+    glfw3
     OpenSSL::SSL
     OpenImageIO::OpenImageIO
     OpenVDB::openvdb
@@ -210,7 +211,6 @@ target_link_libraries(
     ${TIFF_LIBRARIES}
     ${ZLIB_LIBRARY}
     ${LZ4_LIBRARY}
-    //${SLANG_GFX_LIBRARY}
 )
 
 if(backend_type STREQUAL "gfx")

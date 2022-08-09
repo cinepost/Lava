@@ -38,7 +38,7 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		~VirtualTexturePage();
 
-		bool isResident() const;
+		inline bool isResident() const { return mIsResident; }
 		void allocate();
 		void release();
 
@@ -70,6 +70,8 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		const std::shared_ptr<Device>   mpDevice;
 		const std::shared_ptr<Texture>  mpTexture;
+
+		bool mIsResident = false;
 
 		VkOffset3D mOffset;
 		VkExtent3D mExtent;

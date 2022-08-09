@@ -228,9 +228,7 @@ Profiler::Capture::SharedPtr Profiler::Capture::create(size_t reservedEvents, si
 }
 
 void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
-    printf("captureEvents\n");
     if (events.empty()) {
-        printf("no events\n");
         return;
     }
     // Initialize on first capture.
@@ -244,7 +242,6 @@ void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
             mLanes[i * 2 + 1].name = pEvent->getName() + "/gpuTime";
             mLanes[i * 2 + 1].records.reserve(mReservedFrames);
         }
-        printf("%zu events captured first time!!!!\n", events.size());
         return; // Exit as no data is available on first capture.
     }
 
@@ -254,8 +251,6 @@ void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
         mLanes[i * 2].records.push_back(pEvent->getCpuTime());
         mLanes[i * 2 + 1].records.push_back(pEvent->getGpuTime());
     }
-
-    printf("%zu events captured !!!!\n", events.size());
 
     ++mFrameCount;
 }

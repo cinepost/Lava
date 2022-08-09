@@ -247,7 +247,7 @@ inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
       mode_2_string(UDIM_Texture);
       mode_2_string(UDIM_Tile);
     default:
-      assert();
+      assert(false);
       return "Unknown TextureHandle::Mode";
   }
 #undef mode_2_string

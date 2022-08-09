@@ -83,7 +83,6 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     uint virtualTexturesCount = matData.virtualTexturesCount;
     
     for(uint v = 0; v < virtualTexturesCount; v++) {
-        
         SamplerState currTextureSampler = gSampler; // TODO: use actual texture sampler
         bool anisotropicFilteringRequired = true; // TODO: calculate maximum anisotropy level needed for given texture with the given sampler
         

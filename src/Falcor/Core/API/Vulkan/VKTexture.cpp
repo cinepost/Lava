@@ -281,7 +281,9 @@ namespace Falcor {
         std::cout << "\t Alignment: " << mMemRequirements.alignment << std::endl;
 
         if (mIsSparse) {
+#ifdef _DEBUG
             std::cout << "Sparse address space size: " << mpDevice->apiData()->properties.limits.sparseAddressSpaceSize << std::endl;
+#endif
             // Check requested image size against hardware sparse limit            
             if (mMemRequirements.size > mpDevice->apiData()->properties.limits.sparseAddressSpaceSize) {
                 LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";

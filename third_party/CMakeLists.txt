@@ -6,7 +6,7 @@ include(ExternalProject)
 include(ProcessorCount)
 #ProcessorCount(N)
 
-message("Running third party dependencies ${CMAKE_BUILD_TYPE} build...")
+message("Running third party dependencies build...")
 
 #we need git executable
 find_package(Git REQUIRED)
@@ -20,15 +20,9 @@ set( CMAKE_MODULE_PATH
 set(EXTRA_CMAKE_ARGS)
 set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 
-set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/external)
-set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/stamp)
-set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/tmp)
-
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/release)
-else()
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/debug)
-endif()
+set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external)
+set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/stamp)
+set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/tmp)
 
 set(EXTERNALS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -292,12 +286,10 @@ set(EXTERNAL_ASSIMP_VERSION 5.0.0)
 set(assimp_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
 
-if(assimp_FOUND)
-
-  message("Assimp version ${assimp_VERSION} found ...")
-  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
-
-else()
+#if(assimp_FOUND)
+#  message("Assimp version ${assimp_VERSION} found ...")
+#  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
+#else()
 
   message("Assimp version ${EXTERNAL_ASSIMP_VERSION} not found! Running external build ...")
   set(ASSIMP_PREFIX assimp)
@@ -331,7 +323,7 @@ else()
   )
   ExternalProject_Add_StepDependencies(Assimp configure Tbb OpenVDB Blosc)
 
-endif()
+#endif()
 
 
 #######################

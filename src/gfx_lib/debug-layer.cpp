@@ -1390,6 +1390,18 @@ void DebugResourceCommandEncoderImpl::uploadTextureData(
 		getInnerObj(dst), subResourceRange, offset, extent, subResourceData, subResourceDataCount);
 }
 
+void DebugResourceCommandEncoderImpl::uploadTexturePageData(
+	ITextureResource* dst,
+	ITextureResource::Offset3D offset,
+	ITextureResource::Extents extent,
+	uint32_t mipLevel,
+	ITextureResource::SubresourceData* subResourceData)
+{
+	SLANG_GFX_API_FUNC;
+	getBaseResourceEncoder()->uploadTexturePageData(
+		getInnerObj(dst), offset, extent, mipLevel, subResourceData);	
+}
+
 void DebugResourceCommandEncoderImpl::clearResourceView(
 	IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags)
 {

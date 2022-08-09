@@ -232,7 +232,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     mSparseDataPages[page_id]->allocate();
   }
 
-  pTexture->updateSparseBindInfo();
+  //pTexture->updateSparseBindInfo();
   //fillMipTail(pTexture);
 
   // read data and fill pages
@@ -250,7 +250,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   		pPage->release();
   	}
   }
-  mpDevice->getRenderContext()->flush(true);
+ // mpDevice->getRenderContext()->flush(true);
 
   fclose(pFile);
 
@@ -386,7 +386,6 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 				mTextureToHandle[pTexture.get()] = handle;
 				if (pTexture->isSparse()) {
 					mHasSparseTextures = true;
-					LLOG_WRN << "Sparse texture handle mode is: " << to_string(handle.mMode);
 				}
 			}
 

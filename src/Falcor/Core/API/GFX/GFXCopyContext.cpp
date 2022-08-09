@@ -47,6 +47,14 @@
 
 namespace Falcor {
 
+static inline std::string to_string(gfx::ITextureResource::Offset3D offset) {
+	return std::to_string(offset.x) + " " + std::to_string(offset.y) + " " + std::to_string(offset.z);
+}
+
+static inline std::string to_string(gfx::ITextureResource::Extents extent) {
+	return std::to_string(extent.width) + " " + std::to_string(extent.height) + " " + std::to_string(extent.depth);
+}
+
 uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
 	uint32_t perW = getFormatWidthCompressionRatio(format);
 	uint32_t bw = align_to(perW, w) / perW;
@@ -146,7 +154,7 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 	pThis->mDepth = pTexture->getDepth(mipLevel);
 
 	auto stop = std::chrono::high_resolution_clock::now();
-  std::cout << "CopyContext::ReadTextureTask::create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//  std::cout << "CopyContext::ReadTextureTask::create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 	return pThis;
 }
@@ -179,28 +187,28 @@ void CopyContext::ReadTextureTask::getData(uint8_t* textureData) {
 
 	mpFence->syncCpu();
 	auto stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData syncCpu time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData syncCpu time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 	auto start1 = std::chrono::high_resolution_clock::now();
 	// Get buffer data
 	uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
 
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->map time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start1).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->map time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start1).count() << " ms." << std::endl;
 
 	auto start3 = std::chrono::high_resolution_clock::now();
 	memcpy(textureData, pData, (size_t)mRowCount * mActualRowSize);
 	//memmove(textureData, pData, (size_t)mRowCount * mActualRowSize);
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData memcpy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start3).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData memcpy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start3).count() << " ms." << std::endl;
 
 	auto start2 = std::chrono::high_resolution_clock::now();
 	mpBuffer->unmap();
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->unmap time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start2).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->unmap time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start2).count() << " ms." << std::endl;
 
 	stop = std::chrono::high_resolution_clock::now();
-  std::cout << "CopyContext::ReadTextureTask::getData time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//  std::cout << "CopyContext::ReadTextureTask::getData time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 }
 
@@ -386,14 +394,10 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
     return;
   }
 
+  //LLOG_DBG << "Updating texture data page offset " << to_string(pPage->offsetGFX()) << " extent " << to_string(pPage->extentGFX()); 
+
   const Texture* pTexture = pPage->texture().get();
-  //updateSubresourceData(pTexture, pPage->mipLevel(), pData, pPage->offset(), pPage->extent());
-  //return;
-
-  ///////////////////////////////////////////////////////
-
-  resourceBarrier(pTexture, Resource::State::CopyDest);
-
+  
 	uint8_t* dataPtr = (uint8_t*)pData;
 	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
 	gfx::ITextureResource::Offset3D gfxOffset = pPage->offsetGFX();
@@ -407,38 +411,18 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
 	subresourceRange.layerCount = 1;
 	subresourceRange.mipLevelCount = 1;
 
-	//if (!copyRegion) {
-	//	gfxSize.width = align_to(formatInfo.blockWidth, pTexture->getWidth(subresourceRange.mipLevel));
-	//	gfxSize.height = align_to(formatInfo.blockHeight, pTexture->getHeight(subresourceRange.mipLevel));
-	//	gfxSize.depth = pTexture->getDepth(subresourceRange.mipLevel);
-	//}
-
 	gfx::ITextureResource::SubresourceData data = {};
 	data.data = (uint8_t*)pData;
 	data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
-	data.strideZ = 0;//data.strideY * (gfxSize.height / formatInfo.blockHeight);
+	data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
 
-	resourceEncoder->uploadTextureData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), subresourceRange, gfxOffset, gfxSize, &data, 1);
+	resourceEncoder->uploadTexturePageData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), gfxOffset, gfxSize, pPage->mipLevel(), &data);
 	return;
-  ///////////////////////////////////////////////////////
-
-
-  const auto& page_extent = pPage->extentGFX();
-  size_t dataSize = (size_t)getMipLevelPackedDataSize(pTexture, page_extent.width, page_extent.height, page_extent.depth, pTexture->getFormat());
-
-  LLOG_WRN << "updateTexturePage dataSize " << std::to_string(dataSize);
-
-  Buffer::SharedPtr pStagingBuffer = Buffer::create(mpDevice, dataSize, Buffer::BindFlags::None, pData ? Buffer::CpuAccess::Write : Buffer::CpuAccess::Read, pData);
-  if (! pStagingBuffer) {
-  	LLOG_ERR << "No staging buffer!";
-  }
-
-  updateTexturePage(pPage, pStagingBuffer);
-  //gfx::ITextureResource* texture = static_cast<gfx::ITextureResource*>(pStagingBuffer->getApiHandle().get());
-  //mpDevice->getApiHandle()->updateTexurePageData(texture, pData, pPage->offsetGFX(), pPage->extentGFX(), pPage->mipLevel());
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
+	return;
+	
 	assert(pPage);
   assert(pStagingBuffer);
 

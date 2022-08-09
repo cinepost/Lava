@@ -77,11 +77,15 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
     void createMipCalibrationTexture(RenderContext* pRenderContext);
     void createLtxCalibrationTexture(RenderContext* pRenderContext);
 
+    void setDefaultSampler();
+
     Fbo::SharedPtr              mpFbo;
     GraphicsState::SharedPtr    mpState;
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
     Scene::SharedPtr            mpScene;
+
+    Sampler::SharedPtr          mpSampler = nullptr;
 
     GraphicsProgram::SharedPtr      mpProgram;
     DepthStencilState::SharedPtr    mpDsNoDepthWrite;

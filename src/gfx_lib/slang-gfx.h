@@ -1615,6 +1615,12 @@ public:
 		ITextureResource::Extents extent,
 		ITextureResource::SubresourceData* subResourceData,
 		GfxCount subResourceDataCount) = 0;
+	virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(
+		ITextureResource* dst,
+		ITextureResource::Offset3D offset,
+		ITextureResource::Extents extent,
+		uint32_t mipLevel,
+		ITextureResource::SubresourceData* subResourceData) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		uploadBufferData(IBufferResource* dst, Offset offset, Size size, void* data) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL textureBarrier(

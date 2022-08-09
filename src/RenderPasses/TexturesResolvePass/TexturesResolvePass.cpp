@@ -172,7 +172,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				textureData.mipTailStart = pTexture->getMipTailStart();
 				textureData.pagesStartOffset = currPagesStartOffset;
 
-				auto pageRes = pTexture->sparseDataPageRes();
+				auto const& pageRes = pTexture->sparseDataPageRes();
 				textureData.pageSizeW = pageRes.x;
 				textureData.pageSizeH = pageRes.y;
 				textureData.pageSizeD = pageRes.z;
@@ -187,12 +187,14 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				texturesMap[textureID] = pTexture;
 			
 				// --- debug info 
+#ifdef _DEBUG
 				printf("Texture id: %u pages offset: %u width: %u height: %u\n", textureData.textureID, textureData.pagesStartOffset, textureData.width, textureData.height);
 				printf("Texture id: %u mip levels: %u tail start: %u\n", textureData.textureID, textureData.mipLevelsCount, textureData.mipTailStart);
+
 				std::cout << "Mip bases : \n";
 				for( uint i = 0; i < 16; i++) std::cout << textureData.mipBases[i] << " ";
 				std::cout << "\n";
-
+#endif
 			} else {
 				// Virtual texture data cached in map, reuse it
 				textureData = virtualTexturesDataMap[textureID];
@@ -210,7 +212,9 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	uint32_t resolvedTexturesCount = currTextureResolveID;
 
+#ifdef _DEBUG
 	printf("Total pages to update for %u textures is %u\n", resolvedTexturesCount, totalPagesToUpdateCount);
+#endif
 
 	std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount, 0);
 	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
@@ -223,7 +227,11 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
 	mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
 
+	setDefaultSampler();
+
+#ifdef _DEBUG
 	printf("%u textures needs to be resolved\n", resolvedTexturesCount);
+#endif
 
 	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::Back);
 	pContext->flush(true);
@@ -233,44 +241,42 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	// Test resolved data
 	const int8_t* pOutPagesData = reinterpret_cast<const int8_t*>(pPagesBuffer->map(Buffer::MapType::Read));
 
-	// dev print pages
-	//std::cout << "Page ids: \n";
-	//for( uint32_t i = 0; i < totalPagesToUpdateCount; i++) {
-	//    std::cout << static_cast<int16_t>(pOutPagesData[i]) << " ";
-	//}
-	//std::cout << "\n\n";
-
-	// test count pages
-	std::vector<int8_t> page_flags(pOutPagesData, pOutPagesData + sizeof(int8_t) * totalPagesToUpdateCount);
-	uint32_t pagesToLoadCount = std::count(page_flags.begin(), page_flags.end(), 1);
-	printf("%u pages needs to be loaded\n", pagesToLoadCount);
-
-	// test load pages
+	// Load texture pages
 	auto started = std::chrono::high_resolution_clock::now();
 
 	uint32_t pagesStartOffset = 0;
 	for (auto const& [textureID, pTexture] :texturesMap) {
 		uint32_t texturePagesCount = pTexture->sparseDataPagesCount();
-		printf("Analyzing %u pages for texture %u\n", texturePagesCount, textureID);
+		LLOG_DBG << "Analyzing" << std::to_string(texturePagesCount) << " pages for texture " << std::to_string(textureID);
 
 		std::vector<uint32_t> pageIDs;
 
 		// index 'i' is a page index relative to the texture. starts with 0
 		for(uint32_t i = 0; i < texturePagesCount; i++) {
-
-			if (pOutPagesData[i + pagesStartOffset] != 0)
+			if (pOutPagesData[i + pagesStartOffset] != 0) {
 				pageIDs.push_back(i + pagesStartOffset);
+			}
 		}
+
+#ifdef _DEBUG
+		for(uint32_t i = 0; i < texturePagesCount; i++) {
+			std::cout << " " << std::to_string(i);
+		}
+		std::cout << std::endl;
+#endif
+
+		LLOG_DBG << std::to_string(pageIDs.size()) << " pages needs to be loaded for texture " << std::to_string(textureID);
+		
 		pTextureManager->loadPages(pTexture, pageIDs); 
 
 		pagesStartOffset += texturePagesCount;
 	}
 
 	auto done = std::chrono::high_resolution_clock::now();
-	std::cout << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << std::endl;
-	std::cout << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << std::endl;
+	LLOG_DBG << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << " ms.";
+	LLOG_DBG << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << " ms.";
 
-	pContext->flush(true);
+	//pContext->flush(true);
 
 	LLOG_DBG << "TexturesResolvePass::execute done";
 }
@@ -316,6 +322,18 @@ void TexturesResolvePass::createLtxCalibrationTexture(RenderContext* pRenderCont
 	for(uint32_t mipLevel = 0; mipLevel < mpLtxCalibrationTexture->getMipCount(); mipLevel++) {
 		uint32_t width = mpLtxCalibrationTexture->getWidth(mipLevel);
 		uint32_t height = mpLtxCalibrationTexture->getHeight(mipLevel); 
-		
 	}
+}
+
+void TexturesResolvePass::setDefaultSampler() {
+	if (mpSampler) return;
+
+	Sampler::Desc desc;
+  desc.setMaxAnisotropy(16);
+  desc.setLodParams(0.0f, 1000.0f, -0.0f);
+  desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+  desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+
+	mpSampler = Sampler::create(mpDevice, desc);
+  mpVars["gSampler"] = mpSampler;
 }

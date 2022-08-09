@@ -9,6 +9,37 @@
 
 namespace Falcor {
 
+VirtualTexturePage::VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer): mpDevice(pTexture->device()), mpTexture(pTexture), mMipLevel(mipLevel), mLayer(layer) {
+    mOffset = {offset[0], offset[1], offset[2]};
+    mExtent = {extent[0], extent[1], extent[2]};
+
+    // Pages are initially not backed up by memory (non-resident)
+    mImageMemoryBind = {};
+    mImageMemoryBind.memory = VK_NULL_HANDLE;
+
+    VkImageSubresource subResource = {};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subResource.mipLevel = mipLevel;
+    subResource.arrayLayer = layer;
+
+    mImageMemoryBind.subresource = subResource;
+    mImageMemoryBind.flags = VK_SPARSE_MEMORY_BIND_METADATA_BIT;
+    mImageMemoryBind.offset = mOffset;
+    mImageMemoryBind.extent = mExtent;
+    mImageMemoryBind.memory = VK_NULL_HANDLE;
+}
+
+VirtualTexturePage::~VirtualTexturePage() {
+    if (mImageMemoryBind.memory != VK_NULL_HANDLE) release();
+}
+
+size_t VirtualTexturePage::usedMemSize() const {
+    if (mImageMemoryBind.memory != VK_NULL_HANDLE)
+        return mDevMemSize;
+
+    return 0;
+}
+
 // Allocate Vulkan memory for the virtual page
 void VirtualTexturePage::allocate() {
 	if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
@@ -47,6 +78,7 @@ void VirtualTexturePage::allocate() {
 	mImageMemoryBind.memoryOffset = vmaAllocInfo.offset;
 
 	mpTexture->mSparseResidentMemSize += mDevMemSize;
+	mIsResident = true;
 }
 
 // Release Vulkan memory allocated for this page
@@ -59,6 +91,7 @@ void VirtualTexturePage::release() {
 
 	mpTexture->mSparseResidentMemSize -= mDevMemSize;
 	mImageMemoryBind.memory = VK_NULL_HANDLE;
+	mIsResident = false;
 }
 
 }  // namespace Falcor

@@ -428,6 +428,9 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
         
         // Change rendering graph frame dimensions
         mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
+        if(mpTexturesResolvePassGraph) {
+            mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+        }
 
         std::string compilationLog;
         if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {

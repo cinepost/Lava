@@ -194,11 +194,9 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
             handle.udimID = pTexture->getUDIM_ID();
             handle.setMode(TextureHandle::Mode::UDIM_Texture);
         } else {
-            LLOG_WRN << "Setting from handle texture id " << to_string(h.getID());
             handle.setTextureID(h.getID());
         }
     } else {
-        LLOG_ERR << "No texture for slot!";
         handle.setMode(TextureHandle::Mode::Uniform);
     }
 
@@ -206,7 +204,6 @@ void Material::updateTextureHandle(MaterialSystem* pOwner, const Texture::Shared
 }
 
 void Material::updateTextureHandle(MaterialSystem* pOwner, const TextureSlot slot, TextureHandle& handle) {
-    LLOG_WRN << "Checking texture for slot " << to_string(slot);
     auto pTexture = getTexture(slot);
     updateTextureHandle(pOwner, pTexture, handle);
 };

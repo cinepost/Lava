@@ -497,8 +497,6 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
 bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 	assert(pFile);
 
-	LLOG_DBG << "LTX_Bitmap::readPageData " << std::to_string(pageNum);
-
 	if (pageNum >= mHeader.pagesCount ) {
 		LLOG_ERR << "LTX_Bitmap::readPageData pageNum (" << std::to_string(pageNum) << ") exceeds pages count (" << std::to_string(mHeader.pagesCount) << ") !!!";
 		return false;

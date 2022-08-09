@@ -284,20 +284,9 @@ inline std::string to_string(VkResult result) {
     #ifdef VK_ERROR_COMPRESSION_EXHAUSTED_EXT
         vkresult_2_string(VK_ERROR_COMPRESSION_EXHAUSTED_EXT);
     #endif
-    /*
-        vkresult_2_string(VK_ERROR_OUT_OF_POOL_MEMORY_KHR);
-        vkresult_2_string(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
-        vkresult_2_string(VK_ERROR_FRAGMENTATION_EXT);
-    #ifdef VK_ERROR_NOT_PERMITTED_EXT    
-        vkresult_2_string(VK_ERROR_NOT_PERMITTED_EXT);
-    #endif    
-        vkresult_2_string(VK_ERROR_INVALID_DEVICE_ADDRESS_EXT);
-        vkresult_2_string(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR);
-        vkresult_2_string(VK_PIPELINE_COMPILE_REQUIRED_EXT);
-        vkresult_2_string(VK_ERROR_PIPELINE_COMPILE_REQUIRED_EXT);
-    */
+
         default:
-            assert();
+            assert(false);
             return "Unknown VkResult";
     }
 #undef vkresult_2_string
