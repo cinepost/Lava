@@ -184,7 +184,8 @@ include_directories( ${DEPS_DIR}/rtxgi-sdk/include )
 find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_DIR}/lib )
 
 # GLFW3
-find_package(glfw3 3.3 REQUIRED)
+set(GLFW_ROOT ${DEPS_DIR})
+find_package(glfw3 3.3.7 REQUIRED)
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
