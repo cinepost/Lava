@@ -184,7 +184,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     // Final pixel color
     psOut.color.rgb = surfaceColor; //lerp(psOut.color.rgb, surfaceColor, surfaceAlpha);
-    psOut.color.a = surfaceAlpha;
+    psOut.color.a = 1.f; //surfaceAlpha;
 
 #ifdef _OUTPUT_NORMALS
     psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);

@@ -72,8 +72,8 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	Sampler::Desc desc;
 	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
 	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
-	desc.setMaxAnisotropy(16);
-	desc.setLodParams(0.0f, 1000.0f, 0.0f);
+	desc.setMaxAnisotropy(8);//(16);
+	desc.setLodParams(0.0f, 4.0f, 0.0f);//desc.setLodParams(0.0f, 1000.0f, 0.0f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
 }
 
@@ -308,7 +308,6 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 			assert(index < mMaterialCountByType.size());
 			mMaterialCountByType[index]++;
 		}
-
 	}
 
 	// Create parameter block if needed.
@@ -419,8 +418,7 @@ Shader::DefineList MaterialSystem::getDefines() const {
 
 Program::TypeConformanceList MaterialSystem::getTypeConformances() const {
 	Program::TypeConformanceList typeConformances;
-	for (const auto type : mMaterialTypes)
-	{
+	for (const auto type : mMaterialTypes) {
 		typeConformances.add(getTypeConformances(type));
 	}
 	return typeConformances;

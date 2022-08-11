@@ -48,6 +48,8 @@ struct VulkanDeviceQueue
         /// Get the queue
     VkQueue getQueue() const { return m_queue; }
 
+    VkCommandPool getCommnadPool() const { return m_commandPool; }
+
         /// Get the API
     const VulkanApi* getApi() const { return m_api; }
 

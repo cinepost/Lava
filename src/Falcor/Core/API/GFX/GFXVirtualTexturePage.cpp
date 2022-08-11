@@ -84,7 +84,6 @@ void VirtualTexturePage::allocate() {
 // Release Vulkan memory allocated for this page
 void VirtualTexturePage::release() {
 	if (mImageMemoryBind.memory == VK_NULL_HANDLE) {
-		LLOG_ERR << "VirtualTexturePage already released !!!";
 		return;
 	}
 	vmaFreeMemory(mpDevice->allocator(), mAllocation);

@@ -219,12 +219,12 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     return;
   }
 
-  //std::vector<uint32_t> sortedPageIDs = pageIDs;
-  //std::sort (sortedPageIDs.begin(), sortedPageIDs.end());
+  std::vector<uint32_t> _pageIds = pageIds;
+  std::sort(_pageIds.begin(), _pageIds.end());
 
   // allocate pages
   uint32_t data_pages_count = (uint32_t)mSparseDataPages.size();
-  for( uint32_t page_id: pageIds ) {
+  for( uint32_t page_id: _pageIds ) {
   	if (page_id >= data_pages_count) {
   		LLOG_ERR << "Error sparse data pages indexing! Page with id " << page_id << " requested while " << data_pages_count << " pages exist !!!";
   		continue;
@@ -242,19 +242,21 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   std::vector<uint8_t> tmpPage(65536);
   auto pTmpPageData = tmpPage.data();
   
-  for( uint32_t page_id: pageIds ) {
+  for( uint32_t page_id: _pageIds ) {
     const auto& pPage = mSparseDataPages[page_id];
     if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile)) {
     	mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
+    	LLOG_DBG << "Loaded page mip level " << std::to_string(pPage->mipLevel());
   	} else {
   		pPage->release();
   	}
   }
- // mpDevice->getRenderContext()->flush(true);
+  //mpDevice->getRenderContext()->flush(true);
+
+  mpDevice->getRenderContext()->fillMipTail(pTexture, nullptr);
 
   fclose(pFile);
 
-  //fillMipTail(pTexture);
   pTexture->updateSparseBindInfo();
 }
 
@@ -426,10 +428,12 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 						pUdimTileTex = Texture::createFromFile(mpDevice, udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
 					} else {
 						pUdimTileTex = loadSparseTexture(udim_tile_fullpath, generateMipLevels, loadAsSRGB, bindFlags);
-						if(pUdimTileTex) mHasSparseTextures = true;
+						if(pUdimTileTex) {
+							mHasSparseTextures = true;
+						}
 					}
 
-					LLOG_DBG << "Loaded UDIM texture tile: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
+					LLOG_DBG << "Loaded " << (loadAsSparse ? "sparse": "" ) << " UDIM tile texture: " << udim_tile_fullpath << " pos: " << std::to_string(udim_tile_pos[0]) << "x" << std::to_string(udim_tile_pos[1]);
 					
 					TextureDesc udim_tile_desc = { TextureState::Loaded, pUdimTileTex };
 					udim_tile_handle = addDesc(udim_tile_desc, TextureHandle::Mode::UDIM_Tile);

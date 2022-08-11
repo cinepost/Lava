@@ -160,6 +160,21 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 
 Texture::~Texture() {
 	if (mApiHandle) {
+		if(mIsSparse) {
+			for(auto pPage: mSparseDataPages) {
+				pPage->release();
+			}
+			/*
+			for (auto bind : mOpaqueMemoryBinds) {
+				vkFreeMemory(mpDevice->getApiHandle(), bind.memory, nullptr);
+			}
+			// Clean up mip tail
+			if (mipTailimageMemoryBind.memory != VK_NULL_HANDLE) {
+				vkFreeMemory(device, mipTailimageMemoryBind.memory, nullptr);
+			}
+			*/
+		}
+
 		ApiObjectHandle objectHandle;
 		mApiHandle->queryInterface(SLANG_UUID_ISlangUnknown, (void**)objectHandle.writeRef());
 		mpDevice->releaseResource(objectHandle);

@@ -139,8 +139,17 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal})) {
 			auto pTexture = pMaterial->getTexture(slot);
-			if(pTexture && pTexture->isSparse()) {
-				materialSparseTextures.push_back(pTexture);
+			if(pTexture && (pTexture->isSparse() || pTexture->isUDIMTexture())) {
+				if(pTexture->isUDIMTexture()) {
+					for(const auto& tileInfo: pTexture->getUDIMTileInfos()) {
+						if(tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) {
+							materialSparseTextures.push_back(tileInfo.pTileTexture);
+							LLOG_WRN << "!";
+						}
+					}
+				} else {
+					materialSparseTextures.push_back(pTexture);
+				}
 			}
 		}
 
@@ -329,10 +338,10 @@ void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;
 
 	Sampler::Desc desc;
-  desc.setMaxAnisotropy(16);
+  desc.setMaxAnisotropy(8);//(16);
   desc.setLodParams(0.0f, 1000.0f, -0.0f);
   desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-  desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+  desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 
 	mpSampler = Sampler::create(mpDevice, desc);
   mpVars["gSampler"] = mpSampler;

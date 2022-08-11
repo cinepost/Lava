@@ -51,18 +51,21 @@ public:
 
     virtual SLANG_NO_THROW Result SLANG_MCALL
         getSlangSession(slang::ISession** outSlangSession) override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL createTransientResourceHeap(
         const ITransientResourceHeap::Desc& desc,
         ITransientResourceHeap** outHeap) override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureResource(
         const ITextureResource::Desc& desc,
         const std::shared_ptr<Falcor::Texture>& pTexture,
         const ITextureResource::SubresourceData* initData,
         ITextureResource** outResource) override;
-    virtual SLANG_NO_THROW void SLANG_MCALL updateTexurePageData(
-        ITextureResource* texture, IBufferResource* buffer, ITextureResource::Offset3D offset, ITextureResource::Extents extent, uint32_t mipLevel) override;
+
     virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
+    
     virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const override;
+    
     virtual SLANG_NO_THROW Result SLANG_MCALL createTextureFromNativeHandle(
         InteropHandle handle,
         const ITextureResource::Desc& srcDesc,
@@ -372,16 +375,19 @@ public:
         uploadBufferData(IBufferResource* dst, Offset offset, Size size, void* data);
     virtual SLANG_NO_THROW void SLANG_MCALL
         writeTimestamp(IQueryPool* pool, GfxIndex index);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL textureBarrier(
         GfxCount count,
         ITextureResource* const* textures,
         ResourceState src,
         ResourceState dst);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL bufferBarrier(
         GfxCount count,
         IBufferResource* const* buffers,
         ResourceState src,
         ResourceState dst);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL copyTexture(
         ITextureResource* dst,
         ResourceState dstState,
@@ -392,6 +398,7 @@ public:
         SubresourceRange srcSubresource,
         ITextureResource::Offset3D srcOffset,
         ITextureResource::Extents extent);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL uploadTextureData(
         ITextureResource* dst,
         SubresourceRange subResourceRange,
@@ -399,14 +406,19 @@ public:
         ITextureResource::Extents extent,
         ITextureResource::SubresourceData* subResourceData,
         GfxCount subResourceDataCount);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL uploadTexturePageData(
         ITextureResource* dst,
         ITextureResource::Offset3D offset,
         ITextureResource::Extents extent,
         uint32_t mipLevel,
         ITextureResource::SubresourceData* subResourceData);
+    
+    virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL clearResourceView(
         IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags);
+    
     virtual SLANG_NO_THROW void SLANG_MCALL resolveResource(
         ITextureResource* source,
         ResourceState sourceState,

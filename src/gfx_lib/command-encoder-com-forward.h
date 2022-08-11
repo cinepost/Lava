@@ -67,6 +67,12 @@
         ResourceCommandEncoderBase::uploadTexturePageData(                                              \
             dst, offset, extent, mipLevel, subResourceData);                                            \
     }                                                                                                   \
+    virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(                                              \
+        ITextureResource* texture, Falcor::Texture* pTexture) override                                  \
+    {                                                                                                   \
+        ResourceCommandEncoderBase::fillMipTail(                                                        \
+            texture, pTexture);                                                                         \
+    }                                                                                                   \
     virtual SLANG_NO_THROW void SLANG_MCALL uploadBufferData(                                           \
         IBufferResource* dst, Offset offset, Size size, void* data) override                            \
     {                                                                                                   \

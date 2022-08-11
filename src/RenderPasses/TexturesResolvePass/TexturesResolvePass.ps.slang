@@ -62,8 +62,8 @@ float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualT
     //TODO: Sample additional mips (9+ levels)
     //float fMipLevel2 = mipCalibrationTexture.SampleGrad(calibrationSampler, float2(0.5, 0.5), gradX*0.5, gradY*0.5).r * 255.0;
     
-    float f1 = ceil(fMipLevel) - 1.0;
-    float f2 = floor(fMipLevel) - 1.0;
+    float f1 = floor(fMipLevel);
+    float f2 = ceil(fMipLevel);
 
     return float3(f1, f2, fMipLevel);
 }

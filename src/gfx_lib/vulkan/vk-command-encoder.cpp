@@ -499,6 +499,134 @@ void ResourceCommandEncoder::uploadTexturePageData(
 	}
 }
 
+Result ResourceCommandEncoder::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) {
+/*
+	assert(texture);
+	assert(pTexture);
+  
+  auto& vkApi = m_commandBuffer->m_renderer->m_api;
+	TextureResourceImpl* _texture = static_cast<TextureResourceImpl*>(texture);
+
+  // Clean up previous mip tail memory allocation
+	if (pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE) {
+		vkApi.vkFreeMemory(m_device, pTexture->mMipTailimageMemoryBind.memory, nullptr);
+	}
+
+	//@todo: WIP
+	VkDeviceSize imageMipTailSize = pTexture->mSparseImageMemoryRequirements.imageMipTailSize;
+	VkDeviceSize imageMipTailOffset = pTexture->mSparseImageMemoryRequirements.imageMipTailOffset;
+	// Stride between memory bindings for each mip level if not single mip tail (VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT not set)
+	VkDeviceSize imageMipTailStride = pTexture->mSparseImageMemoryRequirements.imageMipTailStride;
+
+	VkMemoryAllocateInfo allocInfo {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = imageMipTailSize;
+	allocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
+	SLANG_VK_RETURN_ON_FAIL(vkApi.vkAllocateMemory(m_device, &allocInfo, nullptr, &pTexture->mMipTailimageMemoryBind.memory));
+
+	uint32_t mipLevel = pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod;
+	uint32_t width = std::max(pTexture->mWidth >> pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
+	uint32_t height = std::max(pTexture->mHeight >> pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
+	uint32_t depth = 1;
+
+	for (uint32_t i = pTexture->mMipTailStart; i < pTexture->mMipLevels; i++) {
+
+		const uint32_t width = std::max(pTexture->mWidth >> i, 1u);
+		const uint32_t height = std::max(pTexture->mHeight >> i, 1u);
+
+		// Generate some random image data and upload as a buffer
+		const size_t bufferSize = 4 * width * height;
+
+		VKBufferHandleRAII imageBuffer;
+
+		SLANG_RETURN_ON_FAIL(imageBuffer.init(
+			vkApi,
+			bufferSize,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+
+		uint8_t* dstData;
+		vkApi.vkMapMemory(m_device, imageBuffer.m_memory, 0, bufferSize, 0, (void**)&dstData);
+
+
+		// Fill buffer with random colors
+		std::random_device rd;
+		std::mt19937 rndEngine(rd());
+		std::uniform_int_distribution<uint32_t> rndDist(0, 255);
+		//uint8_t* data = (uint8_t*)imageBuffer.mapped;
+		randomPattern(dstData, width, height);
+
+		VkCommandPool pool = m_deviceQueue.getCommnadPool();
+
+		VkCommandBuffer commandBuffer;
+		{
+			VkCommandBufferAllocateInfo cmdBufAllocateInfo {};
+			cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			cmdBufAllocateInfo.commandPool = pool;
+			cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			cmdBufAllocateInfo.commandBufferCount = 1;
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &commandBuffer));
+			
+			VkCommandBufferBeginInfo cmdBufInfo {};
+			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkBeginCommandBuffer(commandBuffer, &cmdBufInfo));
+		}
+
+		//VkCommandBuffer copyCmd = vulkanDevice->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+		//vks::tools::setImageLayout(copyCmd, texture.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.subRange, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+		
+		_transitionImageLayout(
+			_texture->m_image,
+			_texture->m_vkformat,
+			*texture->getDesc(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		VkBufferImageCopy region{};
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.layerCount = 1;
+		region.imageSubresource.mipLevel = i;
+		region.imageOffset = {};
+		region.imageExtent = { width, height, 1 };
+		vkApi.vkCmdCopyBufferToImage(commandBuffer, imageBuffer.m_buffer, _texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		
+		//vks::tools::setImageLayout(copyCmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture.subRange, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		
+		_transitionImageLayout(
+			_texture->m_image,
+			_texture->m_vkformat,
+			*texture->getDesc(),
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		{
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkEndCommandBuffer(commandBuffer));
+		
+			VkSubmitInfo submitInfo {};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &commandBuffer;
+			// Create fence to ensure that the command buffer has finished executing
+			VkFenceCreateInfo fenceInfo {};
+			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fenceInfo.flags = VK_FLAGS_NONE;
+
+			VkFence fence;
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkCreateFence(m_device, &fenceInfo, nullptr, &fence));
+			// Submit to the queue
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkQueueSubmit(m_deviceQueue.getQueue(), 1, &submitInfo, fence));
+			// Wait for the fence to signal that command buffer has finished executing
+			SLANG_VK_RETURN_ON_FAIL(vkApi.vkWaitForFences(m_device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+			vkApi.vkDestroyFence(m_device, fence, nullptr);
+			vkApi.vkFreeCommandBuffers(m_device, pool, 1, &commandBuffer);
+		}
+
+		//imageBuffer.destroy();
+		vkApi.vkUnmapMemory(m_device, imageBuffer.m_memory);
+	}
+*/
+}
+
 ////////////////////////////////////////////////////////////
 
 void ResourceCommandEncoder::uploadTextureData(

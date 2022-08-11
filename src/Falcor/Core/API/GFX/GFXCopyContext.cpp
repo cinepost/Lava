@@ -385,6 +385,13 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 	mCommandsPending = true;
 }
 
+void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData) {
+	assert(pTexture);
+
+	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+	resourceEncoder->fillMipTail(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), pTexture.get());
+}
+
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
   assert(pPage);
   assert(pData);
@@ -417,12 +424,11 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
 	data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
 
 	resourceEncoder->uploadTexturePageData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), gfxOffset, gfxSize, pPage->mipLevel(), &data);
-	return;
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
 	return;
-	
+/*	
 	assert(pPage);
   assert(pStagingBuffer);
 
@@ -439,6 +445,7 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::Sha
   bufferBarrier(pStagingBuffer.get(), Resource::State::CopySource);
 	mpDevice->getApiHandle()->updateTexurePageData(texture, buffer, pPage->offsetGFX(), pPage->extentGFX(), pPage->mipLevel());
 	mCommandsPending = true;
+*/
 }
 
 }  // namespace Falcor

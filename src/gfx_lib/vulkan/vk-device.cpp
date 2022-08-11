@@ -1,4 +1,7 @@
 // vk-device.cpp
+
+#include <random>
+
 #include "vk-device.h"
 
 #include "vk-buffer.h"
@@ -35,6 +38,11 @@ namespace gfx {
 using namespace Slang;
 
 namespace vk {
+
+// Custom define for better code readability
+#define VK_FLAGS_NONE 0
+// Default fence timeout in nanoseconds
+#define DEFAULT_FENCE_TIMEOUT 100000000000
 
 static glm::uvec3 alignedDivision(const VkExtent3D& extent, const VkExtent3D& granularity) {
 	glm::uvec3 res;
@@ -967,20 +975,20 @@ Result DeviceImpl::createAccelerationStructure(const IAccelerationStructure::Cre
 	createInfo.buffer = resultAS->m_buffer->m_buffer.m_buffer;
 	createInfo.offset = desc.offset;
 	createInfo.size = desc.size;
-	switch (desc.kind)
-	{
-	case IAccelerationStructure::Kind::BottomLevel:
-		createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-		break;
-	case IAccelerationStructure::Kind::TopLevel:
-		createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-		break;
-	default:
-		getDebugCallback()->handleMessage(
-			DebugMessageType::Error,
-			DebugMessageSource::Layer,
-			"invalid value of IAccelerationStructure::Kind encountered in desc.kind");
-		return SLANG_E_INVALID_ARG;
+	
+	switch (desc.kind) {
+		case IAccelerationStructure::Kind::BottomLevel:
+			createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+			break;
+		case IAccelerationStructure::Kind::TopLevel:
+			createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+			break;
+		default:
+			getDebugCallback()->handleMessage(
+				DebugMessageType::Error,
+				DebugMessageSource::Layer,
+				"invalid value of IAccelerationStructure::Kind encountered in desc.kind");
+			return SLANG_E_INVALID_ARG;
 	}
 
 	SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateAccelerationStructureKHR(
@@ -1385,6 +1393,7 @@ Result DeviceImpl::createTextureResource(
 
 			
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
+			/*	
 				LLOG_DBG << "Layer " << layer << "single mip tail";
 				// Allocate memory for the layer mip tail
 				VkMemoryAllocateInfo memAllocInfo = {};
@@ -1409,12 +1418,13 @@ Result DeviceImpl::createTextureResource(
 
 				pTexture->mMipBases[sparseMemoryReq.imageMipTailFirstLod] = pTexture->mSparsePagesCount;                    
 				pTexture->mSparsePagesCount += 1;
+			*/
 			}
-
 		} // end layers and mips
 
 		// Check if format has one mip tail for all layers
 		if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
+		/*
 			LLOG_DBG << "One mip tail for all mip layers ";
 			// Allocate memory for the mip tail
 			VkMemoryAllocateInfo memAllocInfo = {};
@@ -1436,6 +1446,7 @@ Result DeviceImpl::createTextureResource(
 			sparseMemoryBind.memory = deviceMemory;
 
 			pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
+		*/
 		}
 
 		LLOG_DBG << "Texture info:";
@@ -1662,8 +1673,7 @@ Result DeviceImpl::createTextureResource(
 					region.imageSubresource.baseArrayLayer = i;
 					region.imageSubresource.layerCount = 1;
 					region.imageOffset = { 0, 0, 0 };
-					region.imageExtent = {
-						uint32_t(mipSize.width), uint32_t(mipSize.height), uint32_t(mipSize.depth) };
+					region.imageExtent = { uint32_t(mipSize.width), uint32_t(mipSize.height), uint32_t(mipSize.depth) };
 
 					// Do the copy (do all depths in a single go)
 					m_api.vkCmdCopyBufferToImage(
@@ -1703,6 +1713,26 @@ Result DeviceImpl::createTextureResource(
 	m_deviceQueue.flushAndWait();
 	returnComPtr(outResource, texture);
 	return SLANG_OK;
+}
+
+static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
+	std::random_device rd;
+	std::mt19937 rndEngine(rd());
+	std::uniform_int_distribution<uint32_t> rndDist(0, 255);
+	uint8_t rndVal[4] = { 0, 0, 0, 0 };
+	while (rndVal[0] + rndVal[1] + rndVal[2] < 10) {
+		rndVal[0] = (uint8_t)rndDist(rndEngine);
+		rndVal[1] = (uint8_t)rndDist(rndEngine);
+		rndVal[2] = (uint8_t)rndDist(rndEngine);
+	}
+	rndVal[3] = 255;
+	for (uint32_t y = 0; y < height; y++) {
+		for (uint32_t x = 0; x < width; x++) {
+			for (uint32_t c = 0; c < 4; c++, ++buffer) {
+				*buffer = rndVal[c];
+			}
+		}
+	}
 }
 
 void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
@@ -1752,42 +1782,6 @@ void DeviceImpl::updateSparseBindInfo(Falcor::Texture* pTexture) {
 
 	//todo: use sparse bind semaphore
 	m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
-}
-
-void DeviceImpl::updateTexurePageData(ITextureResource* texture, IBufferResource* buffer, ITextureResource::Offset3D offset, ITextureResource::Extents extent, uint32_t mipLevel) {
-	VkBufferImageCopy vkCopy;
-
-	vkCopy = {};
-	vkCopy.bufferRowLength = 0;
-	vkCopy.bufferImageHeight = 0;
-	vkCopy.imageSubresource.baseArrayLayer = 0;
-	vkCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	vkCopy.imageSubresource.layerCount = 1;
-	vkCopy.imageSubresource.mipLevel = mipLevel;
-	
-	vkCopy.imageOffset.x = offset.x;
-	vkCopy.imageOffset.y = offset.y;
-	vkCopy.imageOffset.z = offset.z;
-	
-	vkCopy.imageExtent.width = extent.width;
-	vkCopy.imageExtent.height = extent.height;
-	vkCopy.imageExtent.depth = extent.depth;
-	vkCopy.bufferOffset = buffer->getDeviceAddress();
-
-	LLOG_WRN << "updateTexurePageData offset " << offset.x << " " << offset.y << " " << offset.z;
-	LLOG_WRN << "updateTexurePageData extent " << extent.width << " " << extent.height << " " << extent.depth;
-
-	LLOG_WRN << "updateTexurePageData m_buffer " << (static_cast<BufferResourceImpl*>(buffer)->m_uploadBuffer.m_buffer == VK_NULL_HANDLE ? "VK_NULL_HANDLE" : "Not VK_NULL_HANDLE");
-	LLOG_WRN << "updateTexurePageData m_image " << (static_cast<TextureResourceImpl*>(texture)->m_image == VK_NULL_HANDLE ? "VK_NULL_HANDLE" : "Not VK_NULL_HANDLE");
-
-	m_api.vkCmdCopyBufferToImage(
-		m_deviceQueue.getCommandBuffer(), 
-		static_cast<BufferResourceImpl*>(buffer)->m_buffer.m_buffer, 
-		static_cast<TextureResourceImpl*>(texture)->m_image, 
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-		1, 
-		&vkCopy
-	);
 }
 
 Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, const void* initData, IBufferResource** outResource) {

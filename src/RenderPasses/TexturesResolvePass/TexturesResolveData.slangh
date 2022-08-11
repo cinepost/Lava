@@ -23,8 +23,13 @@ struct VirtualTextureData {
 
     uint32_t empty = true;
     uint32_t textureResolveID;
-    uint32_t pagesStartOffset; // pages starts at this index in output pages buffer
-    uint32_t mipTailStart;
+    uint32_t pagesStartOffset; // Pages start at this index in output pages buffer
+    uint32_t mipTailStart;     // Mip level at which tail data starts
+
+    bool udimTexture;
+    uint32_t _pad0;
+    uint32_t _pad1;
+    uint32_t _pad2;
 };
 
 // Array of material virtual textures that needs to be resolved

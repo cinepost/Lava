@@ -67,6 +67,7 @@ bool Renderer::init(const Config& config) {
 
     //sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
     sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
@@ -254,7 +255,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
-    mpSkyBoxPass->setOpacity(1.0f);
+    mpSkyBoxPass->setOpacity(0.0f);
 
     mpSkyBoxPass->setScene(pRenderContext, pScene);
     mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
@@ -478,8 +479,12 @@ void Renderer::renderSample() {
     }
 
     mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-    pRenderContext->flush(true);
-
+    
+    // Hard sync every 16 samples. TODO: this is UGLY !
+    if (mCurrentSampleNumber % 16 == 0) {
+        pRenderContext->flush(true);
+    }
+    
     double currentTime = 0;
     _mpScene->update(pRenderContext, currentTime);
 

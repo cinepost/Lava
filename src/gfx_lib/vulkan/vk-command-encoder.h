@@ -103,6 +103,8 @@ public:
         uint32_t mipLevel,
         ITextureResource::SubresourceData* subResourceData) override;
 
+    virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) override;
+
     void _clearColorImage(TextureResourceViewImpl* viewImpl, ClearValue* clearValue);
 
     void _clearDepthImage(

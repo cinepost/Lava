@@ -1621,6 +1621,7 @@ public:
 		ITextureResource::Extents extent,
 		uint32_t mipLevel,
 		ITextureResource::SubresourceData* subResourceData) = 0;
+	virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		uploadBufferData(IBufferResource* dst, Offset offset, Size size, void* data) = 0;
 	virtual SLANG_NO_THROW void SLANG_MCALL textureBarrier(
@@ -2174,10 +2175,6 @@ class IDevice: public ISlangUnknown {
 			SLANG_RETURN_NULL_ON_FAIL(createTextureResource(desc, pTexture, initData, resource.writeRef()));
 			return resource;
 		}
-
-		virtual SLANG_NO_THROW void SLANG_MCALL updateTexurePageData(
-			ITextureResource* texture, IBufferResource* buffer, ITextureResource::Offset3D offset, ITextureResource::Extents extent, uint32_t mipLevel
-		) = 0;
 
 		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) = 0;
 

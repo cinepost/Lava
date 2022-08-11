@@ -41,17 +41,19 @@ public:
 		const std::shared_ptr<Falcor::Texture>& pTexture,
 		const ITextureResource::SubresourceData* initData,
 		ITextureResource** outResource) override;
-	virtual SLANG_NO_THROW void SLANG_MCALL updateTexurePageData(
-		ITextureResource* texture, IBufferResource* buffer, ITextureResource::Offset3D offset, ITextureResource::Extents extent, uint32_t mipLevel) override;
+
 	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferResource(
 		const IBufferResource::Desc& desc,
 		const void* initData,
 		IBufferResource** outResource) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferFromNativeHandle(
 		InteropHandle handle,
 		const IBufferResource::Desc& srcDesc,
 		IBufferResource** outResource) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createSamplerState(ISamplerState::Desc const& desc, ISamplerState** outSampler) override;
 
@@ -59,6 +61,7 @@ public:
 		ITextureResource* texture,
 		IResourceView::Desc const& desc,
 		IResourceView** outView) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferView(
 		IBufferResource* buffer,
 		IBufferResource* counterBuffer,
@@ -70,25 +73,33 @@ public:
 
 	virtual Result createShaderObjectLayout(
 		slang::TypeLayoutReflection* typeLayout, ShaderObjectLayoutBase** outLayout) override;
+	
 	virtual Result createShaderObject(
 		ShaderObjectLayoutBase* layout, IShaderObject** outObject) override;
+	
 	virtual Result createMutableShaderObject(
 		ShaderObjectLayoutBase* layout, IShaderObject** outObject) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createMutableRootShaderObject(IShaderProgram* program, IShaderObject** outObject) override;
 
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createShaderTable(const IShaderTable::Desc& desc, IShaderTable** outShaderTable) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createProgram(
 		const IShaderProgram::Desc& desc,
 		IShaderProgram** outProgram,
 		ISlangBlob** outDiagnosticBlob) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createGraphicsPipelineState(
 		const GraphicsPipelineStateDesc& desc, IPipelineState** outState) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createComputePipelineState(
 		const ComputePipelineStateDesc& desc, IPipelineState** outState) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL createRayTracingPipelineState(
 		const RayTracingPipelineStateDesc& desc, IPipelineState** outState) override;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL
 		createQueryPool(const IQueryPool::Desc& desc, IQueryPool** outPool) override;
 

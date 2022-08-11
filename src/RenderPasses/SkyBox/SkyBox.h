@@ -71,7 +71,7 @@ class SkyBox : public RenderPass {
     glm::mat4 mTransformMatrix;
     
     float3 mIntensity = float3(0.0f, 0.0f, 0.0f); // default 0 to have black bg when no envlight's present
-    float  mOpacity = 1.0;
+    float  mOpacity = 0.0f;
     
     float mScale = 1;
     bool mSolidMode = true;

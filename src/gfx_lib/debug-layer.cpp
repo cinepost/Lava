@@ -363,10 +363,6 @@ Result DebugDevice::createTextureResource(
 	return result;
 }
 
-void DebugDevice::updateTexurePageData(ITextureResource* texture, IBufferResource* buffer, ITextureResource::Offset3D offset, ITextureResource::Extents extent, uint32_t mipLevel) {
-	baseObject->updateTexurePageData(texture, buffer, offset, extent, mipLevel);
-}
-
 void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	baseObject->updateSparseBindInfo(pTexture);
 }
@@ -1400,6 +1396,12 @@ void DebugResourceCommandEncoderImpl::uploadTexturePageData(
 	SLANG_GFX_API_FUNC;
 	getBaseResourceEncoder()->uploadTexturePageData(
 		getInnerObj(dst), offset, extent, mipLevel, subResourceData);	
+}
+
+Result DebugResourceCommandEncoderImpl::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) {
+	SLANG_GFX_API_FUNC;
+	getBaseResourceEncoder()->fillMipTail(
+		getInnerObj(texture), pTexture);	
 }
 
 void DebugResourceCommandEncoderImpl::clearResourceView(
