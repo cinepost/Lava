@@ -19,6 +19,7 @@ namespace oiio = OIIO;
 struct TLCInfo {
 	LTX_Header::TopLevelCompression topLevelCompression = LTX_Header::TopLevelCompression::NONE;
 	int compressionLevel = 1;
+	size_t compressionTypeSize = 8;
 	uint32_t *pPageOffsets = nullptr;
 	uint16_t *pCompressedPageSizes = nullptr;
 };

@@ -498,6 +498,8 @@ bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const ui
   auto pPage = VirtualTexturePage::create(shared_from_this(), offset, extent, mipLevel, layer);
   if (!pPage) return false;
 
+  LLOG_DBG << "VirtualTexturePage id: " << std::to_string(index) << " offset: " << to_string(offset) << " extent: " << to_string(extent);
+
   pPage->mMemoryTypeBits = memoryTypeBits;
   pPage->mDevMemSize = size;
   pPage->mIndex = index;

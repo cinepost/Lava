@@ -63,6 +63,16 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 }
 
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
+/*
+	auto& config = ConfigStore::instance();
+	switch(type) {
+		case lsd::ast::Type::BOOL:
+			config.set<bool>(name, value);
+			break;
+		default:
+			break;
+	}
+*/
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
 
 	if (name == "vtoff") {
@@ -469,7 +479,10 @@ bool Session::cmdRaytrace() {
 
 void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async) {
 	LLOG_DBG << "pushBgeo";
-    //bgeo.printSummary(std::cout);
+
+#ifdef _DEBUG
+    bgeo.printSummary(std::cout);
+#endif
 
     auto pSceneBuilder = mpRenderer->sceneBuilder();
     if(pSceneBuilder) {
@@ -835,14 +848,8 @@ bool Session::cmdEnd() {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
 			if( pGeo->isInline()) {
-#ifdef _DEBUG
-				pGeo->bgeo()->printSummary(std::cout);
-#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			} else {
-#ifdef _DEBUG
-				pGeo->bgeo()->printSummary(std::cout);
-#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			}
 			break;

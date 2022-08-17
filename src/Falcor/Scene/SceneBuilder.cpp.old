@@ -2143,13 +2143,13 @@ void SceneBuilder::removeDuplicateMaterials() {
 
             for( auto& instance: mesh.instances ) {
                 LLOG_WRN << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
-                if (instance.overrideMaterial) {
-                    instance.materialId = idMap[instance.materialId];
-                } else {
-                    instance.materialId = mesh.materialId;
-                }
-                //instance.overrideMaterial = true;
-                //instance.materialId = idMap[instance.materialId];
+                //if (instance.overrideMaterial) {
+                //    instance.materialId = idMap[instance.materialId];
+                //} else {
+                //    instance.materialId = mesh.materialId;
+                //}
+                instance.overrideMaterial = true;
+                instance.materialId = idMap[instance.materialId];
             }
         }
 
@@ -2365,15 +2365,15 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
         // This case is handled by pre-transforming the vertices in the BLAS build.
         assert(!meshList.empty());
 
-        for(size_t meshID = 0; meshID < meshList.size(); meshID++) {    
-            const auto& mesh = mMeshes[meshList[meshID]];
-            size_t instanceCount = mesh.instances.size();
+        for(size_t mi = 0; mi < meshList.size(); mi++) {    
+            const auto& firstMesh = mMeshes[meshList[mi]];
+            size_t instanceCount = firstMesh.instances.size();
 
             assert(instanceCount > 0);
             for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
                 uint32_t blasGeometryIndex = 0;
-                //for (const uint32_t meshID : meshList) {
-                    //const auto& mesh = mMeshes[meshID];
+                for (const uint32_t meshID : meshList) {
+                    const auto& mesh = mMeshes[meshID];
 
                     // Figure out node ID to use for the current mesh instance.
                     // If mesh group is non-instanced, just use the current mesh's node.
@@ -2384,7 +2384,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     assert(instanceCount == mesh.instances.size());
                     uint32_t nodeID = instanceCount == 1
                         ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
-                        : mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
+                        : firstMesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
                     const auto& instance = mesh.instances[instanceIdx];
                     GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
@@ -2400,7 +2400,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     instanceData.push_back(geomInstance);
 
                     blasGeometryIndex++;
-                //}
+                }
                 tlasInstanceIndex++;
             }
             drawCount += instanceCount;

@@ -58,7 +58,6 @@ static const uint8_t kLtxVersionMajor = 1;
 static const uint8_t kLtxVersionMinor = 1;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
-static const size_t kLtxPageSize = 65536;
 
 static bool isPowerOfTwo(int x) {
 	return x > 0 && !(x & (x-1));
@@ -451,7 +450,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 				// re-write header as it might get modified ... 
 				// TODO: increment pagesCount ONLY upon successfull fwrite !
 				fseek(pFile, 0, SEEK_SET);
-				fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+				fwrite(&header, sizeof(uint8_t), sizeof(LTX_Header), pFile);
 				result = true;
 			}
 		} else {
@@ -459,7 +458,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 				// re-write header as it might get modified ... 
 				// TODO: increment pagesCount ONLY upon successfull fwrite !
 				fseek(pFile, 0, SEEK_SET);
-				fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+				fwrite(&header, sizeof(uint8_t), sizeof(LTX_Header), pFile);
 				result = true;
 			}
 		}
@@ -467,7 +466,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 		// debug tiles texture
 		if(ltxCpuGenerateDebugMIPTiles(header, mipInfo, srcBuff, pFile, compressionInfo)) {
 			fseek(pFile, 0, SEEK_SET);
-			fwrite(&header, sizeof(unsigned char), sizeof(LTX_Header), pFile);
+			fwrite(&header, sizeof(uint8_t), sizeof(LTX_Header), pFile);
 			result = true;
 		}
 	}
@@ -508,14 +507,14 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		fread(pData, 1, mHeader.pageDataSize, pFile);
 	} else {
 		// read compressed page data
-		std::vector<unsigned char> tmp(65536);
+		std::vector<unsigned char> tmp(kLtxPageSize);
 
 		size_t page_data_offset = mHeader.dataOffset + mCompressedPageDataOffset[pageNum];
 
 		fseek(pFile, page_data_offset, SEEK_SET);
 		fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
 
-		auto nbytes = blosc_decompress(tmp.data(), pData, 65536);
+		auto nbytes = blosc_decompress(tmp.data(), pData, kLtxPageSize);
 		LLOG_DBG << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 
 				 << " offset " <<std::to_string(page_data_offset) << " decomp size: " << std::to_string(nbytes);
 	}

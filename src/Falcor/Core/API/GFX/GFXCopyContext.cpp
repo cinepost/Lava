@@ -388,8 +388,8 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData) {
 	assert(pTexture);
 
-	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
-	resourceEncoder->fillMipTail(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), pTexture.get());
+	//auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+	mpDevice->getApiHandle()->fillMipTail(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), pTexture.get());
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {

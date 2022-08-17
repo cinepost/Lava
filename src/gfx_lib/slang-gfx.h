@@ -2178,6 +2178,11 @@ class IDevice: public ISlangUnknown {
 
 		virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) = 0;
 
+		virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(
+			ITextureResource* texture, Falcor::Texture* pTexture) = 0;
+
+		virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) = 0;
+
 		virtual SLANG_NO_THROW const VmaAllocator& SLANG_MCALL getVmaAllocator() const = 0;
 
 		virtual SLANG_NO_THROW Result SLANG_MCALL createTextureFromNativeHandle(

@@ -44,6 +44,11 @@ public:
 
 	virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
 	
+	virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(
+		ITextureResource* texture, Falcor::Texture* pTexture) override;
+
+	virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
+
 	virtual SLANG_NO_THROW Result SLANG_MCALL createBufferResource(
 		const IBufferResource::Desc& desc,
 		const void* initData,

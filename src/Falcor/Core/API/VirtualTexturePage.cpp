@@ -10,9 +10,6 @@
 namespace Falcor {
 
 VirtualTexturePage::SharedPtr VirtualTexturePage::create(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer) {
-
-    LLOG_DBG << "VirtualTexturePage offset " << to_string(offset) << " extent " << to_string(extent);
-
     return SharedPtr(new VirtualTexturePage(pTexture, offset, extent, mipLevel, layer));
 }
 

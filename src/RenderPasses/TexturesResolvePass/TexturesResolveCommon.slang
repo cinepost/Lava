@@ -127,10 +127,10 @@ float2 calculateAnisoMipMapLevel2D2(float2 texCoord, float2 texDims, float mipBi
 // computes tile ID for a given mipLevel of a virtual texture at given tex_coord
 int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData) {
 
-    int _mipLevel = mipLevel;
+    int _mipLevel = max(0, mipLevel);
 
     // all mip levels greater or equal to mipTailStart stored in last page block
-    if( mipLevel >= vtexData.mipTailStart) {
+    if( _mipLevel >= vtexData.mipTailStart) {
         _mipLevel = vtexData.mipTailStart - 1; // TODO: safety measure. Remove when mip tails work
     }
 

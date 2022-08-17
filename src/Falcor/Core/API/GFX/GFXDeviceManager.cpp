@@ -177,30 +177,6 @@ void DeviceManager::enumerateDevices() {
     }
 }
 
-/*
-enum class InteropHandleAPI
-{
-    Unknown,
-    D3D12, // A D3D12 object pointer.
-    Vulkan, // A general Vulkan object handle.
-    CUDA, // A general CUDA object handle.
-    Win32, // A general Win32 HANDLE.
-    FileDescriptor, // A file descriptor.
-    DeviceAddress, // A device address.
-    D3D12CpuDescriptorHandle, // A D3D12_CPU_DESCRIPTOR_HANDLE value.
-};
-
-struct InteropHandle
-{
-    InteropHandleAPI api = InteropHandleAPI::Unknown;
-    uint64_t handleValue = 0;
-};
-
-or Vulkan, the first InteropHandle is the VkInstance, VkPhysicalDevice, VkDevice.
-        InteropHandles existingDeviceHandles;
-*/
-
-
 Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc) {
     if (!deviceEnumerated(gpuId)) {
         LLOG_ERR << "Rendering device " << to_string(gpuId) << " not enumerated !!!";

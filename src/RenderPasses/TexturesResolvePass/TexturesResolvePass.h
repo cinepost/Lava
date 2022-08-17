@@ -86,11 +86,13 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
     Scene::SharedPtr            mpScene;
 
     Sampler::SharedPtr          mpSampler = nullptr;
+    Sampler::SharedPtr          mpMinSampler = nullptr;
+    Sampler::SharedPtr          mpMaxSampler = nullptr;
 
     GraphicsProgram::SharedPtr      mpProgram;
     DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
-    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA16Unorm;
+    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
 
     ParameterBlock::SharedPtr   mpDataBlock;
     Buffer::SharedPtr           mpTexResolveDataBuffer;
@@ -98,6 +100,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 
 
     Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
+    std::vector<Texture::SharedPtr> mMipCalibrationTextures;
     Texture::SharedPtr          mpLtxCalibrationTexture = nullptr;
 };
 

@@ -85,6 +85,8 @@ class dlldecl BasicMaterial : public Material {
 		*/
 		bool setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) override;
 
+		const TextureHandle& getTextureHandle(const TextureSlot slot);
+
 		/** Optimize texture usage for the given texture slot.
 			This function may replace constant textures by uniform material parameters etc.
 			\param[in] slot The texture slot.

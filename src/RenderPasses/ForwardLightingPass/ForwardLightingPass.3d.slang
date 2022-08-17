@@ -129,6 +129,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
+#ifdef _ADJUST_SHADING_POSITION
+    sd.posW = posWA;
+#endif
 
     // Create BSDF instance and query its properties.
     let bsdf = gScene.materials.getBSDF(sd, lod);
@@ -156,8 +159,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
+        
 
-        /*
         if (light.shadowType == uint(LightShadowType.RayTraced) ) {
             
             // Test visibility by tracing a shadow ray.
@@ -165,13 +168,21 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             ray.Origin = rayOrigin;// + viewDir * 0.0001f;
             ray.Direction = ls.dir;
             ray.TMin = 0.0001f;
-            ray.TMax = 1e4f;
+
+            switch (light.type) {
+                case LightType::Distant:
+                case LightType::Directional:
+                    ray.TMax = 1e4f;
+                    break;
+                default:
+                    ray.TMax = length(ls.posW - sd.posW);
+                    break;
+            }
 
             rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
-        */
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
     }

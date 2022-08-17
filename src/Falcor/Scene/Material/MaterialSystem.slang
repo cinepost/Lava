@@ -240,12 +240,15 @@ struct MaterialSystem
         \return Sampled color.
     */
     float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) {
-        //return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
-        //return materialTextures[handle.getTextureID()].SampleLevel(s, uv, 2);    
-
+        
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
+            
+                float2 gradX = ddx_fine(uv) * 1.0;
+                float2 gradY = ddy_fine(uv) * 1.0;
+                return materialTextures[handle.getTextureID()].SampleGrad(s, uv, gradX, gradY);
+                
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:

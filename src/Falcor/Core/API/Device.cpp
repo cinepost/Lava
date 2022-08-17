@@ -123,7 +123,7 @@ bool Device::init() {
     desc.setMaxAnisotropy(16);
     desc.setLodParams(0.0f, 1000.0f, -0.0f);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -246,16 +246,15 @@ bool Device::isFeatureSupported(SupportedFeatures flags) const {
 }
 
 void Device::executeDeferredReleases() {
-mpUploadHeap->executeDeferredReleases();
-        uint64_t gpuVal = mpFrameFence->getGpuValue();
-        while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal)
-        {
-            mDeferredReleases.pop();
-        }
+    mpUploadHeap->executeDeferredReleases();
+    uint64_t gpuVal = mpFrameFence->getGpuValue();
+    while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
+        mDeferredReleases.pop();
+    }
 
 #ifdef FALCOR_D3D12_AVAILABLE
-        mpD3D12CpuDescPool->executeDeferredReleases();
-        mpD3D12GpuDescPool->executeDeferredReleases();
+    mpD3D12CpuDescPool->executeDeferredReleases();
+    mpD3D12GpuDescPool->executeDeferredReleases();
 #endif // FALCOR_D3D12_AVAILABLE
 }
 

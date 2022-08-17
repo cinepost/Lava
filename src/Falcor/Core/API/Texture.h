@@ -403,7 +403,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		VkSparseImageOpaqueMemoryBindInfo mOpaqueMemoryBindInfo;        // Sparse image opaque memory bind info (mip tail)
 		VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
 
-		VkSparseImageMemoryBind 				mMipTailimageMemoryBind;
+		VkSparseImageMemoryBind 				mMipTailimageMemoryBind{};
 
 		VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
 #endif  // FALCOR_GFX_VK

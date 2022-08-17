@@ -5,6 +5,7 @@
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Image/TextureManager.h"
+#include "Falcor/Scene/Material/BasicMaterial.h"
 
 #include "TexturesResolvePass.h"
 
@@ -121,6 +122,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 	auto exec_started = std::chrono::high_resolution_clock::now();
 
+	createMipCalibrationTexture(pContext);
+
 	uint32_t totalPagesToUpdateCount = 0;
 	uint32_t currPagesStartOffset = 0;
 	uint32_t currTextureResolveID = 0; // texture id used to identify texture inside pass. always starts from 0.
@@ -132,10 +135,10 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	uint32_t materialsCount = mpScene->getMaterialCount();
 
 	for( uint32_t m_i = 0; m_i < materialsCount; m_i++ ) {
-		auto pMaterial = mpScene->getMaterial(m_i);
+		auto pMaterial = mpScene->getMaterial(m_i)->toBasicMaterial();
 		if(!pMaterial) continue;
 
-		std::vector<Texture::SharedPtr> materialSparseTextures;
+		std::vector<std::pair<TextureSlot, Texture::SharedPtr>> materialSparseTextures;
 
 		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal})) {
 			auto pTexture = pMaterial->getTexture(slot);
@@ -143,12 +146,11 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				if(pTexture->isUDIMTexture()) {
 					for(const auto& tileInfo: pTexture->getUDIMTileInfos()) {
 						if(tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) {
-							materialSparseTextures.push_back(tileInfo.pTileTexture);
-							LLOG_WRN << "!";
+							materialSparseTextures.push_back({slot, tileInfo.pTileTexture});
 						}
 					}
 				} else {
-					materialSparseTextures.push_back(pTexture);
+					materialSparseTextures.push_back({slot, pTexture});
 				}
 			}
 		}
@@ -164,7 +166,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		// fill data for active(used) textures
 		for( size_t t_i = 0; t_i < virtualTexturesCount; t_i++) {
-			auto &pTexture = materialSparseTextures[t_i];
+			auto slot = materialSparseTextures[t_i].first;
+			auto &pTexture = materialSparseTextures[t_i].second;
 			uint32_t textureID = pTexture->id();
 				
 			auto &textureData = materialResolveData.virtualTextures[t_i];
@@ -175,8 +178,9 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				textureData.empty = false;
 				textureData.textureID = textureID;
 				textureData.textureResolveID = currTextureResolveID;
-				textureData.width = pTexture->getWidth();
-				textureData.height = pTexture->getHeight();
+				textureData.textureHandle = pMaterial->getTextureHandle(slot);
+				textureData.width = pTexture->getWidth(0);
+				textureData.height = pTexture->getHeight(0);
 				textureData.mipLevelsCount = pTexture->getMipCount();
 				textureData.mipTailStart = pTexture->getMipTailStart();
 				textureData.pagesStartOffset = currPagesStartOffset;
@@ -232,11 +236,18 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
 	mpVars["PerFrameCB"]["materialsToResolveCount"] = materialsResolveBuffer.size();
 	mpVars["PerFrameCB"]["resolvedTexturesCount"] = resolvedTexturesCount;
+	mpVars["PerFrameCB"]["numberOfMipCalibrationTextures"] = (int32_t)mMipCalibrationTextures.size();
 
 	mpVars["mipCalibrationTexture"] = mpMipCalibrationTexture;
 	mpVars["ltxCalibrationTexture"] = mpLtxCalibrationTexture;
 
+	for(uint32_t i = 0; i < mMipCalibrationTextures.size(); i++)
+		mpVars["mipCalibrationTextures"][i] = mMipCalibrationTextures[i];
+
 	setDefaultSampler();
+	mpVars["gCalibrationSampler"] = mpSampler;
+  mpVars["gCalibrationMinSampler"] = mpMinSampler;
+  mpVars["gCalibrationMaxSampler"] = mpMaxSampler;
 
 #ifdef _DEBUG
 	printf("%u textures needs to be resolved\n", resolvedTexturesCount);
@@ -306,7 +317,7 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 
 	// We use 8 mip levels calibration texture (128 x 128)
 
-	mpMipCalibrationTexture = Texture::create2D(pRenderContext->device(), 128, 128, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+	mpMipCalibrationTexture = Texture::create2D(pRenderContext->device(), 128, 128, ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
 	if (!mpMipCalibrationTexture) LLOG_ERR << "Error creating MIP calibration texture !!!";
 
 	for(uint32_t mipLevel = 0; mipLevel < mpMipCalibrationTexture->getMipCount(); mipLevel++) {
@@ -314,9 +325,36 @@ void TexturesResolvePass::createMipCalibrationTexture(RenderContext* pRenderCont
 		uint32_t height = mpMipCalibrationTexture->getHeight(mipLevel); 
 	
 		// upload mip level data
-		std::vector<unsigned char> initData(width*height, (unsigned char)mipLevel);
+		std::vector<float> initData(width*height, (float)mipLevel);
 		uint32_t subresource = mpMipCalibrationTexture->getSubresourceIndex(0, mipLevel);
 		pRenderContext->updateSubresourceData(mpMipCalibrationTexture.get(), subresource, initData.data());
+	}
+
+	// Now. Let's make multiple calibration textures. This time only one particlar mip level contains non-zero data
+	size_t buff_size = mpMipCalibrationTexture->getWidth() * mpMipCalibrationTexture->getHeight();
+	std::vector<float> zero_buff(buff_size, 0.0f);
+	std::vector<float> full_buff(buff_size, 1.0f);
+	mMipCalibrationTextures.resize(mpMipCalibrationTexture->getMipCount());
+
+	for(uint32_t i = 0; i < mpMipCalibrationTexture->getMipCount(); i++) {
+		mMipCalibrationTextures[i] = nullptr;
+		auto pMipCalibrationTexture = Texture::create2D(pRenderContext->device(), mpMipCalibrationTexture->getWidth(),  mpMipCalibrationTexture->getHeight(), ResourceFormat::R32Float, 1, Texture::kMaxPossible, nullptr, Texture::BindFlags::ShaderResource);
+		if (!pMipCalibrationTexture) {
+			LLOG_ERR << "Error creating calibraiotn texture for mip level " << std::to_string(i) << " !!!";
+			continue;
+		}
+
+		for(uint32_t mipLevel = 0; mipLevel < pMipCalibrationTexture->getMipCount(); mipLevel++) {
+			// upload mip level data
+			uint32_t subresource = pMipCalibrationTexture->getSubresourceIndex(0, mipLevel);
+			if (mipLevel == i) {
+				pRenderContext->updateSubresourceData(pMipCalibrationTexture.get(), subresource, full_buff.data());
+			} else {
+				pRenderContext->updateSubresourceData(pMipCalibrationTexture.get(), subresource, zero_buff.data());
+			}
+		}
+
+		mMipCalibrationTextures[i] = pMipCalibrationTexture;
 	}
 }
 
@@ -338,11 +376,15 @@ void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;
 
 	Sampler::Desc desc;
-  desc.setMaxAnisotropy(8);//(16);
-  desc.setLodParams(0.0f, 1000.0f, -0.0f);
+  desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision
+  desc.setLodParams(-1000.0f, 1000.0f, -0.0f);
   desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
   desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 
 	mpSampler = Sampler::create(mpDevice, desc);
-  mpVars["gSampler"] = mpSampler;
+
+	desc.setReductionMode(Sampler::ReductionMode::Min);
+  mpMinSampler = Sampler::create(mpDevice, desc);
+  desc.setReductionMode(Sampler::ReductionMode::Max);
+  mpMaxSampler = Sampler::create(mpDevice, desc);
 }

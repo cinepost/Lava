@@ -145,6 +145,10 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 
 	mApiHandle = textureResource;
 
+#if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)
+	mMipTailimageMemoryBind.memory = VK_NULL_HANDLE;
+#endif
+
 	// upload init data through texture class
 	if (pData) {
 		uploadInitData(pData, autoGenMips);
@@ -164,15 +168,9 @@ Texture::~Texture() {
 			for(auto pPage: mSparseDataPages) {
 				pPage->release();
 			}
-			/*
-			for (auto bind : mOpaqueMemoryBinds) {
-				vkFreeMemory(mpDevice->getApiHandle(), bind.memory, nullptr);
-			}
-			// Clean up mip tail
-			if (mipTailimageMemoryBind.memory != VK_NULL_HANDLE) {
-				vkFreeMemory(device, mipTailimageMemoryBind.memory, nullptr);
-			}
-			*/
+#if FALCOR_GFX_VK
+			mpDevice->getApiHandle()->releaseTailMemory(this);
+#endif
 		}
 
 		ApiObjectHandle objectHandle;

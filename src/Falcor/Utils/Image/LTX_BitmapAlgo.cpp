@@ -9,792 +9,699 @@
 
 namespace Falcor {
 
+static const int kDoBloscShuffle = BLOSC_NOSHUFFLE;; //BLOSC_SHUFFLE;
+
+static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>& tmp_compressed_page_data) {
+	size_t bytes_written = 0;
+	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+		assert(tmp_compressed_page_data.size() >= ((kLtxPageSize + BLOSC_MAX_OVERHEAD)));
+		// write compressed page date
+		int cbytes = blosc_compress(
+			compressionInfo.compressionLevel, 
+			kDoBloscShuffle, 
+			compressionInfo.compressionTypeSize, 
+			kLtxPageSize, 
+			page_data.data(),
+			tmp_compressed_page_data.data(), 
+			tmp_compressed_page_data.size());
+
+		LLOG_DBG << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
+
+		bytes_written = fwrite(tmp_compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
+		compressionInfo.pPageOffsets[pageId] = pageOffset;
+		compressionInfo.pCompressedPageSizes[pageId] = cbytes;
+
+	} else {
+		// write uncompressed page data
+		bytes_written = fwrite(page_data.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	}
+	return (uint32_t)bytes_written;
+}
+
 bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-    assert(pFile);
+	assert(pFile);
 
-    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-        assert(compressionInfo.pPageOffsets);
-        assert(compressionInfo.pCompressedPageSizes);
-    }
+	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+		assert(compressionInfo.pPageOffsets);
+		assert(compressionInfo.pCompressedPageSizes);
+	}
 
-    int comp_level = compressionInfo.compressionLevel; // default compression level (if used)
-    int comp_doshuffle = BLOSC_NOSHUFFLE;
-    size_t comp_typesize = 8; // default compresssor shuffle preconditioner
+	// image dimesions
+	uint32_t img_width  = header.width;
+	uint32_t img_height = header.height;
+	uint32_t img_depth  = header.depth;
 
-    // image dimesions
-    uint32_t img_width  = header.width;
-    uint32_t img_height = header.height;
-    uint32_t img_depth  = header.depth;
+	// image memory page dimensions
+	uint32_t page_width  = header.pageDims.width;
+	uint32_t page_height = header.pageDims.height;
+	uint32_t page_depth  = header.pageDims.depth;
 
-    // image memory page dimensions
-    uint32_t page_width  = header.pageDims.width;
-    uint32_t page_height = header.pageDims.height;
-    uint32_t page_depth  = header.pageDims.depth;
+	// source image buffer spec and pixel format
+	auto const& spec = srcBuff.spec();
+	auto format = header.format;
 
-    // source image buffer spec and pixel format
-    auto const& spec = srcBuff.spec();
-    auto format = header.format;
+	uint32_t pagesCount = 0;
+	uint32_t dstChannelCount = getFormatChannelCount(format);
+	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-    uint32_t pagesCount = 0;
-    uint32_t dstChannelCount = getFormatChannelCount(format);
-    uint32_t dstChannelBits = getNumChannelBits(format, 0);
+	compressionInfo.compressionTypeSize = dstChannelBits; // compressor shuffle preconditioner
 
-    comp_typesize = dstChannelBits; // compresssor shuffle preconditioner
+	size_t srcBytesPerPixel = spec.pixel_bytes();
+	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
-    size_t srcBytesPerPixel = spec.pixel_bytes();
-    size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
+	size_t tileWidthStride = page_width * dstBytesPerPixel;
+	size_t bufferWidthStride = img_width * dstBytesPerPixel;
 
-    size_t tileWidthStride = page_width * dstBytesPerPixel;
-    size_t bufferWidthStride = img_width * dstBytesPerPixel;
+	uint32_t pagesCountX = img_width / page_width;
+	uint32_t pagesCountY = img_height / page_height;
+	uint32_t pagesCountZ = img_depth / page_depth;
 
-    uint32_t pagesCountX = img_width / page_width;
-    uint32_t pagesCountY = img_height / page_height;
-    uint32_t pagesCountZ = img_depth / page_depth;
+	uint3 partialPageDims = {
+		(img_width % page_width == 0) ? 0 : img_width - page_width * pagesCountX,
+		(img_height % page_height == 0) ? 0 : img_height - page_height * pagesCountY,
+		(img_depth % page_depth == 0) ? 0 : img_depth - page_depth * pagesCountZ
+	};
 
-    uint3 partialPageDims = {
-        (img_width % page_width == 0) ? 0 : img_width - page_width * pagesCountX,
-        (img_height % page_height == 0) ? 0 : img_height - page_height * pagesCountY,
-        (img_depth % page_depth == 0) ? 0 : img_depth - page_depth * pagesCountZ
-    };
+	size_t partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
-    size_t partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
+	if( partialPageDims.x != 0) pagesCountX++;
+	if( partialPageDims.y != 0) pagesCountY++;
+	if( partialPageDims.z != 0) pagesCountZ++;
 
-    if( partialPageDims.x != 0) pagesCountX++;
-    if( partialPageDims.y != 0) pagesCountY++;
-    if( partialPageDims.z != 0) pagesCountZ++;
+	std::vector<uint8_t> page_data(kLtxPageSize); // tile data to be compressed and written on disk 
+	std::vector<uint8_t> compressed_page_data(kLtxPageSize + BLOSC_MAX_OVERHEAD); // temporary compressed page data
 
-    std::vector<unsigned char> page_data(65536); // tile data to be compressed and written on disk 
-    std::vector<unsigned char> compressed_page_data(65536 + BLOSC_MAX_OVERHEAD); // temporary compressed page data
+	std::vector<uint8_t> zero_buff(kLtxPageSize, 0);
+	std::vector<uint8_t> tiles_buffer(img_width * page_height * dstBytesPerPixel);
 
-    std::vector<unsigned char> zero_buff(65536, 0);
-    std::vector<unsigned char> tiles_buffer(img_width * page_height * dstBytesPerPixel);
+	uint32_t currentPageId = 0;
+	uint32_t currentPageOffset = 0;
 
-    uint32_t currentPageId = 0;
-    uint32_t currentPageOffset = 0;
+	// write mip level 0
+	LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+	LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
-    // write mip level 0
-    LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
-    LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+	pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+	for(uint32_t z = 0; z < pagesCountZ; z++) {
+		for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
+			int y_begin = tileIdxY * page_height;
 
-    pagesCount += pagesCountX * pagesCountY * pagesCountZ;
-    for(uint32_t z = 0; z < pagesCountZ; z++) {
-        for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-            int y_begin = tileIdxY * page_height;
+			bool partialRow = false;
+			uint writeLinesCount = page_height;
+			if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
+				writeLinesCount = partialPageDims.y;
+				partialRow = true;
+			}
 
-            bool partialRow = false;
-            uint writeLinesCount = page_height;
-            if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
-                writeLinesCount = partialPageDims.y;
-                partialRow = true;
-            }
+			oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
+			srcBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-            oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
-            srcBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			unsigned char *pBufferData = tiles_buffer.data();
 
-            unsigned char *pBufferData = tiles_buffer.data();
+			for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
 
-            for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+				bool partialColumn = false;
+				if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
+				
+				unsigned char *pPageData = page_data.data();
+				unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
 
-                bool partialColumn = false;
-                if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
-                
-                unsigned char *pPageData = page_data.data();
-                unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
+				if( partialRow && partialColumn) {
+					// fill page data from partial corner tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+						::memcpy(pPageData, pTileData, partialTileWidthStride );
+						pPageData += partialTileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else if( partialRow ) {
+					// fill page data from partial bottom tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+						::memcpy(pPageData, pTileData, tileWidthStride );
+						pPageData += tileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else if( partialColumn ) { 
+					// fill page data from partial column tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+						::memcpy(pPageData, pTileData, partialTileWidthStride );
+						pPageData += partialTileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else {
+					// fill page data from full tile
+					for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+						::memcpy(pPageData, pTileData, tileWidthStride );
+						pPageData += tileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				}
 
-                if( partialRow && partialColumn) {
-                    // fill page data from partial corner tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                        pPageData += partialTileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else if( partialRow ) {
-                    // fill page data from partial bottom tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        ::memcpy(pPageData, pTileData, tileWidthStride );
-                        pPageData += tileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else if( partialColumn ) { 
-                    // fill page data from partial column tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                        pPageData += partialTileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else {
-                    // fill page data from full tile
-                    for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        ::memcpy(pPageData, pTileData, tileWidthStride );
-                        pPageData += tileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                }
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageId++;
+			}
+		}
+	}
 
-                if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                    // write compressed tile
-                    int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                           compressed_page_data.data(), compressed_page_data.size());
+	// color space converions processors
+	oiio::ColorConfig cc;
+	auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
+	auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
 
-                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
+	// Write 1+ MIP tiles
+	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
+		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
+		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
 
-                    fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                    compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                    compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
+		pagesCountX = mipLevelWidth / page_width;
+		pagesCountY = mipLevelHeight / page_height;
+		pagesCountZ = mipLevelDepth / page_depth;
 
-                    currentPageOffset += cbytes;
-                } else {
+		partialPageDims = {
+			(mipLevelWidth % page_width == 0) ? 0 : mipLevelWidth - page_width * pagesCountX,
+			(mipLevelHeight % page_height == 0) ? 0 : mipLevelHeight - page_height * pagesCountY,
+			(mipLevelDepth % page_depth == 0) ? 0 : mipLevelDepth - page_depth * pagesCountZ
+		};
 
-                    // write uncompressed tile
-                    fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                }
+		if( partialPageDims.x != 0) pagesCountX++;
+		if( partialPageDims.y != 0) pagesCountY++;
+		if( partialPageDims.z != 0) pagesCountZ++;
 
-                currentPageId++;
-            }
-        }
-    }
+		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-    // color space converions processors
-    oiio::ColorConfig cc;
-    auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
-    auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
+		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
+		LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
-    // Write 1+ MIP tiles
-    for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
-        uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
-        uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
-        uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
+		partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
-        pagesCountX = mipLevelWidth / page_width;
-        pagesCountY = mipLevelHeight / page_height;
-        pagesCountZ = mipLevelDepth / page_depth;
+		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
+		bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
-        partialPageDims = {
-            (mipLevelWidth % page_width == 0) ? 0 : mipLevelWidth - page_width * pagesCountX,
-            (mipLevelHeight % page_height == 0) ? 0 : mipLevelHeight - page_height * pagesCountY,
-            (mipLevelDepth % page_depth == 0) ? 0 : mipLevelDepth - page_depth * pagesCountZ
-        };
+		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+		
+		for(uint32_t z = 0; z < pagesCountZ; z++) {
+			for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
+				
+				bool partialRow = false;
+				uint writeLinesCount = page_height;
+				if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
+					writeLinesCount = partialPageDims.y;
+					partialRow = true;
+				}
 
-        if( partialPageDims.x != 0) pagesCountX++;
-        if( partialPageDims.y != 0) pagesCountY++;
-        if( partialPageDims.z != 0) pagesCountZ++;
+				unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
 
-        pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+				for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+					
+					bool partialColumn = false;
+					if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
 
-        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
-        LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
-        LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+					unsigned char *pPageData = page_data.data();
+					unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
+				   
+					if( partialRow && partialColumn) {
+						// fill page data from partial corner tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+							::memcpy(pPageData, pTileData, partialTileWidthStride );
+							pPageData += partialTileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else if( partialRow ) {
+						// fill page data from partial bottom tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+							::memcpy(pPageData, pTileData, tileWidthStride );
+							pPageData += tileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else if( partialColumn ) {
+						// fill page data from partial column tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+							::memcpy(pPageData, pTileData, partialTileWidthStride );
+							pPageData += partialTileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else {
+						// //  fill page data from full tile
+						for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+							::memcpy(pPageData, pTileData, tileWidthStride );
+							pPageData += tileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					}
 
-        partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageId++;
+				}
+			}
+		}
+	}
 
-        tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
-        bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
+	// Write mip tail pages
+	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipTailLevel].x;
+		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipTailLevel].y;
+		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipTailLevel].z;
+	}
 
-        oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
-        //auto tmpBuff = oiio::ImageBufAlgo::colorconvert(srcBuff, processor_tolin.get(), true);
-        //oiio::ImageBufAlgo::colorconvert(oiio::ImageBufAlgo::resize(tmpBuff, "", 0, roi), processor_tosrgb.get(), true).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-        
-        oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-        
+	header.pagesCount = pagesCount;
 
-        //oiio::Filter2D *filter = oiio::Filter2D::create("box", ((float)img_width/(float)mipLevelWidth) * 1.0f, ((float)img_height/(float)mipLevelHeight) * 1.0f);
-        //oiio::ImageBufAlgo::resize(srcBuff, filter, roi).get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-        //delete filter;
-
-        for(uint32_t z = 0; z < pagesCountZ; z++) {
-            for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-                
-                bool partialRow = false;
-                uint writeLinesCount = page_height;
-                if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
-                    writeLinesCount = partialPageDims.y;
-                    partialRow = true;
-                }
-
-                unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
-
-                for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
-                    
-                    bool partialColumn = false;
-                    if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
-
-                    unsigned char *pPageData = page_data.data();
-                    unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
-                   
-                    if( partialRow && partialColumn) {
-                        // fill page data from partial corner tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                            pPageData += partialTileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else if( partialRow ) {
-                        // fill page data from partial bottom tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            ::memcpy(pPageData, pTileData, tileWidthStride );
-                            pPageData += tileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else if( partialColumn ) {
-                        // fill page data from partial column tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                            pPageData += partialTileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else {
-                        // //  fill page data from full tile
-                        for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            ::memcpy(pPageData, pTileData, tileWidthStride );
-                            pPageData += tileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    }
-
-                    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                        // write compressed tile
-
-                        int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                            compressed_page_data.data(), compressed_page_data.size());
-
-                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
-
-                        fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                        compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                        compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
-
-                        currentPageOffset += cbytes;
-
-                    } else {
-                        // write uncompressed tile
-                        fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                    }
-
-                    currentPageId++;
-                }
-            }
-        }
-    }
-
-    header.pagesCount = pagesCount;
-
-    return true;
+	return true;
 }
 
 bool ltxCpuGenerateAndWriteMIPTilesHQFast(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-    return true;
+	return true;
 }
 
 bool ltxCpuGenerateAndWriteMIPTilesLQ(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-    return true;
+	return true;
 }
 
 bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-    assert(pFile);
+	assert(pFile);
 
-    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-        assert(compressionInfo.pPageOffsets);
-        assert(compressionInfo.pCompressedPageSizes);
-    }
+	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+		assert(compressionInfo.pPageOffsets);
+		assert(compressionInfo.pCompressedPageSizes);
+	}
 
-    int comp_level = compressionInfo.compressionLevel; // default compression level (if used)
-    int comp_doshuffle = BLOSC_NOSHUFFLE; //BLOSC_SHUFFLE;
-    size_t comp_typesize = 8; // default compresssor shuffle preconditioner
+	// image dimesions
+	uint32_t img_width  = header.width;
+	uint32_t img_height = header.height;
+	uint32_t img_depth  = header.depth;
 
-    // image dimesions
-    uint32_t img_width  = header.width;
-    uint32_t img_height = header.height;
-    uint32_t img_depth  = header.depth;
+	// image memory page dimensions
+	uint32_t page_width  = header.pageDims.width;
+	uint32_t page_height = header.pageDims.height;
+	uint32_t page_depth  = header.pageDims.depth;
 
-    // image memory page dimensions
-    uint32_t page_width  = header.pageDims.width;
-    uint32_t page_height = header.pageDims.height;
-    uint32_t page_depth  = header.pageDims.depth;
+	// source image buffer spec and pixel format
+	auto const& spec = srcBuff.spec();
+	auto format = header.format;
 
-    // source image buffer spec and pixel format
-    auto const& spec = srcBuff.spec();
-    auto format = header.format;
+	uint32_t pagesCount = 0;
+	uint32_t dstChannelCount = getFormatChannelCount(format);
+	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-    uint32_t pagesCount = 0;
-    uint32_t dstChannelCount = getFormatChannelCount(format);
-    uint32_t dstChannelBits = getNumChannelBits(format, 0);
+	compressionInfo.compressionTypeSize = dstChannelBits; // compressor shuffle preconditioner
 
-    comp_typesize = dstChannelBits; // compresssor shuffle preconditioner
+	size_t srcBytesPerPixel = spec.pixel_bytes();
+	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
-    size_t srcBytesPerPixel = spec.pixel_bytes();
-    size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
+	size_t tileWidthStride = page_width * dstBytesPerPixel;
+	size_t bufferWidthStride = img_width * dstBytesPerPixel;
 
-    size_t tileWidthStride = page_width * dstBytesPerPixel;
-    size_t bufferWidthStride = img_width * dstBytesPerPixel;
+	uint32_t pagesCountX = img_width / page_width;
+	uint32_t pagesCountY = img_height / page_height;
+	uint32_t pagesCountZ = img_depth / page_depth;
 
-    uint32_t pagesCountX = img_width / page_width;
-    uint32_t pagesCountY = img_height / page_height;
-    uint32_t pagesCountZ = img_depth / page_depth;
+	std::vector<uint8_t> page_data(kLtxPageSize);
+	std::vector<uint8_t> compressed_page_data(kLtxPageSize + BLOSC_MAX_OVERHEAD); // temporary compressed page data
 
-    std::vector<unsigned char> page_data(65536);
-    std::vector<unsigned char> compressed_page_data(65536 + BLOSC_MAX_OVERHEAD); // temporary compressed page data
+	std::vector<uint8_t> zero_buff(kLtxPageSize, 0);
+	std::vector<uint8_t> tiles_buffer(img_width * page_height * dstBytesPerPixel);
 
-    std::vector<unsigned char> zero_buff(65536, 0);
-    std::vector<unsigned char> tiles_buffer(img_width * page_height * dstBytesPerPixel);
+	uint32_t currentPageId = 0;
+	uint32_t currentPageOffset = 0;
 
-    uint32_t currentPageId = 0;
-    uint32_t currentPageOffset = 0;
+	// write mip level 0
+	LLOG_DBG << "Writing POT texture mip level 0 tiles " << pagesCountX << " " << pagesCountY;
 
-    // write mip level 0
-    LLOG_DBG << "Writing POT texture mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+	pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+	for(uint32_t z = 0; z < pagesCountZ; z++) {
+		for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
+			int y_begin = tileIdxY * page_height;
 
-    pagesCount += pagesCountX * pagesCountY * pagesCountZ;
-    for(uint32_t z = 0; z < pagesCountZ; z++) {
-        for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-            int y_begin = tileIdxY * page_height;
+			uint writeLinesCount = page_height;
 
-            uint writeLinesCount = page_height;
+			oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
+			srcBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-            oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
-            srcBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			unsigned char *pBufferData = tiles_buffer.data();
 
-            unsigned char *pBufferData = tiles_buffer.data();
+			for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
 
-            for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+				unsigned char *pPageData = page_data.data();
+				unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
 
-                unsigned char *pPageData = page_data.data();
-                unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
+				//  fill page data from tile
+				for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+					::memcpy(pPageData, pTileData, tileWidthStride );
+					pPageData += tileWidthStride;
+					pTileData += bufferWidthStride;
+				}
 
-                //  fill page data from tile
-                for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                    ::memcpy(pPageData, pTileData, tileWidthStride );
-                    pPageData += tileWidthStride;
-                    pTileData += bufferWidthStride;
-                }
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageId++;
+			}
+		}
+	}
 
-                // write page data
-                if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                    // write compressed tile
-                    int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                        compressed_page_data.data(), compressed_page_data.size());
+	// color space converions processors
+	oiio::ColorConfig cc;
+	auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
+	auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
 
-                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
+	// Write 1+ MIP tiles
+	oiio::ImageBuf prevBuff;
+	oiio::ImageBuf scaledBuff;
 
-                    fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                    compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                    compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
+	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
+		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
+		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
 
-                    currentPageOffset += cbytes;
-                } else {
-                    // write uncompressed tile
-                    fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                }
+		pagesCountX = mipLevelWidth / page_width;
+		pagesCountY = mipLevelHeight / page_height;
+		pagesCountZ = mipLevelDepth / page_depth;
+		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-                currentPageId++;
-            }
-        }
-    }
+		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
 
-    // color space converions processors
-    oiio::ColorConfig cc;
-    auto processor_tolin = cc.createColorProcessor("sRGB", "linear");
-    auto processor_tosrgb = cc.createColorProcessor("linear", "sRGB");
+		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
+		bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
-    // Write 1+ MIP tiles
-    oiio::ImageBuf prevBuff;
-    oiio::ImageBuf scaledBuff;
+		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
 
-    for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
-        uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
-        uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
-        uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
+		if(mipLevel == 1) {
+			prevBuff.copy(srcBuff, spec.format);
+		} else {
+			prevBuff.copy(scaledBuff, spec.format);
+		}
 
-        pagesCountX = mipLevelWidth / page_width;
-        pagesCountY = mipLevelHeight / page_height;
-        pagesCountZ = mipLevelDepth / page_depth;
-        pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+		scaledBuff = oiio::ImageBuf(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, spec.nchannels, spec.format), oiio::InitializePixels::No);
 
-        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
-        LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
+		oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
+		scaledBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-        tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
-        bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
+		for(uint32_t z = 0; z < pagesCountZ; z++) {
+			for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
 
-        oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+				unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
 
-        if(mipLevel == 1) {
-            prevBuff.copy(srcBuff, spec.format);
-        } else {
-            prevBuff.copy(scaledBuff, spec.format);
-        }
+				for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+					
+					unsigned char *pPageData = page_data.data();
+					unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
+				   
+					//  fill page data from tile
+					for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+						::memcpy(pPageData, pTileData, tileWidthStride );
+						pPageData += tileWidthStride;
+						pTileData += bufferWidthStride;
+					}
 
-        scaledBuff = oiio::ImageBuf(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, spec.nchannels, spec.format), oiio::InitializePixels::No);
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageId++;
+				}
+			}
+		}
+	}
 
-        //auto tmpBuff = oiio::ImageBufAlgo::colorconvert(prevBuff, processor_tolin.get(), true);
-        //oiio::ImageBufAlgo::resample(scaledBuff, tmpBuff, true, roi);
-        //tmpBuff = oiio::ImageBufAlgo::colorconvert(scaledBuff, processor_tosrgb.get(), true);
-        //scaledBuff = tmpBuff;
-        //scaledBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
-        
-        oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
-        scaledBuff.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+	header.pagesCount = pagesCount;
 
-        for(uint32_t z = 0; z < pagesCountZ; z++) {
-            for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-
-                unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
-
-                for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
-                    
-                    unsigned char *pPageData = page_data.data();
-                    unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
-                   
-                    //  fill page data from tile
-                    for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        ::memcpy(pPageData, pTileData, tileWidthStride );
-                        pPageData += tileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-
-
-                    // write page data
-                    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                        // write compressed tile
-                        int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                            compressed_page_data.data(), compressed_page_data.size());
-
-                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
-
-                        fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                        compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                        compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
-
-                        currentPageOffset += cbytes;
-                    } else {
-                        // write uncompressed tile
-                        fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                    }
-
-                    currentPageId++;
-                }
-            }
-        }
-    }
-
-    header.pagesCount = pagesCount;
-
-    return true;
+	return true;
 }
 
 static oiio::cspan<float> dbg_cls_light[8] = {
-    {1.0, 0.0, 0.0, 1.0},
-    {0.0, 1.0, 0.0, 1.0},
-    {0.0, 0.0, 1.0, 1.0},
-    
-    {1.0, 1.0, 0.0, 1.0},
-    {0.0, 1.0, 1.0, 1.0},
-    {1.0, 0.0, 1.0, 1.0},
+	{1.0, 0.0, 0.0, 1.0},
+	{0.0, 1.0, 0.0, 1.0},
+	{0.0, 0.0, 1.0, 1.0},
+	
+	{1.0, 1.0, 0.0, 1.0},
+	{0.0, 1.0, 1.0, 1.0},
+	{1.0, 0.0, 1.0, 1.0},
 
-    {1.0, 1.0, 1.0, 1.0},
-    {1.0, 0.5, 0.0, 1.0},
+	{1.0, 1.0, 1.0, 1.0},
+	{1.0, 0.5, 0.0, 1.0},
 };
 
 static oiio::cspan<float> dbg_cls_dark[8] = {
-    {0.5, 0.0, 0.0, 1.0},
-    {0.0, 0.5, 0.0, 1.0},
-    {0.0, 0.0, 0.5, 1.0},
-    
-    {0.5, 0.5, 0.0, 1.0},
-    {0.0, 0.5, 0.5, 1.0},
-    {0.5, 0.0, 0.5, 1.0},
+	{0.5, 0.0, 0.0, 1.0},
+	{0.0, 0.5, 0.0, 1.0},
+	{0.0, 0.0, 0.5, 1.0},
+	
+	{0.5, 0.5, 0.0, 1.0},
+	{0.0, 0.5, 0.5, 1.0},
+	{0.5, 0.0, 0.5, 1.0},
 
-    {0.5, 0.5, 0.5, 1.0},
-    {0.5, 0.25,0.0, 1.0},
+	{0.5, 0.5, 0.5, 1.0},
+	{0.5, 0.25,0.0, 1.0},
 };
 
 bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio::ImageBuf &srcBuff, FILE *pFile, TLCInfo& compressionInfo) {
-    assert(pFile);
+	assert(pFile);
 
-    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-        assert(compressionInfo.pPageOffsets);
-        assert(compressionInfo.pCompressedPageSizes);
-    }
+	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
+		assert(compressionInfo.pPageOffsets);
+		assert(compressionInfo.pCompressedPageSizes);
+	}
 
-    int comp_level = compressionInfo.compressionLevel; // default compression level (if used)
-    int comp_doshuffle = BLOSC_NOSHUFFLE; //BLOSC_SHUFFLE;
-    size_t comp_typesize = 8; // default compresssor shuffle preconditioner
+	compressionInfo.compressionTypeSize = 8; // default compresssor shuffle preconditioner
 
-    // image dimesions
-    uint32_t img_width  = header.width;
-    uint32_t img_height = header.height;
-    uint32_t img_depth  = header.depth;
+	// image dimesions
+	uint32_t img_width  = header.width;
+	uint32_t img_height = header.height;
+	uint32_t img_depth  = header.depth;
 
-    // image memory page dimensions
-    uint32_t page_width  = header.pageDims.width;
-    uint32_t page_height = header.pageDims.height;
-    uint32_t page_depth  = header.pageDims.depth;
+	// image memory page dimensions
+	uint32_t page_width  = header.pageDims.width;
+	uint32_t page_height = header.pageDims.height;
+	uint32_t page_depth  = header.pageDims.depth;
 
-    // source image buffer spec and pixel format
-    auto const& spec = srcBuff.spec();
-    auto format = header.format;
+	// source image buffer spec and pixel format
+	auto const& spec = srcBuff.spec();
+	auto format = header.format;
 
-    uint32_t pagesCount = 0;
-    uint32_t dstChannelCount = getFormatChannelCount(format);
-    uint32_t dstChannelBits = getNumChannelBits(format, 0);
+	uint32_t pagesCount = 0;
+	uint32_t dstChannelCount = getFormatChannelCount(format);
+	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-    size_t srcBytesPerPixel = spec.pixel_bytes();
-    size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
+	size_t srcBytesPerPixel = spec.pixel_bytes();
+	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
 
-    size_t tileWidthStride = page_width * dstBytesPerPixel;
-    size_t bufferWidthStride = img_width * dstBytesPerPixel;
+	size_t tileWidthStride = page_width * dstBytesPerPixel;
+	size_t bufferWidthStride = img_width * dstBytesPerPixel;
 
-    uint32_t pagesCountX = img_width / page_width;
-    uint32_t pagesCountY = img_height / page_height;
-    uint32_t pagesCountZ = img_depth / page_depth;
+	uint32_t pagesCountX = img_width / page_width;
+	uint32_t pagesCountY = img_height / page_height;
+	uint32_t pagesCountZ = img_depth / page_depth;
 
-    uint3 partialPageDims = {
-        (img_width % page_width == 0) ? 0 : img_width - page_width * pagesCountX,
-        (img_height % page_height == 0) ? 0 : img_height - page_height * pagesCountY,
-        (img_depth % page_depth == 0) ? 0 : img_depth - page_depth * pagesCountZ
-    };
+	uint3 partialPageDims = {
+		(img_width % page_width == 0) ? 0 : img_width - page_width * pagesCountX,
+		(img_height % page_height == 0) ? 0 : img_height - page_height * pagesCountY,
+		(img_depth % page_depth == 0) ? 0 : img_depth - page_depth * pagesCountZ
+	};
 
-    size_t partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
+	size_t partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
-    if( partialPageDims.x != 0) pagesCountX++;
-    if( partialPageDims.y != 0) pagesCountY++;
-    if( partialPageDims.z != 0) pagesCountZ++;
+	if( partialPageDims.x != 0) pagesCountX++;
+	if( partialPageDims.y != 0) pagesCountY++;
+	if( partialPageDims.z != 0) pagesCountZ++;
 
-    std::vector<unsigned char> page_data(65536);
-    std::vector<unsigned char> compressed_page_data(65536 + BLOSC_MAX_OVERHEAD); // temporary compressed page data
+	std::vector<unsigned char> page_data(kLtxPageSize);
+	std::vector<unsigned char> compressed_page_data(kLtxPageSize + BLOSC_MAX_OVERHEAD); // temporary compressed page data
 
-    std::vector<unsigned char> zero_buff(65536, 0);
-    std::vector<unsigned char> tiles_buffer(img_width * page_height * dstBytesPerPixel);
+	std::vector<unsigned char> zero_buff(kLtxPageSize, 0);
+	std::vector<unsigned char> tiles_buffer(img_width * page_height * dstBytesPerPixel);
 
-    uint32_t currentPageId = 0;
-    uint32_t currentPageOffset = 0;
+	uint32_t currentPageId = 0;
+	uint32_t currentPageOffset = 0;
 
-    // write mip level 0
-    LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
-    LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+	// write mip level 0
+	LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+	LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
-    oiio::ImageBuf A(oiio::ImageSpec(img_width, img_height, 4, oiio::TypeDesc::UINT8));
-    oiio::ImageBufAlgo::checker( A, 128, 128,1, dbg_cls_dark[0], dbg_cls_light[0], 0, 0, 0);
+	oiio::ImageBuf A(oiio::ImageSpec(img_width, img_height, 4, oiio::TypeDesc::UINT8));
+	oiio::ImageBufAlgo::checker( A, 128, 128,1, dbg_cls_dark[0], dbg_cls_light[0], 0, 0, 0);
 
-    pagesCount += pagesCountX * pagesCountY * pagesCountZ;
-    for(uint32_t z = 0; z < pagesCountZ; z++) {
-        for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-            int y_begin = tileIdxY * page_height;
+	pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+	for(uint32_t z = 0; z < pagesCountZ; z++) {
+		for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
+			int y_begin = tileIdxY * page_height;
 
-            bool partialRow = false;
-            uint writeLinesCount = page_height;
-            if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
-                writeLinesCount = partialPageDims.y;
-                partialRow = true;
-            }
+			bool partialRow = false;
+			uint writeLinesCount = page_height;
+			if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
+				writeLinesCount = partialPageDims.y;
+				partialRow = true;
+			}
 
-            oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
-            A.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+			oiio::ROI roi(0, img_width, y_begin, y_begin + writeLinesCount, z, z + 1, /*chans:*/ 0, dstChannelCount);
+			A.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-            unsigned char *pBufferData = tiles_buffer.data();
+			unsigned char *pBufferData = tiles_buffer.data();
 
-            for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+			for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
 
-                bool partialColumn = false;
-                if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
-                
-                unsigned char *pPageData = page_data.data();
-                unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
+				bool partialColumn = false;
+				if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
+				
+				unsigned char *pPageData = page_data.data();
+				unsigned char *pTileData = pBufferData + tileIdxX * tileWidthStride;
 
-                if( partialRow && partialColumn) {
-                    // fill page data from partial corner tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                        pPageData += partialTileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else if( partialRow ) {
-                    // fill page data from partial bottom tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                        ::memcpy(pPageData, pTileData, tileWidthStride );
-                        pPageData += tileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else if( partialColumn ) { 
-                    // fill page data from partial column tile
-                    ::memset(pPageData, 0, 65536);
-                    for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                        pPageData += partialTileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                } else {
-                    // fill page data from full tile
-                    for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                        ::memcpy(pPageData, pTileData, tileWidthStride );
-                        pPageData += tileWidthStride;
-                        pTileData += bufferWidthStride;
-                    }
-                }
+				if( partialRow && partialColumn) {
+					// fill page data from partial corner tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+						::memcpy(pPageData, pTileData, partialTileWidthStride );
+						pPageData += partialTileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else if( partialRow ) {
+					// fill page data from partial bottom tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+						::memcpy(pPageData, pTileData, tileWidthStride );
+						pPageData += tileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else if( partialColumn ) { 
+					// fill page data from partial column tile
+					::memset(pPageData, 0, kLtxPageSize);
+					for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+						::memcpy(pPageData, pTileData, partialTileWidthStride );
+						pPageData += partialTileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				} else {
+					// fill page data from full tile
+					for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+						::memcpy(pPageData, pTileData, tileWidthStride );
+						pPageData += tileWidthStride;
+						pTileData += bufferWidthStride;
+					}
+				}
 
-                if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                    // write compressed tile
-                    int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                           compressed_page_data.data(), compressed_page_data.size());
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageId++;
+			}
+		}
+	}
 
-                    LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
+		// Write 1+ MIP tiles
+	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
+		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
+		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
 
-                    fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                    compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                    compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
+		pagesCountX = mipLevelWidth / page_width;
+		pagesCountY = mipLevelHeight / page_height;
+		pagesCountZ = mipLevelDepth / page_depth;
+		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-                    currentPageOffset += cbytes;
-                } else {
+		partialPageDims = {
+			(mipLevelWidth % page_width == 0) ? 0 : mipLevelWidth - page_width * pagesCountX,
+			(mipLevelHeight % page_height == 0) ? 0 : mipLevelHeight - page_height * pagesCountY,
+			(mipLevelDepth % page_depth == 0) ? 0 : mipLevelDepth - page_depth * pagesCountZ
+		};
 
-                    // write uncompressed tile
-                    fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                }
+		if( partialPageDims.x != 0) pagesCountX++;
+		if( partialPageDims.y != 0) pagesCountY++;
+		if( partialPageDims.z != 0) pagesCountZ++;
 
-                currentPageId++;
-            }
-        }
-    }
+		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " <<  pagesCountY;
+		LLOG_DBG << "Mip level width " << mipLevelWidth << " " << mipLevelHeight;
+		LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
-        // Write 1+ MIP tiles
-    for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
-        uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
-        uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
-        uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
+		partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
-        pagesCountX = mipLevelWidth / page_width;
-        pagesCountY = mipLevelHeight / page_height;
-        pagesCountZ = mipLevelDepth / page_depth;
-        pagesCount += pagesCountX * pagesCountY * pagesCountZ;
+		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
+		bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
 
-        partialPageDims = {
-            (mipLevelWidth % page_width == 0) ? 0 : mipLevelWidth - page_width * pagesCountX,
-            (mipLevelHeight % page_height == 0) ? 0 : mipLevelHeight - page_height * pagesCountY,
-            (mipLevelDepth % page_depth == 0) ? 0 : mipLevelDepth - page_depth * pagesCountZ
-        };
+		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+		oiio::ImageBuf A(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, 4, oiio::TypeDesc::UINT8));
+		oiio::ImageBufAlgo::checker( A, 128/ pow(2, mipLevel), 128/ pow(2, mipLevel),1, dbg_cls_dark[mipLevel], dbg_cls_light[mipLevel], 0, 0, 0);
+		A.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 
-        if( partialPageDims.x != 0) pagesCountX++;
-        if( partialPageDims.y != 0) pagesCountY++;
-        if( partialPageDims.z != 0) pagesCountZ++;
+		for(uint32_t z = 0; z < pagesCountZ; z++) {
+			for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
+				
+				bool partialRow = false;
+				uint writeLinesCount = page_height;
+				if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
+					writeLinesCount = partialPageDims.y;
+					partialRow = true;
+				}
 
-        LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " <<  pagesCountY;
-        LLOG_DBG << "Mip level width " << mipLevelWidth << " " << mipLevelHeight;
-        LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+				unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
 
-        partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
+				for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
+					
+					bool partialColumn = false;
+					if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
 
-        tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
-        bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
+					unsigned char *pPageData = page_data.data();
+					unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
+				   
+					if( partialRow && partialColumn) {
+						// fill page data from partial corner tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+							::memcpy(pPageData, pTileData, partialTileWidthStride );
+							pPageData += partialTileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else if( partialRow ) {
+						// fill page data from partial bottom tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
+							::memcpy(pPageData, pTileData, tileWidthStride );
+							pPageData += tileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else if( partialColumn ) {
+						// fill page data from partial column tile
+						::memset(pPageData, 0, kLtxPageSize);
+						for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+							::memcpy(pPageData, pTileData, partialTileWidthStride );
+							pPageData += partialTileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					} else {
+						// //  fill page data from full tile
+						for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
+							::memcpy(pPageData, pTileData, tileWidthStride );
+							pPageData += tileWidthStride;
+							pTileData += bufferWidthStride;
+						}
+					}
 
-        oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
-        oiio::ImageBuf A(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, 4, oiio::TypeDesc::UINT8));
-        oiio::ImageBufAlgo::checker( A, 128/ pow(2, mipLevel), 128/ pow(2, mipLevel),1, dbg_cls_dark[mipLevel], dbg_cls_light[mipLevel], 0, 0, 0);
-        A.get_pixels(roi, spec.format, tiles_buffer.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageId++;
+				}
+			}
+		}
+	}
 
-        for(uint32_t z = 0; z < pagesCountZ; z++) {
-            for(uint32_t tileIdxY = 0; tileIdxY < pagesCountY; tileIdxY++) {
-                
-                bool partialRow = false;
-                uint writeLinesCount = page_height;
-                if ( tileIdxY == (pagesCountY-1) && partialPageDims.y != 0) {
-                    writeLinesCount = partialPageDims.y;
-                    partialRow = true;
-                }
+	// write debug tail
+	std::vector<unsigned char> tail_buff(kLtxPageSize, 255);
+	fwrite(tail_buff.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	pagesCount++;
 
-                unsigned char *pTilesLineData = tiles_buffer.data() + bufferWidthStride * page_height * tileIdxY;
+	fwrite(tail_buff.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	pagesCount++;
 
-                for(uint32_t tileIdxX = 0; tileIdxX < pagesCountX; tileIdxX++) {
-                    
-                    bool partialColumn = false;
-                    if(tileIdxX == (pagesCountX-1) && partialPageDims.x != 0) partialColumn = true;
+	fwrite(tail_buff.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	pagesCount++;
 
-                    unsigned char *pPageData = page_data.data();
-                    unsigned char *pTileData = pTilesLineData + tileIdxX * tileWidthStride;
-                   
-                    if( partialRow && partialColumn) {
-                        // fill page data from partial corner tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                            pPageData += partialTileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else if( partialRow ) {
-                        // fill page data from partial bottom tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < writeLinesCount; lineNum++) {
-                            ::memcpy(pPageData, pTileData, tileWidthStride );
-                            pPageData += tileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else if( partialColumn ) {
-                        // fill page data from partial column tile
-                        ::memset(pPageData, 0, 65536);
-                        for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            ::memcpy(pPageData, pTileData, partialTileWidthStride );
-                            pPageData += partialTileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    } else {
-                        // //  fill page data from full tile
-                        for(uint32_t lineNum = 0; lineNum < page_height; lineNum++) {
-                            ::memcpy(pPageData, pTileData, tileWidthStride );
-                            pPageData += tileWidthStride;
-                            pTileData += bufferWidthStride;
-                        }
-                    }
+	fwrite(tail_buff.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	pagesCount++;
 
-                    if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-                        // write compressed tile
+	fwrite(tail_buff.data(), sizeof(uint8_t), kLtxPageSize, pFile);
+	pagesCount++;
 
-                        int cbytes = blosc_compress(comp_level, comp_doshuffle, comp_typesize, 65536, page_data.data(),
-                            compressed_page_data.data(), compressed_page_data.size());
+	header.pagesCount = pagesCount;
 
-                        LLOG_DBG << "Compressed page: " << currentPageId << " size is: " << cbytes << " offset: " << currentPageOffset << " ftell: " << ftell(pFile);
-
-                        fwrite(compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
-                        compressionInfo.pPageOffsets[currentPageId] = currentPageOffset;
-                        compressionInfo.pCompressedPageSizes[currentPageId] = cbytes;
-
-                        currentPageOffset += cbytes;
-
-                    } else {
-                        // write uncompressed tile
-                        fwrite(page_data.data(), sizeof(uint8_t), 65536, pFile);
-                    }
-
-                    currentPageId++;
-                }
-            }
-        }
-    }
-
-    // write debug tail
-    std::vector<unsigned char> tail_buff(65536, 255);
-    fwrite(tail_buff.data(), sizeof(uint8_t), 65536, pFile);
-    pagesCount++;
-
-    fwrite(tail_buff.data(), sizeof(uint8_t), 65536, pFile);
-    pagesCount++;
-
-    fwrite(tail_buff.data(), sizeof(uint8_t), 65536, pFile);
-    pagesCount++;
-
-    fwrite(tail_buff.data(), sizeof(uint8_t), 65536, pFile);
-    pagesCount++;
-
-    fwrite(tail_buff.data(), sizeof(uint8_t), 65536, pFile);
-    pagesCount++;
-
-    header.pagesCount = pagesCount;
-
-    return true;
+	return true;
 }
 
 

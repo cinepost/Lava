@@ -1,0 +1,87 @@
+# LSD created by Houdini Version: 18.5.408
+# Generation Time: Aug 14, 2022 at 14:51:07
+#   Render Target: lava18.5
+#        HIP File: /opt/hfs18.5.408/untitled, $T=0, $FPS=24
+#   Output driver: /out/lava1
+cmd_version VER18.5.408
+cmd_defaults 'RenderProperties.json'
+# Renderer configuration
+cmd_config bool vtoff 1
+cmd_config bool fconv 0
+cmd_config bool async_geo 1
+cmd_config string cull_mode 'none'
+cmd_config string vtex_conv_quality 'high'
+cmd_config string vtex_tlc 'zlib'
+cmd_config int vtex_tlc_level 9
+cmd_config string geo_tangent_generation 'mikkt'
+
+cmd_declare global float global:fps 24
+
+setenv HIP = "$HIP_OVERRIDE"
+if "$HIP" == "" then	# {
+    setenv HIP = "/opt/hfs18.5.408"
+endif	# }
+if "$_TMP_SHARED_STORAGE" == "" then	# {
+    setenv _TMP_SHARED_STORAGE = "/opt/hfs18.5.408/lsds/storage"
+endif	# }
+if "$_TMP_LOCAL_STORAGE" == "" then	# {
+    setenv _TMP_LOCAL_STORAGE = "/tmp/houdini_temp/lsds/storage"
+endif	# }
+# Retained geometry
+# Save geometry for /obj/sphere_object1/sphere1 at time 0
+cmd_start geo	# {
+    cmd_detail /obj/sphere_object1/sphere1 $_TMP_SHARED_STORAGE/untitled.1_000_sphere1_bfba907fecfa86406ab046468782973dec14893eb73066badee6ce1e7a689f8e.bgeo.sc
+cmd_end	# }
+
+# Main image from /obj/cam1
+cmd_time 0	# {
+    cmd_property renderer rendertype "beauty"
+    cmd_property renderer renderlabel "/obj/cam1.beauty"
+    cmd_declare plane string IPlay.s3dleftplane ""
+    cmd_declare plane string IPlay.s3drightplane ""
+    cmd_image "sdl"
+	cmd_declare plane string IPlay.rendermode "append"
+	cmd_declare plane string IPlay.framerange "1 1"
+	cmd_declare plane float IPlay.currentframe 1
+	cmd_declare plane string IPlay.rendersource "/out/lava1"
+	cmd_declare plane int IPlay.houdiniportnum 16641
+	cmd_start plane	# {
+	    cmd_property plane variable "Cf+Af"
+	    cmd_property plane type "vector4"
+	    cmd_property plane channel "MAIN"
+	    cmd_property plane quantize "float32"
+	cmd_end	# }
+    
+    cmd_property image samples 16
+    cmd_property image samplingpattern "stratified"
+    cmd_property renderer pbrshader pathtracer use_renderstate 0
+    cmd_property image resolution 1280 720
+    cmd_property image pixelaspect 1
+    cmd_property camera clip 0.0723318328098437741 3927.93140136002057
+    cmd_property camera projection "perspective"
+    cmd_property object velocityscale 0.0208333333333333322
+    cmd_transform 0.707106781186547462 -0.353553390593273731 0.612372435695794581 0 -1.17756934401283193e-16 0.866025403784438597 0.500000000000000222 0 -0.707106781186547573 -0.353553390593273897 0.612372435695794359 0 1.09433947907257888e-15 1.01649803577844223e-15 -4.6466031263321268 1
+    cmd_start segment	# {
+	cmd_property camera orthowidth 3.02094800075333358
+	cmd_property camera zoom 1.20710555938823605
+	cmd_property image window 0 1 0 1
+    cmd_end	# }
+    cmd_start light	# {
+	cmd_transform 1 0 0 0 0 1 0 0 0 0 1 0 -0.147376954555511475 1.08911454677581787 1.55943500995635986 1
+	cmd_property object name "/obj/pointlight1"
+	cmd_property object surface opdef:/Shop/v_constant
+	cmd_property light type "point"
+	cmd_property light shader opdef:/Shop/v_asadlight lightcolor 6.28319 6.28319 6.28319 type point attenstart 0 doatten 2
+	cmd_property light shadow opdef:/Shop/v_rayshadow shadowtype filter bias 0.05 quality 1 shadowI 1 shadow_color 0 0 0
+	cmd_property light projection "perspective"
+	cmd_property light zoom 1.20710678118654746 1.20710678118654746
+    cmd_end	# }
+
+    cmd_start object	# {
+	cmd_transform 1 0 0 0 0 1 0 0 0 0 1 0 -0.00386261940002441406 0.0121667385101318359 -0.00607061386108398438 1
+	cmd_geometry /obj/sphere_object1/sphere1
+	cmd_property object name "/obj/sphere_object1"
+    cmd_end	# }
+    cmd_raytrace
+# Generation time: 0.0382891 seconds
+cmd_quit	# }

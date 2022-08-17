@@ -98,6 +98,30 @@ Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
     return flags;
 }
 
+const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) {
+    switch(slot) {
+        case TextureSlot::BaseColor:
+            return mData.texBaseColor;
+        case TextureSlot::Metallic:
+            return mData.texMetallic;
+        case TextureSlot::Emissive:
+            return mData.texEmissive;
+        case TextureSlot::Roughness:
+            return mData.texRoughness;
+        case TextureSlot::Transmission:
+            return mData.texTransmission;
+        case TextureSlot::Normal:
+            return mData.texNormalMap;
+        case TextureSlot::Displacement:
+            return mData.texDisplacementMap;
+        default:
+            LLOG_ERR << "Error getting handle for slot " << to_string(slot);
+            should_not_get_here();
+            return {};
+
+    }
+}
+
 bool BasicMaterial::isDisplaced() const {
     return hasTextureSlotData(Material::TextureSlot::Displacement);
 }

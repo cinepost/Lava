@@ -363,6 +363,14 @@ Result DebugDevice::createTextureResource(
 	return result;
 }
 
+void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
+	baseObject->releaseTailMemory(pTexture);
+}
+
+Result DebugDevice::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) { 
+	baseObject->fillMipTail(texture, pTexture);
+}
+
 void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
 	baseObject->updateSparseBindInfo(pTexture);
 }

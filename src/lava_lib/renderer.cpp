@@ -475,6 +475,14 @@ void Renderer::renderSample() {
         // First frame sample
         if(mpTexturesResolvePassGraph) {
             mpTexturesResolvePassGraph->execute(pRenderContext);
+#if 1 == 1
+            {
+                auto pResource = mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output");
+                auto pTexture = pResource->asTexture();
+                pTexture->captureToFileBlocking(0, 0, "/home/max/Desktop/tex_resolve_dbg.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
+
+            }
+#endif
         }
     }
 
@@ -484,7 +492,7 @@ void Renderer::renderSample() {
     if (mCurrentSampleNumber % 16 == 0) {
         pRenderContext->flush(true);
     }
-    
+
     double currentTime = 0;
     _mpScene->update(pRenderContext, currentTime);
 
