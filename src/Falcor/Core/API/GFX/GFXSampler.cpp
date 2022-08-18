@@ -54,6 +54,8 @@ gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode) {
 
 gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter) {
     switch (filter) {
+        case Sampler::Filter::Cubic:
+            return gfx::TextureFilteringMode::Cubic;
         case Sampler::Filter::Linear:
             return gfx::TextureFilteringMode::Linear;
         case Sampler::Filter::Point:

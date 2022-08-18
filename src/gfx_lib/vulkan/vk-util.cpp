@@ -417,6 +417,7 @@ VkFilter VulkanUtil::translateFilterMode(TextureFilteringMode mode)
 
         CASE(Point, NEAREST);
         CASE(Linear, LINEAR);
+        CASE(Cubic, CUBIC_EXT);
 
 #undef CASE
     }

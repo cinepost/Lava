@@ -479,10 +479,89 @@ else()
 
     BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/glfw
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/glfw
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/glfw
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLFW_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${GLFW_PREFIX}
   )
+
+endif()
+
+#######################
+# ZMQ
+#######################
+
+set(EXTERNAL_ZMQ_VERSION 4.3.4)
+
+set(ZeroMQ_DIR ${EXTERNALS_INSTALL_DIR})
+find_package(ZeroMQ ${EXTERNAL_ZMQ_VERSION} EXACT)
+
+if(ZeroMQ_FOUND)
+
+  message("ZMQ version ${ZeroMQ_VERSION} found ...")
+  add_custom_target( zmq COMMAND echo "ZMQ build exists, skipping rebuild ...")
+
+else()
+
+  message("ZMQ not found! Running external build ...")
+  set(ZMQ_PREFIX zmq)
+
+  ExternalProject_Add ( zmq
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ZMQ_PREFIX}
+    GIT_REPOSITORY https://github.com/zeromq/libzmq.git
+    GIT_TAG v${EXTERNAL_ZMQ_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CPPZMQ_BUILD_TESTS:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${ZMQ_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${ZMQ_PREFIX}
+  )
+
+endif()
+
+#######################
+# CPPZMQ
+#######################
+
+set(EXTERNAL_CPPZMQ_VERSION 4.8.1)
+
+set(CppZMQ_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(CppZMQ ${EXTERNAL_CPPZMQ_VERSION} EXACT)
+
+if(CppZMQ_FOUND)
+
+  message("CppZMQ version ${CppZMQ_VERSION} found ...")
+  add_custom_target( cppzmq COMMAND echo "CppZMQ build exists, skipping rebuild ...")
+
+else()
+
+  message("CppZMQ not found! Running external build ...")
+  set(CppZMQ_PREFIX cppzmq)
+
+  ExternalProject_Add ( cppzmq
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${CppZMQ_PREFIX}
+    GIT_REPOSITORY https://github.com/zeromq/cppzmq.git
+    GIT_TAG v${EXTERNAL_CPPZMQ_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CPPZMQ_BUILD_TESTS:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${CppZMQ_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CppZMQ_PREFIX}
+  )
+  ExternalProject_Add_StepDependencies(cppzmq configure zmq)
 
 endif()
 
@@ -760,4 +839,5 @@ add_dependencies( dummy_target
   VMA
   Slang
   Glfw
+  cppzmq
 )

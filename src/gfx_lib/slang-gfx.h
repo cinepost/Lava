@@ -761,6 +761,7 @@ enum class TextureFilteringMode
 {
 	Point,
 	Linear,
+	Cubic,
 };
 
 enum class TextureAddressingMode
