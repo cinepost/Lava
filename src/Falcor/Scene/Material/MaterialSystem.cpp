@@ -71,7 +71,7 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	// Create a default texture sampler.
 	Sampler::Desc desc;
 	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-	desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 	desc.setMaxAnisotropy(16);
 	desc.setLodParams(0.0f, 1000.0f, 0.0f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);

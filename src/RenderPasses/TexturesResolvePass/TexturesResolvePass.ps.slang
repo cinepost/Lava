@@ -13,7 +13,9 @@ cbuffer PerFrameCB {
     int    numberOfMipCalibrationTextures = 0;
 };
 
-StructuredBuffer<MaterialResolveData> materialsResolveData;
+StructuredBuffer<VirtualTextureData>  virtualTextureDataBuffer;
+StructuredBuffer<MaterialResolveData> materialsResolveDataBuffer;
+Buffer<uint32_t> textureIdToVtexDataIdBuffer;
 
 Texture2D<float> mipCalibrationTexture;
 Texture2D ltxCalibrationTexture;
@@ -59,54 +61,18 @@ float4 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler,
     int mipLevelLo = -1;
     int mipLevelHi = -1;
 
-    float z_test = 0;
-
     for(int i = 0; i < numberOfMipCalibrationTextures; i++) {
         if (mipCalibrationTextures[i].SampleGrad(calibrationSampler, uv, gradX, gradY) > 0.0f) {
             mipLevelLo = (mipLevelLo == -1) ? i : min(mipLevelLo, i);
             mipLevelHi = (mipLevelHi == -1) ? i : max(mipLevelHi, i);
-        }
-       /* 
-        if (mipCalibrationTextures[i].SampleGrad(gCalibrationMinSampler, uv, gradX, gradY).r > 0.0f) {
-            mipLevelLo = (mipLevelLo == -1) ? i : min(mipLevelLo, i);
-            mipLevelHi = (mipLevelHi == -1) ? i : max(mipLevelHi, i);
-            //z_test += 1.0f;
-        }
-        if (mipCalibrationTextures[i].SampleGrad(gCalibrationMaxSampler, uv, gradX, gradY).r > 0.0f) {
-            mipLevelLo = (mipLevelLo == -1) ? i : min(mipLevelLo, i);
-            mipLevelHi = (mipLevelHi == -1) ? i : max(mipLevelHi, i);
-            //z_test += 1.0f;
-        }
-        */
-        
+        }   
     }
-    
-    //z_test = mipCalibrationTextures[2].SampleGrad(calibrationSampler, uv, gradX, gradY).r;
-    //z_test = lod.sampleTexture(mipCalibrationTexture, calibrationSampler, uv).r * 10.0f;
-    //z_test = mipCalibrationTexture.Sample(calibrationSampler, uv) * 0.1;
-
-    //if(uv.x > 0.5) {
-    //z_test = mipCalibrationTextures[1].Sample(calibrationSampler, uv);
-    //} else {
-    //z_test = mipCalibrationTextures[3].SampleGrad(calibrationSampler, uv, gradX, gradY);
-    //}
 
     if ( mipLevelLo == mipLevelHi ) {
         mipLevelLo -= 1; 
     }
 
-    return float4(max(0, mipLevelLo), max(0, mipLevelHi), z_test, 255);
-}
-
-float4 clacTextureMipLevelsIterativeDBG(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
-    let lod = ImplicitLodTextureSampler();
-
-    float2 tc = float2(vtexData.width / 128.0, vtexData.height / 128.0);
-    
-    float2 gradX = ddx_fine(uv) * tc;
-    float2 gradY = ddy_fine(uv) * tc;
-    
-    return float4(gradX.x, gradX.y, gradY.x, gradY.y) * 5.0f;
+    return float4(max(0, mipLevelLo), max(0, mipLevelHi), 0, 255);
 }
 
 // calculate required texture mip levels using calibration texture
@@ -139,28 +105,42 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     PsOut psOut;
     
     uint materialID = vOut.materialID;
-    MaterialResolveData matData = materialsResolveData[materialID];
+    MaterialResolveData matData = materialsResolveDataBuffer[materialID];
 
     int debugTileID = 0;
     float debug_mip_level_lo = 0.0;
     float debug_mip_level_hi = 0.0;
     float debug_mip_level_f  = 0.0;
-    uint virtualTexturesCount = matData.virtualTexturesCount;
     
     float4 grad_test;
 
-    for(uint v = 0; v < virtualTexturesCount; v++) {
+    for(uint v = 0; v < matData.virtualTexturesCount; v++) {
         SamplerState currTextureSampler = gCalibrationSampler; // TODO: use actual texture sampler
         bool anisotropicFilteringRequired = true; // TODO: calculate maximum anisotropy level needed for given texture with the given sampler
         
-        VirtualTextureData vtexData = matData.virtualTextures[v];
+        float2 uv = vOut.texC;
+        uint32_t vtexDataID = matData.virtualTextureDataIDs[v];
+        VirtualTextureData vtexData = virtualTextureDataBuffer[vtexDataID];
+
+        switch (vtexData.textureHandle.getMode()) {
+            case TextureHandle::Mode::Texture:
+                break;
+            case TextureHandle::Mode::UDIM_Texture:
+                float2 udim_uv = float2(uv.x - floor(uv.x), uv.y - floor(uv.y));
+                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                vtexDataID = textureIdToVtexDataIdBuffer[tileID];
+                vtexData = virtualTextureDataBuffer[vtexDataID];
+            case TextureHandle::Mode::Uniform:
+                continue;
+                break;
+        }
+
         uint32_t textureID = vtexData.textureID;
 
         if (!vtexData.empty) {
             float mipBias = -0.0; // TODO: use actual texture sampler bias
 
-            //float3 mips = calcTextureMipLevels(vOut.texC, gCalibrationSampler, vtexData, mipBias);
-            float4 mips = clacTextureMipLevelsIterative(vOut.texC, gCalibrationSampler, vtexData, mipBias);
+            float4 mips = clacTextureMipLevelsIterative(uv, gCalibrationSampler, vtexData, mipBias);
 
             int loMipLevel = (int)mips.x; //max(0, (int)mips.x);
             int hiMipLevel = (int)mips.y; //max(0, (int)mips.y);
@@ -169,21 +149,15 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_hi = hiMipLevel / 255.0f;
             debug_mip_level_f  += mips.z;
 
-            int loMipLevelTileID = calculateTileID2D(vOut.texC, loMipLevel, vtexData);
-            int hiMipLevelTileID = calculateTileID2D(vOut.texC, hiMipLevel, vtexData);
+            int loMipLevelTileID = calculateTileID2D(uv, loMipLevel, vtexData);
+            int hiMipLevelTileID = calculateTileID2D(uv, hiMipLevel, vtexData);
 
             writeTileID(loMipLevelTileID);
             writeTileID(hiMipLevelTileID);
 
-            //writeTileID(calculateTileID2D(vOut.texC, loMipLevel - 2, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, loMipLevel - 1, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, loMipLevel + 1, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, hiMipLevel + 1, vtexData));
-            //writeTileID(calculateTileID2D(vOut.texC, hiMipLevel + 2, vtexData));
-
             debugTileID = loMipLevelTileID;
 
-            //grad_test = clacTextureMipLevelsIterativeDBG(vOut.texC, gCalibrationSampler, vtexData, mipBias);
+            //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
         }
     }
 

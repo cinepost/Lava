@@ -1,8 +1,10 @@
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set (SOURCES 
 	./eagle.cpp
+	./window.cpp
 )
 
 include_directories (
@@ -56,7 +58,10 @@ target_compile_definitions(_imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_CUSTOM=<SDL_op
 find_package( Threads )
 
 # ZMQ & CppZMQ
+set(ZeroMQ_DIR ${EXTERNALS_INSTALL_DIR})
 find_package(ZeroMQ REQUIRED)
+
+set(CppZMQ_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(CppZMQ REQUIRED)
 
 target_include_directories(_imgui PUBLIC 
@@ -90,6 +95,10 @@ set_target_properties( eagle PROPERTIES
 	CXX_EXTENSIONS ON
 	OUTPUT_NAME "eagle-bin" 
 )
+
+target_compile_features(eagle PRIVATE cxx_std_17)
+
+
  
 target_link_libraries( 
 	eagle

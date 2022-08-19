@@ -189,10 +189,6 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 		// so only use it with a hardware implementation.
 		if (!m_api.m_module->isSoftware()) {
 			instanceExtensions.add(VK_KHR_SURFACE_EXTENSION_NAME);
-			instanceExtensions.add(VK_IMG_FILTER_CUBIC_EXTENSION_NAME);
-			//instanceExtensions.add(VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME);
-			instanceExtensions.add(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
-			instanceExtensions.add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
 			// Note: this extension is not yet supported by nvidia drivers, disable for now.
 			// instanceExtensions.add("VK_GOOGLE_surfaceless_query");
 #if SLANG_WINDOWS_FAMILY
@@ -592,6 +588,23 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 #endif
 			m_features.add("external-memory");
 		}
+
+		// New stuff
+		if(extensionNames.Contains(VK_IMG_FILTER_CUBIC_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_IMG_FILTER_CUBIC_EXTENSION_NAME);
+			m_features.add("sampler_filter_cubic");
+		}
+
+		if(extensionNames.Contains(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME);
+		}
+
+		if(extensionNames.Contains(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
+			m_features.add("sampler_filter_minmax");
+		}
+
+		// ---------
 
 		if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);

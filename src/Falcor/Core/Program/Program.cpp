@@ -1017,6 +1017,7 @@ EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
 }
 
 bool Program::link() const {
+	LLOG_INF << "Linking program...";
 	while (1) {
 		// Create the program
 		std::string log;

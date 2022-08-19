@@ -105,9 +105,6 @@ static VkInstance createVulkanInstance(bool enableDebugLayer) {
     // Extensions to use when creating instance
     std::vector<const char*> requiredExtensions = {
         "VK_KHR_surface",
-        "VK_EXT_filter_cubic",
-        "VK_EXT_image_robustness",
-        "VK_EXT_image_view_min_lod",
 #ifdef _WIN32
         "VK_KHR_win32_surface"
 #else

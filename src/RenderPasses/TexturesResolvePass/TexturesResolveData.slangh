@@ -33,16 +33,11 @@ struct VirtualTextureData {
     uint32_t mipTailStart;     // Mip level at which tail data starts
 
     TextureHandle textureHandle;
-
-    bool udimTexture;
-    uint32_t handleTextureID;
-    uint32_t _pad1;
-    uint32_t _pad2;
 };
 
 // Array of material virtual textures that needs to be resolved
 struct MaterialResolveData {
-    VirtualTextureData virtualTextures[MAX_VTEX_PER_MATERIAL_COUNT];     // max virtual textures allowed to be resolved in one pass
+    uint32_t virtualTextureDataIDs[MAX_VTEX_PER_MATERIAL_COUNT];     // max virtual textures allowed to be resolved in one pass
 
     uint32_t virtualTexturesCount = 0;
     uint32_t _pad0;
