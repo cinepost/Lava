@@ -424,6 +424,7 @@ void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void*
 	data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
 
 	resourceEncoder->uploadTexturePageData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), gfxOffset, gfxSize, pPage->mipLevel(), &data);
+	mCommandsPending = true;
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {

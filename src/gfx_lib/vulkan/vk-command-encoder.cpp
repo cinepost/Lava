@@ -69,6 +69,7 @@ void PipelineCommandEncoder::_uploadBufferData(
 	BufferResourceImpl* stagingBufferImpl = static_cast<BufferResourceImpl*>(stagingBuffer);
 
 	void* mappedData = nullptr;
+/*
 	SLANG_VK_CHECK(api.vkMapMemory(
 		api.m_device,
 		stagingBufferImpl->m_buffer.m_memory,
@@ -76,8 +77,15 @@ void PipelineCommandEncoder::_uploadBufferData(
 		stagingBufferOffset + size,
 		0,
 		&mappedData));
+*/
+	SLANG_VK_CHECK(
+		vmaMapMemory(api.mVmaAllocator, stagingBufferImpl->m_buffer.mAllocation, &mappedData));
+
 	memcpy((char*)mappedData + stagingBufferOffset, data, size);
+/*
 	api.vkUnmapMemory(api.m_device, stagingBufferImpl->m_buffer.m_memory);
+*/
+	vmaUnmapMemory(api.mVmaAllocator, stagingBufferImpl->m_buffer.mAllocation);
 
 	// Copy from staging buffer to real buffer
 	VkBufferCopy copyInfo = {};

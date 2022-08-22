@@ -192,7 +192,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 
 		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_DBG << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
 		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
 		LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
@@ -383,7 +383,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 		pagesCountZ = mipLevelDepth / page_depth;
 		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_DBG << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
 		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
 
 		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
@@ -608,7 +608,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 		if( partialPageDims.y != 0) pagesCountY++;
 		if( partialPageDims.z != 0) pagesCountZ++;
 
-		LLOG_DBG << "Writing mip level " << mipLevel << " tiles " << pagesCountX << " " <<  pagesCountY;
+		LLOG_DBG << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " <<  pagesCountY;
 		LLOG_DBG << "Mip level width " << mipLevelWidth << " " << mipLevelHeight;
 		LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 

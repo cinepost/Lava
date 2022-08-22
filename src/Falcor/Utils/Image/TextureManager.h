@@ -71,7 +71,6 @@ public:
 			Uniform,
 			Texture,       ///< Normal texture.
 			UDIM_Texture,  ///< UDIM texture. No actual data/resource associated.
-			UDIM_Tile,     ///< UDIM tile texture.
 		};
 
 		uint32_t id = kInvalidID;
@@ -81,7 +80,6 @@ public:
 		
 		inline uint32_t getID() const { return id; }
 		inline bool isValid() const { return id != kInvalidID; }
-		inline bool isUDIMTile() const { return mMode == Mode::UDIM_Tile; }
 		inline bool isUDIMTexture() const { return mMode == Mode::UDIM_Texture; }
 		inline Mode mode() const { return mMode; }
 
@@ -187,6 +185,8 @@ public:
 
 	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
 
+	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
+
 private:
 	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
 
@@ -245,7 +245,6 @@ inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
   switch (mode) {
       mode_2_string(Texture);
       mode_2_string(UDIM_Texture);
-      mode_2_string(UDIM_Tile);
     default:
       assert(false);
       return "Unknown TextureHandle::Mode";

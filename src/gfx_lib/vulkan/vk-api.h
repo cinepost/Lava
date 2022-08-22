@@ -318,6 +318,7 @@ struct VulkanApi
     VkPhysicalDeviceFeatures                                m_deviceFeatures;
     VkPhysicalDeviceMemoryProperties                        m_deviceMemoryProperties;
     VulkanExtendedFeatureProperties                         m_extendedFeatures;
+    VmaAllocator                                            mVmaAllocator;
 };
 
 } // renderer_test

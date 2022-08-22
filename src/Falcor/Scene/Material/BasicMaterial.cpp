@@ -98,7 +98,7 @@ Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner) {
     return flags;
 }
 
-const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) {
+const TextureHandle& BasicMaterial::getTextureHandle(const TextureSlot slot) const {
     switch(slot) {
         case TextureSlot::BaseColor:
             return mData.texBaseColor;

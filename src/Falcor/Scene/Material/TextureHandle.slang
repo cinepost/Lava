@@ -52,6 +52,14 @@ struct TextureHandle {
         Count // Must be last
     };
 
+    enum class WrapMode {
+        Repeat,
+        Mirror,
+        Streak,
+        Border,
+        Count // Must be last
+    };
+
     static const uint kTextureIDBits = 30;
     static const uint kModeBits = 2;
 

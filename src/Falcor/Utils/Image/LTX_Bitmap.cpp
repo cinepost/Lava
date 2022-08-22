@@ -258,6 +258,8 @@ static ResourceFormat getDestFormat(const ResourceFormat &format) {
 	switch (format) {
 		case ResourceFormat::RGB8Unorm:
 			return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
+		case ResourceFormat::RGB16Uint:
+			return ResourceFormat::RGBA16Uint;  // this should force 48bit to 64bit conversion
 		case ResourceFormat::RGB32Uint:
 			return ResourceFormat::RGBA32Uint;  // this should force 96bit to 128bit conversion
 		case ResourceFormat::RGB16Unorm:
@@ -504,7 +506,10 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 	if (mTopLevelCompression == LTX_Header::TopLevelCompression::NONE) {
 		// read uncompressed page data
 		fseek(pFile, mHeader.dataOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
-		fread(pData, 1, mHeader.pageDataSize, pFile);
+		if(fread(pData, 1, mHeader.pageDataSize, pFile) != 65536) {
+			LLOG_ERR << "Error reading texture page data!";
+			return false;
+		}
 	} else {
 		// read compressed page data
 		std::vector<unsigned char> tmp(kLtxPageSize);

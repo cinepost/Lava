@@ -130,9 +130,10 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
                 uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
                 vtexDataID = textureIdToVtexDataIdBuffer[tileID];
                 vtexData = virtualTextureDataBuffer[vtexDataID];
+                break;
             case TextureHandle::Mode::Uniform:
                 continue;
-                break;
+
         }
 
         uint32_t textureID = vtexData.textureID;
@@ -161,7 +162,11 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         }
     }
 
+#ifdef _OUTPUT_DEBUG_IMAGE
     //psOut.output = grad_test;
     psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, debug_mip_level_f, 1);
     return psOut;
+#else
+    return psOut;
+#endif
 }

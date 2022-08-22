@@ -93,7 +93,7 @@ DeviceImpl::~DeviceImpl() {
 
 	m_emptyFramebuffer = nullptr;
 
-	vmaDestroyAllocator(m_api.mVmaAllocator);
+	vmaDestroyAllocator(mVmaAllocator);
 
 	if (m_device != VK_NULL_HANDLE) {
 		if (m_desc.existingDeviceHandles.handles[2].handleValue == 0)
@@ -662,7 +662,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 	vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
 	vmaAllocatorCreateInfo.pRecordSettings = nullptr;
  
-	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_api.mVmaAllocator));
+	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mVmaAllocator));
 
 	return SLANG_OK;
 }
@@ -946,11 +946,10 @@ SlangResult DeviceImpl::readBufferResource(IBufferResource* inBuffer, Offset off
 	// Write out the data from the buffer
 	void* mappedData = nullptr;
 
-	SLANG_VK_RETURN_ON_FAIL(vmaMapMemory(m_api.mVmaAllocator, staging.mAllocation, &mappedData));
-	
-	::memcpy(blob->m_data.getBuffer(), mappedData, size);
-	vmaUnmapMemory(mVmaAllocator, staging.mAllocation);
+	SLANG_RETURN_ON_FAIL(m_api.vkMapMemory(m_device, staging.m_memory, 0, size, 0, &mappedData));
 
+	::memcpy(blob->m_data.getBuffer(), mappedData, size);
+	m_api.vkUnmapMemory(m_device, staging.m_memory);
 
 	returnComPtr(outBlob, blob);
 	return SLANG_OK;
@@ -1152,7 +1151,7 @@ Result DeviceImpl::getTextureRowAlignment(Size* outAlignment) {
 }
 
 SLANG_NO_THROW const VmaAllocator& SLANG_MCALL DeviceImpl::getVmaAllocator() const {
-	return m_api.mVmaAllocator;
+	return mVmaAllocator;
 }
 
 Result DeviceImpl::createTextureResource( 

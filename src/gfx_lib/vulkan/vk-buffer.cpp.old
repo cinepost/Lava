@@ -15,11 +15,8 @@ namespace vk {
 
 VKBufferHandleRAII::~VKBufferHandleRAII() {
     if (m_api) {
-        /*
         m_api->vkDestroyBuffer(m_api->m_device, m_buffer, nullptr);
         m_api->vkFreeMemory(m_api->m_device, m_memory, nullptr);
-        */
-        vmaDestroyBuffer(m_api->mVmaAllocator, m_buffer, mAllocation);
     }
 }
 
@@ -47,16 +44,8 @@ Result VKBufferHandleRAII::init(
         externalMemoryBufferCreateInfo.handleTypes = extMemHandleType;
         bufferCreateInfo.pNext = &externalMemoryBufferCreateInfo;
     }
-/*
+
     SLANG_VK_CHECK(api.vkCreateBuffer(api.m_device, &bufferCreateInfo, nullptr, &m_buffer));
-*/
-
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.requiredFlags = reqMemoryProperties;
-    allocInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
-
-    SLANG_VK_CHECK(vmaCreateBuffer(api.mVmaAllocator, &bufferCreateInfo, &allocInfo, &m_buffer, &mAllocation, nullptr));
-    return SLANG_OK;
 
     VkMemoryRequirements memoryReqs = {};
     api.vkGetBufferMemoryRequirements(api.m_device, m_buffer, &memoryReqs);
@@ -158,20 +147,14 @@ Result BufferResourceImpl::getSharedHandle(InteropHandle* outHandle) {
 Result BufferResourceImpl::map(MemoryRange* rangeToRead, void** outPointer) {
     SLANG_UNUSED(rangeToRead);
     auto api = m_buffer.m_api;
-    /*
     SLANG_VK_RETURN_ON_FAIL( api->vkMapMemory(api->m_device, m_buffer.m_memory, 0, VK_WHOLE_SIZE, 0, outPointer));
-    */
-    SLANG_VK_RETURN_ON_FAIL( vmaMapMemory(api->mVmaAllocator, m_buffer.mAllocation, outPointer));
     return SLANG_OK;
 }
 
 Result BufferResourceImpl::unmap(MemoryRange* writtenRange) {
     SLANG_UNUSED(writtenRange);
     auto api = m_buffer.m_api;
-    /*
     api->vkUnmapMemory(api->m_device, m_buffer.m_memory);
-    */
-    vmaUnmapMemory(api->mVmaAllocator, m_buffer.mAllocation);
     return SLANG_OK;
 }
 

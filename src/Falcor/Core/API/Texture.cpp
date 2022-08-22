@@ -503,9 +503,6 @@ bool Texture::addTexturePage(uint32_t index, int3 offset, uint3 extent, const ui
   pPage->mMemoryTypeBits = memoryTypeBits;
   pPage->mDevMemSize = size;
   pPage->mIndex = index;
-  
-  // This would be initialized in TextureManager
-  //pPage->mID = static_cast<uint32_t>(mSparseDataPages.size());
     
   mSparseDataPages.push_back(pPage);
   return true;

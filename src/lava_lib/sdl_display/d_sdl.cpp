@@ -312,20 +312,22 @@ PtDspyError DspyImageData(PtDspyImageHandle ,int xmin, int xmax, int ymin, int y
 }
 
 PtDspyError DspyImageClose(PtDspyImageHandle image_h) {
-  std::cerr<<"Rendering Complete ESC to Quit\n";
+  std::cout << "Rendering Complete ESC to Quit ...\n";
   g_end = std::chrono::system_clock::now();
 
   std::chrono::duration<double> elapsed_seconds = g_end-g_start;
   std::time_t end_time = std::chrono::system_clock::to_time_t(g_end);
 
   std::cout << "finished rendering at " << std::ctime(&end_time) << "elapsed time: " << elapsed_seconds.count() << "s\n";
+  
   // go into window process loop until quit
-  PtDspyError quit=PkDspyErrorNone;
+  PtDspyError quit = PkDspyErrorNone;
   while(quit != PkDspyErrorCancel) {
     quit = processEvents();
     g_window->draw();
-  }// end of quit
+  }
 
+  // end of quit
   g_window.reset( nullptr );
 
   delete image_h;

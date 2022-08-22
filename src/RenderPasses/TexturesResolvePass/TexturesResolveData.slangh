@@ -6,7 +6,7 @@
 __exported import Scene.Material.TextureHandle;
 #endif
 
-#define MAX_VTEX_PER_MATERIAL_COUNT 16
+#define MAX_VTEX_PER_MATERIAL_COUNT 8
 
 // TODO: find a better less memory hungry method !
 // MAX_REISDENT_PAGES_PER_VTEX is the maximum possible pages in vtex

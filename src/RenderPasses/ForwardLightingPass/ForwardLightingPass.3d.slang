@@ -167,7 +167,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             RayDesc ray;
             ray.Origin = rayOrigin;// + viewDir * 0.0001f;
             ray.Direction = ls.dir;
-            ray.TMin = 0.0001f;
+            ray.TMin = 1.0f;
 
             switch (light.type) {
                 case LightType::Distant:

@@ -475,7 +475,7 @@ void Renderer::renderSample() {
         // First frame sample
         if(mpTexturesResolvePassGraph) {
             mpTexturesResolvePassGraph->execute(pRenderContext);
-#if 1 == 1
+#if 1 == 2
             {
                 auto pResource = mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output");
                 auto pTexture = pResource->asTexture();

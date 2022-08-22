@@ -172,7 +172,6 @@ void Buffer::unmap() {
     } else if (mDynamicData.pData == nullptr && mBindFlags == BindFlags::None) {
         // We only unmap staging buffers
         assert(mCpuAccess == CpuAccess::Read);
-        //vkUnmapMemory(mpDevice->getApiHandle(), mApiHandle);
         vmaUnmapMemory(mpDevice->allocator(), mAllocation);
     }
 }

@@ -31,17 +31,11 @@ public:
         : m_api(nullptr)
     {}
 
-    ~VKBufferHandleRAII()
-    {
-        if (m_api)
-        {
-            m_api->vkDestroyBuffer(m_api->m_device, m_buffer, nullptr);
-            m_api->vkFreeMemory(m_api->m_device, m_memory, nullptr);
-        }
-    }
-
-    VkBuffer m_buffer;
-    VkDeviceMemory m_memory;
+    ~VKBufferHandleRAII();
+    
+    VkBuffer        m_buffer;
+    VkDeviceMemory  m_memory;
+    VmaAllocation   mAllocation = {};
     const VulkanApi* m_api;
 };
 
