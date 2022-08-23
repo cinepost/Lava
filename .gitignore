@@ -41,6 +41,8 @@ build_external
 build_external/
 venv
 venv/
+env
+env/
 
 third_party/null.cpp
 third_party/external

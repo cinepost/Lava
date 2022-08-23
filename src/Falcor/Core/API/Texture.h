@@ -354,6 +354,8 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint16_t getUDIM_ID() const { return mUDIM_ID; }
 
+	bool isSolid() const { return mIsSolid; }
+
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
   	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);
@@ -379,6 +381,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		std::array<UDIMTileInfo, 100> mUDIMTileInfos;
 		bool mIsUDIMTexture = false;
 		bool mIsSparse = false;
+		bool mIsSolid = false;
 		uint16_t mUDIM_ID = 0;
 
 		uint3 mSparsePageRes = int3(0);

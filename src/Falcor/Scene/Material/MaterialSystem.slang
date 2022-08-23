@@ -243,14 +243,13 @@ struct MaterialSystem
         
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
-                //return materialTextures[handle.getTextureID()].SampleLevel(s, uv, 1.0);
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
-                //return float4(0, 0, 1, 1);
                 float2 udim_uv = float2(uv.x - floor(uv.x), uv.y - floor(uv.y));
                 uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                //return float4(floor(uv.x) * 0.1, floor(uv.y) * 0.1, 0, 1);
                 return lod.sampleTexture(materialTextures[tileID], s, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);

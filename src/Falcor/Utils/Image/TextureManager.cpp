@@ -280,6 +280,8 @@ bool TextureManager::getTextureHandle(const Texture* pTexture, TextureHandle& ha
 TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags, bool async, std::string udim_mask, bool loadAsSparse) {
 	TextureHandle handle;
 
+	mDirty = true;
+
 	// Is UDIM file path ?
 	bool is_udim_texture = false;
 	std::vector<std::pair<fs::path, Falcor::uint2>> udim_tile_fileinfos;
@@ -547,10 +549,11 @@ size_t TextureManager::getTextureDescCount() const {
 void TextureManager::finalize() {
 	if (!mDirty) return;
 
+	uint32_t udimID = 0;
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
 		const auto& pTex = mTextureDescs[i].pTexture;
 		if(pTex && pTex->isUDIMTexture()) {
-			pTex->setUDIM_ID(i);
+			pTex->setUDIM_ID(udimID++);
 		}
 	}
 
@@ -559,6 +562,7 @@ void TextureManager::finalize() {
 
 void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount) const {
 	LLOG_DBG << "Setting shader data for " << to_string(mTextureDescs.size()) << " texture descs";
+	
 	std::lock_guard<std::mutex> lock(mMutex);
 
 	if (mTextureDescs.size() > descCount) {
@@ -588,6 +592,8 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 
 void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const {
 	LLOG_DBG << "Setting UDIM table shader data " << to_string(descCount) << " descriptors";
+
+	std::lock_guard<std::mutex> lock(mMutex);
 
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
 		const auto& pTex = mTextureDescs[i].pTexture;

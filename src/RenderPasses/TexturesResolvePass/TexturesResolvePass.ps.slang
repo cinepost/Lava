@@ -126,17 +126,15 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             case TextureHandle::Mode::Texture:
                 break;
             case TextureHandle::Mode::UDIM_Texture:
-                float2 udim_uv = float2(uv.x - floor(uv.x), uv.y - floor(uv.y));
-                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
+                float2 udim_idx = float2(floor(uv.x), floor(uv.y));
+                uv = float2(uv.x - udim_idx.x, uv.y - udim_idx.y);
+                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + (uint)udim_idx.x + (uint)udim_idx.y * 10];
                 vtexDataID = textureIdToVtexDataIdBuffer[tileID];
                 vtexData = virtualTextureDataBuffer[vtexDataID];
                 break;
             case TextureHandle::Mode::Uniform:
-                continue;
-
+                discard;
         }
-
-        uint32_t textureID = vtexData.textureID;
 
         if (!vtexData.empty) {
             float mipBias = -0.0; // TODO: use actual texture sampler bias
@@ -167,6 +165,6 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, debug_mip_level_f, 1);
     return psOut;
 #else
-    return psOut;
+    discard;
 #endif
 }

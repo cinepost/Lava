@@ -112,19 +112,23 @@ void TexturesResolvePass::initDepth(RenderContext* pContext, const RenderData& r
 	}
 }
 
-static void calculateVirtualTextureData(const Texture::SharedPtr& pTexture, uint textureResolveID, uint32_t pagesStartOffset, const BasicMaterial* pMaterial, Material::TextureSlot slot, VirtualTextureData& vtexData) {
+static void calculateVirtualTextureData(const Texture::SharedPtr& pTexture, uint textureResolveID, uint32_t pagesStartOffset, const TextureHandle& textureHandle, VirtualTextureData& vtexData) {
+	assert(pTexture);
+
 	// Fill vitrual texture data
-	vtexData.empty = false;
+	vtexData.empty = true;
+
+	if(!pTexture) {
+		LLOG_WRN << "Unable to calculate virtual texture data. pTexture is NULL.";
+		return;
+	}
+
+
 	vtexData.textureID = pTexture->id();
+	vtexData.textureHandle = textureHandle;
 	vtexData.textureResolveID = textureResolveID;
 
-	if (pMaterial) vtexData.textureHandle = pMaterial->getTextureHandle(slot);
-
-	if(pTexture->isUDIMTexture()) {
-		// UDIM meta textue
-		vtexData.empty = true;
-	} else {
-		// Normal texture or UDIM tile texture
+	if(!pTexture->isUDIMTexture()) {
 		vtexData.width = pTexture->getWidth(0);
 		vtexData.height = pTexture->getHeight(0);
 		vtexData.mipLevelsCount = pTexture->getMipCount();
@@ -140,6 +144,7 @@ static void calculateVirtualTextureData(const Texture::SharedPtr& pTexture, uint
 
 		memcpy(&vtexData.mipBases, mipBases.data(), mipBases.size() * sizeof(uint32_t));
 	}
+	vtexData.empty = false;
 }
 
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
@@ -187,7 +192,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		std::vector<std::pair<TextureSlot, Texture::SharedPtr>> materialSparseTextures;
 
 		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal})) {
-			auto pTexture = pMaterial->getTexture(slot);
+			auto const& pTexture = pMaterial->getTexture(slot);
 			if(pTexture && (pTexture->isSparse() || pTexture->isUDIMTexture())) {
 				if(pTexture->isUDIMTexture()) {
 					
@@ -195,15 +200,12 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 						if(tileInfo.pTileTexture && tileInfo.pTileTexture->isSparse()) {
 							auto textureID = tileInfo.pTileTexture->id();
 							if (udimTextureTiles.find(textureID) == udimTextureTiles.end() ) {
-								if(texturesMap.find(textureID) == texturesMap.end()) {
-									udimTextureTiles[textureID] = tileInfo.pTileTexture;
-								}
+								udimTextureTiles[textureID] = tileInfo.pTileTexture;
 							}
 						}
 					}
-				} else {
-					materialSparseTextures.push_back({slot, pTexture});
 				}
+				materialSparseTextures.push_back({slot, pTexture});
 			}
 		}
 
@@ -232,7 +234,9 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 				vtexDataBuffer.push_back({});
 				auto &vtexData = vtexDataBuffer.back();
 
-				calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, pMaterial.get(), slot, vtexDataBuffer.back());
+
+				auto textureHandle = pMaterial->getTextureHandle(slot);
+				calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, textureHandle, vtexDataBuffer.back());
 
 				if(!pTexture->isUDIMTexture()) {
 					if(texturePagesStartMap.size() <= textureID) {
@@ -276,18 +280,34 @@ if (1 == 1) {
 			continue;
 		}
 
-		TextureManager::TextureHandle handle = {};
+		TextureManager::TextureHandle textureManagerHandle = {};
 
-		if(!pTextureManager->getTextureHandle(pTexture.get(), handle)) {
+		if(!pTextureManager->getTextureHandle(pTexture.get(), textureManagerHandle)) {
 			LLOG_ERR << "Error getting texture handle from texture manager for texture " << pTexture->getSourceFilename();
 			continue;
 		}	
+
+		uint32_t materialSystemTextureID = textureManagerHandle.getID();
+
+////////////////////////////////////
+
+    // Material texture handle.
+	TextureHandle textureHandle;
+    if(!pTexture->isSolid()) {
+        textureHandle.setMode(TextureHandle::Mode::Texture);
+    } else {
+    	textureHandle.setMode(TextureHandle::Mode::Uniform);
+    }
+    textureHandle.setTextureID(materialSystemTextureID);
+        
+////////////////////////////////////
 
 		uint32_t vtexDataID = vtexDataBuffer.size();
 		vtexDataBuffer.push_back({});
 		auto &vtexData = vtexDataBuffer.back();
 
-		calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, nullptr, TextureSlot::Count, vtexData);
+		LLOG_DBG << "calculating virtual texture data for UDIM tile materialSystem textureHandleID " << std::to_string(materialSystemTextureID);
+		calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, textureHandle, vtexData);
 
 		if(texturePagesStartMap.size() <= textureID) {
 			texturePagesStartMap.resize(textureID + 1);
@@ -296,8 +316,6 @@ if (1 == 1) {
 
 		currTextureResolveID++;
 		currPagesStartOffset += pTexture->sparseDataPagesCount();
-
-		uint32_t materialSystemTextureID = handle.getID();
 
 		if(vtexDataIdMapBuffer.size() <= materialSystemTextureID) {
 			vtexDataIdMapBuffer.resize(materialSystemTextureID + 1);
@@ -343,8 +361,8 @@ if (1 == 1) {
 
 	setDefaultSampler();
 	mpVars["gCalibrationSampler"] = mpSampler;
-  mpVars["gCalibrationMinSampler"] = mpMinSampler;
-  mpVars["gCalibrationMaxSampler"] = mpMaxSampler;
+	mpVars["gCalibrationMinSampler"] = mpMinSampler;
+	mpVars["gCalibrationMaxSampler"] = mpMaxSampler;
 
 #ifdef _DEBUG
 	printf("%u textures needs to be resolved\n", resolvedTexturesCount);
