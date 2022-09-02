@@ -653,15 +653,19 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 
 	SLANG_RETURN_ON_FAIL(m_api.initDeviceProcs(m_device));
 
+	VmaVulkanFunctions vulkanFunctions = {};
+	vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+	vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
 	VmaAllocatorCreateInfo vmaAllocatorCreateInfo = {};
 	vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
 	vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	vmaAllocatorCreateInfo.physicalDevice = physicalDevice;
 	vmaAllocatorCreateInfo.device = m_device;
 	vmaAllocatorCreateInfo.instance = instance;
-	vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
-	vmaAllocatorCreateInfo.pRecordSettings = nullptr;
- 
+	vmaAllocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+	//vmaAllocatorCreateInfo.preferredLargeHeapBlockSize = 0; // Set to 0 to use default, which is currently 256 MiB.
+	
 	SLANG_VK_RETURN_ON_FAIL(vmaCreateAllocator(&vmaAllocatorCreateInfo, &m_api.mVmaAllocator));
 
 	return SLANG_OK;
@@ -949,7 +953,7 @@ SlangResult DeviceImpl::readBufferResource(IBufferResource* inBuffer, Offset off
 	SLANG_VK_RETURN_ON_FAIL(vmaMapMemory(m_api.mVmaAllocator, staging.mAllocation, &mappedData));
 	
 	::memcpy(blob->m_data.getBuffer(), mappedData, size);
-	vmaUnmapMemory(mVmaAllocator, staging.mAllocation);
+	vmaUnmapMemory(m_api.mVmaAllocator, staging.mAllocation);
 
 
 	returnComPtr(outBlob, blob);
@@ -1481,58 +1485,6 @@ Result DeviceImpl::createTextureResource(
 			LLOG_ERR << "Could not create semaphore !!!";
 			return SLANG_FAIL;
 		}
-
-		// Prepare bind sparse info for reuse in queue submission
-		//updateSparseBindInfo(pTexture.get());
-
-		/////////////////////////////////////////////////////////
-		/*
-		// Update list of memory-backed sparse image memory binds
-		auto& sparseImageMemoryBinds = pTexture->mSparseImageMemoryBinds;
-		sparseImageMemoryBinds.clear();
-		for (const auto& pPage : pTexture->mSparseDataPages) {
-			//if ( pPage->isResident())
-			sparseImageMemoryBinds.push_back(pPage->mImageMemoryBind);
-		}
-
-		// Update sparse bind info
-		auto& bindSparseInfo = pTexture->mBindSparseInfo;
-		bindSparseInfo = {};
-		bindSparseInfo.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
-
-		// todo: Semaphore for queue submission
-		bindSparseInfo.signalSemaphoreCount = 1;
-		bindSparseInfo.pSignalSemaphores = &pTexture->mBindSparseSemaphore;
-
-		// Image memory binds
-		auto& imageMemeoryBindInfo = pTexture->mImageMemoryBindInfo;
-
-		imageMemeoryBindInfo = {};
-		imageMemeoryBindInfo.image = texture->m_image;
-		imageMemeoryBindInfo.bindCount = static_cast<uint32_t>(sparseImageMemoryBinds.size());
-		imageMemeoryBindInfo.pBinds = sparseImageMemoryBinds.data();
-
-		bindSparseInfo.imageBindCount = (imageMemeoryBindInfo.bindCount > 0) ? 1 : 0;
-		bindSparseInfo.pImageBinds = &imageMemeoryBindInfo;
-
-		// Opaque image memory binds for the mip tail
-		auto& opaqueMemoryBindInfo = pTexture->mOpaqueMemoryBindInfo;
-		auto& opaqueMemoryBinds = pTexture->mOpaqueMemoryBinds;
-		opaqueMemoryBindInfo.image = texture->m_image;
-		opaqueMemoryBindInfo.bindCount = static_cast<uint32_t>(opaqueMemoryBinds.size());
-		opaqueMemoryBindInfo.pBinds = opaqueMemoryBinds.data();
-		
-		bindSparseInfo.imageOpaqueBindCount = (opaqueMemoryBindInfo.bindCount > 0) ? 1 : 0;
-		bindSparseInfo.pImageOpaqueBinds = &opaqueMemoryBindInfo;
-
-		// todo: in draw?
-  	m_api.vkQueueBindSparse(m_deviceQueue.getQueue(), 1, & pTexture->mBindSparseInfo, VK_NULL_HANDLE);
-
-		//todo: use sparse bind semaphore
-		m_api.vkQueueWaitIdle(m_deviceQueue.getQueue());
-		
-		/////////////////////////////////////////////////////////
-		*/
 	}
 ///////////////////////////////
 
@@ -1712,7 +1664,7 @@ Result DeviceImpl::createTextureResource(
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			defaultLayout);
 	} else {
-		// No init data nor sparse texture
+		// No init data non-sparse texture
 		if(!sparse) {
 			auto defaultLayout = VulkanUtil::getImageLayoutFromState(desc.defaultState);
 			if (defaultLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
@@ -1730,26 +1682,6 @@ Result DeviceImpl::createTextureResource(
 	return SLANG_OK;
 }
 
-static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
-	std::random_device rd;
-	std::mt19937 rndEngine(rd());
-	std::uniform_int_distribution<uint32_t> rndDist(0, 255);
-	uint8_t rndVal[4] = { 0, 0, 0, 0 };
-	while (rndVal[0] + rndVal[1] + rndVal[2] < 10) {
-		rndVal[0] = (uint8_t)rndDist(rndEngine);
-		rndVal[1] = (uint8_t)rndDist(rndEngine);
-		rndVal[2] = (uint8_t)rndDist(rndEngine);
-	}
-	rndVal[3] = 255;
-	for (uint32_t y = 0; y < height; y++) {
-		for (uint32_t x = 0; x < width; x++) {
-			for (uint32_t c = 0; c < 4; c++, ++buffer) {
-				*buffer = rndVal[c];
-			}
-		}
-	}
-}
-
 void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 	assert(pTexture);
 	if(!pTexture->isSparse()) return;
@@ -1765,135 +1697,20 @@ void DeviceImpl::releaseTailMemory(Falcor::Texture* pTexture) {
 	}
 }
 
-Result DeviceImpl::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) {
-	assert(texture);
+Result DeviceImpl::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
 	assert(pTexture);
-  
-	TextureResourceImpl* _texture = static_cast<TextureResourceImpl*>(texture);
 
-  // Clean up previous mip tail memory allocation
-	if (pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE) {
+	if (pTexture->mMipTailimageMemoryBind.memory != VK_NULL_HANDLE && force) {
 		m_api.vkFreeMemory(m_device, pTexture->mMipTailimageMemoryBind.memory, nullptr);
+	} else {
+		return SLANG_OK;
 	}
-
-	//@todo: WIP
-	VkDeviceSize imageMipTailSize = pTexture->mSparseImageMemoryRequirements.imageMipTailSize;
-	VkDeviceSize imageMipTailOffset = pTexture->mSparseImageMemoryRequirements.imageMipTailOffset;
-	// Stride between memory bindings for each mip level if not single mip tail (VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT not set)
-	VkDeviceSize imageMipTailStride = pTexture->mSparseImageMemoryRequirements.imageMipTailStride;
 
 	VkMemoryAllocateInfo allocInfo {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = imageMipTailSize;
+	allocInfo.allocationSize = pTexture->mSparseImageMemoryRequirements.imageMipTailSize;
 	allocInfo.memoryTypeIndex = pTexture->mMemoryTypeIndex;
 	SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateMemory(m_device, &allocInfo, nullptr, &pTexture->mMipTailimageMemoryBind.memory));
-
-	uint32_t mipLevel = pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod;
-	uint32_t width = std::max(pTexture->mWidth >> pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
-	uint32_t height = std::max(pTexture->mHeight >> pTexture->mSparseImageMemoryRequirements.imageMipTailFirstLod, 1u);
-	uint32_t depth = 1;
-
-	for (uint32_t i = pTexture->mMipTailStart; i < pTexture->mMipLevels; i++) {
-
-		const uint32_t width = std::max(pTexture->mWidth >> i, 1u);
-		const uint32_t height = std::max(pTexture->mHeight >> i, 1u);
-
-		LLOG_DBG << "Mip Tail level " << std::to_string(i) << " buffer width height is: " << std::to_string(width) << " " << std::to_string(height);
-
-		// Generate some random image data and upload as a buffer
-		const size_t bufferSize = 4 * width * height;
-
-		VKBufferHandleRAII imageBuffer;
-
-		SLANG_RETURN_ON_FAIL(imageBuffer.init(
-			m_api,
-			bufferSize,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-
-		uint8_t* dstData;
-		m_api.vkMapMemory(m_device, imageBuffer.m_memory, 0, bufferSize, 0, (void**)&dstData);
-
-
-		// Fill buffer with random colors
-		std::random_device rd;
-		std::mt19937 rndEngine(rd());
-		std::uniform_int_distribution<uint32_t> rndDist(0, 255);
-		//uint8_t* data = (uint8_t*)imageBuffer.mapped;
-		randomPattern(dstData, width, height);
-
-		m_api.vkUnmapMemory(m_device, imageBuffer.m_memory);
-
-		VkCommandPool pool = m_deviceQueue.getCommnadPool();
-
-		//VkCommandBuffer commandBuffer = m_deviceQueue.getCommandBuffer();
-		VkCommandBuffer commandBuffer;
-		{
-			VkCommandBufferAllocateInfo cmdBufAllocateInfo {};
-			cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			cmdBufAllocateInfo.commandPool = pool;
-			cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			cmdBufAllocateInfo.commandBufferCount = 1;
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &commandBuffer));
-			
-			VkCommandBufferBeginInfo cmdBufInfo {};
-			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkBeginCommandBuffer(commandBuffer, &cmdBufInfo));
-		}
-		//VkCommandBuffer copyCmd = vulkanDevice->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-		//vks::tools::setImageLayout(copyCmd, texture.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.subRange, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-		
-		_transitionImageLayout(
-			_texture->m_image,
-			_texture->m_vkformat,
-			*texture->getDesc(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-		VkBufferImageCopy region{};
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.layerCount = 1;
-		region.imageSubresource.mipLevel = i;
-		region.imageOffset = { 0, 0, 0};
-		region.imageExtent = { width, height, 1 };
-
-		m_api.vkCmdCopyBufferToImage(commandBuffer, imageBuffer.m_buffer, _texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		//vks::tools::setImageLayout(copyCmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture.subRange, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-		
-		_transitionImageLayout(
-			_texture->m_image,
-			_texture->m_vkformat,
-			*texture->getDesc(),
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		{
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkEndCommandBuffer(commandBuffer));
-		
-			VkSubmitInfo submitInfo {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &commandBuffer;
-			// Create fence to ensure that the command buffer has finished executing
-			VkFenceCreateInfo fenceInfo {};
-			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			fenceInfo.flags = VK_FLAGS_NONE;
-
-			VkFence fence;
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkCreateFence(m_device, &fenceInfo, nullptr, &fence));
-			// Submit to the queue
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkQueueSubmit(m_deviceQueue.getQueue(), 1, &submitInfo, fence));
-			// Wait for the fence to signal that command buffer has finished executing
-			SLANG_VK_RETURN_ON_FAIL(m_api.vkWaitForFences(m_device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-			m_api.vkDestroyFence(m_device, fence, nullptr);
-			
-			m_api.vkFreeCommandBuffers(m_device, pool, 1, &commandBuffer);
-		}
-
-		m_deviceQueue.flushAndWait();
-		//imageBuffer.destroy();
-	}
 
 	return SLANG_OK;
 }
@@ -1997,10 +1814,14 @@ Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, con
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 			// Copy into staging buffer
 			void* mappedData = nullptr;
-			SLANG_VK_CHECK(m_api.vkMapMemory(
-				m_device, buffer->m_uploadBuffer.m_memory, 0, bufferSize, 0, &mappedData));
+
+			//SLANG_VK_CHECK(m_api.vkMapMemory(m_device, buffer->m_uploadBuffer.m_memory, 0, bufferSize, 0, &mappedData));
+			SLANG_VK_CHECK(vmaMapMemory(m_api.mVmaAllocator, buffer->m_uploadBuffer.mAllocation, &mappedData));
+
 			::memcpy(mappedData, initData, bufferSize);
-			m_api.vkUnmapMemory(m_device, buffer->m_uploadBuffer.m_memory);
+
+			//m_api.vkUnmapMemory(m_device, buffer->m_uploadBuffer.m_memory);
+			vmaUnmapMemory(m_api.mVmaAllocator, buffer->m_uploadBuffer.mAllocation);
 
 			// Copy from staging buffer to real buffer
 			VkCommandBuffer commandBuffer = m_deviceQueue.getCommandBuffer();
@@ -2019,10 +1840,14 @@ Result DeviceImpl::createBufferResource(const IBufferResource::Desc& descIn, con
 		{
 			// Copy into mapped buffer directly
 			void* mappedData = nullptr;
-			SLANG_VK_CHECK(m_api.vkMapMemory(
-				m_device, buffer->m_buffer.m_memory, 0, bufferSize, 0, &mappedData));
+
+			//SLANG_VK_CHECK(m_api.vkMapMemory(m_device, buffer->m_buffer.m_memory, 0, bufferSize, 0, &mappedData));
+			SLANG_VK_CHECK(vmaMapMemory(m_api.mVmaAllocator, buffer->m_uploadBuffer.mAllocation, &mappedData));
+
 			::memcpy(mappedData, initData, bufferSize);
-			m_api.vkUnmapMemory(m_device, buffer->m_buffer.m_memory);
+			
+			//m_api.vkUnmapMemory(m_device, buffer->m_buffer.m_memory);
+			vmaUnmapMemory(m_api.mVmaAllocator, buffer->m_uploadBuffer.mAllocation);
 		}
 	}
 

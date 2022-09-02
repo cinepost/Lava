@@ -11,10 +11,10 @@ namespace Falcor {
 
 static const int kDoBloscShuffle = BLOSC_NOSHUFFLE;; //BLOSC_SHUFFLE;
 
-static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>& tmp_compressed_page_data) {
+static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>* tmp_compressed_page_data) {
 	size_t bytes_written = 0;
 	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-		assert(tmp_compressed_page_data.size() >= ((kLtxPageSize + BLOSC_MAX_OVERHEAD)));
+		assert(tmp_compressed_page_data && tmp_compressed_page_data->size() >= ((kLtxPageSize + BLOSC_MAX_OVERHEAD)));
 		// write compressed page date
 		int cbytes = blosc_compress(
 			compressionInfo.compressionLevel, 
@@ -22,12 +22,12 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 			compressionInfo.compressionTypeSize, 
 			kLtxPageSize, 
 			page_data.data(),
-			tmp_compressed_page_data.data(), 
-			tmp_compressed_page_data.size());
+			tmp_compressed_page_data->data(), 
+			tmp_compressed_page_data->size());
 
 		LLOG_DBG << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
 
-		bytes_written = fwrite(tmp_compressed_page_data.data(), sizeof(uint8_t), cbytes, pFile);
+		bytes_written = fwrite(tmp_compressed_page_data->data(), sizeof(uint8_t), cbytes, pFile);
 		compressionInfo.pPageOffsets[pageId] = pageOffset;
 		compressionInfo.pCompressedPageSizes[pageId] = cbytes;
 
@@ -159,7 +159,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 					}
 				}
 
-				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 				currentPageId++;
 			}
 		}
@@ -257,21 +257,49 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 						}
 					}
 
-					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 					currentPageId++;
 				}
 			}
 		}
 	}
 
+	header.pagesCount = pagesCount;
+
 	// Write mip tail pages
+
+	header.tailDataOffset = currentPageOffset;
+
+	size_t tailDataSize = 0;
+	
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
-		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipTailLevel].x;
-		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipTailLevel].y;
-		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipTailLevel].z;
+		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
+		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
+		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
+
+		auto tailLevelByteSize = mipLevelWidth * mipLevelHeight * dstBytesPerPixel; 
+		
+		if (tailLevelByteSize > kLtxPageSize) {
+			LLOG_ERR << "Mip tail level " << std::to_string(mipTailLevel) << " data size is greater than " << std::to_string(kLtxPageSize);
+			continue;
+		}
+
+		tailDataSize += tailLevelByteSize;
+
+		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+		
+		LLOG_DBG << "writing tail page " << std::to_string(currentPageId) << " while " 
+				 << std::to_string(header.pagesCount) << " calculated";
+		
+		currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, nullptr);
+		currentPageId++;
+		header.pagesCount += 1;
 	}
 
-	header.pagesCount = pagesCount;
+	header.tailDataSize = tailDataSize;
+
+	LLOG_DBG << "Tail data size " << std::to_string(tailDataSize);
 
 	return true;
 }
@@ -358,7 +386,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 					pTileData += bufferWidthStride;
 				}
 
-				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 				currentPageId++;
 			}
 		}
@@ -419,7 +447,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 						pTileData += bufferWidthStride;
 					}
 
-					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 					currentPageId++;
 				}
 			}
@@ -581,7 +609,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 					}
 				}
 
-				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+				currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 				currentPageId++;
 			}
 		}
@@ -675,7 +703,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 						}
 					}
 
-					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, compressed_page_data);
+					currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 					currentPageId++;
 				}
 			}

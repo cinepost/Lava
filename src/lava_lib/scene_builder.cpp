@@ -27,6 +27,7 @@
  **************************************************************************/
 #include <array>
 #include <thread>
+#include <cmath>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -40,6 +41,8 @@
 #include "reader_bgeo/bgeo/parser/Detail.h"
 
 namespace lava {    
+
+#define FIX_BGEO_UV
 
 SceneBuilder::SceneBuilder(Falcor::Device::SharedPtr pDevice, Flags buildFlags): Falcor::SceneBuilder(pDevice, buildFlags), mUniqueTrianglesCount(0) {
     mpDefaultMaterial = StandardMaterial::create(pDevice, "default");
@@ -152,7 +155,15 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
             assert(vUV.size()/2 == bgeo_vertex_count && "Vertex texture coordinates count not equal to the number of bgeo verices count !!!");
             // use vertex normals
             for( size_t i = 0; i < bgeo_vertex_count; i++){
-                uv_coords[i] = {vUV[ii], 1.0 - vUV[ii+1]};
+                uv_coords[i] = {
+                    vUV[ii], 
+                    vUV[ii+1]
+                };
+#if defined(FIX_BGEO_UV)
+                //float int_pt;
+                //float f_pt = modff( uv_coords[i][1], &int_pt );
+                //uv_coords[i][1] = (1.0f - f_pt) + int_pt;
+#endif  // FIX_BGEO_UV
                 ii += 2;
             }
         } else if (UV.size() && unique_points) {
@@ -161,7 +172,15 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
 
             for( ika::bgeo::parser::int64 i = 0; i < vt_map.getVertexCount(); i++){
                 point_idx = vt_idx_ptr[i]*2;
-                uv_coords[i] = {UV[point_idx], 1.0 - UV[point_idx+1]};
+                uv_coords[i] = {
+                    UV[point_idx], 
+                    UV[point_idx+1]
+                };
+#if defined(FIX_BGEO_UV)
+                //float int_pt;
+                //float f_pt = modff( uv_coords[i][1], &int_pt );
+                //uv_coords[i][1] = (1.0f - f_pt) + int_pt;
+#endif  // FIX_BGEO_UV
             }
         } else {
             // no coords provided from bgeo. fill with zeroes as this field is required
@@ -384,18 +403,27 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     return Falcor::SceneBuilder::addMesh(mesh);
 }
 
-std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const std::string& name) {
-    assert(pBgeo);
+std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::SharedConstPtr pGeo, const std::string& name) {
+    assert(pGeo);
 
-    std::packaged_task<uint32_t(ika::bgeo::Bgeo::SharedConstPtr, const std::string&)> task([this](ika::bgeo::Bgeo::SharedConstPtr p, const std::string& n) {
-        return this->addGeometry(p, n); 
-    });
+    // Pass the task to thread pool to run asynchronously
+    ThreadPool& pool = ThreadPool::instance();
+    mAddGeoTasks.push_back(pool.submit([this, pGeo, &name]
+    {
+        ika::bgeo::Bgeo::SharedPtr pBgeo = ika::bgeo::Bgeo::create();
 
-    std::shared_future<uint32_t> result = task.get_future().share();
+        std::string fullpath = pGeo->detailFilePath().string();
+        pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
-    // Pass the packaged_task to thread to run asynchronously
-    std::thread(std::move(task), pBgeo, name).detach();
-    return result;
+        if(pGeo->isTemporary()) {
+            fs::remove(fullpath);
+        }
+
+        pBgeo->preCachePrimitives();
+        return this->addGeometry(pBgeo, name);
+    }));
+
+    return mAddGeoTasks.back();
 }
 
 void SceneBuilder::finalize() {

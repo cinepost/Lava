@@ -363,12 +363,12 @@ Result DebugDevice::createTextureResource(
 	return result;
 }
 
-void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
-	baseObject->releaseTailMemory(pTexture);
+Result DebugDevice::allocateTailMemory(Falcor::Texture* pTexture, bool force) {
+	baseObject->allocateTailMemory(pTexture, force);
 }
 
-Result DebugDevice::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) { 
-	baseObject->fillMipTail(texture, pTexture);
+void DebugDevice::releaseTailMemory(Falcor::Texture* pTexture) {
+	baseObject->releaseTailMemory(pTexture);
 }
 
 void DebugDevice::updateSparseBindInfo(Falcor::Texture* pTexture) {
@@ -1404,12 +1404,6 @@ void DebugResourceCommandEncoderImpl::uploadTexturePageData(
 	SLANG_GFX_API_FUNC;
 	getBaseResourceEncoder()->uploadTexturePageData(
 		getInnerObj(dst), offset, extent, mipLevel, subResourceData);	
-}
-
-Result DebugResourceCommandEncoderImpl::fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture) {
-	SLANG_GFX_API_FUNC;
-	getBaseResourceEncoder()->fillMipTail(
-		getInnerObj(texture), pTexture);	
 }
 
 void DebugResourceCommandEncoderImpl::clearResourceView(

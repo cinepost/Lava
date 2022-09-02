@@ -163,8 +163,9 @@ std::shared_ptr<Material> Global::addMaterial() {
 /* Geo */
 
 ika::bgeo::Bgeo::SharedPtr Geo::bgeo() { 
-	if(!mpBgeo)
+	if(!mpBgeo) {
 		mpBgeo = ika::bgeo::Bgeo::create();
+	}
 
 	return mpBgeo;
 }
@@ -174,11 +175,24 @@ Geo::SharedPtr Geo::create(ScopeBase::SharedPtr pParent) {
 	return std::move(pSegment);
 }
 
-void Geo::setDetailFilename(const std::string& filename) {
-	mFileName = filename;
-	if (filename == "stdin") {
+void Geo::setDetailFilePath(const fs::path& path) {
+	mFilePath = path;
+	if (path.string() == "stdin") {
 		mIsInline = true;
 	}
+}
+
+void Geo::setTemporary(bool t) {
+	if (mIsInline) {
+		mIsTemporary = false;
+		return;
+	} else {
+		mIsTemporary = t;
+	}
+}
+
+void Geo::cleanUpGeometry() {
+	if (mpBgeo) mpBgeo.reset();
 }
 
 /* Object */

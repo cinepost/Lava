@@ -51,6 +51,7 @@ class VirtualTexturePage;
 class dlldecl TextureManager {
 public:
 	using SharedPtr = std::shared_ptr<TextureManager>;
+	using TileList = std::vector<std::pair<fs::path, Falcor::uint2>>;
 
 	~TextureManager();
 
@@ -121,7 +122,7 @@ public:
 		\param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
 		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
 	*/
-	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, std::string udim_mask = "<UDIM>", bool loadAsSparse = false);
+	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, const std::string& udimMask = "<UDIM>", bool loadAsSparse = false);
 
 	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
 
@@ -235,6 +236,8 @@ private:
 	size_t mUDIMTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
+
+	Texture::SharedPtr mNullTexture;
 
 	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;
 	std::vector<std::shared_ptr<VirtualTexturePage>>  mSparseDataPages;

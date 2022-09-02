@@ -268,6 +268,7 @@ void* Buffer::map(MapType type) {
 		invalidateViews();
 		return mDynamicData.pData;
 	} else {
+		// MapType::Read
 		assert(type == MapType::Read);
 
 		if (mCpuAccess == CpuAccess::Write) {

@@ -62,8 +62,6 @@ void vsMain(float4 posL : POSITION, out float3 dir : NORMAL, out float4 posH : S
 
 [shader("fragment")]
 float4 psMain(float3 dir : NORMAL) : SV_TARGET {
-    //return float4(0,0,0,0); // TODO: remove!!!
-
     float3 intensity = gIntensity * gOpacity;
 
 #ifdef _SKYBOX_SOLID_MODE
@@ -71,9 +69,9 @@ float4 psMain(float3 dir : NORMAL) : SV_TARGET {
 #else
     #ifdef _SPHERICAL_MAP
         float2 uv = world_to_latlong_map(dir);
-        return gTexture.Sample(gSampler, uv) * float4(intensity, gOpacity);
+        return gTexture.Sample(gSampler, uv) * float4(intensity,gOpacity);
     #else
-        return gTexture.SampleLevel(gSampler, normalize(dir), 0) * float4(intensity, gOpacity);
+        return gTexture.SampleLevel(gSampler, normalize(dir), 0.0f) * float4(intensity, gOpacity);
     #endif
 #endif
 }

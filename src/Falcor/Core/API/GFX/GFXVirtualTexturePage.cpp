@@ -43,7 +43,7 @@ size_t VirtualTexturePage::usedMemSize() const {
 // Allocate Vulkan memory for the virtual page
 void VirtualTexturePage::allocate() {
 	if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
-		LLOG_ERR << "VirtualTexturePage already allocated !!!";
+		LLOG_WRN << "VirtualTexturePage already allocated !!!";
 		return;
 	}
 
@@ -53,10 +53,6 @@ void VirtualTexturePage::allocate() {
 	memAllocInfo.allocationSize = mDevMemSize;
 	memAllocInfo.memoryTypeIndex = mpTexture->memoryTypeIndex();
 	
-	//if (VK_FAILED(vkAllocateMemory(mpDevice->getApiHandle(), &memAllocInfo, nullptr, &mImageMemoryBind.memory))) {
-	//    throw std::runtime_error("Error allocating memory for virtual texture page !!!");
-	//}
-
 	VkMemoryRequirements memRequirements = {};
 	memRequirements.size = mDevMemSize;
 	memRequirements.alignment = mDevMemSize;

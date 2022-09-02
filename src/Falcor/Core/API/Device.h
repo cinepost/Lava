@@ -62,8 +62,8 @@ struct DeviceApiData;
 
 class Fbo;
 class Sampler;
-class TextureManager;
 class RenderContext;
+class TextureManager;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
  public:

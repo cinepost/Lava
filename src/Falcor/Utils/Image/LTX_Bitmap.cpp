@@ -474,7 +474,7 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 	}
 
 	if( header.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
-		// write updated compressed blocks table balesues. these valuse are going to rewriten after all pages compressed and written to disk
+		// write updated compressed blocks table balesues. these valuse are going to be rewriten after all pages compressed and written to disk
 		fseek(pFile, kLtxHeaderOffset, SEEK_SET);
 		fwrite(pageOffsets.data(), sizeof(uint32_t), header.pagesCount, pFile);
 		fwrite(compressedPageSizes.data(), sizeof(uint16_t), header.pagesCount, pFile);

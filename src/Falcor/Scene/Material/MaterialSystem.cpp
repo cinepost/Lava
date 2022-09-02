@@ -72,9 +72,13 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	Sampler::Desc desc;
 	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
 	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+	//desc.setBorderColor({0.0f, 1.0f, 0.0f, 1.0f});
 	desc.setMaxAnisotropy(16);
 	desc.setLodParams(0.0f, 1000.0f, 0.0f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
+
+	desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+	mpUDIMTileSampler = Sampler::create(mpDevice, desc);
 }
 
 void MaterialSystem::finalize() {
@@ -84,15 +88,15 @@ void MaterialSystem::finalize() {
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 
-	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + mpDevice->textureManager()->getUDIMTextureTilesCount();
+	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + textureManager()->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
-	mUDIMTextureCount = mpDevice->textureManager()->getUDIMTexturesCount();
+	mUDIMTextureCount = textureManager()->getUDIMTexturesCount();
 
 	LLOG_DBG << "MaterialSystem::finalize-------------";
 
 	LLOG_DBG << "MaterialSystem: materials count " << std::to_string(getMaterialCount());
 	LLOG_DBG << "MaterialSystem: udim texture count " << std::to_string(mUDIMTextureCount);
-	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(mpDevice->textureManager()->getUDIMTextureTilesCount());
+	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(textureManager()->getUDIMTextureTilesCount());
 	LLOG_DBG << "MaterialSystem: mTextureDescCount: ", std::to_string(mTextureDescCount);
 }
 
@@ -223,11 +227,11 @@ size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {
 }
 
 bool MaterialSystem::hasUDIMTextures() const {
-	return mpDevice->textureManager()->hasUDIMTextures(); // TODO: Calculate udim textures for this system only
+	return textureManager()->hasUDIMTextures(); // TODO: Calculate udim textures for this system only
 }
 
 bool MaterialSystem::hasSparseTextures() const {
-	return mpDevice->textureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
+	return textureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
 }
 
 void MaterialSystem::optimizeMaterials() {
@@ -298,8 +302,6 @@ void MaterialSystem::optimizeMaterials() {
 Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 	Material::UpdateFlags flags = Material::UpdateFlags::None;
 
-	auto pTextureManager = mpDevice->textureManager();
-
 	// Update metadata if materials changed.
 	if (mMaterialsChanged) {
 		std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
@@ -343,9 +345,9 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
-		pTextureManager->finalize();
-		pTextureManager->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
-		pTextureManager->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
+		textureManager()->finalize();
+		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 
 	// Update buffers.
@@ -465,6 +467,9 @@ void MaterialSystem::createParameterBlock() {
 	// Bind resources to parameter block.
 	mpMaterialsBlock[kMaterialDataName] = !mMaterials.empty() ? mpMaterialDataBuffer : nullptr;
 	mpMaterialsBlock["materialCount"] = getMaterialCount();
+
+	// Samplers
+	mpMaterialsBlock["udimTileSampler"] = mpUDIMTileSampler;
 }
 
 void MaterialSystem::uploadMaterial(const uint32_t materialID) {

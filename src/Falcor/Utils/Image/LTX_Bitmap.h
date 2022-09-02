@@ -34,6 +34,8 @@ struct LTX_Header {
     uint32_t        arrayLayersCount = 0;
     uint8_t         mipLevelsCount = 0;
     uint8_t         mipTailStart = 0;
+    uint32_t        tailDataOffset = 0;
+    uint32_t        tailDataSize = 0;
     uint32_t        mipBases[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // starting tile id at each mip level
 
     ResourceFormat  format;
@@ -118,6 +120,8 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     /** Get resident data size in bytes
     */
     size_t getResidentDataSize() const;
+
+    inline const LTX_Header& header() const { return mHeader; }
 
     /** Get a pointer to the bitmap's data store
     */

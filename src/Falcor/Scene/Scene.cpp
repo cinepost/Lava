@@ -2507,6 +2507,7 @@ void Scene::buildBlas(RenderContext* pContext) {
                         }
                     }
                     assert(byteSize <= blas.prebuildInfo.resultDataMaxSize);
+                    
                     if (byteSize == 0) throw std::runtime_error("Acceleration structure build failed for BLAS index " + std::to_string(blasId));
 
                     blas.blasByteSize = align_to(kAccelerationStructureByteAlignment, byteSize);
