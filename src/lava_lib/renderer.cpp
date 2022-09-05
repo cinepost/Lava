@@ -255,7 +255,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
-    mpSkyBoxPass->setOpacity(0.0f);
+    mpSkyBoxPass->setOpacity(1.0f);
 
     mpSkyBoxPass->setScene(pRenderContext, pScene);
     mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
@@ -270,6 +270,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
     
     mpRenderGraph->addEdge("LightingPass.color", pMainAOV->accumulationPassInputName());
+    //mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
 
     // Compile graph
     std::string log;

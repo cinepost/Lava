@@ -116,24 +116,29 @@ class Geo: public ScopeBase {
 
     inline ast::Style type() const override { return ast::Style::GEO; };
 
-    void setDetailFilename(const std::string& filename);
+    void setDetailFilePath(const fs::path& path);
     inline void setDetailName(const std::string& name) { mName = name; };
 
-    inline const std::string& detailFilename() { return mFileName; };
+    inline const fs::path& detailFilePath() const { return mFilePath; };
     inline const std::string& detailName() { return mName; };
     inline bool isInline() { return mIsInline; };
 
+    void setTemporary(bool t);
+    inline bool isTemporary() const { return (!mIsInline && mIsTemporary);}
+
+    void cleanUpGeometry();
+
     ika::bgeo::Bgeo::SharedPtr bgeo();
-    ika::bgeo::Bgeo::SharedConstPtr bgeo() const { return mpBgeo; }
 
  private:
-    Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent), mFileName(""), mIsInline(false) {};
+    Geo(ScopeBase::SharedPtr pParent): ScopeBase(pParent), mFilePath(""), mIsInline(false) {};
 
  private:
     std::string     mName = "";
-    std::string     mFileName = "";
+    fs::path        mFilePath = "";
     ika::bgeo::Bgeo::SharedPtr mpBgeo = nullptr; // lazy initialized bgeo
     bool            mIsInline = false;
+    bool            mIsTemporary = false;
 };
 
 

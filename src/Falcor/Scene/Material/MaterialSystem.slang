@@ -48,6 +48,7 @@ struct MaterialSystem
     uint materialCount;                                                         ///< Total number of materials.
     StructuredBuffer<MaterialDataBlob> materialData;                            ///< Material parameters. The format of the data blob depends on the material type.
     SamplerState materialSamplers[MATERIAL_SYSTEM_SAMPLER_DESC_COUNT];          ///< Sampler states for all materials. TODO: Make this an unbounded array (see #1321).
+    SamplerState udimTileSampler;                                               ///< Sampler used to sample UDIM tile textures;
 
 #if MATERIAL_SYSTEM_TEXTURE_DESC_COUNT > 0
     Texture2D<float4> materialTextures[MATERIAL_SYSTEM_TEXTURE_DESC_COUNT];     ///< Texture resources for all materials. TODO: Make this an unbounded array (see #1321).
@@ -243,13 +244,12 @@ struct MaterialSystem
         
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
-                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
+                return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
-                float2 udim_uv = float2(uv.x - floor(uv.x), uv.y - floor(uv.y));
+                float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
                 uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                //return float4(floor(uv.x) * 0.1, floor(uv.y) * 0.1, 0, 1);
                 return lod.sampleTexture(materialTextures[tileID], s, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);

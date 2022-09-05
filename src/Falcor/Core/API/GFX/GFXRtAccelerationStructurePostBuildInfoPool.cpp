@@ -30,7 +30,7 @@
 #include "GFXRtAccelerationStructure.h"
 
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
-
+#include "lava_utils_lib/logging.h"
 
 namespace Falcor {
 

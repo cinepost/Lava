@@ -379,6 +379,7 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
 
     // Pretransform the texture coordinates, rather than transforming them at runtime.
     std::vector<float2> transformedTexCoords;
+
     if (mesh.texCrds.pData != nullptr) {
         const glm::mat4 xform = mesh.pMaterial->getTextureTransform().getMatrix();
         if (xform != glm::identity<glm::mat4>())
@@ -415,21 +416,17 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     std::vector<std::pair<Mesh::Vertex, uint32_t>> vertices;
     std::vector<uint32_t> indices(mesh.indexCount);
 
-    if (pAttributeIndices)
-    {
+    if (pAttributeIndices) {
         pAttributeIndices->reserve(mesh.vertexCount);
     }
 
-    if (mesh.mergeDuplicateVertices)
-    {
+    if (mesh.mergeDuplicateVertices) {
         vertices.reserve(mesh.vertexCount);
 
         std::vector<uint32_t> heads(mesh.vertexCount, invalidIndex);
 
-        for (uint32_t face = 0; face < mesh.faceCount; face++)
-        {
-            for (uint32_t vert = 0; vert < 3; vert++)
-            {
+        for (uint32_t face = 0; face < mesh.faceCount; face++) {
+            for (uint32_t vert = 0; vert < 3; vert++) {
                 const Mesh::Vertex v = mesh.getVertex(face, vert);
                 const uint32_t origIndex = mesh.pIndices[face * 3 + vert];
 
@@ -438,10 +435,8 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
                 uint32_t index = heads[origIndex];
                 bool found = false;
 
-                while (index != invalidIndex)
-                {
-                    if (compareVertices(v, vertices[index].first))
-                    {
+                while (index != invalidIndex) {
+                    if (compareVertices(v, vertices[index].first)) {
                         found = true;
                         break;
                     }
@@ -449,14 +444,12 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
                 }
 
                 // Insert new vertex if we couldn't find it.
-                if (!found)
-                {
+                if (!found) {
                     assert(vertices.size() < std::numeric_limits<uint32_t>::max());
                     index = (uint32_t)vertices.size();
                     vertices.push_back({ v, heads[origIndex] });
 
-                    if (pAttributeIndices)
-                    {
+                    if (pAttributeIndices) {
                         pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
                         assert(vertices.size() == pAttributeIndices->size());
                     }
@@ -473,25 +466,21 @@ SceneBuilder::ProcessedMesh SceneBuilder::processMesh(const Mesh& mesh_, MeshAtt
     {
         vertices = { mesh.vertexCount, std::make_pair(Mesh::Vertex{}, invalidIndex) };
 
-        for (uint32_t face = 0; face < mesh.faceCount; face++)
-        {
-            for (uint32_t vert = 0; vert < 3; vert++)
-            {
+        for (uint32_t face = 0; face < mesh.faceCount; face++) {
+            for (uint32_t vert = 0; vert < 3; vert++) {
                 const Mesh::Vertex v = mesh.getVertex(face, vert);
                 const uint32_t index = mesh.getAttributeIndex(mesh.positions, face, vert);
 
                 assert(index < vertices.size());
                 vertices[index].first = v;
 
-                if (pAttributeIndices)
-                {
+                if (pAttributeIndices) {
                     pAttributeIndices->push_back(mesh.getAttributeIndices(face, vert));
                 }
             }
         }
 
-        if (pAttributeIndices)
-        {
+        if (pAttributeIndices) {
             assert(vertices.size() == pAttributeIndices->size());
         }
 
@@ -573,6 +562,8 @@ uint32_t SceneBuilder::addProcessedMesh(const ProcessedMesh& mesh) {
     const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
     MeshSpec spec;
+
+    spec.isAnimated = true; // ?? TODO: for interactive scene we have to make them non static (animated). This is default for now
 
     // Add the mesh to the scene.
     spec.name = mesh.name;
@@ -1934,6 +1925,8 @@ SceneBuilder::MeshGroupList SceneBuilder::splitMeshGroupMidpointMeshes(MeshGroup
 }
 
 void SceneBuilder::optimizeGeometry() {
+    return;
+
     // This function optimizes the geometry for raytracing performance and memory usage.
     //
     // There is a max triangles per group limit to reduce the worst-case memory requirements for BLAS builds.
@@ -2170,7 +2163,6 @@ void SceneBuilder::collectVolumeGrids() {
 }
 
 void SceneBuilder::quantizeTexCoords() {
-    return;
     // Match texture coordinate quantization for textured emissives to format of PackedEmissiveTriangle.
     // This is to avoid mismatch when sampling and evaluating emissive triangles.
     // Note that non-emissive meshes are unmodified and use full precision texcoords.

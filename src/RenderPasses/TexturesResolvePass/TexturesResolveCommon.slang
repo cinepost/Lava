@@ -130,9 +130,9 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
     int _mipLevel = max(0, mipLevel);
 
     // all mip levels greater or equal to mipTailStart stored in last page block
-    if( _mipLevel >= vtexData.mipTailStart) {
-        _mipLevel = vtexData.mipTailStart - 1; // TODO: safety measure. Remove when mip tails work
-    }
+    //if( _mipLevel >= vtexData.mipTailStart) {
+    //    _mipLevel = vtexData.mipTailStart - 1; // TODO: safety measure. Remove when mip tails work
+    //}
 
     float currentMipTextureWidth = vtexData.width / pow(2, _mipLevel);
     float currentMipTextureHeight = vtexData.height / pow(2, _mipLevel);

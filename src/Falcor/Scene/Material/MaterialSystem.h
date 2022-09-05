@@ -25,7 +25,9 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_ 
+#define SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_
+
 #include "Material.h"
 
 #include "Falcor/Core/Framework.h"
@@ -104,7 +106,7 @@ class dlldecl MaterialSystem {
 		/** Get the parameter block with all material resources.
 			The update() function must have been called before calling this function.
 		*/
-		const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
+		inline const ParameterBlock::SharedPtr& getParameterBlock() const { return mpMaterialsBlock; }
 
 		/** Set a default texture sampler to use for all materials.
 		*/
@@ -123,7 +125,7 @@ class dlldecl MaterialSystem {
 
 		/** Get a texture sampler by ID.
 		*/
-		const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
+		inline const Sampler::SharedPtr& getTextureSampler(const uint32_t samplerID) const { return mTextureSamplers[samplerID]; }
 
 		/** Add a buffer resource to be managed.
 			\param[in] pBuffer The buffer.
@@ -144,7 +146,7 @@ class dlldecl MaterialSystem {
 
 		/** Get a list of all materials.
 		*/
-		const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
+		inline const std::vector<Material::SharedPtr>& getMaterials() const { return mMaterials; }
 
 		/** Get the total number of materials.
 		*/
@@ -156,7 +158,7 @@ class dlldecl MaterialSystem {
 
 		/** Get the set of all material types used.
 		*/
-		std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
+		inline std::set<MaterialType> getMaterialTypes() const { return mMaterialTypes; }
 
 		/** Get a material by ID.
 		*/
@@ -184,8 +186,7 @@ class dlldecl MaterialSystem {
 
 		/** Get texture manager. This holds all textures.
 		*/
-		const TextureManager::SharedPtr& textureManager() { return mpDevice->textureManager(); }
-		const TextureManager::SharedPtr& getTextureManager() { return mpDevice->textureManager(); }
+		inline const TextureManager::SharedPtr& textureManager() const { return mpDevice->textureManager(); }
 
 		bool hasUDIMTextures() const;
 		bool hasSparseTextures() const;
@@ -216,7 +217,10 @@ class dlldecl MaterialSystem {
 		GpuFence::SharedPtr mpFence;
 		ParameterBlock::SharedPtr mpMaterialsBlock;                 ///< Parameter block for binding all material resources.
 		Buffer::SharedPtr mpMaterialDataBuffer;                     ///< GPU buffer holding all material data.
+		
 		Sampler::SharedPtr mpDefaultTextureSampler;                 ///< Default texture sampler to use for all materials.
+		Sampler::SharedPtr mpUDIMTileSampler;                       ///< Texture sampler used to sample individual UDIM texture tiles.
+
 		std::vector<Sampler::SharedPtr> mTextureSamplers;           ///< Texture sampler states. These are indexed by ID in the materials.
 		std::vector<Buffer::SharedPtr> mBuffers;                    ///< Buffers used by the materials. These are indexed by ID in the materials.
 
@@ -229,3 +233,5 @@ class dlldecl MaterialSystem {
 };
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_MATERIAL_MATERIALSYSTEM_H_

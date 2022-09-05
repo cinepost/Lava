@@ -85,7 +85,8 @@ class Session {
     void cmdQuit();
 
     void pushLight(const scope::Light::SharedPtr pLight);
-    void pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async = false);
+    void pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo);
+    void pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo);
 
   private:
  	  Session(std::shared_ptr<Renderer> pRenderer);

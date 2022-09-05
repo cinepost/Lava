@@ -55,7 +55,7 @@ void CopyContext::flush(bool wait) {
     }
 
     bindDescriptorHeaps();
-
+    
     if (wait) {
         mpLowLevelData->getFence()->syncCpu();
     }

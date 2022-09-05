@@ -63,9 +63,8 @@ public:
         ITextureResource** outResource) override;
 
     virtual SLANG_NO_THROW void SLANG_MCALL updateSparseBindInfo(Falcor::Texture* pTexture) override;
-    
-    virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(
-        ITextureResource* texture, Falcor::Texture* pTexture) override;
+
+    virtual SLANG_NO_THROW Result SLANG_MCALL allocateTailMemory(Falcor::Texture* pTexture, bool force = false) override;
 
     virtual SLANG_NO_THROW void SLANG_MCALL releaseTailMemory(Falcor::Texture* pTexture) override;
 
@@ -418,9 +417,7 @@ public:
         ITextureResource::Extents extent,
         uint32_t mipLevel,
         ITextureResource::SubresourceData* subResourceData);
-    
-    virtual SLANG_NO_THROW Result SLANG_MCALL fillMipTail(ITextureResource* texture, Falcor::Texture* pTexture);
-    
+        
     virtual SLANG_NO_THROW void SLANG_MCALL clearResourceView(
         IResourceView* view, ClearValue* clearValue, ClearResourceViewFlags::Enum flags);
     

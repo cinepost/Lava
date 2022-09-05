@@ -112,7 +112,7 @@ bool Device::init() {
     createNullViews();
 
     size_t maxTextureCount = 1024 * 10;
-    size_t threadCount = std::thread::hardware_concurrency();
+    size_t threadCount = std::max(1u, std::thread::hardware_concurrency());
     mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
     assert(mpTextureManager);
 

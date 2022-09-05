@@ -43,6 +43,7 @@
 namespace gfx {
 	namespace vk {
 		class DeviceImpl;
+		class ResourceCommandEncoder;
 	}
 }
 #endif
@@ -420,6 +421,7 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 		friend class VirtualTexturePage;
 #if defined(FALCOR_GFX_VK)
 		friend class gfx::vk::DeviceImpl;
+		friend class gfx::vk::ResourceCommandEncoder;
 #endif
 
 };

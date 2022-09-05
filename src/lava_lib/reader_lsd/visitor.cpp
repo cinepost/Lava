@@ -159,23 +159,27 @@ void Visitor::operator()(ast::cmd_time const& c) const {
 
 void Visitor::operator()(ast::cmd_detail const& c) {
     auto pGeo = mpSession->getCurrentGeo();
-    pGeo->setDetailFilename(c.filename);
-    pGeo->setDetailName(c.name);
-    
+
     if(!pGeo) {
         LLOG_ERR << "Unable to process cmd_detail out of Geo scope !!!";
         throw std::runtime_error("Unable to process cmd_detail out of Geo scope !!!");
     }
 
-    ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
+    pGeo->setDetailFilePath(mpSession->getExpandedString(c.filename));
+    pGeo->setDetailName(c.name);
+    pGeo->setTemporary(c.temporary);
+
     if(c.filename == "stdin") {
+        ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
         bool result = readInlineBGEO(mpParserStream, pBgeo);
         if (!result) {
             LLOG_ERR << "Error reading inline bgeo !!!";
             return;
         }
         pBgeo->preCachePrimitives();
-    } else {
+    }
+    /*
+     else {
         auto fullpath = mpSession->getExpandedString(c.filename);
         pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
@@ -185,6 +189,7 @@ void Visitor::operator()(ast::cmd_detail const& c) {
 
         pBgeo->preCachePrimitives();
     }
+    */
 }
 
 void Visitor::operator()(ast::cmd_version const& c) const {

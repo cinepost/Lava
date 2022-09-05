@@ -123,17 +123,18 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         VirtualTextureData vtexData = virtualTextureDataBuffer[vtexDataID];
 
         switch (vtexData.textureHandle.getMode()) {
-            case TextureHandle::Mode::Texture:
-                break;
             case TextureHandle::Mode::UDIM_Texture:
-                float2 udim_idx = float2(floor(uv.x), floor(uv.y));
-                uv = float2(uv.x - udim_idx.x, uv.y - udim_idx.y);
-                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + (uint)udim_idx.x + (uint)udim_idx.y * 10];
+                uint2 udim_idx = uint2((uint)floor(uv.x), (uint)floor(uv.y));
+                uv = float2(uv.x - (float)udim_idx.x, 1.0 - (uv.y - (float)udim_idx.y));
+                uint tileID =  gScene.materials.udimTextureTilesTable[vtexData.textureHandle.udimID * 100 + udim_idx.x + udim_idx.y * 10];
                 vtexDataID = textureIdToVtexDataIdBuffer[tileID];
                 vtexData = virtualTextureDataBuffer[vtexDataID];
                 break;
-            case TextureHandle::Mode::Uniform:
-                discard;
+            case TextureHandle::Mode::Texture:
+                uv = float2(uv.x , 1.0 - uv.y);
+                break;
+            default:
+                continue;
         }
 
         if (!vtexData.empty) {
@@ -148,14 +149,9 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_hi = hiMipLevel / 255.0f;
             debug_mip_level_f  += mips.z;
 
-            int loMipLevelTileID = calculateTileID2D(uv, loMipLevel, vtexData);
-            int hiMipLevelTileID = calculateTileID2D(uv, hiMipLevel, vtexData);
-
-            writeTileID(loMipLevelTileID);
-            writeTileID(hiMipLevelTileID);
-
-            debugTileID = loMipLevelTileID;
-
+            writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
+            writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
+            
             //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
         }
     }

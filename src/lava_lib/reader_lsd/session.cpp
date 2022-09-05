@@ -214,7 +214,7 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	// First put whole tiles
 	for( int x = 0; x < hdiv.quot; x++) {
 		for( int y = 0; y < vdiv.quot; y++) {
-			Int2 offset = {tileSize[0] * x, tileSize[1] * y};
+			Falcor::uint2 offset = {tileSize[0] * x, tileSize[1] * y};
 			Falcor::uint4 tileRegion = {
 				frameInfo.renderRegion[0] + offset[0],
 				frameInfo.renderRegion[1] + offset[1],
@@ -237,7 +237,7 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	// bottom row tiles
 	if( vdiv.rem > 0) {
 		for ( int x = 0; x < hdiv.quot; x++) {
-			Int2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
+			Falcor::uint2 offset = {tileSize[0] * x, tileSize[1] * vdiv.quot};
 			Falcor::uint4 tileRegion = {
 				frameInfo.renderRegion[0] + offset[0],
 				frameInfo.renderRegion[1] + offset[1],
@@ -259,7 +259,7 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	// right row tiles
 	if( hdiv.rem > 0) {
 		for ( int y = 0; y < vdiv.quot; y++) {
-			Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
+			Falcor::uint2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * y};
 			Falcor::uint4 tileRegion = {
 				frameInfo.renderRegion[0] + offset[0],
 				frameInfo.renderRegion[1] + offset[1],
@@ -280,7 +280,7 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 
 	// last corner tile
 	if ((hdiv.rem >= 1) && (vdiv.rem >=1)) {
-		Int2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * vdiv.quot};
+		Falcor::uint2 offset = {tileSize[0] * hdiv.quot, tileSize[1] * vdiv.quot};
 		Falcor::uint4 tileRegion = {
 			frameInfo.renderRegion[0] + offset[0],
 			frameInfo.renderRegion[1] + offset[1],
@@ -422,7 +422,7 @@ bool Session::cmdRaytrace() {
 	uint32_t outputChannelsCount = 0;
 	std::vector<uint8_t> textureData;
 
-    // Frame rendeing
+    // Frame rendering
 
 	setUpCamera(mpRenderer->currentCamera());
     for(const auto& tile: tiles) {
@@ -477,7 +477,7 @@ bool Session::cmdRaytrace() {
 	return true;
 }
 
-void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async) {
+void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
 	LLOG_DBG << "pushBgeo";
 
 #ifdef _DEBUG
@@ -485,17 +485,33 @@ void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr 
 #endif
 
     auto pSceneBuilder = mpRenderer->sceneBuilder();
-    if(pSceneBuilder) {
-    	if (async) {
-    		// async mesh add 
-    		mMeshMap[name] = pSceneBuilder->addGeometryAsync(pBgeo, name);
-    	} else {
-    		// immediate mesh add
-    		mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
-    	}
-    } else {
-    	LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+    if(!pSceneBuilder) {
+		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+		return;
     }
+
+   	// immediate mesh add
+   	ika::bgeo::Bgeo::SharedPtr pBgeo = pGeo->bgeo();
+   	std::string fullpath = pGeo->detailFilePath().string();
+    pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+
+   	if(!pBgeo) {
+   		LLOG_ERR << "Can't load geometry (bgeo) !!!";
+   		return;
+   	}
+
+   	mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
+}
+
+void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
+	if(!pSceneBuilder) {
+		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
+		return;
+	}
+
+	// async mesh add 
+   	mMeshMap[name] = pSceneBuilder->addGeometryAsync(pGeo, name);
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
@@ -586,11 +602,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		auto pDevice = pSceneBuilder->device();
 		//LightProbe::SharedPtr pLightProbe;
 		
-		if (texture_file_name.size() == 0) {
-			// solid color lightprobe
-			//pLightProbe = LightProbe::create(pDevice->getRenderContext());
-		} else {
-    		bool loadAsSrgb = false;
+		if (texture_file_name.size() > 0) {
+			bool loadAsSrgb = false;
     		
     		auto pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
     		EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
@@ -847,10 +860,10 @@ bool Session::cmdEnd() {
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
-			if( pGeo->isInline()) {
-				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
+			if( pGeo->isInline() || !pushGeoAsync) {
+				pushBgeo(pGeo->detailName(), pGeo);
 			} else {
-				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
+				pushBgeoAsync(pGeo->detailName(), pGeo);
 			}
 			break;
 		case ast::Style::OBJECT:
@@ -984,15 +997,16 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
-	auto it = mMeshMap.find(pObj->geometryName());
-	if(it == mMeshMap.end()) {
-		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
-		return false;
-	}
-
+	
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if (!pSceneBuilder) {
 		LLOG_ERR << "Unable to push geometry instance. SceneBuilder not ready !!!";
+		return false;
+	}
+
+	auto it = mMeshMap.find(pObj->geometryName());
+	if(it == mMeshMap.end()) {
+		LLOG_ERR << "No geometry found for name " << pObj->geometryName();
 		return false;
 	}
 
@@ -1001,25 +1015,25 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
 
 	try {
-		LLOG_DBG << "getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
 		mesh_id = std::get<uint32_t>(it->second);	
+		LLOG_DBG << "Getting sync mesh_id for obj name instance: "  << obj_name << " geo name: " << pObj->geometryName();
 	} catch (const std::bad_variant_access&) {
-		LLOG_DBG << "getting async mesh_id for obj_name " << obj_name;
-
-		std::shared_future<uint32_t>& f = std::get<std::shared_future<uint32_t>>(it->second);
+		auto& f = std::get<std::shared_future<uint32_t>>(it->second);
 		try {
-			mesh_id = f.get();	
+			mesh_id = f.get();
+			LLOG_DBG << "Getting async mesh_id for obj_name " << obj_name;	
 		} catch(const std::exception& e) {
-        	LLOG_ERR << "Exception from the thread: " << e.what();
+        	LLOG_ERR << "Async geo instance creation error!!! Exception from the thread: " << e.what();
         	return false;
     	}
 	} catch (...) {
-		LLOG_ERR << "Unable to get mesh id for object: " << obj_name;
+		LLOG_ERR << "Async geo instance creation error!!! Unable to get mesh id for object: " << obj_name;
 	}
 
 	if (mesh_id == std::numeric_limits<uint32_t>::max()) {
 		return false;
 	}
+	it->second = mesh_id;
 
 	LLOG_DBG << "mesh_id " << mesh_id;
 
@@ -1098,8 +1112,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setDoubleSided(!front_face);
   	
   	//bool loadAsSrgb = true;
-    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", true);
-    loadTexturesAsSparse = true;
+    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", false);
 
     LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 

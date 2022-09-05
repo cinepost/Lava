@@ -40,7 +40,7 @@ bool AOVPlane::getImageData(uint8_t* pData) const {
     mpTexture->readTextureData(0, 0, pData);
 
     auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << "AOV plane " << name() << " date read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+    std::cout << "AOV plane " << name() << " data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
     return true;
 }
