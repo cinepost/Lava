@@ -33,23 +33,23 @@
 #include <vector>
 
 #include "Falcor/Core/Framework.h"
-#include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/Texture.h"
 
 namespace Falcor {
 
+class Device;
+class Texture;
 class Barrier;
 
 /** Utility class to load textures asynchronously using multiple worker threads.
 */
 class dlldecl AsyncTextureLoader {
 	public:
-		using LoadCallback = std::function<void(Texture::SharedPtr pTexture)>;
+		using LoadCallback = std::function<void(std::shared_ptr<Texture> pTexture)>;
 
 		/** Constructor.
 			\param[in] threadCount Number of worker threads.
 		*/
-		AsyncTextureLoader(Device::SharedPtr pDevice, size_t threadCount = std::thread::hardware_concurrency());
+		AsyncTextureLoader(std::shared_ptr<Device> pDevice, size_t threadCount = std::thread::hardware_concurrency());
 
 		/** Destructor.
 			Blocks until all threads have terminated.
@@ -64,7 +64,7 @@ class dlldecl AsyncTextureLoader {
 			\param[in] callback Function called after the texture load has finished.
 			\return A future to a new texture, or nullptr if the texture failed to load.
 		*/
-		std::future<Texture::SharedPtr> loadFromFile(
+		std::future<std::shared_ptr<Texture>> loadFromFile(
 			const fs::path& path,
 			bool generateMipLevels,
 			bool loadAsSRGB,
@@ -77,25 +77,25 @@ class dlldecl AsyncTextureLoader {
 		void runWorker();
 		void terminateWorkers();
 
-		struct LoadRequest {
-			Device::SharedPtr pDevice;
-			fs::path path;
-			bool generateMipLevels;
-			bool loadAsSRGB;
-			Resource::BindFlags bindFlags;
-			LoadCallback callback;
-			std::promise<Texture::SharedPtr> promise;
+		struct Request {
+			std::shared_ptr<Device> pDevice;
+			fs::path 								path;
+			bool 										generateMipLevels;
+			bool 										loadAsSRGB;
+			Resource::BindFlags 		bindFlags;
+			LoadCallback 						callback;
+			std::promise<std::shared_ptr<Texture>> 	promise;
 		};
 
-		Device::SharedPtr mpDevice = nullptr;
+		std::shared_ptr<Device> 	mpDevice = nullptr;
 
 		std::mutex mMutex;                          ///< Mutex for synchronizing access to shared resources.
-		std::condition_variable mCondition;         ///< Condition variable for workers to wait on.
-		std::shared_ptr<Barrier> mFlushBarrier;     ///< Barrier for flushing the GPU to upload textures.
-		std::vector<std::thread> mThreads;          ///< Worker threads.
+		std::condition_variable  	mCondition;       ///< Condition variable for workers to wait on.
+		std::shared_ptr<Barrier> 	mFlushBarrier;    ///< Barrier for flushing the GPU to upload textures.
+		std::vector<std::thread> 	mThreads;         ///< Worker threads.
 
 		// Internal state. Do not access outside of critical section.
-		std::queue<LoadRequest> mLoadRequestQueue;  ///< Texture loading request queue.
+		std::queue<Request> 			mRequestQueue;		///< Texture loading request queue.
 
 		bool mTerminate = false;                    ///< Flag to terminate worker threads.
 		bool mFlushPending = false;                 ///< Flag to indicate a GPU flush is pending.

@@ -6,7 +6,7 @@ include(ExternalProject)
 include(ProcessorCount)
 #ProcessorCount(N)
 
-message("Running third party dependencies ${CMAKE_BUILD_TYPE} build...")
+message("Running third party dependencies build...")
 
 #we need git executable
 find_package(Git REQUIRED)
@@ -20,15 +20,9 @@ set( CMAKE_MODULE_PATH
 set(EXTRA_CMAKE_ARGS)
 set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 
-set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/external)
-set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/stamp)
-set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/external/tmp)
-
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/release)
-else()
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/../deps/debug)
-endif()
+set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external)
+set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/stamp)
+set(EXTERNALS_TMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/tmp)
 
 set(EXTERNALS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 
@@ -240,7 +234,7 @@ endif()
 # OpenEXR
 #######################
 
-set(EXTERNAL_OPENEXR_VERSION 2.5.7)
+set(EXTERNAL_OPENEXR_VERSION 2.5.8)
 set(OpenEXR_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT)
 
@@ -293,12 +287,10 @@ set(EXTERNAL_ASSIMP_VERSION 5.0.0)
 set(assimp_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
 
-if(assimp_FOUND)
-
-  message("Assimp version ${assimp_VERSION} found ...")
-  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
-
-else()
+#if(assimp_FOUND)
+#  message("Assimp version ${assimp_VERSION} found ...")
+#  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
+#else()
 
   message("Assimp version ${EXTERNAL_ASSIMP_VERSION} not found! Running external build ...")
   set(ASSIMP_PREFIX assimp)
@@ -332,7 +324,7 @@ else()
   )
   ExternalProject_Add_StepDependencies(Assimp configure Tbb OpenVDB Blosc)
 
-endif()
+#endif()
 
 
 #######################
@@ -490,10 +482,88 @@ else()
 
     BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
 
-    TMP_DIR ${EXTERNALS_TMP_DIR}/glfw
-    STAMP_DIR ${EXTERNALS_STAMP_DIR}/glfw
-    BINARY_DIR ${EXTERNALS_BINARY_DIR}/glfw
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLFW_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${GLFW_PREFIX}
   )
+
+endif()
+
+#######################
+# ZMQ
+#######################
+
+set(EXTERNAL_ZMQ_VERSION 4.3.4)
+
+set(ZeroMQ_DIR ${EXTERNALS_INSTALL_DIR})
+find_package(ZeroMQ ${EXTERNAL_ZMQ_VERSION} EXACT)
+
+if(ZeroMQ_FOUND)
+
+  message("ZMQ version ${ZeroMQ_VERSION} found ...")
+  add_custom_target( zmq COMMAND echo "ZMQ build exists, skipping rebuild ...")
+
+else()
+
+  message("ZMQ not found! Running external build ...")
+  set(ZMQ_PREFIX zmq)
+
+  ExternalProject_Add ( zmq
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ZMQ_PREFIX}
+    GIT_REPOSITORY https://github.com/zeromq/libzmq.git
+    GIT_TAG v${EXTERNAL_ZMQ_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${ZMQ_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${ZMQ_PREFIX}
+  )
+
+endif()
+
+#######################
+# CPPZMQ
+#######################
+
+set(EXTERNAL_CPPZMQ_VERSION 4.8.1)
+
+set(CppZMQ_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(CppZMQ ${EXTERNAL_CPPZMQ_VERSION} EXACT)
+
+if(CppZMQ_FOUND)
+
+  message("CppZMQ version ${CppZMQ_VERSION} found ...")
+  add_custom_target( cppzmq COMMAND echo "CppZMQ build exists, skipping rebuild ...")
+
+else()
+
+  message("CppZMQ not found! Running external build ...")
+  set(CppZMQ_PREFIX cppzmq)
+
+  ExternalProject_Add ( cppzmq
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${CppZMQ_PREFIX}
+    GIT_REPOSITORY https://github.com/zeromq/cppzmq.git
+    GIT_TAG v${EXTERNAL_CPPZMQ_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CPPZMQ_BUILD_TESTS:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${CppZMQ_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CppZMQ_PREFIX}
+  )
+  ExternalProject_Add_StepDependencies(cppzmq configure zmq)
 
 endif()
 
@@ -690,7 +760,7 @@ set(EXTERNAL_SLANG_VERSION 0.24.8) # last tested version was 0.18.6
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
 
-set(SLANG_BUILD_LIBS "slang slang-glslang gfx")
+set(SLANG_BUILD_LIBS "slang slang-glslang")
 
 set(SLANG_RELEASE_BIN_DIR "bin/${SLANG_PLATFORM}/release")
 set(SLANG_DEBUG_BIN_DIR "bin/${SLANG_PLATFORM}/debug")
@@ -768,6 +838,9 @@ add_dependencies( dummy_target
   OpenImageIO
   RTXDI
   RTXGI
+  VMA
   Slang
   Glfw
+  zmq
+  cppzmq
 )

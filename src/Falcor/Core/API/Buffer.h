@@ -49,7 +49,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
     using SharedPtr = std::shared_ptr<Buffer>;
     using WeakPtr = std::weak_ptr<Buffer>;
     using SharedConstPtr = std::shared_ptr<const Buffer>;
-    //using ConstSharedPtrRef = const SharedPtr&;
+    using ConstSharedPtrRef = const SharedPtr&;
     using inherit_shared_from_this<Resource, Buffer>::shared_from_this;
 
     /** Buffer access flags.
@@ -182,6 +182,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     static SharedPtr aliasResource(std::shared_ptr<Device> pDevice, Resource::SharedPtr pBaseResource, GpuAddress offset, size_t size, Resource::BindFlags bindFlags);
 
+#ifdef FALCOR_GFX
     /** Create a new buffer from an existing API handle.
         \param[in] handle Handle of already allocated resource.
         \param[in] size The size of the buffer in bytes.
@@ -190,7 +191,9 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
+#endif
 
+#if FALCOR_D3D12_AVAILABLE
     /** Create a new buffer from an existing D3D12 handle. Available only when D3D12 is the underlying graphics API.
         \param[in] handle Handle of already allocated resource.
         \param[in] size The size of the buffer in bytes.
@@ -199,6 +202,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         \return A pointer to a new buffer object, or throws an exception if creation failed.
     */
     static SharedPtr createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess);
+#endif
 
     /** Get a shader-resource view.
         \param[in] firstElement The first element of the view. For raw buffers, an element is a single float

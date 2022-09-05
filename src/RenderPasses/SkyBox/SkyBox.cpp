@@ -31,8 +31,8 @@
 
 #include <pybind11/embed.h>
 
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 const RenderPass::Info SkyBox::kInfo { "SkyBox", "Render an environment map. The map can be provided by the user or taken from a scene." };
@@ -122,9 +122,9 @@ SkyBox::SharedPtr SkyBox::create(RenderContext* pRenderContext, const Dictionary
 
     std::shared_ptr<Texture> pTexture;
     if (pSkyBox->mTexName.size() != 0) {
-        auto pResourceManager = pDevice->resourceManager();
-        //pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
-        pTexture = pResourceManager->createTextureFromFile(pSkyBox->mTexName, true, pSkyBox->mLoadSrgb);
+        //auto pResourceManager = pDevice->resourceManager();
+        pTexture = Texture::createFromFile(pRenderContext->device(), pSkyBox->mTexName, false, pSkyBox->mLoadSrgb);
+        //pTexture = pResourceManager->createTextureFromFile(pSkyBox->mTexName, true, pSkyBox->mLoadSrgb);
         if (pTexture == nullptr) throw std::runtime_error("SkyBox::create - Error creating texture from file");
         pSkyBox->setTexture(pTexture);
     }

@@ -85,10 +85,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
         PixelShader,
         NonPixelShader,
         AccelerationStructure,
-        //AccelStructRead,
-        //AccelStructWrite,
-        //AccelStructBuildInput,
-        //AccelStructBuildBlas,
+        AccelerationStructureBuildInput
     };
 
     using SharedPtr = std::shared_ptr<Resource>;
@@ -130,14 +127,18 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
+#ifdef FALCOR_D3D12
     const D3D12ResourceHandle& getD3D12Handle() const;
+#endif
 
+#ifdef FALCOR_GFX
     /** Get a shared resource API handle.
 
         The handle will be created on-demand if it does not already exist.
         Throws if a shared handle cannot be created for this resource.
     */
     SharedResourceApiHandle getSharedApiHandle() const;
+#endif
 
     struct ViewInfoHashFunc {
         std::size_t operator()(const ResourceViewInfo& v) const {
@@ -215,10 +216,12 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     GpuAddress mGpuVaOffset = 0;
     std::string mName;
 
-#if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
+#if defined(FALCOR_GFX)
+#if defined(FALCOR_D3D12_AVAILABLE)
     mutable D3D12ResourceHandle mpD3D12Handle;
 #endif
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
+#endif
 
     std::shared_ptr<Device> mpDevice;
     VmaAllocation mAllocation;

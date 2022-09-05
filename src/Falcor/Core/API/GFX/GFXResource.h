@@ -28,7 +28,7 @@
 #ifndef SRC_FALCOR_CORE_API_GFX_GFXRESOURCEHANDLE_H_
 #define SRC_FALCOR_CORE_API_GFX_GFXRESOURCEHANDLE_H_
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/Resource.h"
 

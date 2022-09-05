@@ -41,8 +41,8 @@
 #include "lava_utils_lib/logging.h"
 
 #include <slang/slang.h>
-#include <slang/slang-gfx.h>
 #include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
 
 //#define None 0L
 //#define Bool int
@@ -53,12 +53,13 @@
 //#include "GLFW/glfw3.h"
 //#include "GLFW/glfw3native.h"
 
-//#ifndef _WIN32
-//#undef None
-//#undef Status
-//#undef Bool
-//#undef Always
-//#endif
+// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
+#undef None
+#undef Status
+#undef Bool
+#undef Always
+#endif
 
 #if defined(FALCOR_GFX_D3D12) || defined (FALCOR_GFX_VK)
 #define FALCOR_GFX
@@ -131,30 +132,31 @@ inline std::string convertBlobToString(BlobType* pBlob)
 //TODO: (yhe) Figure out why this is still required.
 #pragma comment(lib, "comsuppw.lib")
 
-namespace Falcor
-{
-    /** Flags passed to TraceRay(). These must match the device side.
-    */
-    enum class RayFlags : uint32_t
-    {
-        None,
-        ForceOpaque = 0x1,
-        ForceNonOpaque = 0x2,
-        AcceptFirstHitAndEndSearch = 0x4,
-        SkipClosestHitShader = 0x8,
-        CullBackFacingTriangles = 0x10,
-        CullFrontFacingTriangles = 0x20,
-        CullOpaque = 0x40,
-        CullNonOpaque = 0x80,
-        SkipTriangles = 0x100,
-        SkipProceduralPrimitives = 0x200,
-    };
-    FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
+namespace Falcor {
 
-    // Maximum raytracing attribute size.
-    inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
+/** Flags passed to TraceRay(). These must match the device side.
+*/
+enum class RayFlags : uint32_t {
+    None,
+    ForceOpaque = 0x1,
+    ForceNonOpaque = 0x2,
+    AcceptFirstHitAndEndSearch = 0x4,
+    SkipClosestHitShader = 0x8,
+    CullBackFacingTriangles = 0x10,
+    CullFrontFacingTriangles = 0x20,
+    CullOpaque = 0x40,
+    CullNonOpaque = 0x80,
+    SkipTriangles = 0x100,
+    SkipProceduralPrimitives = 0x200,
+};
+FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
 
-    using ApiObjectHandle = Slang::ComPtr<ISlangUnknown>;
+// Maximum raytracing attribute size.
+inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
+
+using ApiObjectHandle = Slang::ComPtr<ISlangUnknown>;
+
+class Device;
 
 #ifdef WIN32
 using WindowHandle = HWND;
@@ -212,7 +214,85 @@ struct WindowHandle {
     using RasterizerStateHandle = void*;
     using BlendStateHandle = void*;
 
-    inline constexpr uint32_t getMaxViewportCount() { return 8; }
+    inline uint32_t getMaxViewportCount(std::shared_ptr<Device> pDevice) { return 8; }
+
+#if FALCOR_GFX_VK
+
+inline std::string to_string(VkResult result) {
+#define vkresult_2_string(a) case a: return #a;
+    switch (result) {
+        vkresult_2_string(VK_SUCCESS);
+        vkresult_2_string(VK_NOT_READY);
+        vkresult_2_string(VK_TIMEOUT);
+        vkresult_2_string(VK_EVENT_SET);
+        vkresult_2_string(VK_EVENT_RESET);
+        vkresult_2_string(VK_INCOMPLETE);
+        vkresult_2_string(VK_ERROR_OUT_OF_HOST_MEMORY);
+        vkresult_2_string(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        vkresult_2_string(VK_ERROR_INITIALIZATION_FAILED);
+        vkresult_2_string(VK_ERROR_DEVICE_LOST);
+        vkresult_2_string(VK_ERROR_MEMORY_MAP_FAILED);
+        vkresult_2_string(VK_ERROR_LAYER_NOT_PRESENT);
+        vkresult_2_string(VK_ERROR_EXTENSION_NOT_PRESENT);
+        vkresult_2_string(VK_ERROR_FEATURE_NOT_PRESENT);
+        vkresult_2_string(VK_ERROR_INCOMPATIBLE_DRIVER);
+        vkresult_2_string(VK_ERROR_TOO_MANY_OBJECTS);
+        vkresult_2_string(VK_ERROR_FORMAT_NOT_SUPPORTED);
+        vkresult_2_string(VK_ERROR_FRAGMENTED_POOL);
+        vkresult_2_string(VK_ERROR_UNKNOWN);
+        vkresult_2_string(VK_ERROR_OUT_OF_POOL_MEMORY);
+        vkresult_2_string(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+        vkresult_2_string(VK_ERROR_FRAGMENTATION);
+        vkresult_2_string(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS);
+    #ifdef VK_PIPELINE_COMPILE_REQUIRED
+        vkresult_2_string(VK_PIPELINE_COMPILE_REQUIRED);
+    #endif 
+        vkresult_2_string(VK_ERROR_SURFACE_LOST_KHR);
+        vkresult_2_string(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
+        vkresult_2_string(VK_SUBOPTIMAL_KHR);
+        vkresult_2_string(VK_ERROR_OUT_OF_DATE_KHR);
+        vkresult_2_string(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
+        vkresult_2_string(VK_ERROR_VALIDATION_FAILED_EXT);
+        vkresult_2_string(VK_ERROR_INVALID_SHADER_NV);
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR);
+    #endif
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR);
+    #endif
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR);
+    #endif
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR);
+    #endif
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR);
+    #endif
+    #ifdef VK_ENABLE_BETA_EXTENSIONS
+        vkresult_2_string(VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR);
+    #endif
+        vkresult_2_string(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
+    #ifdef VK_ERROR_NOT_PERMITTED_KHR    
+        vkresult_2_string(VK_ERROR_NOT_PERMITTED_KHR);
+    #endif    
+        vkresult_2_string(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
+        vkresult_2_string(VK_THREAD_IDLE_KHR);
+        vkresult_2_string(VK_THREAD_DONE_KHR);
+        vkresult_2_string(VK_OPERATION_DEFERRED_KHR);
+        vkresult_2_string(VK_OPERATION_NOT_DEFERRED_KHR);
+    #ifdef VK_ERROR_COMPRESSION_EXHAUSTED_EXT
+        vkresult_2_string(VK_ERROR_COMPRESSION_EXHAUSTED_EXT);
+    #endif
+
+        default:
+            assert(false);
+            return "Unknown VkResult";
+    }
+#undef vkresult_2_string
+}
+
+#endif
 
     /*! @} */
-}
+}  // namespace Falcor

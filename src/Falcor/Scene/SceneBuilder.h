@@ -426,7 +426,7 @@ class dlldecl SceneBuilder {
         \param[in] slot Slot to load texture into.
         \param[in] path Texture file path.
     */
-    void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path);
+    void loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
 
     /** Wait until all material textures are loaded.
     */

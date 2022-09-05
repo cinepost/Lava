@@ -27,10 +27,9 @@
  **************************************************************************/
 #pragma once
 
-#include "Core/API/Formats.h"
-#include <slang/slang-gfx.h>
+#include "Falcor/Core/API/Formats.h"
+#include "gfx_lib/slang-gfx.h"
 
-namespace Falcor
-{
+namespace Falcor {
     gfx::Format getGFXFormat(ResourceFormat format);
 }

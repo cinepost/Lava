@@ -70,7 +70,7 @@ const Fbo::ApiHandle& Fbo::getApiHandle() const {
 	return mApiHandle;
 }
 
-uint32_t Fbo::getMaxColorTargetCount() {
+uint32_t Fbo::getMaxColorTargetCount(Device::SharedPtr pDevice) {
 	return 8;
 }
 

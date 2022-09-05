@@ -51,6 +51,13 @@ namespace fs = boost::filesystem;
 
 namespace Falcor {
 
+    // Append extention to file path
+    inline fs::path appendExtension(const fs::path& path, const fs::path& ext) {
+        auto sz_ext = ext.c_str();
+        if ('.' == *sz_ext) ++sz_ext;
+        return path.string<std::string>() + "." + sz_ext;
+    }
+
     // String/string_View append operators missing from the spec
     inline std::string operator+(const std::string& lhs, std::string_view rhs) {
         std::string s = lhs;

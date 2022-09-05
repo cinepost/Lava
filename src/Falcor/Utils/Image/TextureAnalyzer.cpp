@@ -61,6 +61,9 @@ namespace Falcor
 
     void TextureAnalyzer::analyze(RenderContext* pRenderContext, const Texture::SharedPtr pInput, uint32_t mipLevel, uint32_t arraySlice, Buffer::SharedPtr pResult, uint64_t resultOffset, bool clearResult)
     {
+        // Sparse texture early termination
+        if(!pInput || pInput->isSparse()) return;
+
         assert(pRenderContext && pInput);
         assert(pResult && resultOffset + getResultSize() <= pResult->getSize());
         assert(resultOffset < std::numeric_limits<uint32_t>::max());

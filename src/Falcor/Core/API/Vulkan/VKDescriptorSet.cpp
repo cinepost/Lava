@@ -29,6 +29,9 @@
 #include "Falcor/Core/API/DescriptorSet.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Sampler.h"
+#include "Falcor/Core/API/CopyContext.h"
+#include "Falcor/Core/API/RootSignature.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #include "VKDescriptorData.h"
@@ -75,7 +78,7 @@ namespace Falcor {
         auto descriptorCount = 1;
 
         if (handle.getType() == VkResourceType::Buffer) {
-            Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
+            Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource().get());
             assert(pBuffer && "No resource buffer !!!");
             //LOG_DBG("Buffer %zu update descriptor set bindFlags %s", pBuffer->id(),to_string(pBuffer->getBindFlags()).c_str());
             
@@ -168,7 +171,7 @@ namespace Falcor {
         assert(pView && "ConstantBufferView pointer is NULL");
         VkDescriptorBufferInfo info;
 
-        const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
+        const auto& pBuffer = dynamic_cast<const Buffer*>(pView->getResource().get());
         assert(pBuffer);
         info.buffer = pBuffer->getApiHandle();
         info.offset = pBuffer->getGpuAddressOffset();

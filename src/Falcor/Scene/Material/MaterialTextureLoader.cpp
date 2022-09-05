@@ -30,8 +30,8 @@
 
 namespace Falcor {
 
-MaterialTextureLoader::MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb)
-	: mpTextureManager(pTextureManager)
+MaterialTextureLoader::MaterialTextureLoader(const Device::SharedPtr& pDevice, bool useSrgb)
+	: mpDevice(pDevice)
 	, mUseSrgb(useSrgb)
 {
 }
@@ -40,29 +40,35 @@ MaterialTextureLoader::~MaterialTextureLoader() {
 	assignTextures();
 }
 
-void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path) {
+void MaterialTextureLoader::loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
 	assert(pMaterial);
 	if (!pMaterial->hasTextureSlot(slot)) {
 		LLOG_WRN << "MaterialTextureLoader::loadTexture() - Material '" << pMaterial->getName() << "' does not have texture slot '" << to_string(slot) << "'. Ignoring call.";
 		return;
 	}
 
-	bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
+	bool generateMipLevels = true;
+	bool loadAsSRGB = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
+	Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource;
+	std::string udim_mask = "<UDIM>";
+	bool async = true;
 
 	// Request texture to be loaded.
-	auto handle = mpTextureManager->loadTexture(path, true, srgb);
+	TextureManager::TextureHandle handle = mpDevice->textureManager()->loadTexture(path, generateMipLevels, loadAsSRGB, bindFlags, async, udim_mask, loadAsSparse);
 
 	// Store assignment to material for later.
 	mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
+
+	LLOG_DBG << (loadAsSparse ? "Sparse" : "Simple") << " texture " << path.string() << " with handle mode " << to_string(handle.mode()) << " in assignment";
 }
 
 void MaterialTextureLoader::assignTextures() {
-	mpTextureManager->waitForAllTexturesLoading();
+	mpDevice->textureManager()->waitForAllTexturesLoading();
 
 	// Assign textures to materials.
 	for (const auto& assignment : mTextureAssignments) {
 	  // Assign generic handle
-		auto pTexture = mpTextureManager->getTexture(assignment.handle);
+		auto pTexture = mpDevice->textureManager()->getTexture(assignment.handle);
 		assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
 	}
 }

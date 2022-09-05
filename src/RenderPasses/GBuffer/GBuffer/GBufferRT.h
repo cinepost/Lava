@@ -53,9 +53,9 @@ class GBufferRT : public GBuffer {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 
     enum class LODMode {
-        UseMip0          = 0,       // Don't compute LOD (default)
-        RayDifferentials = 1,       // Use ray differentials
-        RayCones         = 2,       // Cone based LOD computation (not implemented yet)
+      UseMip0          = 0,       // Don't compute LOD (default)
+      RayDifferentials = 1,       // Use ray differentials
+      RayCones         = 2,       // Cone based LOD computation (not implemented yet)
     };
 
   private:
@@ -79,10 +79,9 @@ class GBufferRT : public GBuffer {
     bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
 
     // Ray tracing resources
-    struct
-    {
-        RtProgram::SharedPtr pProgram;
-        RtProgramVars::SharedPtr pVars;
+    struct {
+      RtProgram::SharedPtr pProgram;
+      RtProgramVars::SharedPtr pVars;
     } mRaytrace;
 
     ComputePass::SharedPtr mpComputePass;

@@ -387,18 +387,8 @@ void Program::setUpSlangCompilationTarget(
 	ioTargetDesc.format = SLANG_DXIL;
 	ioTargetMacroName = "FALCOR_D3D";
 #else
-	switch (mpDevice->getApiHandle()->getDeviceInfo().deviceType) {
-		case gfx::DeviceType::DirectX12:
-			ioTargetDesc.format = SLANG_DXIL;
-			ioTargetMacroName = "FALCOR_D3D";
-			break;
-		case gfx::DeviceType::Vulkan:
-			ioTargetDesc.format = SLANG_SPIRV;
-			ioTargetMacroName = "FALCOR_VK";
-			break;
-		default:
-			FALCOR_UNREACHABLE();
-	}
+	ioTargetDesc.format = SLANG_SPIRV;
+	ioTargetMacroName = "FALCOR_VK";
 #endif
 }
 
@@ -1027,6 +1017,7 @@ EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
 }
 
 bool Program::link() const {
+	LLOG_INF << "Linking program...";
 	while (1) {
 		// Create the program
 		std::string log;

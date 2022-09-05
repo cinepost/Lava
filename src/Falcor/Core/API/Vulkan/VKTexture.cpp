@@ -40,6 +40,7 @@
 
 #include "lava_utils_lib/logging.h"
 
+
 namespace Falcor {
     VkDeviceMemory allocateDeviceMemory(std::shared_ptr<Device> pDevice, Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
@@ -51,8 +52,7 @@ namespace Falcor {
         return res;
     }
 
-    struct TextureApiData {
-    };
+    struct TextureApiData {};
 
     Texture::~Texture() {
         LLOG_DBG << "Deleting texture (resource id " << std::to_string(id()) << (mSourceFilename.empty() ? "" : (" )with source name: " + mSourceFilename));
@@ -208,7 +208,7 @@ namespace Falcor {
 
     void Texture::apiInit(const void* pData, bool autoGenMips) {
         if (mImage != VK_NULL_HANDLE) {
-            LOG_WARN("Texture api already initialized !!!");
+            LLOG_WRN << "Texture api already initialized !!!";
             return;
         }
 
@@ -281,7 +281,9 @@ namespace Falcor {
         std::cout << "\t Alignment: " << mMemRequirements.alignment << std::endl;
 
         if (mIsSparse) {
+#ifdef _DEBUG
             std::cout << "Sparse address space size: " << mpDevice->apiData()->properties.limits.sparseAddressSpaceSize << std::endl;
+#endif
             // Check requested image size against hardware sparse limit            
             if (mMemRequirements.size > mpDevice->apiData()->properties.limits.sparseAddressSpaceSize) {
                 LLOG_ERR << "Error: Requested sparse image size exceeds supports sparse address space size !!!";

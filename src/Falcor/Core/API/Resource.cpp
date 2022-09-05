@@ -77,10 +77,6 @@ const std::string to_string(Resource::State state) {
     state_to_str(Present);
     state_to_str(Predication);
     state_to_str(NonPixelShader);
-    //state_to_str(AccelStructRead);
-    //state_to_str(AccelStructWrite);
-    //state_to_str(AccelStructBuildInput);
-    //state_to_str(AccelStructBuildBlas);
     state_to_str(AccelerationStructure);
 #undef state_to_str
     return s;

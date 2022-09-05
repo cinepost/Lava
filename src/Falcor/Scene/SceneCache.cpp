@@ -282,7 +282,7 @@ Scene::SceneData SceneCache::readSceneData(Device::SharedPtr pDevice, InputStrea
     // before material textures, as they upload buffers to the GPU when created.
     // Make sure no other GPU operations are executed until calling pMaterialTextureLoader.reset()
     // further down which blocks until all textures are loaded.
-    auto pMaterialTextureLoader = std::make_unique<MaterialTextureLoader>(sceneData.pMaterialSystem->getTextureManager(), true);
+    auto pMaterialTextureLoader = std::make_unique<MaterialTextureLoader>(pDevice, true);
 
     readMarker(stream, "Materials");
     readMaterials(pDevice, stream, sceneData.pMaterialSystem, *pMaterialTextureLoader);

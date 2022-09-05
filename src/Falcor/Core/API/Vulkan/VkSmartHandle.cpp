@@ -36,6 +36,7 @@
 //#define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 
+
 namespace Falcor {
 
     template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(mpDevice->getApiHandle(), mApiHandle, nullptr); }

@@ -119,6 +119,8 @@ if (build_type STREQUAL "debug")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
 
+set(FALCOR_API_BACKEND "Default" CACHE STRING "Vulkan")
+
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
 option (PROFILING_LOG "Enable/Disable renderer performance profiler logging." OFF)
 
@@ -171,17 +173,27 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
+
+#------------------------------------------
+# Rendering backend configuration
+#------------------------------------------
+
+string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
+if(backend_type STREQUAL "gfx")
+  add_definitions(-D_FLACOR_API_BACKEND_GFX)
+endif()
+
 #------------------------------------------
 # Our stuff
 #------------------------------------------
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/release)
-  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
-else()
-  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/debug)
-  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
-endif()
+#if (CMAKE_BUILD_TYPE STREQUAL "Release")
+#  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/release)
+#  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+#else()
+#  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/debug)
+#  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
+#endif()
 
 add_subdirectory( src )
 add_subdirectory( contrib )

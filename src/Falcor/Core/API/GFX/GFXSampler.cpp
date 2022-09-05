@@ -54,6 +54,8 @@ gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode) {
 
 gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter) {
     switch (filter) {
+        case Sampler::Filter::Cubic:
+            return gfx::TextureFilteringMode::Cubic;
         case Sampler::Filter::Linear:
             return gfx::TextureFilteringMode::Linear;
         case Sampler::Filter::Point:
@@ -112,8 +114,8 @@ Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) 
     return result;
 }
 
-D3D12DescriptorCpuHandle Sampler::getD3D12CpuHeapHandle() const {
 #if FALCOR_D3D12_AVAILABLE
+D3D12DescriptorCpuHandle Sampler::getD3D12CpuHeapHandle() const {
     gfx::InteropHandle handle = {};
     FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
     FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
@@ -121,9 +123,7 @@ D3D12DescriptorCpuHandle Sampler::getD3D12CpuHeapHandle() const {
     D3D12DescriptorCpuHandle resultHandle;
     resultHandle.ptr = handle.handleValue;
     return resultHandle;
-#else
-    return nullptr;
-#endif
 }
+#endif
 
 }  // namespace Falcor

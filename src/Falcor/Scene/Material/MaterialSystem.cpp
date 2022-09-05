@@ -66,7 +66,6 @@ MaterialSystem::SharedPtr MaterialSystem::create(Device::SharedPtr pDevice) {
 
 MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	mpFence = GpuFence::create(mpDevice);
-	mpTextureManager = TextureManager::create(mpDevice, kMaxTextureCount);
 	mMaterialCountByType.resize((size_t)MaterialType::Count, 0);
 
 	// Create a default texture sampler.
@@ -85,13 +84,16 @@ void MaterialSystem::finalize() {
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 
-	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + mpTextureManager->getUDIMTextureTilesCount();
+	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + mpDevice->textureManager()->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
-	mUDIMTextureCount = mpTextureManager->getUDIMTexturesCount();
+	mUDIMTextureCount = mpDevice->textureManager()->getUDIMTexturesCount();
 
-	printf("MaterialSystem::finalize-------------\n");
-	printf("udimTilesCount: %zu\n", mpTextureManager->getUDIMTextureTilesCount());
-	printf("mTextureDescCount: %zu\n", mTextureDescCount);
+	LLOG_DBG << "MaterialSystem::finalize-------------";
+
+	LLOG_DBG << "MaterialSystem: materials count " << std::to_string(getMaterialCount());
+	LLOG_DBG << "MaterialSystem: udim texture count " << std::to_string(mUDIMTextureCount);
+	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(mpDevice->textureManager()->getUDIMTextureTilesCount());
+	LLOG_DBG << "MaterialSystem: mTextureDescCount: ", std::to_string(mTextureDescCount);
 }
 
 void MaterialSystem::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {
@@ -220,9 +222,12 @@ size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {
 	return removed;
 }
 
-
 bool MaterialSystem::hasUDIMTextures() const {
-	return mpTextureManager->hasUDIMTextures();
+	return mpDevice->textureManager()->hasUDIMTextures(); // TODO: Calculate udim textures for this system only
+}
+
+bool MaterialSystem::hasSparseTextures() const {
+	return mpDevice->textureManager()->hasSparseTextures(); // TODO: Calculate sparse textures for this system only
 }
 
 void MaterialSystem::optimizeMaterials() {
@@ -293,6 +298,8 @@ void MaterialSystem::optimizeMaterials() {
 Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 	Material::UpdateFlags flags = Material::UpdateFlags::None;
 
+	auto pTextureManager = mpDevice->textureManager();
+
 	// Update metadata if materials changed.
 	if (mMaterialsChanged) {
 		std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
@@ -301,7 +308,6 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 			assert(index < mMaterialCountByType.size());
 			mMaterialCountByType[index]++;
 		}
-
 	}
 
 	// Create parameter block if needed.
@@ -337,9 +343,9 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
-		mpTextureManager->finalize();
-		mpTextureManager->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
-		mpTextureManager->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
+		pTextureManager->finalize();
+		pTextureManager->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+		pTextureManager->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 
 	// Update buffers.
@@ -412,8 +418,7 @@ Shader::DefineList MaterialSystem::getDefines() const {
 
 Program::TypeConformanceList MaterialSystem::getTypeConformances() const {
 	Program::TypeConformanceList typeConformances;
-	for (const auto type : mMaterialTypes)
-	{
+	for (const auto type : mMaterialTypes) {
 		typeConformances.add(getTypeConformances(type));
 	}
 	return typeConformances;

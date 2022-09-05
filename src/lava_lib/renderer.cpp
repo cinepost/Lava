@@ -2,7 +2,6 @@
 
 #include "renderer.h"
 
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Utils/Threading.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
@@ -67,6 +66,8 @@ bool Renderer::init(const Config& config) {
     }
 
     //sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
+    sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 
     mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
     mpCamera = Falcor::Camera::create();
@@ -80,8 +81,6 @@ bool Renderer::init(const Config& config) {
 Renderer::~Renderer() {
     if(!mInited)
         return;
-
-    mpDevice->resourceManager()->printStats();
 
     mpRenderGraph = nullptr;
 
@@ -185,7 +184,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
     // Virtual textures resolve render graph
-    if(!vtoff) {
+    if(pScene->materialSystem()->hasSparseTextures()) {
         auto vtexResolveChannelOutputFormat = ResourceFormat::RGBA8Unorm;
         mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
@@ -256,7 +255,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
     mpSkyBoxPass = SkyBox::create(pRenderContext);
 
     // TODO: handle transparency    
-    mpSkyBoxPass->setOpacity(1.0f);
+    mpSkyBoxPass->setOpacity(0.0f);
 
     mpSkyBoxPass->setScene(pRenderContext, pScene);
     mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
@@ -430,6 +429,9 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
         
         // Change rendering graph frame dimensions
         mpRenderGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::RGBA32Float);
+        if(mpTexturesResolvePassGraph) {
+            mpTexturesResolvePassGraph->resize(renderRegionDims[0], renderRegionDims[1], Falcor::ResourceFormat::R8Unorm);
+        }
 
         std::string compilationLog;
         if(! mpRenderGraph->compile(mpDevice->getRenderContext(), compilationLog)) {
@@ -473,11 +475,23 @@ void Renderer::renderSample() {
         // First frame sample
         if(mpTexturesResolvePassGraph) {
             mpTexturesResolvePassGraph->execute(pRenderContext);
+#if 1 == 2
+            {
+                auto pResource = mpTexturesResolvePassGraph->getOutput("SparseTexturesResolvePrePass.output");
+                auto pTexture = pResource->asTexture();
+                pTexture->captureToFileBlocking(0, 0, "/home/max/Desktop/tex_resolve_dbg.png", Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::None);
+
+            }
+#endif
         }
     }
 
     mpRenderGraph->execute(pRenderContext, mCurrentFrameInfo.frameNumber, mCurrentSampleNumber);
-    pRenderContext->flush(true);
+    
+    // Hard sync every 16 samples. TODO: this is UGLY !
+    if (mCurrentSampleNumber % 16 == 0) {
+        pRenderContext->flush(true);
+    }
 
     double currentTime = 0;
     _mpScene->update(pRenderContext, currentTime);

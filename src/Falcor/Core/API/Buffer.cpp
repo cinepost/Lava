@@ -168,6 +168,7 @@ Buffer::SharedPtr Buffer::aliasResource(std::shared_ptr<Device> pDevice, Resourc
 	return pBuffer;
 }
 
+#ifdef FALCOR_GFX
 Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, ApiHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess)
 {
 	assert(handle);
@@ -175,6 +176,7 @@ Buffer::SharedPtr Buffer::createFromApiHandle(std::shared_ptr<Device> pDevice, A
 	pBuffer->mApiHandle = handle;
 	return pBuffer;
 }
+#endif
 
 Buffer::~Buffer() {
 	if (mpAliasedResource) return;
@@ -266,21 +268,17 @@ void* Buffer::map(MapType type) {
 		invalidateViews();
 		return mDynamicData.pData;
 	} else {
-		printf("_1\n");
 		assert(type == MapType::Read);
 
 		if (mCpuAccess == CpuAccess::Write) {
-			printf("_1_1\n");
 			// Buffers on the upload heap are already mapped, just return the ptr.
 			assert(mDynamicData.pResourceHandle);
 			assert(mDynamicData.pData);
 			return mDynamicData.pData;
 		} else if (mCpuAccess == CpuAccess::Read) {
-			printf("_1_2\n");
 			assert(mBindFlags == BindFlags::None);
 			return mapBufferApi(mApiHandle, mSize);
 		} else {
-			printf("_1_3\n");
 			// For buffers without CPU access we must copy the contents to a staging buffer.
 			LLOG_WRN << "Buffer::map() performance warning - using staging resource which require us to flush the pipeline and wait for the GPU to finish its work";
 			if (mpStagingResource == nullptr) {

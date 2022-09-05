@@ -32,6 +32,7 @@
 #include "Falcor/Core/API/DescriptorSet.h"
 #include "Falcor/Core/API/Formats.h"
 #include "Falcor/Core/API/Buffer.h"
+#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 namespace Falcor {
@@ -79,7 +80,6 @@ Buffer::SharedPtr createZeroTypedBuffer(Device::SharedPtr pDevice) {
 }
 
 Buffer::SharedPtr createZeroConstantBuffer(Device::SharedPtr pDevice) {
-    LOG_DBG("Create zero constant buffer");
     static const uint32_t zero = 0;
     return Buffer::create(pDevice, sizeof(uint32_t), Resource::BindFlags::Constant, Buffer::CpuAccess::None, &zero);
 }
@@ -205,7 +205,9 @@ VkResource<VkImageView, VkBufferView>::SharedPtr createViewCommon(const Resource
 
 ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) {
     if (!pTexture) {
-        return getNullView(pDevice);
+        LLOG_ERR << "No texture !!!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     auto view = createViewCommon(pTexture, mostDetailedMip, mipCount, firstArraySlice, arraySize);
@@ -214,12 +216,15 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device>
 
 ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
     if (!pBuffer) {
-        return getNullBufferView(pDevice);
+        LLOG_ERR << "No buffer !!!";
+        return nullptr;
+        //return getNullBufferView(pDevice);
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
-        logWarning("Cannot create DepthStencilView from a texture!");
-        return getNullBufferView(pDevice);
+        LLOG_WRN << "Cannot create DepthStencilView from a texture!";
+        return nullptr;
+        //return getNullBufferView(pDevice);
     }
     
     const Resource* pResource = pBuffer.get();
@@ -241,12 +246,15 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(std::shared_ptr<Device>
 
 DepthStencilView::SharedPtr DepthStencilView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     if (!pTexture) {
-        return getNullView(pDevice);
+        LLOG_ERR << "No texture !!!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
-        logWarning("Cannot create DepthStencilView from a buffer!");
-        return getNullView(pDevice);
+        LLOG_WRN << "Cannot create DepthStencilView from a buffer!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     auto view = createViewCommon(pTexture, mipLevel, 1, firstArraySlice, arraySize);
@@ -255,12 +263,15 @@ DepthStencilView::SharedPtr DepthStencilView::create(std::shared_ptr<Device> pDe
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     if (!pTexture) {
-        return getNullView(pDevice);
+        LLOG_ERR << "No texture !!!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
-        logWarning("Cannot create UnorderedAccessView from a buffer!");
-        return getNullView(pDevice);
+        LLOG_WRN << "Cannot create UnorderedAccessView from a buffer!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     auto view = createViewCommon(pTexture, mipLevel, 1, firstArraySlice, arraySize);
@@ -269,7 +280,9 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Devic
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount) {
     if (!pBuffer) {
-        return getNullBufferView(pDevice);
+        LLOG_ERR << "No buffer !!!";
+        return nullptr;
+        //return getNullBufferView(pDevice);
     } 
 
     if (!pBuffer) {
@@ -279,8 +292,9 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(std::shared_ptr<Devic
     }
 
     if (pBuffer->getApiHandle().getType() == VkResourceType::Image) {
-        logWarning("Cannot create UnorderedAccessView from a texture!");
-        return getNullBufferView(pBuffer->device());
+        LLOG_WRN << "Cannot create UnorderedAccessView from a texture!";
+        return nullptr;
+        //return getNullBufferView(pBuffer->device());
     }
 
     const Resource* pResource = pBuffer.get();
@@ -305,12 +319,17 @@ RenderTargetView::~RenderTargetView() {
 }
 
 RenderTargetView::SharedPtr RenderTargetView::create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
-    if (!pTexture) return getNullView(pDevice);
+    if (!pTexture) { 
+        LLOG_ERR << "No texture !!!";
+        return nullptr;
+        //return getNullView(pDevice);
+    }
 
     // Check type
     if (pTexture->getApiHandle().getType() == VkResourceType::Buffer) {
-        logWarning("Cannot create RenderTargetView from a buffer!");
-        return getNullView(pDevice);
+        LLOG_ERR << "Cannot create RenderTargetView from a buffer!";
+        return nullptr;
+        //return getNullView(pDevice);
     }
 
     // Create view
@@ -319,7 +338,11 @@ RenderTargetView::SharedPtr RenderTargetView::create(std::shared_ptr<Device> pDe
 }
 
 ConstantBufferView::SharedPtr ConstantBufferView::create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer) {
-    if (!pBuffer) return getNullView(pDevice);
+    if (!pBuffer) {
+        LLOG_ERR << "No buffer !!!";
+        return nullptr;
+        //return getNullView(pDevice);
+    }
 
     VkBufferView bufferView = {};    
     auto handle = VkResource<VkImageView, VkBufferView>::SharedPtr::create(pDevice, bufferView, nullptr);

@@ -365,7 +365,7 @@ bool Display::closeImage(uint imageHandle) {
     if(!mImages[imageHandle].handle) // mOpenFunc was unsuccessfull
         return false;
 
-    LLOG_DBG << "Closing display " << mDriverName;
+    LLOG_DBG << "Closing display \"" << mDriverName << "\"";
     PtDspyError err = mCloseFunc(mImages[imageHandle].handle);
     
     if(err != PkDspyErrorNone ) {

@@ -1,6 +1,12 @@
 #pragma once
 
-#define MAX_VTEX_PER_MATERIAL_COUNT 16
+#ifdef HOST_CODE
+#include "Scene/Material/TextureHandle.slang"
+#else
+__exported import Scene.Material.TextureHandle;
+#endif
+
+#define MAX_VTEX_PER_MATERIAL_COUNT 8
 
 // TODO: find a better less memory hungry method !
 // MAX_REISDENT_PAGES_PER_VTEX is the maximum possible pages in vtex
@@ -23,13 +29,15 @@ struct VirtualTextureData {
 
     uint32_t empty = true;
     uint32_t textureResolveID;
-    uint32_t pagesStartOffset; // pages starts at this index in output pages buffer
-    uint32_t mipTailStart;
+    uint32_t pagesStartOffset; // Pages start at this index in output pages buffer
+    uint32_t mipTailStart;     // Mip level at which tail data starts
+
+    TextureHandle textureHandle;
 };
 
 // Array of material virtual textures that needs to be resolved
 struct MaterialResolveData {
-    VirtualTextureData virtualTextures[MAX_VTEX_PER_MATERIAL_COUNT];     // max virtual textures allowed to be resolved in one pass
+    uint32_t virtualTextureDataIDs[MAX_VTEX_PER_MATERIAL_COUNT];     // max virtual textures allowed to be resolved in one pass
 
     uint32_t virtualTexturesCount = 0;
     uint32_t _pad0;

@@ -30,7 +30,7 @@
 
 #include <memory>
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 namespace Falcor {
 	

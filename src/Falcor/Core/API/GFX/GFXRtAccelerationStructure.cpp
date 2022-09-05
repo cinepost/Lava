@@ -81,7 +81,7 @@ bool RtAccelerationStructure::apiInit() {
     return true;
 }
 
-AccelerationStructureHandle RtAccelerationStructure::getApiHandle() const {
+RtAccelerationStructure::ApiHandle RtAccelerationStructure::getApiHandle() const {
     return mApiHandle;
 }
 

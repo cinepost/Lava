@@ -39,6 +39,14 @@
 #include "VirtualTexturePage.h"
 #include "Falcor/Utils/Image/Bitmap.h"
 
+#if defined(FALCOR_GFX_VK) 
+namespace gfx {
+	namespace vk {
+		class DeviceImpl;
+	}
+}
+#endif
+
 namespace Falcor {
 
 class Engine;
@@ -76,43 +84,43 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	/** Get a mip-level width
 	*/
-	uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mWidth >> mipLevel) : 0; }
+	inline uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mWidth >> mipLevel) : 0; }
 
 	/** Get a mip-level height
 	*/
-	uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mHeight >> mipLevel) : 0; }
+	inline uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mHeight >> mipLevel) : 0; }
 
 	/** Get a mip-level depth
 	*/
-	uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mDepth >> mipLevel) : 0; }
+	inline uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? std::max(1U, mDepth >> mipLevel) : 0; }
 
 	/** Get the number of mip-levels
 	*/
-	uint32_t getMipCount() const { return mMipLevels; }
+	inline uint32_t getMipCount() const { return mMipLevels; }
 
 	/** Get the sample count
 	*/
-	uint32_t getSampleCount() const { return mSampleCount; }
+	inline uint32_t getSampleCount() const { return mSampleCount; }
 
 	/** Get the array size
 	*/
-	uint32_t getArraySize() const { return mArraySize; }
+	inline uint32_t getArraySize() const { return mArraySize; }
 
 	/** Get the array index of a subresource
 	*/
-	uint32_t getSubresourceArraySlice(uint32_t subresource) const { return subresource / mMipLevels; }
+	inline uint32_t getSubresourceArraySlice(uint32_t subresource) const { return subresource / mMipLevels; }
 
 	/** Get the mip-level of a subresource
 	*/
-	uint32_t getSubresourceMipLevel(uint32_t subresource) const { return subresource % mMipLevels; }
+	inline uint32_t getSubresourceMipLevel(uint32_t subresource) const { return subresource % mMipLevels; }
 
 	/** Get the subresource index
 	*/
-	uint32_t getSubresourceIndex(uint32_t arraySlice, uint32_t mipLevel) const { return mipLevel + arraySlice * mMipLevels; }
+	inline uint32_t getSubresourceIndex(uint32_t arraySlice, uint32_t mipLevel) const { return mipLevel + arraySlice * mMipLevels; }
 
 	/** Get the resource format
 	*/
-	ResourceFormat getFormat() const { return mFormat; }
+	inline ResourceFormat getFormat() const { return mFormat; }
 
 	/** Create a new texture from an existing API handle.
 		\param[in] handle Handle of already allocated resource.
@@ -324,15 +332,15 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	bool isSparse() const { return mIsSparse; };
 
-	const std::vector<VirtualTexturePage::SharedPtr>& pages();
+	inline const std::vector<VirtualTexturePage::SharedPtr>& sparseDataPages() { return mSparseDataPages; };
 
 	uint32_t memoryTypeIndex() const { return mMemoryTypeIndex; }
 
 	static uint8_t getMaxMipCount(const uint3& size);
 
-	uint3 getSparsePageRes() const { return mSparsePageRes; }
+	uint3 sparseDataPageRes() const { return mSparsePageRes; }
 
-	uint32_t getSparsePagesCount() const { return mSparsePagesCount; }
+	inline uint32_t sparseDataPagesCount() const { return mSparseDataPages.size(); }
 
 	uint32_t getMipTailStart() const;
 
@@ -346,63 +354,74 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint16_t getUDIM_ID() const { return mUDIM_ID; }
 
+	bool isSolid() const { return mIsSolid; }
+
   private:
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
+  	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);
+
 
   protected:
-	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
+		Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 	
-	void apiInit(const void* pData, bool autoGenMips);
-	void uploadInitData(const void* pData, bool autoGenMips);
+		void apiInit(const void* pData, bool autoGenMips);
+		void uploadInitData(const void* pData, bool autoGenMips);
 
-	bool mReleaseRtvsAfterGenMips = true;
-	std::string mSourceFilename;
+		bool mReleaseRtvsAfterGenMips = true;
+		std::string mSourceFilename;
 
-	uint32_t mWidth = 0;
-	uint32_t mHeight = 0;
-	uint32_t mDepth = 0;
-	uint32_t mMipLevels = 0;
-	uint32_t mSampleCount = 0;
-	uint32_t mArraySize = 0;
-	ResourceFormat mFormat = ResourceFormat::Unknown;
+		uint32_t mWidth = 0;
+		uint32_t mHeight = 0;
+		uint32_t mDepth = 0;
+		uint32_t mMipLevels = 0;
+		uint32_t mSampleCount = 0;
+		uint32_t mArraySize = 0;
+		ResourceFormat mFormat = ResourceFormat::Unknown;
 
-	std::array<UDIMTileInfo, 100> mUDIMTileInfos;
-	bool mIsUDIMTexture = false;
-	bool mIsSparse = false;
-	uint16_t mUDIM_ID = 0;
+		std::array<UDIMTileInfo, 100> mUDIMTileInfos;
+		bool mIsUDIMTexture = false;
+		bool mIsSparse = false;
+		bool mIsSolid = false;
+		uint16_t mUDIM_ID = 0;
 
-	uint3 mSparsePageRes = int3(0);
-	uint32_t mSparsePagesCount = 0;
-	std::atomic<size_t> mSparseResidentMemSize = 0;
-	std::array<uint32_t, 16> mMipBases = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+		uint3 mSparsePageRes = int3(0);
+		uint32_t mSparsePagesCount = 0;
+		std::atomic<size_t> mSparseResidentMemSize = 0;
+		std::array<uint32_t, 16> mMipBases = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-	MipTailInfo mMipTailInfo;
-	uint32_t mMipTailStart;                                          // First mip level in mip tail
-	uint32_t mMemoryTypeIndex;                                       // @todo: Comment
+		MipTailInfo mMipTailInfo;
+		uint32_t mMipTailStart;                                          // First mip level in mip tail
+		uint32_t mMemoryTypeIndex;                                       // @todo: Comment
 
-#if FALCOR_GFX_VK
-	// Vulkan
-	VkImage mImage = VK_NULL_HANDLE;
-	VkMemoryRequirements mMemRequirements;
+#if FALCOR_GFX_VK || defined(FALCOR_VK)
+		// Vulkan
+		VkImage mImage = VK_NULL_HANDLE;
+		VkMemoryRequirements mMemRequirements;
 
-	VkBindSparseInfo mBindSparseInfo;                               // Sparse queue binding information
-	std::vector<VirtualTexturePage::SharedPtr> mPages;              // Contains all virtual pages of the texture
-	std::vector<VkSparseImageMemoryBind> mSparseImageMemoryBinds;   // Sparse image memory bindings of all memory-backed virtual tables
-	std::vector<VkSparseMemoryBind> mOpaqueMemoryBinds;             // Sparse ópaque memory bindings for the mip tail (if present)
-	VkSparseImageMemoryBindInfo mImageMemoryBindInfo;               // Sparse image memory bind info
-	VkSparseImageOpaqueMemoryBindInfo mOpaqueMemoryBindInfo;        // Sparse image opaque memory bind info (mip tail)
-	VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
+		VkBindSparseInfo mBindSparseInfo;                               // Sparse queue binding information
+		std::vector<VirtualTexturePage::SharedPtr> mSparseDataPages;    // Contains all virtual pages of the texture
+		std::vector<VkSparseImageMemoryBind> mSparseImageMemoryBinds;   // Sparse image memory bindings of all memory-backed virtual tables
+		std::vector<VkSparseMemoryBind> mOpaqueMemoryBinds;             // Sparse ópaque memory bindings for the mip tail (if present)
+		VkSparseImageMemoryBindInfo mImageMemoryBindInfo;               // Sparse image memory bind info
+		VkSparseImageOpaqueMemoryBindInfo mOpaqueMemoryBindInfo;        // Sparse image opaque memory bind info (mip tail)
+		VkSparseImageMemoryRequirements mSparseImageMemoryRequirements; // @todo: Comment
 
-	VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
+		VkSparseImageMemoryBind 				mMipTailimageMemoryBind{};
+
+		VkSemaphore mBindSparseSemaphore = VK_NULL_HANDLE;
 #endif  // FALCOR_GFX_VK
 	
-	bool mSparseBindDirty = true;
+		bool mSparseBindDirty = true;
 
-	friend class Device;
-	friend class Engine;
-	friend class ResourceManager;
-	friend class TextureManager;
-	friend class VirtualTexturePage;
+		friend class Device;
+		friend class Engine;
+		friend class ResourceManager;
+		friend class TextureManager;
+		friend class VirtualTexturePage;
+#if defined(FALCOR_GFX_VK)
+		friend class gfx::vk::DeviceImpl;
+#endif
+
 };
 
 inline std::string to_string(const std::shared_ptr<Texture>& tex) {

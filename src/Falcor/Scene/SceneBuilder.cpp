@@ -715,12 +715,12 @@ uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     return mSceneData.pMaterialSystem->addMaterial(pMaterial);
 }
 
-void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path) {
+void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
     assert(pMaterial);
     if (!mpMaterialTextureLoader) {
-        mpMaterialTextureLoader.reset(new MaterialTextureLoader(mSceneData.pMaterialSystem->getTextureManager(), !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
+        mpMaterialTextureLoader.reset(new MaterialTextureLoader(mpDevice, !is_set(mFlags, Flags::AssumeLinearSpaceTextures)));
     }
-    mpMaterialTextureLoader->loadTexture(pMaterial, slot, path);
+    mpMaterialTextureLoader->loadTexture(pMaterial, slot, path, loadAsSparse);
 }
 
 void SceneBuilder::waitForMaterialTextureLoading() {
@@ -821,18 +821,22 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
     if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
 
-    mSceneGraph[nodeID].meshes.push_back(meshID);
+    {
+        std::scoped_lock lock(g_meshes_mutex);
 
-    mMeshes[meshID].instances.push_back({});
-    MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
-    instance.nodeId = nodeID;
-    instance.overrideMaterial = pMaterial ? true : false;
+        mSceneGraph[nodeID].meshes.push_back(meshID);
 
-    if (pMaterial) {
-        instance.materialId = addMaterial(pMaterial);
+        mMeshes[meshID].instances.push_back({});
+        MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
+        instance.nodeId = nodeID;
+        instance.overrideMaterial = pMaterial ? true : false;
+
+        if (pMaterial) {
+            instance.materialId = addMaterial(pMaterial);
+        }
+
+        LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
     }
-
-    LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
 }
 
 void SceneBuilder::addCurveInstance(uint32_t nodeID, uint32_t curveID) {
@@ -2122,8 +2126,6 @@ void SceneBuilder::optimizeMaterials() {
 }
 
 void SceneBuilder::removeDuplicateMaterials() {
-    return; 
-
     // This pass identifies materials with identical set of parameters.
     // It should run after optimizeMaterials() as materials with different
     // textures may be reduced to identical materials after optimization,
@@ -2138,6 +2140,17 @@ void SceneBuilder::removeDuplicateMaterials() {
     if (removed > 0) {
         for (auto& mesh : mMeshes) {
             mesh.materialId = idMap[mesh.materialId];
+
+            for( auto& instance: mesh.instances ) {
+                LLOG_WRN << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
+                if (instance.overrideMaterial) {
+                    instance.materialId = idMap[instance.materialId];
+                } else {
+                    instance.materialId = mesh.materialId;
+                }
+                //instance.overrideMaterial = true;
+                //instance.materialId = idMap[instance.materialId];
+            }
         }
 
         //for (auto& sdfGridInstance : mSceneData.sdfGridInstances) {
@@ -2351,46 +2364,52 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
         // For non-instanced static mesh groups, we allow the meshes to have different nodes.
         // This case is handled by pre-transforming the vertices in the BLAS build.
         assert(!meshList.empty());
-        const auto& firstMesh = mMeshes[meshList[0]];
-        size_t instanceCount = firstMesh.instances.size();
 
-        assert(instanceCount > 0);
-        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-            uint32_t blasGeometryIndex = 0;
-            for (const uint32_t meshID : meshList) {
-                const auto& mesh = mMeshes[meshID];
+        for(size_t meshID = 0; meshID < meshList.size(); meshID++) {    
+            const auto& mesh = mMeshes[meshList[meshID]];
+            size_t instanceCount = mesh.instances.size();
 
-                // Figure out node ID to use for the current mesh instance.
-                // If mesh group is non-instanced, just use the current mesh's node.
-                // If instanced, then all meshes have identical lists of instances.
-                // But there is a subtle issue: the lists may be permuted differently depending on the order
-                // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
-                // a consistent ordering across all meshes. This is a requirement for the TLAS build.
-                assert(instanceCount == mesh.instances.size());
-                uint32_t nodeID = instanceCount == 1
-                    ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
-                    : firstMesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
+            assert(instanceCount > 0);
+            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
+                uint32_t blasGeometryIndex = 0;
+                //for (const uint32_t meshID : meshList) {
+                    //const auto& mesh = mMeshes[meshID];
 
-                const auto& instance = mesh.instances[instanceIdx];
-                GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
-                geomInstance.globalMatrixID = nodeID;
-                geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
-                geomInstance.geometryID = meshID;
-                geomInstance.vbOffset = mesh.staticVertexOffset;
-                geomInstance.ibOffset = mesh.indexOffset;
-                geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
-                geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
-                geomInstance.instanceIndex = tlasInstanceIndex;
-                geomInstance.geometryIndex = blasGeometryIndex;
-                instanceData.push_back(geomInstance);
+                    // Figure out node ID to use for the current mesh instance.
+                    // If mesh group is non-instanced, just use the current mesh's node.
+                    // If instanced, then all meshes have identical lists of instances.
+                    // But there is a subtle issue: the lists may be permuted differently depending on the order
+                    // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
+                    // a consistent ordering across all meshes. This is a requirement for the TLAS build.
+                    assert(instanceCount == mesh.instances.size());
+                    uint32_t nodeID = instanceCount == 1
+                        ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
+                        : mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
-                blasGeometryIndex++;
+                    const auto& instance = mesh.instances[instanceIdx];
+                    GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
+                    geomInstance.globalMatrixID = nodeID;
+                    geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
+                    geomInstance.geometryID = meshID;
+                    geomInstance.vbOffset = mesh.staticVertexOffset;
+                    geomInstance.ibOffset = mesh.indexOffset;
+                    geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
+                    geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
+                    geomInstance.instanceIndex = tlasInstanceIndex;
+                    geomInstance.geometryIndex = blasGeometryIndex;
+                    instanceData.push_back(geomInstance);
+
+                    blasGeometryIndex++;
+                //}
+                tlasInstanceIndex++;
             }
-            tlasInstanceIndex++;
+            drawCount += instanceCount;
         }
-
-        drawCount += instanceCount * meshList.size();
+       // drawCount += instanceCount * meshList.size();
     }
+
+    LLOG_DBG << "SceneBuilder::createMeshInstanceData drawCount " << std::to_string(drawCount);
+    LLOG_DBG << "SceneBuilder::createMeshInstanceData instanceCount " << std::to_string(instanceData.size());
 
     // Create mapping of mesh IDs to their instance IDs.
     mSceneData.meshIdToInstanceIds.resize(mMeshes.size());

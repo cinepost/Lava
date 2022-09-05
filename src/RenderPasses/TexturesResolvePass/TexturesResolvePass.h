@@ -51,6 +51,7 @@ using namespace Falcor;
 class dllpassdecl TexturesResolvePass : public RenderPass {
  public:
     using SharedPtr = std::shared_ptr<TexturesResolvePass>;
+    using TextureSlot = Material::TextureSlot;
 
     static const Info kInfo;
 
@@ -76,16 +77,22 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
     void createMipCalibrationTexture(RenderContext* pRenderContext);
     void createLtxCalibrationTexture(RenderContext* pRenderContext);
 
+    void setDefaultSampler();
+
     Fbo::SharedPtr              mpFbo;
     GraphicsState::SharedPtr    mpState;
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
     Scene::SharedPtr            mpScene;
 
+    Sampler::SharedPtr          mpSampler = nullptr;
+    Sampler::SharedPtr          mpMinSampler = nullptr;
+    Sampler::SharedPtr          mpMaxSampler = nullptr;
+
     GraphicsProgram::SharedPtr      mpProgram;
     DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
-    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA16Unorm;
+    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
 
     ParameterBlock::SharedPtr   mpDataBlock;
     Buffer::SharedPtr           mpTexResolveDataBuffer;
@@ -93,6 +100,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 
 
     Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
+    std::vector<Texture::SharedPtr> mMipCalibrationTextures;
     Texture::SharedPtr          mpLtxCalibrationTexture = nullptr;
 };
 

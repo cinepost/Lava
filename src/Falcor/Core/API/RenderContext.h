@@ -40,7 +40,7 @@
 #include "Falcor/Core/API/BlitContext.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
 namespace Falcor {
 
@@ -234,6 +234,9 @@ private:
 #ifdef FALCOR_D3D12
         void applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);
         void prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
+#elif defined(FALCOR_VK)
+        bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
+        bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
 #endif
         StateBindFlags mBindFlags = StateBindFlags::All;
         GraphicsVars* mpLastBoundGraphicsVars = nullptr;

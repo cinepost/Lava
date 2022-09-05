@@ -50,7 +50,7 @@ namespace Falcor
 
     GraphicsState::GraphicsState(Device::SharedPtr pDevice): mpDevice(pDevice), mDesc(pDevice)
     {
-        uint32_t vpCount = getMaxViewportCount();
+        uint32_t vpCount = getMaxViewportCount(pDevice);
 
         // Create the viewports
         mViewports.resize(vpCount);

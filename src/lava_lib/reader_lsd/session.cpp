@@ -5,7 +5,6 @@
 #include <cstdlib>
 
 #include "Falcor/Core/API/Texture.h"
-#include "Falcor/Core/API/ResourceManager.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
 #include "Falcor/Scene/MaterialX/MxNode.h"
@@ -64,6 +63,16 @@ void Session::cmdSetEnv(const std::string& key, const std::string& value) {
 }
 
 void Session::cmdConfig(lsd::ast::Type type, const std::string& name, const lsd::PropValue& value) {
+/*
+	auto& config = ConfigStore::instance();
+	switch(type) {
+		case lsd::ast::Type::BOOL:
+			config.set<bool>(name, value);
+			break;
+		default:
+			break;
+	}
+*/
 #define get_bool(_a) (boost::get<int>(_a) == 0) ? false : true
 
 	if (name == "vtoff") {
@@ -470,7 +479,10 @@ bool Session::cmdRaytrace() {
 
 void Session::pushBgeo(const std::string& name, ika::bgeo::Bgeo::SharedConstPtr pBgeo, bool async) {
 	LLOG_DBG << "pushBgeo";
-    //bgeo.printSummary(std::cout);
+
+#ifdef _DEBUG
+    bgeo.printSummary(std::cout);
+#endif
 
     auto pSceneBuilder = mpRenderer->sceneBuilder();
     if(pSceneBuilder) {
@@ -579,15 +591,11 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			//pLightProbe = LightProbe::create(pDevice->getRenderContext());
 		} else {
     		bool loadAsSrgb = false;
-    		//uint32_t diffSampleCount = 8192; // preintegration
-    		//uint32_t specSampleCount = 8192; // preintegration
-    		auto pResourceManager = pDevice->resourceManager();
-    		if (pResourceManager) {
-        		auto pEnvMapTexture = pResourceManager->createTextureFromFile(texture_file_name, true, loadAsSrgb);
-    			EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    			pEnvMap->setTint(light_color);
-    			pSceneBuilder->setEnvMap(pEnvMap);
-    		}
+    		
+    		auto pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
+    		EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    		pEnvMap->setTint(light_color);
+    		pSceneBuilder->setEnvMap(pEnvMap);
     	}
     	return;
 	} else { 
@@ -840,14 +848,8 @@ bool Session::cmdEnd() {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
 			if( pGeo->isInline()) {
-#ifdef _DEBUG
-				pGeo->bgeo()->printSummary(std::cout);
-#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			} else {
-#ifdef _DEBUG
-				pGeo->bgeo()->printSummary(std::cout);
-#endif
 				pushBgeo(pGeo->detailName(), pGeo->bgeo(), pushGeoAsync);
 			}
 			break;
@@ -1094,28 +1096,27 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setEmissiveColor(emissive_color);
     pMaterial->setEmissiveFactor(emissive_factor);
     pMaterial->setDoubleSided(!front_face);
-
-    LLOG_DBG << "Setting textures for material: " << pMaterial->getName();
+  	
   	//bool loadAsSrgb = true;
+    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", true);
+    loadTexturesAsSparse = true;
+
+    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
     if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, true); // load as srgb texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse);
     }
 
     if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
-    	//pMaterial->loadTexture(Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, false); // load as linear texture
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path);
+    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
     }
 
     // add a mesh instance to a node

@@ -40,6 +40,7 @@
 #define FALCOR_NVAPI_AVAILABLE 0
 #endif
 
+
 using namespace gfx;
 
 #include "Falcor/Core/API/Device.h"
@@ -272,7 +273,8 @@ namespace Falcor {
 	FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
 	// create resource
-	apiHandle = mpApiData->pDevice->createTextureResource(desc, nullptr);
+	std::shared_ptr<Falcor::Texture> pTexture;
+	apiHandle = mpApiData->pDevice->createTextureResource(desc, pTexture, nullptr);
 	FALCOR_ASSERT(apiHandle);
 
 	return true;
@@ -452,11 +454,12 @@ namespace Falcor {
 		for (auto& queue : mCmdQueues) {
 			queue.push_back(pData->pQueue);
 		}
+
 #if FALCOR_GFX_VK
 		for (auto& queue : mCmdNativeQueues) {
 		  gfx::InteropHandle handle = {};
     	FALCOR_GFX_CALL(pData->pQueue->getNativeHandle(&handle));
-    	assert(handle.api == gfx::InteropHandleAPI::Vulkan);
+    	//assert(handle.api == gfx::InteropHandleAPI::Vulkan);
     	queue.push_back(reinterpret_cast<VkQueue>(handle.handleValue));
 		}
 #endif
@@ -526,10 +529,15 @@ namespace Falcor {
 		FALCOR_ASSERT(interopHandles.handles[0].api == gfx::InteropHandleAPI::D3D12);
 		return reinterpret_cast<ID3D12Device*>(interopHandles.handles[0].handleValue);
 	}
-#else
-	const D3D12DeviceHandle Device::getD3D12Handle() {
-		return nullptr;
+#endif
+
+//#else
+//	const D3D12DeviceHandle Device::getD3D12Handle() {
+//		return nullptr;
+//	}
+//#endif // FALCOR_D3D12_AVAILABLE
+
+	Device::~Device() { 
 	}
-#endif // FALCOR_D3D12_AVAILABLE
 
 } // namespace Falcor

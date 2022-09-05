@@ -28,20 +28,23 @@
 #pragma once
 
 #include "Falcor/Core/API/Device.h"
-#include <slang/slang-gfx.h>
+#include "gfx_lib/slang-gfx.h"
 
-namespace Falcor
-{
-    const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
+namespace Falcor {
 
-    class PipelineCreationAPIDispatcher;
+const uint32_t kTransientHeapConstantBufferSize = 16 * 1024 * 1024;
 
-    struct DeviceApiData
-    {
-        Slang::ComPtr<gfx::IDevice> pDevice;
-        Slang::ComPtr<gfx::ISwapchain> pSwapChain;
-        Slang::ComPtr<gfx::ICommandQueue> pQueue;
-        Slang::ComPtr<gfx::ITransientResourceHeap> pTransientResourceHeaps[Device::kSwapChainBuffersCount];
-        PipelineCreationAPIDispatcher* pApiDispatcher = nullptr;
-    };
-}
+class PipelineCreationAPIDispatcher;
+
+struct DeviceApiData {
+    Slang::ComPtr<gfx::IDevice> pDevice;
+    Slang::ComPtr<gfx::ISwapchain> pSwapChain;
+    Slang::ComPtr<gfx::ICommandQueue> pQueue;
+    Slang::ComPtr<gfx::ITransientResourceHeap> pTransientResourceHeaps[Device::kSwapChainBuffersCount];
+    PipelineCreationAPIDispatcher* pApiDispatcher = nullptr;
+#if defined(FALCOR_GFX_VK)
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+#endif
+};
+
+}  // namespace Falcor

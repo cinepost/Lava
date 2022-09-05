@@ -77,7 +77,7 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
     uint32_t physicalDevicesCount() const { return mPhysicalDevicesCount; }
 
-#if FALCOR_GFX_VK
+#if FALCOR_GFX_VK || defined(FALCOR_VK)
     const std::vector<VkPhysicalDevice>& physicalDevices() const { return mPhysicalDevices; }
     VkInstance vulkanInstance() const;
 #endif
@@ -86,6 +86,10 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
 
  private:
     DeviceManager();
+
+#if defined(FALCOR_VK)
+    static VkInstance createVulkanInstance(bool enableDebugLayer);
+#endif
 
     bool init();
     bool deviceEnumerated(uint8_t gpuId) const;
@@ -100,7 +104,8 @@ class dlldecl DeviceManager: public std::enable_shared_from_this<DeviceManager> 
     uint8_t mDefaultRenderingDeviceID = 0;   
 
     uint32_t                        mPhysicalDevicesCount = 0;
-#ifdef FALCOR_GFX
+
+#if defined(FALCOR_GFX) || defined(FALCOR_VK)
     std::vector<VkPhysicalDevice>   mPhysicalDevices;
 #endif
 };

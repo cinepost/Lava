@@ -8,11 +8,22 @@
 #include <variant>
 
 #include "Falcor/Core/Framework.h"
+#include "lava_lib/reader_lsd/properties_container.h"
+#include "lava_lib/reader_lsd/grammar_lsd.h"
+
+static const lava::lsd::ast::Style global_style = lava::lsd::ast::Style::GLOBAL; // ConfigStore default style
+
+//typedef x3::variant<bool, int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
 
 namespace Falcor {
 
 class dlldecl ConfigStore {
-  using Value = std::variant<bool, int, float, std::string>;
+  using Value = std::variant<
+        bool, 
+        int, Falcor::int2, Falcor::int3, Falcor::int4, 
+        float, Falcor::float2, Falcor::float3, Falcor::float4, 
+        std::string
+    >;
   public:
     ConfigStore(): mLocked(false){};
 
@@ -28,13 +39,19 @@ class dlldecl ConfigStore {
     T get(const std::string& key, const T& defaultValue) const;
   
     template<typename T>
-    void set(const std::string& key, const T& val);
+    void set(const std::string& key, const T& value);
+
+    template<typename T>
+    void set(const std::string& key, const lava::lsd::PropValue& value);
 
   private:
     ConfigStore(const ConfigStore&) = delete;
     ConfigStore& operator=(const ConfigStore&) = delete;
 
     std::map<std::string, Value> mConfigMap;
+
+    lava::lsd::PropertiesContainer mContainer;
+
     bool mLocked = false;
 };
 
@@ -53,19 +70,31 @@ T ConfigStore::get(const std::string& key, const T& defaultValue) const {
 //template bool ConfigStore::get<bool>(const std::string&, const bool&) const;
 
 template<typename T>
-void ConfigStore::set(const std::string& key, const T& val) {
+void ConfigStore::set(const std::string& key, const T& value) {
     if(mLocked) {
-        //logError("Unable to set config value for key %s. ConfigStore is locked !!!", key);
+        LLOG_ERR << "Unable to set config value for key " << key << ". ConfigStore is locked !";
         return;
     }
-
-    if(mConfigMap.find(key) == mConfigMap.end()) {
-        // not found
-        mConfigMap.insert({key, val});
+/*
+    if(!mContainer.propertyExist(global_style, key)) {
+        bool declared = mContainer.declareProperty(
+            global_style, 
+            Property::Type type, 
+            key, value, lava::lsd::Property::Owner::SYS);
+    
+        if(!declared) {
+            LLOG_ERR << "Error declaring ConfigStore variable " << key;
+            return;
+        }
+        
     } else {
-        // found
-        //logError("Unable to set already exisiting config value for key %s !!!", key);
+        bool set = mContainer.setProperty(global_style, key, value);
+        if(!set) {
+            LLOG_ERR << "Error setting ConfigStore variable " << key;
+            return;
+        }
     }
+*/
 }
 
 }  // namespace Falcor

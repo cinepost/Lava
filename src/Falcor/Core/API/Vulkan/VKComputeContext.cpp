@@ -30,7 +30,8 @@
 #include "stdafx.h"
 #include "Falcor/Core/API/ComputeContext.h"
 #include "Falcor/Core/API/Device.h"
-#include "Falcor/Core/API/DescriptorSet.h"
+#include "Falcor/Core/API/Buffer.h"
+//#include "Falcor/Core/API/DescriptorSet.h"
 #include "Falcor/Utils/Debug/debug.h"
 
 #define VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION 65536 //1024 
@@ -71,11 +72,11 @@ namespace Falcor {
     template<typename ViewType, typename ClearType>
     void clearColorImageCommon(CopyContext* pCtx, const ViewType* pView, const ClearType& clearVal) {
         if(pView->getApiHandle().getType() != VkResourceType::Image) {
-            logWarning("Looks like you are trying to clear a buffer. Vulkan only supports clearing Buffers with a single uint value. Please use the uint version of clearUav(). Call is ignored");
+            LLOG_WRN << "Looks like you are trying to clear a buffer. Vulkan only supports clearing Buffers with a single uint value. Please use the uint version of clearUav(). Call is ignored";
             should_not_get_here();
             return;
         }
-        pCtx->resourceBarrier(pView->getResource(), Resource::State::CopyDest);
+        pCtx->resourceBarrier(pView->getResource().get(), Resource::State::CopyDest);
         VkClearColorValue colVal;
         assert(sizeof(ClearType) <= sizeof(colVal.float32));
         std::memcpy(colVal.float32, &clearVal, sizeof(clearVal)); // VkClearColorValue is a union, so should work regardless of the ClearType
@@ -100,9 +101,9 @@ namespace Falcor {
     void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
         if(pUav->getApiHandle().getType() == VkResourceType::Buffer) {
             if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w))) {
-                logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'");
+                LLOG_WRN << "Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'";
             }
-            const Buffer* pBuffer = dynamic_cast<const Buffer*>(pUav->getResource());
+            const Buffer* pBuffer = dynamic_cast<const Buffer*>(pUav->getResource().get());
             vkCmdFillBuffer(getLowLevelData()->getCommandList(), pBuffer->getApiHandle(), pBuffer->getGpuAddressOffset(), pBuffer->getSize(), value.x);
         } else {
             clearColorImageCommon(this, pUav, value);
@@ -130,12 +131,12 @@ namespace Falcor {
         if (dispatchSize.x > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.y > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
             dispatchSize.z > VULKAN_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION) {
-            logError("ComputeContext::dispatch(...) - Dispatch dimension exceeds maximum. Skipping.");
+            LLOG_ERR << "ComputeContext::dispatch(...) - Dispatch dimension exceeds maximum. Skipping.";
             return;
         }
 
         if (prepareForDispatch(pState, pVars) == false) {
-            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
+            LLOG_ERR << "ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.";
             return;
         }
         vkCmdDispatch(mpLowLevelData->getCommandList(), dispatchSize.x, dispatchSize.y, dispatchSize.z);
@@ -147,7 +148,7 @@ namespace Falcor {
         assert(pArgBuffer);
 
         if (prepareForDispatch(pState, pVars) == false) {
-            logError("ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.");
+            LLOG_ERR << "ComputeContext::dispatch(...) - prepareForDispatch(...) call failed !!! Skipping.";
             return;
         }
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);

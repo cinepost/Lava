@@ -29,27 +29,23 @@
 
 #include "lava_utils_lib/logging.h"
 
-namespace Falcor
-{
+namespace Falcor {
     static bool sShowMessageBoxOnError = true;
 
     void setShowMessageBoxOnError(bool enable) { sShowMessageBoxOnError = enable; }
     bool getShowMessageBoxOnError() { return sShowMessageBoxOnError;  }
 
-    void reportError(const std::string& msg)
-    {
+    void reportError(const std::string& msg) {
         LLOG_ERR << msg;
         std::quick_exit(1);
     }
 
-    void reportErrorAndAllowRetry(const std::string& msg)
-    {
+    void reportErrorAndAllowRetry(const std::string& msg) {
         LLOG_ERR << msg;
         std::quick_exit(1);
     }
 
-    [[noreturn]] void reportFatalError(const std::string& msg)
-    {
+    [[noreturn]] void reportFatalError(const std::string& msg) {
         LLOG_FTL << msg;
         std::quick_exit(1);
     }

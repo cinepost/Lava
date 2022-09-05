@@ -28,13 +28,17 @@
 #ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 #define SRC_FALCOR_UTILS_IMAGE_TEXTUREMANAGER_H_
 
-#include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/Program/ShaderVar.h"
+#include "Falcor/Utils/Image/LTX_Bitmap.h"
 
 #include "AsyncTextureLoader.h"
 #include <mutex>
 
 namespace Falcor {
+
+class Device;
+class VirtualTexturePage;
+
 /** Multi-threaded texture manager.
 
 	This class manages a collection of textures and implements
@@ -55,6 +59,7 @@ public:
 	enum class TextureState {
 		Invalid,        ///< Invalid/unknown texture.
 		Referenced,     ///< Texture is referenced, but not yet loaded.
+		Converting,     ///< Virtual texture (.ltx) being referenced, but not yet converted. Ongoing on-line conversion.
 		Loaded,         ///< Texture has finished loading.
 	};
 
@@ -63,9 +68,9 @@ public:
 	struct TextureHandle {
 
 		enum class Mode {
+			Uniform,
 			Texture,       ///< Normal texture.
 			UDIM_Texture,  ///< UDIM texture. No actual data/resource associated.
-			UDIM_Tile,     ///< UDIM tile texture.
 		};
 
 		uint32_t id = kInvalidID;
@@ -75,7 +80,6 @@ public:
 		
 		inline uint32_t getID() const { return id; }
 		inline bool isValid() const { return id != kInvalidID; }
-		inline bool isUDIMTile() const { return mMode == Mode::UDIM_Tile; }
 		inline bool isUDIMTexture() const { return mMode == Mode::UDIM_Texture; }
 		inline Mode mode() const { return mMode; }
 
@@ -97,7 +101,7 @@ public:
 		\param[in] threadCount Number of worker threads.
 		\return A new object.
 	*/
-	static SharedPtr create(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount = std::thread::hardware_concurrency());
+	static SharedPtr create(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount = std::thread::hardware_concurrency());
 
 	/** Add a texture to the manager.
 		If the texture is already managed, its existing handle is returned.
@@ -117,7 +121,9 @@ public:
 		\param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
 		\return Unique handle to the texture, or an invalid handle if the texture can't be found.
 	*/
-	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, std::string udim_mask = "<UDIM>");
+	TextureHandle loadTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource, bool async = true, std::string udim_mask = "<UDIM>", bool loadAsSparse = false);
+
+	Texture::SharedPtr loadSparseTexture(const fs::path& path, bool generateMipLevels, bool loadAsSRGB, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource);
 
 	/** Wait for a requested texture to load.
 		If the handle is valid, the call blocks until the texture is loaded (or failed to load).
@@ -162,6 +168,8 @@ public:
 
 	bool hasUDIMTextures() const { return mHasUDIMTextures; };
 
+	bool hasSparseTextures() const { return mHasSparseTextures; };
+
 	/** Bind all textures into a shader var.
 		The shader var should refer to a Texture2D descriptor array of fixed size.
 		The array must be large enough, otherwise an exception is thrown.
@@ -175,8 +183,12 @@ public:
 
 	void finalize();
 
+	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
+
+	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
+
 private:
-	TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount, size_t threadCount);
+	TextureManager(std::shared_ptr<Device> pDevice, size_t maxTextureCount, size_t threadCount);
 
 	/** Key to uniquely identify a managed texture.
 	*/
@@ -208,11 +220,12 @@ private:
 
 	// Internal state. Do not access outside of critical section.
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
-	//std::vector<TextureDesc> mTextureTileDescs;                 ///< Array of all udim texture tile descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.
 	std::map<const Texture*, TextureHandle> mTextureToHandle;   ///< Map from texture ptr to handle.
 
+	bool mSparseTexturesEnabled = false;
+	bool mHasSparseTextures = false;
 	bool mHasUDIMTextures = false;
 	bool mDirty = true;
 
@@ -222,7 +235,22 @@ private:
 	size_t mUDIMTexturesCount = 0;
 
 	const size_t mMaxTextureCount;                              ///< Maximum number of textures that can be simultaneously managed.
+
+	std::map<uint32_t, LTX_Bitmap::SharedConstPtr> 	  mTextureLTXBitmapsMap;
+	std::vector<std::shared_ptr<VirtualTexturePage>>  mSparseDataPages;
 };
+
+inline std::string to_string(TextureManager::TextureHandle::Mode mode) {
+#define mode_2_string(a) case TextureManager::TextureHandle::Mode::a: return #a;
+  switch (mode) {
+      mode_2_string(Texture);
+      mode_2_string(UDIM_Texture);
+    default:
+      assert(false);
+      return "Unknown TextureHandle::Mode";
+  }
+#undef mode_2_string
+}
 
 }  // namespace Falcor
 

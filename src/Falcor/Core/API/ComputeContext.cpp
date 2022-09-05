@@ -38,6 +38,26 @@ ComputeContext::SharedPtr ComputeContext::create(std::shared_ptr<Device> pDevice
     return pCtx;
 }
 
+#if defined(FALCOR_VK)
+bool ComputeContext::applyComputeVars(ComputeVars* pVars, RootSignature* pRootSignature) {
+    bool varsChanged = (pVars != mpLastBoundComputeVars);
+
+    // FIXME TODO Temporary workaround
+    varsChanged = true;
+
+    if (pVars->apply(this, varsChanged, pRootSignature) == false) {
+        LLOG_WRN << "ComputeContext::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying";
+        flush(true);
+
+        if (!pVars->apply(this, varsChanged, pRootSignature)) {
+            LLOG_ERR << "ComputeVars::applyComputeVars() - applying ComputeVars failed, most likely because we ran out of descriptors";
+            return false;
+        }
+    }
+    return true;
+}
+#endif
+
 void ComputeContext::flush(bool wait) {
     CopyContext::flush(wait);
     mpLastBoundComputeVars = nullptr;

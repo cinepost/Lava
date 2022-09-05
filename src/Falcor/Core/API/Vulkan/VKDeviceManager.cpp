@@ -40,6 +40,51 @@ namespace Falcor {
 
 VkInstance gVulkanInstance = VK_NULL_HANDLE;
 
+static bool isLayerSupported(const std::string& layer, const std::vector<VkLayerProperties>& supportedLayers) {
+    for (const auto& l : supportedLayers) {
+        if (l.layerName == layer) return true;
+    }
+    return false;
+}
+
+static void enableLayerIfPresent(const char* layerName, const std::vector<VkLayerProperties>& supportedLayers, std::vector<const char*>& requiredLayers) {
+    if (isLayerSupported(layerName, supportedLayers)) {
+        requiredLayers.push_back(layerName);
+    } else {
+        LLOG_ERR << "Can't enable requested Vulkan layer " << std::string(layerName) << ". Something bad might happen. Or not, depends on the layer.";
+    }
+}
+
+static std::vector<VkLayerProperties> enumarateInstanceLayersProperties() {
+    uint32_t layerCount = 0;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    std::vector<VkLayerProperties> layerProperties(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
+
+    for (const VkLayerProperties& layer : layerProperties) {
+        LLOG_DBG << "Available Vulkan Layer: " << std::string(layer.layerName) << 
+                    " - VK Spec Version: " << std::to_string(layer.specVersion) <<
+                    " - Implementation Version: " << std::to_string(layer.implementationVersion);
+    }
+
+    return layerProperties;
+}
+
+static std::vector<VkExtensionProperties> enumarateInstanceExtensions() {
+    // Enumerate implicitly available extensions. The debug layers above just have VK_EXT_debug_report
+    uint32_t availableInstanceExtensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &availableInstanceExtensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableInstanceExtensions(availableInstanceExtensionCount);
+    if (availableInstanceExtensionCount > 0) {
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableInstanceExtensionCount, availableInstanceExtensions.data());
+    }
+
+    for (const VkExtensionProperties& extension : availableInstanceExtensions) {
+        LLOG_DBG << "Available Instance Extension: " << std::string(extension.extensionName) << " - VK Spec Version: " << std::to_string(extension.specVersion);
+    }
+
+    return availableInstanceExtensions;
+}
 
 bool DeviceManager::init() {
     if (mInitialized) return true;
@@ -74,5 +119,89 @@ void DeviceManager::enumerateDevices() {
 }
 
 VkInstance DeviceManager::vulkanInstance() const { return gVulkanInstance; }
+
+VkInstance DeviceManager::createVulkanInstance(bool enableDebugLayer) {
+    // Initialize the layers
+    const auto layerProperties = enumarateInstanceLayersProperties();
+    std::vector<const char*> requiredLayers;
+
+    if (enableDebugLayer) {
+        enableLayerIfPresent("VK_LAYER_KHRONOS_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_KHRONOS_synchronization2", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_monitor", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_parameter_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_core_validation", layerProperties, requiredLayers);
+        //enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
+    }
+
+    // Initialize the extensions
+    std::vector<VkExtensionProperties> supportedExtensions = enumarateInstanceExtensions();
+
+    // Extensions to use when creating instance
+    std::vector<const char*> requiredExtensions = {
+        "VK_KHR_surface",
+#ifdef _WIN32
+        "VK_KHR_win32_surface"
+#else
+        "VK_KHR_xlib_surface"
+#endif
+    };
+
+    if (enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
+
+
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Lava";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_2;
+
+
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+    createInfo.enabledLayerCount = (uint32_t)requiredLayers.size();
+    createInfo.ppEnabledLayerNames = requiredLayers.data();
+    createInfo.enabledExtensionCount = (uint32_t)requiredExtensions.size();
+    createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+
+    VkInstance instance;
+    if (VK_FAILED(vkCreateInstance(&createInfo, nullptr, &instance))) {
+        LLOG_FTL << "Failed to create Vulkan instance !!!";
+        return VK_NULL_HANDLE;
+    }
+
+    return instance;
+}
+
+Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Device::Desc &desc) {
+    if (!deviceEnumerated(gpuId)) {
+        LLOG_ERR << "Rendering device " << to_string(gpuId) << " not enumerated !!!";
+        return nullptr;
+    }
+
+    Device::SharedPtr pDevice = renderingDevice(gpuId);
+    if(pDevice) return pDevice;
+
+    Device::IDesc iDesc;
+
+    // VkInstance
+    iDesc.vulkanInstance = vulkanInstance();
+    iDesc.physicalDevice = mPhysicalDevices[gpuId];
+
+    Window::SharedPtr pWindow = nullptr;
+    pDevice = Device::create(pWindow, iDesc, desc);
+    if (!pDevice) {
+        LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";
+        return nullptr;
+    } else {
+        LLOG_INF << "Rendering device created on gpu id " << std::to_string(gpuId) << "!";
+    }
+
+    mRenderingDevices[gpuId] = pDevice;
+    return pDevice;
+}
 
 }  // namespace Falcor

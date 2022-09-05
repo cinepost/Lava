@@ -228,9 +228,7 @@ Profiler::Capture::SharedPtr Profiler::Capture::create(size_t reservedEvents, si
 }
 
 void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
-    printf("captureEvents\n");
     if (events.empty()) {
-        printf("no events\n");
         return;
     }
     // Initialize on first capture.
@@ -244,7 +242,6 @@ void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
             mLanes[i * 2 + 1].name = pEvent->getName() + "/gpuTime";
             mLanes[i * 2 + 1].records.reserve(mReservedFrames);
         }
-        printf("%zu events captured first time!!!!\n", events.size());
         return; // Exit as no data is available on first capture.
     }
 
@@ -254,8 +251,6 @@ void Profiler::Capture::captureEvents(const std::vector<Event*>& events) {
         mLanes[i * 2].records.push_back(pEvent->getCpuTime());
         mLanes[i * 2 + 1].records.push_back(pEvent->getGpuTime());
     }
-
-    printf("%zu events captured !!!!\n", events.size());
 
     ++mFrameCount;
 }
@@ -291,10 +286,12 @@ void Profiler::startEvent(const std::string& name, Flags flags) {
         }
     }
     if (is_set(flags, Flags::Pix)) {
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         PIXBeginEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
-#else
+#elif defined(FALCOR_GFX)
         mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
+#else 
+        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
 #endif
     }
 }
@@ -312,10 +309,12 @@ void Profiler::endEvent(const std::string& name, Flags flags) {
     }
 
     if (is_set(flags, Flags::Pix)) {
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         PIXEndEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList());
-#else
+#elif defined(FALCOR_GFX)
         mpDevice->getRenderContext()->getLowLevelData()->endDebugEvent();
+#else 
+        LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
 #endif
     }
 }

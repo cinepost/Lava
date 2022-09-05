@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Falcor.h"
+
 #include "RenderGraph/RenderPassStandardFlags.h"
+
 #include "GBufferRT.h"
 
 const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer generation pass." };
@@ -96,8 +98,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     for (const auto& channel : kGBufferChannels) findOutput(channel.name);
     for (const auto& channel : kGBufferExtraChannels) findOutput(channel.name);
 
-    if (!pOutput)
-    {
+    if (!pOutput) {
         LLOG_WRN << "GBufferRT::execute() - Render pass has no connected outputs. Is this intended?";
         return;
     }
@@ -105,30 +106,25 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
     // If there is no scene, clear the output and return.
-    if (mpScene == nullptr)
-    {
+    if (mpScene == nullptr) {
         clearRenderPassChannels(pRenderContext, kGBufferChannels, renderData);
         clearRenderPassChannels(pRenderContext, kGBufferExtraChannels, renderData);
         return;
     }
 
     // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
-    {
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) || is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged)) {
         recreatePrograms();
     }
 
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (mUseDOF)
-    {
+    if (mUseDOF) {
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
     }
 
-    if (mLODMode == TexLODMode::RayDiffs)
-    {
+    if (mLODMode == TexLODMode::RayDiffs) {
         // TODO: Remove this warning when the TexLOD code has been fixed.
         // logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
     }
@@ -138,8 +134,7 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     mFrameCount++;
 }
 
-Dictionary GBufferRT::getScriptingDictionary()
-{
+Dictionary GBufferRT::getScriptingDictionary() {
     Dictionary dict = GBuffer::getScriptingDictionary();
     dict[kLODMode] = mLODMode;
     dict[kUseTraceRayInline] = mUseTraceRayInline;

@@ -74,6 +74,9 @@
 // It will be removed once we have conclusions on performance.
 #define CURVE_BACKFACE_CULLING_USING_ANYHIT 0
 
+namespace lava {
+    class Renderer;
+}
 
 namespace Falcor {
 
@@ -678,6 +681,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
 
     /** Get the material system.
     */
+    const MaterialSystem::SharedPtr& materialSystem() const { return mpMaterialSystem; }
     const MaterialSystem::SharedPtr& getMaterialSystem() const { return mpMaterialSystem; }
 
     /** Get a list of all materials in the scene.
@@ -1289,26 +1293,21 @@ public:
     UpdateMode mBlasUpdateMode = UpdateMode::Refit;     ///< How the BLAS should be updated when there are changes to meshes
 
     std::vector<RtInstanceDesc> mInstanceDescs; ///< Shared between TLAS builds to avoid reallocating CPU memory
-
-    //nvvk::DebugUtil                 mDebug;  // Utility to name objects
-    //nvvk::RaytracingBuilderKHR*     mpRtBuilder = nullptr;
-
-    std::vector<uint32_t>           mMeshIdToBlasId;
+    std::vector<uint32_t>       mMeshIdToBlasId;
 
     bool mTlasBuilt = false;
 
     // Ray tracing acceleration structure
     struct TlasData {
-#ifdef FALCOR_VK
-        TopLevelAccelerationStructure::SharedPtr pTlasObject;
-#else
+//#ifdef FALCOR_VK
+//        TopLevelAccelerationStructure::SharedPtr pTlasObject;
+//#else
         RtAccelerationStructure::SharedPtr pTlasObject;
-#endif
+//#endif
 
         Buffer::SharedPtr pTlasBuffer;
         Buffer::SharedPtr pInstanceDescs;               ///< Buffer holding instance descs for the TLAS
         UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
-        //VkAccelerationStructureKHR handle;
     };
 
     std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray count
@@ -1320,16 +1319,14 @@ public:
     /** Describes one BLAS.
     */
     struct BlasData {
-#ifdef FALCOR_VK
-        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
-        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
-#else
+//#ifdef FALCOR_VK
+//        VkAccelerationStructureBuildSizesInfoKHR        prebuildInfo;
+//        VkAccelerationStructureBuildGeometryInfoKHR     buildInputs;
+//#else
         RtAccelerationStructurePrebuildInfo prebuildInfo = {};
         RtAccelerationStructureBuildInputs buildInputs = {};
         std::vector<RtGeometryDesc> geomDescs;
-#endif
-        //std::vector<VkAccelerationStructureGeometryKHR>         geomDescs;
-        //std::vector<VkAccelerationStructureBuildRangeInfoKHR>   ranges;
+//#endif
 
         uint32_t blasGroupIndex = 0;                    ///< Index of the BLAS group that contains this BLAS.
 
@@ -1368,18 +1365,19 @@ public:
 
     // BLAS Data is ordered as all mesh BLAS's first, followed by one BLAS containing all AABBs.
     std::vector<RtAccelerationStructure::SharedPtr> mBlasObjects; ///< BLAS API objects.
-    std::vector<BlasData> mBlasData;                    ///< All data related to the scene's BLASes.
-    std::vector<BlasGroup> mBlasGroups;                 ///< BLAS group data.
+    std::vector<BlasData>   mBlasData;                  ///< All data related to the scene's BLASes.
+    std::vector<BlasGroup>  mBlasGroups;                ///< BLAS group data.
     Buffer::SharedPtr mpBlasScratch;                    ///< Scratch buffer used for BLAS builds.
     Buffer::SharedPtr mpBlasStaticWorldMatrices;        ///< Object-to-world transform matrices in row-major format. Only valid for static meshes.
     bool mBlasDataValid = false;                        ///< Flag to indicate if the BLAS data is valid. This will be reset when geometry is changed.
     bool mRebuildBlas = true;                           ///< Flag to indicate BLASes need to be rebuilt.
     
-
     std::string mFilename;
     bool mFinalized = false;                            ///< True if scene is ready to be bound to the GPU.
 
     std::shared_ptr<Device> mpDevice;
+
+    friend class lava::Renderer;
 };
 
 enum_class_operators(Scene::UpdateFlags);

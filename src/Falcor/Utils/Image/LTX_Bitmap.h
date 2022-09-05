@@ -9,13 +9,16 @@ namespace Falcor {
 
 class Device;
 class Texture;
+class TextureManager;
 class ResourceManager;
+
+const size_t kLtxPageSize = 65536;
 
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 5,6 used to store major,minor versions
 
 struct LTX_Header {
     unsigned char   magic[12] = {0xAB, 'L', 'T', 'X', ' ', '1', '0', 0xBB, '\r', '\n', '\x1A', '\n'};
-    time_t          srcLastWriteTime;
+    time_t          srcLastWriteTime; // Source texture creation time
     uint32_t        width = 0;
     uint32_t        height = 0;
     uint32_t        depth = 0;
@@ -94,7 +97,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
         \param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise the bottom-left pixel is first.
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
-    static SharedConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown = true);
+    static SharedConstPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool isTopDown = true);
 
     
     /** Store a memory buffer to a sparse file.
@@ -140,20 +143,23 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     */
     inline ResourceFormat getFormat() const { return mHeader.format; }
 
-    inline const std::string& getFilename() const { return mFilename; }
+    inline const fs::path& getFilePath() const { return mFilePath; }
+    inline const std::string getFileName() const { return mFilePath.string(); }
 
     
  protected:
-    void readPageData (size_t pageNum, void *pData) const;
-    void readPageData (size_t pageNum, void *pData, FILE *pFile) const;
+    bool readPageData (size_t pageNum, void *pData) const;
+    bool readPageData (size_t pageNum, void *pData, FILE *pFile) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
     friend class ResourceManager;
+    friend class TextureManager;
 
  public:
-    static bool convertToKtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown = true);
+    static bool convertToLtxFile(std::shared_ptr<Device> pDevice, const std::string& srcFilename, const std::string& dstFilename, const TLCParms& compParms, bool isTopDown = true);
     static LTX_Header::TopLevelCompression getTLCFromString(const std::string& name);
-    static bool checkFileMagic(const std::string filename, bool strict = false);
+    static bool checkFileMagic(const std::string& filename, bool strict = false);
+    static bool checkFileMagic(const fs::path& path, bool strict = false);
 
  private:
     LTX_Bitmap();
@@ -168,7 +174,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     uint8_t     mMipLevelsCount = 0;
     uint32_t    mArrayLayersCount = 1;
 
-    std::string mFilename;
+    fs::path    mFilePath;
 
     ResourceFormat mFormat;
 

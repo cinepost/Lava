@@ -27,7 +27,9 @@
  **************************************************************************/
 #include "Falcor/stdafx.h"
 
-#include "Falcor/Core/API/ResourceManager.h"
+#include <thread>
+
+#include "Falcor/Utils/Image/TextureManager.h"
 #include "Falcor/Core/API/RenderContext.h"
 
 #include "Device.h"
@@ -38,11 +40,6 @@ namespace Falcor {
     
 void createNullViews(Device::SharedPtr pDevice);
 void releaseNullViews(Device::SharedPtr pDevice);
-//void createNullBufferViews(Device::SharedPtr pDevice);
-//void releaseNullBufferViews(Device::SharedPtr pDevice);
-//void createNullTypedBufferViews(Device::SharedPtr pDevice);
-//void releaseNullTypedBufferViews(Device::SharedPtr pDevice);
-//void releaseStaticResources(Device::SharedPtr pDevice);
 
 std::atomic<std::uint8_t> Device::UID = 0;
 
@@ -69,8 +66,7 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::Desc& 
     return pDevice;
 }
 
-#ifdef FALCOR_GFX
-Device::SharedPtr Device::create(const gfx::IDevice::Desc& idesc, const Device::Desc& desc) {
+Device::SharedPtr Device::create(const Device::IDesc& idesc, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(nullptr, desc));
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
@@ -81,7 +77,7 @@ Device::SharedPtr Device::create(const gfx::IDevice::Desc& idesc, const Device::
     return pDevice;
 }
 
-Device::SharedPtr Device::create(Window::SharedPtr pWindow, const gfx::IDevice::Desc& idesc, const Device::Desc& desc) {
+Device::SharedPtr Device::create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Device::Desc& desc) {
     auto pDevice = SharedPtr(new Device(pWindow, desc));
     pDevice->mIDesc = idesc;
     pDevice->mUseIDesc = true;
@@ -91,7 +87,6 @@ Device::SharedPtr Device::create(Window::SharedPtr pWindow, const gfx::IDevice::
 
     return pDevice;
 }
-#endif
 
 /**
  * Initialize device
@@ -116,8 +111,11 @@ bool Device::init() {
 
     createNullViews();
 
-    mpResourceManager = ResourceManager::create(shared_from_this());
-    assert(mpResourceManager);
+    size_t maxTextureCount = 1024 * 10;
+    size_t threadCount = std::thread::hardware_concurrency();
+    mpTextureManager = TextureManager::create(shared_from_this(), maxTextureCount, threadCount);
+    assert(mpTextureManager);
+
     mpRenderContext = RenderContext::create(shared_from_this(), mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
 
     // create default sampler
@@ -125,7 +123,7 @@ bool Device::init() {
     desc.setMaxAnisotropy(16);
     desc.setLodParams(0.0f, 1000.0f, -0.0f);
     desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+    desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
     mpDefaultSampler = Sampler::create(shared_from_this(), desc);
 
     mpRenderContext->flush();  // This will bind the descriptor heaps.
@@ -248,16 +246,15 @@ bool Device::isFeatureSupported(SupportedFeatures flags) const {
 }
 
 void Device::executeDeferredReleases() {
-mpUploadHeap->executeDeferredReleases();
-        uint64_t gpuVal = mpFrameFence->getGpuValue();
-        while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal)
-        {
-            mDeferredReleases.pop();
-        }
+    mpUploadHeap->executeDeferredReleases();
+    uint64_t gpuVal = mpFrameFence->getGpuValue();
+    while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
+        mDeferredReleases.pop();
+    }
 
 #ifdef FALCOR_D3D12_AVAILABLE
-        mpD3D12CpuDescPool->executeDeferredReleases();
-        mpD3D12GpuDescPool->executeDeferredReleases();
+    mpD3D12CpuDescPool->executeDeferredReleases();
+    mpD3D12GpuDescPool->executeDeferredReleases();
 #endif // FALCOR_D3D12_AVAILABLE
 }
 
@@ -376,7 +373,7 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
     }
 #endif
 
-#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX)
+#if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX) && !defined(FALCOR_VK)
 #error Verify state handling on swapchain resize for this API
 #endif
 

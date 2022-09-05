@@ -49,13 +49,19 @@ struct TextureHandle {
         Uniform,
         Texture,
         UDIM_Texture,
-        UDIM_Tile,
-
         Count // Must be last
     };
 
-    static const uint kTextureIDBits = 29;
-    static const uint kModeBits = 3;
+    enum class WrapMode {
+        Repeat,
+        Mirror,
+        Streak,
+        Border,
+        Count // Must be last
+    };
+
+    static const uint kTextureIDBits = 30;
+    static const uint kModeBits = 2;
 
     static const uint kModeOffset = kTextureIDBits;
 
@@ -78,10 +84,6 @@ struct TextureHandle {
     /**
     */
     bool isUDIMTexture() CONST_FUNCTION { return getMode() == Mode::UDIM_Texture; }
-
-    /**
-    */
-    bool isUDIMTile() CONST_FUNCTION { return getMode() == Mode::UDIM_Tile; }
 
 #ifdef HOST_CODE
     bool operator==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }

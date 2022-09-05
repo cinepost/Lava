@@ -344,15 +344,15 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
     mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
-    // Bind TLAS.
-    //mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
-
     pVars->setParameterBlock("gScene", mpSceneBlock);
 
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
+    //LLOG_WRN << "Draw...";
     for (const auto& draw : mDrawArgs) {
+
+        //LLOG_WRN << "draw";
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
@@ -591,7 +591,9 @@ void Scene::setSDFGridConfig() {
             mSDFGridConfig.optimizeVisibilityRays = true;
 
             break;
+        }
         case SDFGrid::Type::SparseVoxelOctree:
+        {
             mSDFGridConfig.intersectionMethod = SDFGridIntersectionMethod::VoxelSphereTracing;
             mSDFGridConfig.gradientEvaluationMethod = SDFGridGradientEvaluationMethod::NumericDiscontinuous;
             mSDFGridConfig.solverMaxIterations = 256;
@@ -674,8 +676,7 @@ void Scene::uploadResources() {
 
     auto sdfGridsVar = mpSceneBlock[kSDFGridsArrayName];
 
-    for (uint32_t i = 0; i < mSDFGrids.size(); i++)
-    {
+    for (uint32_t i = 0; i < mSDFGrids.size(); i++) {
         const SDFGrid::SharedPtr& pGrid = mSDFGrids[i];
         pGrid->setShaderData(sdfGridsVar[i]);
     }
@@ -683,15 +684,13 @@ void Scene::uploadResources() {
     mpSceneBlock->setBuffer(kLightsBufferName, mpLightsBuffer);
     mpSceneBlock->setBuffer(kGridVolumesBufferName, mpGridVolumesBuffer);
 
-    if (mpMeshVao != nullptr)
-    {
+    if (mpMeshVao != nullptr) {
         if (hasIndexBuffer()) mpSceneBlock->setBuffer(kIndexBufferName, mpMeshVao->getIndexBuffer());
         mpSceneBlock->setBuffer(kVertexBufferName, mpMeshVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
         mpSceneBlock->setBuffer(kPrevVertexBufferName, mpAnimationController->getPrevVertexData()); // Can be nullptr
     }
 
-    if (mpCurveVao != nullptr)
-    {
+    if (mpCurveVao != nullptr) {
         mpSceneBlock->setBuffer(kCurveIndexBufferName, mpCurveVao->getIndexBuffer());
         mpSceneBlock->setBuffer(kCurveVertexBufferName, mpCurveVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
         mpSceneBlock->setBuffer(kPrevCurveVertexBufferName, mpAnimationController->getPrevCurveVertexData());
@@ -703,16 +702,14 @@ Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate) {
     Material::UpdateFlags materialUpdates = mpMaterialSystem->update(forceUpdate);
 
     UpdateFlags flags = UpdateFlags::None;
-    if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
-    {
+    if (forceUpdate || materialUpdates != Material::UpdateFlags::None) {
         flags |= UpdateFlags::MaterialsChanged;
 
         // Bind materials parameter block to scene.
         mpSceneBlock->setParameterBlock(kMaterialsBlockName, mpMaterialSystem->getParameterBlock());
 
         // If displacement parameters have changed, we need to trigger displacement update.
-        if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged))
-        {
+        if (is_set(materialUpdates, Material::UpdateFlags::DisplacementChanged)) {
             mDisplacement.needsUpdate = true;
         }
 
@@ -1846,6 +1843,7 @@ void Scene::setBlasUpdateMode(UpdateMode mode) {
 }
 
 void Scene::createDrawList() {
+    LLOG_WRN << "createDrawList() material count " << std::to_string(getMaterialCount());
     // This function creates argument buffers for draw indirect calls to rasterize the scene.
     // The updateMeshInstances() function must have been called before so that the flags are accurate.
     //
@@ -1882,7 +1880,8 @@ void Scene::createDrawList() {
     std::vector<std::vector<DrawInstance>> instancesByMaterial;
     instancesByMaterial.resize(getMaterialCount());
 
-    LLOG_DBG << "Number of materials to draw: " << std::to_string(getMaterialCount());
+    LLOG_DBG << "Scene::createDrawList() Number of materials to draw: " << std::to_string(getMaterialCount());
+    LLOG_DBG << "Scene::createDrawList() mGeometryInstanceData size: " << std::to_string(mGeometryInstanceData.size());
 
     uint32_t instanceID = 0;
     for (size_t i = 0; i < mGeometryInstanceData.size(); i++) {
@@ -1893,13 +1892,16 @@ void Scene::createDrawList() {
     // Now prepare draws
     for (size_t materialID = 0; materialID < instancesByMaterial.size(); materialID++) {
         const auto& instances = instancesByMaterial[materialID];
-    
+        LLOG_DBG << "Scene::createDrawList() preapre draw for " << std::to_string(instances.size()) << " instances for materialID " << std::to_string(materialID);
 
         if (hasIndexBuffer()) {
             std::vector<DrawIndexedArguments> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
 
-            uint32_t instanceID = 0;
+            //uint32_t instanceID = 0;
             for (const auto& drawInstance : instances) {
+                LLOG_DBG << "Scene::createDrawList() creating buffer for instance";
+                LLOG_DBG << "drawInstance.globalMatrixID " << std::to_string(drawInstance.instance->globalMatrixID);
+
                 const auto instance = drawInstance.instance;
                 const auto& mesh = mMeshDesc[instance->geometryID];
                 bool use16Bit = mesh.use16BitIndices();
@@ -1913,6 +1915,7 @@ void Scene::createDrawList() {
                 draw.StartInstanceLocation = drawInstance.instanceID;
                 //draw.StartInstanceLocation = instanceID++;
 
+                //draw.MaterialID = instance->materialID;
                 draw.MaterialID = materialID; //instance->materialID;
 
                 int i = use16Bit ? 0 : 1;
@@ -1948,6 +1951,8 @@ void Scene::createDrawList() {
             createDrawBuffer(drawCounterClockwiseMeshes, true);
         }
     }
+
+    LLOG_DBG << "Scene::createDrawList() mDrawArgs size: " << std::to_string(mDrawArgs.size());
 }
 
 void Scene::initGeomDesc(RenderContext* pContext) {

@@ -30,15 +30,16 @@
 #include <thread>
 
 #include "Falcor/stdafx.h"
+#include "Falcor/Core/API/Vulkan/FalcorVK.h"
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/DeviceManager.h"
 #include "Falcor/Core/API/DescriptorPool.h"
 #include "Falcor/Core/API/GpuFence.h"
-#include "Falcor/Core/API/Vulkan/FalcorVK.h"
+#include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor.h"
 
-#include "nvvk/extensions_vk.hpp"
+//#include "nvvk/extensions_vk.hpp"
 
 #define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
@@ -226,7 +227,7 @@ static uint32_t getMemoryBits(VkPhysicalDevice physicalDevice, VkMemoryPropertyF
     return bits;
 }
 
-static uint32_t getCurrentBackBufferIndex(VkDevice device, uint32_t backBufferCount, DeviceApiData* pApiData) {
+static uint32_t _getCurrentBackBufferIndex(VkDevice device, uint32_t backBufferCount, DeviceApiData* pApiData) {
     VkFence fence = pApiData->presentFences.f[pApiData->presentFences.cur];
     vk_call(vkWaitForFences(device, 1, &fence, false, -1));
 
@@ -247,7 +248,7 @@ static bool initMemoryTypes(VkPhysicalDevice physicalDevice, DeviceApiData* pApi
     for(uint32_t i = 0 ; i < arraysize(bits) ; i++) {
         pApiData->vkMemoryTypeBits[i] = getMemoryBits(physicalDevice, bits[i]);
         if (pApiData->vkMemoryTypeBits[i] == 0) {
-            logError("Missing memory type " + std::to_string(i));
+            LLOG_ERR << "Missing memory type " << std::to_string(i);
             return false;
         }
     }
@@ -336,7 +337,7 @@ bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat color
     }
 
     // Get the back-buffer
-    mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
+    mCurrentBackBufferIndex = _getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
     return true;
 }
 
@@ -366,7 +367,8 @@ static std::vector<VkLayerProperties> enumarateInstanceLayersProperties() {
     vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
 
     for (const VkLayerProperties& layer : layerProperties) {
-        logInfo("Available Vulkan Layer: " + std::string(layer.layerName) + " - VK Spec Version: " + std::to_string(layer.specVersion) + " - Implementation Version: " + std::to_string(layer.implementationVersion));
+        LLOG_INF << "Available Vulkan Layer: " << std::string(layer.layerName) << " - VK Spec Version: " << std::to_string(layer.specVersion) 
+                 << " - Implementation Version: " << std::to_string(layer.implementationVersion);
     }
 
     return layerProperties;
@@ -383,8 +385,7 @@ void enableLayerIfPresent(const char* layerName, const std::vector<VkLayerProper
     if (isLayerSupported(layerName, supportedLayers)) {
         requiredLayers.push_back(layerName);
     } else {
-        LOG_WARN("Can't enable requested Vulkan layer %s", layerName);
-        logWarning("Can't enable requested Vulkan layer " + std::string(layerName) + ". Something bad might happen. Or not, depends on the layer.");
+        LLOG_WRN << "Can't enable requested Vulkan layer " << std::string(layerName) << ". Something bad might happen. Or not, depends on the layer.";
     }
 }
 
@@ -398,7 +399,7 @@ static std::vector<VkExtensionProperties> enumarateInstanceExtensions() {
     }
 
     for (const VkExtensionProperties& extension : availableInstanceExtensions) {
-        logInfo("Available Instance Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
+        LLOG_INF << "Available Instance Extension: " << std::string(extension.extensionName) << " - VK Spec Version: " << std::to_string(extension.specVersion);
     }
 
     return availableInstanceExtensions;
@@ -422,7 +423,7 @@ static void initDebugCallback(VkInstance instance, VkDebugReportCallbackEXT* pCa
     CreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
 
     if (VK_FAILED(CreateDebugReportCallback(instance, &callbackCreateInfo, nullptr, pCallback))) {
-        logWarning("Could not initialize debug report callbacks.");
+        LLOG_WRN << "Could not initialize debug report callbacks.";
     }
 }
 
@@ -483,7 +484,7 @@ VkInstance createInstance(bool enableDebugLayer) {
 
     VkInstance instance;
     if (VK_FAILED(vkCreateInstance(&createInfo, nullptr, &instance))) {
-        logError("Failed to create Vulkan instance");
+        LLOG_ERR << "Failed to create Vulkan instance";
         return VK_NULL_HANDLE;
     }
 
@@ -506,7 +507,6 @@ void Device::toggleFullScreen(bool fullscreen){}
 /** Select best physical device based on memory
 */
 VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devices) {
-    LOG_DBG("Selecting physical Vulkan device...");
     VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
     uint64_t bestMemory = 0;
 
@@ -533,7 +533,7 @@ VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devic
     VkPhysicalDeviceProperties pProperties;
     vkGetPhysicalDeviceProperties(bestDevice, &pProperties);
 
-    LOG_DBG("Selected Vulkan physical device: %s", pProperties.deviceName);
+    LLOG_DBG << "Selected Vulkan physical device: " << pProperties.deviceName;
     return bestDevice;
 }
 
@@ -553,14 +553,14 @@ VkPhysicalDevice initPhysicalDevice(VkInstance instance, VkPhysicalDevice physic
     if (vkApiVersion != 0 && pData->properties.apiVersion < vkApiVersion) {
         std::string reqVerStr = std::to_string(desc.apiMajorVersion) + "." + std::to_string(desc.apiMinorVersion);
         std::string supportedStr = std::to_string(VK_VERSION_MAJOR(pData->properties.apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(pData->properties.apiVersion));
-        logError("Vulkan device does not support requested API version. Requested version: " + reqVerStr + ", Highest supported: " + supportedStr);
+        LLOG_ERR << "Vulkan device does not support requested API version. Requested version: " << reqVerStr << ", Highest supported: " << supportedStr;
         return nullptr;
     }
 
     // Get queue families and match them to what type they are
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-    LOG_WARN("Vulkan physical device queue family count is: %u", queueFamilyCount);
+    LLOG_WRN << "Vulkan physical device queue family count is: " << std::to_string(queueFamilyCount);
 
     std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
@@ -806,7 +806,7 @@ VkDevice createLogicalDevice(Device *pDevice, VkPhysicalDevice physicalDevice, D
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, pData->deviceExtensions.data());
 
     for (const VkExtensionProperties& extension : pData->deviceExtensions) {
-        logInfo("Available Device Extension: " + std::string(extension.extensionName) + " - VK Spec Version: " + std::to_string(extension.specVersion));
+        LLOG_DBG << "Available Device Extension: " << std::string(extension.extensionName) << " - VK Spec Version: " << std::to_string(extension.specVersion);
     }
 
     std::vector<const char*> extensionNames; extensionNames.empty();
@@ -1121,7 +1121,7 @@ void Device::apiPresent() {
     auto pQueue = mpRenderContext->getLowLevelData()->getCommandQueue();
     assert(pQueue);
     vk_call(vkQueuePresentKHR(pQueue, &info));
-    mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
+    mCurrentBackBufferIndex = _getCurrentBackBufferIndex(mApiHandle, kSwapChainBuffersCount, mpApiData);
 }
 
 Device::SupportedFeatures getSupportedFeatures(VkPhysicalDevice device) {
@@ -1150,11 +1150,11 @@ Device::SupportedFeatures getSupportedFeatures(VkPhysicalDevice device) {
 /**
  * Initialize vulkan device
  */
-bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
+bool Device::apiInit() {
     const Desc desc;
 
     mpApiData = new DeviceApiData;
-    mVkInstance = pDeviceManager->vulkanInstance();
+    mVkInstance = mIDesc.vulkanInstance;
     if (!mVkInstance) return false;
 
     // Hook up callbacks for VK_EXT_debug_report
@@ -1162,7 +1162,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
         initDebugCallback(mVkInstance, &mpApiData->debugReportCallbackHandle);
     }
 
-    mVkPhysicalDevice = initPhysicalDevice(mVkInstance, pDeviceManager->physicalDevices()[mGpuId], mpApiData, desc);
+    mVkPhysicalDevice = initPhysicalDevice(mVkInstance, mIDesc.physicalDevice, mpApiData, desc);
     if (!mVkPhysicalDevice) return false;
 
     mVkDevice = createLogicalDevice(this, mVkPhysicalDevice, mpApiData, mDesc, mCmdQueues, mDeviceFeatures);
@@ -1170,9 +1170,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
 
     assert(vkGetInstanceProcAddr);
     assert(vkGetDeviceProcAddr);
-    load_VK_EXTENSIONS(mVkInstance, vkGetInstanceProcAddr, mVkDevice, vkGetDeviceProcAddr);
-    //nvvk::load_VK_EXTENSIONS(VkInstance instance, PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDevice device, PFN_vkGetDeviceProcAddr getDeviceProcAddr);
-
+    //load_VK_EXTENSIONS(mVkInstance, vkGetInstanceProcAddr, mVkDevice, vkGetDeviceProcAddr);
 
     if (initMemoryTypes(mVkPhysicalDevice, mpApiData) == false) return false;
 
@@ -1208,7 +1206,7 @@ bool Device::apiInit(std::shared_ptr<const DeviceManager> pDeviceManager) {
  
     vk_call(vmaCreateAllocator(&vmaAllocatorCreateInfo, &mAllocator));
 
-    mNvvkResourceAllocator.init(mVkInstance, mApiHandle, mVkPhysicalDevice, NVVK_DEFAULT_STAGING_BLOCKSIZE, mAllocator);
+    //mNvvkResourceAllocator.init(mVkInstance, mApiHandle, mVkPhysicalDevice, NVVK_DEFAULT_STAGING_BLOCKSIZE, mAllocator);
 
     return true;
 }
@@ -1289,130 +1287,6 @@ const VkPhysicalDeviceLimits& Device::getPhysicalDeviceLimits() const {
 uint32_t Device::getDeviceVendorID() const {
     return mpApiData->properties.vendorID;
 }
-
-bool oneTimeCommandBuffer(Device::SharedPtr pDevice, VkCommandPool pool, const CommandQueueHandle& queue, OneTimeCommandFunc callback) {
-    if (!callback)
-        return false;
-
-    const VkDevice& vkDevice = pDevice->getApiHandle();
-
-    VkCommandBuffer cmdBuff = nullptr;
-
-    VkCommandBufferAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = pool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
-    
-    if (VK_FAILED(vkAllocateCommandBuffers(vkDevice, &allocInfo, &cmdBuff))) {
-        LOG_ERR("Error allocation command buffers");
-        return false;
-    }
-
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    
-    if (VK_FAILED(vkBeginCommandBuffer(cmdBuff, &beginInfo))) {
-        LOG_ERR("Error begin command buffer");
-        return false;
-    }
-
-    callback(cmdBuff);
-
-    if (VK_FAILED(vkEndCommandBuffer(cmdBuff))) {
-        LOG_ERR("Error end command buffer");
-        return false;
-    }
-
-    VkFence fence = VK_NULL_HANDLE;
-
-    VkFenceCreateInfo fenceInfo = {};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    
-    if (VK_FAILED(vkCreateFence(vkDevice, &fenceInfo, nullptr, &fence))) {
-        LOG_ERR("Error creating fence");
-        return false;
-    }
-
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &cmdBuff;
-
-    VkResult submit_result = vkQueueSubmit(queue, 1, &submitInfo, fence);
-
-    if (submit_result != VK_SUCCESS) {
-        LOG_ERR("Error submitting queue !!!");
-        vkDestroyFence(vkDevice, fence, nullptr);
-        return false;
-    }
-
-    vkDeviceWaitIdle(vkDevice);
-    VkResult result = vkWaitForFences(vkDevice, 1, &fence, VK_TRUE, ~0ULL);
-
-    if(result == VK_TIMEOUT) {
-        LOG_ERR("Error waiting fot the fence. VK_TIMEOUT !!!");
-        return false;
-    } else if (result == VK_ERROR_DEVICE_LOST) {
-        LOG_ERR("Error waiting fot the fence. VK_ERROR_DEVICE_LOST !!!");
-        return false;
-    }
-
-    if(result == VK_SUCCESS) {
-        vkDestroyFence(vkDevice, fence, nullptr);
-        vkFreeCommandBuffers(vkDevice, pool, 1, &cmdBuff);
-    }
-    //VkResult result = vkQueueWaitIdle(queue);
-    //if(result != VK_SUCCESS)
-    //{
-    //     LOG_ERR("Error vkQueueWaitIdle(queue) !!!");
-    //}
-
-    //vkFreeCommandBuffers(vkDevice, pool, 1, &cmdBuff);
-
-    return true;
-}
-
-VkResult finishDeferredOperation(Device::SharedPtr pDevice, VkDeferredOperationKHR hOp) {
-    // Attempt to join the operation until the implementation indicates that we should stop
-
-    const VkDevice& vkDevice = pDevice->getApiHandle();
-
-    VkResult result = vkDeferredOperationJoinKHR(vkDevice, hOp);
-    while( result == VK_THREAD_IDLE_KHR ) {
-        std::this_thread::yield();
-        result = vkDeferredOperationJoinKHR(vkDevice, hOp);
-    }
-
-    switch( result ) {
-        case VK_SUCCESS:
-            {
-                // deferred operation has finished.  Query its result
-                result = vkGetDeferredOperationResultKHR(vkDevice, hOp);
-            }
-            break;
-
-        case VK_THREAD_DONE_KHR:
-            {
-                // deferred operation is being wrapped up by another thread
-                //  wait for that thread to finish
-                do
-                {
-                    std::this_thread::yield();
-                    result = vkGetDeferredOperationResultKHR(vkDevice, hOp);
-                } while( result == VK_NOT_READY );
-            }
-            break;
-
-        default:
-            assert(false); // other conditions are illegal.
-            break;
-    }
-
-    return result;
-}
-
 
 }  // namespace Falcor
 

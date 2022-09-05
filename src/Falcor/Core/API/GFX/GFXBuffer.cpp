@@ -53,7 +53,7 @@ void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Reso
 			bufDesc.memoryType = gfx::MemoryType::Upload;
 			break;
 		default:
-			FALCOR_UNREACHABLE();
+			assert(false);
 			break;
 	}
 	getGFXResourceState(bindFlags, bufDesc.defaultState, bufDesc.allowedStates);
@@ -61,8 +61,8 @@ void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Reso
 
 }  // namespace
 
-Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess) {
 #if FALCOR_D3D12_AVAILABLE
+Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess) {
 	gfx::IBufferResource::Desc bufDesc = {};
 	prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
 
@@ -75,13 +75,11 @@ Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice,
 	Slang::ComPtr<gfx::IResource> apiHandle;
 	apiHandle = static_cast<gfx::IResource*>(gfxBuffer.get());
 	return Buffer::createFromApiHandle(pDevice, apiHandle, size, bindFlags, cpuAccess);
-#else
-	throw std::runtime_error("D3D12 is not available.");
-#endif
 }
+#endif
 
 Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess) {
-	FALCOR_ASSERT(pDevice);
+	assert(pDevice);
 	Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();
 
 	// Create the buffer
@@ -90,7 +88,7 @@ Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buff
 
 	Slang::ComPtr<gfx::IBufferResource> pApiHandle;
 	iDevice->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef());
-	FALCOR_ASSERT(pApiHandle);
+	assert(pApiHandle);
 
 	return pApiHandle;
 }
@@ -117,7 +115,7 @@ void Buffer::apiInit(bool hasInitData) {
 		mState.global = Resource::State::GenericRead;
 		if (hasInitData == false) {
 			// Else the allocation will happen when updating the data
-			FALCOR_ASSERT(mpDevice);
+			assert(mpDevice);
 			mDynamicData = mpDevice->getUploadHeap()->allocate(mSize, getBufferDataAlignment(this));
 			mApiHandle = mDynamicData.pResourceHandle;
 			mGpuVaOffset = mDynamicData.offset;
@@ -142,7 +140,7 @@ void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size) {
 
 uint64_t Buffer::getGpuAddress() const {
 	gfx::IBufferResource* bufHandle = static_cast<gfx::IBufferResource*>(mApiHandle.get());
-	FALCOR_ASSERT(bufHandle);
+	assert(bufHandle);
 	// slang-gfx backend does not includ the mGpuVaOffset.
 	return mGpuVaOffset + bufHandle->getDeviceAddress();
 }

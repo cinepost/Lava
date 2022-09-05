@@ -217,10 +217,12 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
     */
     static Sampler::SharedPtr getDefault(std::shared_ptr<Device> pDevice);
 
+#if FALCOR_D3D12_AVAILABLE
     /** Get an D3D12 CPU Descriptor handle.
         \return A valid CPU descriptor heap handle when using the D3D12 API, otherwise nullptr.
     */
     D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
+#endif
 
 private:
     Sampler(std::shared_ptr<Device> pDevice, const Desc& desc);

@@ -25,48 +25,51 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_HITINFO_H_
+#define SRC_FALCOR_SCENE_HITINFO_H_
 
 #include "Falcor.h"
 #include "Falcor/Core/Framework.h"
 
-namespace Falcor
-{
-    class Scene;
+namespace Falcor {
 
-    /** Host side utility to setup the bit allocations for device side HitInfo.
+class Scene;
 
-        By default, HitInfo is encoded in 128 bits. There is a compression mode
-        where HitInfo is encoded in 64 bits. This mode is only available in
-        scenes that exclusively use triangle meshes and are small enough so
-        the header information fits in 32 bits. In compression mode,
-        barycentrics are quantized to 16 bit unorms.
+/** Host side utility to setup the bit allocations for device side HitInfo.
 
-        See HitInfo.slang for more information.
-    */
-    class dlldecl HitInfo
-    {
-    public:
-        static const uint32_t kMaxPackedSizeInBytes = 16;
-        static const ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
+	By default, HitInfo is encoded in 128 bits. There is a compression mode
+	where HitInfo is encoded in 64 bits. This mode is only available in
+	scenes that exclusively use triangle meshes and are small enough so
+	the header information fits in 32 bits. In compression mode,
+	barycentrics are quantized to 16 bit unorms.
 
-        HitInfo() = default;
-        HitInfo(const Scene& scene, bool useCompression = false) { init(scene, useCompression); }
-        void init(const Scene& scene, bool useCompression);
+	See HitInfo.slang for more information.
+*/
+class dlldecl HitInfo {
+	public:
+		static const uint32_t kMaxPackedSizeInBytes = 16;
+		static const ResourceFormat kDefaultFormat = ResourceFormat::RGBA32Uint;
 
-        /** Returns defines needed packing/unpacking a HitInfo struct.
-        */
-        Shader::DefineList getDefines() const;
+		HitInfo() = default;
+		HitInfo(const Scene& scene, bool useCompression = false) { init(scene, useCompression); }
+		void init(const Scene& scene, bool useCompression);
 
-        /** Returns the resource format required for encoding packed hit information.
-        */
-        ResourceFormat getFormat() const;
+		/** Returns defines needed packing/unpacking a HitInfo struct.
+		*/
+		Shader::DefineList getDefines() const;
 
-    private:
-        bool mUseCompression = false;       ///< Store in compressed format (64 bits instead of 128 bits).
+		/** Returns the resource format required for encoding packed hit information.
+		*/
+		ResourceFormat getFormat() const;
 
-        uint32_t mTypeBits = 0;             ///< Number of bits to store hit type.
-        uint32_t mInstanceIDBits = 0;       ///< Number of bits to store instance ID.
-        uint32_t mPrimitiveIndexBits = 0;   ///< Number of bits to store primitive index.
-    };
-}
+	private:
+		bool mUseCompression = false;       ///< Store in compressed format (64 bits instead of 128 bits).
+
+		uint32_t mTypeBits = 0;             ///< Number of bits to store hit type.
+		uint32_t mInstanceIDBits = 0;       ///< Number of bits to store instance ID.
+		uint32_t mPrimitiveIndexBits = 0;   ///< Number of bits to store primitive index.
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_HITINFO_H_

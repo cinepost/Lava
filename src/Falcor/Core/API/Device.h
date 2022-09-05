@@ -42,6 +42,14 @@
 #include "Falcor/Core/API/QueryHeap.h"
 #include "Falcor/Core/API/ResourceViews.h"
 
+#ifdef FALCOR_GFX
+#include "gfx_lib/slang-gfx.h"
+#endif
+
+#if defined(FALCOR_VK) || defined(FALCOR_GFX_VK)
+#include "VulkanMemoryAllocator/vk_mem_alloc.h"
+#endif
+
 namespace Falcor {
 
 #ifdef _DEBUG
@@ -54,7 +62,7 @@ struct DeviceApiData;
 
 class Fbo;
 class Sampler;
-class ResourceManager;
+class TextureManager;
 class RenderContext;
 
 class dlldecl Device: public std::enable_shared_from_this<Device> {
@@ -66,6 +74,17 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     
     static const uint32_t kQueueTypeCount = (uint32_t)LowLevelContextData::CommandQueueType::Count;
     static constexpr uint32_t kSwapChainBuffersCount = 3;
+
+    ~Device();
+
+#if defined(FALCOR_VK)
+    struct IDesc {
+        VkInstance vulkanInstance;
+        VkPhysicalDevice physicalDevice;
+    };
+#elif defined(FALCOR_GFX)
+    using IDesc = gfx::IDevice::Desc;
+#endif
 
     /** Device configuration
     */
@@ -128,7 +147,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     void cleanup();
 
-    std::shared_ptr<ResourceManager> resourceManager() const { return mpResourceManager; }
+    inline std::shared_ptr<TextureManager>& textureManager() { return mpTextureManager; }
 
     /** Enable/disable vertical sync
     */
@@ -139,6 +158,14 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     /** Get physical device name
     */
     std::string& getPhysicalDeviceName();
+
+#ifdef FALCOR_VK
+    /** VMA allocator
+    */
+    const VmaAllocator& allocator() const { return mAllocator; }
+#elif defined(FALCOR_GFX_VK)
+    const VmaAllocator& allocator() const { return mApiHandle->getVmaAllocator(); }
+#endif
 
     /** Check if the window is occluded
     */
@@ -180,10 +207,12 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     inline VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
 #endif
 
+#ifdef FALCOR_D3D12_AVAILABLE
     /** Get a D3D12 handle for user code that wants to call D3D12 directly.
         \return A valid ID3D12Device* value for all backend that are using D3D12, otherwise nullptr.
     */
     const D3D12DeviceHandle getD3D12Handle();
+#endif
 
     /** Present the back-buffer to the window
     */
@@ -239,12 +268,12 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     gfx::ITransientResourceHeap* getCurrentTransientResourceHeap();
 
 
-#if FALCOR_GFX_VK
+#if FALCOR_GFX_VK || defined(FALCOR_VK)
     inline VkInstance       getVkInstance() const { return mVkInstance; };
     inline VkPhysicalDevice getVkPhysicalDevice() const { return mVkPhysicalDevice; }
     inline VkDevice         getVkDevice() const { return mVkDevice; };
     inline VkSurfaceKHR     getVkSurface() const { return mVkSurface; };    
-#endif  // FALCOR_GFX_VK
+#endif  // FALCOR_GFX_VK || FALCOR_VK
 #endif  // FALCOR_GFX
 
 #ifdef FALCOR_VK
@@ -313,7 +342,7 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool mIsWindowOccluded = false;
     GpuFence::SharedPtr mpFrameFence;
 
-#if FALCOR_GFX_VK
+#if FALCOR_GFX_VK || defined(FALCOR_VK)
     VkPhysicalDevice    mVkPhysicalDevice = VK_NULL_HANDLE;
     VkSurfaceKHR        mVkSurface        = VK_NULL_HANDLE;    
     VkDevice            mVkDevice         = VK_NULL_HANDLE;
@@ -341,9 +370,15 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, ResourceHandle apiHandles[kSwapChainBuffersCount], uint32_t& currentBackBufferIndex);
     void destroyApiObjects();
     void apiPresent();
+
     bool apiInit();
 
     bool createSwapChain(ResourceFormat colorFormat);
+
+#if defined(FALCOR_VK)
+    bool createSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
+#endif
+
     bool createOffscreenFBO(ResourceFormat colorFormat);
 
     void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
@@ -364,19 +399,18 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     */
     static SharedPtr create(Window::SharedPtr pWindow, const Desc& desc);
 
-#ifdef FALCOR_GFX
     /** Create a new rendering(headless) device.
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(const gfx::IDevice::Desc& idesc, const Desc& desc);
+    static SharedPtr create(const Device::IDesc& idesc, const Desc& desc);
 
     /** Create a new display device.
         \param[in] desc Device configuration descriptor.
         \return nullptr if the function failed, otherwise a new device object
     */
-    static SharedPtr create(Window::SharedPtr pWindow, const gfx::IDevice::Desc& idesc, const Desc& desc);
-#endif
+    static SharedPtr create(Window::SharedPtr pWindow, const Device::IDesc& idesc, const Desc& desc);
+
 
     inline const NullResourceViews& nullResourceViews() const { return mNullViews; };
 
@@ -391,15 +425,17 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     uint8_t _uid;
     static std::atomic<std::uint8_t> UID;
 
-#ifdef FALCOR_GFX
-    gfx::IDevice::Desc mIDesc; // device creation gfx::IDevice::Desc
-#endif
+    IDesc mIDesc; // device creation using gfx::IDevice::Desc
 
     bool mUseIDesc = false; // create device using gfx::IDevice::Desc
 
     NullResourceViews mNullViews;
 
-    std::shared_ptr<ResourceManager> mpResourceManager = nullptr;
+    std::shared_ptr<TextureManager>  mpTextureManager = nullptr;
+
+#ifdef FALCOR_VK
+    VmaAllocator    mAllocator;
+#endif 
 
     friend class DeviceManager;
     friend class ResourceManager;

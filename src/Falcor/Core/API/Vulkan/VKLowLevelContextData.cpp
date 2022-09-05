@@ -79,7 +79,7 @@ namespace Falcor
         commandPoolCreateInfo.queueFamilyIndex = device->getApiCommandQueueType(type);
         VkCommandPool pool;
         if (VK_FAILED(vkCreateCommandPool(device->getApiHandle(), &commandPoolCreateInfo, nullptr, &pool))) {
-            logError("Could not create command pool");
+            LLOG_ERR << "Could not create command pool";
             return nullptr;
         }
         pThis->mpAllocator = CommandAllocatorHandle::create(device, pool);
@@ -91,14 +91,14 @@ namespace Falcor
         return pThis;
     }
 
-    void LowLevelContextData::beginDebugEvent(const char* name) {
+    //void LowLevelContextData::beginDebugEvent(const char* name) {
         //float blackColor[3] = { 0.0f, 0.0f, 0.0f };
         //mpApiData->getResourceCommandEncoder()->beginDebugEvent(name, blackColor);
-    }
+    //}
 
-    void LowLevelContextData::endDebugEvent() {
+    //void LowLevelContextData::endDebugEvent() {
         //mpApiData->getResourceCommandEncoder()->endDebugEvent();
-    }
+    //}
 
     LowLevelContextData::~LowLevelContextData() {
         safe_delete(mpApiData);

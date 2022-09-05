@@ -25,45 +25,51 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_SCENE_MATERIAL_MATERIALTEXTURELOADER_H_
+#define SRC_FALCOR_SCENE_MATERIAL_MATERIALTEXTURELOADER_H_
+
 #include "Falcor.h"
 #include "Scene/Material/Material.h"
 #include "Utils/Image/TextureManager.h"
 
-namespace Falcor
-{
-    /** Helper class to load material textures using the texture manager.
+namespace Falcor {
 
-        Calling `loadTexture` does not assign the texture to the material right away.
-        Instead, an asynchronous texture load request is issued and a reference for the
-        material assignment is stored. When the client destroys the instance of the
-        `MaterialTextureLoader`, it blocks until all textures are loaded and assigns
-        them to the materials.
-    */
-    class MaterialTextureLoader
-    {
-    public:
-        MaterialTextureLoader(const TextureManager::SharedPtr& pTextureManager, bool useSrgb);
-        ~MaterialTextureLoader();
+/** Helper class to load material textures using the texture manager.
 
-        /** Request loading a material texture.
-            \param[in] pMaterial Material to load texture into.
-            \param[in] slot Slot to load texture into.
-            \param[in] path Texture file path.
-        */
-        void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path);
+	Calling `loadTexture` does not assign the texture to the material right away.
+	Instead, an asynchronous texture load request is issued and a reference for the
+	material assignment is stored. When the client destroys the instance of the
+	`MaterialTextureLoader`, it blocks until all textures are loaded and assigns
+	them to the materials.
+*/
+class MaterialTextureLoader {
+	public:
+		MaterialTextureLoader(const Device::SharedPtr& pDevice, bool useSrgb);
+		~MaterialTextureLoader();
 
-    private:
-        void assignTextures();
+		/** Request loading a material texture.
+			\param[in] pMaterial Material to load texture into.
+			\param[in] slot Slot to load texture into.
+			\param[in] path Texture file path.
+		*/
+		void loadTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse = false);
 
-        struct TextureAssignment {
-            Material::SharedPtr pMaterial;
-            Material::TextureSlot textureSlot;
-            TextureManager::TextureHandle handle;
-        };
+	private:
+		void assignTextures();
 
-        bool mUseSrgb;
-        std::vector<TextureAssignment> mTextureAssignments;
-        TextureManager::SharedPtr mpTextureManager;
-    };
-}
+		struct TextureAssignment {
+			Material::SharedPtr pMaterial;
+			Material::TextureSlot textureSlot;
+			TextureManager::TextureHandle handle;
+		};
+
+		Device::SharedPtr mpDevice = nullptr;
+		
+		bool mUseSrgb;
+		std::vector<TextureAssignment> mTextureAssignments;
+		TextureManager::SharedPtr mpTextureManager;
+};
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_SCENE_MATERIAL_MATERIALTEXTURELOADER_H_

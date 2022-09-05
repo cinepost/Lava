@@ -29,6 +29,11 @@
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/ParameterBlock.h"
+
+#if defined(FALCOR_VK)
+#include "Falcor/Core/API/RootSignature.h"
+#endif
+
 #include "RtBindingTable.h"
 
 #include "ShaderVar.h"
@@ -122,8 +127,10 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const GraphicsProgram* pProg);
 
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         virtual bool apply(RenderContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
+#elif defined(FALCOR_VK)
+        virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 #endif
 
     protected:
@@ -151,8 +158,10 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const ComputeProgram* pProg);
 
-#ifdef FALCOR_D3D12
+#if defined(FALCOR_D3D12)
         virtual bool apply(ComputeContext* pContext, bool bindRootSig, const ProgramKernels* pProgramKernels);
+#elif defined(FALCOR_VK)
+        virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
 #endif
 
         /** Dispatch the program using the argument values set in this object.
@@ -180,10 +189,10 @@ namespace Falcor
         */
         static SharedPtr create(Device::SharedPtr pDevice, const RtProgram::SharedPtr& pProgram, const RtBindingTable::SharedPtr& pBindingTable);
 
-#ifdef FALCOR_D3D12
-        bool apply(RenderContext* pCtx, RtStateObject* pRtso);
+#if defined(FALCOR_D3D12)
+        bool apply(RenderContext* pCtx, RtStateObject* pRtso);  
 #endif
-#ifdef FALCOR_GFX
+#if defined(FALCOR_GFX) || defined(FALCOR_VK)
         bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
 #endif
 
@@ -201,7 +210,7 @@ namespace Falcor
 #ifdef FALCOR_D3D12
             EntryPointGroupVars::SharedPtr pVars;
             ChangeEpoch lastObservedChangeEpoch = 0;
-#elif defined(FALCOR_GFX)
+#elif defined(FALCOR_GFX) || defined(FALCOR_VK)
             int32_t entryPointGroupIndex = -1;
 #endif
         };
@@ -223,7 +232,7 @@ namespace Falcor
 
         mutable ShaderTablePtr mpShaderTable;       ///< GPU shader table.
 
-#ifdef FALCOR_GFX
+#if defined(FALCOR_GFX) || defined(FALCOR_VK)
         mutable RtStateObject* mpCurrentRtStateObject = nullptr; ///< The RtStateObject used to create the current shader table.
 #endif
         VarsVector mRayGenVars;

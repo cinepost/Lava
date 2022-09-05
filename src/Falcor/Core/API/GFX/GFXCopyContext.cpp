@@ -35,8 +35,8 @@
 #include "GFXResource.h"
 
 #include <slang/slang.h>
-#include <slang/slang-gfx.h>
 #include <slang/slang-com-ptr.h>
+#include "gfx_lib/slang-gfx.h"
 
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/Texture.h"
@@ -47,6 +47,24 @@
 
 namespace Falcor {
 
+static inline std::string to_string(gfx::ITextureResource::Offset3D offset) {
+	return std::to_string(offset.x) + " " + std::to_string(offset.y) + " " + std::to_string(offset.z);
+}
+
+static inline std::string to_string(gfx::ITextureResource::Extents extent) {
+	return std::to_string(extent.width) + " " + std::to_string(extent.height) + " " + std::to_string(extent.depth);
+}
+
+uint32_t getMipLevelPackedDataSize(const Texture* pTexture, uint32_t w, uint32_t h, uint32_t d, ResourceFormat format) {
+	uint32_t perW = getFormatWidthCompressionRatio(format);
+	uint32_t bw = align_to(perW, w) / perW;
+
+	uint32_t perH = getFormatHeightCompressionRatio(format);
+	uint32_t bh = align_to(perH, h) / perH;
+
+	uint32_t size = bh * bw * d * getFormatBytesPerBlock(format);
+	return size;
+}
 
 void CopyContext::bindDescriptorHeaps() { }
 
@@ -136,7 +154,7 @@ CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(Cop
 	pThis->mDepth = pTexture->getDepth(mipLevel);
 
 	auto stop = std::chrono::high_resolution_clock::now();
-  std::cout << "CopyContext::ReadTextureTask::create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//  std::cout << "CopyContext::ReadTextureTask::create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 	return pThis;
 }
@@ -169,28 +187,28 @@ void CopyContext::ReadTextureTask::getData(uint8_t* textureData) {
 
 	mpFence->syncCpu();
 	auto stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData syncCpu time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData syncCpu time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 	auto start1 = std::chrono::high_resolution_clock::now();
 	// Get buffer data
 	uint8_t* pData = reinterpret_cast<uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
 
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->map time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start1).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->map time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start1).count() << " ms." << std::endl;
 
 	auto start3 = std::chrono::high_resolution_clock::now();
 	memcpy(textureData, pData, (size_t)mRowCount * mActualRowSize);
 	//memmove(textureData, pData, (size_t)mRowCount * mActualRowSize);
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData memcpy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start3).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData memcpy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start3).count() << " ms." << std::endl;
 
 	auto start2 = std::chrono::high_resolution_clock::now();
 	mpBuffer->unmap();
 	stop = std::chrono::high_resolution_clock::now();
-	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->unmap time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start2).count() << " ms." << std::endl;
+//	std::cout << "CopyContext::ReadTextureTask::getData mpBuffer->unmap time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start2).count() << " ms." << std::endl;
 
 	stop = std::chrono::high_resolution_clock::now();
-  std::cout << "CopyContext::ReadTextureTask::getData time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+//  std::cout << "CopyContext::ReadTextureTask::getData time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
 
 }
 
@@ -367,12 +385,68 @@ void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubreso
 	mCommandsPending = true;
 }
 
-void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData) {
+	assert(pTexture);
 
+	//auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+	mpDevice->getApiHandle()->fillMipTail(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), pTexture.get());
+}
+
+void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, const void* pData) {
+  assert(pPage);
+  assert(pData);
+
+  if(!pPage->isResident()) {
+    LLOG_ERR << "Unable to update non-resident texture page !!!";
+    return;
+  }
+
+  //LLOG_DBG << "Updating texture data page offset " << to_string(pPage->offsetGFX()) << " extent " << to_string(pPage->extentGFX()); 
+
+  const Texture* pTexture = pPage->texture().get();
+  
+	uint8_t* dataPtr = (uint8_t*)pData;
+	auto resourceEncoder = getLowLevelData()->getApiData()->getResourceCommandEncoder();
+	gfx::ITextureResource::Offset3D gfxOffset = pPage->offsetGFX();
+	gfx::ITextureResource::Extents gfxSize = pPage->extentGFX();
+	gfx::FormatInfo formatInfo = {};
+	gfx::gfxGetFormatInfo(getGFXFormat(pTexture->getFormat()), &formatInfo);
+
+	gfx::SubresourceRange subresourceRange = {};
+	subresourceRange.baseArrayLayer = 0;
+	subresourceRange.mipLevel = pPage->mipLevel();
+	subresourceRange.layerCount = 1;
+	subresourceRange.mipLevelCount = 1;
+
+	gfx::ITextureResource::SubresourceData data = {};
+	data.data = (uint8_t*)pData;
+	data.strideY = (int64_t)(gfxSize.width) / formatInfo.blockWidth * formatInfo.blockSizeInBytes;
+	data.strideZ = data.strideY * (gfxSize.height / formatInfo.blockHeight);
+
+	resourceEncoder->uploadTexturePageData(static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get()), gfxOffset, gfxSize, pPage->mipLevel(), &data);
+	mCommandsPending = true;
 }
 
 void CopyContext::updateTexturePage(const VirtualTexturePage* pPage, Buffer::SharedPtr pStagingBuffer) {
+	return;
+/*	
+	assert(pPage);
+  assert(pStagingBuffer);
 
+  if(!pPage->isResident()) {
+    LLOG_ERR << "Unable to update non-resident texture page !!!";
+    return;
+  }
+
+	auto pTexture = pPage->texture();
+	gfx::IBufferResource* buffer = static_cast<gfx::IBufferResource*>(pStagingBuffer->getApiHandle().get());
+	gfx::ITextureResource* texture = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
+
+	textureBarrier(pTexture.get(), Resource::State::CopyDest);
+  bufferBarrier(pStagingBuffer.get(), Resource::State::CopySource);
+	mpDevice->getApiHandle()->updateTexurePageData(texture, buffer, pPage->offsetGFX(), pPage->extentGFX(), pPage->mipLevel());
+	mCommandsPending = true;
+*/
 }
 
 }  // namespace Falcor
