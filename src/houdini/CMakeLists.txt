@@ -9,6 +9,7 @@ if (DEFINED ENV{LAVA_DEPLOY})
 	install(DIRECTORY otls DESTINATION houdini)
 endif()
 
+install(DIRECTORY config DESTINATION houdini)
 install(DIRECTORY soho DESTINATION houdini)
 install(DIRECTORY python2.7libs DESTINATION houdini)
 install(FILES OPmenu.xml DESTINATION houdini)

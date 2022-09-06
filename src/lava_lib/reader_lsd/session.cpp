@@ -847,7 +847,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
+	bool pushGeoAsync = false;// configStore.get<bool>("async_geo", false);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -1132,8 +1132,15 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
     }
 
+    // instance shading spec
+    SceneBuilder::MeshInstanceShadingSpec shadingSpec;
+    shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
+
+    // instance visibility spec
+    SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
+
     // add a mesh instance to a node
-    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);
+    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial, &shadingSpec, &visibilitySpec);
     
 	return true;
 }

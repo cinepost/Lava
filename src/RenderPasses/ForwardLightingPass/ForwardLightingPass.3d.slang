@@ -105,6 +105,8 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
 PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     PsOut psOut;
 
+    if(gScene.isObjectMatteShaded(vsOut.instanceID)) discard;
+
     let lod = ImplicitLodTextureSampler();
     if (alphaTest(vsOut, triangleIndex, lod)) discard;
 

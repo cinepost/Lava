@@ -157,6 +157,12 @@ enum class GeometryInstanceFlags : uint32_t
     TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
     IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
+
+    // Visibility flags
+    VisibleToPrimaryRays = 0x20,
+    VisibleToShadowRays = 0x40,   
+    VisibleToSecondaryRays = 0x80,
+    MatteShading = 0x100,
 };
 
 struct GeometryInstanceData
@@ -178,8 +184,7 @@ struct GeometryInstanceData
 #ifdef HOST_CODE
     GeometryInstanceData() = default;
 
-    GeometryInstanceData(GeometryType type)
-        : flags((uint32_t)type << kTypeOffset)
+    GeometryInstanceData(GeometryType type): flags((uint32_t)type << kTypeOffset)
     {}
 #endif
 

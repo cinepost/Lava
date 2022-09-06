@@ -1,0 +1,331 @@
+// $Id: $
+
+collection {
+	name "lv_instance_parms"
+	label "Lava"
+	parmtag { spare_category "Lava" }
+
+	group {
+		name    "folder_subdivision_4_1"
+		label   "Visibility"
+
+		parm {
+			name    "lv_visibility_override"
+			label   "Visibility Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override visibility."
+			range   { 0 1 }
+			export  none
+		}
+		parm {
+			name    "lv_visibility_camera"
+			label   "Visible to Camera Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for camera rays (i.e. primary or view rays)."
+			disablewhen "{ ar_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_shadow"
+			label   "Visible to Shadow Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for shadow rays fired in the direct lighting calculations."
+			disablewhen "{ ar_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_diffuse_transmit"
+			label   "Visible to Diffuse Transmission Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for indirect diffuse transmission rays."
+			disablewhen "{ lv_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_specullv_transmit"
+			label   "Visible to Specular Transmission Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for indirect specular transmission rays."
+			disablewhen "{ lv_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_diffuse_reflect"
+			label   "Visible to Diffuse Reflection Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for indirect diffuse reflection rays."
+			disablewhen "{ lv_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_specullv_reflect"
+			label   "Visible to Specular Reflection Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for indirect specular reflection rays."
+			disablewhen "{ lv_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_visibility_volume"
+			label   "Visible to Volume Scattering Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object visibility for indirect volume scattering rays."
+			disablewhen "{ lv_visibility_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_receive_shadows_override"
+			label   "Receive Shadows Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override received shadows."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_receive_shadows"
+			label   "Receive Shadows"
+			type    toggle
+			default { "1" }
+			help    "Enable/disable received shadows over the object."
+			disablewhen "{ lv_receive_shadows_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_self_shadows_override"
+			label   "Self Shadows Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override self-shadowing."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_self_shadows"
+			label   "Self Shadows"
+			type    toggle
+			default { "1" }
+			help    "Enable/disable self-shadowing over the object."
+			disablewhen "{ lv_self_shadows_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_opaque_override"
+			label   "Opaque Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override the opaque flag."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_opaque"
+			label   "Opaque"
+			type    toggle
+			default { "1" }
+			help    "By default, Arnold will assume that objects are opaque, which lets the renderer take certain shortcuts and optimizations for maximum ray tracing speed. When this option is unchecked, the object is assumed as \"possibly transparent\", and Arnold will perform extra computations to support transparency and transparent shadows, according to the shader's opacity settings."
+			disablewhen "{ lv_opaque_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Geometry" }
+		}
+		parm {
+			name    "lv_matte_override"
+			label   "Matte Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			range   { 0 1 }
+			export  none
+		}
+		parm {
+			name    "lv_matte"
+			label   "Matte"
+			type    toggle
+			default { "0" }
+			disablewhen "{ lv_matte_override == 0 }"
+			help    "Output black and zero alpha for camera rays to create a holdout."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_skip"
+			label   "Skip"
+			type    toggle
+			default { "0" }
+			help    "Do not output this object regardless of it being forced or not."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Visibility" }
+		}
+		parm {
+			name    "lv_use_light_group"
+			label   "Use Light Group"
+			type    toggle
+			invisible
+			nolabel
+			joinnext
+			default { "0" }
+			range   { 0 1 }
+			export  none
+		}
+		parm {
+			name    "lv_light_group"
+			label   "Light Group"
+			type    oplist
+			invisible
+			default { "" }
+			disablewhen "{ lv_use_light_group == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "opfilter" "!!OBJ/LIGHT!!" }
+			parmtag { "oprelative" "/" }
+		}
+		parm {
+			name    "lv_use_shadow_group"
+			label   "Use Shadow Group"
+			type    toggle
+			invisible
+			nolabel
+			joinnext
+			default { "0" }
+			range   { 0 1 }
+			export  none
+		}
+		parm {
+			name    "lv_shadow_group"
+			label   "Shadow Group"
+			type    oplist
+			invisible
+			default { "" }
+			disablewhen "{ lv_use_shadow_group == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "opfilter" "!!OBJ/LIGHT!!" }
+			parmtag { "oprelative" "/" }
+		}
+		parm {
+			name    "lv_trace_sets_override"
+			label   "Trace Sets Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			range   { 0 1 }
+			export  none
+		}
+		parm {
+			name    "lv_trace_sets"
+			label   "Trace Sets"
+			type    string
+			default { "" }
+			disablewhen "{ lv_trace_sets_override == 0 }"
+			menutoggle  {
+			}
+			range   { 0 1 }
+			export  none
+		}
+	}
+
+	group {
+		name    "folder_subdivision_4_2"
+		label   "Normals"
+
+		parm {
+			name    "lv_invert_normals_override"
+			label   "Invert Normals Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override Invert Normals."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Render" }
+		}
+		parm {
+			name    "lv_invert_normals"
+			label   "Invert Normals"
+			type    toggle
+			default { "0" }
+			help    "Invert normals"
+			disablewhen "{ lv_invert_normals_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Render" }
+		}
+		parm {
+			name    "lv_sidedness_override"
+			label   "Sidedeness Override"
+			type    toggle
+			nolabel
+			joinnext
+			default { "0" }
+			help    "Override sidedness."
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Render" }
+		}
+		parm {
+			name    "lv_sidedness_camera"
+			label   "Double-sided for Camera Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object double-sidedness for camera rays (i.e. primary or view rays)."
+			disablewhen "{ lv_sidedness_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Sidedness" }
+		}
+		parm {
+			name    "lv_sidedness_shadow"
+			label   "Double-sided for Shadow Rays"
+			type    toggle
+			default { "1" }
+			help    "Toggle object double-sidedness for shadow rays fired in the direct lighting calculations."
+			disablewhen "{ lv_sidedness_override == 0 }"
+			range   { 0 1 }
+			export  none
+			parmtag { "spare_category" "Sidedness" }
+		}
+	}
+}

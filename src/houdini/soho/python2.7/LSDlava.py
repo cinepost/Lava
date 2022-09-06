@@ -246,7 +246,7 @@ def initializeFeatures(settings):
     Object("renderpointsas", "int", "lv_renderpointsas")
     Object("rendersubd", "bool", "lv_rendersubd")
     Object("rendersubdcurves", "bool", "lv_rendersubdcurves")
-    Object("rendervisibility", "string", "lv_rendervisibility")
+    Object("rendervisibility", "string", "vm_rendervisibility")
     Object("rmbackface", "bool", "lv_rmbackface")
     Object("samplecoving", "bool", "lv_samplecoving")
     Object("samplecovingexpansion", "float", "lv_samplecovingexpansion")
