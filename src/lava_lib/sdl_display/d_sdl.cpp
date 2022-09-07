@@ -337,10 +337,10 @@ PtDspyError DspyImageClose(PtDspyImageHandle image_h) {
 
 
 PtDspyError processEvents() {
-  static float s_xPos=0.0f;
-  static float s_yPos=0.0f;
-  static bool s_mousePressed=false;
-  constexpr float scaleStep=0.05f;
+  static float s_xPos = 0.0f;
+  static float s_yPos = 0.0f;
+  static bool s_mousePressed = false;
+  constexpr float scaleStep = 0.05f;
   SDL_Event event;
   PtDspyError ret = PkDspyErrorNone;
 
@@ -363,35 +363,42 @@ PtDspyError processEvents() {
       // now we look for a keydown event
       case SDL_KEYDOWN:
         switch( event.key.keysym.sym ) {
-          case SDLK_ESCAPE : ret=PkDspyErrorCancel;  break;
+          case SDLK_ESCAPE : 
+            ret = PkDspyErrorCancel;
+            break;
+          
           case SDLK_EQUALS :
           case SDLK_PLUS :
             g_window->setScale(g_window->scale()+scaleStep);
             break;
+          
           case SDLK_MINUS :
             g_window->setScale( g_window->scale()-scaleStep);
             break;
+          
           case SDLK_UP :
-            s_yPos+=0.1;
+            s_yPos += 0.1;
             g_window->setPosition(s_xPos,s_yPos);
             break;
+          
           case SDLK_DOWN :
-            s_yPos-=0.1;
+            s_yPos -= 0.1;
             g_window->setPosition(s_xPos,s_yPos);
             break;
 
           case SDLK_LEFT :
-            s_xPos-=0.1;
+            s_xPos -= 0.1;
             g_window->setPosition(s_xPos,s_yPos);
             break;
+
           case SDLK_RIGHT :
-            s_xPos+=0.1;
+            s_xPos += 0.1;
             g_window->setPosition(s_xPos,s_yPos);
             break;
 
           case SDLK_SPACE :
-            s_xPos=0.0f;
-            s_yPos=0.0f;
+            s_xPos = 0.0f;
+            s_yPos = 0.0f;
             g_window->reset();
             break;
 
@@ -406,26 +413,31 @@ PtDspyError processEvents() {
           case SDLK_c : g_window->setBackgroundMode(BackgroundMode::CHECKER); break;
           case SDLK_l : g_window->setBackgroundMode(BackgroundMode::COLOR); break;
 
-          case SDLK_e : {
-            if (g_window->mShowFalseColors) {
-              g_window->showFalseColors(false); 
-            } else {
-              g_window->showFalseColors(true); 
+          case SDLK_e : 
+            {
+              if (g_window->mShowFalseColors)
+                g_window->showFalseColors(false); 
+              else
+                g_window->showFalseColors(true); 
             }
             break;
-          }
+
           case SDLK_LEFTBRACKET : 
-            g_window->setGamma(g_window->gamma()-0.1f); 
+            g_window->setGamma(g_window->gamma() - 0.1f); 
             break;
+          
           case SDLK_RIGHTBRACKET : 
-            g_window->setGamma(g_window->gamma()+0.1f);
+            g_window->setGamma(g_window->gamma() + 0.1f);
             break;
+          
           case SDLK_0 : 
-            g_window->setExposure(g_window->exposure()+0.1f);
+            g_window->setExposure(g_window->exposure() + 0.1f);
             break;
+          
           case SDLK_9 : 
-            g_window->setExposure(g_window->exposure()-0.1f);
+            g_window->setExposure(g_window->exposure() - 0.1f);
             break;
+          
           case SDLK_r :
             g_window->reset();
             g_window->setRenderMode(RenderMode::ALL);
@@ -434,59 +446,56 @@ PtDspyError processEvents() {
             g_window->setGamma(1.0f);
             g_window->setExposure(0.0f);
             break;
+          
           case SDLK_h :
             g_window->showHelp();
             break;
+          
           case SDLK_d :
             g_window->showHUD();
             break;
+          
           default : 
             break;
         } // end of key process
         break;
 
         case SDL_MOUSEBUTTONDOWN :
-          if(event.button.button == SDL_BUTTON_RIGHT) {
-            s_mousePressed=true;
-          }
-        break;
+          if(event.button.button == SDL_BUTTON_RIGHT) s_mousePressed=true;
+          break;
       case SDL_MOUSEBUTTONUP :
-      if(event.button.button == SDL_BUTTON_RIGHT)
-      {
-        s_mousePressed=false;
-      }
-      break;
+        if(event.button.button == SDL_BUTTON_RIGHT) s_mousePressed=false;
+        break;
       case SDL_MOUSEMOTION :
-        if(s_mousePressed==true)
-        {
-          float diffx=0.0f;
-          float diffy=0.0f;
-          if(event.motion.xrel >0)
-            diffx=0.01f;
-          else if(event.motion.xrel <0)
-            diffx=-0.01f;
-          if(event.motion.yrel >0)
-            diffy=-0.01f;
-          else if(event.motion.yrel <0)
-            diffy=+0.01f;
+        if(s_mousePressed==true) {
+          float diffx = 0.0f;
+          float diffy = 0.0f;
+          if(event.motion.xrel > 0)
+            diffx = 0.1f;
+          else if(event.motion.xrel < 0)
+            diffx =- 0.1f;
+          if(event.motion.yrel > 0)
+            diffy =- 0.1f;
+          else if(event.motion.yrel < 0)
+            diffy =+ 0.1f;
 
-          s_xPos+=diffx;
-          s_yPos+=diffy;
+          s_xPos += diffx;
+          s_yPos += diffy;
           g_window->setPosition(s_xPos,s_yPos);
         }
-      break;
+        break;
       case SDL_MOUSEWHEEL :
-      {
-        //auto delta=event.motion.x;
-        if (event.wheel.y > 0)
-          g_window->setScale(g_window->scale()+scaleStep);
-        else if (event.wheel.y < 0)
-          g_window->setScale(g_window->scale()-scaleStep);
+        {
+          //auto delta=event.motion.x;
+          if (event.wheel.y > 0)
+            g_window->setScale(g_window->scale()+scaleStep);
+          else if (event.wheel.y < 0)
+            g_window->setScale(g_window->scale()-scaleStep);
+        }
+        break;
 
-      break;
-      }
-
-      default : break;
+      default : 
+        break;
 
     } // end of event switch
   } // end while poll event

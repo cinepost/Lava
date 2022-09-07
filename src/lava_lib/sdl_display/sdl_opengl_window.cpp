@@ -74,8 +74,8 @@ void NGLCheckGLError( const std::string  &_file, const int _line ) noexcept {
       case GL_INVALID_FRAMEBUFFER_OPERATION : str="GL_INVALID_FRAMEBUFFER_OPERATION error";  break;
       default : break;
     }
-    if(errNum !=GL_NO_ERROR)
-    {
+    
+    if(errNum !=GL_NO_ERROR) {
       std::cerr<<"GL error "<< str<<" line : "<<_line<<" file : "<<_file<<"\n";
     }
     errNum = glGetError();
@@ -90,16 +90,15 @@ void printInfoLog(const GLuint &_obj , GLenum _mode=GL_COMPILE_STATUS  ) {
 
   glGetShaderiv(_obj, GL_INFO_LOG_LENGTH,&infologLength);
   
-  if(infologLength > 0)
-  {
+  if(infologLength > 0) {
     infoLog = new char[infologLength];
     glGetShaderInfoLog(_obj, infologLength, &charsWritten, infoLog);
 
     std::cerr<<infoLog<<std::endl;
     delete [] infoLog;
     glGetShaderiv(_obj, _mode,&infologLength);
-    if( infologLength == GL_FALSE)
-    {
+    
+    if( infologLength == GL_FALSE) {
       std::cerr<<"Shader compile failed or had warnings \n";
       exit(EXIT_FAILURE);
     }
@@ -113,65 +112,66 @@ void SDLOpenGLWindow::draw() {
 
   // Help window
   if(mShowHelp) {
-  ImGui::Begin("Help", &mShowHelp, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-    ImGui::Text("+/-   - Scale view ");
-    ImGui::Text("Space - Reset view ");
-    ImGui::Text("1     - View all channels (default)");
-    ImGui::Text("2     - View Red channel ");
-    ImGui::Text("3     - View Green channel ");
-    ImGui::Text("4     - View Blue channel ");
-    ImGui::Text("5     - View Alpha channel ");
-    ImGui::Text("6     - View Gray scale ");
+    ImGui::Begin("Help", &mShowHelp, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+      ImGui::Text("+/-   - Scale view ");
+      ImGui::Text("Space - Reset view ");
+      ImGui::Text("1     - View all channels (default)");
+      ImGui::Text("2     - View Red channel ");
+      ImGui::Text("3     - View Green channel ");
+      ImGui::Text("4     - View Blue channel ");
+      ImGui::Text("5     - View Alpha channel ");
+      ImGui::Text("6     - View Gray scale ");
 
-    ImGui::Text("[/]   - Change gamma ");
-    ImGui::Text("0/9   - Change exposure ");
+      ImGui::Text("[/]   - Change gamma ");
+      ImGui::Text("0/9   - Change exposure ");
 
-    ImGui::Text("b     - Black background (default) ");
-    ImGui::Text("c     - Checkerboard background");
-    ImGui::Text("l     - Color background");
+      ImGui::Text("b     - Black background (default) ");
+      ImGui::Text("c     - Checkerboard background");
+      ImGui::Text("l     - Color background");
 
-    ImGui::Text("r     - Reset all ");
-    ImGui::Text("d     - Show/hide HUD ");
-    ImGui::Text("h     - show/hide this help window ;) ");
-    ImGui::Text("ESC   - Exit ");
-  ImGui::End();
+      ImGui::Text("r     - Reset all ");
+      ImGui::Text("d     - Show/hide HUD ");
+      ImGui::Text("h     - show/hide this help window ;) ");
+      ImGui::Text("ESC   - Exit ");
+    ImGui::End();
   }
 
   // Simple HUD (fixed transparent window)
   if(mShowHUD) {
-  ImGui::SetNextWindowBgAlpha(0.5f);
-  ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-  ImGui::SetNextWindowSize(ImVec2((float)m_width, 0.0f));
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-  ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-  ImGui::Begin("HUD", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
-    switch (mRenderMode) {
-      case RenderMode::RED:
-        ImGui::Text("Display: Red");
-        break;
-      case RenderMode::GREEN:
-        ImGui::Text("Display: Green");
-        break;
-      case RenderMode::BLUE:
-        ImGui::Text("Display: Blue");
-        break;
-      case RenderMode::GREY:
-        ImGui::Text("Display: Grey");
-        break;
-      case RenderMode::ALPHA:
-        ImGui::Text("Display: Alpha");
-        break;
-      case RenderMode::ALL:
-      default:
-        ImGui::Text("Display: RGB");
-        break;
-    }
-    ImGui::Text("Exposure: %f", m_exposure);
-    ImGui::Text("Gamma: %f", m_gamma);
-    ImGui::Text("Scale: %f", m_scale);
-  ImGui::End();
-  ImGui::PopStyleVar();
-  ImGui::PopStyleColor();
+    ImGui::SetNextWindowBgAlpha(0.5f);
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2((float)m_width, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+    ImGui::Begin("HUD", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+      switch (mRenderMode) {
+        case RenderMode::RED:
+          ImGui::Text("Display: Red");
+          break;
+        case RenderMode::GREEN:
+          ImGui::Text("Display: Green");
+          break;
+        case RenderMode::BLUE:
+          ImGui::Text("Display: Blue");
+          break;
+        case RenderMode::GREY:
+          ImGui::Text("Display: Grey");
+          break;
+        case RenderMode::ALPHA:
+          ImGui::Text("Display: Alpha");
+          break;
+        case RenderMode::ALL:
+        default:
+          ImGui::Text("Display: RGB");
+          break;
+      }
+
+      ImGui::Text("Exposure: %f", m_exposure);
+      ImGui::Text("Gamma: %f", m_gamma);
+      ImGui::Text("Scale: %f", m_scale);
+    ImGui::End();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
   }
 
   glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
@@ -300,6 +300,11 @@ void SDLOpenGLWindow::createSurface() {
           break;
         case 2: // Checkerboard background
         default:
+          if(displayMode == 4) {
+            outColor.rgb = texDispColor.rgb;
+            outColor.a = 1.0f;
+            break;
+          }
           vec3 checkerColor = checkerPattern(gl_FragCoord.xy , vec2(16), vec3(0.5, 0.5, 0.5), vec3(0.25, 0.25, 0.25));
           outColor.rgb = checkerColor * (1.0 - texBaseColor.a) + texDispColor.rgb;
           outColor.a = 1.0f;
