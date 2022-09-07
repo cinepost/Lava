@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.20 )
+cmake_minimum_required( VERSION 3.21 )
 
 set(CMAKE_C_COMPILER gcc-7)
 set(CMAKE_CXX_COMPILER g++-7)
@@ -31,13 +31,14 @@ if (USE_PROFILING)
   add_definitions(-DFALCOR_ENABLE_PROFILER)
 endif ()
 
+option (COLLECT "Enable/Disable portable build dependencies collection." OFF)
+
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
 
 if(USE_SUPERBUILD)
   project (SUPERBUILD NONE)
-  # execute the superbuild (this script will be invoked again without the
-  # USE_SUPERBUILD option this time)
+  # execute the superbuild (this script will be invoked again without the USE_SUPERBUILD option this time)
   include (cmake/SuperBuild.cmake)
   return()
 else()
@@ -93,7 +94,7 @@ if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
   set( CMAKE_INSTALL_PREFIX "/Applications/Lava" )
 elseif(UNIX)
-  set( CMAKE_INSTALL_PREFIX "/opt/lava/" )
+  set( CMAKE_INSTALL_PREFIX "/opt/lava" )
 endif()
 
 # Specify build paths
@@ -167,6 +168,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+
 #------------------------------------------
 # External Projects
 #------------------------------------------
@@ -183,17 +185,115 @@ if(backend_type STREQUAL "gfx")
   add_definitions(-D_FLACOR_API_BACKEND_GFX)
 endif()
 
+
 #------------------------------------------
 # Our stuff
 #------------------------------------------
 
-#if (CMAKE_BUILD_TYPE STREQUAL "Release")
-#  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/release)
-#  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
-#else()
-#  set(EXTERNALS_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/debug)
-#  list(PREPEND CMAKE_PREFIX_PATH "${EXTERNALS_INSTALL_DIR}")
-#endif()
-
 add_subdirectory( src )
 add_subdirectory( contrib )
+
+
+#------------------------------------------
+# Install third party dependencies
+#------------------------------------------
+
+# third party libs
+install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty)
+
+# third additional shaders and dependencies
+install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
+
+
+#------------------------------------------
+# Install system collected dependencies
+#------------------------------------------
+
+if(UNIX AND COLLECT)
+  install(CODE "set(DEPS_INSTALL_DIR \"${EXTERNALS_INSTALL_DIR}/lib\")")
+  
+  install(CODE [[
+      
+      message(" ")
+      message("Collecting and installing portable build dependencies ...")
+      
+      # Feel free to add some missing system dependecies here ;)
+      set(REQ_SYS_LIBS 
+          "libfreeimage"
+          "libpython"
+          "libavcodec"
+          "libavformat"
+          "libavutil"
+          "libswscale"
+          "libraw_r"
+          "libOpenColorIO"
+          "libicui18n"
+          "libicuuc"
+      )
+
+      string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
+
+      file(GET_RUNTIME_DEPENDENCIES
+          LIBRARIES $<TARGET_FILE:falcor_lib>
+          RESOLVED_DEPENDENCIES_VAR _r_deps
+          UNRESOLVED_DEPENDENCIES_VAR _u_deps
+          CONFLICTING_DEPENDENCIES_PREFIX _c_deps
+          #DIRECTORIES ${DEPS_INSTALL_DIR}
+      )
+      
+      foreach(_file ${_r_deps})
+          if(${_file} MATCHES "^/usr/*|^/lib/*")
+              foreach(REQ_SYS_LIB_NAME ${REQ_SYS_LIBS})
+                  if(${_file} MATCHES ".*${REQ_SYS_LIB_NAME}.*")
+                      file(INSTALL
+                          DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/sys"
+                          TYPE SHARED_LIBRARY
+                          FOLLOW_SYMLINK_CHAIN
+                          FILES "${_file}"
+                      )
+                  endif()
+              endforeach()
+          endif()
+      endforeach()
+      
+      foreach(_file ${_u_deps})
+          find_library(UNRESOLVED_LIBRARY
+            NAMES ${_file}
+            PATHS ${DEPS_INSTALL_DIR}
+            REQUIRED
+            NO_DEFAULT_PATH
+          )
+          if(NOT UNRESOLVED_LIBRARY)
+            message(FATAL_ERROR "${_file} dependency not resolved !!!")
+          else()
+            file(INSTALL
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
+                TYPE SHARED_LIBRARY
+                FOLLOW_SYMLINK_CHAIN
+                FILES "${UNRESOLVED_LIBRARY}"
+            )
+            message("Dependency " ${_file} " resolved !")
+          endif()
+      endforeach()
+      
+      foreach(_file ${_c_deps_FILENAMES})
+          find_library(CONFLICT_LIBRARY
+            NAMES ${_file}
+            PATHS ${DEPS_INSTALL_DIR}
+            REQUIRED
+            NO_DEFAULT_PATH
+          )
+          if(NOT CONFLICT_LIBRARY)
+            message(FATAL_ERROR "${_file} conflict not resolved !!!")
+          else()
+              file(INSTALL
+                  DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/3rdparty"
+                  TYPE SHARED_LIBRARY
+                  FOLLOW_SYMLINK_CHAIN
+                  FILES "${CONFLICT_LIBRARY}"
+              )
+              message("Conflict for " ${_file} " resolved !")
+          endif()
+      endforeach()
+  ]])
+endif()

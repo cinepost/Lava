@@ -82,6 +82,8 @@ class SDLOpenGLWindow {
     GLint m_showFalseColorsUniform;
     GLint m_frameNumberUniform;
 
+    GLfloat mMaxAnisotropyValue;
+
     void init();
 
     SDL_GLContext   m_glContext;

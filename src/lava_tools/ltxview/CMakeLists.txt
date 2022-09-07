@@ -25,10 +25,6 @@ add_definitions(-DBOOST_LOG_DYN_LINK)
 find_package( SDL2 REQUIRED )
 include_directories( ${SDL2_INCLUDE_DIRS} )
 
-# Python
-find_package( PythonLibs 3.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
-
 # Imgui (+backends), NVVK
 include_directories(
 	${CMAKE_SOURCE_DIR}/third_party/imgui/

@@ -20,10 +20,10 @@ add_library( lava_utils_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     lava_utils_lib
-    ${Boost_LOG_LIBRARY}
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
+    Boost::log
+    Boost::filesystem
+    Boost::thread
+    Boost::system
 )
 
 if(UNIX)

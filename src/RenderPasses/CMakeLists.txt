@@ -12,10 +12,6 @@ include_directories(
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)
 add_definitions(-DBUILD_GAUSSIAN_PASS=TRUE)
 
-# Python
-find_package(PythonLibs 3.7 REQUIRED)
-include_directories(${PYTHON_INCLUDE_DIRS})
-
 # This function builds render pass library
 function (makeRenderPassLib)
     cmake_parse_arguments(
@@ -59,7 +55,6 @@ function (makeRenderPassLib)
     	${PASS_LIB}
     	falcor_lib
         ${ARGS_DEPS}
-    	${PYTHON_LIBRARIES}
         lava_utils_lib
     )
 
