@@ -1136,6 +1136,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     SceneBuilder::MeshInstanceShadingSpec shadingSpec;
     shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
 
+    LLOG_WRN << "Instance " << obj_name << " matte shading is" << (shadingSpec.isMatte ? "ON" : "OFF");
+
     // instance visibility spec
     SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
 

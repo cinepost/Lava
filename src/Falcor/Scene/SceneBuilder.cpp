@@ -822,19 +822,13 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
         instance.nodeId = nodeID;
         instance.overrideMaterial = pMaterial ? true : false;
 
-        if (pMaterial) {
-            instance.materialId = addMaterial(pMaterial);
-        }
-
+        if (pMaterial) instance.materialId = addMaterial(pMaterial);
+        
         if (shadingSpec) {
             instance.shading.isMatte = shadingSpec->isMatte;
+            //instance.shading = *shadingSpec;
         }
-
-        if (visibilitySpec) {
-            instance.visibility.visibleToPrimaryRays = visibilitySpec->visibleToPrimaryRays;
-            instance.visibility.visibleToShadowRays = visibilitySpec->visibleToShadowRays;
-            instance.visibility.visibleToSecondaryRays = visibilitySpec->visibleToSecondaryRays;
-        }
+        if (visibilitySpec) instance.visibility = *visibilitySpec;
 
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
     }
@@ -2402,11 +2396,15 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
                     geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
 
-                    // Geometry instance visibility flags
+                    // Geometry instance shading flags
                     geomInstance.flags |= instance.shading.isMatte ? (uint32_t)GeometryInstanceFlags::MatteShading : 0;
+                    geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
+                    geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
+                    
+                    // Geometry instance visibility flags
                     geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
-                    geomInstance.flags |= instance.visibility.visibleToSecondaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToSecondaryRays : 0;
+                    geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
 
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;

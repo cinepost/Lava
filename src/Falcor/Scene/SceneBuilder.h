@@ -52,12 +52,18 @@ class dlldecl SceneBuilder {
 
     struct MeshInstanceShadingSpec {
         bool        isMatte = false;
+        bool        fixShadowTerminator = true;
+        bool        biasAlongNormal = false;
     };
 
     struct MeshInstanceVisibilitySpec {
         bool        visibleToPrimaryRays = true;
         bool        visibleToShadowRays = true;
-        bool        visibleToSecondaryRays = true;
+        bool        visibleToDiffuseRays = false;
+        bool        visibleToReflectionRays = true;
+        bool        visibleToRefractionRays = true;
+        bool        recvShadows = true;
+        bool        castShadows = true;
     };
 
     /** Flags that control how the scene will be built. They can be combined together.
