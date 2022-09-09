@@ -59,7 +59,7 @@ class dlldecl SceneBuilder {
     struct MeshInstanceVisibilitySpec {
         bool        visibleToPrimaryRays = true;
         bool        visibleToShadowRays = true;
-        bool        visibleToDiffuseRays = false;
+        bool        visibleToDiffuseRays = true;
         bool        visibleToReflectionRays = true;
         bool        visibleToRefractionRays = true;
         bool        recvShadows = true;

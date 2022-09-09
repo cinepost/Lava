@@ -165,6 +165,7 @@ enum class GeometryInstanceFlags : uint32_t
     VisibleToPrimaryRays = 0x100,
     VisibleToShadowRays = 0x200,   
     VisibleToDiffuseRays = 0x400,
+    ReceiveShadows = 0x800,
 };
 
 struct GeometryInstanceData
@@ -172,7 +173,7 @@ struct GeometryInstanceData
     static const uint kTypeBits = 3;
     static const uint kTypeOffset = 32 - kTypeBits;
 
-    uint flags;             ///< Upper kTypeBits bits are reserved for storing the type.
+    uint32_t flags;             ///< Upper kTypeBits bits are reserved for storing the type.
     uint globalMatrixID;
     uint materialID;
     uint geometryID;

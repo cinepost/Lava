@@ -149,10 +149,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
     float3 rayOrigin = posWA; //sd.posW;
-    float3 shadowFactor;
-
+    
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
-        shadowFactor = float3(1.0, 1.0, 1.0);
+        float3 shadowFactor = float3(1.0, 1.0, 1.0);
 
         LightData light = gScene.getLight(lightIndex);
 
@@ -163,7 +162,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
         
 
-        if (light.shadowType == uint(LightShadowType.RayTraced) ) {
+        if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectReceiveShadows(vsOut.instanceID))) {
             
             // Test visibility by tracing a shadow ray.
             RayDesc ray;

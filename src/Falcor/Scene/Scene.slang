@@ -209,6 +209,11 @@ struct Scene
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::TransformFlipped)) != 0;
     }
 
+    bool isObjectReceiveShadows(const GeometryInstanceID instanceID)
+    {
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::ReceiveShadows)) != 0;
+    }
+
     bool isObjectMatteShaded(const GeometryInstanceID instanceID)
     {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::MatteShading)) != 0;

@@ -208,7 +208,6 @@ def initializeFeatures(settings):
     Object("lightcategories", "string", "lightcategories")
     Object("lightmask", "oplist", "lightmask")
     Object("lpetag", "string", "lv_lpetag")
-    Object("matte", "bool", "vm_matte")
     Object("maxindirectraysamples", "int", "lv_maxindirectraysamples")
     Object("maxraysamples", "int", "lv_maxraysamples")
     Object("metavolume", "bool", "lv_metavolume")
@@ -246,7 +245,13 @@ def initializeFeatures(settings):
     Object("renderpointsas", "int", "lv_renderpointsas")
     Object("rendersubd", "bool", "lv_rendersubd")
     Object("rendersubdcurves", "bool", "lv_rendersubdcurves")
-    Object("rendervisibility", "string", "vm_rendervisibility")
+    Object("rendervisibility", "string", "vm_rendervisibility", skipdefault=True)
+
+    Object("matte", "bool", "lv_matte", skipdefault=True)
+    Object("visible_primary", "bool", "lv_visibility_primary", skipdefault=True)
+    Object("shadows_recv", "bool", "lv_visibility_shadows_recv", skipdefault=True)
+    Object("shadows_cast", "bool", "lv_visibility_shadows_cast", skipdefault=True)
+
     Object("rmbackface", "bool", "lv_rmbackface")
     Object("samplecoving", "bool", "lv_samplecoving")
     Object("samplecovingexpansion", "float", "lv_samplecovingexpansion")

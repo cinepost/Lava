@@ -303,7 +303,7 @@ static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Render
 	if (!pAOVPlane) return false;
 	if (!pDisplay) return false;
 
-	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
 	if(!pAOVPlane->getImageData(textureData.data())) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
@@ -312,6 +312,29 @@ static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Render
 	
 	auto renderRegionDims = frameInfo.renderRegionDims();
 	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
+        LLOG_ERR << "Error sending image region to display !";
+        return false;
+    }
+    return true;
+};
+
+static bool sendImageData(uint hImage, Display::SharedPtr pDisplay, AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+	if (!pAOVPlane) return false;
+	if (!pDisplay) return false;
+
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
+	if(!pAOVPlane->getImageData(textureData.data())) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	LLOG_DBG << "Image data read done!";
+	
+	AOVPlaneGeometry aov_plane_geometry;
+	if(!pAOVPlane->getAOVPlaneGeometry(aov_plane_geometry)) {
+		return false;
+	}
+
+	if (!pDisplay->sendImage(hImage, aov_plane_geometry.width, aov_plane_geometry.height, textureData.data())) {
         LLOG_ERR << "Error sending image to display !";
         return false;
     }
@@ -345,6 +368,8 @@ bool Session::cmdRaytrace() {
 			return false;
 		}
 	}
+
+	bool doLiveUpdate = mpDisplay->supportsLiveUpdate();
 
 	if (!mpDisplay->supportsLiveUpdate()) {
 		// Non interactive display. No need to make intermediate updates
@@ -402,14 +427,17 @@ bool Session::cmdRaytrace() {
 
     mpDisplay->closeAll(); // close previous frame display images (if still opened) 
 
-    // houdini display driver section
-	int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
-	std::string imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 
-    if ((houdiniPortNum > 0) && (mIPR)) {
-    	// Negative port num is for IPR
-    	imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
-    }
+	// houdini display driver section
+	if(mpDisplay->type() == DisplayType::HOUDINI) {
+		int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
+		imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+		if ((houdiniPortNum > 0) && (mIPR)) {
+    		// Negative port num is for IPR
+    		imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
+    	}
+	}
 
     //
 
@@ -446,7 +474,7 @@ bool Session::cmdRaytrace() {
 		long int sampleUpdateIterations = 0;
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
-			if (sampleUpdateInterval > 0) {
+			if (doLiveUpdate && (sampleUpdateInterval > 0)) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
@@ -460,7 +488,11 @@ bool Session::cmdRaytrace() {
 
 		LLOG_DBG << "Rendering image samples done !";
 
-		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+		//if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
+		//	break;
+		//}
+
+		if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
 			break;
 		}
 	}
@@ -658,7 +690,12 @@ void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
 	}
-	mpCurrentScope->setProperty(style, token, value);
+	auto pProp = mpCurrentScope->getProperty(style, token);
+	if(!mpCurrentScope->getProperty(style, token)) {
+		mpCurrentScope->declareProperty(style, valueType(value), token, value, Property::Owner::USER);
+	} else {
+		mpCurrentScope->setProperty(style, token, value);
+	}
 }
 
 void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values) {
@@ -1136,10 +1173,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     SceneBuilder::MeshInstanceShadingSpec shadingSpec;
     shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
 
-    LLOG_WRN << "Instance " << obj_name << " matte shading is" << (shadingSpec.isMatte ? "ON" : "OFF");
 
     // instance visibility spec
     SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
+    visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
+    visibilitySpec.recvShadows = pObj->getPropertyValue(ast::Style::OBJECT, "shadows_recv", true);
+    visibilitySpec.castShadows = pObj->getPropertyValue(ast::Style::OBJECT, "shadows_cast", true);
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial, &shadingSpec, &visibilitySpec);

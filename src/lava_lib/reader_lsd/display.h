@@ -39,14 +39,14 @@ class Display {
     bool closeImage(uint imageHandle);
     bool closeAll();
 
-    bool opened(uint imageHandle) { return mImages[imageHandle].opened; }
-    bool closed(uint imageHandle) { return mImages[imageHandle].closed; }
+    inline bool opened(uint imageHandle) { return mImages[imageHandle].opened; }
+    inline bool closed(uint imageHandle) { return mImages[imageHandle].closed; }
 
-    DisplayType type() const { return mDisplayType; };
+    inline DisplayType type() const { return mDisplayType; };
 
-    std::string& imageName(uint imageHandle) { return mImages[imageHandle].name; };
-    uint imageWidth(uint imageHandle) { return mImages[imageHandle].width; };
-    uint imageHeight(uint imageHandle) { return mImages[imageHandle].height; };
+    inline std::string& imageName(uint imageHandle) { return mImages[imageHandle].name; };
+    inline uint imageWidth(uint imageHandle) { return mImages[imageHandle].width; };
+    inline uint imageHeight(uint imageHandle) { return mImages[imageHandle].height; };
 
     bool setStringParameter(const std::string& name, const std::vector<std::string>& strings);
     bool setIntParameter(const std::string& name, const std::vector<int>& ints);

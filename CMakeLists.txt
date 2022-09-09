@@ -229,6 +229,7 @@ if(UNIX AND COLLECT)
           "libOpenColorIO"
           "libicui18n"
           "libicuuc"
+          "libtiff"
       )
 
       string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")

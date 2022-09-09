@@ -824,10 +824,8 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
 
         if (pMaterial) instance.materialId = addMaterial(pMaterial);
         
-        if (shadingSpec) {
-            instance.shading.isMatte = shadingSpec->isMatte;
-            //instance.shading = *shadingSpec;
-        }
+        if (shadingSpec) instance.shading = *shadingSpec;
+
         if (visibilitySpec) instance.visibility = *visibilitySpec;
 
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
@@ -2405,6 +2403,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
+                    geomInstance.flags |= instance.visibility.recvShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
 
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;
