@@ -3,12 +3,7 @@
 
 #add_subdirectory( ropLava ) # Houdini render node
 
-
-if (DEFINED ENV{LAVA_DEPLOY})
-	# This check is used not to overwrite local development otls (as they also reside in $HOME/houdiniX.XX/otls)
-	install(DIRECTORY otls DESTINATION houdini)
-endif()
-
+install(DIRECTORY otls DESTINATION houdini)
 install(DIRECTORY scripts DESTINATION houdini)
 install(DIRECTORY config DESTINATION houdini)
 install(DIRECTORY soho DESTINATION houdini)

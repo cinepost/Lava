@@ -488,13 +488,13 @@ bool Session::cmdRaytrace() {
 
 		LLOG_DBG << "Rendering image samples done !";
 
-		//if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
-		//	break;
-		//}
-
-		if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
+		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
 			break;
 		}
+
+		//if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
+		//	break;
+		//}
 	}
 
 	LLOG_DBG << "Closing display...";

@@ -247,7 +247,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
         case DisplayType::IP:
         case DisplayType::MD:
         case DisplayType::HOUDINI:
-            pDisplay->mLiveUpdateSupport = true;
+            pDisplay->mInteractiveSupport = true;
             break;
         default:
             break;
@@ -272,11 +272,11 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
 
 bool Display::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
     if( width == 0 || height == 0) {
-        printf("[%s] Wrong image dimensions !!!\n", __FILE__);
+        LLOG_FTL << "Wrong image dimensions !!!";
         return false;
     }
 
-    mEntrySize = 0;
+    uint entrySize = 0;
 
     PtDspyDevFormat *outformat = new PtDspyDevFormat[channels.size()]();
     PtDspyDevFormat *f_ptr = &outformat[0];
@@ -287,7 +287,7 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
         char* pname = reinterpret_cast<char*>(malloc(channel_name.size()+1));
         strcpy(pname, channel_name.c_str());
         
-        mEntrySize += getFormatSizeInBytes(channel.format);
+        entrySize += getFormatSizeInBytes(channel.format);
 
         f_ptr->name = pname;
         f_ptr++;
@@ -304,40 +304,89 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
         LLOG_ERR << "Unable to open display \"" << mDriverName << "\" : ";
         LLOG_ERR << getDspyErrorMessage(err);
         return false;
-    } else {
-        // check image info
-        if (mQueryFunc != nullptr) {
-            err = mQueryFunc(pvImage, PkSizeQuery, sizeof(PtDspySizeInfo), &img_info);
-            if(err) {
-                LLOG_ERR << "Unable to query image size info";
-                LLOG_ERR << getDspyErrorMessage(err);
-                return false;
-            } else {
-                LLOG_DBG << "Opened image name: " << image_name << " size: " << img_info.width << " " << img_info.height << " aspect ratio: " << img_info.aspectRatio;
-            }
+    }
+
+    // check image info
+    if (mQueryFunc != nullptr) {
+        err = mQueryFunc(pvImage, PkSizeQuery, sizeof(PtDspySizeInfo), &img_info);
+        if(err) {
+            LLOG_ERR << "Unable to query image size info";
+            LLOG_ERR << getDspyErrorMessage(err);
+            return false;
+        } else {
+            LLOG_DBG << "Opened image name: " << image_name << " size: " << img_info.width << " " << img_info.height << " aspect ratio: " << img_info.aspectRatio;
         }
+    }
 
-        // check flags
-        if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder)
-            LLOG_DBG << "PkDspyFlagsWantsScanLineOrder";
+    // check flags
+    if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder) {
+        if (!mActiveRegionFunc) {
+            mForceScanLines = true;
+        }
+        LLOG_DBG << "PkDspyFlagsWantsScanLineOrder";
+    }
 
-        if (mFlagstuff.flags & PkDspyFlagsWantsEmptyBuckets)
-            LLOG_DBG << "PkDspyFlagsWantsEmptyBuckets";
+    if (mFlagstuff.flags & PkDspyFlagsWantsEmptyBuckets) {
+        //mForceScanLines = false;
+        LLOG_DBG << "PkDspyFlagsWantsEmptyBuckets";
+    }
 
-        if (mFlagstuff.flags & PkDspyFlagsWantsNullEmptyBuckets)
-            LLOG_DBG << "PkDspyFlagsWantsNullEmptyBuckets";
+    if (mFlagstuff.flags & PkDspyFlagsWantsNullEmptyBuckets) {
+        //mForceScanLines = false;
+        LLOG_DBG << "PkDspyFlagsWantsNullEmptyBuckets";
+    }
+
+    // Check driver supports interactive updates
+    PtDspyOverwriteInfo overwriteInfo;
+    if (mQueryFunc != nullptr) {
+        err = mQueryFunc(pvImage, PkOverwriteQuery, sizeof(PtDspyOverwriteInfo), &overwriteInfo);
+        if(!err) {
+            if(overwriteInfo.overwrite) {
+                mOverwriteSupport = true;
+            }
+            if(overwriteInfo.interactive == 1) {
+                mInteractiveSupport = true;
+                mForceScanLines = false;
+            }
+
+            LLOG_DBG << "Image driver overwrite info: overwrite " << std::to_string(overwriteInfo.overwrite);
+            LLOG_DBG << "Image dirver overwrite info: interactive " << std::to_string(overwriteInfo.interactive);
+        }
+    }
+
+    // Check if driver supports interactive updates
+    PtDspyRedrawInfo redrawInfo;
+    if (mQueryFunc != nullptr) {
+        err = mQueryFunc(pvImage, PkRedrawQuery, sizeof(PtDspyRedrawInfo), &redrawInfo);
+        if(!err) {
+            //overwrite_info.overwrite;
+            if(redrawInfo.redraw == 1) {
+                mOverwriteSupport = true;
+                mInteractiveSupport = true;
+                mForceScanLines = false;
+            }
+            LLOG_DBG << "Image driver redraw info: redraw " << std::to_string(redrawInfo.redraw);
+        }
     }
 
     imageHandle = mImages.size();
+    mImages.push_back({});
 
-    ImageData imgData = {};
-    imgData.name = image_name;
-    imgData.handle = pvImage;
-    imgData.width = img_info.width;
-    imgData.height = img_info.height;
-    imgData.opened = true;
+    auto& image_data = mImages.back();
+    image_data.name = image_name;
+    image_data.handle = pvImage;
+    image_data.width = img_info.width;
+    image_data.height = img_info.height;
+    image_data.opened = true;
+    image_data.entrySize = entrySize;
 
-    mImages.push_back(imgData);
+    if (mForceScanLines) {
+        image_data.tmpDataBuffer.resize(image_data.width * image_data.height * image_data.entrySize);
+        std::fill(image_data.tmpDataBuffer.begin(), image_data.tmpDataBuffer.end(), (uint8_t)0);
+    }
+
+    if (mForceScanLines) LLOG_WRN << "Performance warning !!! Display driver " << mDriverName << " wants scan lines only. We do this using temporary image buffer.";
+
     return true;
 }
 
@@ -349,83 +398,112 @@ bool Display::closeAll() {
             ret = false;
         }
     }
-
-    //for (uint i = 0; i < mImages.size(); i++) {
-    //    if(!close(i)) ret = false;
-    //}
     
     mImages.clear();
     return ret;
 }
 
 bool Display::closeImage(uint imageHandle) {
-    if(mImages[imageHandle].closed) // already closed
+    auto& image_data = mImages[imageHandle];
+
+    if(image_data.closed) // already closed
         return true;
 
-    if(!mImages[imageHandle].handle) // mOpenFunc was unsuccessfull
+    if(!image_data.handle) // mOpenFunc was unsuccessfull
         return false;
 
+    bool result = true;
+
+    // If driver expects ONLY scan lines then the data is stored in temporary buffer
+    if (mForceScanLines) {
+        LLOG_DBG << "Sending " <<  std::to_string(image_data.height) << " forced scan lines from temporary buffer";
+        
+        uint32_t scanline_offset = image_data.width * image_data.entrySize;
+        const uint8_t* pData = image_data.tmpDataBuffer.data();
+        for(uint32_t y = 0; y < image_data.height; y++) {
+            PtDspyError err = mWriteFunc(image_data.handle, 0, image_data.width, y, y + 1, image_data.entrySize, pData);
+            if(err != PkDspyErrorNone ) {
+                LLOG_ERR << getDspyErrorMessage(err);
+                result = false;
+                break;
+            }
+            pData += scanline_offset;
+        }
+    }
+
     LLOG_DBG << "Closing display \"" << mDriverName << "\"";
-    PtDspyError err = mCloseFunc(mImages[imageHandle].handle);
+    PtDspyError err = mCloseFunc(image_data.handle);
     
     if(err != PkDspyErrorNone ) {
-        LLOG_ERR << "Unable to close display " << mDriverName;
+        LLOG_ERR << "Unable to close display " << mDriverName << " ! Here is details: ";
         LLOG_ERR << getDspyErrorMessage(err);
         return false; 
     }
 
-    mImages[imageHandle].opened = false;
-    mImages[imageHandle].closed = true;
-    return true;
+    image_data.opened = false;
+    image_data.closed = true;
+    return result;
 }
 
-bool Display::sendImageRegion(uint imageHandle, int x, int y, int width, int height, const uint8_t *data) {
-    if(!mImages[imageHandle].opened) {
+bool Display::sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *pData) {
+    auto const& image_data = mImages[imageHandle];
+
+    if(!image_data.opened) {
         LLOG_ERR << "Can't send image data. Display not opened !!!";
         return false;
     }
 
-    PtDspyError err = mWriteFunc(mImages[imageHandle].handle, x, x+width, y, y+height, mEntrySize, data);
-    if(err != PkDspyErrorNone ) {
-        LLOG_ERR << getDspyErrorMessage(err);
-        return false;
+    if(!mForceScanLines) {
+        // Send data to direct
+        PtDspyError err = mWriteFunc(image_data.handle, x, x + width, y, y + height, image_data.entrySize, pData);
+        if(err != PkDspyErrorNone ) {
+            LLOG_ERR << getDspyErrorMessage(err);
+            return false;
+        }
+    } else {
+        // Store data to temporary buffer
+        size_t src_data_line_size = image_data.entrySize * width;
+        size_t dst_data_line_size = image_data.entrySize * image_data.width;
+        
+        const uint8_t* pSrcData = pData;
+        uint8_t* pDstData = (uint8_t *)image_data.tmpDataBuffer.data() + ((y * image_data.width) + x) * image_data.entrySize;
+
+        for(uint i = y; i < (y + height); i++) {
+            ::memcpy(pDstData, pSrcData, src_data_line_size);
+            pSrcData += src_data_line_size;
+            pDstData += dst_data_line_size;
+        }
     }
 
     return true;
 }
 
-bool Display::sendImage(uint imageHandle, int width, int height, const uint8_t *data) {
-    if(!mImages[imageHandle].opened) {
+bool Display::sendImage(uint imageHandle, uint width, uint height, const uint8_t *pData) {
+    auto const& image_data = mImages[imageHandle];
+
+    if(!image_data.opened) {
         LLOG_ERR << "Can't send image data. Display not opened !!!";
         return false;
     }
 
-    if( width != mImages[imageHandle].width || height != mImages[imageHandle].height) {
+    if( width != image_data.width || height != image_data.height) {
         LLOG_ERR << "Display and sended image sizes are different !!!";
         return false;
     }
 
     if(mActiveRegionFunc) {
         LLOG_DBG << "Asking display to set active region";
-        PtDspyError err = mActiveRegionFunc(mImages[imageHandle].handle, 0, width, 0, height);
+        PtDspyError err = mActiveRegionFunc(image_data.handle, 0, width, 0, height);
             if(err != PkDspyErrorNone ) {
             LLOG_ERR << getDspyErrorMessage(err);
             return false;
         }
     }
 
-    uint32_t scanline_offset = width * mEntrySize;
-    if (mFlagstuff.flags & PkDspyFlagsWantsScanLineOrder) {
-        LLOG_DBG << "Sending " <<  std::to_string(height) << " scan lines";
-        for(uint32_t y = 0; y < height; y++) {
-            if(!sendImageRegion(imageHandle, 0, y, width,y, data)) 
-                return false;
-
-            data += scanline_offset;
-        }
-
+    if(mForceScanLines) {
+        ::memcpy(mImages[imageHandle].tmpDataBuffer.data(), pData, width * height * image_data.entrySize);
     } else {
-        return sendImageRegion(imageHandle, 0, 0, width, height, data);
+        return sendImageRegion(imageHandle, 0, 0, width, height, pData);
     }
 
     return true;
