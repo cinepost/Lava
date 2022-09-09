@@ -58,16 +58,12 @@ public:
      *
      * @return If the futures return void, this function returns void as well. Otherwise, it returns a vector containing the results.
      */
-    [[nodiscard]] std::conditional_t<std::is_void_v<T>, void, std::vector<T>> get()
-    {
-        if constexpr (std::is_void_v<T>)
-        {
+    [[nodiscard]] std::conditional_t<std::is_void_v<T>, void, std::vector<T>> get() {
+        if constexpr (std::is_void_v<T>) {
             for (size_t i = 0; i < futures.size(); ++i)
                 futures[i].get();
             return;
-        }
-        else
-        {
+        } else {
             std::vector<T> results(futures.size());
             for (size_t i = 0; i < futures.size(); ++i)
                 results[i] = futures[i].get();
@@ -81,13 +77,11 @@ public:
      * @param i The index of the desired future.
      * @return The future.
      */
-    [[nodiscard]] std::shared_future<T>& operator[](const size_t i)
-    {
+    [[nodiscard]] std::shared_future<T>& operator[](const size_t i) {
         return futures[i];
     }
 
-    [[nodiscard]] std::shared_future<T>& back()
-    {
+    [[nodiscard]] std::shared_future<T>& back() {
         return futures.back();
     }
 
@@ -96,8 +90,7 @@ public:
      *
      * @param future The future to append.
      */
-    void push_back(std::future<T> future)
-    {
+    void push_back(std::future<T> future) {
         futures.push_back(std::move(future));
     }
 
@@ -106,18 +99,21 @@ public:
      *
      * @return The number of futures.
      */
-    [[nodiscard]] size_t size() const
-    {
+    [[nodiscard]] size_t size() const {
         return futures.size();
     }
 
     /**
      * @brief Wait for all the futures stored in this multi_future object.
      */
-    void wait() const
-    {
+    void wait() const {
         for (size_t i = 0; i < futures.size(); ++i)
             futures[i].wait();
+    }
+
+    void clear() {
+        wait();
+        futures.clear();
     }
 
 private:

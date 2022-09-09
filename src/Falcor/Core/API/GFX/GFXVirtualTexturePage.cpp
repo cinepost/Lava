@@ -43,7 +43,7 @@ size_t VirtualTexturePage::usedMemSize() const {
 // Allocate Vulkan memory for the virtual page
 void VirtualTexturePage::allocate() {
 	if (mImageMemoryBind.memory != VK_NULL_HANDLE) {
-		LLOG_DBG << "VirtualTexturePage already allocated";
+		// VirtualTexturePage already allocated
 		return;
 	}
 

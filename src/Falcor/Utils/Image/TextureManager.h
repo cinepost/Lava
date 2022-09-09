@@ -30,6 +30,7 @@
 
 #include "Falcor/Core/Program/ShaderVar.h"
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
+#include "Falcor/Utils/ThreadPool.h"
 
 #include "AsyncTextureLoader.h"
 #include <mutex>
@@ -185,6 +186,9 @@ public:
 	void finalize();
 
 	void loadPages(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
+	void loadPagesAsync(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds);
+
+	void updateSparseBindInfo();
 
 	bool getTextureHandle(const Texture* pTexture, TextureHandle& handle) const;
 
@@ -220,6 +224,8 @@ private:
 	std::condition_variable mCondition;                         ///< Condition variable to wait on for loading to finish.
 
 	// Internal state. Do not access outside of critical section.
+	BS::multi_future<Texture*> mTextureLoadingTasks;
+
 	std::vector<TextureDesc> mTextureDescs;                     ///< Array of all texture descs, indexed by handle ID.
 	std::vector<TextureHandle> mFreeList;                       ///< List of unused handles.
 	std::map<TextureKey, TextureHandle> mKeyToHandle;           ///< Map from texture key to handle.

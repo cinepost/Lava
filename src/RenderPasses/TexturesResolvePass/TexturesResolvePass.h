@@ -98,6 +98,7 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
     Buffer::SharedPtr           mpTexResolveDataBuffer;
     bool                        mUsePreGenDepth = false;
 
+    bool                        mLoadPagesAsync = true;
 
     Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
     std::vector<Texture::SharedPtr> mMipCalibrationTextures;

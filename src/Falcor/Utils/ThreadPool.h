@@ -13,7 +13,7 @@ class dlldecl ThreadPool: public BS::thread_pool {
   public:
     ThreadPool(): BS::thread_pool(std::max(1u, std::thread::hardware_concurrency() - 1)){};
 
-    static ThreadPool& instance() {
+    inline static ThreadPool& instance() {
         static ThreadPool instance;
         return instance;
     }

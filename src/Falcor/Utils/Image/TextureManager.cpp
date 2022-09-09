@@ -47,6 +47,8 @@ namespace ba = boost::adaptors;
 
 namespace Falcor {
 
+static const size_t kMinPagesPerLoadingThred = 10;
+
 namespace {
 	const size_t kMaxTextureHandleCount = std::numeric_limits<uint32_t>::max();
 	static_assert(TextureManager::TextureHandle::kInvalidID >= kMaxTextureHandleCount);
@@ -224,6 +226,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
 	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
 
   assert(pTexture.get());
+  if(!pTexture || (pageIds.size() < 1)) return;
 
   uint32_t textureID = pTexture->id();
 
@@ -233,16 +236,17 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     return;
   }
 
+  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+
   std::vector<uint32_t> _pageIds = pageIds;
   std::sort(_pageIds.begin(), _pageIds.end());
 
   // read data and fill pages
-  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
   std::string ltxFilename = pLtxBitmap->getFileName();
   auto pFile = fopen(ltxFilename.c_str(), "rb");
-  std::vector<uint8_t> tmpPage(65536);
+  std::array<uint8_t, 65536> tmpPage;
   auto pTmpPageData = tmpPage.data();
-  
+
   std::vector<VirtualTexturePage*> tailPages;
   tailPages.reserve(8);
 
@@ -264,15 +268,89 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   		pPage->release();
   	}
   }
-  //mpDevice->getRenderContext()->flush(true);
 
   mpDevice->getRenderContext()->fillMipTail(pTexture, nullptr);
 
   fclose(pFile);
-
   pTexture->updateSparseBindInfo();
+}
 
-  //mpDevice->getRenderContext()->flush(true);
+void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const std::vector<uint32_t>& pageIds) {
+	if(!mHasSparseTextures || !pTexture || !pTexture->isSparse()) return;
+
+  assert(pTexture.get());
+
+  uint32_t textureID = pTexture->id();
+
+  auto it = mTextureLTXBitmapsMap.find(textureID);
+  if (it == mTextureLTXBitmapsMap.end()) {
+    LLOG_ERR << "No LTX_Bitmap stored for texture " <<  pTexture->getSourceFilename();
+    return;
+  }
+
+  auto pLtxBitmap = mTextureLTXBitmapsMap[textureID];
+
+  ThreadPool& pool = ThreadPool::instance();
+
+	// Push pages loading job into ThreadPool
+	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture, pageIds]
+  {
+  	if(!pTexture) return (Texture*)nullptr;
+  	if(pageIds.size() < 1) (Texture*)nullptr;
+
+    std::thread::id thread_id = std::this_thread::get_id();
+    auto pContext = pTexture->device()->getRenderContext();
+
+    std::array<uint8_t, 65536> tmpPageData;
+    auto pTmpPageData = tmpPageData.data();
+
+    // Tail pages reserve
+    std::vector<VirtualTexturePage*> tailPages;
+		tailPages.reserve(8);
+
+		std::string ltxFilename = pLtxBitmap->getFileName();
+		auto pFile = fopen(ltxFilename.c_str(), "rb");
+
+		for( uint32_t page_id: pageIds ) {
+  		const auto& pPage = mSparseDataPages[page_id];
+    
+  		uint32_t page_index = pPage->index();
+
+    	if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile)) {
+  			if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
+  				// Push tail pages for separate full mip tail (multiple pages) loading
+  				tailPages.push_back(pPage.get());
+  			} else {
+  				// Load non-tail texture data page
+  				if(!pPage->isResident()) {
+  					pPage->allocate();
+  					pContext->updateTexturePage(pPage.get(), pTmpPageData);
+  					LLOG_DBG << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
+					}
+				}
+			} else {
+				LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
+				pPage->release();
+			}
+		}
+
+		pContext->fillMipTail(pTexture, nullptr);
+
+		fclose(pFile);
+    return pTexture.get();
+  }));
+}
+
+void TextureManager::updateSparseBindInfo() {
+	if(mTextureLoadingTasks.size() < 1) return;
+
+	std::vector<Texture*> textures;
+	for(size_t i = 0; i < mTextureLoadingTasks.size(); i++) {
+		Texture* pTexture = mTextureLoadingTasks[i].get();
+		if(pTexture) pTexture->updateSparseBindInfo();
+	}
+
+	mTextureLoadingTasks.clear();
 }
 
 bool TextureManager::getTextureHandle(const Texture* pTexture, TextureHandle& handle) const {

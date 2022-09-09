@@ -401,10 +401,18 @@ if (1 == 1) {
 
 		LLOG_DBG << std::to_string(pageIDs.size()) << " pages needs to be loaded for texture " << std::to_string(textureID);
 		
-		pTextureManager->loadPages(pTexture, pageIDs); 
+		std::sort(pageIDs.begin(), pageIDs.end());
+		
+		if(mLoadPagesAsync) {
+			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
+		} else {
+			pTextureManager->loadPages(pTexture, pageIDs); 
+		}
 
 		//pagesStartOffset += texturePagesCount;
 	}
+
+	if(mLoadPagesAsync) pTextureManager->updateSparseBindInfo();
 
 	auto done = std::chrono::high_resolution_clock::now();
 	LLOG_DBG << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << " ms.";
