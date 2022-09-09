@@ -250,7 +250,7 @@ struct MaterialSystem
             case TextureHandle::Mode::UDIM_Texture:
                 float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
                 uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                return lod.sampleTexture(materialTextures[tileID], s, udim_uv);
+                return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);
         }

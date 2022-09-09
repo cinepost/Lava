@@ -303,9 +303,7 @@ def initializeFeatures(settings):
     Light("envintensity", "float", "lv_envintensity")
     Light("importancelevels", "int", "lv_importancelevels")
     Light("lightcache", "bool", "lv_lightcache")
-    Light("photontarget", "string", "lv_photontarget")
-    Light("photonweight", "float", "lv_photonweight")
-    Light("raybackground", "bool", "lv_raybackground")
+    Light("visible_primary", "bool", "lv_visible_primary")
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
 

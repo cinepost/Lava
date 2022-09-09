@@ -630,18 +630,23 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
+		bool phantom = !pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
 		auto pDevice = pSceneBuilder->device();
 		//LightProbe::SharedPtr pLightProbe;
 		
+		Texture::SharedPtr pEnvMapTexture;
 		if (texture_file_name.size() > 0) {
-			bool loadAsSrgb = false;
-    		
-    		auto pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
-    		EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    		pEnvMap->setTint(light_color);
-    		pSceneBuilder->setEnvMap(pEnvMap);
+			bool loadAsSrgb = false;	
+    		pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
     	}
+    	
+    	EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    	pEnvMap->setTint(light_color);
+    	pEnvMap->setPhantom(phantom);
+
+    	pSceneBuilder->setEnvMap(pEnvMap);
+    	
     	return;
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";

@@ -69,9 +69,9 @@ float4 psMain(float3 dir : NORMAL) : SV_TARGET {
 #else
     #ifdef _SPHERICAL_MAP
         float2 uv = world_to_latlong_map(dir);
-        return gTexture.Sample(gSampler, uv) * float4(intensity,gOpacity);
+        return gTexture.Sample(gSampler, uv, 1.0f) * float4(intensity, gOpacity);
     #else
-        return gTexture.SampleLevel(gSampler, normalize(dir), 0.0f) * float4(intensity, gOpacity);
+        return gTexture.SampleLevel(gSampler, normalize(dir), 1.0f) * float4(intensity, gOpacity);
     #endif
 #endif
 }

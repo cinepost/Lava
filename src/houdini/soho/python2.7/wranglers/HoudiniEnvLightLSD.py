@@ -91,10 +91,10 @@ def nonspecular(obj, now, value):
             return True
     return False
 
-def phantom(obj, now, value):
+def visible_primary(obj, now, value):
     if obj.evalInt('light_contribprimary', now, value):
         if value[0]:
-            value[0] = 0
+            value[0] = 1
             return True
     return False
 
@@ -302,9 +302,8 @@ parmMap = {
     'lv_nondiffuse'     :       nondiffuse,
     'lv_nonspecular'    :       nonspecular,
     'lv_areashape'      :       areashape,
-    'lv_phantom'        :       phantom,
+    'lv_visible_primary':       visible_primary,
     'lv_envintensity'   :       envintensity,
-    'lv_raybackground'  :       raybackground,
 
     'shop_lightpath'    :       light_shader,
 #    'shop_shadowpath'   :       shadow_shader,
