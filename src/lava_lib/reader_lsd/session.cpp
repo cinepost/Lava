@@ -4,6 +4,9 @@
 #include <fstream>
 #include <cstdlib>
 
+#include <math.h>
+
+
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -26,6 +29,7 @@
 #include "glm/gtx/string_cast.hpp"
 
 
+static constexpr float halfC = M_PI / 180.0f;
 
 namespace lava {
 
@@ -570,8 +574,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
 
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
+	std::shared_ptr<PropertiesContainer> pShaderProps;
+
 	if(pShaderProp) {
-		auto pShaderProps = pShaderProp->subContainer();
+		pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
 		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
 		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
@@ -594,10 +600,26 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
-		// Point light
+		// Point/Spot light
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
+
+		bool do_cone = false;
+		float coneangle_degrees = 360.0f;
+		float conedelta_degrees = 0.0f;
+
+		if(pShaderProps) {
+			do_cone = pShaderProps->getPropertyValue(ast::Style::LIGHT, "docone", bool(false));
+			coneangle_degrees = pShaderProps->getPropertyValue(ast::Style::LIGHT, "coneangle", (float)360.0f);
+			conedelta_degrees = pShaderProps->getPropertyValue(ast::Style::LIGHT, "conedelta", (float)0.0f);
+		}
+
+		// Spot light case
+		if(do_cone && (coneangle_degrees <= 180.0f)) {
+			pPointLight->setOpeningAngle(coneangle_degrees * halfC);
+			pPointLight->setPenumbraAngle(conedelta_degrees * halfC);
+		}
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
 	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
@@ -1182,8 +1204,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     // instance visibility spec
     SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
     visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
-    visibilitySpec.recvShadows = pObj->getPropertyValue(ast::Style::OBJECT, "shadows_recv", true);
-    visibilitySpec.castShadows = pObj->getPropertyValue(ast::Style::OBJECT, "shadows_cast", true);
+    visibilitySpec.visibleToShadowRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_shadows", true);
+    visibilitySpec.visibleToDiffuseRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_diffuse", true);
+    visibilitySpec.visibleToReflectionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_reflect", true);
+    visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
+    visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
+    
 
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial, &shadingSpec, &visibilitySpec);

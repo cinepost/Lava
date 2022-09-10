@@ -45,6 +45,7 @@ namespace ba = boost::adaptors;
 // Until then `TextureManager` should only called from the main thread.
 #define DISABLE_ASYNC_TEXTURE_LOADER
 
+
 namespace Falcor {
 
 static const size_t kMinPagesPerLoadingThred = 10;
@@ -316,25 +317,32 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
     
   		uint32_t page_index = pPage->index();
 
-    	if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile)) {
-  			if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
-  				// Push tail pages for separate full mip tail (multiple pages) loading
-  				tailPages.push_back(pPage.get());
-  			} else {
-  				// Load non-tail texture data page
-  				if(!pPage->isResident()) {
-  					pPage->allocate();
-  					pContext->updateTexturePage(pPage.get(), pTmpPageData);
+  		if(!pPage->isResident()) {
+    		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile)) {
+  				if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
+  					// Push tail pages for separate full mip tail (multiple pages) loading
+  					tailPages.push_back(pPage.get());
+  				} else {
+  					// Load non-tail texture data page
+  					{
+  						std::unique_lock<std::mutex> lock(mPageMutex);
+  						pPage->allocate();
+  						pContext->updateTexturePage(pPage.get(), pTmpPageData);
+  					}
   					LLOG_DBG << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
 					}
+				} else {
+					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
+					//pPage->release();
 				}
-			} else {
-				LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
-				pPage->release();
 			}
+
 		}
 
-		pContext->fillMipTail(pTexture, nullptr);
+		if(tailPages.size() > 1) {
+			// Fill mip tail data
+			pContext->fillMipTail(pTexture, nullptr);
+		}
 
 		fclose(pFile);
     return pTexture.get();

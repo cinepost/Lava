@@ -49,60 +49,60 @@ using namespace Falcor;
 #endif
 
 class dllpassdecl TexturesResolvePass : public RenderPass {
- public:
-    using SharedPtr = std::shared_ptr<TexturesResolvePass>;
-    using TextureSlot = Material::TextureSlot;
+	public:
+		using SharedPtr = std::shared_ptr<TexturesResolvePass>;
+		using TextureSlot = Material::TextureSlot;
 
-    static const Info kInfo;
+		static const Info kInfo;
 
-    /** Create a new object
-    */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		/** Create a new object
+		*/
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual Dictionary getScriptingDictionary() override;
+		virtual RenderPassReflection reflect(const CompileData& compileData) override;
+		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+		virtual Dictionary getScriptingDictionary() override;
 
-    TexturesResolvePass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-    TexturesResolvePass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+		TexturesResolvePass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+		TexturesResolvePass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
- private:
-    TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
-    void parseDictionary(const Dictionary& dict);
+	private:
+		TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
+		void parseDictionary(const Dictionary& dict);
 
-    void initDepth(RenderContext* pContext, const RenderData& renderData);
-    void updateTexturesResolveData();
+		void initDepth(RenderContext* pContext, const RenderData& renderData);
+		void updateTexturesResolveData();
 
-    void createMipCalibrationTexture(RenderContext* pRenderContext);
-    void createLtxCalibrationTexture(RenderContext* pRenderContext);
+		void createMipCalibrationTexture(RenderContext* pRenderContext);
+		void createLtxCalibrationTexture(RenderContext* pRenderContext);
 
-    void setDefaultSampler();
+		void setDefaultSampler();
 
-    Fbo::SharedPtr              mpFbo;
-    GraphicsState::SharedPtr    mpState;
-    GraphicsVars::SharedPtr     mpVars;
-    RasterizerState::SharedPtr  mpRsState;
-    Scene::SharedPtr            mpScene;
+		Fbo::SharedPtr              mpFbo;
+		GraphicsState::SharedPtr    mpState;
+		GraphicsVars::SharedPtr     mpVars;
+		RasterizerState::SharedPtr  mpRsState;
+		Scene::SharedPtr            mpScene;
 
-    Sampler::SharedPtr          mpSampler = nullptr;
-    Sampler::SharedPtr          mpMinSampler = nullptr;
-    Sampler::SharedPtr          mpMaxSampler = nullptr;
+		Sampler::SharedPtr          mpSampler = nullptr;
+		Sampler::SharedPtr          mpMinSampler = nullptr;
+		Sampler::SharedPtr          mpMaxSampler = nullptr;
 
-    GraphicsProgram::SharedPtr      mpProgram;
-    DepthStencilState::SharedPtr    mpDsNoDepthWrite;
+		GraphicsProgram::SharedPtr      mpProgram;
+		DepthStencilState::SharedPtr    mpDsNoDepthWrite;
 
-    ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
+		ResourceFormat mTileDataDebugFormat = ResourceFormat::RGBA8Unorm;
 
-    ParameterBlock::SharedPtr   mpDataBlock;
-    Buffer::SharedPtr           mpTexResolveDataBuffer;
-    bool                        mUsePreGenDepth = false;
+		ParameterBlock::SharedPtr   mpDataBlock;
+		Buffer::SharedPtr           mpTexResolveDataBuffer;
+		bool                        mUsePreGenDepth = false;
 
-    bool                        mLoadPagesAsync = true;
+		bool                        mLoadPagesAsync = true;
 
-    Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
-    std::vector<Texture::SharedPtr> mMipCalibrationTextures;
-    Texture::SharedPtr          mpLtxCalibrationTexture = nullptr;
+		Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
+		std::vector<Texture::SharedPtr> mMipCalibrationTextures;
+		Texture::SharedPtr          mpLtxCalibrationTexture = nullptr;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_TEXTURESRESOLVEPASS_H_

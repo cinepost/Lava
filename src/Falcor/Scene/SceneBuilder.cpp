@@ -2403,7 +2403,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
                     geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
-                    geomInstance.flags |= instance.visibility.recvShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
+                    geomInstance.flags |= instance.visibility.receiveShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
 
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;

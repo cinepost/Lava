@@ -52,6 +52,17 @@ enum class RtGeometryInstanceFlags {
 FALCOR_ENUM_CLASS_OPERATORS(RtGeometryInstanceFlags);
 
 
+enum class RtGeometryInstanceVisibilityFlags : uint32_t {
+	None = 0,
+	VisibleToPrimaryRays    = 0x00000001,
+	VisibleToShadowRays     = 0x00000002,
+	VisibleToDiffuseRays    = 0x00000004,
+  VisibleToReflectionRays = 0x00000008,
+	VisibleToRefractionRays = 0x00000010,
+};
+FALCOR_ENUM_CLASS_OPERATORS(RtGeometryInstanceVisibilityFlags);
+
+
 // The layout of this struct is intentionally consistent with D3D12_RAYTRACING_INSTANCE_DESC
 // and VkAccelerationStructureInstanceKHR.
 struct RtInstanceDesc {

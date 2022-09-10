@@ -2673,7 +2673,14 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 assert(instances[instanceIdx] == instanceID + geometryIndex);
             }
 
+            const auto& instance = mGeometryInstanceData[instanceID];
+
             desc.instanceID = instanceID;
+            desc.instanceMask = 0xFF;
+
+            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
+            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;
+
             instanceID += (uint32_t)meshList.size();
 
             glm::mat4 transform4x4 = glm::identity<glm::mat4>();

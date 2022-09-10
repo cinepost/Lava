@@ -180,7 +180,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                     break;
             }
 
-            rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0xff, ray);
+            rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
             rayQuery.Proceed();
             shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }

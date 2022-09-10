@@ -62,8 +62,7 @@ class dlldecl SceneBuilder {
         bool        visibleToDiffuseRays = true;
         bool        visibleToReflectionRays = true;
         bool        visibleToRefractionRays = true;
-        bool        recvShadows = true;
-        bool        castShadows = true;
+        bool        receiveShadows = true;
     };
 
     /** Flags that control how the scene will be built. They can be combined together.

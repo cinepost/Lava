@@ -249,8 +249,12 @@ def initializeFeatures(settings):
 
     Object("matte", "bool", "lv_matte", skipdefault=True)
     Object("visible_primary", "bool", "lv_visibility_primary", skipdefault=True)
-    Object("shadows_recv", "bool", "lv_visibility_shadows_recv", skipdefault=True)
-    Object("shadows_cast", "bool", "lv_visibility_shadows_cast", skipdefault=True)
+    Object("visible_shadows", "bool", "lv_visibility_shadows_cast", skipdefault=True)
+    Object("visible_diffuse", "bool", "lv_visibility_diffuse", skipdefault=True)
+    Object("visible_reflect", "bool", "lv_visibility_reflect", skipdefault=True)
+    Object("visible_refract", "bool", "lv_visibility_refract", skipdefault=True)
+    Object("receive_shadows", "bool", "lv_visibility_shadows_recv", skipdefault=True)
+    
 
     Object("rmbackface", "bool", "lv_rmbackface")
     Object("samplecoving", "bool", "lv_samplecoving")

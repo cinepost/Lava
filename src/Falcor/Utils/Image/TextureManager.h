@@ -221,6 +221,7 @@ private:
 	Device::SharedPtr mpDevice = nullptr;
 
 	mutable std::mutex mMutex;                                  ///< Mutex for synchronizing access to shared resources.
+	mutable std::mutex mPageMutex;                              ///< Mutex for synchronizing texture page updates.
 	std::condition_variable mCondition;                         ///< Condition variable to wait on for loading to finish.
 
 	// Internal state. Do not access outside of critical section.
