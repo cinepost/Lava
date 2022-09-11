@@ -248,6 +248,7 @@ def initializeFeatures(settings):
     Object("rendervisibility", "string", "vm_rendervisibility", skipdefault=True)
 
     Object("matte", "bool", "lv_matte", skipdefault=True)
+    Object("fix_shadow", "bool", "lv_fix_shadow", skipdefault=True)
     Object("visible_primary", "bool", "lv_visibility_primary", skipdefault=True)
     Object("visible_shadows", "bool", "lv_visibility_shadows_cast", skipdefault=True)
     Object("visible_diffuse", "bool", "lv_visibility_diffuse", skipdefault=True)

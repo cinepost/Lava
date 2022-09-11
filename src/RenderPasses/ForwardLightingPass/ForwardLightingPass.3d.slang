@@ -145,7 +145,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     
     // Direct lighting from analytic light sources
-    RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+    RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
     float3 rayOrigin = posWA; //sd.posW;
@@ -180,9 +180,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                     break;
             }
 
-            rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-            rayQuery.Proceed();
-            shadowFactor = (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
+            rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+            rayShadowQuery.Proceed();
+            shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
         }
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;

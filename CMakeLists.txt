@@ -47,6 +47,11 @@ else()
   project( Falcor VERSION ${PROJECT_VERSION} )
 endif()
 
+# Version generators
+include (cmake/GenerateLavaVersionCpp.cmake)
+include (cmake/GenerateLavaVersionPython.cmake)
+
+
 # ccache
 include(cmake/CPM.cmake)
 
@@ -175,6 +180,16 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set( FALCOR_BUILD_LIBS_AS_FRAMEWORKS true )
 
+
+# Lava version builder that produces version.cpp, plus
+# a dummy output that's not actually produced, in order
+# to force version.cmake to always be re-run before the build
+ADD_CUSTOM_COMMAND(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
+           ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
+    COMMAND ${CMAKE_COMMAND} -P
+            versionZ.cmake
+)
 
 #------------------------------------------
 # Rendering backend configuration
