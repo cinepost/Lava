@@ -804,11 +804,11 @@ uint32_t SceneBuilder::addNode(const Node& node) {
     return newNodeID;
 }
 
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID) {
-    addMeshInstance(nodeID, meshID, nullptr);
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
+    addMeshInstance(nodeID, meshID, nullptr, shadingSpec, visibilitySpec);
 }
 
-void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial) {
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
     if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
     if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
 
@@ -822,9 +822,11 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
         instance.nodeId = nodeID;
         instance.overrideMaterial = pMaterial ? true : false;
 
-        if (pMaterial) {
-            instance.materialId = addMaterial(pMaterial);
-        }
+        if (pMaterial) instance.materialId = addMaterial(pMaterial);
+        
+        if (shadingSpec) instance.shading = *shadingSpec;
+
+        if (visibilitySpec) instance.visibility = *visibilitySpec;
 
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
     }
@@ -2356,9 +2358,10 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
         // For non-instanced static mesh groups, we allow the meshes to have different nodes.
         // This case is handled by pre-transforming the vertices in the BLAS build.
         assert(!meshList.empty());
+        
+        for(size_t meshID: meshList) {   
 
-        for(size_t meshID = 0; meshID < meshList.size(); meshID++) {    
-            const auto& mesh = mMeshes[meshList[meshID]];
+            const auto& mesh = mMeshes[meshID];
             size_t instanceCount = mesh.instances.size();
 
             assert(instanceCount > 0);
@@ -2374,19 +2377,34 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     // in which mesh instances were added. Therefore, use the node ID from the first mesh to get
                     // a consistent ordering across all meshes. This is a requirement for the TLAS build.
                     assert(instanceCount == mesh.instances.size());
+                    const auto& instance = mesh.instances[instanceIdx];
+
                     uint32_t nodeID = instanceCount == 1
                         ? mesh.instances[0].nodeId // non-instanced => use per-mesh transform.
                         : mesh.instances[instanceIdx].nodeId; // instanced => get transform from the first mesh.
 
-                    const auto& instance = mesh.instances[instanceIdx];
                     GeometryInstanceData geomInstance(meshGroup.isDisplaced ? GeometryType::DisplacedTriangleMesh : GeometryType::TriangleMesh);
                     geomInstance.globalMatrixID = nodeID;
                     geomInstance.materialID = instance.overrideMaterial ? instance.materialId : mesh.materialId;
                     geomInstance.geometryID = meshID;
                     geomInstance.vbOffset = mesh.staticVertexOffset;
                     geomInstance.ibOffset = mesh.indexOffset;
+                    
+                    // Geometry instance mesh flags
                     geomInstance.flags |= mesh.use16BitIndices ? (uint32_t)GeometryInstanceFlags::Use16BitIndices : 0;
                     geomInstance.flags |= mesh.isDynamic() ? (uint32_t)GeometryInstanceFlags::IsDynamic : 0;
+
+                    // Geometry instance shading flags
+                    geomInstance.flags |= instance.shading.isMatte ? (uint32_t)GeometryInstanceFlags::MatteShading : 0;
+                    geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
+                    geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
+                    
+                    // Geometry instance visibility flags
+                    geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;
+                    geomInstance.flags |= instance.visibility.visibleToShadowRays ? (uint32_t)GeometryInstanceFlags::VisibleToShadowRays : 0;
+                    geomInstance.flags |= instance.visibility.visibleToDiffuseRays ? (uint32_t)GeometryInstanceFlags::VisibleToDiffuseRays : 0;
+                    geomInstance.flags |= instance.visibility.receiveShadows ? (uint32_t)GeometryInstanceFlags::ReceiveShadows : 0;
+
                     geomInstance.instanceIndex = tlasInstanceIndex;
                     geomInstance.geometryIndex = blasGeometryIndex;
                     instanceData.push_back(geomInstance);

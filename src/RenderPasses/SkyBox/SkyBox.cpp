@@ -154,7 +154,7 @@ void SkyBox::execute(RenderContext* pRenderContext, const RenderData& renderData
 
     pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), float4(0));
 
-    if (!mpScene) return;
+    if (!mpScene || !mpScene->getEnvMap() || mpScene->getEnvMap()->isPhantom()) return;
 
     //auto skyRotation = glm::eulerAngleYXZ(0.0, -90.0, 0.0);
     glm::mat4 world = glm::translate(mpScene->getCamera()->getPosition());

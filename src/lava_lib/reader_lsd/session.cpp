@@ -4,6 +4,9 @@
 #include <fstream>
 #include <cstdlib>
 
+#include <math.h>
+
+
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -26,6 +29,7 @@
 #include "glm/gtx/string_cast.hpp"
 
 
+static constexpr float halfC = M_PI / 180.0f;
 
 namespace lava {
 
@@ -303,7 +307,7 @@ static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Render
 	if (!pAOVPlane) return false;
 	if (!pDisplay) return false;
 
-	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
 	if(!pAOVPlane->getImageData(textureData.data())) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
@@ -312,6 +316,29 @@ static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Render
 	
 	auto renderRegionDims = frameInfo.renderRegionDims();
 	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
+        LLOG_ERR << "Error sending image region to display !";
+        return false;
+    }
+    return true;
+};
+
+static bool sendImageData(uint hImage, Display::SharedPtr pDisplay, AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+	if (!pAOVPlane) return false;
+	if (!pDisplay) return false;
+
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
+	if(!pAOVPlane->getImageData(textureData.data())) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	LLOG_DBG << "Image data read done!";
+	
+	AOVPlaneGeometry aov_plane_geometry;
+	if(!pAOVPlane->getAOVPlaneGeometry(aov_plane_geometry)) {
+		return false;
+	}
+
+	if (!pDisplay->sendImage(hImage, aov_plane_geometry.width, aov_plane_geometry.height, textureData.data())) {
         LLOG_ERR << "Error sending image to display !";
         return false;
     }
@@ -345,6 +372,8 @@ bool Session::cmdRaytrace() {
 			return false;
 		}
 	}
+
+	bool doLiveUpdate = mpDisplay->supportsLiveUpdate();
 
 	if (!mpDisplay->supportsLiveUpdate()) {
 		// Non interactive display. No need to make intermediate updates
@@ -402,14 +431,17 @@ bool Session::cmdRaytrace() {
 
     mpDisplay->closeAll(); // close previous frame display images (if still opened) 
 
-    // houdini display driver section
-	int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
-	std::string imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 
-    if ((houdiniPortNum > 0) && (mIPR)) {
-    	// Negative port num is for IPR
-    	imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
-    }
+	// houdini display driver section
+	if(mpDisplay->type() == DisplayType::HOUDINI) {
+		int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
+		imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+		if ((houdiniPortNum > 0) && (mIPR)) {
+    		// Negative port num is for IPR
+    		imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
+    	}
+	}
 
     //
 
@@ -446,7 +478,7 @@ bool Session::cmdRaytrace() {
 		long int sampleUpdateIterations = 0;
 		for(uint32_t sample_number = 0; sample_number < mCurrentFrameInfo.imageSamples; sample_number++) {
 			mpRenderer->renderSample();
-			if (sampleUpdateInterval > 0) {
+			if (doLiveUpdate && (sampleUpdateInterval > 0)) {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
@@ -463,6 +495,10 @@ bool Session::cmdRaytrace() {
 		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
 			break;
 		}
+
+		//if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
+		//	break;
+		//}
 	}
 
 	LLOG_DBG << "Closing display...";
@@ -538,8 +574,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
 
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
+	std::shared_ptr<PropertiesContainer> pShaderProps;
+
 	if(pShaderProp) {
-		auto pShaderProps = pShaderProp->subContainer();
+		pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
 		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
 		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
@@ -562,10 +600,26 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
-		// Point light
+		// Point/Spot light
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
+
+		bool do_cone = false;
+		float coneangle_degrees = 360.0f;
+		float conedelta_degrees = 0.0f;
+
+		if(pShaderProps) {
+			do_cone = pShaderProps->getPropertyValue(ast::Style::LIGHT, "docone", bool(false));
+			coneangle_degrees = pShaderProps->getPropertyValue(ast::Style::LIGHT, "coneangle", (float)360.0f);
+			conedelta_degrees = pShaderProps->getPropertyValue(ast::Style::LIGHT, "conedelta", (float)0.0f);
+		}
+
+		// Spot light case
+		if(do_cone && (coneangle_degrees <= 180.0f)) {
+			pPointLight->setOpeningAngle(coneangle_degrees * halfC);
+			pPointLight->setPenumbraAngle(conedelta_degrees * halfC);
+		}
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
 	} else if( light_type == "grid" || light_type == "disk" || light_type == "sphere") {
@@ -598,18 +652,23 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		// Environment light probe is not a classid light source. It should be created later by scene builder or renderer
 
 		std::string texture_file_name = pLightScope->getPropertyValue(ast::Style::LIGHT, "areamap", std::string(""));
+		bool phantom = !pLightScope->getPropertyValue(ast::Style::LIGHT, "visible_primary", bool(false));
 
 		auto pDevice = pSceneBuilder->device();
 		//LightProbe::SharedPtr pLightProbe;
 		
+		Texture::SharedPtr pEnvMapTexture;
 		if (texture_file_name.size() > 0) {
-			bool loadAsSrgb = false;
-    		
-    		auto pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
-    		EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    		pEnvMap->setTint(light_color);
-    		pSceneBuilder->setEnvMap(pEnvMap);
+			bool loadAsSrgb = false;	
+    		pEnvMapTexture = Texture::createFromFile(pDevice, texture_file_name, true, loadAsSrgb);
     	}
+    	
+    	EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
+    	pEnvMap->setTint(light_color);
+    	pEnvMap->setPhantom(phantom);
+
+    	pSceneBuilder->setEnvMap(pEnvMap);
+    	
     	return;
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
@@ -658,7 +717,12 @@ void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
 	}
-	mpCurrentScope->setProperty(style, token, value);
+	auto pProp = mpCurrentScope->getProperty(style, token);
+	if(!mpCurrentScope->getProperty(style, token)) {
+		mpCurrentScope->declareProperty(style, valueType(value), token, value, Property::Owner::USER);
+	} else {
+		mpCurrentScope->setProperty(style, token, value);
+	}
 }
 
 void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values) {
@@ -847,7 +911,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
+	bool pushGeoAsync = false;// configStore.get<bool>("async_geo", false);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -1132,8 +1196,23 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
     }
 
+    // instance shading spec
+    SceneBuilder::MeshInstanceShadingSpec shadingSpec;
+    shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
+
+
+    // instance visibility spec
+    SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
+    visibilitySpec.visibleToPrimaryRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_primary", true);
+    visibilitySpec.visibleToShadowRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_shadows", true);
+    visibilitySpec.visibleToDiffuseRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_diffuse", true);
+    visibilitySpec.visibleToReflectionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_reflect", true);
+    visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
+    visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
+    
+
     // add a mesh instance to a node
-    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial);
+    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial, &shadingSpec, &visibilitySpec);
     
 	return true;
 }

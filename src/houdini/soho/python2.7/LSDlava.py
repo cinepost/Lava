@@ -208,7 +208,6 @@ def initializeFeatures(settings):
     Object("lightcategories", "string", "lightcategories")
     Object("lightmask", "oplist", "lightmask")
     Object("lpetag", "string", "lv_lpetag")
-    Object("matte", "bool", "vm_matte")
     Object("maxindirectraysamples", "int", "lv_maxindirectraysamples")
     Object("maxraysamples", "int", "lv_maxraysamples")
     Object("metavolume", "bool", "lv_metavolume")
@@ -246,7 +245,18 @@ def initializeFeatures(settings):
     Object("renderpointsas", "int", "lv_renderpointsas")
     Object("rendersubd", "bool", "lv_rendersubd")
     Object("rendersubdcurves", "bool", "lv_rendersubdcurves")
-    Object("rendervisibility", "string", "lv_rendervisibility")
+    Object("rendervisibility", "string", "vm_rendervisibility", skipdefault=True)
+
+    Object("matte", "bool", "lv_matte", skipdefault=True)
+    Object("fix_shadow", "bool", "lv_fix_shadow", skipdefault=True)
+    Object("visible_primary", "bool", "lv_visibility_primary", skipdefault=True)
+    Object("visible_shadows", "bool", "lv_visibility_shadows_cast", skipdefault=True)
+    Object("visible_diffuse", "bool", "lv_visibility_diffuse", skipdefault=True)
+    Object("visible_reflect", "bool", "lv_visibility_reflect", skipdefault=True)
+    Object("visible_refract", "bool", "lv_visibility_refract", skipdefault=True)
+    Object("receive_shadows", "bool", "lv_visibility_shadows_recv", skipdefault=True)
+    
+
     Object("rmbackface", "bool", "lv_rmbackface")
     Object("samplecoving", "bool", "lv_samplecoving")
     Object("samplecovingexpansion", "float", "lv_samplecovingexpansion")
@@ -298,9 +308,7 @@ def initializeFeatures(settings):
     Light("envintensity", "float", "lv_envintensity")
     Light("importancelevels", "int", "lv_importancelevels")
     Light("lightcache", "bool", "lv_lightcache")
-    Light("photontarget", "string", "lv_photontarget")
-    Light("photonweight", "float", "lv_photonweight")
-    Light("raybackground", "bool", "lv_raybackground")
+    Light("visible_primary", "bool", "lv_visible_primary")
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
 

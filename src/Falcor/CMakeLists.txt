@@ -71,11 +71,10 @@ find_package(Blosc 1.21.0 REQUIRED)
 find_package(pybind11 REQUIRED CONFIG)
 
 # Python
-find_package( Python3 COMPONENTS Development )
-include_directories( ${Python3_INCLUDE_DIRS} )
+find_package( Python3 REQUIRED COMPONENTS Development )
+target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
 
 # Assimp
-message( "Deps root " ${DEPS_DIR})
 set(assimp_ROOT ${DEPS_DIR})
 find_package(assimp 5.0.0 REQUIRED)
 
@@ -130,18 +129,6 @@ if (NOT Vulkan_FOUND)
     endif()
 endif()
 
-# Use the package PkgConfig to detect GTK+ headers/library files
-#FIND_PACKAGE(PkgConfig REQUIRED)
-#PKG_CHECK_MODULES(GTK3 REQUIRED gtk+-3.0)
-
-# Setup CMake to use GTK+, tell the compiler where to look for headers
-# and to the linker where to look for libraries
-#include_directories( ${GTK3_INCLUDE_DIRS} )
-#link_directories( ${GTK3_LIBRARY_DIRS} )
-
-# Add other flags to the compiler
-#add_definitions(${GTK3_CFLAGS_OTHER})
-
 # FreeImage
 find_package( FreeImage REQUIRED )
 include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
@@ -153,15 +140,14 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${DEPS_DIR})
-find_package( Boost COMPONENTS filesystem system REQUIRED )
-include_directories( ${Boost_INCLUDE_DIRS} )
+find_package( Boost 1.73.0 COMPONENTS filesystem system thread REQUIRED )
+target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
 # We use Boost static libs
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
 find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
-#find_library( SLANG_GFX_LIBRARY gfx PATHS ${DEPS_DIR}/lib )
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
 
@@ -190,34 +176,38 @@ find_package(glfw3 3.3 REQUIRED)
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 
+#if( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+#  set_target_properties(falcor_lib PROPERTIES COMPILE_FLAGS "-fPIC")
+#endif( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+
 target_link_libraries(
     falcor_lib
-    avutil
-    avformat
-    swscale
-    stdc++fs
-    Blosc::blosc
-    glfw3
-    OpenSSL::SSL
-    OpenImageIO::OpenImageIO
-    OpenVDB::openvdb
-    ${assimp_LIBRARIES}
-    ${SLANG_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Python3_LIBRARIES}
-    ${Vulkan_LIBRARY}
-    ${GTK3_LIBRARIES}
-    ${FREEIMAGE_LIBRARIES}
-    ${TIFF_LIBRARIES}
-    ${ZLIB_LIBRARY}
-    ${LZ4_LIBRARY}
+    PUBLIC
+        stdc++fs
+        Blosc::blosc
+        glfw3
+        OpenSSL::SSL
+        OpenImageIO::OpenImageIO
+        OpenVDB::openvdb
+        ${assimp_LIBRARIES}
+        ${SLANG_LIBRARY}
+        Boost::system
+        Boost::filesystem
+        Boost::thread
+        ${Vulkan_LIBRARY}
+        ${GTK3_LIBRARIES}
+        ${FREEIMAGE_LIBRARIES}
+        ${TIFF_LIBRARIES}
+        ${ZLIB_LIBRARY}
+        ${LZ4_LIBRARY}
+        Python3::Python
 )
 
 if(backend_type STREQUAL "gfx")
 target_link_libraries(
     falcor_lib
-    gfx_lib
+    PUBLIC
+        gfx_lib
 )
 endif()
 
@@ -240,13 +230,8 @@ if(UNIX)
     install( 
         TARGETS falcor_lib
         DESTINATION lib 
+        RUNTIME_DEPENDENCY_SET falcor_deps
     )
-
-    # third party libs
-    install(DIRECTORY ${DEPS_DIR}/lib/ DESTINATION 3rdparty/lib)
-
-    # third additional shaders and dependencies
-    install(DIRECTORY ${DEPS_DIR}/shaders/ DESTINATION shaders)
 
     # Install all needed shaders
     install(

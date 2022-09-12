@@ -6,7 +6,8 @@
 #include <vector>
 #include <memory>
 
-#include "Falcor/Core/Framework.h"
+//#include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Formats.h"
 #include "prman/ndspy.h"
 
 namespace lava {
@@ -38,32 +39,35 @@ class Display {
     bool closeImage(uint imageHandle);
     bool closeAll();
 
-    bool opened(uint imageHandle) { return mImages[imageHandle].opened; }
-    bool closed(uint imageHandle) { return mImages[imageHandle].closed; }
+    inline bool opened(uint imageHandle) { return mImages[imageHandle].opened; }
+    inline bool closed(uint imageHandle) { return mImages[imageHandle].closed; }
 
-    DisplayType type() const { return mDisplayType; };
+    inline DisplayType type() const { return mDisplayType; };
 
-    std::string& imageName(uint imageHandle) { return mImages[imageHandle].name; };
-    uint imageWidth(uint imageHandle) { return mImages[imageHandle].width; };
-    uint imageHeight(uint imageHandle) { return mImages[imageHandle].height; };
+    inline std::string& imageName(uint imageHandle) { return mImages[imageHandle].name; };
+    inline uint imageWidth(uint imageHandle) { return mImages[imageHandle].width; };
+    inline uint imageHeight(uint imageHandle) { return mImages[imageHandle].height; };
 
     bool setStringParameter(const std::string& name, const std::vector<std::string>& strings);
     bool setIntParameter(const std::string& name, const std::vector<int>& ints);
     bool setFloatParameter(const std::string& name, const std::vector<float>& floats);
 
-    bool sendImageRegion(uint imageHandle, int x, int y, int width, int height, const uint8_t *data);
-    bool sendImage(uint imageHandle, int width, int height, const uint8_t *data);
+    bool sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *data);
+    bool sendImage(uint imageHandle, uint width, uint height, const uint8_t *data);
 
-    inline bool supportsLiveUpdate() const { return mLiveUpdateSupport; }
+    inline bool supportsLiveUpdate() const { return mInteractiveSupport; }
 
  private:
     struct ImageData {
-        PtDspyImageHandle handle;
-        std::string name = "";
-        uint width = 0;
-        uint height = 0;
-        bool opened = false;
-        bool closed = false;
+      PtDspyImageHandle handle;
+      std::string name = "";
+      uint width = 0;
+      uint height = 0;
+      bool opened = false;
+      bool closed = false;
+      uint entrySize = 1;
+      std::vector<uint8_t> tmpDataBuffer; // temporary data buffer used to store data for scanline only drivers
+
     };
 
     Display();
@@ -79,9 +83,9 @@ class Display {
     std::string mDriverName = "";
     void* mLibHandle = nullptr;
 
-    bool mLiveUpdateSupport = false;
-
-    int mEntrySize = 1;
+    bool mOverwriteSupport = false;
+    bool mInteractiveSupport = false;
+    bool mForceScanLines = false;
 
     std::vector<UserParameter>      mUserParameters;
 

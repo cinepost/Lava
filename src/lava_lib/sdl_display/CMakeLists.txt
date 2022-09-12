@@ -19,7 +19,7 @@ endif()
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # Boost
-find_package( Boost COMPONENTS log REQUIRED )
+find_package( Boost 1.73.0 COMPONENTS log REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} )
 
 find_package( SDL2 REQUIRED )
@@ -71,8 +71,6 @@ if(NOT GLEW_FOUND)
   message(WARNING "GLEW NOT found, can't build sdl display driver")
   set(WITH_D_SDL 0)
   return()
-else()
-  message("VERSION " ${GLEW2_VERSION})
 endif()
 
 message("GLEW ${GLEW_LIBRARIES}")
@@ -87,7 +85,8 @@ add_library (
 target_link_libraries( 
 	sdl_display
 	imgui 
-	Boost::log Threads::Threads 
+	Boost::log 
+	Threads::Threads 
 	${OpenGL_LIBRARY} 
 	${SDL2_LIBRARIES}
 	${GLEW_LIBRARIES}

@@ -236,8 +236,8 @@ def light_shader(obj, now, value):
         if value[0]:
             return True
 
-    plist = obj.evaluate(lshaderParms, now)
-    ltype = plist['light_type'].Value[0]
+    plist       = obj.evaluate(lshaderParms, now)
+    ltype       = plist['light_type'].Value[0]
     docone      = plist['coneenable'].Value[0]
     coneangle   = plist['coneangle'].Value[0]
     conedelta   = plist['conedelta'].Value[0]

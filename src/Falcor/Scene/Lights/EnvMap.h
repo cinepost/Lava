@@ -80,7 +80,15 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
 
     /** Get intensity.
     */
-    float getIntensity() const { return mData.intensity; }
+    inline float getIntensity() const { return mData.intensity; }
+
+    /** Set envmap visibility
+    */
+    void setPhantom(bool phantom);
+
+    /** Get envmap visibility
+    */
+    inline bool isPhantom() const { return mPhantom; }
 
     /** Get color tint.
     */
@@ -125,6 +133,8 @@ class dlldecl EnvMap : public std::enable_shared_from_this<EnvMap> {
 
     EnvMapData              mData;
     EnvMapData              mPrevData;
+
+    bool                    mPhantom = true;
 
     float3                  mRotation = { 0.f, 0.f, 0.f };
 

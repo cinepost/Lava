@@ -157,6 +157,15 @@ enum class GeometryInstanceFlags : uint32_t
     TransformFlipped = 0x4,     ///< Instance transform flips the coordinate system handedness. TODO: Deprecate this flag if we need an extra bit.
     IsObjectFrontFaceCW = 0x8,  ///< Front-facing side has clockwise winding in object space. Note that the winding in world space may be flipped due to the instance transform.
     IsWorldFrontFaceCW = 0x10,  ///< Front-facing side has clockwise winding in world space. This is the combination of the mesh winding and instance transform handedness.
+
+    MatteShading = 0x20,
+    FixShadowTerminator = 0x40,
+    BiasAlongNormal = 0x80,
+
+    VisibleToPrimaryRays = 0x100,
+    VisibleToShadowRays = 0x200,   
+    VisibleToDiffuseRays = 0x400,
+    ReceiveShadows = 0x800,
 };
 
 struct GeometryInstanceData
@@ -164,22 +173,20 @@ struct GeometryInstanceData
     static const uint kTypeBits = 3;
     static const uint kTypeOffset = 32 - kTypeBits;
 
-    uint flags;             ///< Upper kTypeBits bits are reserved for storing the type.
+    uint32_t flags;             ///< Upper kTypeBits bits are reserved for storing the type.
     uint globalMatrixID;
     uint materialID;
     uint geometryID;
 
     uint vbOffset;          ///< Offset into vertex buffer.
     uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
-
     uint instanceIndex;     ///< InstanceIndex in TLAS.
     uint geometryIndex;     ///< GeometryIndex in BLAS.
 
 #ifdef HOST_CODE
     GeometryInstanceData() = default;
 
-    GeometryInstanceData(GeometryType type)
-        : flags((uint32_t)type << kTypeOffset)
+    GeometryInstanceData(GeometryType type): flags((uint32_t)type << kTypeOffset)
     {}
 #endif
 

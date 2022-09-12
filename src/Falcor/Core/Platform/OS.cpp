@@ -62,17 +62,14 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
         //std::string(PROJECT_DIR) + "../Tools/FalcorTest/",
         
         // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-        std::string(LAVA_INSTALL_DIR) + "shaders",
-        //getExecutableDirectory() + "../shaders",
+        std::string(LAVA_INSTALL_DIR) + "/shaders",
     };
 
     std::vector<fs::path> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "shaders",
-        //getExecutableDirectory() + "../shaders"
+        std::string(LAVA_INSTALL_DIR) + "/shaders",
     };
 
     std::cout << "mode: " << (isDevelopmentMode() ? "development" : "production") << "\n";
-    //std::cout << "exec dir: " << getExecutableDirectory() << "\n";
 
     return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
 }
@@ -80,12 +77,12 @@ inline std::vector<fs::path> getInitialShaderDirectories() {
 inline std::vector<std::string> getInitialRenderPassDirectories() {
     std::vector<std::string> developmentDirectories = {
         // Then we search in deployment folders (necessary to pickup NVAPI and other third-party shaders).
-        std::string(LAVA_INSTALL_DIR) + "render_passes",
+        std::string(LAVA_INSTALL_DIR) + "/render_passes",
         getExecutableDirectory() + "../render_passes",
     };
 
     std::vector<std::string> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "render_passes",
+        std::string(LAVA_INSTALL_DIR) + "/render_passes",
         getExecutableDirectory() + "../render_passes"
     };
 
@@ -98,12 +95,12 @@ static std::vector<std::string> gRenderPassDirectories = getInitialRenderPassDir
 inline std::vector<std::string> getInitialDataDirectories() {
     std::vector<std::string> developmentDirectories = {
         //std::string(PROJECT_DIR) + "/Data",
-        std::string(LAVA_INSTALL_DIR) + "data",
+        std::string(LAVA_INSTALL_DIR) + "/data",
         getExecutableDirectory() + "../data",
     };
 
     std::vector<std::string> deploymentDirectories = {
-        std::string(LAVA_INSTALL_DIR) + "data",
+        std::string(LAVA_INSTALL_DIR) + "/data",
         getExecutableDirectory() + "../data"
     };
 

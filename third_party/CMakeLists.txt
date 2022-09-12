@@ -358,8 +358,7 @@ else()
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OPENVDB_PREFIX}
     GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openvdb.git
     GIT_TAG v${EXTERNAL_OPENVDB_VERSION}
-    #UPDATE_DISCONNECTED true
-
+    
     CMAKE_ARGS -D USE_NANOVDB:BOOL=ON
     CMAKE_ARGS -D USE_BLOSC:BOOL=OFF
     CMAKE_ARGS -D OPENVDB_BUILD_NANOVDB:BOOL=ON
@@ -441,7 +440,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB tiff)
 
 endif()
 
@@ -485,6 +484,42 @@ else()
     TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLFW_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${GLFW_PREFIX}
+  )
+
+endif()
+
+#######################
+# TIFF
+#######################
+
+set(EXTERNAL_TIFF_VERSION 4.4.0)
+
+set(TIFF_DIR ${EXTERNALS_INSTALL_DIR})
+find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
+
+if(TIFF_FOUND)
+
+  message("TIFF found ...")
+  add_custom_target( tiff COMMAND echo "TIFF build exists, skipping rebuild ...")
+
+else()
+
+  message("TIFF not found! Running external build ...")
+  set(TIFF_PREFIX tiff)
+
+  ExternalProject_Add ( tiff
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tiff-${EXTERNAL_TIFF_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${TIFF_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${TIFF_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${TIFF_PREFIX}
   )
 
 endif()
@@ -843,4 +878,5 @@ add_dependencies( dummy_target
   Glfw
   zmq
   cppzmq
+  tiff
 )

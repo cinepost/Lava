@@ -349,10 +349,8 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
-    //LLOG_WRN << "Draw...";
     for (const auto& draw : mDrawArgs) {
 
-        //LLOG_WRN << "draw";
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
@@ -1885,7 +1883,11 @@ void Scene::createDrawList() {
 
     uint32_t instanceID = 0;
     for (size_t i = 0; i < mGeometryInstanceData.size(); i++) {
-        instancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID++, &mGeometryInstanceData[i]});
+        // Push only primary visible instances
+        if (((uint32_t)mGeometryInstanceData[i].flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) != 0x0) {
+            instancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID, &mGeometryInstanceData[i]});
+        }
+        instanceID++;
     }
 
 
@@ -1940,8 +1942,6 @@ void Scene::createDrawList() {
                 draw.StartVertexLocation = mesh.vbOffset;
                 
                 draw.StartInstanceLocation = drawInstance.instanceID;
-                //draw.StartInstanceLocation = instanceID++;
-
                 draw.MaterialID = materialID; //instance->materialID;
 
                 (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
@@ -2673,7 +2673,14 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
                 assert(instances[instanceIdx] == instanceID + geometryIndex);
             }
 
+            const auto& instance = mGeometryInstanceData[instanceID];
+
             desc.instanceID = instanceID;
+            desc.instanceMask = 0xFF;
+
+            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
+            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;
+
             instanceID += (uint32_t)meshList.size();
 
             glm::mat4 transform4x4 = glm::identity<glm::mat4>();

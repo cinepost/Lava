@@ -2,22 +2,21 @@ file( GLOB SOURCES
     ./*.cpp
 )
 
+add_library( reader_lsd_lib SHARED ${SOURCES} ${HEADERS} )
+
 # Find Boost libs
-find_package( Boost COMPONENTS system filesystem REQUIRED )
+find_package( Boost 1.73.0 COMPONENTS system filesystem REQUIRED )
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS}) 
 endif()
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 
+find_package(Python3 REQUIRED COMPONENTS Development)
+target_include_directories(reader_lsd_lib PUBLIC ${Python3_INCLUDE_DIRS})
+
 # We use Boost static libs
 add_definitions( -DBOOST_LOG_DYN_LINK )
-
-# Python
-find_package( PythonLibs 3.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
-
-add_library( reader_lsd_lib SHARED ${SOURCES} ${HEADERS} )
 
 target_link_libraries(
     reader_lsd_lib

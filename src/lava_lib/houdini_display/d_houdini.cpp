@@ -856,7 +856,7 @@ DspyImageQuery(PtDspyImageHandle pvImage,
 			break;
 
         case PkRedrawQuery:
-        {
+        { 
             PtDspyRedrawInfo redrawInfo;
             if (datalen > sizeof(redrawInfo))
                 datalen = sizeof(redrawInfo);

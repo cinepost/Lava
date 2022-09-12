@@ -43,10 +43,8 @@ EnvMap::SharedPtr EnvMap::create(Device::SharedPtr pDevice, const std::string& f
     return create(pDevice, pTexture);
 }
 
-void EnvMap::setRotation(float3 degreesXYZ)
-{
-    if (degreesXYZ != mRotation)
-    {
+void EnvMap::setRotation(float3 degreesXYZ) {
+    if (degreesXYZ != mRotation) {
         mRotation = degreesXYZ;
 
         auto transform = glm::eulerAngleXYZ(glm::radians(mRotation.x), glm::radians(mRotation.y), glm::radians(mRotation.z));
@@ -56,18 +54,15 @@ void EnvMap::setRotation(float3 degreesXYZ)
     }
 }
 
-void EnvMap::setIntensity(float intensity)
-{
+void EnvMap::setIntensity(float intensity) {
     mData.intensity = intensity;
 }
 
-void EnvMap::setTint(const float3& tint)
-{
+void EnvMap::setTint(const float3& tint) {
     mData.tint = tint;
 }
 
-void EnvMap::setShaderData(const ShaderVar& var) const
-{
+void EnvMap::setShaderData(const ShaderVar& var) const {
     assert(var.isValid());
 
     // Set variables.
@@ -78,8 +73,7 @@ void EnvMap::setShaderData(const ShaderVar& var) const
     var["envSampler"].setSampler(mpEnvSampler);
 }
 
-EnvMap::Changes EnvMap::beginFrame()
-{
+EnvMap::Changes EnvMap::beginFrame() {
     mChanges = Changes::None;
 
     if (mData.transform != mPrevData.transform) mChanges |= Changes::Transform;
@@ -91,17 +85,17 @@ EnvMap::Changes EnvMap::beginFrame()
     return getChanges();
 }
 
-uint64_t EnvMap::getMemoryUsageInBytes() const
-{
+uint64_t EnvMap::getMemoryUsageInBytes() const {
     return mpEnvMap ? mpEnvMap->getTextureSizeInBytes() : 0;
 }
 
-EnvMap::EnvMap(Device::SharedPtr pDevice, const Texture::SharedPtr& texture)
-{
-    if (!texture) throw std::runtime_error("Failed to create environment map without texture");
+void EnvMap::setPhantom(bool phantom) {
+    mPhantom = phantom;
+}
 
-    mpDevice =pDevice;
-    mpEnvMap = texture;
+EnvMap::EnvMap(Device::SharedPtr pDevice, const Texture::SharedPtr& pTexture) {
+    mpDevice = pDevice;
+    mpEnvMap = pTexture;
 
     // Create sampler.
     // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.

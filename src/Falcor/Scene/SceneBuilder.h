@@ -50,6 +50,21 @@ class dlldecl SceneBuilder {
 
     static const uint32_t kInvalidNode = Animatable::kInvalidNode;
 
+    struct MeshInstanceShadingSpec {
+        bool        isMatte = false;
+        bool        fixShadowTerminator = true;
+        bool        biasAlongNormal = false;
+    };
+
+    struct MeshInstanceVisibilitySpec {
+        bool        visibleToPrimaryRays = true;
+        bool        visibleToShadowRays = true;
+        bool        visibleToDiffuseRays = true;
+        bool        visibleToReflectionRays = true;
+        bool        visibleToRefractionRays = true;
+        bool        receiveShadows = true;
+    };
+
     /** Flags that control how the scene will be built. They can be combined together.
     */
     enum class Flags {
@@ -329,11 +344,11 @@ class dlldecl SceneBuilder {
 
     /** Add a mesh instance to a node
     */
-    void addMeshInstance(uint32_t nodeID, uint32_t meshID);
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID,  MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
 
     /** Add a mesh instance to a node with material override
     */
-    void addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial);
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial,  MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
 
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
@@ -581,7 +596,9 @@ protected:
         uint32_t    nodeId;
         uint32_t    materialId;
         bool        overrideMaterial = false;
-        bool        isMatte = false;
+
+        MeshInstanceShadingSpec shading;
+        MeshInstanceVisibilitySpec visibility;
     };
 
     struct MeshSpec {

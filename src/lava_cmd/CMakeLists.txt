@@ -10,14 +10,10 @@ set (SOURCES
 )
 
 # Find BOOST
-find_package( Boost COMPONENTS program_options log REQUIRED )
+find_package( Boost 1.73.0 COMPONENTS program_options log REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 # we will use static libs
 add_definitions(-DBOOST_LOG_DYN_LINK)
-
-# Python
-find_package( PythonLibs 3.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
 
 # RPATH 
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE) # use, i.e. don't skip the full RPATH for the build tree

@@ -200,7 +200,7 @@ void Geo::cleanUpGeometry() {
 Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pObject = Object::SharedPtr(new Object(pParent));
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "name", std::string(), Property::Owner::SYS)) return nullptr;
-
+	if(!pObject->declareProperty(Style::OBJECT, Type::BOOL, "matte", bool(false), Property::Owner::SYS)) return nullptr;
 	if(!pObject->declareProperty(Style::OBJECT, Type::STRING, "surface", std::string(), Property::Owner::SYS)) return nullptr;	
 
 	auto pProp = pObject->getProperty(Style::OBJECT, "surface");

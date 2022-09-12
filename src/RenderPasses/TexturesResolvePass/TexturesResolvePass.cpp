@@ -401,18 +401,23 @@ if (1 == 1) {
 
 		LLOG_DBG << std::to_string(pageIDs.size()) << " pages needs to be loaded for texture " << std::to_string(textureID);
 		
-		pTextureManager->loadPages(pTexture, pageIDs); 
-
-		//pagesStartOffset += texturePagesCount;
+		// It's important to sort page ids for later fseek() & fread() calls
+		std::sort(pageIDs.begin(), pageIDs.end());
+		
+		if(mLoadPagesAsync) {
+			// Critical!!! Call loadPagesAsync once per texture !!!
+			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
+		} else {
+			pTextureManager->loadPages(pTexture, pageIDs); 
+		}
 	}
+
+	// In async mode we have to call updateSparseBindInfo on TextureManager as it triggers wait() function on pages loading multi-future
+	if(mLoadPagesAsync) pTextureManager->updateSparseBindInfo();
 
 	auto done = std::chrono::high_resolution_clock::now();
 	LLOG_DBG << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << " ms.";
 	LLOG_DBG << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << " ms.";
-
-	//pContext->flush(true);
-
-	LLOG_DBG << "TexturesResolvePass::execute done";
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

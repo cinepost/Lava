@@ -1242,6 +1242,11 @@ def engineinstance(obj, now, times, procedural, unload, requirelod, doorient,
     cmd_comment('Engine Total Time: %.4f s.' % (time.time() - now))
 
 def outputInstance(obj, now, check_renderable=False):
+    skipobject = [False]
+    obj.evalInt('lv_skip', now, skipobject)
+    if skipobject[0]:
+        return
+
     # Define any materials used by object style sheet.
     (ss_bundles, ss_mats) = LSDsettings.getBundlesAndMaterialsFromObjectStyleSheet(obj, now)
     for mat_path in ss_mats:

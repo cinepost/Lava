@@ -77,8 +77,6 @@ if(NOT GLEW_FOUND)
   message(WARNING "GLEW NOT found, can't build sdl display driver")
   set(WITH_D_SDL 0)
   return()
-else()
-  message("VERSION " ${GLEW2_VERSION})
 endif()
 
 # RPATH 

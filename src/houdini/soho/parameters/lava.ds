@@ -1,0 +1,12 @@
+// $Id$
+// Houdini Parameters for Arnold 5.0
+
+#include "$HH/soho/parameters/CommonMacros.ds"
+
+//#include "override_parms.ds"
+#include "object_parms.ds"
+#include "instance_parms.ds"
+//#include "procedural_parms.ds"
+//#include "camera_parms.ds"
+//#include "vrcamera_parms.ds"
+//#include "hairgen_parms.ds"
