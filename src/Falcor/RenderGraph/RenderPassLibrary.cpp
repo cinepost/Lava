@@ -84,16 +84,16 @@ namespace Falcor {
         safe_delete(spInstance);
     }
 
-    static bool addBuiltinPasses()
-    {
-        auto& lib = RenderPassLibrary::instance();
+    // static bool addBuiltinPasses()
+    // {
+    //     auto& lib = RenderPassLibrary::instance();
 
-        lib.registerPass(ResolvePass::kInfo, ResolvePass::create);
+    //     lib.registerPass(ResolvePass::kInfo, ResolvePass::create);
 
-        return true;
-    };
+    //     return true;
+    // };
 
-    static const bool b = addBuiltinPasses();
+    // static const bool b = addBuiltinPasses();
 
     RenderPassLibrary& RenderPassLibrary::registerPass(const RenderPass::Info& info, CreateFunc func) {
         registerInternal(info, func, nullptr);
