@@ -345,7 +345,7 @@ if (1 == 1) {
 #endif
 
 	std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount, 0);
-	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
+	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::Read, pagesInitDataBuffer.data());
 	mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
 
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
@@ -392,14 +392,7 @@ if (1 == 1) {
 			}
 		}
 
-#ifdef _DEBUG
-		for(uint32_t i = 0; i < texturePagesCount; i++) {
-			std::cout << " " << std::to_string(i);
-		}
-		std::cout << std::endl;
-#endif
-
-		LLOG_DBG << std::to_string(pageIDs.size()) << " pages needs to be loaded for texture " << std::to_string(textureID);
+		LLOG_DBG << std::to_string(pageIDs.size()) << " pages need to be loaded for texture " << std::to_string(textureID);
 		
 		// It's important to sort page ids for later fseek() & fread() calls
 		std::sort(pageIDs.begin(), pageIDs.end());

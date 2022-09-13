@@ -28,6 +28,7 @@ namespace po = boost::program_options;
 #include "Falcor/Utils/Scripting/Scripting.h"
 #include "Falcor/Utils/Timing/Profiler.h"
 
+#include "lava_lib/version.h"
 #include "lava_lib/renderer.h"
 #include "lava_lib/scene_readers_registry.h"
 #include "lava_lib/reader_lsd/reader_lsd.h"
@@ -88,6 +89,7 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
   }
 #endif
 }
+
 
 int main(int argc, char** argv){
 
@@ -208,7 +210,7 @@ int main(int argc, char** argv){
     }
 
     if (vm.count("version")) {
-      std::cout << "Lava, version 0.0\n";
+      std::cout << "Lava, version " << lava::versionString() << "\n";
       exit(EXIT_SUCCESS);
     }
 
@@ -220,7 +222,6 @@ int main(int argc, char** argv){
     if(fconv_flag) {
       app_config.set<bool>("fconv", true);
     }
-
 
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(

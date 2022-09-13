@@ -209,9 +209,14 @@ struct Scene
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::TransformFlipped)) != 0;
     }
 
-    bool isObjectReceiveShadows(const GeometryInstanceID instanceID)
+    bool isObjectShadowsReceiving(const GeometryInstanceID instanceID)
     {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::ReceiveShadows)) != 0;
+    }
+
+    bool doFixShadowTerminator(const GeometryInstanceID instanceID)
+    {
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::FixShadowTerminator)) != 0;
     }
 
     bool isObjectMatteShaded(const GeometryInstanceID instanceID)

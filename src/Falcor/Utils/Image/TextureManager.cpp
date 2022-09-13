@@ -262,7 +262,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     		// Load non-tail texture data page
     		pPage->allocate();
     		mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
-    		LLOG_DBG << "Loaded page mip level " << std::to_string(pPage->mipLevel());
+    		LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
   		}
   	} else {
   		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
@@ -329,7 +329,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   						pPage->allocate();
   						pContext->updateTexturePage(pPage.get(), pTmpPageData);
   					}
-  					LLOG_DBG << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
+  					LLOG_TRC << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
 					}
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());

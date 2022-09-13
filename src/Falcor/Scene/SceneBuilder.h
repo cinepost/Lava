@@ -54,6 +54,7 @@ class dlldecl SceneBuilder {
         bool        isMatte = false;
         bool        fixShadowTerminator = true;
         bool        biasAlongNormal = false;
+        bool        doubleSided = true;
     };
 
     struct MeshInstanceVisibilitySpec {

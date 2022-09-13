@@ -26,7 +26,12 @@
 
 // Logging macro or static inline to stay within namespace boundaries
 
+#ifdef _DEPLOY_BUILD
+#define LLOG_TRC if (false) BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
+#else
 #define LLOG_TRC BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::trace)
+#endif
+
 #define LLOG_DBG BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::debug)
 #define LLOG_INF BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::info)
 #define LLOG_WRN BOOST_LOG_SEV(lava::ut::log::global_logger::get(), boost::log::trivial::warning)

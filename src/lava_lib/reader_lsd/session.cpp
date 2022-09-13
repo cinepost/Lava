@@ -421,7 +421,8 @@ bool Session::cmdRaytrace() {
 		makeImageTiles(mCurrentFrameInfo, mCurrentFrameInfo.renderRegionDims(), tiles);
 	}
 
-	for(const TileInfo& tileInfo: tiles) LLOG_WRN << to_string(tileInfo);
+	LLOG_INF << "Rendering image tiles:";
+	for(const TileInfo& tileInfo: tiles) LLOG_INF << to_string(tileInfo);
 
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
@@ -747,7 +748,7 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 
 	auto pSubContainer = pProp->subContainer();
 	if(!pSubContainer) {
-		LLOG_WRN << "No sub-container for property " << values[0].first;
+		LLOG_DBG << "No sub-container for property " << values[0].first;
 		return;
 	}
 
@@ -1199,7 +1200,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     // instance shading spec
     SceneBuilder::MeshInstanceShadingSpec shadingSpec;
     shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
-
+    shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
+    shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
+    shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
 
     // instance visibility spec
     SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;
