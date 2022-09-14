@@ -178,10 +178,15 @@ class dlldecl PointLight : public Light {
     */
     void setWorldDirection(const float3& dir);
 
-    /** Set the cone opening half-angle for use as a spot light
+    /** Set the cone opening angle for use as a spot light
         \param[in] openingAngle Angle in radians.
     */
     void setOpeningAngle(float openingAngle);
+
+  /** Set the cone opening half-angle for use as a spot light
+        \param[in] openingAngle Angle in radians.
+    */
+    void setOpeningHalfAngle(float openingAngle);
 
     /** Get the light's world-space position
     */
@@ -196,6 +201,11 @@ class dlldecl PointLight : public Light {
     float getPenumbraAngle() const { return mData.penumbraAngle; }
 
     /** Set the penumbra half-angle
+        \param[in] angle Angle in radians
+    */
+    void setPenumbraHalfAngle(float angle);
+
+    /** Set the penumbra angle
         \param[in] angle Angle in radians
     */
     void setPenumbraAngle(float angle);
@@ -309,6 +319,8 @@ class dlldecl AnalyticAreaLight : public Light {
     */
     float getPower() const override;
 
+    void setIntensity(const float3& intensity) override;
+
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix
     */
@@ -317,6 +329,10 @@ class dlldecl AnalyticAreaLight : public Light {
     void setSingleSided(bool value) { mData.singleSided = value; update(); }
 
     bool isSingleSided() const { return mData.singleSided; }
+
+    void setNormalizeArea(bool value) { mNormalizeArea = value; update(); }
+
+    bool isAreaNormalized() const { return mNormalizeArea; }
 
     /** Get transform matrix
     */
@@ -331,6 +347,7 @@ class dlldecl AnalyticAreaLight : public Light {
 
     float3 mScaling;                ///< Scaling, controls the size of the light
     glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    bool mNormalizeArea = false;    ///< Normalize light area
 
     friend class SceneCache;
 };

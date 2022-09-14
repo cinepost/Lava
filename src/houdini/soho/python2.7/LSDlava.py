@@ -269,6 +269,7 @@ def initializeFeatures(settings):
     Light("areamap", "string", "lv_areamap")
     Light("areashape", "string", "lv_areashape")
     Light("areasize", "float", "lv_areasize")
+    Light("areanormalize", "bool", "normalizearea", skipdefault=True)
     Light("envangle", "float", "lv_envangle")
     Light("envintensity", "float", "lv_envintensity")
     Light("importancelevels", "int", "lv_importancelevels")

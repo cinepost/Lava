@@ -37,6 +37,7 @@ namespace Falcor {
 
 static_assert(sizeof(LightData) % 16 == 0, "LightData struct size should be a multiple of 16");
 
+static constexpr float M_2PI = (float)M_PI * 2.0f;
 
 static bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field) {
     if (cbOffset.getByteOffset() != cppOffset) {
@@ -57,7 +58,7 @@ void Light::setActive(bool active) {
 }
 
 void Light::setIntensity(const float3& intensity) {
-    mData.intensity = intensity;
+    mData.intensity = intensity * M_2PI; // We do this to match mantra intensity
 }
 
 void Light::setShadowColor(const float3& shadowColor) {
@@ -77,7 +78,10 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.openingAngle != mData.openingAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
+    
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
+    if (mPrevData.invSurfaceArea != mData.invSurfaceArea) mChanges != Changes::SurfaceArea;
+
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
     if (mPrevData.singleSided != mData.singleSided) mChanges != (Changes::Intensity | Changes::Direction);
@@ -139,21 +143,30 @@ float PointLight::getPower() const {
 }
 
 void PointLight::setOpeningAngle(float openingAngle) {
-    openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
+    setOpeningHalfAngle(openingAngle * 0.5f);
+}
+
+void PointLight::setOpeningHalfAngle(float openingAngle) {
+     openingAngle = glm::clamp(openingAngle, 0.f, (float)M_PI);
     if (openingAngle == mData.openingAngle) return;
 
     mData.openingAngle = openingAngle;
     mData.penumbraAngle = std::min(mData.penumbraAngle, openingAngle);
 
     // Prepare an auxiliary cosine of the opening angle to quickly check whether we're within the cone of a spot light.
-    mData.cosOpeningAngle = std::cos(openingAngle);
+    mData.cosOpeningAngle = std::cos(openingAngle);   
 }
 
 void PointLight::setPenumbraAngle(float angle) {
+    setPenumbraHalfAngle(angle * 0.5f);
+}
+
+void PointLight::setPenumbraHalfAngle(float angle) {
     angle = glm::clamp(angle, 0.0f, mData.openingAngle);
     if (mData.penumbraAngle == angle) return;
     mData.penumbraAngle = angle;
 }
+
 
 void PointLight::updateFromAnimation(const glm::mat4& transform) {
     float3 fwd = float3(-transform[2]);
@@ -240,7 +253,7 @@ void DistantLight::updateFromAnimation(const glm::mat4& transform) {
 AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : Light(name, type) {
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
-    mData.surfaceArea = 4.0f;
+    mData.surfaceArea = mData.invSurfaceArea = 1.0f;
     mData.singleSided = true;
 
     mScaling = float3(1, 1, 1);
@@ -250,6 +263,10 @@ AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : 
 
 float AnalyticAreaLight::getPower() const {
     return luminance(mData.intensity) * (float)M_PI * mData.surfaceArea;
+}
+
+void AnalyticAreaLight::setIntensity(const float3& intensity) {
+    mData.intensity = intensity;
 }
 
 void AnalyticAreaLight::update() {
@@ -267,9 +284,14 @@ RectLight::SharedPtr RectLight::create(const std::string& name) {
 void RectLight::update() {
     AnalyticAreaLight::update();
 
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    mData.surfaceArea = 1.0f / ( rx * ry );
+    if(mNormalizeArea) {
+        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
+    } else {
+        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+        mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 1.0f * rx * ry );
+        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
+    }
 }
 
 // DiscLight
@@ -281,10 +303,14 @@ DiscLight::SharedPtr DiscLight::create(const std::string& name) {
 void DiscLight::update() {
     AnalyticAreaLight::update();
 
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-
-    mData.surfaceArea = 1.0f / (float)M_PI * rx * ry;
+    if(mNormalizeArea) {
+        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
+    } else {
+        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+        mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 1.0f * (float)M_PI * rx * ry);
+        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
+    }
 }
 
 // SphereLight
@@ -296,11 +322,17 @@ SphereLight::SharedPtr SphereLight::create(const std::string& name) {
 void SphereLight::update() {
     AnalyticAreaLight::update();
 
-    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-    float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
-
-    mData.surfaceArea = 1.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6f) + std::pow(ry * rz, 1.6f) + std::pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
+    if(mNormalizeArea) {
+        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
+    } else {
+        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+        float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+        mData.surfaceArea = std::max(
+            std::numeric_limits<float>::min(), 
+            1.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f) / 3.0f, 1.0f / 1.6075f));
+        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
+    }
 }
 
 

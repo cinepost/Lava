@@ -82,8 +82,9 @@ struct LightData {
     uint32_t shadowType         = uint(LightShadowType::None); ///< Type of the light shadow (see above)
 
     float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
-    float    surfaceArea        = 0.f;              ///< Surface area of the light shape
-    float2   _pad3;
+    float    surfaceArea        = 1.f;              ///< Surface area of the light shape
+    float    invSurfaceArea     = 1.f;              ///< Inverted surface area of a light shape
+    float    _pad3;
 
     // Extra parameters for analytic area lights
     float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape

@@ -29,7 +29,7 @@
 #include "glm/gtx/string_cast.hpp"
 
 
-static constexpr float halfC = M_PI / 180.0f;
+static constexpr float halfC = (float)M_PI / 180.0f;
 
 namespace lava {
 
@@ -618,8 +618,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		// Spot light case
 		if(do_cone && (coneangle_degrees <= 180.0f)) {
-			pPointLight->setOpeningAngle(coneangle_degrees * halfC);
-			pPointLight->setPenumbraAngle(conedelta_degrees * halfC);
+			pPointLight->setOpeningAngle((coneangle_degrees + conedelta_degrees * 2.0f) * halfC);
+			pPointLight->setPenumbraHalfAngle(conedelta_degrees * halfC);
 		}
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
@@ -628,6 +628,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
+		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
 
 		if( light_type == "grid") {
 			pAreaLight = Falcor::RectLight::create("noname_rect");
@@ -644,9 +645,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			LLOG_ERR << "Error creating AnalyticAreaLight !!! Skipping...";
 			return;
 		}
+
 		pAreaLight->setTransformMatrix(transform);
 		pAreaLight->setSingleSided(singleSidedLight);
-		
+		pAreaLight->setNormalizeArea(area_normalize);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
 	} else if( light_type == "env") {
@@ -912,7 +914,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = false;// configStore.get<bool>("async_geo", false);
+	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -1100,7 +1102,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	}
 	it->second = mesh_id;
 
-	LLOG_DBG << "mesh_id " << mesh_id;
+	LLOG_TRC << "mesh_id " << mesh_id;
 
 	Falcor::SceneBuilder::Node node = {};
 	node.name = it->first;
