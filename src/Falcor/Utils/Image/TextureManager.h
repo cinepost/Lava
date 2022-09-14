@@ -180,6 +180,7 @@ public:
 		\param[in] descCount Size of descriptor array.
 	*/
 	void setShaderData(const ShaderVar& var, const size_t descCount) const;
+	void setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const;
 
 	void setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const;
 
