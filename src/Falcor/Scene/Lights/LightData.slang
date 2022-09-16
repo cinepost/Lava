@@ -61,6 +61,24 @@ enum class LightShadowType
     ShadowMap,
 };
 
+enum class LightDataFlags : uint32_t {
+    None = 0x0,
+
+    // Mesh flags.
+    SingleSided = 0x1,
+    ReversedDirection = 0x2,
+    ContribureDirectDiffuse = 0x4,
+    ContributeDirectSpecular = 0x8,
+    ContributeIndirectDiffuse = 0x10,
+    ContributeIndirectSpecular = 0x20,
+
+    ContributeDirectSSS = 0x40,
+    ContribureIndirectSSS = 0x80,
+
+    TransparentShadows = 0x100,
+};
+
+
 /** This is a host/device structure that describes analytic light sources.
 */
 struct LightData {
@@ -70,21 +88,16 @@ struct LightData {
     float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
 
     float3   posW               = float3(0, 0, 0);  ///< World-space position of the center of a light source
-    bool     singleSided        = false;            ///< Area light surface emission property.
+    uint32_t flags;
 
     float3   dirW               = float3(0, -1, 0); ///< World-space orientation of the light source (normalized).
-    float    _pad1;
-
+    float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
+    
     float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of th light source
-    float    _pad2;
-
+    float    surfaceArea        = 1.f;              ///< Surface area of the light shape
+    
     float3   shadowColor        = float3(0, 0, 0);
     uint32_t shadowType         = uint(LightShadowType::None); ///< Type of the light shadow (see above)
-
-    float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
-    float    surfaceArea        = 1.f;              ///< Surface area of the light shape
-    float    invSurfaceArea     = 1.f;              ///< Inverted surface area of a light shape
-    float    _pad3;
 
     // Extra parameters for analytic area lights
     float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape
@@ -95,6 +108,21 @@ struct LightData {
 
     float4x4 transMat           = {};               ///< Transformation matrix of the light shape, from local to world space.
     float4x4 transMatIT         = {};               ///< Inverse-transpose of transformation matrix of the light shape
+
+    bool isSingleSided() CONST_FUNCTION 
+    {
+        return (flags & (uint)LightDataFlags::SingleSided) != 0;
+    }
+
+    bool isReversed() CONST_FUNCTION
+    {
+        return (flags & (uint)LightDataFlags::ReversedDirection) != 0;
+    }
+
+    bool isShadowsTransparent() CONST_FUNCTION
+    {
+        return (flags & (uint)LightDataFlags::TransparentShadows) != 0;
+    }
 };
 
 END_NAMESPACE_FALCOR

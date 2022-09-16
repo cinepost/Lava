@@ -80,11 +80,9 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
     
     if (mPrevData.surfaceArea != mData.surfaceArea) mChanges |= Changes::SurfaceArea;
-    if (mPrevData.invSurfaceArea != mData.invSurfaceArea) mChanges != Changes::SurfaceArea;
-
     if (mPrevData.transMat != mData.transMat) mChanges |= (Changes::Position | Changes::Direction);
 
-    if (mPrevData.singleSided != mData.singleSided) mChanges != (Changes::Intensity | Changes::Direction);
+    if (mPrevData.flags != mData.flags) mChanges |= Changes::Flags;
 
     if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
@@ -253,12 +251,17 @@ void DistantLight::updateFromAnimation(const glm::mat4& transform) {
 AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : Light(name, type) {
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
-    mData.surfaceArea = mData.invSurfaceArea = 1.0f;
-    mData.singleSided = true;
+    mData.surfaceArea = 1.0f;
+    mData.flags = 0x0;
 
-    mScaling = float3(1, 1, 1);
+    mScaling = float3(0.5, 0.5, 0.5); // 0.5 is a "radius" of a unit sized primitive
     update();
     mPrevData = mData;
+}
+
+void AnalyticAreaLight::setScaling(float3 scale) { 
+    mScaling = scale * 0.5f; // We do this multiplication to make our area light of a unit size  
+    update(); 
 }
 
 float AnalyticAreaLight::getPower() const {
@@ -267,6 +270,14 @@ float AnalyticAreaLight::getPower() const {
 
 void AnalyticAreaLight::setIntensity(const float3& intensity) {
     mData.intensity = intensity;
+    update();
+}
+
+void AnalyticAreaLight::setSingleSided(bool value) { 
+    if (value && !mData.isSingleSided()) {
+        mData.flags |= (uint32_t)LightDataFlags::SingleSided; 
+    }
+    update();
 }
 
 void AnalyticAreaLight::update() {
@@ -284,14 +295,11 @@ RectLight::SharedPtr RectLight::create(const std::string& name) {
 void RectLight::update() {
     AnalyticAreaLight::update();
 
-    if(mNormalizeArea) {
-        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
-    } else {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 1.0f * rx * ry );
-        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
-    }
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 4.0f * rx * ry );
+
+    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
 }
 
 // DiscLight
@@ -303,14 +311,11 @@ DiscLight::SharedPtr DiscLight::create(const std::string& name) {
 void DiscLight::update() {
     AnalyticAreaLight::update();
 
-    if(mNormalizeArea) {
-        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
-    } else {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 1.0f * (float)M_PI * rx * ry);
-        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
-    }
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    mData.surfaceArea = std::max(std::numeric_limits<float>::min(), (float)M_PI * rx * ry);
+    
+    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
 }
 
 // SphereLight
@@ -322,17 +327,14 @@ SphereLight::SharedPtr SphereLight::create(const std::string& name) {
 void SphereLight::update() {
     AnalyticAreaLight::update();
 
-    if(mNormalizeArea) {
-        mData.surfaceArea = mData.invSurfaceArea = 1.0f;
-    } else {
-        float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
-        float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
-        float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
-        mData.surfaceArea = std::max(
-            std::numeric_limits<float>::min(), 
-            1.0f * (float)M_PI * std::pow(std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f) / 3.0f, 1.0f / 1.6075f));
-        mData.invSurfaceArea = std::min(std::numeric_limits<float>::max(), 1.0f / mData.surfaceArea);
-    }
+    float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
+    float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+    float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
+    mData.surfaceArea = std::max(
+        std::numeric_limits<float>::min(), 
+        4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));
+    
+    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
 }
 
 

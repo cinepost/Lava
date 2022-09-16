@@ -76,7 +76,8 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
     // Compute incident radiance at shading point.
     // The area lights are single-sided by default, so radiance is zero when seen from the back-facing side.
     float cosTheta = dot(ls.normalW, -ls.dir);
-    if (cosTheta <= 0.f && (light.singleSided == true)) return false; // To match Houdini
+
+    if (cosTheta <= 0.f && light.isSingleSided()) return false; // To match Houdini
     ls.Li = light.intensity * (light.surfaceArea * abs(cosTheta) / distSqr);
 
     // Compute the PDF with respect to solid angle. Note this may be +inf.
@@ -94,8 +95,8 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
 bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Pick a random sample on the quad.
-    // The quad is from (-0.5,-0.5,0) to (0.5,0.5,0) in object space, but may be scaled by its transform matrix.
-    float3 pos = float3(rnd.x - .5f, rnd.y - .5f, 0.f);
+    // The quad is from (-1.0, -1.0, 0.0) to (1.0, 1.0, 0.0) in object space, but may be scaled by its transform matrix.
+    float3 pos = float3(2.0f * (rnd.x - .5f), 2.0f * (rnd.y - .5f), 0.f);
 
     // Apply model to world transformation matrix.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
@@ -114,11 +115,20 @@ bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
-{
+bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls) {
     // Sample a random point on the sphere.
     // TODO: We should pick a random point on the hemisphere facing the shading point.
-    float3 pos = sample_sphere(rnd) * .5f; // To match Houdini
+    float3 pos = sample_sphere(rnd);
+
+/*  Hemisphere sampling. Not ready yet
+    float pdf;
+    float3 n = normalize(mul(float4(normalize(shadingPosW - light.posW), 1.f), light.transMatIT).xyz);
+
+    // Transform light sample direction from world space to local
+    ls.dir = normalize(mul(dir, (float3x3)light.transMat));
+
+    float3 pos = sample_cosine_hemisphere_oriented(rnd, n, pdf);
+*/
 
     // Apply model to world transformation matrix.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
@@ -140,7 +150,7 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, float2
 {
     // Sample a random point on the disk.
     // TODO: Fix spelling disagreement between disc vs disk.
-    float3 pos = float3(sample_disk(rnd) * 0.5f, 0.f);
+    float3 pos = float3(sample_disk(rnd), 0.f);
 
     // Transform to world space.
     ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;

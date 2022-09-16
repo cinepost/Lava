@@ -160,7 +160,6 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
-        
 
         if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
             

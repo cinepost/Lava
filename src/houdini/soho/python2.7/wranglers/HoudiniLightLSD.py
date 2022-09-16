@@ -98,6 +98,13 @@ def activeradius(obj, now, value):
             return True
     return False
 
+def issinglesided(obj, now, value):
+    if isarealight(obj, now):
+        if obj.evalInt('singlesided', now, value):
+            if value[0] == 1: 
+                return True
+    return False
+
 def projection(obj, now, value):
     if isdistantlight(obj, now):
         value[:] = ['ortho']
@@ -548,6 +555,7 @@ parmMap = {
     'lv_areasize'       :       areasize,
     'lv_areafullsphere' :       areafullsphere,
     'lv_areamap'        :       areamap,
+    'lv_singlesided'    :       issinglesided,
     'lv_phantom'        :       phantom,
     'lv_activeradius'   :       activeradius,
     'res'               :       shadowmap_res,

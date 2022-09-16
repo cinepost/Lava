@@ -567,21 +567,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
-	
-	bool singleSidedLight = true;
-	bool reverseLight = false;
-
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
-	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
-
+	
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	std::shared_ptr<PropertiesContainer> pShaderProps;
 
 	if(pShaderProp) {
 		pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
-		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -627,8 +620,18 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		// Area lights
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
+		bool singleSidedLight = pLightScope->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
+		bool reverseLight = false;
+
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
 		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
+
+		std::cout << "normalie " << (area_normalize ? "yes" : "No") << "\n";
+
+		if(pShaderProp) {
+			pShaderProps = pShaderProp->subContainer();
+			reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
+		}
 
 		if( light_type == "grid") {
 			pAreaLight = Falcor::RectLight::create("noname_rect");

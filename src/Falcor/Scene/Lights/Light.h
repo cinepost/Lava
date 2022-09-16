@@ -116,7 +116,8 @@ class dlldecl Light : public Animatable {
         Direction = 0x4,
         Intensity = 0x8,
         SurfaceArea = 0x10,
-        Shadow = 0x20
+        Shadow = 0x20,
+        Flags = 0x40,
     };
 
     /** Begin a new frame. Returns the changes from the previous frame
@@ -309,11 +310,11 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Set light source scaling
         \param[in] scale x,y,z scaling factors
     */
-    void setScaling(float3 scale) { mScaling = scale; update(); }
+    void setScaling(float3 scale);
 
     /** Set light source scale
       */
-    float3 getScaling() const { return mScaling; }
+    inline float3 getScaling() const { return mScaling; }
 
     /** Get total light power (needed for light picking)
     */
@@ -326,17 +327,17 @@ class dlldecl AnalyticAreaLight : public Light {
     */
     void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
 
-    void setSingleSided(bool value) { mData.singleSided = value; update(); }
+    void setSingleSided(bool value);
 
-    bool isSingleSided() const { return mData.singleSided; }
+    inline bool isSingleSided() const { return mData.isSingleSided(); }
 
     void setNormalizeArea(bool value) { mNormalizeArea = value; update(); }
 
-    bool isAreaNormalized() const { return mNormalizeArea; }
+    inline bool isAreaNormalized() const { return mNormalizeArea; }
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    inline glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
     void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
 
