@@ -29,6 +29,8 @@
 
 #include "stdafx.h"
 
+#include "blosc.h"
+
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/API/VirtualTexturePage.h"
@@ -68,9 +70,13 @@ TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount
 	mUDIMTexturesCount = 0;
 
 	mSparseTexturesEnabled = true; // TODO: should be dependent on device features !! 
+
+	blosc_init();
 }
 
-TextureManager::~TextureManager() {}
+TextureManager::~TextureManager() {
+	blosc_destroy();
+}
 
 TextureManager::TextureHandle TextureManager::addTexture(const Texture::SharedPtr& pTexture) {
 	assert(pTexture);
@@ -145,6 +151,10 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 		LLOG_INF << "Converting source texture " << path << " to LTX format using " << tlcParms.compressorName << " compressor.";
 		if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
 			LLOG_ERR << "Error converting source texture: " << path;
+			// rename currupted texture for future debugging
+			if( fs::exists( ltxPath ) ) {
+				fs::rename( ltxPath, fs::path(ltxPath.string() + ".currupted"));
+			}
 			return nullptr;
 		} else {
 			LLOG_INF << "Conversion to LTX done for source texture: " << path;

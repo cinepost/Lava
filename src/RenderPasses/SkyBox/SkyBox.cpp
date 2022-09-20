@@ -173,7 +173,7 @@ void SkyBox::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pSc
     mpScene = pScene;
 
     if (mpScene) {
-        mpCubeScene->setCamera(mpScene->getCamera());
+        //mpCubeScene->setCamera(mpScene->getCamera());
         auto pEnvMap = mpScene->getEnvMap();
         if (pEnvMap) {
             setTexture(pEnvMap->getEnvMap());
