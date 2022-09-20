@@ -170,7 +170,7 @@ def addGlobal(style, token, storage, houdini, skipdefault=True):
     parm.Style = style
     _Settings.Global.append(parm)
 
-def addObject(token, storage, houdini, skipdefault=True):
+def addObject(token, storage, houdini, skipdefault=True):   
     _Settings.Object.append(SohoParm(houdini, storage, None, skipdefault, token))
 
 def addLight(token, storage, houdini, skipdefault=True):

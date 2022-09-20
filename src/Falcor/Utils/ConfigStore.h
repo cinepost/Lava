@@ -8,10 +8,6 @@
 #include <variant>
 
 #include "Falcor/Core/Framework.h"
-#include "lava_lib/reader_lsd/properties_container.h"
-#include "lava_lib/reader_lsd/grammar_lsd.h"
-
-static const lava::lsd::ast::Style global_style = lava::lsd::ast::Style::GLOBAL; // ConfigStore default style
 
 //typedef x3::variant<bool, int, Int2, Int3, Int4, double, Vector2, Vector3, Vector4, std::string> PropValue;
 
@@ -41,16 +37,11 @@ class dlldecl ConfigStore {
     template<typename T>
     void set(const std::string& key, const T& value);
 
-    template<typename T>
-    void set(const std::string& key, const lava::lsd::PropValue& value);
-
   private:
     ConfigStore(const ConfigStore&) = delete;
     ConfigStore& operator=(const ConfigStore&) = delete;
 
     std::map<std::string, Value> mConfigMap;
-
-    lava::lsd::PropertiesContainer mContainer;
 
     bool mLocked = false;
 };

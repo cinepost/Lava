@@ -501,7 +501,7 @@ void Renderer::renderSample() {
 
 
     auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << "Sample " << mCurrentSampleNumber << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms." << std::endl;
+    LLOG_INF << "Sample " << mCurrentSampleNumber << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 }
 
 bool Renderer::getAOVPlaneImageData(const AOVName& name, uint8_t* pData) {

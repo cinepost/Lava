@@ -30,6 +30,9 @@
 # python
 *.pyc
 
+# version
+src/version.cpp
+
 # folders
 deps
 deps/

@@ -113,6 +113,32 @@ bool Material::hasTextureSlotData(const TextureSlot slot) const {
     return mTextureSlotData[(size_t)slot].pTexture != nullptr;
 }
 
+size_t Material::getTextureCount() const {
+    size_t result = 0;
+    for(const auto& data: mTextureSlotData) {
+        if(data.pTexture != nullptr) result++;
+    }
+    return result;
+}
+
+std::vector<Texture::SharedPtr> Material::getTextures() const {
+    std::vector<Texture::SharedPtr> textures;
+    for(const auto& data: mTextureSlotData) {
+        if(data.pTexture != nullptr) textures.push_back(data.pTexture);
+    }
+    return textures;
+}
+
+void Material::getTextures(std::vector<Texture::SharedPtr>& textures, bool append) const {
+    if(!append) textures.clear();
+    
+    for(const auto& data: mTextureSlotData) {
+        if(data.pTexture != nullptr) {
+            textures.push_back(data.pTexture);
+        }
+    }
+}
+
 bool Material::setTexture(const TextureSlot slot, const Texture::SharedPtr& pTexture) {
     if(!pTexture) {
         LLOG_WRN << "Null texture provided for material '" << getName() << "' at slot '" << to_string(slot) << "'. Ignoring call to setTexture().";

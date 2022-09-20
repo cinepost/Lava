@@ -116,7 +116,8 @@ class dlldecl Light : public Animatable {
         Direction = 0x4,
         Intensity = 0x8,
         SurfaceArea = 0x10,
-        Shadow = 0x20
+        Shadow = 0x20,
+        Flags = 0x40,
     };
 
     /** Begin a new frame. Returns the changes from the previous frame
@@ -178,10 +179,15 @@ class dlldecl PointLight : public Light {
     */
     void setWorldDirection(const float3& dir);
 
-    /** Set the cone opening half-angle for use as a spot light
+    /** Set the cone opening angle for use as a spot light
         \param[in] openingAngle Angle in radians.
     */
     void setOpeningAngle(float openingAngle);
+
+  /** Set the cone opening half-angle for use as a spot light
+        \param[in] openingAngle Angle in radians.
+    */
+    void setOpeningHalfAngle(float openingAngle);
 
     /** Get the light's world-space position
     */
@@ -196,6 +202,11 @@ class dlldecl PointLight : public Light {
     float getPenumbraAngle() const { return mData.penumbraAngle; }
 
     /** Set the penumbra half-angle
+        \param[in] angle Angle in radians
+    */
+    void setPenumbraHalfAngle(float angle);
+
+    /** Set the penumbra angle
         \param[in] angle Angle in radians
     */
     void setPenumbraAngle(float angle);
@@ -299,28 +310,34 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Set light source scaling
         \param[in] scale x,y,z scaling factors
     */
-    void setScaling(float3 scale) { mScaling = scale; update(); }
+    void setScaling(float3 scale);
 
     /** Set light source scale
       */
-    float3 getScaling() const { return mScaling; }
+    inline float3 getScaling() const { return mScaling; }
 
     /** Get total light power (needed for light picking)
     */
     float getPower() const override;
+
+    void setIntensity(const float3& intensity) override;
 
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix
     */
     void setTransformMatrix(const glm::mat4& mtx) { mTransformMatrix = mtx; update();  }
 
-    void setSingleSided(bool value) { mData.singleSided = value; update(); }
+    void setSingleSided(bool value);
 
-    bool isSingleSided() const { return mData.singleSided; }
+    inline bool isSingleSided() const { return mData.isSingleSided(); }
+
+    void setNormalizeArea(bool value) { mNormalizeArea = value; update(); }
+
+    inline bool isAreaNormalized() const { return mNormalizeArea; }
 
     /** Get transform matrix
     */
-    glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+    inline glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
     void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
 
@@ -331,6 +348,7 @@ class dlldecl AnalyticAreaLight : public Light {
 
     float3 mScaling;                ///< Scaling, controls the size of the light
     glm::mat4 mTransformMatrix;     ///< Transform matrix minus scaling component
+    bool mNormalizeArea = false;    ///< Normalize light area
 
     friend class SceneCache;
 };

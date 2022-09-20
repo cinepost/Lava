@@ -1841,7 +1841,7 @@ void Scene::setBlasUpdateMode(UpdateMode mode) {
 }
 
 void Scene::createDrawList() {
-    LLOG_WRN << "createDrawList() material count " << std::to_string(getMaterialCount());
+    LLOG_DBG << "createDrawList() material count " << std::to_string(getMaterialCount());
     // This function creates argument buffers for draw indirect calls to rasterize the scene.
     // The updateMeshInstances() function must have been called before so that the flags are accurate.
     //
@@ -1915,9 +1915,6 @@ void Scene::createDrawList() {
                 draw.BaseVertexLocation = mesh.vbOffset;
                 
                 draw.StartInstanceLocation = drawInstance.instanceID;
-                //draw.StartInstanceLocation = instanceID++;
-
-                //draw.MaterialID = instance->materialID;
                 draw.MaterialID = materialID; //instance->materialID;
 
                 int i = use16Bit ? 0 : 1;
@@ -2989,7 +2986,7 @@ void Scene::nullTracePass(RenderContext* pContext, const uint2& dim) {
     Device::SharedPtr pDevice = pContext->device();
 
     if (!pDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1)) {
-        LLOG_WRN << "Raytracing Tier 1.1 is not supported by the current device.";
+        LLOG_ERR << "Raytracing Tier 1.1 is not supported by the current device.";
         return;
     }
 

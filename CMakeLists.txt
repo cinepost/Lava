@@ -32,6 +32,10 @@ if (USE_PROFILING)
 endif ()
 
 option (COLLECT "Enable/Disable portable build dependencies collection." OFF)
+if (COLLECT)
+  # If we are going to collect dependecies, it's most likely to be a deployment build. So we are setting _DEPLOY_BUILD so we can make some optimisations later in the code.
+  add_definitions(-D_DEPLOY_BUILD)
+endif()
 
 # Handle superbuild first
 option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)

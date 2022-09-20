@@ -98,6 +98,13 @@ def activeradius(obj, now, value):
             return True
     return False
 
+def issinglesided(obj, now, value):
+    if isarealight(obj, now):
+        if obj.evalInt('singlesided', now, value):
+            if value[0] == 1: 
+                return True
+    return False
+
 def projection(obj, now, value):
     if isdistantlight(obj, now):
         value[:] = ['ortho']
@@ -188,7 +195,7 @@ def envString(plist):
             env += ' envscale %f' % areamapscale
     return env
 
-def get_color(plist):
+def get_light_color(plist):
     color = plist['light_color'].Value
     if len(color) == 1:
         color.append(color[0])
@@ -198,9 +205,10 @@ def get_color(plist):
     intensity = plist['light_intensity'].Value[0]
     exposure = plist['light_exposure'].Value[0]
     brightness = intensity * pow(2, exposure)
-    color[0] *= brightness * math.pi * 2
-    color[1] *= brightness * math.pi * 2
-    color[2] *= brightness * math.pi * 2
+
+    color[0] *= brightness # * math.pi * 2
+    color[1] *= brightness # * math.pi * 2
+    color[2] *= brightness # * math.pi * 2
     return color
 
 # Properties in the HoudiniLight object which get mapped to the
@@ -247,7 +255,13 @@ def light_shader(obj, now, value):
 
     uvrender = obj.getDefaultedInt('vm_isuvrendering', now, [0])[0]
     light_path = obj.getDefaultedString('vm_uvlightpaths', now, ['-diffuse & -volume'])[0]
-    light_color = get_color(plist)
+    
+    light_color = get_light_color(plist)
+
+    #if not isarealight(obj, now):
+    #    light_color[0] *= math.pi * 2
+    #    light_color[1] *= math.pi * 2
+    #    light_color[2] *= math.pi * 2
 
     if ltype == 'ambient':
         shader = 'opdef:/Shop/v_ambient lightcolor %g %g %g' % \
@@ -360,7 +374,7 @@ def surface_shader(obj, now, value):
         value[:] = ['opdef:/Shop/v_constant']
         return True
 
-    light_color = get_color(plist)
+    light_color = get_light_color(plist)
 
     shader = 'opdef:/Shop/v_arealight'
 
@@ -534,12 +548,14 @@ def lv_light_type(obj, now, value):
     value[0] = obj.getDefaultedString('light_type', now, ['point'])[0]
     return True
 
+
 # When evaluating an integer or real property, we want to
 parmMap = {
     'lv_light_type'     :       lv_light_type,
     'lv_areasize'       :       areasize,
     'lv_areafullsphere' :       areafullsphere,
     'lv_areamap'        :       areamap,
+    'lv_singlesided'    :       issinglesided,
     'lv_phantom'        :       phantom,
     'lv_activeradius'   :       activeradius,
     'res'               :       shadowmap_res,

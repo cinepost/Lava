@@ -271,6 +271,12 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 
 		inline Device::SharedPtr device() const { return mpDevice; }
 
+		size_t getTextureCount() const;
+
+		std::vector<Texture::SharedPtr> getTextures() const;
+
+		void getTextures(std::vector<Texture::SharedPtr>& textures, bool append = true) const;
+
 	protected:
 		Material(Device::SharedPtr pDevice, const std::string& name, MaterialType type);
 

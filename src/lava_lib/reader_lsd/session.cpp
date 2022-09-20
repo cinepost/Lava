@@ -29,7 +29,7 @@
 #include "glm/gtx/string_cast.hpp"
 
 
-static constexpr float halfC = M_PI / 180.0f;
+static constexpr float halfC = (float)M_PI / 180.0f;
 
 namespace lava {
 
@@ -421,7 +421,8 @@ bool Session::cmdRaytrace() {
 		makeImageTiles(mCurrentFrameInfo, mCurrentFrameInfo.renderRegionDims(), tiles);
 	}
 
-	for(const TileInfo& tileInfo: tiles) LLOG_WRN << to_string(tileInfo);
+	LLOG_INF << "Rendering image tiles:";
+	for(const TileInfo& tileInfo: tiles) LLOG_INF << to_string(tileInfo);
 
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
@@ -566,21 +567,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
-	
-	bool singleSidedLight = true;
-	bool reverseLight = false;
-
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
-	LLOG_DBG << "Light dir: " << light_dir[0] << " " << light_dir[1] << " " << light_dir[2];
-
+	
 	Property* pShaderProp = pLightScope->getProperty(ast::Style::LIGHT, "shader");
 	std::shared_ptr<PropertiesContainer> pShaderProps;
 
 	if(pShaderProp) {
 		pShaderProps = pShaderProp->subContainer();
 		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
-		singleSidedLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
-		reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
@@ -617,8 +611,8 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		// Spot light case
 		if(do_cone && (coneangle_degrees <= 180.0f)) {
-			pPointLight->setOpeningAngle(coneangle_degrees * halfC);
-			pPointLight->setPenumbraAngle(conedelta_degrees * halfC);
+			pPointLight->setOpeningAngle((coneangle_degrees + conedelta_degrees * 2.0f) * halfC);
+			pPointLight->setPenumbraHalfAngle(conedelta_degrees * halfC);
 		}
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pPointLight);
@@ -626,7 +620,18 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		// Area lights
 		Falcor::AnalyticAreaLight::SharedPtr pAreaLight = nullptr;
 
+		bool singleSidedLight = pLightScope->getPropertyValue(ast::Style::LIGHT, "singlesided", bool(false));
+		bool reverseLight = false;
+
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
+		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
+
+		std::cout << "normalie " << (area_normalize ? "yes" : "No") << "\n";
+
+		if(pShaderProp) {
+			pShaderProps = pShaderProp->subContainer();
+			reverseLight = pShaderProps->getPropertyValue(ast::Style::LIGHT, "reverse", bool(false));
+		}
 
 		if( light_type == "grid") {
 			pAreaLight = Falcor::RectLight::create("noname_rect");
@@ -643,9 +648,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			LLOG_ERR << "Error creating AnalyticAreaLight !!! Skipping...";
 			return;
 		}
+
 		pAreaLight->setTransformMatrix(transform);
 		pAreaLight->setSingleSided(singleSidedLight);
-		
+		pAreaLight->setNormalizeArea(area_normalize);
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pAreaLight);
 	} else if( light_type == "env") {
@@ -747,7 +753,7 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 
 	auto pSubContainer = pProp->subContainer();
 	if(!pSubContainer) {
-		LLOG_WRN << "No sub-container for property " << values[0].first;
+		LLOG_DBG << "No sub-container for property " << values[0].first;
 		return;
 	}
 
@@ -911,7 +917,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = false;// configStore.get<bool>("async_geo", false);
+	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -1099,7 +1105,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	}
 	it->second = mesh_id;
 
-	LLOG_DBG << "mesh_id " << mesh_id;
+	LLOG_TRC << "mesh_id " << mesh_id;
 
 	Falcor::SceneBuilder::Node node = {};
 	node.name = it->first;
@@ -1199,7 +1205,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     // instance shading spec
     SceneBuilder::MeshInstanceShadingSpec shadingSpec;
     shadingSpec.isMatte = pObj->getPropertyValue(ast::Style::OBJECT, "matte", false);
-
+    shadingSpec.fixShadowTerminator = pObj->getPropertyValue(ast::Style::OBJECT, "fix_shadow", true);
+    shadingSpec.biasAlongNormal = pObj->getPropertyValue(ast::Style::OBJECT, "biasnormal", false);
+    shadingSpec.doubleSided = pObj->getPropertyValue(ast::Style::OBJECT, "double_sided", true);
 
     // instance visibility spec
     SceneBuilder::MeshInstanceVisibilitySpec visibilitySpec;

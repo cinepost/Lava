@@ -119,14 +119,11 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	}
 
 	const auto& configStore = ConfigStore::instance();
-	//bool vtoff = configStore.get<bool>("vtoff", true);
-	//if (!mSparseTexturesEnabled || vtoff) {
-	//	if (ext == ".ltx") {
-	//		LLOG_ERR << "Virtual texturing disabled. Unable to use LTX texture " << path.string();
-	//		return handle;
-	//	}
-	//	return loadTexture(path, generateMipLevels, loadAsSRGB, bindFlags);
-	//}
+	bool vtoff = configStore.get<bool>("vtoff", false);
+	if (!mSparseTexturesEnabled || vtoff) {
+		LLOG_ERR << "Virtual texturing disabled. Unable to use LTX texture " << path.string();
+		return nullptr;
+	}
 
 	fs::path ltxPath = appendExtension(path, ".ltx");
 
@@ -136,8 +133,8 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	if(ltxFileExists && LTX_Bitmap::checkFileMagic(ltxPath, true)) ltxMagicMatch = true;
 
 	LTX_Bitmap::TLCParms tlcParms;
-	tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "none");
-	tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 0);
+	tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "blosclz");
+	tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 9);
 
 	if(!ltxFileExists || !ltxMagicMatch ) {
 		if(!configStore.get<bool>("fconv", true)) {
@@ -145,28 +142,28 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 			return nullptr;
 		}
 
-		LLOG_WRN << "Converting source texture " << path << " to LTX format !";
+		LLOG_INF << "Converting source texture " << path << " to LTX format using " << tlcParms.compressorName << " compressor.";
 		if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
-			LLOG_ERR << "Error converting texture " << path;
+			LLOG_ERR << "Error converting source texture: " << path;
 			return nullptr;
 		} else {
-			LLOG_DBG << "Conversion done for " << path;
+			LLOG_INF << "Conversion to LTX done for source texture: " << path;
 		}
 	}
 	
 	auto pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
   if (!pLtxBitmap) {
-    LLOG_ERR << "Error loading converted ltx bitmap from " << ltxPath;
+    LLOG_ERR << "Error loading converted LTX texture from " << ltxPath;
     return nullptr;
   }
 
   if(pLtxBitmap->header().srcLastWriteTime != fs::last_write_time(path.string())) {
   	LLOG_WRN << "LTX source texture modification time changed. Forcing on-line reconversion !";
   	if (!LTX_Bitmap::convertToLtxFile(mpDevice, path.string(), ltxPath.string(), tlcParms, true)) {
-			LLOG_ERR << "Error re-converting texture " << path;
+			LLOG_ERR << "Error re-converting texture source texture: " << path;
 			return nullptr;
 		} else {
-			LLOG_DBG << "Re-conversion done for " << path;
+			LLOG_INF << "Re-conversion done for source texture: " << path;
 		}
 		pLtxBitmap = LTX_Bitmap::createFromFile(mpDevice, ltxPath, true);
   }
@@ -262,7 +259,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
     		// Load non-tail texture data page
     		pPage->allocate();
     		mpDevice->getRenderContext()->updateTexturePage(pPage.get(), pTmpPageData);
-    		LLOG_DBG << "Loaded page mip level " << std::to_string(pPage->mipLevel());
+    		LLOG_TRC << "Loaded page mip level " << std::to_string(pPage->mipLevel());
   		}
   	} else {
   		LLOG_ERR << "Error updating texture page " << std::to_string(pPage->index());
@@ -297,7 +294,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 	mTextureLoadingTasks.push_back(pool.submit([this, pLtxBitmap, pTexture, pageIds]
   {
   	if(!pTexture) return (Texture*)nullptr;
-  	if(pageIds.size() < 1) (Texture*)nullptr;
+  	if(pageIds.size() < 1) return (Texture*)nullptr;
 
     std::thread::id thread_id = std::this_thread::get_id();
     auto pContext = pTexture->device()->getRenderContext();
@@ -329,7 +326,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   						pPage->allocate();
   						pContext->updateTexturePage(pPage.get(), pTmpPageData);
   					}
-  					LLOG_DBG << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
+  					LLOG_TRC << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
 					}
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());
@@ -675,8 +672,9 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	if (mTextureDescs.size() > descCount) {
-		throw std::runtime_error("Textures descriptor array is too small");
+	if (mTextureDescs.size() < descCount) {
+		// TODO: We should change overall logic of setting shader data between MaterialSystem and TextureManager classes. Now it's a mess!
+		throw std::runtime_error("Textures descriptor array is too large. Requested " + std::to_string(descCount) + " while TextureManager has " + std::to_string(mTextureDescs.size()));
 	}
 
 	Texture::SharedPtr nullTexture;
@@ -697,6 +695,25 @@ void TextureManager::setShaderData(const ShaderVar& var, const size_t descCount)
 	// Fill the array tail
 	for (size_t i = ii; i < descCount; i++) {	
 		var[i] = nullTexture;
+	}
+}
+
+void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Texture::SharedPtr>& textures) const {
+	LLOG_DBG << "Setting direct shader data for " << to_string(textures.size()) << " textures";
+	
+	std::lock_guard<std::mutex> lock(mMutex);
+
+	Texture::SharedPtr nullTexture;
+
+	// Fill in textures
+	size_t ii = 0;
+	for (const auto pTex: textures) {
+		if(pTex && !pTex->isUDIMTexture()) {
+			var[ii] = pTex;
+		} else {
+			var[ii] = nullTexture;
+		}
+		ii++;
 	}
 }
 

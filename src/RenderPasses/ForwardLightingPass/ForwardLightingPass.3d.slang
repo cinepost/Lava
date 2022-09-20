@@ -42,7 +42,7 @@ import Experimental.Scene.Material.Microfacet;
 import Experimental.Scene.Material.StandardMaterial;
 import Experimental.Scene.Material.IBxDF;
 
-#define _ADJUST_SHADING_POSITION
+#define _FIX_SHADOW_TERMINATOR
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
@@ -110,13 +110,6 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     let lod = ImplicitLodTextureSampler();
     if (alphaTest(vsOut, triangleIndex, lod)) discard;
 
-    //Shading position adjusted for ray-tracing
-#ifdef _ADJUST_SHADING_POSITION
-    const float3 posWA = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
-#else
-    const float3 posWA = vsOut.posW;
-#endif
-
     // pixel position
     int2 pixel = int2(vsOut.posH.xy);
 
@@ -131,9 +124,10 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
-#ifdef _ADJUST_SHADING_POSITION
-    sd.posW = posWA;
-#endif
+
+//#ifdef _ADJUST_SHADING_POSITION
+//    sd.posW = posWA;
+//#endif
 
     // Create BSDF instance and query its properties.
     let bsdf = gScene.materials.getBSDF(sd, lod);
@@ -148,7 +142,13 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 
-    float3 rayOrigin = posWA; //sd.posW;
+    float3 rayOrigin = sd.posW;
+
+#ifdef _FIX_SHADOW_TERMINATOR
+    if (gScene.doFixShadowTerminator(vsOut.instanceID)) {
+        rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
+    }
+#endif
     
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
         float3 shadowFactor = float3(1.0, 1.0, 1.0);
@@ -160,9 +160,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
         // Reject sample if lower hemisphere.
         if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
-        
 
-        if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectReceiveShadows(vsOut.instanceID))) {
+        if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
             
             // Test visibility by tracing a shadow ray.
             RayDesc ray;

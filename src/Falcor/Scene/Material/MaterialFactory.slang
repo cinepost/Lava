@@ -86,6 +86,7 @@ extension MaterialSystem
         ShadingData sd = {};
 
         sd.posW = v.posW;
+
         sd.uv = v.texC;
         sd.V = viewDir;
         sd.N = v.normalW;

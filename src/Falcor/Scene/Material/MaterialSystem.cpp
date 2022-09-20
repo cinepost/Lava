@@ -88,7 +88,12 @@ void MaterialSystem::finalize() {
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 
-	mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + textureManager()->getUDIMTextureTilesCount();
+	mTextureDescCount = 0;
+	for(const auto& pMaterial: mMaterials) {
+		mTextureDescCount += pMaterial->getTextureCount();
+	}
+
+	//mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + textureManager()->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
 	mUDIMTextureCount = textureManager()->getUDIMTexturesCount();
 
@@ -97,7 +102,7 @@ void MaterialSystem::finalize() {
 	LLOG_DBG << "MaterialSystem: materials count " << std::to_string(getMaterialCount());
 	LLOG_DBG << "MaterialSystem: udim texture count " << std::to_string(mUDIMTextureCount);
 	LLOG_DBG << "MaterialSystem: udimTilesCount: " << std::to_string(textureManager()->getUDIMTextureTilesCount());
-	LLOG_DBG << "MaterialSystem: mTextureDescCount: ", std::to_string(mTextureDescCount);
+	LLOG_DBG << "MaterialSystem: mTextureDescCount: " << std::to_string(mTextureDescCount);
 }
 
 void MaterialSystem::setDefaultTextureSampler(const Sampler::SharedPtr& pSampler) {
@@ -346,7 +351,14 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 	// Update textures.
 	if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged)) {
 		textureManager()->finalize();
-		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+
+		std::vector<Texture::SharedPtr> textures;
+		for(const auto& pMaterial: mMaterials) {
+			pMaterial->getTextures(textures, true); // true to append instead of erasing vector
+		}
+		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], textures);
+
+		//textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
 		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 

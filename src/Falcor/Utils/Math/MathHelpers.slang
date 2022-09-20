@@ -333,6 +333,22 @@ float3 sample_cosine_hemisphere_polar(float2 u)
     return sample_cosine_hemisphere_polar(u, pdf);
 }
 
+/** Generate a cosine-weighted random point on the unit hemisphere oriented around 'n'.
+   \param[in] rnd Vector containing pseudo-random values
+   \param[in] n Normal to orient the hemisphere around
+   \return Cosine-weighted point on the oriented hemisphere
+*/
+float3 sample_cosine_hemisphere_oriented(float2 rnd, float3 n, out float pdf) {
+  float3 ph = sample_cosine_hemisphere_concentric(rnd, pdf);
+
+  float3 _up = float3(1.0f, 0.0f, 0.0f); //normalize(rnd);
+  float3 bitangent = normalize(cross(_up, n));
+  float3 tangent = normalize(cross(bitangent, n));
+  
+  /* Make our hemisphere orient around the normal. */
+  return tangent * ph.x + bitangent * ph.y + n * ph.z;
+}
+
 /** Uniform sampling of a triangle.
     \param[in] u Uniform random numbers in [0,1)^2.
     \return Barycentric coordinates (1-u-v,u,v) of the sampled point.
