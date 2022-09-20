@@ -1,0 +1,4 @@
+box 'Box'
+gauss 'Gaussian'
+catrom 'Catmull-Rom'
+sinc 'Sinc'

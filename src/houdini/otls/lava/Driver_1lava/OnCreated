@@ -1,0 +1,10 @@
+\set noalias = 1
+
+# Source additional user script if one exists
+set test = 'scripts/out/lsd_postcreate.py'
+set found = `findfile($test)`
+if ( $test != $found ) then
+    python -c "kwargs={'node': hou.node('$arg1')};exec(open('$found','r').read())"
+else
+    source -q out/lsd_postcreate.cmd $arg1
+endif
