@@ -192,6 +192,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
 enum_class_operators(LTX_Bitmap::ExportFlags);
 
 const std::string dlldecl to_string(LTX_Header::TopLevelCompression);
+const char* getBloscCompressionName(LTX_Header::TopLevelCompression);
 
 }  // namespace Falcor
 

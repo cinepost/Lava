@@ -9,6 +9,8 @@
 
 namespace Falcor {
 
+static int32_t gBloscForceBlocksize = 0;
+
 static const int kDoBloscShuffle = BLOSC_NOSHUFFLE;; //BLOSC_SHUFFLE;
 
 static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>* tmp_compressed_page_data) {
@@ -16,14 +18,10 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
 		assert(tmp_compressed_page_data && tmp_compressed_page_data->size() >= ((kLtxPageSize + BLOSC_MAX_OVERHEAD)));
 		// write compressed page date
-		int cbytes = blosc_compress(
-			compressionInfo.compressionLevel, 
-			kDoBloscShuffle, 
-			compressionInfo.compressionTypeSize, 
-			kLtxPageSize, 
-			page_data.data(),
-			tmp_compressed_page_data->data(), 
-			tmp_compressed_page_data->size());
+		int cbytes = blosc_compress_ctx(compressionInfo.compressionLevel, kDoBloscShuffle, compressionInfo.compressionTypeSize, 
+			kLtxPageSize, page_data.data(), tmp_compressed_page_data->data(), 
+			tmp_compressed_page_data->size(), getBloscCompressionName(compressionInfo.topLevelCompression),
+			gBloscForceBlocksize, 1);
 
 		LLOG_DBG << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
 
@@ -98,8 +96,8 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	uint32_t currentPageOffset = 0;
 
 	// write mip level 0
-	LLOG_DBG << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
-	LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+	LLOG_TRC << "Writing mip level 0 tiles " << pagesCountX << " " << pagesCountY;
+	LLOG_TRC << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
 	pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 	for(uint32_t z = 0; z < pagesCountZ; z++) {
@@ -192,9 +190,9 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 
 		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-		LLOG_DBG << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
-		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
-		LLOG_DBG << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
+		LLOG_TRC << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_TRC << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
+		LLOG_TRC << "Partial page dims: " << partialPageDims.x << " " << partialPageDims.y << " " << partialPageDims.z;
 
 		partialTileWidthStride = partialPageDims.x * dstBytesPerPixel;
 
@@ -289,17 +287,17 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
 		oiio::ImageBufAlgo::resize(srcBuff, "", 0, roi).get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
 		
-		LLOG_DBG << "writing tail page " << std::to_string(currentPageId) << " while " 
+		LLOG_TRC << "Writing tail page " << std::to_string(currentPageId) << " while " 
 				 << std::to_string(header.pagesCount) << " calculated";
 		
-		currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, nullptr);
+		currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
 		currentPageId++;
 		header.pagesCount += 1;
 	}
 
 	header.tailDataSize = tailDataSize;
 
-	LLOG_DBG << "Tail data size " << std::to_string(tailDataSize);
+	LLOG_TRC << "Tail data size " << std::to_string(tailDataSize);
 
 	return true;
 }
@@ -411,8 +409,8 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 		pagesCountZ = mipLevelDepth / page_depth;
 		pagesCount += pagesCountX * pagesCountY * pagesCountZ;
 
-		LLOG_DBG << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
-		LLOG_DBG << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
+		LLOG_TRC << "Writing mip level " << std::to_string(mipLevel) << " tiles " << pagesCountX << " " << pagesCountY;
+		LLOG_TRC << "Mip level width " << mipLevelWidth << " height " << mipLevelHeight;
 
 		tiles_buffer.resize(mipLevelWidth * mipLevelHeight * dstBytesPerPixel);
 		bufferWidthStride = mipLevelWidth * dstBytesPerPixel;
@@ -455,6 +453,42 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	}
 
 	header.pagesCount = pagesCount;
+
+	// Write mip tail pages
+
+	header.tailDataOffset = currentPageOffset;
+
+	size_t tailDataSize = 0;
+	
+	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
+		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
+		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
+
+		auto tailLevelByteSize = mipLevelWidth * mipLevelHeight * dstBytesPerPixel; 
+		
+		if (tailLevelByteSize > kLtxPageSize) {
+			LLOG_ERR << "Mip tail level " << std::to_string(mipTailLevel) << " data size is greater than " << std::to_string(kLtxPageSize);
+			continue;
+		}
+
+		tailDataSize += tailLevelByteSize;
+
+		oiio::ROI roi(0, mipLevelWidth, 0, mipLevelHeight, 0, 1, 0, dstChannelCount);
+		scaledBuff = oiio::ImageBuf(oiio::ImageSpec(mipLevelWidth, mipLevelHeight, spec.nchannels, spec.format), oiio::InitializePixels::No);
+		oiio::ImageBufAlgo::resample(scaledBuff, prevBuff, true, roi);
+		scaledBuff.get_pixels(roi, spec.format, page_data.data(), oiio::AutoStride, oiio::AutoStride, oiio::AutoStride);
+
+		LLOG_TRC << "Writing tail page " << std::to_string(currentPageId) << " while " << std::to_string(header.pagesCount) << " calculated";
+		
+		currentPageOffset += writePageData(pFile, currentPageId, currentPageOffset, compressionInfo, page_data, &compressed_page_data);
+		currentPageId++;
+		header.pagesCount += 1;
+	}
+
+	header.tailDataSize = tailDataSize;
+
+	LLOG_TRC << "Tail data size " << std::to_string(tailDataSize);
 
 	return true;
 }

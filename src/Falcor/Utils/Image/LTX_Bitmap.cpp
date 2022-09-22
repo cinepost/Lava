@@ -79,7 +79,7 @@ LTX_Header::TopLevelCompression LTX_Bitmap::getTLCFromString(const std::string& 
 	return LTX_Header::TopLevelCompression::NONE;
 } 
 
-static const char* getBloscCompressionName(LTX_Header::TopLevelCompression tlc) {
+const char* getBloscCompressionName(LTX_Header::TopLevelCompression tlc) {
 	switch(tlc) {
 		case LTX_Header::TopLevelCompression::BLOSC_LZ:
 			return "blosclz";
@@ -507,7 +507,7 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		// read uncompressed page data
 		fseek(pFile, mHeader.dataOffset + pageNum * mHeader.pageDataSize, SEEK_SET);
 		if(fread(pData, 1, mHeader.pageDataSize, pFile) != 65536) {
-			LLOG_ERR << "Error reading texture page data!";
+			LLOG_ERR << "Error reading texture page " << std::to_string(pageNum) << " data!";
 			return false;
 		}
 	} else {
@@ -519,8 +519,15 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		fseek(pFile, page_data_offset, SEEK_SET);
 		fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
 
-		auto nbytes = blosc_decompress(tmp.data(), pData, kLtxPageSize);
-		LLOG_DBG << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 
+		auto nbytes = 0;
+
+		//nbytes = blosc_decompress(tmp.data(), pData, kLtxPageSize);
+		nbytes = blosc_decompress_ctx(tmp.data(), pData, kLtxPageSize, 1);
+		if((nbytes == 0) || (nbytes > 65536)) {
+			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "! " << std::to_string(nbytes) << " bytes decompressed !!!";
+			return false;
+		}
+		LLOG_TRC << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 
 				 << " offset " <<std::to_string(page_data_offset) << " decomp size: " << std::to_string(nbytes);
 	}
 	return true;
