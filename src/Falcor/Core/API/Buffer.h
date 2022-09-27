@@ -45,7 +45,7 @@ struct ShaderVar;
     This class abstracts the API's buffer creation and management
 */
 class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource, Buffer> {
- public:
+  public:
     using SharedPtr = std::shared_ptr<Buffer>;
     using WeakPtr = std::weak_ptr<Buffer>;
     using SharedConstPtr = std::shared_ptr<const Buffer>;
@@ -66,13 +66,6 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
         Write,          ///< Map the buffer for write access. Buffer had to be created with CpuAccess::Write flag.
         WriteDiscard,   ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with CpuAccess::Write flag.
     };
-
-    //enum class GpuAccessFlags : uint32_t
-    //{
-    //    None = 0x0,
-    //    Read = 0x1,
-    //    Write = 0x2,   
-    //};
 
     ~Buffer();
 
@@ -258,7 +251,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the offset from the beginning of the GPU resource
     */
-    uint64_t getGpuAddressOffset() const { return mGpuVaOffset; };
+    inline uint64_t getGpuAddressOffset() const { return mGpuVaOffset; };
 
     /** Get the GPU address (this includes the offset)
     */
@@ -266,23 +259,23 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the size of the buffer
     */
-    size_t getSize() const { return mSize; }
+    inline size_t getSize() const { return mSize; }
 
     /** Get the element count. For structured-buffers, this is the number of structs. For typed-buffers, this is the number of elements. For other buffer, will return 0
     */
-    uint32_t getElementCount() const { return mElementCount; }
+    inline uint32_t getElementCount() const { return mElementCount; }
 
     /** Get the size of a single struct. This call is only valid for structued-buffer. For other buffer types, it will return 0
     */
-    uint32_t getStructSize() const { return mStructSize; }
+    inline uint32_t getStructSize() const { return mStructSize; }
 
     /** Get the buffer format. This call is only valid for typed-buffers, for other buffer types it will return ResourceFormat::Unknown
     */
-    ResourceFormat getFormat() const { return mFormat; }
+    inline ResourceFormat getFormat() const { return mFormat; }
 
     /** Get the UAV counter buffer
     */
-    const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
+    inline const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     /** Map the buffer.
 
@@ -300,7 +293,7 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get safe offset and size values
     */
-    bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
+    inline bool adjustSizeOffsetParams(size_t& size, size_t& offset) const {
         if (offset >= mSize) {
             LLOG_WRN << "Buffer::adjustSizeOffsetParams() - offset is larger than the buffer size.";
             return false;
@@ -315,23 +308,25 @@ class dlldecl Buffer : public Resource, public inherit_shared_from_this<Resource
 
     /** Get the CPU access flags
     */
-    CpuAccess getCpuAccess() const { return mCpuAccess; }
+    inline CpuAccess getCpuAccess() const { return mCpuAccess; }
 
     /** Check if this is a typed buffer
     */
-    bool isTyped() const { return mFormat != ResourceFormat::Unknown; }
+    inline bool isTyped() const { return mFormat != ResourceFormat::Unknown; }
 
     /** Check if this is a structured-buffer
     */
-    bool isStructured() const { return mStructSize != 0; }
+    inline bool isStructured() const { return mStructSize != 0; }
 
     template<typename T>
     void setElement(uint32_t index, T const& value) {
         setBlob(&value, sizeof(T)*index, sizeof(T));
     }
 
-protected:
+  public:
     Buffer(std::shared_ptr<Device> pDevice, size_t size, BindFlags bindFlags, CpuAccess cpuAccess);
+
+  protected:
     void apiInit(bool hasInitData);
 
     CpuAccess mCpuAccess;

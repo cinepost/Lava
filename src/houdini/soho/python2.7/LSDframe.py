@@ -236,7 +236,7 @@ def envmapDisplay(cam, now, cubemap):
     filename = cubemap.Filename
     cmd_image(cubemap.Filename, '', '')
     LSDsettings.outputImageFormatOptions(None, cam, now)
-    defplane("MAIN", 'Cf+Af', 'vector4', -1, None, cam, now)
+    defplane("MAIN", 'color', 'vector4', -1, None, cam, now)
     soho.indent(-1, "", None)
     LSDhooks.call('post_envmapDisplay', cam, now, cubemap)
 
@@ -431,7 +431,7 @@ def cameraDisplay(wrangler, cam, now):
     # uv render may have Cf+Af disabled for performance reasons
     skipCf = cam.wrangleInt(wrangler, 'lv_bake_skipcf', now, [0])[0]
     if not skipCf:
-        defplane("MAIN", 'Cf+Af', 'vector4', -1, wrangler, cam, now)
+        defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now)
     else:
         defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
 

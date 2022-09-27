@@ -40,98 +40,95 @@
 using namespace Falcor;
 
 class ForwardLightingPass : public RenderPass {
- public:
-    using SharedPtr = std::shared_ptr<ForwardLightingPass>;
+	public:
+		using SharedPtr = std::shared_ptr<ForwardLightingPass>;
 
-    static const Info kInfo;
+		static const Info kInfo;
 
-    /** Create a new object
-    */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		/** Create a new object
+		*/
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-    virtual Dictionary getScriptingDictionary() override;
+		virtual RenderPassReflection reflect(const CompileData& compileData) override;
+		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
+		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
+		virtual Dictionary getScriptingDictionary() override;
 
-    void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
+		void setCullMode(RasterizerState::CullMode cullMode) { mCullMode = cullMode; }
 
-    /** Set samples per frame count
-    */
-    void setFrameSampleCount(uint32_t samples);
+		/** Set samples per frame count
+		*/
+		void setFrameSampleCount(uint32_t samples);
 
-    /** Set the color target format. This is always enabled
-    */
-    ForwardLightingPass& setColorFormat(ResourceFormat format);
+		/** Set the color target format. This is always enabled
+		*/
+		ForwardLightingPass& setColorFormat(ResourceFormat format);
 
-    /** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
-    */
-    ForwardLightingPass& setNormalMapFormat(ResourceFormat format);
+		/** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
+		*/
+		ForwardLightingPass& setOutNormalsFormat(ResourceFormat format);
 
-    /** Set the motion vectors map format. Setting this to ResourceFormat::Unknown will disable this output
-    */
-    ForwardLightingPass& setMotionVecFormat(ResourceFormat format);
+		/** Set the output shadows map format. Setting this to ResourceFormat::Unknown will disable this output
+		*/
+		ForwardLightingPass& setOutShadowsFormat(ResourceFormat format);
 
-    /** Set the required output supersample-count. 0 will use the swapchain sample count
-    */
-    ForwardLightingPass& setSuperSampleCount(uint32_t samples);
+		/** Set the required output supersample-count. 0 will use the swapchain sample count
+		*/
+		ForwardLightingPass& setSuperSampleCount(uint32_t samples);
 
-    /** Enable super-sampling in the pixel-shader
-    */
-    ForwardLightingPass& setSuperSampling(bool enable);
+		/** Enable super-sampling in the pixel-shader
+		*/
+		ForwardLightingPass& setSuperSampling(bool enable);
 
-    /** If set to true, the pass requires the user to provide a pre-rendered depth-buffer
-    */
-    ForwardLightingPass& usePreGeneratedDepthBuffer(bool enable);
+		/** If set to true, the pass requires the user to provide a pre-rendered depth-buffer
+		*/
+		ForwardLightingPass& usePreGeneratedDepthBuffer(bool enable);
 
-    /** Set a sampler-state to be used during rendering. The default is tri-linear
-    */
-    ForwardLightingPass& setSampler(const Sampler::SharedPtr& pSampler);
+		ForwardLightingPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
 
-    ForwardLightingPass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+	private:
+		ForwardLightingPass(Device::SharedPtr pDevice);
+		
+		void initDepth(RenderContext* pContext, const RenderData& renderData);
+		void initFbo(RenderContext* pContext, const RenderData& renderData);
 
- private:
-    ForwardLightingPass(Device::SharedPtr pDevice);
-    
-    void initDepth(RenderContext* pContext, const RenderData& renderData);
-    void initFbo(RenderContext* pContext, const RenderData& renderData);
+		void prepareVars(RenderContext* pContext);
 
-    void prepareVars(RenderContext* pContext);
+		Fbo::SharedPtr                  mpFbo;
+		GraphicsState::SharedPtr        mpState;
+		DepthStencilState::SharedPtr    mpDsNoDepthWrite;
+		Scene::SharedPtr                mpScene;
+		GraphicsVars::SharedPtr         mpVars;
+		RasterizerState::SharedPtr      mpRsState;
+		//GraphicsProgram::SharedPtr      mpProgram;
+		RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;
 
-    Fbo::SharedPtr                  mpFbo;
-    GraphicsState::SharedPtr        mpState;
-    DepthStencilState::SharedPtr    mpDsNoDepthWrite;
-    Scene::SharedPtr                mpScene;
-    GraphicsVars::SharedPtr         mpVars;
-    RasterizerState::SharedPtr      mpRsState;
-    //GraphicsProgram::SharedPtr      mpProgram;
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;
+		uint2 mFrameDim = { 0, 0 };
+		uint32_t mFrameSampleCount = 16;
+		uint32_t mSuperSampleCount = 1;  // MSAA stuff
 
-    uint2 mFrameDim = { 0, 0 };
-    uint32_t mFrameSampleCount = 16;
-    uint32_t mSuperSampleCount = 1;  // MSAA stuff
+		uint32_t mSampleNumber = 0;
 
-    uint32_t mSampleNumber = 0;
+		Sampler::SharedPtr                  mpNoiseSampler;
+		Texture::SharedPtr                  mpBlueNoiseTexture;
+		CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
+		SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
+		
+		EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
+		EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
 
-    Sampler::SharedPtr                  mpNoiseSampler;
-    Texture::SharedPtr                  mpBlueNoiseTexture;
-    CPUSampleGenerator::SharedPtr       mpNoiseOffsetGenerator;      ///< Blue noise texture offsets generator. Sample in the range [-0.5, 0.5) in each dimension.
-    SampleGenerator::SharedPtr          mpSampleGenerator;           ///< GPU sample generator.
-    
-    EnvMapLighting::SharedPtr           mpEnvMapLighting = nullptr;
-    EnvMapSampler::SharedPtr            mpEnvMapSampler = nullptr;
+		ResourceFormat mColorFormat       = ResourceFormat::RGBA16Float; //Default color rendering format;
+		ResourceFormat mOutNormalsFormat  = ResourceFormat::RGBA16Float;
+		ResourceFormat mOutShadowsFormat  = ResourceFormat::RGBA16Float;
+		ResourceFormat mMotionVecFormat   = ResourceFormat::Unknown;
 
-    ResourceFormat mColorFormat     = ResourceFormat::RGBA32Float; //Default color rendering format;
-    ResourceFormat mNormalMapFormat = ResourceFormat::RGBA16Float;
-    ResourceFormat mMotionVecFormat = ResourceFormat::RG8Snorm;
-
-    bool mEnableSuperSampling = false;
-    bool mUsePreGenDepth = false;
-    bool mUseSimplifiedEnvLighting = false;
-    
-    bool mDirty = true;
-    bool mEnvMapDirty = true;
+		bool mEnableSuperSampling = false;
+		bool mUsePreGenDepth = false;
+		bool mUseSimplifiedEnvLighting = false;
+		
+		bool mDirty = true;
+		bool mEnvMapDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_FORWARDLIGHTINGPASS_FORWARDLIGHTINGPASS_H_

@@ -32,6 +32,7 @@
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
 #include "Falcor/Utils/ThreadPool.h"
 
+#include "TextureDataCacheLRU.h"
 #include "AsyncTextureLoader.h"
 #include <mutex>
 
@@ -220,6 +221,8 @@ private:
 	TextureDesc& getDesc(const TextureHandle& handle);
 
 	Device::SharedPtr mpDevice = nullptr;
+
+	TextureDataCacheLRU::SharedPtr mpTextureDataCache = nullptr;
 
 	mutable std::mutex mMutex;                                  ///< Mutex for synchronizing access to shared resources.
 	mutable std::mutex mPageMutex;                              ///< Mutex for synchronizing texture page updates.

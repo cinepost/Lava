@@ -25,50 +25,54 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef FALCOR_RENDERGRAPH_RENDERGRAPHIR_H_
+#define FALCOR_RENDERGRAPH_RENDERGRAPHIR_H_
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
 
-namespace Falcor
-{
-    class Scene;
+namespace Falcor {
 
-    class dlldecl RenderGraphIR
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RenderGraphIR>;
+class Scene;
 
-        static std::string getFuncName(const std::string& graphName);
-        static SharedPtr create(const std::string& name, bool newGraph = true);
+class dlldecl RenderGraphIR {
+	public:
+		using SharedPtr = std::shared_ptr<RenderGraphIR>;
 
-        void addPass(const std::string& passClass, const std::string& passName, const Dictionary& = Dictionary());
-        void updatePass(const std::string& passName, const Dictionary& dictionary);
-        void removePass(const std::string& passName);
-        void addEdge(const std::string& src, const std::string& dst);
-        void removeEdge(const std::string& src, const std::string& dst);
-        void markOutput(const std::string& name);
-        void unmarkOutput(const std::string& name);
-        void loadPassLibrary(const std::string& name);
-        void autoGenEdges();
+		static std::string getFuncName(const std::string& graphName);
+		static SharedPtr create(const std::string& name, bool newGraph = true);
 
-        std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? "return g\n" : "\n"); }
+		void addPass(const std::string& passClass, const std::string& passName, const Dictionary& = Dictionary());
+		void updatePass(const std::string& passName, const Dictionary& dictionary);
+		void removePass(const std::string& passName);
+		void addEdge(const std::string& src, const std::string& dst);
+		void removeEdge(const std::string& src, const std::string& dst);
+		void markOutput(const std::string& name);
+		void unmarkOutput(const std::string& name);
+		void loadPassLibrary(const std::string& name);
+		void autoGenEdges();
 
-        static const char* kAddPass;
-        static const char* kRemovePass;
-        static const char* kAddEdge;
-        static const char* kRemoveEdge;
-        static const char* kMarkOutput;
-        static const char* kUnmarkOutput;
-        static const char* kAutoGenEdges;
-        static const char* kRenderPass;
-        static const char* kRenderGraph;
-        static const char* kUpdatePass;
-        static const char* kLoadPassLibrary;
-    private:
-        RenderGraphIR(const std::string& name, bool newGraph);
-        std::string mName;
-        std::string mIR;
-        std::string mIndentation;
-        std::string mGraphPrefix;
-    };
-}
+		inline std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? "return g\n" : "\n"); }
+
+		static const char* kAddPass;
+		static const char* kRemovePass;
+		static const char* kAddEdge;
+		static const char* kRemoveEdge;
+		static const char* kMarkOutput;
+		static const char* kUnmarkOutput;
+		static const char* kAutoGenEdges;
+		static const char* kRenderPass;
+		static const char* kRenderGraph;
+		static const char* kUpdatePass;
+		static const char* kLoadPassLibrary;
+
+	private:
+		RenderGraphIR(const std::string& name, bool newGraph);
+		std::string mName;
+		std::string mIR;
+		std::string mIndentation;
+		std::string mGraphPrefix;
+};
+
+}  // namespace Falcor
+
+#endif  // FALCOR_RENDERGRAPH_RENDERGRAPHIR_H_

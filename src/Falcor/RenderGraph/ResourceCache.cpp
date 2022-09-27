@@ -111,8 +111,7 @@ void ResourceCache::registerField(const std::string& name, const RenderPassRefle
     }
 }
 
-Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName)
-{
+Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field, bool resolveBindFlags, const std::string& resourceName) {
     uint32_t width = field.getWidth() ? field.getWidth() : params.dims.x;
     uint32_t height = field.getHeight() ? field.getHeight() : params.dims.y;
     uint32_t depth = field.getDepth() ? field.getDepth() : 1;
@@ -140,31 +139,35 @@ Resource::SharedPtr createResourceForPass(std::shared_ptr<Device> pDevice, const
     }
     Resource::SharedPtr pResource;
 
-    switch (field.getType())
-    {
-    case RenderPassReflection::Field::Type::RawBuffer:
-        pResource = Buffer::create(pDevice, width, bindFlags, Buffer::CpuAccess::None);
-        break;
-    case RenderPassReflection::Field::Type::Texture1D:
-        pResource = Texture::create1D(pDevice, width, format, arraySize, mipLevels, nullptr, bindFlags);
-        break;
-    case RenderPassReflection::Field::Type::Texture2D:
-        if (sampleCount > 1) {
-            pResource = Texture::create2DMS(pDevice, width, height, format, sampleCount, arraySize, bindFlags);
-        } else {
-            pResource = Texture::create2D(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
-        }
-        break;
-    case RenderPassReflection::Field::Type::Texture3D:
-        pResource = Texture::create3D(pDevice, width, height, depth, format, mipLevels, nullptr, bindFlags);
-        break;
-    case RenderPassReflection::Field::Type::TextureCube:
-        pResource = Texture::createCube(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
-        break;
-    default:
-        should_not_get_here();
-        return nullptr;
+    switch (field.getType()) {
+        case RenderPassReflection::Field::Type::RawBuffer:
+            pResource = Buffer::create(pDevice, width, bindFlags, Buffer::CpuAccess::None);
+            break;
+        case RenderPassReflection::Field::Type::Texture1D:
+            pResource = Texture::create1D(pDevice, width, format, arraySize, mipLevels, nullptr, bindFlags);
+            break;
+        case RenderPassReflection::Field::Type::Texture2D:
+            if (sampleCount > 1) {
+                pResource = Texture::create2DMS(pDevice, width, height, format, sampleCount, arraySize, bindFlags);
+            } else {
+                pResource = Texture::create2D(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+            }
+            break;
+        case RenderPassReflection::Field::Type::Texture3D:
+            pResource = Texture::create3D(pDevice, width, height, depth, format, mipLevels, nullptr, bindFlags);
+            break;
+        case RenderPassReflection::Field::Type::TextureCube:
+            pResource = Texture::createCube(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+            break;
+        default:
+            should_not_get_here();
+            return nullptr;
     }
+
+    if(!pResource) {
+        LLOG_FTL << "Fatal error creating resource !!!";
+    }
+
     pResource->setName(resourceName);
     return pResource;
 }

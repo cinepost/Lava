@@ -98,18 +98,17 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     virtual ~Resource() = 0;
 
-    //std::shared_ptr<Device> device() { return mpDevice; }
-    std::shared_ptr<Device> device() const { return mpDevice; }
+    inline std::shared_ptr<Device> device() const { return mpDevice; }
 
-    size_t id() { return mID; }
-    size_t id() const { return mID; }
+    inline size_t id() { return mID; }
+    inline size_t id() const { return mID; }
 
 
     /** Get the bind flags
     */
-    BindFlags getBindFlags() const { return mBindFlags; }
+    inline BindFlags getBindFlags() const { return mBindFlags; }
 
-    bool isStateGlobal() const { return mState.isGlobal; }
+    inline bool isStateGlobal() const { return mState.isGlobal; }
 
     /** Get the current state. This is only valid if isStateGlobal() returns true
     */
@@ -152,7 +151,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Get the size of the resource
     */
-    size_t getSize() const { return mSize; }
+    inline size_t getSize() const { return mSize; }
 
     /** Invalidate and release all of the resource views
     */
@@ -160,7 +159,7 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
 
     /** Set the resource name
     */
-    void setName(const std::string& name) { mName = name; apiSetName(); }
+    inline void setName(const std::string& name) { mName = name; apiSetName(); }
 
     /** Get the resource name
     */

@@ -776,7 +776,7 @@
                 default { "" }
             }
             parm {
-                name    "lv_quickplane_P"
+                name    "lv_quickplane_p"
                 label   "Shading Position (P)"
                 type    toggle
                 joinnext
@@ -784,11 +784,11 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quantize_P"
+                name    "lv_quantize_p"
                 label   "Quantize"
                 type    string
                 default { "float32" }
-                hidewhen "{ lv_quickplane_P == 0 }"
+                hidewhen "{ lv_quickplane_p == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                     language python
@@ -796,7 +796,7 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quickplane_Pz"
+                name    "lv_quickplane_z"
                 label   "Shading Depth (Pz)"
                 type    toggle
                 joinnext
@@ -804,11 +804,11 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quantize_Pz"
+                name    "lv_quantize_z"
                 label   "Quantize"
                 type    string
                 default { "float32" }
-                hidewhen "{ lv_quickplane_Pz == 0 }"
+                hidewhen "{ lv_quickplane_z == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                     language python
@@ -816,7 +816,7 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quickplane_N"
+                name    "lv_quickplane_n"
                 label   "Shading Normal (N)"
                 type    toggle
                 joinnext
@@ -824,11 +824,11 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quantize_N"
+                name    "lv_quantize_n"
                 label   "Quantize"
                 type    string
                 default { "float16" }
-                hidewhen "{ lv_quickplane_N == 0 }"
+                hidewhen "{ lv_quickplane_n == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                     language python
@@ -837,7 +837,7 @@
             }
             parm {
                 name    "lv_quickplane_albedo"
-                label   "Surface Albedo"
+                label   "Albedo"
                 type    toggle
                 joinnext
                 default { "0" }
@@ -847,7 +847,7 @@
                 name    "lv_quantize_albedo"
                 label   "Quantize"
                 type    string
-                default { "" }
+                default { "float16" }
                 hidewhen "{ lv_quickplane_albedo == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
@@ -856,20 +856,19 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quickplane_ambocc"
-                label   "Ambient Occlusion"
+                name    "lv_quickplane_shadow"
+                label   "Shadow"
                 type    toggle
                 joinnext
                 default { "0" }
-                disablewhen "{ lv_ambient_occlusion == 0 }"
                 parmtag { "script_callback_language" "python" }
             }
             parm {
-                name    "lv_quantize_ao"
+                name    "lv_quantize_shadow"
                 label   "Quantize"
                 type    string
                 default { "" }
-                hidewhen "{ lv_quickplane_ambocc == 0 }"
+                hidewhen "{ lv_quickplane_shadow == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                     language python
@@ -1306,10 +1305,11 @@
             name    "soho_pipecmd"
             label   "Command"
             type    string
-            default { "lava" }
+            default { "lava --log-level info" }
             disablewhen "{ soho_outputmode != 0 }"
             menureplace {
                 "lava"      "No command line options"
+                "lava --log-level info"      "Logging level info"
                 "lava -e"   "Echo scene descriprtion"
             }
             parmtag { "script_callback_language" "python" }

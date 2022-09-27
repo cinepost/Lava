@@ -10,44 +10,34 @@ QuickPlane = collections.namedtuple(
 
 # Define a dictionary of standard planes with the relevant parameters.
 __quickplanes = {
-    # variable name
-    #       channel name                type            quantize    percomp opts
-    "P":
-        QuickPlane(
-            "",                         "vector3",      "float32",    False,  {'pfilter':['minmax omedian']}),
-    "Pz":
-        QuickPlane(
-            "",                         "float",        "float32",    False,  {'pfilter':['minmax omedian']}),
-    "N":
-        QuickPlane(
-            "",                         "vector3",      "float16",    False,  {'pfilter':['minmax omedian']}),
+    # channel name              pass builtin name       type            quantize      percomp     opts
+    "position":      QuickPlane("POSITION",            "vector3",      "float32",    False,      {'pfilter':['minmax omedian']}),
+    
+    "depth":         QuickPlane("DEPTH",               "float",        "float32",    False,      {'pfilter':['minmax omedian']}),
+    
+    "normals":       QuickPlane("NORMAL",              "vector3",      "float16",    False,      {'pfilter':['minmax omedian']}),
 
+    "albedo":        QuickPlane("ALBEDO",              "vector3",      "uint8",      False,      {}),
 
-    "surface_albedo":
-        QuickPlane(
-            "albedo",                   "vector3",      "uint8",    False,  {}),
+    "shadow":        QuickPlane("SHADOW",              "float",        "float16",    False,      {}),
 
-    "ambient_occlusion":
-        QuickPlane(
-            "ambocc",                   "float",        "uint8",    False,  {}),
+    "object_id":     QuickPlane("OBJECT_ID",           "int",          "uint16",     False,      {}),
 
+    "material_id":   QuickPlane("MATERIAL_ID",         "int",          "uint16",     False,      {}),
 
-    "Prim_Id":
-        QuickPlane(
-            "",                         "float",          "int16",    False,  {}),
-    "Material_Id":
-        QuickPlane(
-            "",                         "float",          "int16",    False,  {}),
+    "instance_id":   QuickPlane("INSTANCE_ID",         "int",          "uint32",     False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
 __toggleplanedict = {
-    'lv_quickplane_P':                      ['P'],
-    'lv_quickplane_Pz':                     ['Pz'],
-    'lv_quickplane_N':                      ['N'],
-
-    'lv_quickplane_albedo':                 ['surface_albedo'],
-    'lv_quickplane_ambocc':                 ['ambient_occlusion'],
+    'lv_quickplane_p':                      ['position'],
+    'lv_quickplane_z':                      ['depth'],
+    'lv_quickplane_n':                      ['normals'],
+    'lv_quickplane_albedo':                 ['albedo'],
+    'lv_quickplane_shadow':                 ['shadow'],
+    'lv_quickplane_object_id':              ['object_id'],
+    'lv_quickplane_material_id':            ['material_id'],
+    'lv_quickplane_instance_id':            ['instance_id'],
 }
 
 def getPlaneDict():

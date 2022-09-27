@@ -57,8 +57,8 @@ class dlldecl ComputeStateObject {
              */
              Desc& setD3D12RootSignatureOverride(const D3D12RootSignature::SharedConstPtr& pRootSignature) { mpD3D12RootSignatureOverride = pRootSignature; return *this; }
 #endif
-         const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-         ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+         inline const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
+         inline ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
          bool operator==(const Desc& other) const;
      private:
          friend class ComputeStateObject;
@@ -78,16 +78,18 @@ class dlldecl ComputeStateObject {
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
-    const ApiHandle& getApiHandle() { return mApiHandle; }
+    inline const ApiHandle& getApiHandle() { return mApiHandle; }
 
 #if FALCOR_D3D12_AVAILABLE
     const D3D12ComputeStateHandle& getD3D12Handle();
 #endif
 
-    const Desc& getDesc() const { return mDesc; }
+    inline const Desc& getDesc() const { return mDesc; }
 
- private:
+  public:
     ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc);
+
+  private:
     void apiInit();
 
     Desc mDesc;

@@ -83,11 +83,11 @@ private:
 
     void insertPass(const std::string& name, const RenderPass::SharedPtr& pPass);
 
-    struct Pass
-    {
+    struct Pass {
         std::string name;
         RenderPass::SharedPtr pPass;
-    private:
+      
+      private:
         friend class RenderGraphExe; // Force RenderGraphCompiler to use insertPass() by hiding this Ctor from it
         Pass(const std::string& name_, const RenderPass::SharedPtr& pPass_) : name(name_), pPass(pPass_) {}
     };

@@ -295,25 +295,27 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 	void readTextureData(uint32_t mipLevel, uint32_t arraySlice, std::vector<uint8_t>& textureData, ResourceFormat& resourceFormat, uint32_t& channels);
 	void readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData);
 
+	void readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat resourceFormat);
+
 	/** Generates mipmaps for a specified texture object.
 	*/
 	void generateMips(RenderContext* pContext, bool minMaxMips = false);
 
 	/** In case the texture was loaded from a file, use this to set the file path
 	*/
-	void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
+	inline void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
 
 	/** In case the texture was loaded from a file, get the source file path
 	*/
-	const std::string& getSourceFilename() const { return mSourceFilename; }
+	inline const std::string& getSourceFilename() const { return mSourceFilename; }
 
 	/** In case the texture was loaded from a file, use this to set the file path
 	*/
-	void setSourcePath(const fs::path& path) { mSourceFilename = path.string(); }
+	inline void setSourcePath(const fs::path& path) { mSourceFilename = path.string(); }
 
 	/** In case the texture was loaded from a file, get the source file path
 	*/
-	fs::path getSourcePath() const { return fs::path(mSourceFilename); }
+	inline fs::path getSourcePath() const { return fs::path(mSourceFilename); }
 
 	/** Returns the total number of texels across all mip levels and array slices.
 	*/
@@ -345,11 +347,11 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
 
 	uint32_t getMipTailStart() const;
 
-	const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
+	inline const std::array<uint32_t, 16>& getMipBases() const { return mMipBases; }
 
-	bool isUDIMTexture() const { return mIsUDIMTexture; }
+	inline bool isUDIMTexture() const { return mIsUDIMTexture; }
 
-	const std::array<UDIMTileInfo, 100>& getUDIMTileInfos() const { return mUDIMTileInfos; }
+	inline const std::array<UDIMTileInfo, 100>& getUDIMTileInfos() const { return mUDIMTileInfos; }
 
 	void setUDIM_ID(uint16_t id);
 
@@ -361,10 +363,10 @@ class dlldecl Texture : public Resource, public inherit_shared_from_this<Resourc
   	void addUDIMTileTexture(const UDIMTileInfo& udim_tile_info);
   	bool addTexturePage(uint32_t index, int3 offset, uint3 extent, const uint64_t size, uint32_t memoryTypeBits, const uint32_t mipLevel, uint32_t layer);
 
+  public:
+  	Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
 
   protected:
-		Texture(std::shared_ptr<Device> pDevice, uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);
-	
 		void apiInit(const void* pData, bool autoGenMips);
 		void uploadInitData(const void* pData, bool autoGenMips);
 

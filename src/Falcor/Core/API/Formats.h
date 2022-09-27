@@ -107,6 +107,7 @@ class Device;
         RGB10A2Unorm,
         RGB10A2Uint,
         RGBA16Unorm,
+        RGBA16Snorm,
         RGBA8UnormSrgb,
         R16Float,
         RG16Float,

@@ -3,7 +3,7 @@ include_directories(
 )
 
 file( GLOB SOURCES
-    ${PROJECT_SOURCE_DIR}/src/version.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/../version.cpp
     ./*.cpp
 )
 

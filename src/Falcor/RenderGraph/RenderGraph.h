@@ -172,15 +172,15 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get current render graph output dimensions
     */
-    uint2 dims() const { return mCompilerDeps.defaultResourceProps.dims; }
+    inline uint2 dims() const { return mCompilerDeps.defaultResourceProps.dims; }
 
     /** Get current render graph default resource format
     */
-    const ResourceFormat& format() const { return mCompilerDeps.defaultResourceProps.format; };
+    inline const ResourceFormat& format() const { return mCompilerDeps.defaultResourceProps.format; };
 
     /** Get the attached scene
     */
-    const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+    inline const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
     /** Get an graph output name from the graph outputs
     */
@@ -194,7 +194,7 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the num of outputs from this graph
     */
-    size_t getOutputCount() const { return mOutputs.size(); }
+    inline size_t getOutputCount() const { return mOutputs.size(); }
 
     /** Get all output names for the render graph
     */
@@ -207,22 +207,22 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
 
     /** Get the dictionary objects used to communicate app data to the render-passes
     */
-    const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+    inline const InternalDictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
 
     /** Get the name
     */
-    const std::string& getName() const { return mName; }
+    inline const std::string& getName() const { return mName; }
 
     /** Get the name
     */
-    void setName(const std::string& name) { mName = name; }
+    inline void setName(const std::string& name) { mName = name; }
 
     /** Compile the graph
     */
     bool compile(RenderContext* pContext, std::string& log);
-    bool compile(RenderContext* pContext) { std::string s; return compile(pContext, s); }
+    inline bool compile(RenderContext* pContext) { std::string s; return compile(pContext, s); }
 
- private:
+  private:
     friend class RenderGraphUI;
     friend class RenderGraphExporter;
     friend class RenderPassLibrary;
@@ -248,13 +248,13 @@ class dlldecl RenderGraph : public std::enable_shared_from_this<RenderGraph> {
         std::string field;
         std::unordered_set<TextureChannelFlags> masks;  ///< Set of output color channel masks.
 
-        bool operator==(const GraphOut& other) const {
+        inline bool operator==(const GraphOut& other) const {
             if (nodeId != other.nodeId) return false;
             if (field != other.field) return false;
             return true;
         }
 
-        bool operator!=(const GraphOut& other) const { return !(*this == other); }
+        inline bool operator!=(const GraphOut& other) const { return !(*this == other); }
     };
 
     RenderPass* getRenderPassAndNamePair(const bool input, const std::string& fullname, const std::string& errorPrefix, std::pair<std::string, std::string>& nameAndField) const;

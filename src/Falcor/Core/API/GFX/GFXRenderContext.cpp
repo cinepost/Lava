@@ -165,6 +165,7 @@ namespace Falcor {
         struct RenderContextApiData {
             size_t refCount = 0;
             BlitContext blitData;
+            BlitToBufferContext blitToBufferData;
 
             static void init(Device::SharedPtr pDevice);
             static void release();
@@ -174,6 +175,7 @@ namespace Falcor {
 
         void RenderContextApiData::init(Device::SharedPtr pDevice) {
             sApiData.blitData.init(pDevice);
+            sApiData.blitToBufferData.init(pDevice);
             sApiData.refCount++;
         }
 
@@ -181,6 +183,7 @@ namespace Falcor {
             sApiData.refCount--;
             if (sApiData.refCount == 0) {
                 sApiData.blitData.release();
+                sApiData.blitToBufferData.release();
                 sApiData = {};
             }
         }
@@ -195,6 +198,7 @@ namespace Falcor {
     }
 
     BlitContext& RenderContext::getBlitContext() { return sApiData.blitData; }
+    BlitToBufferContext& RenderContext::getBlitToBufferContext() { return sApiData.blitToBufferData; }
 
     void RenderContext::clearRtv(const RenderTargetView* pRtv, const float4& color) {
         resourceBarrier(pRtv->getResource().get(), Resource::State::RenderTarget);

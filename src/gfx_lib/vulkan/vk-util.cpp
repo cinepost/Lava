@@ -17,6 +17,7 @@ namespace gfx {
         case Format::R32_TYPELESS:              return VK_FORMAT_R32_SFLOAT;
 
         case Format::R16G16B16A16_TYPELESS:     return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case Format::R16G16B16_TYPELESS:        return VK_FORMAT_R16G16B16_SFLOAT;
         case Format::R16G16_TYPELESS:           return VK_FORMAT_R16G16_SFLOAT;
         case Format::R16_TYPELESS:              return VK_FORMAT_R16_SFLOAT;
 
@@ -31,6 +32,7 @@ namespace gfx {
         case Format::R32_FLOAT:                 return VK_FORMAT_R32_SFLOAT;
 
         case Format::R16G16B16A16_FLOAT:        return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case Format::R16G16B16_FLOAT:           return VK_FORMAT_R16G16B16_SFLOAT;
         case Format::R16G16_FLOAT:              return VK_FORMAT_R16G16_SFLOAT;
         case Format::R16_FLOAT:                 return VK_FORMAT_R16_SFLOAT;
 

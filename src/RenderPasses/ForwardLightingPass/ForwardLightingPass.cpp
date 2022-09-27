@@ -33,6 +33,7 @@
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Textures/BlueNoiseTexture.h"
 #include "Falcor/RenderGraph/RenderPass.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 
 #include "glm/gtc/random.hpp"
@@ -61,8 +62,14 @@ namespace {
 
     const std::string kDepth = "depth";
     const std::string kColor = "color";
-    const std::string kMotionVecs = "motionVecs";
-    const std::string kNormals = "normals";
+
+    const ChannelList kForwardLightingPassExtraChannels = {
+        { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
+        { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
+        { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
+        { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
+    };
+
     const std::string kVisBuffer = "visibilityBuffer";
 
     const std::string kFrameSampleCount = "frameSampleCount";
@@ -72,11 +79,10 @@ namespace {
 
 ForwardLightingPass::SharedPtr ForwardLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     auto pThis = SharedPtr(new ForwardLightingPass(pRenderContext->device()));
-    pThis->setColorFormat(ResourceFormat::RGBA32Float)
-        .setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
+    pThis->setColorFormat(ResourceFormat::RGBA32Float).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
+        //.setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSuperSampleCount(1).usePreGeneratedDepthBuffer(true);
 
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
         else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kSuperSampling) pThis->setSuperSampling(value);
@@ -125,18 +131,13 @@ ForwardLightingPass::ForwardLightingPass(Device::SharedPtr pDevice): RenderPass(
 RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
+    const auto& texDims = compileData.defaultTexDims;
+
     reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSuperSampleCount);
+    reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(Resource::BindFlags::DepthStencil);
 
-    auto& depthField = reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer").bindFlags(Resource::BindFlags::DepthStencil);
-
-    if (mNormalMapFormat != ResourceFormat::Unknown) {
-        reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSuperSampleCount);
-    }
-
-    if (mMotionVecFormat != ResourceFormat::Unknown) {
-        reflector.addOutput(kMotionVecs, "Screen-space motion vectors").format(mMotionVecFormat).texture2D(0, 0, mSuperSampleCount);
-    }
+    addRenderPassOutputs(reflector, kForwardLightingPassExtraChannels, Resource::BindFlags::UnorderedAccess);
 
     return reflector;
 }
@@ -153,16 +154,9 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
     mpScene = pScene;
     mpVars = nullptr;
 
-    assert(pRenderContext->device() && "no device");
-
     if (mpScene) {
         mpState->getProgram()->addDefines(mpScene->getSceneDefines());
         mpState->getProgram()->setTypeConformances(mpScene->getTypeConformances());
-        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
-
-        Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        setSampler(Sampler::create(pRenderContext->device(), samplerDesc));
     }
 }
 
@@ -184,13 +178,7 @@ void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& r
 void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData) {
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
     
-    if(renderData[kNormals])
-        mpFbo->attachColorTarget(renderData[kNormals]->asTexture(), 1);
-    
-    if(renderData[kMotionVecs])
-        mpFbo->attachColorTarget(renderData[kMotionVecs]->asTexture(), 2);
-
-    for (uint32_t i = 1; i < 3; i++) {
+    for (uint32_t i = 1; i < 1; i++) {
         const auto& pRtv = mpFbo->getRenderTargetView(i).get();
         if (pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, float4(0));
     }
@@ -205,10 +193,19 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     
     if (!mpScene) return;
 
+    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+    // TODO: This should be moved to a more general mechanism using Slang.
+    mpState->getProgram()->addDefines(getValidResourceDefines(kForwardLightingPassExtraChannels, renderData));
+    
+    // Create program vars.
+    if (!mpVars) {
+        mpVars = GraphicsVars::create(pContext->device(), mpState->getProgram()->getReflector());
+    }
+
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
     prepareVars(pContext);
-    
+
     float2 f = mpNoiseOffsetGenerator->next();
     uint2 noiseOffset = {64 * (f[0] + 0.5f), 64 * (f[1] + 0.5f)};
 
@@ -218,8 +215,10 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
     mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
 
-    if(renderData[kVisBuffer]) {
-        mpVars->setTexture(kVisBuffer, renderData[kVisBuffer]->asTexture());
+    // Bind extra channels as UAV buffers.
+    for (const auto& channel : kForwardLightingPassExtraChannels) {
+        Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+        mpVars[channel.texname] = pTex;
     }
     
     mpState->setFbo(mpFbo);
@@ -267,18 +266,23 @@ ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) 
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat format) {
-    mNormalMapFormat = format;
+ForwardLightingPass& ForwardLightingPass::setOutNormalsFormat(ResourceFormat format) {
+    mOutNormalsFormat = format;
+    if (mOutNormalsFormat != ResourceFormat::Unknown) {
+        mpState->getProgram()->addDefine("_OUTPUT_NORMALS");
+    } else {
+        mpState->getProgram()->removeDefine("_OUTPUT_NORMALS");
+    }
     mPassChangedCB();
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat format) {
-    mMotionVecFormat = format;
-    if (mMotionVecFormat != ResourceFormat::Unknown) {
-        mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
+ForwardLightingPass& ForwardLightingPass::setOutShadowsFormat(ResourceFormat format) {
+    mOutShadowsFormat = format;
+    if (mOutShadowsFormat != ResourceFormat::Unknown) {
+        mpState->getProgram()->addDefine("_OUTPUT_SHADOWS");
     } else {
-        mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
+        mpState->getProgram()->removeDefine("_OUTPUT_SHADOWS");
     }
     mPassChangedCB();
     return *this;
@@ -313,11 +317,6 @@ ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable
     mPassChangedCB();
     mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
 
-    return *this;
-}
-
-ForwardLightingPass& ForwardLightingPass::setSampler(const Sampler::SharedPtr& pSampler) {
-    mpVars->setSampler("gSampler", pSampler);
     return *this;
 }
 

@@ -23,7 +23,7 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 			tmp_compressed_page_data->size(), getBloscCompressionName(compressionInfo.topLevelCompression),
 			gBloscForceBlocksize, 1);
 
-		LLOG_DBG << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
+		LLOG_TRC << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
 
 		bytes_written = fwrite(tmp_compressed_page_data->data(), sizeof(uint8_t), cbytes, pFile);
 		compressionInfo.pPageOffsets[pageId] = pageOffset;

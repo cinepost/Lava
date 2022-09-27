@@ -59,14 +59,14 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
     */
     static SharedPtr create(std::shared_ptr<Device> pDevice, Type type, uint32_t count) { return SharedPtr(new QueryHeap(pDevice, type, count)); }
 
-    const ApiHandle& getApiHandle() const { return mApiHandle; }
-    uint32_t getQueryCount() const { return mCount; }
-    Type getType() const { return mType; }
+    inline const ApiHandle& getApiHandle() const { return mApiHandle; }
+    inline uint32_t getQueryCount() const { return mCount; }
+    inline Type getType() const { return mType; }
 
     /** Allocates a new query.
         \return Query index, or kInvalidIndex if out of queries.
     */
-    uint32_t allocate() {
+    inline uint32_t allocate() {
         if (mFreeQueries.size()) {
             uint32_t entry = mFreeQueries.front();
             mFreeQueries.pop_front();
@@ -79,7 +79,7 @@ class dlldecl QueryHeap : public std::enable_shared_from_this<QueryHeap> {
         }
     }
 
-    void release(uint32_t entry) {
+    inline void release(uint32_t entry) {
         assert(entry != kInvalidIndex);
         mFreeQueries.push_back(entry);
     }

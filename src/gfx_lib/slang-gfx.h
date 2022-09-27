@@ -188,6 +188,7 @@ public:
 	x(R32_TYPELESS, 4, 1) \
 	\
 	x(R16G16B16A16_TYPELESS, 8, 1) \
+	x(R16G16B16_TYPELESS, 6, 1) \
 	x(R16G16_TYPELESS, 4, 1) \
 	x(R16_TYPELESS, 2, 1) \
 	\
@@ -202,6 +203,7 @@ public:
 	x(R32_FLOAT, 4, 1) \
 	\
 	x(R16G16B16A16_FLOAT, 8, 1) \
+	x(R16G16B16_FLOAT, 6, 1) \
 	x(R16G16_FLOAT, 4, 1) \
 	x(R16_FLOAT, 2, 1) \
 	\
@@ -211,6 +213,7 @@ public:
 	x(R32_UINT, 4, 1) \
 	\
 	x(R16G16B16A16_UINT, 8, 1) \
+	x(R16G16B16_UINT, 6, 1) \
 	x(R16G16_UINT, 4, 1) \
 	x(R16_UINT, 2, 1) \
 	\
@@ -297,6 +300,7 @@ enum class Format
 	R32_TYPELESS,
 
 	R16G16B16A16_TYPELESS,
+	R16G16B16_TYPELESS,
 	R16G16_TYPELESS,
 	R16_TYPELESS,
 
@@ -311,6 +315,7 @@ enum class Format
 	R32_FLOAT,
 
 	R16G16B16A16_FLOAT,
+	R16G16B16_FLOAT,
 	R16G16_FLOAT,
 	R16_FLOAT,
 
@@ -320,6 +325,7 @@ enum class Format
 	R32_UINT,
 
 	R16G16B16A16_UINT,
+	R16G16B16_UINT,
 	R16G16_UINT,
 	R16_UINT,
 

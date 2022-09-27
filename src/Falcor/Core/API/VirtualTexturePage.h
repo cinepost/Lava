@@ -65,9 +65,10 @@ class dlldecl VirtualTexturePage: public std::enable_shared_from_this<VirtualTex
 
 		inline const std::shared_ptr<Texture> texture() const { return mpTexture; }
 
- 	protected:
-		VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
+  public:
+  	VirtualTexturePage(const std::shared_ptr<Texture>& pTexture, int3 offset, uint3 extent, uint32_t mipLevel, uint32_t layer);
 
+ 	protected:
 		const std::shared_ptr<Device>   mpDevice;
 		const std::shared_ptr<Texture>  mpTexture;
 

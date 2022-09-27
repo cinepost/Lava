@@ -38,6 +38,7 @@
 #include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Core/State/GraphicsState.h"
 #include "Falcor/Core/API/BlitContext.h"
+#include "Falcor/Core/API/BlitToBufferContext.h"
 #include "Falcor/Core/API/RtAccelerationStructurePostBuildInfoPool.h"
 
 #include "gfx_lib/slang-gfx.h"
@@ -193,6 +194,8 @@ class dlldecl RenderContext : public ComputeContext {
     */
     void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
+    void blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+
     /** Submit the command list
     */
     void flush(bool wait = false) override;
@@ -230,6 +233,7 @@ private:
     RenderContext(std::shared_ptr<Device> pDevice, CommandQueueHandle queue);
 
     Falcor::BlitContext& getBlitContext();
+    Falcor::BlitToBufferContext& getBlitToBufferContext();
 
 #ifdef FALCOR_D3D12
         void applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);

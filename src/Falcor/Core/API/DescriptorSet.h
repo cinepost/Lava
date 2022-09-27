@@ -60,7 +60,7 @@ enum class ShaderVisibility {
 enum_class_operators(ShaderVisibility);
 
 class dlldecl DescriptorSet {
- public:
+  public:
     using SharedPtr = std::shared_ptr<DescriptorSet>;
     using Type = DescriptorPool::Type;
     using CpuHandle = DescriptorPool::CpuHandle;
@@ -114,8 +114,10 @@ class dlldecl DescriptorSet {
     void bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
     void bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
 
- private:
+  public:
     DescriptorSet(std::shared_ptr<Device> pDevice, DescriptorPool::SharedPtr pPool, const Layout& layout);
+
+  private:
     void apiInit();
 
     Layout mLayout;

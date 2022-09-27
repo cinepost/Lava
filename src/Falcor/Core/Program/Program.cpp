@@ -1017,7 +1017,7 @@ EntryPointGroupKernels::SharedPtr Program::createEntryPointGroupKernels(
 }
 
 bool Program::link() const {
-	LLOG_INF << "Linking program...";
+	LLOG_DBG << "Linking program...";
 	while (1) {
 		// Create the program
 		std::string log;
@@ -1038,12 +1038,15 @@ bool Program::link() const {
 			return true;
 		}
 
+#ifndef _DEPLOY_BUILD
 		char choice;
 		std::cout << "Would you like to try again ? (Y/N)" << std::endl;
 		std::cin >> choice;
 		if ( choice =='N' || choice =='n' ){
 			break;
 		}
+#endif
+		
 	}
 	return false;
 }

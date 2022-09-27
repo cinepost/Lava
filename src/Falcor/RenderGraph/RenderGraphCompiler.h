@@ -25,51 +25,53 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_RENDERGRAPHCOMPILER_H_
+#define SRC_FALCOR_RENDERGRAPH_RENDERGRAPHCOMPILER_H_
+
+
 #include "ResourceCache.h"
 #include "RenderGraphExe.h"
 
-namespace Falcor
-{
-    class RenderGraph;
+namespace Falcor {
 
-    class dlldecl RenderGraphCompiler
-    {
-    public:
-        struct Dependencies
-        {
-            ResourceCache::DefaultProperties defaultResourceProps;
-            ResourceCache::ResourcesMap externalResources;
-        };
-        static RenderGraphExe::SharedPtr compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies);
+class RenderGraph;
 
-    private:
-        RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies);
-        RenderGraph& mGraph;
-        const Dependencies& mDependencies;
+class dlldecl RenderGraphCompiler {
+	public:
+		struct Dependencies {
+			ResourceCache::DefaultProperties defaultResourceProps;
+			ResourceCache::ResourcesMap externalResources;
+		};
+		static RenderGraphExe::SharedPtr compile(RenderGraph& graph, RenderContext* pContext, const Dependencies& dependencies);
 
-        struct PassData
-        {
-            uint32_t index;
-            RenderPass::SharedPtr pPass;
-            std::string name;
-            RenderPassReflection reflector;
-        };
-        std::vector<PassData> mExecutionList;
+	private:
+		RenderGraphCompiler(RenderGraph& graph, const Dependencies& dependencies);
+		RenderGraph& mGraph;
+		const Dependencies& mDependencies;
 
-        // TODO Better way to track history, or avoid changing the original graph altogether?
-        struct
-        {
-            std::vector<std::string> generatedPasses;
-            std::vector<std::pair<std::string, std::string>> removedEdges;
-        } mCompilationChanges;
+		struct PassData {
+			uint32_t index;
+			RenderPass::SharedPtr pPass;
+			std::string name;
+			RenderPassReflection reflector;
+		};
+		std::vector<PassData> mExecutionList;
 
-        void resolveExecutionOrder();
-        void compilePasses(RenderContext* pContext);
-        bool insertAutoPasses();
-        void allocateResources(ResourceCache* pResourceCache);
-        void validateGraph() const;
-        void restoreCompilationChanges();
-        RenderPass::CompileData prepPassCompilationData(const PassData& passData);
-    };
-}
+		// TODO Better way to track history, or avoid changing the original graph altogether?
+		struct {
+			std::vector<std::string> generatedPasses;
+			std::vector<std::pair<std::string, std::string>> removedEdges;
+		} mCompilationChanges;
+
+		void resolveExecutionOrder();
+		void compilePasses(RenderContext* pContext);
+		bool insertAutoPasses();
+		void allocateResources(ResourceCache* pResourceCache);
+		void validateGraph() const;
+		void restoreCompilationChanges();
+		RenderPass::CompileData prepPassCompilationData(const PassData& passData);
+};
+
+}  // namespace Falcor
+
+#endif // SRC_FALCOR_RENDERGRAPH_RENDERGRAPHCOMPILER_H_

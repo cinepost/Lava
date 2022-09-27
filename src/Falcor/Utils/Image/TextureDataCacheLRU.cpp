@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,30 +25,39 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "ComputeStateObject.h"
-#include "Device.h"
+#include "stdafx.h"
+
+#include "TextureDataCacheLRU.h"
+
+static const size_t kMinSystemMemoryLimit = 256;
+static const size_t kMinDeviceMemoryLimit = 128;
 
 namespace Falcor {
 
-bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
-    bool b = true;
-    b = b && (mpProgram == other.mpProgram);
-    return b;
-}
-
-ComputeStateObject::~ComputeStateObject() {
-	assert(mpDevice);
-    mpDevice->releaseResource(mApiHandle);
-}
-
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
-    apiInit();
-}
-
-ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
+TextureDataCacheLRU::SharedPtr TextureDataCacheLRU::create(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit) {
 	assert(pDevice);
-    return std::make_shared<ComputeStateObject>(pDevice, desc);
+	assert((maxSystemMemoryLimit != 0) && (maxDeviceMemoryLimit != 0));
+
+	return SharedPtr(new TextureDataCacheLRU(pDevice, maxSystemMemoryLimit, maxDeviceMemoryLimit));
+}
+
+TextureDataCacheLRU::TextureDataCacheLRU(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit) : mpDevice(pDevice) {
+	mSystemCachedDataSizeLimit = maxSystemMemoryLimit;
+	mDeviceCachedDataSizeLimit = maxDeviceMemoryLimit;
+
+	if(mSystemCachedDataSizeLimit < kMinSystemMemoryLimit) {
+		mSystemCachedDataSizeLimit = kMinSystemMemoryLimit;
+		LLOG_WRN << "TextureDataCacheLRU maximum system memory limit os too low! Setting to " << std::to_string(kMinSystemMemoryLimit) << " mb.";
+	}
+
+	if(mDeviceCachedDataSizeLimit < kMinDeviceMemoryLimit) {
+		mDeviceCachedDataSizeLimit = kMinDeviceMemoryLimit;
+		LLOG_WRN << "TextureDataCacheLRU maximum device memory limit os too low! Setting to " << std::to_string(kMinDeviceMemoryLimit) << " mb.";
+	}
+}
+
+TextureDataCacheLRU::~TextureDataCacheLRU() {
+
 }
 
 }  // namespace Falcor

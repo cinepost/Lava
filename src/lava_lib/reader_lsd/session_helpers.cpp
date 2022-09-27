@@ -77,7 +77,7 @@ Display::Display::TypeFormat resolveDisplayTypeFormat(const std::string& fname) 
 }
 
 static uint32_t componentsCountFromLSDTypeName(const std::string& type_name) {
-	if(type_name == "vector1") return 1;
+	if(type_name == "float") return 1;
 	if(type_name == "vector2") return 2;
 	if(type_name == "vector3") return 3;
 	if(type_name == "vector4") return 4;
@@ -113,7 +113,15 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& format_name, 
 			default: return Falcor::ResourceFormat::RGBA16Float;
 		}
 	}
-	if( format_name == "float32") {
+	if(( format_name == "int32") || (format_name == "int")) {
+		switch (numChannels) {
+			case 1: return Falcor::ResourceFormat::R32Int;
+			case 2: return Falcor::ResourceFormat::RG32Int;
+			case 3: return Falcor::ResourceFormat::RGB32Int;
+			default: return Falcor::ResourceFormat::RGBA32Int;
+		}
+	}
+	if(( format_name == "float32") || (format_name == "float")) {
 		switch (numChannels) {
 			case 1: return Falcor::ResourceFormat::R32Float;
 			case 2: return Falcor::ResourceFormat::RG32Float;

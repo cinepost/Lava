@@ -28,7 +28,7 @@ Detail::Detail(bool checkVersion)
       primitives(*this),
       checkVersion(checkVersion)
 {
-    mpInfo = std::shared_ptr<Info>(new Info());
+    mpInfo = std::make_shared<Info>();
 }
 
 Detail::~Detail() {

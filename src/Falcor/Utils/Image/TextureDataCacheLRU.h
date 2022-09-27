@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  #    contributors may be used to endorse or promote products derived
  #    from this software without specific prior written permission.
  #
- # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
  # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -25,30 +25,50 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Falcor/stdafx.h"
-#include "ComputeStateObject.h"
-#include "Device.h"
+#ifndef SRC_FALCOR_UTILS_IMAGE_TEXTUREDATACACHELRU_H_
+#define SRC_FALCOR_UTILS_IMAGE_TEXTUREDATACACHELRU_H_
+
+#include <unordered_map>
+
+#include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Texture.h"
+#include "Falcor/Core/API/VirtualTexturePage.h"
+
 
 namespace Falcor {
 
-bool ComputeStateObject::Desc::operator==(const ComputeStateObject::Desc& other) const {
-    bool b = true;
-    b = b && (mpProgram == other.mpProgram);
-    return b;
-}
+class dlldecl TextureDataCacheLRU {
+	public:
+		using SharedPtr = std::shared_ptr<TextureDataCacheLRU>;
 
-ComputeStateObject::~ComputeStateObject() {
-	assert(mpDevice);
-    mpDevice->releaseResource(mApiHandle);
-}
+		//struct 
 
-ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc) {
-    apiInit();
-}
+		~TextureDataCacheLRU();
 
-ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
-	assert(pDevice);
-    return std::make_shared<ComputeStateObject>(pDevice, desc);
-}
+		/** Create a texture cache.
+			\param[in] maxSystemMemoryLimit Maximum system memory in megabytes that can be used for textures cache.
+			\param[in] maxDeviceMemoryLimit Maximum device memory in megabytes that can be used for textures.
+			\return A new object.
+		*/
+		static SharedPtr create(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit = 1024, size_t maxDeviceMemoryLimit = 512);
+
+		void clear();
+
+
+	private:
+		TextureDataCacheLRU(Device::SharedPtr pDevice, size_t maxSystemMemoryLimit, size_t maxDeviceMemoryLimit);
+
+		Device::SharedPtr mpDevice = nullptr;
+
+		size_t mSystemCachedDataSize = 0;
+		size_t mDeviceCachedDataSize = 0;
+
+		size_t mSystemCachedDataSizeLimit = 0;
+		size_t mDeviceCachedDataSizeLimit = 0;
+
+		std::unordered_map<Texture::SharedPtr, std::unordered_map<uint32_t, VirtualTexturePage::SharedPtr>> mPagesMap;
+};
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_IMAGE_TEXTUREDATACACHELRU_H_

@@ -101,10 +101,8 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
 }
 
 RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
-    LLOG_DBG << "DepthPass::reflect";
     RenderPassReflection reflector;
     reflector.addOutput(kDepth, "Depth-buffer").bindFlags(Resource::BindFlags::DepthStencil).format(mDepthFormat); //.texture2D(mOutputSize.x, mOutputSize.y);
-    LLOG_DBG << "DepthPass::reflect done";
     return reflector;
 }
 

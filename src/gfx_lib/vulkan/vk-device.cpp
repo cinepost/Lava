@@ -2004,8 +2004,7 @@ Result DeviceImpl::getFormatSupportedResourceStates(Format format, ResourceState
 	VkFormat vkFormat = VulkanUtil::getVkFormat(format);
 
 	VkFormatProperties supportedProperties = {};
-	m_api.vkGetPhysicalDeviceFormatProperties(
-		m_api.m_physicalDevice, vkFormat, &supportedProperties);
+	m_api.vkGetPhysicalDeviceFormatProperties(m_api.m_physicalDevice, vkFormat, &supportedProperties);
 
 	HashSet<VkFormat> presentableFormats;
 	// TODO: enable this once we have VK_GOOGLE_surfaceless_query.
@@ -2035,20 +2034,26 @@ Result DeviceImpl::getFormatSupportedResourceStates(Format format, ResourceState
 	// TODO: Currently only supports VK_IMAGE_TILING_OPTIMAL
 	auto imageFeatures = supportedProperties.optimalTilingFeatures;
 	auto bufferFeatures = supportedProperties.bufferFeatures;
+	
 	// PreInitialized - Only supported for VK_IMAGE_TILING_LINEAR
 	// VertexBuffer
 	if (bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
 		allowedStates.add(ResourceState::VertexBuffer);
+	
 	// IndexBuffer - Without extensions, Vulkan only supports two formats for index buffers.
-	switch (format)
-	{
-	case Format::R32_UINT:
-	case Format::R16_UINT:
-		allowedStates.add(ResourceState::IndexBuffer);
-		break;
-	default:
-		break;
+	switch (format) {
+	  case Format::R32_UINT:
+	  case Format::R16_UINT:
+		  allowedStates.add(ResourceState::IndexBuffer);
+		  break;
+		//case Format::R16G16B16_FLOAT:
+		//	allowedStates.add(ResourceState::UnorderedAccess);
+		//	allowedStates.add(ResourceState::ShaderResource);
+	  //  break;
+	  default:
+		  break;
 	}
+	
 	// ConstantBuffer
 	allowedStates.add(ResourceState::ConstantBuffer);
 	// StreamOutput - TODO: Requires VK_EXT_transform_feedback
@@ -2057,42 +2062,44 @@ Result DeviceImpl::getFormatSupportedResourceStates(Format format, ResourceState
 		allowedStates.add(ResourceState::ShaderResource);
 	if (bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
 		allowedStates.add(ResourceState::ShaderResource);
+	
 	// UnorderedAccess
 	if (imageFeatures &
 		(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT))
 		allowedStates.add(ResourceState::UnorderedAccess);
-	if (bufferFeatures & (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT |
-		VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT))
+	if (bufferFeatures & (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT))
 		allowedStates.add(ResourceState::UnorderedAccess);
+	
 	// RenderTarget
 	if (imageFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
 		allowedStates.add(ResourceState::RenderTarget);
+	
 	// DepthRead, DepthWrite
-	if (imageFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-	{
+	if (imageFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
 		allowedStates.add(ResourceState::DepthRead);
 		allowedStates.add(ResourceState::DepthWrite);
 	}
+	
 	// Present
 	if (presentableFormats.Contains(vkFormat))
 		allowedStates.add(ResourceState::Present);
+	
 	// IndirectArgument
 	allowedStates.add(ResourceState::IndirectArgument);
 	// CopySource, ResolveSource
-	if (imageFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
-	{
+	if (imageFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT) {
 		allowedStates.add(ResourceState::CopySource);
 		allowedStates.add(ResourceState::ResolveSource);
 	}
+
 	// CopyDestination, ResolveDestination
-	if (imageFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
-	{
+	if (imageFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT) {
 		allowedStates.add(ResourceState::CopyDestination);
 		allowedStates.add(ResourceState::ResolveDestination);
 	}
+
 	// AccelerationStructure
-	if (bufferFeatures & VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR)
-	{
+	if (bufferFeatures & VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR) {
 		allowedStates.add(ResourceState::AccelerationStructure);
 		allowedStates.add(ResourceState::AccelerationStructureBuildInput);
 	}
