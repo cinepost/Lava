@@ -45,6 +45,7 @@ import Experimental.Scene.Material.IBxDF;
 #define _FIX_SHADOW_TERMINATOR
 
 // UAV output channels
+RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
@@ -206,6 +207,10 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     if (is_valid(gOutShadows)){
         gOutShadows[ipos] = float4(AOV_shadow, 1.0f);
+    }
+
+    if (is_valid(gOutPosition)){
+        gOutPosition[ipos] = float4(sd.posW, 1.0f);
     }
 
     if (is_valid(gOutMotionVecs)){

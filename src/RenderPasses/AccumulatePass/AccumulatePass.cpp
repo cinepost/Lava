@@ -30,6 +30,8 @@
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
+
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
@@ -60,16 +62,20 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 namespace {
 
-const char kShaderFile[] = "RenderPasses/AccumulatePass/Accumulate.cs.slang";
+    const char kShaderFile[] = "RenderPasses/AccumulatePass/Accumulate.cs.slang";
 
-const char kInputChannel[] = "input";
-const char kOutputChannel[] = "output";
+    const char kInputChannel[] = "input";
+    const char kOutputChannel[] = "output";
 
-// Serialized parameters
-const char kEnableAccumulation[] = "enableAccumulation";
-const char kAutoReset[] = "autoReset";
-const char kPrecisionMode[] = "precisionMode";
-const char kSubFrameCount[] = "subFrameCount";
+    const ChannelList kAccumulatePassExtraInputChannels = {
+        { "depth",            "gDepth",             "Depth buffer",                  true /* optional */, ResourceFormat::Unknown },
+    };
+
+    // Serialized parameters
+    const char kEnableAccumulation[] = "enableAccumulation";
+    const char kAutoReset[] = "autoReset";
+    const char kPrecisionMode[] = "precisionMode";
+    const char kSubFrameCount[] = "subFrameCount";
 
 }
 
@@ -79,8 +85,7 @@ AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, 
 
 AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict)
-    {
+    for (const auto& [key, value] : dict) {
         if (key == kEnableAccumulation) mEnableAccumulation = value;
         else if (key == kAutoReset) mAutoReset = value;
         else if (key == kPrecisionMode) mPrecisionMode = value;
@@ -94,6 +99,10 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
     mpProgram[Precision::Single] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingle", Program::DefineList(), Shader::CompilerFlags::TreatWarningsAsErrors);
     mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(pDevice, kShaderFile, "accumulateSingleCompensated", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
     
+    for(auto& [key, pProgram]: mpProgram) {
+        pProgram->addDefine("is_valid_gDepth", "0");
+    }
+
     mpVars = ComputeVars::create(pDevice, mpProgram[mPrecisionMode]->getReflector());
 
     mpState = ComputeState::create(pDevice);
@@ -113,6 +122,9 @@ RenderPassReflection AccumulatePass::reflect(const CompileData& compileData) {
     reflector.addInput(kInputChannel, "Input data to be accumulated").bindFlags(ResourceBindFlags::ShaderResource);
     reflector.addOutput(kOutputChannel, "Output data that is accumulated").bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource)
         .format(mOutputFormat);
+
+    addRenderPassInputs(reflector, kAccumulatePassExtraInputChannels, ResourceBindFlags::ShaderResource);
+
     return reflector;
 }
 
@@ -135,8 +147,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     if (mAutoReset) {
         if (mSubFrameCount > 0) // Option to accumulate N frames. Works also for motion blur. Overrides logic for automatic reset on scene changes.
         {
-            if (mFrameCount == mSubFrameCount)
-            {
+            if (mFrameCount == mSubFrameCount) {
                 mFrameCount = 0;
             }
         } else {
@@ -149,15 +160,12 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
             // Reset accumulation upon all scene changes, except camera jitter and history changes.
             // TODO: Add UI options to select which changes should trigger reset
-            if (mpScene)
-            {
+            if (mpScene) {
                 auto sceneUpdates = mpScene->getUpdates();
-                if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None)
-                {
+                if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None) {
                     mFrameCount = 0;
                 }
-                if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged))
-                {
+                if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged)) {
                     auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
                     auto cameraChanges = mpScene->getCamera()->getChanges();
                     if ((cameraChanges & ~excluded) != Camera::Changes::None) mFrameCount = 0;
@@ -198,6 +206,14 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     // Run the accumulation program.
     auto pProgram = mpProgram[mPrecisionMode];
+
+    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+    // TODO: This should be moved to a more general mechanism using Slang.
+    if(mFrameCount == 0) {
+        LLOG_DBG << "add defines";
+        pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+    }
+
     assert(pProgram);
     uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1u), pProgram->getReflector()->getThreadGroupSize());
     mpState->setProgram(pProgram);

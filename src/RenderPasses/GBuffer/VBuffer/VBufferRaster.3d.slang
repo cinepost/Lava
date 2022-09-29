@@ -29,7 +29,6 @@ import Scene.Raster;
 import Utils.Math.MathHelpers;
 
 RasterizerOrderedTexture2D<float2> gMotionVector;
-RasterizerOrderedTexture2D<float4> gWorldPosition;
 
 cbuffer PerFrameCB
 {
@@ -46,10 +45,6 @@ struct VBufferPSOut
 struct VBufferVSOut
 {
     float2 texC : TEXCRD;
-
-#if is_valid(gWorldPosition)
-    float4 posW;
-#endif
 
     // Per-triangle data
     nointerpolation GeometryInstanceID instanceID   : INSTANCE_ID;
@@ -75,10 +70,6 @@ VBufferVSOut vsMain(VSIn vsIn)
 
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);
-
-#if is_valid(gWorldPosition)
-    vsOut.posW = float4(posW, 0.0f);
-#endif
 
 #if is_valid(gMotionVector)
     // Compute the vertex position in the previous frame.
@@ -136,11 +127,6 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
         const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
         gMotionVector[ipos] = mv;
     }
-#endif
-
-#if is_valid(gWorldPosition)
-    // Output world position.
-    gWorldPosition[ipos] = float4(vsOut.posW.xyz, 0.0f);
 #endif
 
     return psOut;

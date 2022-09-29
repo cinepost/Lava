@@ -196,6 +196,7 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(AOVBuiltinName name) const {
 AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) const {
     if(str == to_string(AOVBuiltinName::MAIN)) return AOVBuiltinName::MAIN;
     if(str == to_string(AOVBuiltinName::NORMAL)) return AOVBuiltinName::NORMAL;
+    if(str == to_string(AOVBuiltinName::POSITION)) return AOVBuiltinName::POSITION;
     if(str == to_string(AOVBuiltinName::DEPTH)) return AOVBuiltinName::DEPTH;
     if(str == to_string(AOVBuiltinName::ALBEDO)) return AOVBuiltinName::ALBEDO;
     if(str == to_string(AOVBuiltinName::SHADOW)) return AOVBuiltinName::SHADOW;

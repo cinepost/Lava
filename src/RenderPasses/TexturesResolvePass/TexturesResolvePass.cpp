@@ -410,7 +410,8 @@ if (1 == 1) {
 
 	auto done = std::chrono::high_resolution_clock::now();
 	LLOG_DBG << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << " ms.";
-	LLOG_DBG << "TexturesResolvePass::execute done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count() << " ms.";
+	LLOG_INF << "TexturesResolvePass done in: " << std::setprecision(6) 
+			 << (.001f * (float)std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count()) << " s";
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {

@@ -289,7 +289,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpRenderGraph->addEdge("VBufferPass.posW", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("LightingPass.posW", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
