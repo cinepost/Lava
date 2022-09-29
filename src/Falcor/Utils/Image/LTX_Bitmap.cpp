@@ -55,7 +55,7 @@ namespace Falcor {
 namespace oiio = OIIO;
 
 static const uint8_t kLtxVersionMajor = 1;
-static const uint8_t kLtxVersionMinor = 1;
+static const uint8_t kLtxVersionMinor = 2;
 
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 
