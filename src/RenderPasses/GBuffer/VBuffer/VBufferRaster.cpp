@@ -46,7 +46,8 @@ namespace
 
     const ChannelList kVBufferExtraChannels =
     {
-        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
+        { "posW",             "gWorldPosition",     "World position",                   true /* optional */, ResourceFormat::RGBA32Float   },
     };
 
     const std::string kDepthName = "depth";

@@ -252,7 +252,7 @@ void RenderContext::blit(const ShaderResourceView::SharedPtr& pSrc, const Render
     blitData.pPass->getVars()->setSrv(blitData.texBindLoc, nullptr);
 }
 
-void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
+void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4])
 {
     auto& blitData = getBlitToBufferContext();
 
@@ -274,7 +274,17 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     // Clamp rectangles to the dimensions of the source/dest views.
     const uint32_t srcMipLevel = pSrc->getViewInfo().mostDetailedMip;
     const uint2 srcSize(pSrcTexture->getWidth(srcMipLevel), pSrcTexture->getHeight(srcMipLevel));
-    const uint2 dstSize(1280, 720);
+
+    const uint32_t bufferWidthStrideBytes = getFormatBytesPerBlock(dstFormat) * bufferWidthStrideInPixels;
+    
+    if(pBuffer->getSize() % bufferWidthStrideBytes != 0) {
+        throw std::runtime_error("RenderContext::blitToBuffer() distination buffer size does not fit requested geometry !");
+    }
+
+    const uint32_t bufferHeight = pBuffer->getSize() / bufferWidthStrideBytes;
+    const uint2 dstSize(bufferWidthStrideInPixels, bufferHeight);
+
+    const float2 srcHalfPixelSize(.5f / srcSize.x, .5f / srcSize.y);
 
     srcRect.z = std::min(srcRect.z, srcSize.x);
     srcRect.w = std::min(srcRect.w, srcSize.y);
@@ -381,6 +391,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     blitData.pPass->addDefine("FORMAT_TYPE", std::to_string(formatType));
     blitData.pPass->addDefine("PIXEL_STRIDE_BYTES", std::to_string(outputPixelStrideBytes));
 
+    LLOG_WRN << "DST INT " << ( isIntegerFormat(dstFormat) ? "1" : "0");
     LLOG_WRN << "DST FORMAT " << to_string(dstFormat);
     LLOG_WRN << "SAMPLE COUNT " << std::to_string(sampleCount);
     LLOG_WRN << "PIXEL_STRIDE_BYTES " << std::to_string(outputPixelStrideBytes);
@@ -436,6 +447,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     }
 
     blitData.pBlitParamsBuffer->setVariable(blitData.resolutionVarOffset, dstSize);
+    blitData.pBlitParamsBuffer->setVariable(blitData.srcPixelHalfSizeVarOffset, srcHalfPixelSize);
     
     blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
     blitData.pPass->getVars()->setBuffer(blitData.buffBindLoc, pBuffer);

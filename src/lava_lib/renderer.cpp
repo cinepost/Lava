@@ -239,7 +239,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// VBuffer
 	Falcor::Dictionary vbufferPassDictionary;
-	auto pVBufferPass =VBufferRaster::create(pRenderContext, vbufferPassDictionary);
+	auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
 	pVBufferPass->setScene(pRenderContext, pScene);
 
 	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
@@ -280,9 +280,16 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 			case AOVBuiltinName::DEPTH:
 				{
 					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
-						mpLightingPass->setOutNormalsFormat(ResourceFormat::R32Float);
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
 						mpRenderGraph->addEdge("LightingPass.depth", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::POSITION:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						mpRenderGraph->addEdge("VBufferPass.posW", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -290,7 +297,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpLightingPass->setOutNormalsFormat(ResourceFormat::RGBA16Float);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("LightingPass.normals", pPlane->accumulationPassInputName());
 					}
@@ -300,7 +306,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpLightingPass->setOutShadowsFormat(ResourceFormat::RGBA16Float);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("LightingPass.shadows", pPlane->accumulationPassInputName());
 					}
@@ -310,7 +315,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpLightingPass->setOutShadowsFormat(ResourceFormat::RGBA16Float);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("LightingPass.albedo", pPlane->accumulationPassInputName());
 					}

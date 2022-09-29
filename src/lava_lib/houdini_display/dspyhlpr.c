@@ -29,17 +29,14 @@
 
 #include "third_party/prman/ndspy.h"
 
-int _aiTypeLengths[] =
-{
+int _aiTypeLengths[] = {
 	0,
 	4, 4, 4, 2, 2, 1, 1, -1, 4*16
 };
 
-int _aiTypeSigned[] =
-{ 0, 1, 0, 1, 0, 1, 0, 1 };
+int _aiTypeSigned[] = { 0, 1, 0, 1, 0, 1, 0, 1 };
 
-int _aiTypeClass[] =
-{
+int _aiTypeClass[] = {
 	0,
 	PkDspyClassFloat,
 	PkDspyClassInt,
@@ -52,19 +49,12 @@ int _aiTypeClass[] =
 
 
 PRMANAPI PtDspyError
-DspyFindStringInParamList(const char *string,
-	char **result,
-	int paramCount,
-	const UserParameter *parameters)
-{
+DspyFindStringInParamList(const char *string, char **result, int paramCount, const UserParameter *parameters) {
 	int i;
 
-	for (i = 0; i < paramCount; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
-		    if ('s' == parameters[i].vtype)
-			{
+	for (i = 0; i < paramCount; i++) {
+		if (!strcmp(string, parameters[i].name)) {
+		    if ('s' == parameters[i].vtype) {
 			    *result = *(char **)parameters[i].value;
 			    return PkDspyErrorNone;
 			}
@@ -76,11 +66,9 @@ DspyFindStringInParamList(const char *string,
 
 #if PkDspyByteOrderNative != PkDspyByteOrderHiLo
 void
-PRMANAPI DspyMemReverse(unsigned char *t, int len)
-{
+PRMANAPI DspyMemReverse(unsigned char *t, int len) {
 	int i;
-	for (i = len / 2 - 1; i >= 0; i--)
-	{
+	for (i = len / 2 - 1; i >= 0; i--) {
 		t[i] ^= t[len - 1 - i];
 		t[len - 1 - i] ^= t[i];
 		t[i] ^= t[len - 1 - i];
@@ -89,29 +77,19 @@ PRMANAPI DspyMemReverse(unsigned char *t, int len)
 #endif /* PkDspyByteOrderNative != PkDspyByteOrderHiLo */
 
 void
-PRMANAPI DspyMemReverseCopy(unsigned char *t, const unsigned char *s, int len)
-{
+PRMANAPI DspyMemReverseCopy(unsigned char *t, const unsigned char *s, int len) {
 	int i;
-	for (i = 0; i < len; i++)
-	{
+	for (i = 0; i < len; i++) {
 		t[i] = s[len - 1 - i];
 	}
 }
 
 PRMANAPI PtDspyError
-DspyFindMatrixInParamList(const char *string,
-	float *result,
-	int paramCount,
-	const UserParameter *parameters)
-{
+DspyFindMatrixInParamList(const char *string, float *result, int paramCount, const UserParameter *parameters) {
 	int i;
 
-	for (i = 0; i < paramCount; i++)
-	{
-		if (('f' == parameters[i].vtype) 
-		    && (16 == parameters[i].vcount)
-			&& !strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount; i++) {
+		if (('f' == parameters[i].vtype) && (16 == parameters[i].vcount) && !strcmp(string, parameters[i].name)) {
 		    memcpy(result, ((float *)(parameters[i].value)), 4 * 16);
 		    return PkDspyErrorNone;
   		}
@@ -121,36 +99,29 @@ DspyFindMatrixInParamList(const char *string,
 }
 
 PRMANAPI PtDspyError
-DspyFindFloatInParamList(const char *string,
-	float *result,
-	int paramCount,
-	const UserParameter *parameters)
-{
+DspyFindFloatInParamList(const char *string, float *result, int paramCount, const UserParameter *parameters) {
 	int i;
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    RtInt j ;
 
-		    switch (parameters[i].vtype)
-			{
-			case 'f' :
-			    memcpy(&f, ((float *)(parameters[i].value)), 4);
-			    ret = PkDspyErrorNone;
-			    break;
-			case 'i' :
-			    memcpy(&j, parameters[i].value, sizeof(j));
-			    f = j;
-			    ret = PkDspyErrorNone;
-			    break;
+		    switch (parameters[i].vtype) {
+				case 'f' :
+				    memcpy(&f, ((float *)(parameters[i].value)), 4);
+				    ret = PkDspyErrorNone;
+				    break;
+				case 'i' :
+				    memcpy(&j, parameters[i].value, sizeof(j));
+				    f = j;
+				    ret = PkDspyErrorNone;
+				    break;
 			}
-		    if (PkDspyErrorNone == ret)
-			{
+
+		    if (PkDspyErrorNone == ret) {
 			    *result = f;
 			}
   		}
@@ -169,10 +140,8 @@ DspyFindFloatsInParamList(const char *string,
 	PtDspyError ret;
 	ret = PkDspyErrorNoResource;
 
-	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++)
-	{
-		if (!strcmp(string, parameters[i].name))
-	  	{
+	for (i = 0; i < paramCount && ret == PkDspyErrorNoResource; i++) {
+		if (!strcmp(string, parameters[i].name)) {
 		    float f;
 		    int k;
 		    RtInt j ;

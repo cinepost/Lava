@@ -266,28 +266,6 @@ ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) 
     return *this;
 }
 
-ForwardLightingPass& ForwardLightingPass::setOutNormalsFormat(ResourceFormat format) {
-    mOutNormalsFormat = format;
-    if (mOutNormalsFormat != ResourceFormat::Unknown) {
-        mpState->getProgram()->addDefine("_OUTPUT_NORMALS");
-    } else {
-        mpState->getProgram()->removeDefine("_OUTPUT_NORMALS");
-    }
-    mPassChangedCB();
-    return *this;
-}
-
-ForwardLightingPass& ForwardLightingPass::setOutShadowsFormat(ResourceFormat format) {
-    mOutShadowsFormat = format;
-    if (mOutShadowsFormat != ResourceFormat::Unknown) {
-        mpState->getProgram()->addDefine("_OUTPUT_SHADOWS");
-    } else {
-        mpState->getProgram()->removeDefine("_OUTPUT_SHADOWS");
-    }
-    mPassChangedCB();
-    return *this;
-}
-
 void ForwardLightingPass::setFrameSampleCount(uint32_t samples) {
     if (mFrameSampleCount == samples) return;
 

@@ -76,41 +76,67 @@ Display::Display::TypeFormat resolveDisplayTypeFormat(const std::string& fname) 
 	return Display::TypeFormat::FLOAT32;
 }
 
-static uint32_t componentsCountFromLSDTypeName(const std::string& type_name) {
+static inline bool isNormalizedTypeName(const std::string& type_name) {
+	if(type_name == "float") return true;
+	if(type_name == "vector2") return true;
+	if(type_name == "vector3") return true;
+	if(type_name == "vector4") return true;
+
+	return false;
+}
+
+static inline uint32_t componentsCountFromLSDTypeName(const std::string& type_name) {
 	if(type_name == "float") return 1;
+	if(type_name == "int") return 1;
+	
 	if(type_name == "vector2") return 2;
+	if(type_name == "int2") return 2;
+	
 	if(type_name == "vector3") return 3;
+	if(type_name == "int3") return 2;
+
 	if(type_name == "vector4") return 4;
+	if(type_name == "int4") return 2;
 
 	LLOG_WRN << "Unsupported type: << " << type_name;
 	return 4;
 }
 
-Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& format_name, uint32_t numChannels) {
+Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels) {
 	assert((0 < numChannels) && ( numChannels <= 4));
 
+	bool norm = isNormalizedTypeName(type_name);
+	
 	if( format_name == "int8") {
 		switch (numChannels) {
-			case 1: return Falcor::ResourceFormat::R8Unorm;
-			case 2: return Falcor::ResourceFormat::RG8Unorm;
-			case 3: return Falcor::ResourceFormat::RGB8Unorm;
-			default: return Falcor::ResourceFormat::RGBA8Unorm;
+			case 1: return norm ? Falcor::ResourceFormat::R8Snorm : Falcor::ResourceFormat::R8Int;
+			case 2: return norm ? Falcor::ResourceFormat::RG8Snorm : Falcor::ResourceFormat::RG8Int;
+			case 3: return norm ? Falcor::ResourceFormat::RGB8Snorm : Falcor::ResourceFormat::RGB8Int;
+			default: return norm ? Falcor::ResourceFormat::RGBA8Snorm : Falcor::ResourceFormat::RGBA8Int;
+		}
+	}
+	if( format_name == "uint8") {
+		switch (numChannels) {
+			case 1: return norm ? Falcor::ResourceFormat::R8Unorm : Falcor::ResourceFormat::R8Uint;
+			case 2: return norm ? Falcor::ResourceFormat::RG8Unorm : Falcor::ResourceFormat::RG8Uint;
+			case 3: return norm ? Falcor::ResourceFormat::RGB8Unorm : Falcor::ResourceFormat::RGB8Uint;
+			default: return norm ? Falcor::ResourceFormat::RGBA8Unorm : Falcor::ResourceFormat::RGBA8Uint;
 		}
 	}
 	if( format_name == "int16") {
 		switch (numChannels) {
-			case 1: return Falcor::ResourceFormat::R16Unorm;
-			case 2: return Falcor::ResourceFormat::RG16Unorm;
-			case 3: return Falcor::ResourceFormat::RGB16Unorm;
-			default: return Falcor::ResourceFormat::RGBA16Unorm;
+			case 1: return norm ? Falcor::ResourceFormat::R16Snorm : Falcor::ResourceFormat::R16Int;
+			case 2: return norm ? Falcor::ResourceFormat::RG16Snorm : Falcor::ResourceFormat::R16Int;
+			case 3: return norm ? Falcor::ResourceFormat::RGB16Snorm : Falcor::ResourceFormat::R16Int;
+			default: return norm ? Falcor::ResourceFormat::RGBA16Snorm : Falcor::ResourceFormat::R16Int;
 		}
 	}
-	if( format_name == "float16") {
+	if( format_name == "uint16") {
 		switch (numChannels) {
-			case 1: return Falcor::ResourceFormat::R16Float;
-			case 2: return Falcor::ResourceFormat::RG16Float;
-			case 3: return Falcor::ResourceFormat::RGB16Float;
-			default: return Falcor::ResourceFormat::RGBA16Float;
+			case 1: return norm ? Falcor::ResourceFormat::R16Unorm : Falcor::ResourceFormat::R16Uint;
+			case 2: return norm ? Falcor::ResourceFormat::RG16Unorm : Falcor::ResourceFormat::RG16Uint;
+			case 3: return norm ? Falcor::ResourceFormat::RGB16Unorm : Falcor::ResourceFormat::RGB16Uint;
+			default: return norm ? Falcor::ResourceFormat::RGBA16Unorm : Falcor::ResourceFormat::RGBA16Uint;
 		}
 	}
 	if(( format_name == "int32") || (format_name == "int")) {
@@ -119,6 +145,22 @@ Falcor::ResourceFormat resolveAOVResourceFormat(const std::string& format_name, 
 			case 2: return Falcor::ResourceFormat::RG32Int;
 			case 3: return Falcor::ResourceFormat::RGB32Int;
 			default: return Falcor::ResourceFormat::RGBA32Int;
+		}
+	}
+	if(( format_name == "uint32") || (format_name == "uint")) {
+		switch (numChannels) {
+			case 1: return Falcor::ResourceFormat::R32Uint;
+			case 2: return Falcor::ResourceFormat::RG32Uint;
+			case 3: return Falcor::ResourceFormat::RGB32Uint;
+			default: return Falcor::ResourceFormat::RGBA32Uint;
+		}
+	}
+	if( format_name == "float16") {
+		switch (numChannels) {
+			case 1: return Falcor::ResourceFormat::R16Float;
+			case 2: return Falcor::ResourceFormat::RG16Float;
+			case 3: return Falcor::ResourceFormat::RGB16Float;
+			default: return Falcor::ResourceFormat::RGBA16Float;
 		}
 	}
 	if(( format_name == "float32") || (format_name == "float")) {
@@ -158,7 +200,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 
 	aovInfo.name = AOVName(channel_name);
-	aovInfo.format = resolveAOVResourceFormat(quantization_name, componentsCountFromLSDTypeName(type_name));
+	aovInfo.format = resolveAOVResourceFormat(type_name, quantization_name, componentsCountFromLSDTypeName(type_name));
 	aovInfo.variableName = output_variable_name;
 
 	return aovInfo;

@@ -22,6 +22,7 @@ namespace gfx {
         case Format::R16_TYPELESS:              return VK_FORMAT_R16_SFLOAT;
 
         case Format::R8G8B8A8_TYPELESS:         return VK_FORMAT_R8G8B8A8_UNORM;
+        case Format::R8G8B8_TYPELESS:           return VK_FORMAT_R8G8B8_UNORM;
         case Format::R8G8_TYPELESS:             return VK_FORMAT_R8G8_UNORM;
         case Format::R8_TYPELESS:               return VK_FORMAT_R8_UNORM;
         case Format::B8G8R8A8_TYPELESS:         return VK_FORMAT_B8G8R8A8_UNORM;
@@ -46,6 +47,7 @@ namespace gfx {
         case Format::R16_UINT:                  return VK_FORMAT_R16_UINT;
 
         case Format::R8G8B8A8_UINT:             return VK_FORMAT_R8G8B8A8_UINT;
+        case Format::R8G8B8_UINT:               return VK_FORMAT_R8G8B8_UINT;
         case Format::R8G8_UINT:                 return VK_FORMAT_R8G8_UINT;
         case Format::R8_UINT:                   return VK_FORMAT_R8_UINT;
 
@@ -55,14 +57,17 @@ namespace gfx {
         case Format::R32_SINT:                  return VK_FORMAT_R32_SINT;
 
         case Format::R16G16B16A16_SINT:         return VK_FORMAT_R16G16B16A16_SINT;
+        case Format::R16G16B16_SINT:            return VK_FORMAT_R16G16B16_SINT;
         case Format::R16G16_SINT:               return VK_FORMAT_R16G16_SINT;
         case Format::R16_SINT:                  return VK_FORMAT_R16_SINT;
 
         case Format::R8G8B8A8_SINT:             return VK_FORMAT_R8G8B8A8_SINT;
+        case Format::R8G8B8_SINT:               return VK_FORMAT_R8G8B8_SINT;
         case Format::R8G8_SINT:                 return VK_FORMAT_R8G8_SINT;
         case Format::R8_SINT:                   return VK_FORMAT_R8_SINT;
 
         case Format::R16G16B16A16_UNORM:        return VK_FORMAT_R16G16B16A16_UNORM;
+        case Format::R16G16B16_UNORM:           return VK_FORMAT_R16G16B16_UNORM;
         case Format::R16G16_UNORM:              return VK_FORMAT_R16G16_UNORM;
         case Format::R16_UNORM:                 return VK_FORMAT_R16_UNORM;
 
@@ -76,10 +81,12 @@ namespace gfx {
         case Format::B8G8R8X8_UNORM_SRGB:       return VK_FORMAT_B8G8R8A8_SRGB;
 
         case Format::R16G16B16A16_SNORM:        return VK_FORMAT_R16G16B16A16_SNORM;
+        case Format::R16G16B16_SNORM:           return VK_FORMAT_R16G16B16_SNORM;
         case Format::R16G16_SNORM:              return VK_FORMAT_R16G16_SNORM;
         case Format::R16_SNORM:                 return VK_FORMAT_R16_SNORM;
 
         case Format::R8G8B8A8_SNORM:            return VK_FORMAT_R8G8B8A8_SNORM;
+        case Format::R8G8B8_SNORM:              return VK_FORMAT_R8G8B8_SNORM;
         case Format::R8G8_SNORM:                return VK_FORMAT_R8G8_SNORM;
         case Format::R8_SNORM:                  return VK_FORMAT_R8_SNORM;
 

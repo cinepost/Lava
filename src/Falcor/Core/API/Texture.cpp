@@ -367,13 +367,14 @@ void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, u
 	
 		uint4 srcRect = {0, 0, getWidth(0), getHeight(0)};
 		uint4 dstRect = {0, 0, getWidth(0), getHeight(0)};
+		uint32_t bufferWidthPixels = getWidth(0);
 		const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
     const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
-		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
+		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
 		pContext->flush(true);
 		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
 
-		LLOG_WRN << "buff read size " << std::to_string(pBuffer->getSize());
+		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
 
 		::memcpy(reinterpret_cast<void*>(pTextureData), reinterpret_cast<const void*>(pBuf), pBuffer->getSize());
 		pBuffer->unmap();

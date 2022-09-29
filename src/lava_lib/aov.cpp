@@ -22,6 +22,12 @@ static Falcor::ResourceFormat getClosestAvailableFormat(Falcor::ResourceFormat i
         case Falcor::ResourceFormat::RGB16Float:
             out_format = Falcor::ResourceFormat::RGBA16Float;
             break;
+        case Falcor::ResourceFormat::RGB8Unorm:
+            out_format = Falcor::ResourceFormat::RGBA8Unorm;
+            break;
+        case Falcor::ResourceFormat::RGB8Uint:
+            out_format = Falcor::ResourceFormat::RGBA8Uint;
+            break;
         case Falcor::ResourceFormat::RGB16Int:
             out_format = Falcor::ResourceFormat::RGBA16Int;
             break;

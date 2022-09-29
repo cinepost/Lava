@@ -125,6 +125,8 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     inline Falcor::ResourceFormat  format() const { return mInfo.format; }
     inline const AOVPlaneInfo&     info() const { return mInfo; }
 
+    inline bool isMain() const { return name() == AOVBuiltinName::MAIN; }
+
     void setOutputFormat(Falcor::ResourceFormat format);
 
 
@@ -132,7 +134,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
-    void reset() { if (mpAccumulatePass) mpAccumulatePass->reset(); }; // reset associated accumulator
+    inline void reset() { if (mpAccumulatePass) mpAccumulatePass->reset(); }; // reset associated accumulator
 
     inline bool isBound() const;
 

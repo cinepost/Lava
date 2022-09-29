@@ -194,7 +194,7 @@ class dlldecl RenderContext : public ComputeContext {
     */
     void blit(const ShaderResourceView::SharedPtr& pSrc, const RenderTargetView::SharedPtr& pDst, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
-    void blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
+    void blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, const Buffer::SharedPtr& pBuffer, uint32_t bufferWidthStrideInPixels, Falcor::ResourceFormat dstFormat, uint4 srcRect, uint4 dstRect, Sampler::Filter filter, const Sampler::ReductionMode componentsReduction[4], const float4 componentsTransform[4]);
 
     /** Submit the command list
     */

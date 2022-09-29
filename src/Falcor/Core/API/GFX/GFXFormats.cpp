@@ -134,10 +134,14 @@ namespace Falcor
 			return gfx::Format::R32G32_UINT;
 		case ResourceFormat::RG8Int:
 			return gfx::Format::R8G8_SINT;
+		case ResourceFormat::RGB8Int:
+			return gfx::Format::R8G8B8_SINT;
 		case ResourceFormat::RG8Snorm:
 			return gfx::Format::R8G8_SNORM;
 		case ResourceFormat::RG8Uint:
 			return gfx::Format::R8G8_UINT;
+		case ResourceFormat::RGB8Uint:
+			return gfx::Format::R8G8B8_UINT;
 		case ResourceFormat::RG8Unorm:
 			return gfx::Format::R8G8_UNORM;
 		case ResourceFormat::RGB10A2Uint:

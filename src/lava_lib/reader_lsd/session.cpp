@@ -427,6 +427,12 @@ bool Session::cmdRaytrace() {
 	// Set up image sampling
 	mCurrentFrameInfo.imageSamples = mpGlobal->getPropertyValue(ast::Style::IMAGE, "samples", 1);
 
+	// Get renderer aov planes
+	std::vector<std::pair<uint, AOVPlane::SharedPtr>> aovPlanes;
+	for(auto& entry: mpRenderer->aovPlanes()) {
+		if(!entry.second->isMain()) aovPlanes.push_back({0, entry.second});
+	}
+
 	// Open display image
 	uint hImage;
 
@@ -435,7 +441,7 @@ bool Session::cmdRaytrace() {
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 
 	// houdini display driver section
-	if(mpDisplay->type() == DisplayType::HOUDINI) {
+	if((mpDisplay->type() == DisplayType::HOUDINI) || (mpDisplay->type() == DisplayType::MD) || (mpDisplay->type() == DisplayType::IP)) {
 		int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
 		imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
 		if ((houdiniPortNum > 0) && (mIPR)) {
@@ -444,15 +450,26 @@ bool Session::cmdRaytrace() {
     	}
 	}
 
-    //
+    // Open main image plane
 
     if(!mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage)) {
         LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
         return false;
     }
 
-	Falcor::ResourceFormat outputResourceFormat;
-	uint32_t outputChannelsCount = 0;
+    // Open secondary aov image planes
+    for(auto& entry: aovPlanes) {
+    	auto& pPlane = entry.second;
+    	std::string aovImageFileName = imageFileName;
+    	std::string channel_prefix = std::string(pPlane->name());
+
+    	if(!mpDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, channel_prefix)) {
+        	LLOG_ERR << "Unable to open AOV image " << pPlane->name() << " !!!";
+    		entry.second = nullptr;
+    	}
+    }
+
+
 	std::vector<uint8_t> textureData;
 
     // Frame rendering
@@ -493,9 +510,32 @@ bool Session::cmdRaytrace() {
 
 		LLOG_DBG << "Rendering image samples done !";
 
+		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
 		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
 			break;
 		}
+
+		// Send secondary aov image planes data
+    	for(auto& entry: aovPlanes) {
+    		uint hImage = entry.first;
+	    	auto& pPlane = entry.second;
+	    	if (pPlane) {
+	    		AOVPlaneGeometry aov_geometry;
+				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
+					LLOG_ERR << "Error getting AOV " << std::string(pPlane->name()) << " geometry!";
+					continue;
+				}
+
+				uint32_t textureDataSize = aov_geometry.width * aov_geometry.height * aov_geometry.bytesPerPixel;
+				std::vector<uint8_t> textureData(textureDataSize);
+
+				LLOG_DBG << "Sending AOV " << std::string(pPlane->name()) << " data to image handle " << std::to_string(hImage);
+	    		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pPlane, textureData)) {
+					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
+					continue;
+				}
+	    	}
+	    }
 
 		//if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
 		//	break;
@@ -504,6 +544,16 @@ bool Session::cmdRaytrace() {
 
 	LLOG_DBG << "Closing display...";
     mpDisplay->closeImage(hImage);
+
+    // Close secondary aov images
+	for(auto& entry: aovPlanes) {
+		uint hImage = entry.first;
+    	auto& pPlane = entry.second;
+    	if (pPlane) {
+    		mpDisplay->closeImage(hImage);
+    	}
+    }
+
     LLOG_DBG << "Display closed!";
 
 //#ifdef FALCOR_ENABLE_PROFILER

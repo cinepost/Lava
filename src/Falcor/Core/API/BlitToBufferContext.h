@@ -55,6 +55,7 @@ struct BlitToBufferContext {
     UniformShaderVarOffset resolutionVarOffset;
     UniformShaderVarOffset offsetVarOffset;
     UniformShaderVarOffset scaleVarOffset;
+    UniformShaderVarOffset srcPixelHalfSizeVarOffset;
     ProgramReflection::BindLocation texBindLoc;
     ProgramReflection::BindLocation buffBindLoc;
 

@@ -53,6 +53,7 @@ void BlitToBufferContext::init(Device::SharedPtr pDevice) {
         resolutionVarOffset = pBlitParamsBuffer->getVariableOffset("gResolution");
         offsetVarOffset = pBlitParamsBuffer->getVariableOffset("gOffset");
         scaleVarOffset = pBlitParamsBuffer->getVariableOffset("gScale");
+        srcPixelHalfSizeVarOffset = pBlitParamsBuffer->getVariableOffset("gSrcPixelHalfSize");
         prevSrcRectOffset = float2(-1.0f);
         prevSrcReftScale = float2(-1.0f);
 

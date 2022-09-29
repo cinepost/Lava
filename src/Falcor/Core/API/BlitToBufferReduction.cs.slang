@@ -31,6 +31,7 @@ cbuffer BlitParamsCB {
     uint2  gResolution;
     float2 gOffset;
     float2 gScale;
+    float2 gSrcPixelHalfSize; // source texture pixel hald size in normalized texture coordinates
     float4 gCompTransformR;
     float4 gCompTransformG;
     float4 gCompTransformB;
@@ -63,6 +64,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const uint addr = buffPos * PIXEL_STRIDE_BYTES;
 
     float2 texC = float2(pixelPos) / float2(gResolution);
+
+    texC += gSrcPixelHalfSize; // shift to source texture texel center
     float4 src;
 
 #if COMPLEX_BLIT
@@ -93,7 +96,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
 #elif FORMAT_TYPE == FORMAT_TYPE_UINT
 
-//    gOutputBuffer.Store(addr, value);
+//    gOutputBuffer.Store<uint8_t3>(addr, { 1.0f, uint8_t(255 * src.g), uint8_t(255 * src.b) });
+
+#elif FORMAT_TYPE == FORMAT_TYPE_UNORM
+
+    gOutputBuffer.Store<uint8_t3>(addr, { uint8_t(255 * src.r), uint8_t(255 * src.g), uint8_t(255 * src.b) });
 
 #else 
 

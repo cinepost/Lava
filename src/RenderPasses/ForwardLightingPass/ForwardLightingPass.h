@@ -65,14 +65,6 @@ class ForwardLightingPass : public RenderPass {
 		*/
 		ForwardLightingPass& setColorFormat(ResourceFormat format);
 
-		/** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
-		*/
-		ForwardLightingPass& setOutNormalsFormat(ResourceFormat format);
-
-		/** Set the output shadows map format. Setting this to ResourceFormat::Unknown will disable this output
-		*/
-		ForwardLightingPass& setOutShadowsFormat(ResourceFormat format);
-
 		/** Set the required output supersample-count. 0 will use the swapchain sample count
 		*/
 		ForwardLightingPass& setSuperSampleCount(uint32_t samples);
