@@ -69,6 +69,10 @@ void Light::setShadowType(LightShadowType shadowType) {
     mData.shadowType = (uint32_t)shadowType; 
 }
 
+void Light::setLightRadius(float radius) {
+    mData.radius = radius;
+}
+
 Light::Changes Light::beginFrame() {
     mChanges = Changes::None;
     if (mActiveChanged) mChanges |= Changes::Active;
@@ -86,6 +90,7 @@ Light::Changes Light::beginFrame() {
 
     if (mPrevData.shadowType != mData.shadowType) mChanges |= Changes::Shadow;
     if (mPrevData.shadowColor != mData.shadowColor) mChanges |= Changes::Shadow;
+    if (mPrevData.radius != mData.radius) mChanges |= Changes::Shadow;
 
     assert(mPrevData.tangent == mData.tangent);
     assert(mPrevData.bitangent == mData.bitangent);
@@ -130,6 +135,23 @@ void PointLight::setWorldDirection(const float3& dir) {
         return;
     }
     mData.dirW = normalize(dir);
+    update();
+}
+
+void PointLight::update() {
+    // Update transformation matrices
+    // Assumes that mData.dirW is normalized
+    const float3 up(0.f, 0.f, 1.f);
+    float3 vec = glm::cross(up, -mData.dirW);
+    float sinTheta = glm::length(vec);
+    
+    if (sinTheta > 0.f) {
+        float cosTheta = glm::dot(up, -mData.dirW);
+        mData.transMat = glm::rotate(glm::mat4(), std::acos(cosTheta), vec);
+    } else {
+        mData.transMat = glm::mat4();
+    }
+    mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
 }
 
 void PointLight::setWorldPosition(const float3& pos) {

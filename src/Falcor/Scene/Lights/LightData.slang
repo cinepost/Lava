@@ -101,7 +101,7 @@ struct LightData {
 
     // Extra parameters for analytic area lights
     float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape
-    float    _pad4;
+    float    radius             = .0f;              ///< Analytic light raidus. Used mostly for soft shadowing
 
     float3   bitangent          = float3(0, 1 ,0);  ///< Bitangent vector of the light shape
     float    _pad5;

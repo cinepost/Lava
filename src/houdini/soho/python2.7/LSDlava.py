@@ -272,6 +272,7 @@ def initializeFeatures(settings):
     
     Light("areanormalize", "bool", "normalizearea", skipdefault=True)
     Light("singlesided", "bool", "lv_singlesided", skipdefault=True)
+    Light("lightradius", "bool", "lv_light_radius", skipdefault=True)
 
     Light("envangle", "float", "lv_envangle")
     Light("envintensity", "float", "lv_envintensity")

@@ -157,14 +157,16 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         bool valid = sampleLight(sd.posW, light, sampleNext2D(sg), ls);
 
         // Reject sample if lower hemisphere.
-        if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) continue;
+        if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) {
+            continue;
+        }
 
         if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
             
             // Test visibility by tracing a shadow ray.
             RayDesc ray;
             ray.Origin = rayOrigin;// + viewDir * 0.0001f;
-            ray.Direction = ls.dir;
+            ray.Direction = ls.shadowDir;
             ray.TMin = .01f;
 
             switch (light.type) {

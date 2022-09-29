@@ -127,6 +127,13 @@ def aperture(obj, now, value):
         return False
     return obj.evalFloat('aperture', now, value)
 
+def lightradius(obj, now, value):
+    if obj.evalFloat('lv_light_radius', now, value):
+        if value[0] > 0:
+            return True
+
+    return False
+
 def orthowidth(obj, now, value):
     if not isdistantlight(obj, now):
         return False
@@ -558,6 +565,7 @@ parmMap = {
     'lv_singlesided'    :       issinglesided,
     'lv_phantom'        :       phantom,
     'lv_activeradius'   :       activeradius,
+    'lv_light_radius'   :       lightradius,
     'res'               :       shadowmap_res,
     'lv_samples'        :       shadowmap_samples,
     'focal'             :       focal,
