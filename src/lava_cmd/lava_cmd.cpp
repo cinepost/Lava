@@ -38,16 +38,12 @@ namespace po = boost::program_options;
 using namespace lava;
 
 void signalHandler( int signum ){
-  fprintf(stderr, "Error: signal %d:\n", signum);
-  // cleanup and close up stuff here
-  // terminate program
   exit(signum);
 }
 
 void signalTraceHandler( int signum ){
+#ifdef _DEBUG
   fprintf(stderr, "Error: signal %d:\n", signum);
-  // cleanup and close up stuff here
-  // terminate program
   void *array[30];
   size_t size;
 
@@ -56,6 +52,7 @@ void signalTraceHandler( int signum ){
 
   // print out all the frames to stderr
   backtrace_symbols_fd(array, size, STDERR_FILENO);
+#endif
   exit(signum);
 }
 
@@ -102,11 +99,10 @@ int main(int argc, char** argv){
 #endif
 
     std::atexit(atexitHandler);
-/*
     signal(SIGTERM, signalHandler);
     signal(SIGABRT, signalTraceHandler);
     signal(SIGSEGV, signalTraceHandler);
-*/
+
 
     /// Program options
     std::string config_file;

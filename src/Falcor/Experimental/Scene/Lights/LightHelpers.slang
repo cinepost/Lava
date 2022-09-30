@@ -246,13 +246,16 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, float2 rn
         return false;
     } else if (light.penumbraAngle > 0.f) {
         // Inside spol light cone
-        ls.shadowDir = float3(sample_disk(rnd) * (light.radius + 0.1), 1.0f);
+        float3 shadowDir = float3(sample_disk(rnd) * light.radius, .0f);
 
         // Transform sampled shadow direction to world space
-        ls.shadowDir = normalize(mul(ls.shadowDir, (float3x3)light.transMat));
-
+        ls.shadowDir = normalize(ls.posW + mul(shadowDir, (float3x3)light.transMat) - shadingPosW);
+        
         float deltaAngle = light.openingAngle - acos(cosTheta);
         falloff = smoothstep(0.f, light.penumbraAngle, deltaAngle);
+    } else {
+        // Point light shadows
+        ls.shadowDir = normalize(ls.posW + mul(sample_sphere(rnd) * light.radius, (float3x3)light.transMat) - shadingPosW);
     }
 
     // Compute incident radiance at shading point.

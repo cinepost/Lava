@@ -31,6 +31,8 @@
 #include <map>
 
 #include "Falcor/Utils/Scripting/Dictionary.h"
+#include "Falcor/Utils/ThreadPool.h"
+
 #include "Scene.h"
 #include "SceneCache.h"
 #include "Transform.h"
@@ -694,6 +696,9 @@ protected:
     std::vector<Material::SharedPtr> mMaterials;
     std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::unordered_map<const Material*, uint32_t> mMaterialToId;
+
+    BS::multi_future<uint32_t> mAddGeoTasks;
+
 
     // Mesh helpers
     bool doesNodeHaveAnimation(uint32_t nodeID) const;

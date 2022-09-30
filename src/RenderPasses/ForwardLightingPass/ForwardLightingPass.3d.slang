@@ -165,7 +165,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
             
             // Test visibility by tracing a shadow ray.
             RayDesc ray;
-            ray.Origin = rayOrigin;// + viewDir * 0.0001f;
+            ray.Origin = rayOrigin;// + normalize(viewDir) * 0.01f;
             ray.Direction = ls.shadowDir;
             ray.TMin = .01f;
 
