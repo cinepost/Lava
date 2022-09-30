@@ -42,8 +42,11 @@ cbuffer PerFrameCB
     uint    gAccumCount;
 }
 
+#define is_valid(name) (is_valid_##name != 0)
+
 // Input data to accumulate and accumulated output.
 Texture2D<float4>   gCurFrame;
+Texture2D<float>    gDepth;
 RWTexture2D<float4> gOutputFrame;
 
 // Last frame data, format depends on accumulation mode.
@@ -68,6 +71,11 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     gLastFrameSum[pixelPos] = sum;
     gOutputFrame[pixelPos] = output;
+
+    if (is_valid(gDepth)){
+        gOutputFrame[pixelPos] = float4(0.0f, 1.0f, 0.0f, 1.0f);
+    }
+
 }
 
 /** Single precision compensated summation.

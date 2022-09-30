@@ -21,7 +21,7 @@ namespace lava {
 
 namespace lsd {
 
-Falcor::ResourceFormat  resolveAOVResourceFormat(const std::string& format_name, uint32_t numChannels);
+Falcor::ResourceFormat  resolveAOVResourceFormat(const std::string& type_name, const std::string& format_name, uint32_t numChannels);
 
 Display::DisplayType    resolveDisplayTypeByFileName(const std::string& file_name);
 Display::TypeFormat     resolveDisplayTypeFormat(const std::string& fname);

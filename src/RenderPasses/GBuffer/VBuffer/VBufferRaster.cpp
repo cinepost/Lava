@@ -46,7 +46,7 @@ namespace
 
     const ChannelList kVBufferExtraChannels =
     {
-        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG32Float   },
+        { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
     };
 
     const std::string kDepthName = "depth";
@@ -55,7 +55,7 @@ namespace
 RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
 
-    auto texDims = compileData.defaultTexDims;
+    const auto& texDims = compileData.defaultTexDims;
 
     // Add the required outputs. These always exist.
     reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);

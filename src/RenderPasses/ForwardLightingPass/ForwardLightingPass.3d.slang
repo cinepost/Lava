@@ -44,13 +44,20 @@ import Experimental.Scene.Material.IBxDF;
 
 #define _FIX_SHADOW_TERMINATOR
 
+// UAV output channels
+RasterizerOrderedTexture2D<float4> gOutPosition;
+RasterizerOrderedTexture2D<float4> gOutAlbedo;
+RasterizerOrderedTexture2D<float4> gOutShadows;
+RasterizerOrderedTexture2D<float4> gOutNormals;
+RasterizerOrderedTexture2D<float2> gOutMotionVecs;
+
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
   uint              gSampleNumber;        // Interframe sample number.
   int               useBrdfSampling = 1;  // Use BRDF importance sampling.
   int               usePdf = 0;           // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
 
-  float2            gRenderTargetDim; // frame dimension
+  float2            gRenderTargetDim;     // frame dimension
   uint              gSamplesPerFrame;
 
   float4x4          gViewInvMat;
@@ -58,9 +65,10 @@ cbuffer PerFrameCB {
   EnvMapSampler     gEnvMapSampler;
 };
 
+#define is_valid(name) (is_valid_##name != 0)
+
 EnvMapLighting gEnvMapLighting; 
 
-SamplerState gSampler;
 SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
 
@@ -70,8 +78,7 @@ Texture2D gNoiseTex;
 static VSOut vsData;
 
 
-VSOut vsMain(VSIn vIn)
-{
+VSOut vsMain(VSIn vIn) {
     VSOut vsOut;
     vsOut = defaultVS(vIn);
 #ifdef _OUTPUT_MOTION_VECTORS
@@ -80,17 +87,8 @@ VSOut vsMain(VSIn vIn)
     return vsOut;
 }
 
-struct PsOut
-{
+struct PsOut {
     float4 color : SV_TARGET0;
-
-#ifdef _OUTPUT_NORMALS
-    float4 normal : SV_TARGET1;
-#endif
-
-#ifdef _OUTPUT_MOTION_VECTORS
-    float2 motion : SV_TARGET2;
-#endif
 };
 
 
@@ -111,32 +109,32 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     if (alphaTest(vsOut, triangleIndex, lod)) discard;
 
     // pixel position
-    int2 pixel = int2(vsOut.posH.xy);
+    int2 ipos = int2(vsOut.posH.xy);
 
     // pseudo-random sample generator
-    SampleGenerator sg = SampleGenerator.create(pixel, gSampleNumber);
+    SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
 
     // screen space texture coordinates gradient
-    float2 gradX = ddx_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordinate in the screen-space X direction
-    float2 gradY = ddy_fine(vsOut.texC) * 0.5; ///< Gradient of texture coordiante in teh screen-space Y direction
+    float2 gradX = ddx_fine(vsOut.texC) * 0.5f; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY = ddy_fine(vsOut.texC) * 0.5f; ///< Gradient of texture coordiante in teh screen-space Y direction
     
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
 
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
-//#ifdef _ADJUST_SHADING_POSITION
-//    sd.posW = posWA;
-//#endif
-
     // Create BSDF instance and query its properties.
     let bsdf = gScene.materials.getBSDF(sd, lod);
     let bsdfProperties = bsdf.getProperties(sd);
 
 
-    float3 surfaceColor = float3(0, 0, 0);
-    float  surfaceAlpha = 0.0;
+    // Main output variables
+    float3 surfaceColor = float3(0.0f, 0.0f, 0.0f);
+    float  surfaceAlpha = 0.0f;
 
+    // AOV varibles
+    float3 AOV_albedo = bsdfProperties.diffuseReflectionAlbedo;
+    float3 AOV_shadow = float3(1.0f, 1.0f, 1.0f);
     
     // Direct lighting from analytic light sources
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
@@ -149,9 +147,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
     }
 #endif
-    
+
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
-        float3 shadowFactor = float3(1.0, 1.0, 1.0);
+        float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
 
         LightData light = gScene.getLight(lightIndex);
 
@@ -181,10 +179,11 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
             rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
             rayShadowQuery.Proceed();
-            shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0, 1.0, 1.0);
+            shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f, 1.0f, 1.0f);
         }
 
         surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
+        AOV_shadow *= shadowFactor;
     }
 
     // Add the emissive component
@@ -197,16 +196,27 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.color.rgb = surfaceColor; //lerp(psOut.color.rgb, surfaceColor, surfaceAlpha);
     psOut.color.a = 1.f; //surfaceAlpha;
 
-    //psOut.color.rg = vsOut.texC;
+    // Write available AOVs
+    if (is_valid(gOutAlbedo)){
+        gOutAlbedo[ipos] = float4(AOV_albedo, 1.0f);
+    }
 
-#ifdef _OUTPUT_NORMALS
-    psOut.normal = float4(sd.N * 0.5f + 0.5f, 1.0f);
-#endif
+    if (is_valid(gOutNormals)){
+        gOutNormals[ipos] = float4(sd.N * 0.5f + 0.5f, 1.0f);
+    }
 
-#ifdef _OUTPUT_MOTION_VECTORS
-    // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
-    psOut.motion = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
-#endif
+    if (is_valid(gOutShadows)){
+        gOutShadows[ipos] = float4(AOV_shadow, 1.0f);
+    }
+
+    if (is_valid(gOutPosition)){
+        gOutPosition[ipos] = float4(sd.posW, 1.0f);
+    }
+
+    if (is_valid(gOutMotionVecs)){
+        // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
+        gOutMotionVecs[ipos] = calcMotionVector(vsOut.posH.xy, vsOut.prevPosH, gRenderTargetDim);
+    }
 
     return psOut;
 }

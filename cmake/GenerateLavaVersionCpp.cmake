@@ -32,12 +32,12 @@ set(CPP_VERSION "const char* LAVA_GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
 const char* LAVA_GIT_TAG=\"${GIT_TAG}\";
 const char* LAVA_GIT_BRANCH=\"${GIT_BRANCH}\";")
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp)
-    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp CPP_VERSION_)
+if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp)
+    file(READ ${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp CPP_VERSION_)
 else()
     set(CPP_VERSION_ "")
 endif()
 
 if (NOT "${CPP_VERSION}" STREQUAL "${CPP_VERSION_}")
-    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp "${CPP_VERSION}")
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp "${CPP_VERSION}")
 endif()

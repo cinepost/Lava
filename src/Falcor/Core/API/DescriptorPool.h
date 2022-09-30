@@ -43,7 +43,7 @@ struct DescriptorPoolApiData;
 struct DescriptorSetApiData;
 
 class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPool> {
- public:
+  public:
     using SharedPtr = std::shared_ptr<DescriptorPool>;
     using SharedConstPtr = std::shared_ptr<const DescriptorPool>;
     using ApiHandle = DescriptorHeapHandle;
@@ -107,9 +107,11 @@ class dlldecl DescriptorPool : public std::enable_shared_from_this<DescriptorPoo
     const ApiData* getApiData() const { return mpApiData.get(); }
     void executeDeferredReleases();
 
- private:
-    friend DescriptorSet;
+  public:
     DescriptorPool(std::shared_ptr<Device> pDevice, const Desc& desc, const GpuFence::SharedPtr & pFence);
+
+  private:
+    friend DescriptorSet;
     void apiInit();
     void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
     Desc mDesc;

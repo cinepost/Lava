@@ -67,6 +67,7 @@ VBufferVSOut vsMain(VSIn vsIn)
     vsOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
+
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);
 

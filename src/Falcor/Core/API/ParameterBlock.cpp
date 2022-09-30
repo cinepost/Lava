@@ -32,59 +32,49 @@
 
 #include "ParameterBlock.h"
 
-namespace Falcor
-{
-    ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType)
-    {
-        if (!pElementType) throw std::runtime_error("Can't create a parameter block without type information");
-        auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
-        return create(pDevice, pReflection);
-    }
+namespace Falcor {
 
-    ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection)
-    {
-        FALCOR_ASSERT(pReflection);
-        return SharedPtr(new ParameterBlock(pDevice, pReflection->getProgramVersion(), pReflection));
-    }
+ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const ReflectionType::SharedConstPtr& pElementType) {
+    if (!pElementType) throw std::runtime_error("Can't create a parameter block without type information");
+    auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
+    return create(pDevice, pReflection);
+}
 
-    ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName)
-    {
-        FALCOR_ASSERT(pProgramVersion);
-        return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
-    }
+ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const ParameterBlockReflection::SharedConstPtr& pReflection) {
+    assert(pReflection);
+    return std::make_shared<ParameterBlock>(pDevice, pReflection->getProgramVersion(), pReflection);
+}
 
-    ShaderVar ParameterBlock::getRootVar() const
-    {
-        return ShaderVar(const_cast<ParameterBlock*>(this));
-    }
+ParameterBlock::SharedPtr ParameterBlock::create(Device::SharedPtr pDevice, const std::shared_ptr<const ProgramVersion>& pProgramVersion, const std::string& typeName) {
+    assert(pProgramVersion);
+    return ParameterBlock::create(pDevice, pProgramVersion, pProgramVersion->getReflector()->findType(typeName));
+}
 
-    ShaderVar ParameterBlock::findMember(const std::string& varName) const
-    {
-        return getRootVar().findMember(varName);
-    }
+ShaderVar ParameterBlock::getRootVar() const {
+    return ShaderVar(const_cast<ParameterBlock*>(this));
+}
 
-    ShaderVar ParameterBlock::findMember(uint32_t index) const
-    {
-        return getRootVar().findMember(index);
-    }
+ShaderVar ParameterBlock::findMember(const std::string& varName) const {
+    return getRootVar().findMember(varName);
+}
 
-    size_t ParameterBlock::getElementSize() const
-    {
-        return mpReflector->getElementType()->getByteSize();
-    }
+ShaderVar ParameterBlock::findMember(uint32_t index) const {
+    return getRootVar().findMember(index);
+}
 
-    UniformShaderVarOffset ParameterBlock::getVariableOffset(const std::string& varName) const
-    {
-        return getElementType()->getZeroOffset()[varName];
-    }
+size_t ParameterBlock::getElementSize() const {
+    return mpReflector->getElementType()->getByteSize();
+}
 
-    void ParameterBlock::createConstantBuffers(const ShaderVar& var)
-    {
-        auto pType = var.getType();
-        if (pType->getResourceRangeCount() == 0) return;
+UniformShaderVarOffset ParameterBlock::getVariableOffset(const std::string& varName) const {
+    return getElementType()->getZeroOffset()[varName];
+}
 
-        switch (pType->getKind())
-        {
+void ParameterBlock::createConstantBuffers(const ShaderVar& var) {
+    auto pType = var.getType();
+    if (pType->getResourceRangeCount() == 0) return;
+
+    switch (pType->getKind()) {
         case ReflectionType::Kind::Struct:
         {
             auto pStructType = pType->asStructType();
@@ -112,61 +102,52 @@ namespace Falcor
 
         default:
             break;
-        }
-    }
-
-    void ParameterBlock::prepareResource(
-        CopyContext* pContext,
-        Resource* pResource,
-        bool isUav)
-    {
-        if (!pResource) return;
-
-        // If it's a buffer with a UAV counter, insert a UAV barrier
-        const Buffer* pBuffer = pResource->asBuffer().get();
-        if (isUav && pBuffer && pBuffer->getUAVCounter())
-        {
-            pContext->resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
-            pContext->uavBarrier(pBuffer->getUAVCounter().get());
-        }
-
-        bool insertBarrier = true;
-        insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
-        if (insertBarrier)
-        {
-            insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
-        }
-
-        // Insert UAV barrier automatically if the resource is an UAV that is already in UnorderedAccess state.
-        // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
-        if (insertBarrier && isUav) pContext->uavBarrier(pResource);
-    }
-
-    // Template specialization to allow setting booleans on a parameter block.
-    // On the host side a bool is 1B and the device 4B. We cast bools to 32-bit integers here.
-    // Note that this applies to our boolN vectors as well, which are currently 1B per element.
-
-    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool& value)
-    {
-        int32_t v = value ? 1 : 0;
-        return setVariable(offset, v);
-    }
-
-    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool2& value)
-    {
-        int2 v = { value.x ? 1 : 0, value.y ? 1 : 0 };
-        return setVariable(offset, v);
-    }
-
-    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool3& value)
-    {
-        int3 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0 };
-        return setVariable(offset, v);
-    }
-
-    template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool4& value)
-    {
-        int4 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0, value.w ? 1 : 0 };
-        return setVariable(offset, v);
     }
 }
+
+void ParameterBlock::prepareResource(CopyContext* pContext, Resource* pResource, bool isUav) {
+    if (!pResource) return;
+
+    // If it's a buffer with a UAV counter, insert a UAV barrier
+    const Buffer* pBuffer = pResource->asBuffer().get();
+    if (isUav && pBuffer && pBuffer->getUAVCounter()) {
+        pContext->resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
+        pContext->uavBarrier(pBuffer->getUAVCounter().get());
+    }
+
+    bool insertBarrier = true;
+    insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
+    if (insertBarrier) {
+        insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+    }
+
+    // Insert UAV barrier automatically if the resource is an UAV that is already in UnorderedAccess state.
+    // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
+    if (insertBarrier && isUav) pContext->uavBarrier(pResource);
+}
+
+// Template specialization to allow setting booleans on a parameter block.
+// On the host side a bool is 1B and the device 4B. We cast bools to 32-bit integers here.
+// Note that this applies to our boolN vectors as well, which are currently 1B per element.
+
+template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool& value) {
+    int32_t v = value ? 1 : 0;
+    return setVariable(offset, v);
+}
+
+template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool2& value) {
+    int2 v = { value.x ? 1 : 0, value.y ? 1 : 0 };
+    return setVariable(offset, v);
+}
+
+template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool3& value) {
+    int3 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0 };
+    return setVariable(offset, v);
+}
+
+template<> FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool4& value) {
+    int4 v = { value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0, value.w ? 1 : 0 };
+    return setVariable(offset, v);
+}
+
+}  // namespace Falcor

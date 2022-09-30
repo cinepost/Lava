@@ -65,6 +65,8 @@ class AccumulatePass : public RenderPass {
 
     void setOutputFormat(ResourceFormat format);
 
+    inline Falcor::ResourceFormat format() const { return mOutputFormat; }
+
     // Scripting functions
     void reset() { mFrameCount = 0; }
 
@@ -97,7 +99,7 @@ class AccumulatePass : public RenderPass {
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
 
-    ResourceFormat              mOutputFormat = ResourceFormat::RGBA32Float;
+    ResourceFormat              mOutputFormat = ResourceFormat::RGBA16Float;
 
 };
 

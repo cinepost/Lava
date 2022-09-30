@@ -17,7 +17,7 @@ const size_t kLtxPageSize = 65536;
 const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 5,6 used to store major,minor versions
 
 struct LTX_Header {
-    unsigned char   magic[12] = {0xAB, 'L', 'T', 'X', ' ', '1', '0', 0xBB, '\r', '\n', '\x1A', '\n'};
+    unsigned char   magic[12] = {0xAB, 'L', 'T', 'X', ' ', '1', '1', 0xBB, '\r', '\n', '\x1A', '\n'};
     time_t          srcLastWriteTime; // Source texture creation time
     uint32_t        width = 0;
     uint32_t        height = 0;

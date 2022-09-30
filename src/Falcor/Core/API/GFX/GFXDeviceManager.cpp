@@ -212,7 +212,7 @@ Device::SharedPtr DeviceManager::createRenderingDevice(uint8_t gpuId, const Devi
         LLOG_ERR << "Unable to create rendering device on gpu " << std::to_string(gpuId) << " !";
         return nullptr;
     } else {
-        LLOG_INF << "Rendering device created on gpu id " << std::to_string(gpuId) << "!";
+        LLOG_INF << "Rendering device created on gpu id " << std::to_string(gpuId);
     }
 
     mRenderingDevices[gpuId] = pDevice;

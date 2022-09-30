@@ -143,7 +143,7 @@ Dictionary SkyBox::getScriptingDictionary() {
 
 RenderPassReflection SkyBox::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
-    reflector.addOutput(kTarget, "Color buffer");//.format(ResourceFormat::RGBA32Float);
+    reflector.addOutput(kTarget, "Color buffer");//.format(ResourceFormat::RGBA16Float);
     auto& depthField = reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
     return reflector;
 }

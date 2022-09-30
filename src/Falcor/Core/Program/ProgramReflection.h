@@ -34,8 +34,8 @@
 #include <slang/slang.h>
 #include <map>
 
-namespace Falcor
-{
+namespace Falcor {
+
     class ProgramVersion;
     class ReflectionVar;
     class ReflectionType;
@@ -109,33 +109,21 @@ namespace Falcor
 
         /** Get the raw byte offset.
         */
-        ByteOffset getByteOffset() const
-        {
-            return mByteOffset;
-        }
+        inline ByteOffset getByteOffset() const { return mByteOffset; }
 
         /** Check whether this offset is valid.
 
         An invalid offset has an all-ones bit pattern (`ByteOffset(-1)`).
         */
-        bool isValid() const
-        {
-            return mByteOffset != ByteOffset(-1);
-        }
+        inline bool isValid() const { return mByteOffset != ByteOffset(-1); }
 
         /** Compare this offset to another offset.
         */
-        bool operator==(UniformShaderVarOffset const& other) const
-        {
-            return mByteOffset == other.mByteOffset;
-        }
+        inline bool operator==(UniformShaderVarOffset const& other) const { return mByteOffset == other.mByteOffset; }
 
         /** Compare this offset to another offset.
         */
-        bool operator!=(UniformShaderVarOffset const& other) const
-        {
-            return mByteOffset != other.mByteOffset;
-        }
+        inline bool operator!=(UniformShaderVarOffset const& other) const { return mByteOffset != other.mByteOffset; }
 
         /** Compare this offset to an invalid offset.
 
@@ -143,10 +131,7 @@ namespace Falcor
 
             if(myOffset == UniformShaderVarOffset::kInvalid) { ... }
         */
-        bool operator==(Invalid _) const
-        {
-            return !isValid();
-        }
+        inline bool operator==(Invalid _) const { return !isValid(); }
 
         /** Compare this offset to an invalid offset.
 
@@ -154,16 +139,13 @@ namespace Falcor
 
             if(myOffset != UniformShaderVarOffset::kInvalid) { ... }
         */
-        bool operator!=(Invalid _) const
-        {
-            return isValid();
-        }
+        inline bool operator!=(Invalid _) const { return isValid(); }
 
         /** Add an additional byte offset to this offset.
 
         If this offset is invalid, returns an invalid offset.
         */
-        UniformShaderVarOffset operator+(size_t offset) const
+        inline UniformShaderVarOffset operator+(size_t offset) const
         {
             if(!isValid()) return kInvalid;
 
@@ -174,7 +156,7 @@ namespace Falcor
 
         If either `this` or `other` is an invalid offset, returns an invalid offset.
         */
-        UniformShaderVarOffset operator+(UniformShaderVarOffset other) const
+        inline UniformShaderVarOffset operator+(UniformShaderVarOffset other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -247,7 +229,7 @@ namespace Falcor
 
         /** Check if this is a valid offset.
         */
-        bool isValid() const
+        inline bool isValid() const
         {
             return mRangeIndex != RangeIndex(-1);
         }
@@ -256,7 +238,7 @@ namespace Falcor
 
         If either `this` or `other` is invalid, returns an invalid offset.
         */
-        ResourceShaderVarOffset operator+(ResourceShaderVarOffset const& other) const
+        inline ResourceShaderVarOffset operator+(ResourceShaderVarOffset const& other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -268,7 +250,7 @@ namespace Falcor
 
         /** Compare with another offset.
         */
-        bool operator==(ResourceShaderVarOffset const& other) const
+        inline bool operator==(ResourceShaderVarOffset const& other) const
         {
             return mRangeIndex == other.mRangeIndex
                 && mArrayIndex == other.mArrayIndex;
@@ -276,7 +258,7 @@ namespace Falcor
 
         /** Compare with another offset.
         */
-        bool operator!=(ResourceShaderVarOffset const& other) const
+        inline bool operator!=(ResourceShaderVarOffset const& other) const
         {
             return !(*this == other);
         }
@@ -297,13 +279,13 @@ namespace Falcor
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        RangeIndex getRangeIndex() const { return mRangeIndex; }
+        inline RangeIndex getRangeIndex() const { return mRangeIndex; }
 
         /** Get the underlying array index into the resource/descriptor range.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        ArrayIndex getArrayIndex() const { return mArrayIndex; }
+        inline ArrayIndex getArrayIndex() const { return mArrayIndex; }
 
         /** Construct an offset representing an explicit resource range and array index.
 
@@ -397,50 +379,35 @@ namespace Falcor
 
         /** Check if this is a valid offset.
         */
-        bool isValid() const
-        {
-            return mUniform.isValid();
-        }
+        inline bool isValid() const { return mUniform.isValid(); }
 
         /** Get the underlying uniform offset.
         */
-        UniformShaderVarOffset getUniform() const
-        {
-            return mUniform;
-        }
+        inline UniformShaderVarOffset getUniform() const { return mUniform; }
 
         /** Get the underlying uniform offset.
 
         This implicit conversion allows a `ShaderVarOffset` to be
         passed to functions that expect a `UniformShaderVarOffset`.
         */
-        operator UniformShaderVarOffset() const
-        {
-            return mUniform;
-        }
+        inline operator UniformShaderVarOffset() const { return mUniform; }
 
         /** Get the underlying resource offset.
         */
-        ResourceShaderVarOffset getResource() const
-        {
-            return mResource;
-        }
+        inline ResourceShaderVarOffset getResource() const { return mResource; }
 
         /** Get the underlying resource offset.
 
         This implicit conversion allows a `ShaderVarOffset` to be
         passed to functions that expect a `ResourceShaderVarOffset`.
         */
-        operator ResourceShaderVarOffset() const
-        {
-            return mResource;
-        }
+        inline operator ResourceShaderVarOffset() const { return mResource; }
 
         /** Add an additional offset.
 
         If either `this` or `other` is invalid, returns an invalid offset.
         */
-        ShaderVarOffset operator+(ShaderVarOffset const& other) const
+        inline ShaderVarOffset operator+(ShaderVarOffset const& other) const
         {
             if(!isValid()) return kInvalid;
             if(!other.isValid()) return kInvalid;
@@ -452,7 +419,7 @@ namespace Falcor
 
         /** Compare to another offset.
         */
-        bool operator==(ShaderVarOffset const& other) const
+        inline bool operator==(ShaderVarOffset const& other) const
         {
             return mUniform == other.mUniform
                 && mResource == other.mResource;
@@ -460,10 +427,7 @@ namespace Falcor
 
         /** Compare to another offset.
         */
-        bool operator!=(ShaderVarOffset const& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(ShaderVarOffset const& other) const { return !(*this == other); }
 
         /** Type used to store the underlying uniform byte offset.
         */
@@ -471,7 +435,7 @@ namespace Falcor
 
         /** Get the uniform byte offset.
         */
-        ByteOffset getByteOffset() const { return mUniform.getByteOffset(); }
+        inline ByteOffset getByteOffset() const { return mUniform.getByteOffset(); }
 
         /** Type used to store the resource/descriptor range.
 
@@ -489,13 +453,13 @@ namespace Falcor
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        RangeIndex getResourceRangeIndex() const { return mResource.getRangeIndex(); }
+        inline RangeIndex getResourceRangeIndex() const { return mResource.getRangeIndex(); }
 
         /** Get the underlying resource array index.
 
         Note: most user code should *not* need to work with explicit range/array indices.
         */
-        ArrayIndex getResourceArrayIndex() const { return mResource.getArrayIndex(); }
+        inline ArrayIndex getResourceArrayIndex() const { return mResource.getArrayIndex(); }
 
     protected:
         UniformShaderVarOffset mUniform;
@@ -541,17 +505,11 @@ namespace Falcor
 
         /** Get the type of the shader variable.
         */
-        std::shared_ptr<const ReflectionType> getType() const
-        {
-            return mpType;
-        }
+        inline std::shared_ptr<const ReflectionType> getType() const { return mpType; }
 
         /** Check if `this` represents a valid offset.
         */
-        bool isValid() const
-        {
-            return mpType != nullptr;
-        }
+        inline bool isValid() const { return mpType != nullptr; }
 
         /** Look up type and offset of a sub-field with the given `name`.
         */
@@ -651,7 +609,7 @@ namespace Falcor
 
         This function only counts uniform/ordinary data, and not resources like textures/buffers/samplers.
         */
-        ByteSize getByteSize() const { return mByteSize; }
+        inline ByteSize getByteSize() const { return mByteSize; }
 
         /** Find a field/member of this type with the given `name`.
 
@@ -687,7 +645,7 @@ namespace Falcor
 
         /** Compare types for inequality.
         */
-        bool operator!=(const ReflectionType& other) const { return !(*this == other); }
+        inline bool operator!=(const ReflectionType& other) const { return !(*this == other); }
 
         /** A range of resources contained (directly or indirectly) in this type.
 
@@ -735,13 +693,13 @@ namespace Falcor
 
         /** Get the number of descriptor ranges contained in this type.
         */
-        uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
+        inline uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
 
         /** Get information on a contained descriptor range.
         */
-        ResourceRange const& getResourceRange(uint32_t index) const { return mResourceRanges[index]; }
+        inline ResourceRange const& getResourceRange(uint32_t index) const { return mResourceRanges[index]; }
 
-        slang::TypeLayoutReflection* getSlangTypeLayout() const { return mpSlangTypeLayout; }
+        inline slang::TypeLayoutReflection* getSlangTypeLayout() const { return mpSlangTypeLayout; }
 
     protected:
         ReflectionType(Kind kind, ByteSize byteSize, slang::TypeLayoutReflection* pSlangTypeLayout)
@@ -775,7 +733,7 @@ namespace Falcor
 
         /** Get the number of elements in the array.
         */
-        uint32_t getElementCount() const { return mElementCount; }
+        inline uint32_t getElementCount() const { return mElementCount; }
 
         /** Get the "stride" in bytes of the array.
 
@@ -785,11 +743,11 @@ namespace Falcor
         of `float3`s in a constant buffer may have a stride
         of 16 bytes, but each element is only 12 bytes.
         */
-        uint32_t getElementByteStride() const { return mElementByteStride; }
+        inline uint32_t getElementByteStride() const { return mElementByteStride; }
 
         /** Get the type of the array elements.
         */
-        const ReflectionType::SharedConstPtr& getElementType() const { return mpElementType; }
+        inline const ReflectionType::SharedConstPtr& getElementType() const { return mpElementType; }
 
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -817,15 +775,15 @@ namespace Falcor
 
         /** Get the name of the struct type
         */
-        const std::string& getName() const { return mName; }
+        inline const std::string& getName() const { return mName; }
 
         /** Get the total number members
         */
-        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
+        inline uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
 
         /** Get member by index
         */
-        const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
+        inline const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
 
         /** Get member by name
         */
@@ -1082,37 +1040,37 @@ namespace Falcor
 
         /** Get the struct-type
         */
-        const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
+        inline const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
 
-        const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector)
+        inline const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
+        inline void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector)
         {
             mpParameterBlockReflector = pReflector;
         }
 
         /** Get the dimensions
         */
-        Dimensions getDimensions() const { return mDimensions; }
+        inline Dimensions getDimensions() const { return mDimensions; }
 
         /** Get the structured-buffer type
         */
-        StructuredType getStructuredBufferType() const { return mStructuredType; }
+        inline StructuredType getStructuredBufferType() const { return mStructuredType; }
 
         /** Get the resource return type
         */
-        ReturnType getReturnType() const { return mReturnType; }
+        inline ReturnType getReturnType() const { return mReturnType; }
 
         /** Get the required shader access
         */
-        ShaderAccess getShaderAccess() const { return mShaderAccess; }
+        inline ShaderAccess getShaderAccess() const { return mShaderAccess; }
 
         /** Get the resource type
         */
-        Type getType() const { return mType; }
+        inline Type getType() const { return mType; }
 
         /** For structured- and constant-buffers, return the underlying type size, otherwise returns 0
         */
-        size_t getSize() const { return mpStructType ? mpStructType->getByteSize() : 0; }
+        inline size_t getSize() const { return mpStructType ? mpStructType->getByteSize() : 0; }
 
         bool operator==(const ReflectionResourceType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -1144,10 +1102,8 @@ namespace Falcor
         bool operator==(const ReflectionType& other) const override;
 
         const std::shared_ptr<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
-        void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector)
-        {
-            mpParameterBlockReflector = pReflector;
-        }
+        
+        inline void setParameterBlockReflector(const std::shared_ptr<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
 
     private:
         ReflectionInterfaceType(
@@ -1176,20 +1132,20 @@ namespace Falcor
 
         /** Get the variable name
         */
-        const std::string& getName() const { return mName; }
+        inline const std::string& getName() const { return mName; }
 
         /** Get the variable type
         */
-        const ReflectionType::SharedConstPtr& getType() const { return mpType; }
+        inline const ReflectionType::SharedConstPtr& getType() const { return mpType; }
 
         /** Get the variable offset
         */
-        ShaderVarOffset getBindLocation() const { return mBindLocation; }
-        size_t getByteOffset() const { return mBindLocation.getByteOffset(); }
-        size_t getOffset() const { return mBindLocation.getByteOffset(); }
+        inline ShaderVarOffset getBindLocation() const { return mBindLocation; }
+        inline size_t getByteOffset() const { return mBindLocation.getByteOffset(); }
+        inline size_t getOffset() const { return mBindLocation.getByteOffset(); }
 
         bool operator==(const ReflectionVar& other) const;
-        bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
+        inline bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
 
     private:
         ReflectionVar(
@@ -1228,7 +1184,7 @@ namespace Falcor
 
         /** Get the type of the contents of the parameter block.
         */
-        ReflectionType::SharedConstPtr getElementType() const { return mpElementType; }
+        inline ReflectionType::SharedConstPtr getElementType() const { return mpElementType; }
 
         using BindLocation = TypedShaderVarOffset;
 
@@ -1287,13 +1243,13 @@ namespace Falcor
 
         /** Get the number of descriptor sets that are needed for an object of this type.
         */
-        uint32_t getD3D12DescriptorSetCount() const { return (uint32_t) mDescriptorSets.size(); }
+        inline uint32_t getD3D12DescriptorSetCount() const { return (uint32_t) mDescriptorSets.size(); }
 
-        const DescriptorSetInfo& getD3D12DescriptorSetInfo(uint32_t index) const { return mDescriptorSets[index]; }
+        inline const DescriptorSetInfo& getD3D12DescriptorSetInfo(uint32_t index) const { return mDescriptorSets[index]; }
 
         /** Get the layout for the `index`th descriptor set that needs to be created for an object of this type.
         */
-        const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
+        inline const D3D12DescriptorSet::Layout& getD3D12DescriptorSetLayout(uint32_t index) const { return mDescriptorSets[index].layout; }
 #endif // FALCOR_D3D12_AVAILABLE
 
         /** Describes binding information for a resource range.
@@ -1325,8 +1281,8 @@ namespace Falcor
             /// The reflection object for a sub-object range.
             ParameterBlockReflection::SharedConstPtr pSubObjectReflector;
 
-            bool isDescriptorSet() const { return flavor == Flavor::Simple; }
-            bool isRootDescriptor() const { return flavor == Flavor::RootDescriptor; }
+            inline bool isDescriptorSet() const { return flavor == Flavor::Simple; }
+            inline bool isRootDescriptor() const { return flavor == Flavor::RootDescriptor; }
         };
 
         struct DefaultConstantBufferBindingInfo
@@ -1355,26 +1311,23 @@ namespace Falcor
 
         /** Get the number of descriptor ranges contained in this type.
         */
-        uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
+        inline uint32_t getResourceRangeCount() const { return (uint32_t) mResourceRanges.size(); }
 
-        ReflectionType::ResourceRange const& getResourceRange(uint32_t index) const { return getElementType()->getResourceRange(index); }
+        inline ReflectionType::ResourceRange const& getResourceRange(uint32_t index) const { return getElementType()->getResourceRange(index); }
 
         /** Get binding information on a contained descriptor range.
         */
-        ResourceRangeBindingInfo const& getResourceRangeBindingInfo(uint32_t index) const { return mResourceRanges[index]; }
+        inline ResourceRangeBindingInfo const& getResourceRangeBindingInfo(uint32_t index) const { return mResourceRanges[index]; }
 
-        uint32_t getRootDescriptorRangeCount() const { return (uint32_t)mRootDescriptorRangeIndices.size(); }
-        uint32_t getRootDescriptorRangeIndex(uint32_t index) const { return mRootDescriptorRangeIndices[index]; }
+        inline uint32_t getRootDescriptorRangeCount() const { return (uint32_t)mRootDescriptorRangeIndices.size(); }
+        inline uint32_t getRootDescriptorRangeIndex(uint32_t index) const { return mRootDescriptorRangeIndices[index]; }
 
-        uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
-        uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
+        inline uint32_t getParameterBlockSubObjectRangeCount() const { return (uint32_t) mParameterBlockSubObjectRangeIndices.size(); }
+        inline uint32_t getParameterBlockSubObjectRangeIndex(uint32_t index) const { return mParameterBlockSubObjectRangeIndices[index]; }
 
         std::shared_ptr<const ProgramVersion> getProgramVersion() const;
 
-        std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const
-        {
-            return getElementType()->findMember(name);
-        }
+        inline std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const { return getElementType()->findMember(name); }
 
     protected:
         ParameterBlockReflection(
@@ -1497,15 +1450,15 @@ namespace Falcor
 
         /** Get the default (unnamed) parameter block.
         */
-        ParameterBlockReflection::SharedConstPtr getDefaultParameterBlock() const { return mpDefaultBlock; }
+        inline ParameterBlockReflection::SharedConstPtr getDefaultParameterBlock() const { return mpDefaultBlock; }
 
         /** For compute-shaders, return the required thread-group size
         */
-        uint3 getThreadGroupSize() const { return mThreadGroupSize; }
+        inline uint3 getThreadGroupSize() const { return mThreadGroupSize; }
 
         /** For pixel-shaders, check if we need to run the shader at sample frequency
         */
-        bool isSampleFrequency() const { return mIsSampleFrequency; }
+        inline bool isSampleFrequency() const { return mIsSampleFrequency; }
 
         /** Get a resource from the default parameter block
         */
@@ -1530,11 +1483,11 @@ namespace Falcor
 
         ReflectionVar::SharedConstPtr findMember(const std::string& name) const;
 
-        std::vector<EntryPointGroupReflection::SharedPtr> const& getEntryPointGroups() const { return mEntryPointGroups; }
+        inline std::vector<EntryPointGroupReflection::SharedPtr> const& getEntryPointGroups() const { return mEntryPointGroups; }
 
-        EntryPointGroupReflection::SharedPtr const& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
+        inline EntryPointGroupReflection::SharedPtr const& getEntryPointGroup(uint32_t index) const { return mEntryPointGroups[index]; }
 
-        std::vector<HashedString> const& getHashedStrings() const { return mHashedStrings; }
+        inline std::vector<HashedString> const& getHashedStrings() const { return mHashedStrings; }
 
     private:
         ProgramReflection(

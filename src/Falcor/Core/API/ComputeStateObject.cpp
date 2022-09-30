@@ -48,7 +48,7 @@ ComputeStateObject::ComputeStateObject(std::shared_ptr<Device> pDevice, const De
 
 ComputeStateObject::SharedPtr ComputeStateObject::create(std::shared_ptr<Device> pDevice, const Desc& desc) {
 	assert(pDevice);
-    return SharedPtr(new ComputeStateObject(pDevice, desc));
+    return std::make_shared<ComputeStateObject>(pDevice, desc);
 }
 
 }  // namespace Falcor

@@ -35,7 +35,7 @@ class Display {
 
 
     bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle);
-    bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle);
+    bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix = "");
     bool closeImage(uint imageHandle);
     bool closeAll();
 

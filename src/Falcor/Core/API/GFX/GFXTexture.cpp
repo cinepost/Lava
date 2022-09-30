@@ -143,6 +143,8 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 	Slang::ComPtr<gfx::ITextureResource> textureResource = mpDevice->getApiHandle()->createTextureResource(desc, shared_from_this(), nullptr);
 	assert(textureResource);
 
+	if(!textureResource) LLOG_FTL << "Error creating texture of format " << to_string(mFormat);
+
 	mApiHandle = textureResource;
 
 #if defined(FALCOR_GFX_VK) || defined(FALCOR_VK)

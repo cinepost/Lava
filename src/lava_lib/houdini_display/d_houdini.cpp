@@ -38,10 +38,11 @@
 #include <fstream>
 #include <cstdlib>
 
-#if 1 == 1
-	#define D_HOUDINI_DEBUG_LEVEL 3	// Debug logging
+#if _DEBUG
+	#define D_HOUDINI_DEBUG_LEVEL 0	// Debug logging
 #else
-	#define D_HOUDINI_DEBUG_LEVEL -1	// No logging
+	#define D_HOUDINI_DEBUG_LEVEL 1	// Essential logging
+//	#define D_HOUDINI_DEBUG_LEVEL -1	// No logging
 #endif
 
 #if defined(WIN32)
@@ -155,34 +156,25 @@ void* UnixPOpen(const std::string& file, const void** in, const void** out, cons
 	sinfo.cb = sizeof(sinfo);
 	sinfo.dwFlags = STARTF_USESTDHANDLES;
 	
-	if(in)
-		sinfo.hStdInput = (HANDLE)*in;
-	if(out)
-		sinfo.hStdOutput = (HANDLE)*out;
-	if(err)
-		sinfo.hStdError = (HANDLE)*err;
+	if(in) sinfo.hStdInput = (HANDLE)*in;
+	if(out) sinfo.hStdOutput = (HANDLE)*out;
+	if(err) sinfo.hStdError = (HANDLE)*err;
 
 	if(!sinfo.hStdInput && in) {
 		inPipe = getNewNamedPipe(inPipeName);
-		sinfo.hStdInput = CreateFile( inPipeName, GENERIC_READ, 
-						  FILE_SHARE_READ, &sec, OPEN_EXISTING,
-						  0, NULL );
+		sinfo.hStdInput = CreateFile( inPipeName, GENERIC_READ, FILE_SHARE_READ, &sec, OPEN_EXISTING, 0, NULL );
 		*in = inPipe;
 	}
 	
 	if(!sinfo.hStdOutput && out) {
 		outPipe = getNewNamedPipe(outPipeName);
-		sinfo.hStdOutput = CreateFile( outPipeName, GENERIC_WRITE, 
-							FILE_SHARE_WRITE, &sec, OPEN_EXISTING,
-							0, NULL );
+		sinfo.hStdOutput = CreateFile( outPipeName, GENERIC_WRITE, FILE_SHARE_WRITE, &sec, OPEN_EXISTING, 0, NULL );
 		*out = outPipe;
 	}
 	
 	if(!sinfo.hStdError && err) {
 		errPipe = getNewNamedPipe(errPipeName);
-		sinfo.hStdError = CreateFile( errPipeName, GENERIC_WRITE, 
-						   FILE_SHARE_WRITE, &sec, OPEN_EXISTING,
-						   0, NULL );
+		sinfo.hStdError = CreateFile( errPipeName, GENERIC_WRITE, FILE_SHARE_WRITE, &sec, OPEN_EXISTING, 0, NULL );
 		*err = errPipe;
 	}
 
@@ -193,12 +185,9 @@ void* UnixPOpen(const std::string& file, const void** in, const void** out, cons
 		// stdin, out, or err handles.
 		NULL, NULL, &sinfo, &pinfo)) {
 
-		if(inPipe)
-			CloseHandle(sinfo.hStdInput);
-		if(outPipe)
-			CloseHandle(sinfo.hStdOutput);
-		if(errPipe)
-			CloseHandle(sinfo.hStdError);
+		if(inPipe) CloseHandle(sinfo.hStdInput);
+		if(outPipe) CloseHandle(sinfo.hStdOutput);
+		if(errPipe) CloseHandle(sinfo.hStdError);
 
 		CloseHandle(pinfo.hThread);
 		hRet = pinfo.hProcess;
@@ -373,12 +362,9 @@ private:
     	std::string pth = "PATH=$PATH:";
 		if(env_p) {
 			pth.append(env_p);
-			//execl( "export", pth.c_str(), (char*)0 );
     	}
 
-
     	myPipe = ::popen(argv, "w");
-    	//myPipe = ::my_popen(argv, "w");
     }
     
     FILE* myPipe;
@@ -435,8 +421,7 @@ public:
 };
 
 static void
-addChanDef(const PtDspyDevFormat& def,
-           vector<h_shared_ptr< H_ChanDef > >& list, const int foff) {
+addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDef > >& list, const int foff) {
 	char* name;
 	const char* dot;
 	std::string prefix;
@@ -468,6 +453,8 @@ addChanDef(const PtDspyDevFormat& def,
 	if(name)
 		prefix = name;
 
+	log(0, "H_ChanDef name %s\n", prefix.c_str());
+
 	// Find the offset by extension
 	dot = strrchr(prefix.c_str(), '.');
 	if (dot)
@@ -485,6 +472,8 @@ addChanDef(const PtDspyDevFormat& def,
 	else if (!strcmp(dot, "a"))
 		offset = 3;
 
+	std::string tmp_refix; // Used to distiguish ordinary secondary aov channels and lpe channels
+
 	dot = strrchr(prefix.c_str(), '.');
 	if (!dot) {
 		if (!strcmp(name, "r") || !strcmp(name, "g") || !strcmp(name, "b") || !strcmp(name, "a")) {
@@ -496,16 +485,19 @@ addChanDef(const PtDspyDevFormat& def,
 		else
 			return;
     } else {
-        // look for lpe:diffuse.000.r names and turn that into lpe:diffuse.
+    	// look for lpe:diffuse.000.r names and turn that into lpe:diffuse.
         // Might need to be a bit more thorough about this determination, maybe
         // check for all digits between the dots?
         prefix.assign(name, dot - prefix.c_str());
+        tmp_refix = prefix;
         dot = strrchr(prefix.c_str(), '.');
         if (dot) {
             prefix.assign(name, dot - prefix.c_str());
         } else {
-            // nothing sensible, revert
-            if (name) {
+            // nothing sensible, use tmp_prefix or revert
+            if( !tmp_refix.empty()) {
+            	prefix = tmp_refix;
+            } else if (name) {
                 prefix = name;
             } else {
                 prefix = "";
@@ -605,8 +597,7 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
 // store a single resolution of a multires render
 // allows storage also of a single lod
 H_MultiRes::~H_MultiRes() {
-	log(0, "H_MultiRes destructor: level: %d, xres: %d, yres: %d\n",
-        myLevel, myXres, myYres);
+	log(0, "H_MultiRes destructor: level: %d, xres: %d, yres: %d\n", myLevel, myXres, myYres);
 }
 
 void
@@ -659,8 +650,7 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
     	g_mplayPortNumber = 0;
     }
     log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
-    //
-
+    
     // If not reserved name, we should try to open MPlay
     if (!strstr(filename, "socket:") || !strstr(filename, "iprsocket:")) {
     	if (g_mplayPortNumber == 0) {
@@ -669,8 +659,7 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
 		}
 	}
 
-	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n",
-		"drivername", filename, width, height, paramCount, nformats);
+	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n", "drivername", filename, width, height, paramCount, nformats);
 
 #ifndef WIN32
     char *doWait = getenv("HOUDINI_DSPY_WAIT");

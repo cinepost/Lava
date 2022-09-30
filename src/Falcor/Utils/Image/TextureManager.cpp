@@ -72,6 +72,9 @@ TextureManager::TextureManager(Device::SharedPtr pDevice, size_t maxTextureCount
 	mSparseTexturesEnabled = true; // TODO: should be dependent on device features !! 
 
 	blosc_init();
+
+	// Init LRU texture data cache
+	mpTextureDataCache = TextureDataCacheLRU::create(mpDevice, 1024, 512);
 }
 
 TextureManager::~TextureManager() {
@@ -455,7 +458,7 @@ TextureManager::TextureHandle TextureManager::loadTexture(const fs::path& path, 
 
 	if (auto it = mKeyToHandle.find(textureKey); it != mKeyToHandle.end()) {
 		// Texture is already managed. Return its handle.
-		LLOG_INF << "Texture " << textureKey.fullPath.string() << " is already managed !";
+		LLOG_DBG << "Texture " << textureKey.fullPath.string() << " is already managed.";
 		handle = it->second;
 	} else {
 

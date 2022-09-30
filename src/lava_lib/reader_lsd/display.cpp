@@ -160,9 +160,13 @@ static inline Display::TypeFormat falcorTypeToDiplay(Falcor::FormatType format_t
     return Display::TypeFormat::UNKNOWN;
 }
 
-static Display::Channel makeDisplayChannel(uint32_t index, Falcor::FormatType format_type, uint32_t numChannelBits, Display::NamingScheme namingScheme) {
+static Display::Channel makeDisplayChannel(const std::string& prefix, uint32_t index, Falcor::FormatType format_type, uint32_t numChannelBits, Display::NamingScheme namingScheme) {
     Display::Channel channel;
-    channel.name = getChannelName(namingScheme, index);
+    if (!prefix.empty()) {
+        channel.name = prefix + "." + getChannelName(namingScheme, index);
+    } else {
+        channel.name = getChannelName(namingScheme, index);
+    }
     channel.format = falcorTypeToDiplay(format_type, numChannelBits);
 
     return channel;
@@ -256,7 +260,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
     return SharedPtr(pDisplay);
 }
 
-bool Display::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle) {
+bool Display::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix) {
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -264,7 +268,7 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
 
     for( uint32_t i = 0; i < numChannels; i++) {
         uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
-        channels.push_back(makeDisplayChannel(i, format_type, numChannelBits, NamingScheme::RGBA));
+        channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
     }
 
     return openImage(image_name, width, height, channels, imageHandle);

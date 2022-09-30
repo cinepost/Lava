@@ -85,7 +85,7 @@ Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, 
 			break;
 	}
 
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags);
 	pTexture->mApiHandle = handle;
 	pTexture->mState.global = initState;
 	pTexture->mState.isGlobal = true;
@@ -94,35 +94,35 @@ Texture::SharedPtr Texture::createFromApiHandle(std::shared_ptr<Device> device, 
 
 Texture::SharedPtr Texture::create1D(std::shared_ptr<Device> device, uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create2D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create3D(std::shared_ptr<Device> device, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool sparse) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::createCube(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags);
 	pTexture->apiInit(pData, (mipLevels == kMaxPossible));
 	return pTexture;
 }
 
 Texture::SharedPtr Texture::create2DMS(std::shared_ptr<Device> device, uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, BindFlags bindFlags) {
 	bindFlags = updateBindFlags(device, bindFlags, false, 1, format, "Texture2DMultisample");
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(device, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags);
 	pTexture->apiInit(nullptr, false);
 	return pTexture;
 }
@@ -133,7 +133,7 @@ Texture::SharedPtr Texture::createUDIMFromFile(std::shared_ptr<Device> pDevice, 
 }
 
 Texture::SharedPtr Texture::createUDIMFromFile(std::shared_ptr<Device> pDevice, const fs::path& path) {
-	Texture::SharedPtr pTexture = SharedPtr(new Texture(pDevice, 1, 1, 1, 1, 1, 1, ResourceFormat::R8Unorm, Type::Texture2D, BindFlags::None));
+	Texture::SharedPtr pTexture = std::make_shared<Texture>(pDevice, 1, 1, 1, 1, 1, 1, ResourceFormat::R8Unorm, Type::Texture2D, BindFlags::None);
 	pTexture->mIsUDIMTexture = true;
 	pTexture->mSourceFilename = path.string();
 	return pTexture;
@@ -344,13 +344,55 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 	readTextureData(mipLevel, arraySlice, textureData, resourceFormat, channels);
 }
 
-void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
+void Texture::readConvertedTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* pTextureData, ResourceFormat dstResourceFormat) {
+	assert(mType == Type::Texture2D);
 	if(mIsUDIMTexture) {
 		LLOG_WRN << "Unable to read UDIM texture data !";
 		return;
 	}
 
+	RenderContext* pContext = mpDevice->getRenderContext();
+
+	// Handle the special case where we have an HDR texture with less then 3 channels
+	FormatType type = getFormatType(mFormat);
+	uint32_t channels = getFormatChannelCount(mFormat);
+	
+	if (mFormat != dstResourceFormat) {
+		uint32_t elementCount = getWidth(0) * getHeight(0);
+
+		std::vector<float> testData(getWidth(0) * getHeight(0) *3);
+		for (size_t i = 0; i < testData.size(); i+=3) testData[i]=1.0f;
+
+		Buffer::SharedPtr pBuffer = Buffer::create(mpDevice, elementCount * getFormatBytesPerBlock(dstResourceFormat), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::Read);
+	
+		uint4 srcRect = {0, 0, getWidth(0), getHeight(0)};
+		uint4 dstRect = {0, 0, getWidth(0), getHeight(0)};
+		uint32_t bufferWidthPixels = getWidth(0);
+		const Sampler::ReductionMode componentsReduction[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
+    const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f) };
+		pContext->blitToBuffer(getSRV(mipLevel, 1, arraySlice, 1), pBuffer, bufferWidthPixels, dstResourceFormat, srcRect, dstRect, Sampler::Filter::Linear, componentsReduction, componentsTransform);
+		pContext->flush(true);
+		const uint8_t* pBuf = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
+
+		LLOG_TRC << "blitToBuffer dst buffer read size " << std::to_string(pBuffer->getSize());
+
+		::memcpy(reinterpret_cast<void*>(pTextureData), reinterpret_cast<const void*>(pBuf), pBuffer->getSize());
+		pBuffer->unmap();
+	} else {
+		uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
+		pContext->readTextureSubresource(this, subresource, pTextureData);
+		pContext->flush(true);
+	}
+
+}
+
+void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* textureData, ResourceFormat& resourceFormat, uint32_t& channels) {
 	assert(mType == Type::Texture2D);
+	if(mIsUDIMTexture) {
+		LLOG_WRN << "Unable to read UDIM texture data !";
+		return;
+	}
+
 	RenderContext* pContext = mpDevice->getRenderContext();
 
 	// Handle the special case where we have an HDR texture with less then 3 channels
@@ -358,15 +400,15 @@ void Texture::readTextureData(uint32_t mipLevel, uint32_t arraySlice, uint8_t* t
 	channels = getFormatChannelCount(mFormat);
 	resourceFormat = mFormat;
 
-	if (type == FormatType::Float && channels < 3) {
-		Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
-		pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
-		pContext->readTextureSubresource(pOther.get(), 0, textureData);
-		resourceFormat = ResourceFormat::RGBA32Float;
-	} else {
+	//if (type == FormatType::Float && channels < 3) {
+	//	Texture::SharedPtr pOther = Texture::create2D(mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr, ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource);
+	//	pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
+	//	pContext->readTextureSubresource(pOther.get(), 0, textureData);
+	//	resourceFormat = ResourceFormat::RGBA32Float;
+	//} else {
 		uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
 		pContext->readTextureSubresource(this, subresource, textureData);
-	}
+	//}
 
 	pContext->flush(true);
 }

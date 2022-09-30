@@ -100,6 +100,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     bool init(const Config& config);
     inline bool isInited() const { return mInited; }
 
+    const std::map<std::string, AOVPlane::SharedPtr>& aovPlanes() const { return mAOVPlanes; }
+
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };

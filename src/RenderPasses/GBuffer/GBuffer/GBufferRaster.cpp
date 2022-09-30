@@ -28,6 +28,7 @@
 #include "Falcor.h"
 
 #include "Falcor/Core/API/RenderContext.h"
+#include "Falcor/RenderGraph/RenderPassHelpers.h"
 #include "Falcor/RenderGraph/RenderPassStandardFlags.h"
 #include "GBufferRaster.h"
 

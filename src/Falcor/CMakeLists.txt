@@ -9,6 +9,7 @@ include_directories(
 file( GLOB SOURCES
     ./Core/*.cpp
     ./Core/API/*.cpp
+    ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
     ./Core/Platform/Linux/Linux.cpp
     ./Core/Program/*.cpp
@@ -31,6 +32,7 @@ file( GLOB SOURCES
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
     ./Utils/Image/*.cpp
+    ./Utils/Image/TextureDataCacheLRU.cpp
     ./Utils/Textures/*.cpp
     ./Utils/Perception/*.cpp
     ./Utils/SampleGenerators/*.cpp
@@ -62,6 +64,12 @@ endif()
 list (APPEND SOURCES ${BACKEND_API_SOURCES})
 
 add_library( falcor_lib SHARED ${SOURCES} ${HEADERS} )
+
+if(MSVC)
+    target_compile_options(falcor_lib PUBLIC /arch:SSE4.1)
+else()
+    target_compile_options(falcor_lib PUBLIC -march=native -msse4.1)
+endif()
 
 # Blosc
 set(Blosc_ROOT ${DEPS_DIR})
@@ -175,10 +183,6 @@ find_package(glfw3 3.3 REQUIRED)
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
-
-#if( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
-#  set_target_properties(falcor_lib PROPERTIES COMPILE_FLAGS "-fPIC")
-#endif( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
 
 target_link_libraries(
     falcor_lib

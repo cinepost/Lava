@@ -25,111 +25,100 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_RENDERGRAPH_RENDERPASSHELPERS_H_
+#define SRC_FALCOR_RENDERGRAPH_RENDERPASSHELPERS_H_
 
 #include "RenderPass.h"
 
 #include "Falcor/Core/API/RenderContext.h"
 #include "Falcor/Core/Program/Program.h"
 
-namespace Falcor
-{
-    // TODO: Move this out of the global scope, e.g. into a RenderPassHelpers class.
-    // TODO: Update render passes to use addRenderPass*() helpers.
+namespace Falcor {
 
-    /** Helper struct with metadata for a render pass input/output.
-    */
-    struct ChannelDesc
-    {
-        std::string name;       ///< Render pass I/O pin name.
-        std::string texname;    ///< Name of corresponding resource in the shader, or empty if it's not a shader variable.
-        std::string desc;       ///< Human-readable description of the data.
-        bool optional = false;  ///< Set to true if the resource is optional.
-        ResourceFormat format = ResourceFormat::RGBA32Float;
-    };
+// TODO: Move this out of the global scope, e.g. into a RenderPassHelpers class.
+// TODO: Update render passes to use addRenderPass*() helpers.
 
-    using ChannelList = std::vector<ChannelDesc>;
+/** Helper struct with metadata for a render pass input/output.
+*/
+struct ChannelDesc {
+	std::string name;       ///< Render pass I/O pin name.
+	std::string texname;    ///< Name of corresponding resource in the shader, or empty if it's not a shader variable.
+	std::string desc;       ///< Human-readable description of the data.
+	bool optional = false;  ///< Set to true if the resource is optional.
+	ResourceFormat format = ResourceFormat::RGBA32Float;
+};
 
-    /** Creates a list of defines to determine if optional render pass resources are valid to be accessed.
-        This function creates a define for every optional channel in the form of:
+using ChannelList = std::vector<ChannelDesc>;
 
-            #define <prefix><desc.texname> 1       if resource is available
-            #define <prefix><desc.texname> 0       otherwise
+/** Creates a list of defines to determine if optional render pass resources are valid to be accessed.
+	This function creates a define for every optional channel in the form of:
 
-        \param[in] channels List of channel descriptors.
-        \param[in] renderData Render data containing the channel resources.
-        \param[in] prefix Prefix used for defines.
-        \return Returns a list of defines to add to the progrem.
-    */
-    inline Program::DefineList getValidResourceDefines(const ChannelList& channels, const RenderData& renderData, const std::string& prefix = "is_valid_")
-    {
-        Program::DefineList defines;
+		#define <prefix><desc.texname> 1       if resource is available
+		#define <prefix><desc.texname> 0       otherwise
 
-        for (const auto& desc : channels)
-        {
-            if (desc.optional && !desc.texname.empty())
-            {
-                defines.add(prefix + desc.texname, renderData[desc.name] != nullptr ? "1" : "0");
-            }
-        }
+	\param[in] channels List of channel descriptors.
+	\param[in] renderData Render data containing the channel resources.
+	\param[in] prefix Prefix used for defines.
+	\return Returns a list of defines to add to the progrem.
+*/
+inline Program::DefineList getValidResourceDefines(const ChannelList& channels, const RenderData& renderData, const std::string& prefix = "is_valid_") {
+	Program::DefineList defines;
 
-        return defines;
-    }
+	for (const auto& desc : channels) {
+		if (desc.optional && !desc.texname.empty()) {
+			defines.add(prefix + desc.texname, renderData[desc.name] != nullptr ? "1" : "0");
+		}
+	}
 
-    /** Adds a list of input channels to the render pass reflection.
-        \param[in] reflector Render pass reflection object.
-        \param[in] channels List of channels.
-        \param[in] bindFlags Optional bind flags. The default is 'ShaderResource' for all inputs.
-    */
-    inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const uint2 dim = {})
-    {
-        for (const auto& it : channels)
-        {
-            auto& tex = reflector.addInput(it.name, it.desc).texture2D(dim.x, dim.y);
-            tex.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
-            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
-        }
-    }
-
-    /** Adds a list of output channels to the render pass reflection.
-        \param[in] reflector Render pass reflection object.
-        \param[in] channels List of channels.
-        \param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
-    */
-    inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {})
-    {
-        for (const auto& it : channels)
-        {
-            auto& tex = reflector.addOutput(it.name, it.desc).texture2D(dim.x, dim.y);
-            tex.bindFlags(bindFlags);
-            if (it.format != ResourceFormat::Unknown) tex.format(it.format);
-            if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
-        }
-    }
-
-    /** Clears all available channels.
-        \param[in] pRenderContext Render context.
-        \param[in] channels List of channel descriptors.
-        \param[in] renderData Render data containing the channel resources.
-    */
-    inline void clearRenderPassChannels(RenderContext* pRenderContext, const ChannelList& channels, const RenderData& renderData)
-    {
-        for (const auto& channel : channels)
-        {
-            auto pTex = renderData[channel.name]->asTexture();
-            if (pTex)
-            {
-                if (isIntegerFormat(pTex->getFormat()))
-                {
-                    pRenderContext->clearUAV(pTex->getUAV().get(), uint4(0));
-                }
-                else
-                {
-                    pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
-                }
-            }
-        }
-    }
-
+	return defines;
 }
+
+/** Adds a list of input channels to the render pass reflection.
+	\param[in] reflector Render pass reflection object.
+	\param[in] channels List of channels.
+	\param[in] bindFlags Optional bind flags. The default is 'ShaderResource' for all inputs.
+*/
+inline void addRenderPassInputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource, const uint2 dim = {}) {
+	for (const auto& it : channels) {
+		auto& tex = reflector.addInput(it.name, it.desc).texture2D(dim.x, dim.y);
+		tex.bindFlags(bindFlags);
+		if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+		if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
+	}
+}
+
+/** Adds a list of output channels to the render pass reflection.
+	\param[in] reflector Render pass reflection object.
+	\param[in] channels List of channels.
+	\param[in] bindFlags Optional bind flags. The default is 'UnorderedAccess' for all outputs.
+*/
+inline void addRenderPassOutputs(RenderPassReflection& reflector, const ChannelList& channels, ResourceBindFlags bindFlags = ResourceBindFlags::UnorderedAccess, const uint2 dim = {}) {
+	for (const auto& it : channels) {
+		auto& tex = reflector.addOutput(it.name, it.desc).texture2D(dim.x, dim.y);
+		tex.bindFlags(bindFlags);
+		if (it.format != ResourceFormat::Unknown) tex.format(it.format);
+		if (it.optional) tex.flags(RenderPassReflection::Field::Flags::Optional);
+	}
+}
+
+/** Clears all available channels.
+	\param[in] pRenderContext Render context.
+	\param[in] channels List of channel descriptors.
+	\param[in] renderData Render data containing the channel resources.
+*/
+inline void clearRenderPassChannels(RenderContext* pRenderContext, const ChannelList& channels, const RenderData& renderData) {
+	for (const auto& channel : channels) {
+		auto pTex = renderData[channel.name]->asTexture();
+		if (pTex) {
+			if (isIntegerFormat(pTex->getFormat())) {
+				pRenderContext->clearUAV(pTex->getUAV().get(), uint4(0));
+			} else {
+				pRenderContext->clearUAV(pTex->getUAV().get(), float4(0.f));
+			}
+		}
+	}
+}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_RENDERGRAPH_RENDERPASSHELPERS_H_
