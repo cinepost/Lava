@@ -55,6 +55,7 @@ struct AnalyticLightSample
     float3  posW;           ///< Sampled point on the light source in world space (for local lights only).
     float3  normalW;        ///< Normal of the sampled point on the light source in world space (normalized).
     float3  dir;            ///< Direction from the shading point to the sampled point on the light in world space (normalized).
+    float3  shadowDir;      ///< Shadow ray direction. Used for artificial soft shadows.
     float   distance;       ///< Distance from the shading point to sampled point on the light.
     float3  Li;             ///< Incident radiance at the shading point (unshadowed). Note: Already divided by the pdf.
     float   pdf;            ///< Probability density function with respect to solid angle at the shading point.
@@ -71,7 +72,7 @@ bool finalizeAreaLightSample(const float3 shadingPosW, const LightData light, in
     float3 toLight = ls.posW - shadingPosW;
     float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
     ls.distance = sqrt(distSqr);
-    ls.dir = toLight / ls.distance;
+    ls.dir = ls.shadowDir = toLight / ls.distance;
 
     // Compute incident radiance at shading point.
     // The area lights are single-sided by default, so radiance is zero when seen from the back-facing side.
@@ -125,7 +126,7 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, floa
     float3 n = normalize(mul(float4(normalize(shadingPosW - light.posW), 1.f), light.transMatIT).xyz);
 
     // Transform light sample direction from world space to local
-    ls.dir = normalize(mul(dir, (float3x3)light.transMat));
+    ls.dir = ls.shadowDir = normalize(mul(dir, (float3x3)light.transMat));
 
     float3 pos = sample_cosine_hemisphere_oriented(rnd, n, pdf);
 */
@@ -176,7 +177,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, float2 
     float3 dir = sample_cone(rnd, light.cosSubtendedAngle);
 
     // Transform sampled direction to world space
-    ls.dir = normalize(mul(dir, (float3x3)light.transMat));
+    ls.dir = ls.shadowDir = normalize(mul(dir, (float3x3)light.transMat));
     ls.normalW = -ls.dir;
     ls.distance = kMaxLightDistance;
 
@@ -206,7 +207,7 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
 
     // Setup direction and distance to light.
     ls.distance = kMaxLightDistance;
-    ls.dir = -light.dirW;
+    ls.dir = ls.shadowDir = -light.dirW;
 
     // Setup incident radiance. For directional lights there is no falloff or cosine term.
     ls.Li = light.intensity;
@@ -223,7 +224,7 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool samplePointLight(const float3 shadingPosW, const LightData light, out AnalyticLightSample ls)
+bool samplePointLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Get the position and normal.
     ls.posW = light.posW;
@@ -234,19 +235,27 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
     float3 toLight = ls.posW - shadingPosW;
     float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
     ls.distance = sqrt(distSqr);
-    ls.dir = toLight / ls.distance;
+    ls.dir = ls.shadowDir = toLight / ls.distance;
 
     // Calculate the falloff for spot-lights.
     float cosTheta = -dot(ls.dir, light.dirW);
     float falloff = 1.f;
-    if (cosTheta < light.cosOpeningAngle)
-    {
-        falloff = 0.f;
-    }
-    else if (light.penumbraAngle > 0.f)
-    {
+    
+    if (cosTheta < light.cosOpeningAngle) {
+        // Outside spot light cone. Sample is invalid
+        return false;
+    } else if (light.penumbraAngle > 0.f) {
+        // Inside spol light cone
+        float3 shadowDir = float3(sample_disk(rnd) * light.radius, .0f);
+
+        // Transform sampled shadow direction to world space
+        ls.shadowDir = normalize(ls.posW + mul(shadowDir, (float3x3)light.transMat) - shadingPosW);
+        
         float deltaAngle = light.openingAngle - acos(cosTheta);
         falloff = smoothstep(0.f, light.penumbraAngle, deltaAngle);
+    } else {
+        // Point light shadows
+        ls.shadowDir = normalize(ls.posW + mul(sample_sphere(rnd) * light.radius, (float3x3)light.transMat) - shadingPosW);
     }
 
     // Compute incident radiance at shading point.
@@ -270,7 +279,7 @@ bool sampleLight(const float3 shadingPosW, const LightData light, float2 rnd, ou
     // Sample the light based on its type: point, directional, or area.
     switch (light.type) {
         case LightType::Point:
-            return samplePointLight(shadingPosW, light, ls);
+            return samplePointLight(shadingPosW, light, rnd, ls);
         case LightType::Directional:
             return sampleDirectionalLight(shadingPosW, light, ls);
         case LightType::Rect:
@@ -299,7 +308,7 @@ bool evalLightApproximate(const float3 shadingPosW, const LightData light, out A
 
     switch (light.type) {
         case LightType::Point:
-            return samplePointLight(shadingPosW, light, ls);
+            return samplePointLight(shadingPosW, light, float2(.0f, 0.f), ls);
         case LightType::Directional:
             return sampleDirectionalLight(shadingPosW, light, ls);
     }

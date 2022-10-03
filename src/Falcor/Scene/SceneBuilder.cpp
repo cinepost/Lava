@@ -228,6 +228,8 @@ Scene::SharedPtr SceneBuilder::getScene() {
     // Post-process the scene data.
     TimeReport timeReport;
 
+    mAddGeoTasks.wait();
+
     // Prepare displacement maps. This either removes them (if requested in build flags)
     // or makes sure that normal maps are removed if displacement is in use.
     prepareDisplacementMaps();
@@ -815,7 +817,7 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
     {
         std::scoped_lock lock(g_meshes_mutex);
 
-        mSceneGraph[nodeID].meshes.push_back(meshID);
+       // mSceneGraph[nodeID].meshes.push_back(meshID); // TODO: do we need this anymore ?
 
         mMeshes[meshID].instances.push_back({});
         MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
@@ -827,7 +829,7 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
         if (shadingSpec) instance.shading = *shadingSpec;
 
         if (visibilitySpec) instance.visibility = *visibilitySpec;
-
+        
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
     }
 }
@@ -1338,6 +1340,7 @@ void SceneBuilder::optimizeSceneGraph() {
 }
 
 void SceneBuilder::pretransformStaticMeshes() {
+    return;
     // This function transforms all static, non-instanced meshes to world space.
     // A new identity transform node is inserted in the scene graph, linking all transformed meshes.
     // This step is a prerequisite for the ray tracing optimizations we do later.
@@ -1510,6 +1513,7 @@ void SceneBuilder::createMeshGroups() {
     meshList dynamicDisplacedMeshes;
     size_t nonInstancedMeshCount = 0;
 
+#ifdef NON_INSTANCED_MESH_SUPPORT
     for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
         auto& mesh = mMeshes[meshID];
         if (mesh.instances.size() > 1) continue; // Only processing non-instanced meshes here
@@ -1527,6 +1531,7 @@ void SceneBuilder::createMeshGroups() {
         else nodeToMeshList[nodeID].push_back(meshID);
         nonInstancedMeshCount++;
     }
+#endif
 
     // Validate that mesh counts add up.
     size_t nonInstancedDynamicMeshCount = 0;
@@ -1540,22 +1545,29 @@ void SceneBuilder::createMeshGroups() {
     // It's important the instance lists are ordered and unique, so using std::set to describe them.
     // TODO: Maybe we should just change MeshSpec::instances to be a std::set in the first place?
     using instances = std::set<uint32_t>;
+
+    meshList instancedMeshesList;
     std::map<instances, meshList> instancesToMeshList;
     std::map<instances, meshList> displacedInstancesToMeshList;
     size_t instancedMeshCount = 0;
 
     for (uint32_t meshID = 0; meshID < (uint32_t)mMeshes.size(); meshID++) {
         auto& mesh = mMeshes[meshID];
+
+#ifdef NON_INSTANCED_MESH_SUPPORT
         if (mesh.instances.size() <= 1) continue; // Only processing instanced meshes here
+#endif
 
         // Mark displaced meshes.
         const auto& pMaterial = mSceneData.pMaterialSystem->getMaterial(mesh.materialId);
         if (pMaterial->isDisplaced()) mesh.isDisplaced = true;
 
         instances inst({mesh.instances.begin()->nodeId, mesh.instances.end()->nodeId});
+
         if (mesh.isDisplaced) {
             displacedInstancesToMeshList[inst].push_back(meshID);
         } else {
+            instancedMeshesList.push_back(meshID);
             instancesToMeshList[inst].push_back(meshID);
         }
         instancedMeshCount++;
@@ -1568,6 +1580,7 @@ void SceneBuilder::createMeshGroups() {
         instancedMeshes.insert(it.second.begin(), it.second.end());
         instancedCount += it.second.size();
     }
+
     std::set<uint32_t> displacedInstancedMeshes;
     size_t displacedInstancedCount = 0;
     for (const auto& it : displacedInstancesToMeshList) {
@@ -1592,6 +1605,10 @@ void SceneBuilder::createMeshGroups() {
         }
     };
 
+    auto _addMeshes = [this](const meshList& meshes, bool isStatic, bool isDisplaced) {
+        for (const auto& meshID : meshes) mMeshGroups.push_back(MeshGroup{ meshList({ meshID }), isStatic });
+    };
+
     // All static non-instanced meshes go in a single group or individual groups depending on config.
     if (!staticMeshes.empty()) {
         addMeshes(staticMeshes, true, false, is_set(mFlags, Flags::RTDontMergeStatic));
@@ -1603,10 +1620,12 @@ void SceneBuilder::createMeshGroups() {
     }
 
     // Instanced static and dynamic meshes are grouped based on instance lists.
-    for (const auto& it : instancesToMeshList) {
-        addMeshes(it.second, false, false, is_set(mFlags, Flags::RTDontMergeInstanced));
-    }
+//    for (const auto& it : instancesToMeshList) {
+//       addMeshes(it.second, false, false, is_set(mFlags, Flags::RTDontMergeInstanced));
+//    }
 
+    _addMeshes(instancedMeshesList, false, false);
+    
     // Important note:
     // All displaced meshes instances need to be added at the end of the list.
     // This allows determining if an instance is displaced soley by looking at the instance ID.

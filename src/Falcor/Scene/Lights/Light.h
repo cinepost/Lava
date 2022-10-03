@@ -108,16 +108,19 @@ class dlldecl Light : public Animatable {
 
     LightShadowType getShadowType() const { return (LightShadowType)mData.shadowType; }
 
+    void setLightRadius(float radius);
+
+    const float getLightRadius() const { return mData.radius; }
 
     enum class Changes {
-        None = 0x0,
-        Active = 0x1,
-        Position = 0x2,
-        Direction = 0x4,
-        Intensity = 0x8,
-        SurfaceArea = 0x10,
-        Shadow = 0x20,
-        Flags = 0x40,
+      None = 0x0,
+      Active = 0x1,
+      Position = 0x2,
+      Direction = 0x4,
+      Intensity = 0x8,
+      SurfaceArea = 0x10,
+      Shadow = 0x20,
+      Flags = 0x40,
     };
 
     /** Begin a new frame. Returns the changes from the previous frame
@@ -132,7 +135,6 @@ class dlldecl Light : public Animatable {
 
   protected:
     Light(const std::string& name, LightType type);
-
 
     static const size_t kDataSize = sizeof(LightData);
 
@@ -218,6 +220,7 @@ class dlldecl PointLight : public Light {
     void updateFromAnimation(const glm::mat4& transform) override;
 
   private:
+    void update();
     PointLight(const std::string& name);
 };
 

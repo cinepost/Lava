@@ -1,7 +1,7 @@
 import hou
 
 from lava_version import LAVA_VERSION_STRING
-from lava_houdini import add_geometry_lava_parameters, add_instance_lava_parameters
+from lava_houdini import add_geometry_lava_parameters, add_instance_lava_parameters, add_light_lava_parameters
 
 def sceneLoadedEventCallback(event_type): 
 	if event_type == hou.hipFileEventType.AfterLoad:
@@ -23,6 +23,10 @@ def sceneLoadedEventCallback(event_type):
 			# Loop over all instance nodes
 			for node in hou.nodeType(hou.objNodeTypeCategory(), "instance").instances():
 				add_instance_lava_parameters(node, rebuild)
+
+			# Loop over all light nodes
+			for node in hou.nodeType(hou.objNodeTypeCategory(), "hlight::2.0").instances():
+				add_light_lava_parameters(node, rebuild)
 
 		# Store current LAVA_VERSION_STRING
 		hou.session.__LAVA_VERSION_STRING__ = LAVA_VERSION_STRING

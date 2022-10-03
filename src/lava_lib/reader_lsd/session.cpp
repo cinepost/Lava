@@ -645,9 +645,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
 		// Point/Spot light
+
+
+		float light_radius = pLightScope->getPropertyValue(ast::Style::LIGHT, "lightradius", (float)0.0f);
+
 		auto pPointLight = Falcor::PointLight::create("noname_point");
 		pPointLight->setWorldPosition(light_pos);
 		pPointLight->setWorldDirection(light_dir);
+
+		if(light_radius > 0.0f) pPointLight->setLightRadius(light_radius);
 
 		bool do_cone = false;
 		float coneangle_degrees = 360.0f;
@@ -1174,7 +1180,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	// TODO: this is naive test. fetch basic material data
 	const Property* pShaderProp = pObj->getProperty(ast::Style::OBJECT, "surface");
     
-    Falcor::float3 	surface_base_color = {1.0, 1.0, 1.0};
+    Falcor::float3 	surface_base_color = {0.2, 0.2, 0.2};
     std::string 	surface_base_color_texture_path  = "";
     std::string 	surface_base_normal_texture_path = "";
     std::string 	surface_metallic_texture_path    = "";
@@ -1189,7 +1195,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     float 		 	surface_ior = 1.5;
     float 			surface_metallic = 0.0;
-    float 			surface_roughness = 0.5;
+    float 			surface_roughness = 0.3;
     float 			surface_reflectivity = 1.0;
 
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};

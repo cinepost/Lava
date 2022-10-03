@@ -2658,49 +2658,53 @@ void Scene::fillInstanceDesc(std::vector<RtInstanceDesc>& instanceDescs, uint32_
         // - The global matrices are the same for all meshes in an instance.
         //
         assert(!meshList.empty());
-        size_t instanceCount = mMeshIdToInstanceIds[meshList[0]].size();
+        for(auto meshID: meshList) {
+            size_t instanceCount = mMeshIdToInstanceIds[meshID].size();
 
-        assert(instanceCount > 0);
-        for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
-            // Validate that the ordering is matching our expectations:
-            // InstanceID() + GeometryIndex() should look up the correct mesh instance.
-            for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
-                assert(instances.size() == instanceCount);
-                assert(instances[instanceIdx] == instanceID + geometryIndex);
-            }
-
-            const auto& instance = mGeometryInstanceData[instanceID];
-
-            desc.instanceID = instanceID;
-            desc.instanceMask = 0xFF;
-
-            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
-            if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;
-
-            instanceID += (uint32_t)meshList.size();
-
-            glm::mat4 transform4x4 = glm::identity<glm::mat4>();
-            if (!isStatic) {
-                // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
-                // Just pick the matrix from the first mesh.
-                const uint32_t matrixId = mGeometryInstanceData[desc.instanceID].globalMatrixID;
-                transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
-
-                // Verify that all meshes have matching tranforms.
+            assert(instanceCount > 0);
+            for (size_t instanceIdx = 0; instanceIdx < instanceCount; instanceIdx++) {
+                // Validate that the ordering is matching our expectations:
+                // InstanceID() + GeometryIndex() should look up the correct mesh instance.
                 for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                    assert(matrixId == mGeometryInstanceData[desc.instanceID + geometryIndex].globalMatrixID);
+                    const auto& instances = mMeshIdToInstanceIds[meshList[geometryIndex]];
+                    assert(instances.size() == instanceCount);
+                    assert(instances[instanceIdx] == instanceID + geometryIndex);
                 }
-            }
-            std::memcpy(desc.transform, &transform4x4, sizeof(desc.transform));
 
-            // Verify that instance data has the correct instanceIndex and geometryIndex.
-            for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
-                assert((uint32_t)instanceDescs.size() == mGeometryInstanceData[desc.instanceID + geometryIndex].instanceIndex);
-                assert(geometryIndex == mGeometryInstanceData[desc.instanceID + geometryIndex].geometryIndex);
-            }
+                //const auto& instance = mGeometryInstanceData[instanceID];
+                const auto& instance = mGeometryInstanceData[mMeshIdToInstanceIds[meshID][instanceIdx]];
 
-            instanceDescs.push_back(desc);
+                desc.instanceID = instanceID; //instance.geometryIndex; //instanceID;
+                desc.instanceMask = 0xFF;
+
+                // Instance ray flags
+                if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) == 0) desc.instanceMask |= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToPrimaryRays; 
+                if((instance.flags & (uint32_t)GeometryInstanceFlags::VisibleToShadowRays)  == 0) desc.instanceMask &= !(uint8_t)RtGeometryInstanceVisibilityFlags::VisibleToShadowRays;        
+
+                instanceID ++;//= (uint32_t)meshList.size();
+
+                glm::mat4 transform4x4 = glm::identity<glm::mat4>();
+                if (!isStatic) {
+                    // For non-static meshes, the matrices for all meshes in an instance are guaranteed to be the same.
+                    // Just pick the matrix from the first mesh.
+                    const uint32_t matrixId = mGeometryInstanceData[desc.instanceID].globalMatrixID;
+                    transform4x4 = transpose(mpAnimationController->getGlobalMatrices()[matrixId]);
+
+                    // Verify that all meshes have matching tranforms.
+                    for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
+                        assert(matrixId == mGeometryInstanceData[desc.instanceID + geometryIndex].globalMatrixID);
+                    }
+                }
+                std::memcpy(desc.transform, &transform4x4, sizeof(desc.transform));
+
+                // Verify that instance data has the correct instanceIndex and geometryIndex.
+                for (uint32_t geometryIndex = 0; geometryIndex < (uint32_t)meshList.size(); geometryIndex++) {
+                    assert((uint32_t)instanceDescs.size() == mGeometryInstanceData[desc.instanceID + geometryIndex].instanceIndex);
+                    assert(geometryIndex == mGeometryInstanceData[desc.instanceID + geometryIndex].geometryIndex);
+                }
+
+                instanceDescs.push_back(desc);
+            }
         }
     }
 

@@ -44,8 +44,6 @@ class SceneBuilder: public Falcor::SceneBuilder {
 		StandardMaterial::SharedPtr mpDefaultMaterial = nullptr;
 
 		std::atomic<uint32_t> mUniqueTrianglesCount = 0;
-
-		BS::multi_future<uint32_t> mAddGeoTasks;
 };
 
 }  // namespace lava
