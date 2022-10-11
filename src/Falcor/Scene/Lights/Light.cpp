@@ -116,6 +116,11 @@ void Light::setShaderData(const ShaderVar& var) {
 
 Light::Light(const std::string& name, LightType type) : mName(name) {
     mData.type = (uint32_t)type;
+    mData.flags = 0x0;
+}
+
+void Light::setTexture(Texture::SharedPtr pTexture) {
+    mpTexture = pTexture;
 }
 
 // PointLight
@@ -126,6 +131,7 @@ PointLight::SharedPtr PointLight::create(const std::string& name) {
 
 PointLight::PointLight(const std::string& name) : Light(name, LightType::Point) {
     mPrevData = mData;
+    mData.flags |= (uint32_t)LightDataFlags::DeltaPosition; 
 }
 
 void PointLight::setWorldDirection(const float3& dir) {
@@ -198,6 +204,7 @@ void PointLight::updateFromAnimation(const glm::mat4& transform) {
 // DirectionalLight
 
 DirectionalLight::DirectionalLight(const std::string& name) : Light(name, LightType::Directional) {
+    mData.flags |= (uint32_t)LightDataFlags::DeltaDirection; 
     mPrevData = mData;
 }
 
@@ -232,9 +239,19 @@ DistantLight::DistantLight(const std::string& name) : Light(name, LightType::Dis
     mPrevData = mData;
 }
 
+void DistantLight::setIntensity(const float3& intensity) {
+    mIntensity = intensity;
+    update();
+};
+
 void DistantLight::setAngle(float angle) {
     mAngle = glm::clamp(angle, 0.f, (float)M_PI_2);
     mData.cosSubtendedAngle = std::cos(mAngle);
+    update();
+}
+
+void DistantLight::setAngleDegrees(float deg) {
+    setAngle(( deg * M_PI ) / 180.0f);
 }
 
 void DistantLight::setWorldDirection(const float3& dir) {
@@ -261,11 +278,39 @@ void DistantLight::update() {
         mData.transMat = glm::mat4();
     }
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+
+    if(mData.cosSubtendedAngle == 1.0f) {
+        mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
+        mData.intensity = mIntensity;
+    } else {
+        mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
+        mData.intensity = mIntensity / (1.0f - mData.cosSubtendedAngle);
+    }
+
 }
 
 void DistantLight::updateFromAnimation(const glm::mat4& transform) {
     float3 fwd = float3(-transform[2]);
     setWorldDirection(fwd);
+}
+
+// EnvironmentLight
+
+EnvironmentLight::EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture) : Light(name, LightType::Env) {
+    setTexture(pTexture);
+}
+
+EnvironmentLight::SharedPtr EnvironmentLight::create(const std::string& name, Texture::SharedPtr pTexture) {
+    return SharedPtr(new EnvironmentLight(name, pTexture));
+}
+
+void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
+
+}
+
+float EnvironmentLight::getPower() const { 
+    // TODO: calculate total power in prepass or use special ltx value
+    return 0.f; 
 }
 
 // AnalyticAreaLight
@@ -274,9 +319,9 @@ AnalyticAreaLight::AnalyticAreaLight(const std::string& name, LightType type) : 
     mData.tangent = float3(1, 0, 0);
     mData.bitangent = float3(0, 1, 0);
     mData.surfaceArea = 1.0f;
-    mData.flags = 0x0;
+    mData.flags |= (uint32_t)LightDataFlags::Area; 
 
-    mScaling = float3(0.5, 0.5, 0.5); // 0.5 is a "radius" of a unit sized primitive
+    mScaling = float3(0.5, 0.5, 0.5); // 0.5 is a "radius" of a unit sized light primitive
     update();
     mPrevData = mData;
 }
@@ -306,6 +351,9 @@ void AnalyticAreaLight::update() {
     // Update matrix
     mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
     mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+    mData.transMatInv = glm::inverse(mData.transMat);
+
+    mData.posW = {mData.transMat[3][0], mData.transMat[3][1], mData.transMat[3][2]};
 }
 
 // RectLight
@@ -319,6 +367,7 @@ void RectLight::update() {
 
     float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
+
     mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 4.0f * rx * ry );
 
     if(mNormalizeArea) mData.intensity /= mData.surfaceArea;

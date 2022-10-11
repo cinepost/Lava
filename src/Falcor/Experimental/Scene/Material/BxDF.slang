@@ -36,7 +36,7 @@ import Experimental.Scene.Material.Microfacet;
 __exported import Experimental.Scene.Material.IBxDF;
 
 // Enable support for delta reflection/transmission.
-#define EnableDeltaBSDF         1
+#define EnableDeltaBSDF         0
 
 // Enable GGX sampling using the distribution of visible normals (VNDF) instead of classic NDF sampling.
 // This should be the default as it has lower variance, disable for testing only.
@@ -51,7 +51,8 @@ __exported import Experimental.Scene.Material.IBxDF;
 // In some computations, we can avoid clamps etc. if 1.0 - alpha^2 != 1.0, so the epsilon should be 1.72666361e-4 or larger in fp32.
 // The the value below is sufficient to avoid visible artifacts.
 // Falcor used to clamp roughness to 0.08 before the clamp was removed for allowing delta events. We continue to use the same threshold.
-static const float kMinGGXAlpha = 0.0064f;
+//static const float kMinGGXAlpha = 0.0064f; // 0.0064f;
+static const float kMinGGXAlpha = 0.001f; // 0.0064f;
 
 /** Lambertian diffuse reflection.
     f_r(wi, wo) = albedo / pi
@@ -258,13 +259,15 @@ struct SpecularReflectionMicrofacet : IBxDF
         float3 h = normalize(wi + wo);
         float wiDotH = dot(wi, h);
 
+        float3 F = evalFresnelSchlick(albedo, 1.f, wiDotH);
+        //if (alpha == 0.f) return F;
+
         float D = evalNdfGGX(alpha, h.z);
 #if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
         float G = evalMaskingSmithGGXSeparable(alpha, wi.z, wo.z);
 #elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
         float G = evalMaskingSmithGGXCorrelated(alpha, wi.z, wo.z);
 #endif
-        float3 F = evalFresnelSchlick(albedo, 1.f, wiDotH);
         return F * D * G * 0.25f / wi.z;
     }
 

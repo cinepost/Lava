@@ -43,6 +43,7 @@ import Experimental.Scene.Material.StandardMaterial;
 import Experimental.Scene.Material.IBxDF;
 
 #define _FIX_SHADOW_TERMINATOR
+#define _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
 // UAV output channels
 RasterizerOrderedTexture2D<float4> gOutPosition;
@@ -53,11 +54,11 @@ RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
-  uint              gSampleNumber;        // Interframe sample number.
-  int               useBrdfSampling = 1;  // Use BRDF importance sampling.
-  int               usePdf = 0;           // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
+  uint              gSampleNumber;                 // Interframe sample number.
+  bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
+  int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
 
-  float2            gRenderTargetDim;     // frame dimension
+  float2            gRenderTargetDim;              // frame dimension
   uint              gSamplesPerFrame;
 
   float4x4          gViewInvMat;
@@ -98,6 +99,27 @@ float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
     return log2(pdf * txh * M_1_PI);                                // From chapter 21 in Ray Tracing Gems.
 }
 
+float power_heuristic(float nf, float fPdf, float ng, float gPdf){
+    float f = nf * fPdf;
+    float g = ng * gPdf;
+    return (f*f)/(f*f + g*g);
+}
+
+/** Evaluates the currently configured heuristic for multiple importance sampling (MIS).
+    \param[in] n0 Number of samples taken from the first sampling strategy.
+    \param[in] p0 Pdf for the first sampling strategy.
+    \param[in] n1 Number of samples taken from the second sampling strategy.
+    \param[in] p1 Pdf for the second sampling strategy.
+    \return Weight for the contribution from the first strategy (p0).
+*/
+float evalMIS(float n0, float p0, float n1, float p1) {
+    // Power two heuristic
+    float q0 = (n0 * p0) * (n0 * p0);
+    float q1 = (n1 * p1) * (n1 * p1);
+    return q0 / (q0 + q1);
+}
+
+
 
 [earlydepthstencil]
 PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
@@ -129,7 +151,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
 
     // Main output variables
-    float3 surfaceColor = float3(0.0f, 0.0f, 0.0f);
+    float3 surfaceColor = float3(0.0f);
     float  surfaceAlpha = 0.0f;
 
     // AOV varibles
@@ -148,43 +170,78 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 #endif
 
+    //[unroll]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
-        float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
+        float3 shadowFactor = float3(1.0f);
+        float misWeight = 1.f;
 
         LightData light = gScene.getLight(lightIndex);
 
         AnalyticLightSample ls;
-        bool valid = sampleLight(sd.posW, light, sampleNext2D(sg), ls);
+        
+        // Sample light and reject sample if lower hemisphere.
+        if (sampleLight(sd.posW, sd.faceN, light, sampleNext2D(sg), ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
+        
+            if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
+                
+                // Test visibility by tracing a shadow ray.
+                RayDesc ray;
+                ray.Origin = rayOrigin; // + normalize(viewDir) * 0.01f;
+                ray.Direction = ls.shadowDir;
+                ray.TMin = .0001f;
 
-        // Reject sample if lower hemisphere.
-        if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) {
-            continue;
-        }
+                ray.TMax = ls.distance;
 
-        if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
-            
-            // Test visibility by tracing a shadow ray.
-            RayDesc ray;
-            ray.Origin = rayOrigin;// + normalize(viewDir) * 0.01f;
-            ray.Direction = ls.shadowDir;
-            ray.TMin = .01f;
-
-            switch (light.type) {
-                case LightType::Distant:
-                case LightType::Directional:
-                    ray.TMax = 1e4f;
-                    break;
-                default:
-                    ray.TMax = length(ls.posW - sd.posW);
-                    break;
+                rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+                rayShadowQuery.Proceed();
+                shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
             }
 
-            rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-            rayShadowQuery.Proceed();
-            shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f, 1.0f, 1.0f);
+#ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
+            misWeight = 1.0f;
+            if (!light.isDeltaLight() && (ls.pdf > .0f)) {
+                float brdfPdf = bsdf.evalPdf(sd, ls.dir);
+                misWeight = power_heuristic(1.0f, ls.pdf, 1.0f, brdfPdf);
+                misWeight /= ls.pdf;
+            }
+#else
+            misWeight = 1.0f;
+#endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
+
+            surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor * misWeight;// * float3(1.0, 0.0, 0.0);
         }
 
-        surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor;
+        
+#ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
+
+        // Sample bsdf for non singular light
+        if(!light.isDeltaLight()) {
+            BSDFSample bsdfSample;
+            if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
+                
+                // Intersect light source and reject invalid light sample.
+                if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
+                    misWeight = power_heuristic(1., bsdfSample.pdf, 1., ls.pdf);
+
+                    shadowFactor = float3(1.0f);
+
+                    RayDesc ray;
+                    ray.Origin = rayOrigin; // + normalize(viewDir) * 0.01f;
+                    ray.Direction = ls.shadowDir;
+                    ray.TMin = .0001f;
+
+                    ray.TMax = ls.distance;
+
+                    rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+                    rayShadowQuery.Proceed();
+                    shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
+
+                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;// * float3(0.0, 1.0, 0.0);
+                }
+            }
+        }
+#endif  // _USE_MULTIPLE_IMPORTANCE_SAMPLING
+
         AOV_shadow *= shadowFactor;
     }
 

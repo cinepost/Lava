@@ -33,8 +33,10 @@
 
 
 #include "Falcor/Core/Framework.h"
+#include "Falcor/Core/API/Texture.h"
 #include "Falcor/Utils/Math/Vector.h"
 
+#include "Falcor/Utils/HostDeviceShared.slangh"
 #include "LightData.slang"
 #include "Falcor/Scene/Animation/Animatable.h"
 
@@ -83,6 +85,14 @@ class dlldecl Light : public Animatable {
     /** Check if light is active
     */
     bool isActive() const { return mActive; }
+
+    /** Set light projection texture
+    */
+    void setTexture(Texture::SharedPtr pTexture);
+
+    /** Get light projection texture
+    */
+    Texture::SharedPtr getTexture() const { return mpTexture; } 
 
     /** Gets the size of a single light data struct in bytes
     */
@@ -138,15 +148,11 @@ class dlldecl Light : public Animatable {
 
     static const size_t kDataSize = sizeof(LightData);
 
-    /* UI callbacks for keeping the intensity in-sync */
-    float3 getColorForUI();
-    void setColorFromUI(const float3& uiColor);
-    float getIntensityForUI();
-    void setIntensityFromUI(float intensity);
-
     std::string mName;
     bool mActive = true;
     bool mActiveChanged = false;
+
+    Texture::SharedPtr mpTexture = nullptr;
 
     /* These two variables track mData values for consistent UI operation.*/
     float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
@@ -273,6 +279,7 @@ class dlldecl DistantLight : public Light {
         \param[in] theta Light angle
     */
     void setAngle(float theta);
+    void setAngleDegrees(float deg);
 
     /** Get the half-angle subtended by the light
     */
@@ -293,12 +300,38 @@ class dlldecl DistantLight : public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
+    void setIntensity(const float3& intensity) override;
+
   private:
     DistantLight(const std::string& name);
     void update();
     float mAngle;       ///<< Half-angle subtended by the source.
+    float3 mIntensity;
 
     friend class SceneCache;
+};
+
+/** Environment light source.
+*/
+
+class dlldecl EnvironmentLight: public Light {
+  public:
+    using SharedPtr = std::shared_ptr<EnvironmentLight>;
+    using SharedConstPtr = std::shared_ptr<const EnvironmentLight>;
+
+    static SharedPtr create(const std::string& name = "", Texture::SharedPtr pTexture = nullptr);
+    ~EnvironmentLight() = default;
+
+    /** Get total light power
+    */
+    float getPower() const override;
+
+    void updateFromAnimation(const glm::mat4& transform) override;
+
+  private:
+    EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
+
+    friend class SceneCache;  
 };
 
 /** Analytic area light source.

@@ -209,6 +209,8 @@ bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& i
 Scene::SharedPtr SceneBuilder::getScene() {
     if (mpScene) return mpScene;
 
+    mAddGeoTasks.wait();
+
     // Finish loading textures. This blocks until all textures are loaded and assigned.
     mpMaterialTextureLoader.reset();
 
@@ -227,8 +229,6 @@ Scene::SharedPtr SceneBuilder::getScene() {
 
     // Post-process the scene data.
     TimeReport timeReport;
-
-    mAddGeoTasks.wait();
 
     // Prepare displacement maps. This either removes them (if requested in build flags)
     // or makes sure that normal maps are removed if displacement is in use.

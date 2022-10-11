@@ -29,6 +29,7 @@
 #include "Utils/HostDeviceShared.slangh"
 #include "Utils/Math/MathConstants.slangh"
 
+
 BEGIN_NAMESPACE_FALCOR
 
 /** Types of light sources. Used in LightData structure.
@@ -45,6 +46,7 @@ enum class LightType
     Rect,           ///< Quad shaped area light source
     Disc,           ///< Disc shaped area light source
     Sphere,         ///< Spherical area light source
+    Env,            ///< Environment light source
 };
 
 
@@ -63,19 +65,23 @@ enum class LightShadowType
 
 enum class LightDataFlags : uint32_t {
     None = 0x0,
-
-    // Mesh flags.
+    
     SingleSided = 0x1,
     ReversedDirection = 0x2,
     ContribureDirectDiffuse = 0x4,
     ContributeDirectSpecular = 0x8,
+    
     ContributeIndirectDiffuse = 0x10,
     ContributeIndirectSpecular = 0x20,
-
     ContributeDirectSSS = 0x40,
     ContribureIndirectSSS = 0x80,
 
-    TransparentShadows = 0x100,
+    OpaqueShadows = 0x100,
+    DeltaPosition = 0x200, 
+    DeltaDirection = 0x400,
+    Area = 0x800,
+
+    Infinite = 0x1000
 };
 
 
@@ -88,26 +94,27 @@ struct LightData {
     float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
 
     float3   posW               = float3(0, 0, 0);  ///< World-space position of the center of a light source
-    uint32_t flags;
+    uint32_t flags              = uint(LightDataFlags::None);
 
     float3   dirW               = float3(0, -1, 0); ///< World-space orientation of the light source (normalized).
     float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
     
-    float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of th light source
-    float    surfaceArea        = 1.f;              ///< Surface area of the light shape
+    float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of a light source
+    float    surfaceArea        = 1.f;              ///< Surface area of a light shape
     
     float3   shadowColor        = float3(0, 0, 0);
     uint32_t shadowType         = uint(LightShadowType::None); ///< Type of the light shadow (see above)
 
     // Extra parameters for analytic area lights
     float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape
-    float    radius             = .0f;              ///< Analytic light raidus. Used mostly for soft shadowing
+    float    radius             = .0f;              ///< Analytic light radius. Used mostly for soft shadowing
 
     float3   bitangent          = float3(0, 1 ,0);  ///< Bitangent vector of the light shape
     float    _pad5;
 
     float4x4 transMat           = {};               ///< Transformation matrix of the light shape, from local to world space.
     float4x4 transMatIT         = {};               ///< Inverse-transpose of transformation matrix of the light shape
+    float4x4 transMatInv        = {};               ///< Inverse of transformation matrix of the light shape
 
     bool isSingleSided() CONST_FUNCTION 
     {
@@ -119,9 +126,25 @@ struct LightData {
         return (flags & (uint)LightDataFlags::ReversedDirection) != 0;
     }
 
-    bool isShadowsTransparent() CONST_FUNCTION
+    bool isOpaque() CONST_FUNCTION
     {
-        return (flags & (uint)LightDataFlags::TransparentShadows) != 0;
+        return (flags & (uint)LightDataFlags::OpaqueShadows) != 0;
+    }
+
+    bool isAreaLight() CONST_FUNCTION
+    {
+        return (flags & (uint)LightDataFlags::Area) != 0;
+    }
+
+    bool isInfiniteLight() CONST_FUNCTION
+    {
+        return (flags & (uint)LightDataFlags::Infinite) != 0;
+    }
+
+    bool isDeltaLight() CONST_FUNCTION
+    {
+        return (flags & (uint)LightDataFlags::DeltaPosition) ||
+               (flags & (uint)LightDataFlags::DeltaDirection); 
     }
 };
 

@@ -638,10 +638,13 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
 	} else if (light_type == "sun") {
-		// Directional lights
+		// Distant lights
 		auto pDistantLight = Falcor::DistantLight::create("noname_sun");
 		pDistantLight->setWorldDirection(light_dir);
-		
+
+		const float env_angle = pLightScope->getPropertyValue(ast::Style::LIGHT, "envangle", float(5.0));
+		pDistantLight->setAngleDegrees(env_angle);
+
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
 		// Point/Spot light
@@ -681,8 +684,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
 		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
-
-		std::cout << "normalie " << (area_normalize ? "yes" : "No") << "\n";
 
 		if(pShaderProp) {
 			pShaderProps = pShaderProp->subContainer();
@@ -730,6 +731,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     	pEnvMap->setPhantom(phantom);
 
     	pSceneBuilder->setEnvMap(pEnvMap);
+
+    	// New EnvironmentLight test
+    	auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
+    	pEnvLight->setShadowType(LightShadowType::RayTraced);
+    	pEnvLight->setIntensity(light_color);
+    	uint32_t light_id = pSceneBuilder->addLight(pEnvLight);
+		mLightsMap[light_name] = light_id;
+    	//
     	
     	return;
 	} else { 

@@ -71,6 +71,14 @@ def areasize(obj, now, value):
         value.append(value[0])
     return True
 
+def envangle(obj, now, value):
+    if not isdistantlight(obj, now):
+        return False
+    if not obj.evalFloat('vm_envangle', now, value):
+        if not obj.evalFloat('lv_envangle', now, value):
+            return False
+    return True
+
 def areafullsphere(obj, now, value):
     if not isarealight(obj, now):
         return False
@@ -566,6 +574,7 @@ parmMap = {
     'lv_phantom'        :       phantom,
     'lv_activeradius'   :       activeradius,
     'lv_light_radius'   :       lightradius,
+    'lv_envangle'       :       envangle,
     'res'               :       shadowmap_res,
     'lv_samples'        :       shadowmap_samples,
     'focal'             :       focal,

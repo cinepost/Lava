@@ -270,6 +270,17 @@ float3 sample_sphere(float2 u)
     return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }
 
+float3 sample_hemisphere_oriented(float2 rnd, float3 n) {
+  /**
+   * Generate random sphere point and swap vector along the normal, if it
+   * points to the wrong of the two hemispheres.
+   * This method provides a uniform distribution over the hemisphere, 
+   * provided that the sphere distribution is also uniform.
+   */
+  float3 s = sample_sphere(rnd);
+  return s * sign(dot(s, n));
+}
+
 /** Uniform sampling of the unit disk using Shirley's concentric mapping.
     \param[in] u Uniform random numbers in [0,1)^2.
     \return Sampled point on the unit disk.
@@ -353,11 +364,64 @@ float3 sample_cosine_hemisphere_oriented(float2 rnd, float3 n, out float pdf) {
     \param[in] u Uniform random numbers in [0,1)^2.
     \return Barycentric coordinates (1-u-v,u,v) of the sampled point.
 */
-float3 sample_triangle(float2 u)
-{
+float3 sample_triangle(float2 u) {
     float su = sqrt(u.x);
     float2 b = float2(1.f - su, u.y * su);
     return float3(1.f - b.x - b.y, b.x, b.y);
+}
+
+float3 uniformDirectionWithinCone( const float3 d, float phi, float sina, float cosa ) {    
+    float3 w = normalize(d);
+    float3 u = normalize(cross(w.yzx, w));
+    float3 v = cross(w, u);
+    return (u*cos(phi) + v*sin(phi)) * sina + w * cosa;
+}
+
+float3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
+float3 sphericalDirection(float sinTheta, float cosTheta, float phi, const float3 x, const float3 y, const float3 z) {
+    return sinTheta * cos(phi) * x + sinTheta * sin(phi) * y + cosTheta * z;
+}
+
+
+/******************************************************************************
+
+    Ray primitives intersections
+
+*******************************************************************************/
+
+/** Ray sphere intersection
+    \return Near/far intersection distances
+*/
+float2 intersect_sphere(const float3 rayOrigin, const float3 rayDirection, const float3 center = float3(0.0f), float radius = 1.0f) {
+    float3 oc = rayOrigin - center;
+    float b = dot( oc, rayDirection );
+    float c = dot( oc, oc ) - radius*radius;
+    float h = b*b - c;
+    if( h < 0.0f ) return float2( -1.0f ); // no intersection
+    h = sqrt( h );
+    return float2( -b-h, -b+h );
+}
+
+/** Ray sphere intersection
+    \param[in] plane (plane.xyz must be normalized and plane.w distance from origin).
+    \return Distance
+*/
+
+float intersect_plane(const float3 rayOrigin, const float3 rayDirection, const float4 plane = float4(0.0f, 0.0f, 1.0f, 0.0f)) {
+    return -(dot(rayOrigin, plane.xyz) + plane.w) / dot(rayDirection, plane.xyz);
+}
+
+/******************************************************************************
+    
+    Pdf calculations
+
+******************************************************************************/
+
+float uniformConePdf(float cosThetaMax) {
+    return 1.0f / ((float)M_2PI * (1.0f - cosThetaMax));
 }
 
 /******************************************************************************
@@ -390,6 +454,13 @@ float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim
     Miscellaneous functions
 
 ******************************************************************************/
+
+/** Squared distance
+*/
+float dist_squared(const float3 p1, const float3 p2)
+{
+    return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z);
+}
 
 /** Inverts a 2x2 matrix.
 */

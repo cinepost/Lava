@@ -274,7 +274,7 @@ def initializeFeatures(settings):
     Light("singlesided", "bool", "lv_singlesided", skipdefault=True)
     Light("lightradius", "bool", "lv_light_radius", skipdefault=True)
 
-    Light("envangle", "float", "lv_envangle")
+    Light("envangle", "float", "lv_envangle", skipdefault=True)
     Light("envintensity", "float", "lv_envintensity")
     Light("importancelevels", "int", "lv_importancelevels")
     Light("lightcache", "bool", "lv_lightcache")
