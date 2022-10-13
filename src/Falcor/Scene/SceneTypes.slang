@@ -166,6 +166,7 @@ enum class GeometryInstanceFlags : uint32_t
     VisibleToShadowRays = 0x200,   
     VisibleToDiffuseRays = 0x400,
     ReceiveShadows = 0x800,
+    DoubleSided = 0x1000,
 };
 
 struct GeometryInstanceData
@@ -190,19 +191,20 @@ struct GeometryInstanceData
     {}
 #endif
 
-    GeometryType getType() CONST_FUNCTION
-    {
+    GeometryType getType() CONST_FUNCTION {
         return GeometryType(flags >> kTypeOffset);
     }
 
-    bool isDynamic() CONST_FUNCTION
-    {
+    bool isDynamic() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::IsDynamic) != 0;
     }
 
-    bool isWorldFrontFaceCW() CONST_FUNCTION
-    {
+    bool isWorldFrontFaceCW() CONST_FUNCTION {
         return (flags & (uint)GeometryInstanceFlags::IsWorldFrontFaceCW) != 0;
+    }
+
+    bool isDoubleSided() CONST_FUNCTION {
+        return (flags & (uint)GeometryInstanceFlags::DoubleSided) != 0;
     }
 };
 

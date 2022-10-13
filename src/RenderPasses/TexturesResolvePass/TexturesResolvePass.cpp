@@ -368,7 +368,7 @@ if (1 == 1) {
 	printf("%u textures needs to be resolved\n", resolvedTexturesCount);
 #endif
 
-	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::Back);
+	mpScene->rasterize(pContext, mpState.get(), mpVars.get(), RasterizerState::CullMode::None);
 	pContext->flush(true);
 
 	// Test resolved data
@@ -489,15 +489,15 @@ void TexturesResolvePass::setDefaultSampler() {
 	if (mpSampler) return;
 
 	Sampler::Desc desc;
-  desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision
-  desc.setLodParams(-1000.0f, 1000.0f, -0.0f);
-  desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-  desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+	desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision
+	desc.setLodParams(-1000.0f, 1000.0f, -0.0f);
+	desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 
 	mpSampler = Sampler::create(mpDevice, desc);
 
 	desc.setReductionMode(Sampler::ReductionMode::Min);
-  mpMinSampler = Sampler::create(mpDevice, desc);
-  desc.setReductionMode(Sampler::ReductionMode::Max);
-  mpMaxSampler = Sampler::create(mpDevice, desc);
+	mpMinSampler = Sampler::create(mpDevice, desc);
+	desc.setReductionMode(Sampler::ReductionMode::Max);
+	mpMaxSampler = Sampler::create(mpDevice, desc);
 }

@@ -34,18 +34,16 @@
 
 const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buffer generation pass." };
 
-namespace
-{
+namespace {
     const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
     const std::string kShaderModel = "6_2";
 
-    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
+    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::None;
 
     const std::string kVBufferName = "vbuffer";
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const ChannelList kVBufferExtraChannels =
-    {
+    const ChannelList kVBufferExtraChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
     };
 

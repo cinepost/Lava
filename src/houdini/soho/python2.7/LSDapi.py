@@ -216,6 +216,21 @@ def cmd_declare(style, type, name, value):
     soho.indent()
     soho.printArray('cmd_declare %s %s %s ' % (style, type, name), value, '\n')
 
+def cmd_declare_parm(style, name, soho_parm):
+    if not soho_parm:
+        return
+
+    soho.indent()
+
+    parm_value = soho_parm.Value[0]
+    parm_type = soho_parm.Type
+    parm_value_repr = repr(parm_value)
+
+    if parm_type == "bool":
+        parm_value_repr = int(parm_value)
+
+    print 'cmd_declare', style, parm_type, name, parm_value_repr
+
 def cmd_time(now):
     soho.indent()
     cmd = 'cmd_time %s' % cmd_formatReal(now)

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <boost/format.hpp>
 
-#include "display.h"
+#include "display_prman.h"
 #include "lava_utils_lib/logging.h"
 
 // Make sure that we've got the correct sizes for the PtDspy* integral constants
@@ -17,39 +17,6 @@ BOOST_STATIC_ASSERT(sizeof(PtDspyUnsigned8) == 1);
 BOOST_STATIC_ASSERT(sizeof(PtDspySigned8) == 1);
 
 namespace lava {
-
-struct ChannelNamingDesc {
-    Display::NamingScheme namingScheme;
-    std::array<std::string, 4> channelNames;
-};
-
-const ChannelNamingDesc kChannelNameDesc[] = {
-    // NamingScheme                             ChannelNames,
-    { Display::NamingScheme::RGBA,                        {"r", "g", "b", "a"}},
-    { Display::NamingScheme::XYZW,                        {"x", "y", "z", "w"}},
-};
-
-static inline const std::string& getChannelName(Display::NamingScheme namingScheme, uint32_t channelIndex) {
-    assert(kChannelNameDesc[(uint32_t)namingScheme].namingScheme == namingScheme);
-    return kChannelNameDesc[(uint32_t)namingScheme].channelNames[channelIndex];
-}
-
-static inline size_t getFormatSizeInBytes(Display::TypeFormat format) {
-    switch (format) {
-        case Display::TypeFormat::UNSIGNED32:
-        case Display::TypeFormat::SIGNED32:
-        case Display::TypeFormat::FLOAT32:
-            return 4;
-        case Display::TypeFormat::UNSIGNED16:
-        case Display::TypeFormat::SIGNED16:
-        case Display::TypeFormat::FLOAT16:
-            return 2;
-        case Display::TypeFormat::UNSIGNED8:
-        case Display::TypeFormat::SIGNED8:
-        default:
-            return 1;
-    }
-}
 
 static std::string getDspyErrorMessage(const PtDspyError& err) {
     switch (err) {
@@ -89,94 +56,11 @@ static unsigned getTypeFormat(Display::TypeFormat tformat) {
     }
 }
 
-static std::string getDisplayDriverFileName(Display::DisplayType display_type) {
-    if (display_type != Display::DisplayType::NONE) {
-        switch(display_type) {
-            case Display::DisplayType::IP:
-            case Display::DisplayType::MD:
-            case Display::DisplayType::HOUDINI:
-                return "houdini";
-            case Display::DisplayType::SDL:
-                return "sdl";
-            case Display::DisplayType::IDISPLAY:
-                return "idisplay";
-            case Display::DisplayType::OPENEXR:
-                return "openexr";
-            case Display::DisplayType::JPEG:
-                return "jpeg";
-            case Display::DisplayType::TIFF:
-                return "tiff";
-            case Display::DisplayType::PNG:
-                return "png";
-            default:
-                break;
-        }
-    }
-    return "";
-}
-
-static inline Display::TypeFormat falcorTypeToDiplay(Falcor::FormatType format_type, uint32_t numChannelBits) {
-    assert((numChannelBits == 8) || (numChannelBits == 16) || (numChannelBits == 32));
-
-    switch (numChannelBits) {
-        case 8:
-            switch (format_type) {
-                case Falcor::FormatType::Uint:
-                case Falcor::FormatType::Unorm:
-                case Falcor::FormatType::UnormSrgb:
-                    return Display::TypeFormat::UNSIGNED8;
-                case Falcor::FormatType::Sint:
-                case Falcor::FormatType::Snorm:
-                    return Display::TypeFormat::SIGNED8;
-                default:
-                    break;
-            }
-        case 16:
-            switch (format_type) {
-                case Falcor::FormatType::Uint:
-                case Falcor::FormatType::Unorm:
-                case Falcor::FormatType::UnormSrgb:
-                    return Display::TypeFormat::UNSIGNED16;
-                case Falcor::FormatType::Sint:
-                case Falcor::FormatType::Snorm:
-                    return Display::TypeFormat::SIGNED16;
-                case Falcor::FormatType::Float:
-                    return Display::TypeFormat::FLOAT16;
-                default:
-                    break;
-            }
-        case 32:
-            switch (format_type) {
-                case Falcor::FormatType::Float:
-                    return Display::TypeFormat::FLOAT32;
-                default:
-                    return Display::TypeFormat::UNSIGNED32;
-            }
-        default:
-            LLOG_ERR << "Unsupported number of bits per channel (" << numChannelBits << ") !!!";
-            break;
-    }
-
-    return Display::TypeFormat::UNKNOWN;
-}
-
-static Display::Channel makeDisplayChannel(const std::string& prefix, uint32_t index, Falcor::FormatType format_type, uint32_t numChannelBits, Display::NamingScheme namingScheme) {
-    Display::Channel channel;
-    if (!prefix.empty()) {
-        channel.name = prefix + "." + getChannelName(namingScheme, index);
-    } else {
-        channel.name = getChannelName(namingScheme, index);
-    }
-    channel.format = falcorTypeToDiplay(format_type, numChannelBits);
-
-    return channel;
-};
-
-Display::Display() {
+DisplayPrman::DisplayPrman() {
     mImages.clear();
 }
 
-Display::~Display() {
+DisplayPrman::~DisplayPrman() {
     if (!closeAll())
         std::cerr << "Error closing images !" << std::endl;
 
@@ -186,7 +70,7 @@ Display::~Display() {
 }
 
 
-Display::SharedPtr Display::create(Display::DisplayType display_type) {
+Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
 	char *error;
 	char *lava_home = getenv("LAVA_HOME");
 
@@ -205,7 +89,7 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
         return nullptr;
     }
 
-    Display* pDisplay = new Display();
+    DisplayPrman* pDisplay = new DisplayPrman();
     
     /* Necessary function pointers */
 
@@ -257,10 +141,10 @@ Display::SharedPtr Display::create(Display::DisplayType display_type) {
             break;
     }
 
-    return SharedPtr(pDisplay);
+    return SharedPtr((Display*)pDisplay);
 }
 
-bool Display::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix) {
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -274,7 +158,7 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
     return openImage(image_name, width, height, channels, imageHandle);
 }
 
-bool Display::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
     if( width == 0 || height == 0) {
         LLOG_FTL << "Wrong image dimensions !!!";
         return false;
@@ -394,7 +278,7 @@ bool Display::openImage(const std::string& image_name, uint width, uint height, 
     return true;
 }
 
-bool Display::closeAll() {
+bool DisplayPrman::closeAll() {
     bool ret = true;
 
     for (uint i = 0; i < mImages.size(); i++) {
@@ -407,7 +291,7 @@ bool Display::closeAll() {
     return ret;
 }
 
-bool Display::closeImage(uint imageHandle) {
+bool DisplayPrman::closeImage(uint imageHandle) {
     auto& image_data = mImages[imageHandle];
 
     if(image_data.closed) // already closed
@@ -449,7 +333,7 @@ bool Display::closeImage(uint imageHandle) {
     return result;
 }
 
-bool Display::sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *pData) {
+bool DisplayPrman::sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *pData) {
     auto const& image_data = mImages[imageHandle];
 
     if(!image_data.opened) {
@@ -482,7 +366,7 @@ bool Display::sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint
     return true;
 }
 
-bool Display::sendImage(uint imageHandle, uint width, uint height, const uint8_t *pData) {
+bool DisplayPrman::sendImage(uint imageHandle, uint width, uint height, const uint8_t *pData) {
     auto const& image_data = mImages[imageHandle];
 
     if(!image_data.opened) {
@@ -513,7 +397,7 @@ bool Display::sendImage(uint imageHandle, uint width, uint height, const uint8_t
     return true;
 }
 
-bool Display::setStringParameter(const std::string& name, const std::vector<std::string>& strings) {
+bool DisplayPrman::setStringParameter(const std::string& name, const std::vector<std::string>& strings) {
     LLOG_DBG << "String parameter " << name;
     //if(mOpened) {
     //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
@@ -524,7 +408,7 @@ bool Display::setStringParameter(const std::string& name, const std::vector<std:
     return true;
 }
 
-bool Display::setIntParameter(const std::string& name, const std::vector<int>& ints) {
+bool DisplayPrman::setIntParameter(const std::string& name, const std::vector<int>& ints) {
     LLOG_DBG << "Int parameter " << name;
     //if(mOpened) {
     //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
@@ -535,7 +419,7 @@ bool Display::setIntParameter(const std::string& name, const std::vector<int>& i
     return true;
 }
 
-bool Display::setFloatParameter(const std::string& name, const std::vector<float>& floats) {
+bool DisplayPrman::setFloatParameter(const std::string& name, const std::vector<float>& floats) {
     LLOG_DBG << "Float parameter " << name;
     //if(mOpened) {
     //    LLOG_ERR << "Can't push parameter. Display opened already !!!";
@@ -547,7 +431,7 @@ bool Display::setFloatParameter(const std::string& name, const std::vector<float
 }
 
 /* static */
-void Display::makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter) {
+void DisplayPrman::makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter) {
     // Allocate and fill in the name.
     char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
     strcpy(pname, name.c_str());
@@ -576,7 +460,7 @@ void Display::makeStringsParameter(const std::string& name, const std::vector<st
     parameter.nbytes = totallen;
 }
 
-void Display::makeIntsParameter(const std::string& name, const std::vector<int>& ints, UserParameter& parameter) {
+void DisplayPrman::makeIntsParameter(const std::string& name, const std::vector<int>& ints, UserParameter& parameter) {
     // Allocate and fill in the name.
     char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
     strcpy(pname, name.c_str());
@@ -595,7 +479,7 @@ void Display::makeIntsParameter(const std::string& name, const std::vector<int>&
     parameter.nbytes = totallen;
 }
 
-void Display::makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter) {
+void DisplayPrman::makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter) {
     // Allocate and fill in the name.
     char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
     strcpy(pname, name.c_str());

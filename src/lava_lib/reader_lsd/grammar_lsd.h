@@ -40,7 +40,7 @@
 #include "grammar_bgeo.h"
 #include "grammar_lsd_expr.h"
 
-#include "display.h"
+#include "../display.h"
 
 #include "boost/log/core.hpp"
 #include "lava_utils_lib/logging.h"

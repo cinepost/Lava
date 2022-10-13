@@ -51,6 +51,7 @@ RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
+RasterizerOrderedTexture2D<float>  gOutOcclusion;
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
@@ -141,7 +142,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     float2 gradY = ddy_fine(vsOut.texC) * 0.5f; ///< Gradient of texture coordiante in teh screen-space Y direction
     
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-
+    
     //ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, gradX, gradY);
     ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
 
@@ -157,7 +158,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     // AOV varibles
     float3 AOV_albedo = bsdfProperties.diffuseReflectionAlbedo;
     float3 AOV_shadow = float3(1.0f, 1.0f, 1.0f);
-    
+    float  AOV_occlusion = 1.0f;
+
     // Direct lighting from analytic light sources
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
@@ -165,12 +167,16 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     float3 rayOrigin = sd.posW;
 
 #ifdef _FIX_SHADOW_TERMINATOR
+    // face forwaded interpolated normal
+    float3 ffNormalW = faceforward(normalize(vsOut.normalW), -viewDir, sd.faceN);
     if (gScene.doFixShadowTerminator(vsOut.instanceID)) {
-        rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, normalize(vsOut.normalW), barycentrics);
+        rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, ffNormalW, barycentrics);
     }
 #endif
 
-    //[unroll]
+    rayOrigin += viewDir * 0.001f;
+
+    [loop]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
         float3 shadowFactor = float3(1.0f);
         float misWeight = 1.f;
@@ -186,9 +192,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                 
                 // Test visibility by tracing a shadow ray.
                 RayDesc ray;
-                ray.Origin = rayOrigin; // + normalize(viewDir) * 0.01f;
+                ray.Origin = rayOrigin;
                 ray.Direction = ls.shadowDir;
-                ray.TMin = .0001f;
+                ray.TMin = .00001f;
 
                 ray.TMax = ls.distance;
 
@@ -226,9 +232,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                     shadowFactor = float3(1.0f);
 
                     RayDesc ray;
-                    ray.Origin = rayOrigin; // + normalize(viewDir) * 0.01f;
+                    ray.Origin = rayOrigin;
                     ray.Direction = ls.shadowDir;
-                    ray.TMin = .0001f;
+                    ray.TMin = .00001f;
 
                     ray.TMax = ls.distance;
 
@@ -270,6 +276,10 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     if (is_valid(gOutPosition)){
         gOutPosition[ipos] = float4(sd.posW, 1.0f);
+    }
+
+    if (is_valid(gOutOcclusion)){
+        gOutOcclusion[ipos] = AOV_occlusion;
     }
 
     if (is_valid(gOutMotionVecs)){

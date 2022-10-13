@@ -2417,6 +2417,7 @@ void SceneBuilder::createMeshInstanceData(uint32_t& tlasInstanceIndex) {
                     geomInstance.flags |= instance.shading.isMatte ? (uint32_t)GeometryInstanceFlags::MatteShading : 0;
                     geomInstance.flags |= instance.shading.fixShadowTerminator ? (uint32_t)GeometryInstanceFlags::FixShadowTerminator : 0;
                     geomInstance.flags |= instance.shading.biasAlongNormal ? (uint32_t)GeometryInstanceFlags::BiasAlongNormal : 0;
+                    geomInstance.flags |= instance.shading.doubleSided ? (uint32_t)GeometryInstanceFlags::DoubleSided : 0;
                     
                     // Geometry instance visibility flags
                     geomInstance.flags |= instance.visibility.visibleToPrimaryRays ? (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays : 0;

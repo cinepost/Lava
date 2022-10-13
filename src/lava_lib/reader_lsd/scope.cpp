@@ -209,7 +209,6 @@ Object::SharedPtr Object::create(ScopeBase::SharedPtr pParent) {
 	auto pSubContainer = pProp->createSubContainer();
 	if(!pSubContainer) return nullptr;
 
-	pSubContainer->declareProperty(Style::OBJECT, Type::VECTOR3, "basecolor", lsd::Vector3{1.0, 1.0, 1.0}, Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::BOOL, 	 "basecolor_useTexture", bool(false), Property::Owner::SYS);
 	pSubContainer->declareProperty(Style::OBJECT, Type::STRING,  "basecolor_texture", std::string(), Property::Owner::SYS);
 

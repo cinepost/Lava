@@ -21,6 +21,8 @@ __quickplanes = {
 
     "shadow":        QuickPlane("SHADOW",              "float",        "float16",    False,      {}),
 
+    "occlusion":     QuickPlane("OCCLUSION",           "float",        "float16",    False,      {}),
+
     "object_id":     QuickPlane("OBJECT_ID",           "int",          "uint16",     False,      {}),
 
     "material_id":   QuickPlane("MATERIAL_ID",         "int",          "uint16",     False,      {}),
@@ -35,6 +37,7 @@ __toggleplanedict = {
     'lv_quickplane_n':                      ['normals'],
     'lv_quickplane_albedo':                 ['albedo'],
     'lv_quickplane_shadow':                 ['shadow'],
+    'lv_quickplane_occlusion':              ['occlusion'],
     'lv_quickplane_object_id':              ['object_id'],
     'lv_quickplane_material_id':            ['material_id'],
     'lv_quickplane_instance_id':            ['instance_id'],

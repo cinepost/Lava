@@ -12,7 +12,7 @@
 #include "../renderer.h"
 #include "../aov.h"
 #include "scope.h"
-#include "display.h"
+#include "../display.h"
 
 #include "Falcor/Core/API/Formats.h"
 #include "session.h"

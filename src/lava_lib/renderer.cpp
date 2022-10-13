@@ -181,6 +181,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		cullMode = RasterizerState::CullMode::None;
 		rsDesc.setCullMode(RasterizerState::CullMode::None);
 	}
+
 	rsDesc.setFillMode(RasterizerState::FillMode::Solid);
 
 	// Virtual textures resolve render graph
@@ -241,6 +242,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	Falcor::Dictionary vbufferPassDictionary;
 	auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
 	pVBufferPass->setScene(pRenderContext, pScene);
+	pVBufferPass->setCullMode(cullMode);
 
 	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 

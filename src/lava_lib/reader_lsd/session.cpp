@@ -16,8 +16,8 @@
 
 #include "session.h"
 #include "session_helpers.h"
-#include "display.h"
 
+#include "../display_prman.h"
 #include "../aov.h"
 #include "../renderer.h"
 #include "../scene_builder.h" 
@@ -1210,6 +1210,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
+    LLOG_WRN << "Base color before " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
@@ -1236,6 +1238,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
+    LLOG_WRN << "Base color " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+
     auto pMaterial = Falcor::StandardMaterial::create(mpDevice, obj_name);
     pMaterial->setBaseColor(surface_base_color);
     pMaterial->setIndexOfRefraction(surface_ior);
@@ -1247,7 +1251,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setDoubleSided(!front_face);
   	
   	//bool loadAsSrgb = true;
-    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", false);
+    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 
     LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
