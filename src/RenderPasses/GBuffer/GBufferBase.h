@@ -64,11 +64,11 @@ class GBufferBase : public RenderPass {
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual Dictionary getScriptingDictionary() override;
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
-
+    virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
+    
  protected:
     GBufferBase(Device::SharedPtr pDevice, Info info);
     virtual void parseDictionary(const Dictionary& dict);
-    virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     void updateFrameDim(const uint2 frameDim);
     void updateSamplePattern();
     Texture::SharedPtr getOutput(const RenderData& renderData, const std::string& name) const;
@@ -88,7 +88,7 @@ class GBufferBase : public RenderPass {
     bool                            mUseAlphaTest = true;                           ///< Enable alpha test.
     bool                            mAdjustShadingNormals = false;                  ///< Adjust shading normals.
     bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
+    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;    ///< Cull mode to use for when mForceCullMode is true.
     bool                            mOptionsChanged = false;
 
     static void registerBindings(pybind11::module& m);

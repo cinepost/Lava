@@ -50,7 +50,8 @@ struct VBufferVSOut
     nointerpolation GeometryInstanceID instanceID   : INSTANCE_ID;
     nointerpolation uint materialID                 : MATERIAL_ID;
 
-    float4 posH : SV_POSITION;  ///< Position in world space.
+    float3 posW : POSITION;  ///< Position in world space.
+    float4 posH : SV_POSITION;  ///< Position in clip space.
 
 #if is_valid(gMotionVector)
     float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
@@ -63,8 +64,8 @@ VBufferVSOut vsMain(VSIn vsIn)
     const GeometryInstanceID instanceID = { vsIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-    float3 posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
-    vsOut.posH = mul(float4(posW, 1.f), gScene.camera.getViewProj());
+    vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
+    vsOut.posH = mul(float4( vsOut.posW, 1.f), gScene.camera.getViewProj());
 
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
 
@@ -75,11 +76,12 @@ VBufferVSOut vsMain(VSIn vsIn)
     // Compute the vertex position in the previous frame.
     float3 prevPos = vsIn.pos;
     GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
-    if (instance.isDynamic())
-    {
+    
+    if (instance.isDynamic()) {
         uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vsIn.vertexID;
         prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
+
     float3 prevPosW = mul(float4(prevPos, 1.f), gScene.getPrevWorldMatrix(instanceID)).xyz;
     vsOut.prevPosH = mul(float4(prevPosW, 1.f), gScene.camera.data.prevViewProjMatNoJitter);
 #endif
@@ -87,9 +89,27 @@ VBufferVSOut vsMain(VSIn vsIn)
     return vsOut;
 }
 
-VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
-{
+float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint triangleIndex) {
+    uint3 vtxIndices = gScene.getIndices(instanceID, triangleIndex);
+    float3 p0 = gScene.vertices[vtxIndices[0]].position;
+    float3 p1 = gScene.vertices[vtxIndices[1]].position;
+    float3 p2 = gScene.vertices[vtxIndices[2]].position;
+    float3 N = cross(p1 - p0, p2 - p0);
+    
+    if (gScene.isObjectFrontFaceCW(instanceID)) N = -N;
+    
+    float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
+    return normalize(mul(N, worldInvTransposeMat));
+}
+
+VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
+
+    // Early discard (single sided backface, phantom, etc)
+    float3 faceNormal = getGeometricFaceNormalW(vsOut.instanceID, triangleIndex);
+    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
+
+    if ((!gScene.isObjectDoubleSided(vsOut.instanceID)) && (dot(viewDir, faceNormal) < 0.f)) discard;
 
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);

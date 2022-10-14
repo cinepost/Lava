@@ -16,8 +16,8 @@
 
 #include "session.h"
 #include "session_helpers.h"
-#include "display.h"
 
+#include "../display_prman.h"
 #include "../aov.h"
 #include "../renderer.h"
 #include "../scene_builder.h" 
@@ -638,10 +638,13 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDirectionalLight);
 	} else if (light_type == "sun") {
-		// Directional lights
+		// Distant lights
 		auto pDistantLight = Falcor::DistantLight::create("noname_sun");
 		pDistantLight->setWorldDirection(light_dir);
-		
+
+		const float env_angle = pLightScope->getPropertyValue(ast::Style::LIGHT, "envangle", float(5.0));
+		pDistantLight->setAngleDegrees(env_angle);
+
 		pLight = std::dynamic_pointer_cast<Falcor::Light>(pDistantLight);
 	} else if( light_type == "point") {
 		// Point/Spot light
@@ -681,8 +684,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 		lsd::Vector2 area_size = pLightScope->getPropertyValue(ast::Style::LIGHT, "areasize", lsd::Vector2{1.0, 1.0});
 		bool area_normalize = pLightScope->getPropertyValue(ast::Style::LIGHT, "areanormalize", bool(true));
-
-		std::cout << "normalie " << (area_normalize ? "yes" : "No") << "\n";
 
 		if(pShaderProp) {
 			pShaderProps = pShaderProp->subContainer();
@@ -730,6 +731,14 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     	pEnvMap->setPhantom(phantom);
 
     	pSceneBuilder->setEnvMap(pEnvMap);
+
+    	// New EnvironmentLight test
+    	auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
+    	pEnvLight->setShadowType(LightShadowType::RayTraced);
+    	pEnvLight->setIntensity(light_color);
+    	uint32_t light_id = pSceneBuilder->addLight(pEnvLight);
+		mLightsMap[light_name] = light_id;
+    	//
     	
     	return;
 	} else { 
@@ -1201,6 +1210,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
+    LLOG_WRN << "Base color before " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
@@ -1227,6 +1238,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
+    LLOG_WRN << "Base color " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+
     auto pMaterial = Falcor::StandardMaterial::create(mpDevice, obj_name);
     pMaterial->setBaseColor(surface_base_color);
     pMaterial->setIndexOfRefraction(surface_ior);
@@ -1238,7 +1251,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     pMaterial->setDoubleSided(!front_face);
   	
   	//bool loadAsSrgb = true;
-    bool loadTexturesAsSparse = !ConfigStore::instance().get<bool>("vtoff", false);
+    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 
     LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 

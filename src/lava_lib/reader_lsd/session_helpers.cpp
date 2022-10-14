@@ -5,6 +5,8 @@
 #include "session_helpers.h"
 #include "lava_utils_lib/ut_fsys.h"
 
+#include "../display_prman.h"
+
 namespace lava {
 
 namespace lsd {
@@ -207,7 +209,9 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 }
 
 Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
-	Display::SharedPtr pDisplay = Display::create(display_info.displayType);
+	//Display::SharedPtr pDisplay = Display::create(display_info.displayType);
+	Display::SharedPtr pDisplay = DisplayPrman::create(display_info.displayType);
+	
 	if(!pDisplay) {
         LLOG_ERR << "Unable to create display !!!";
 		return nullptr;

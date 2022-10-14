@@ -11,7 +11,7 @@
 #include "../reader_bgeo/bgeo/Bgeo.h"
 #include "../renderer.h"
 #include "scope.h"
-#include "display.h"
+#include "../display.h"
 
 #include "Falcor/Utils/Math/Vector.h"
 #include "Falcor/Utils/Timing/Profiler.h"

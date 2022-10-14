@@ -13,17 +13,6 @@ namespace lava {
 
 namespace lsd {
 
-// TODO: try casting value to appropriate type here in case it differs
-bool Property::create(Property::Type type, const Property::Value& value, Property& property, Property::Owner owner) {
-    if (!checkValueTypeLoose(type, value)) return false;
-
-    property.mType = type;
-    property.mValue = value;
-    property.mOwner = owner;
-
-    return true;
-}
-
 std::shared_ptr<PropertiesContainer> Property::createSubContainer() {
     if(mpSubContainer) {
         LLOG_WRN << "Sub-container already exist for property !"; 
@@ -94,6 +83,17 @@ const Vector4 Property::get() const {
 template<>
 const std::string Property::get() const {
     return boost::get<std::string>(mValue);
+}
+
+// TODO: try casting value to appropriate type here in case it differs
+bool Property::create(Property::Type type, const Property::Value& value, Property& property, Property::Owner owner) {
+    if (!checkValueTypeLoose(type, value)) return false;
+
+    property.mType = type;
+    property.mValue = value;
+    property.mOwner = owner;
+
+    return true;
 }
 
 bool Property::set(Type type, const Value& value) {

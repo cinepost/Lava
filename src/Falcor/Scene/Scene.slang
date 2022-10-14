@@ -122,22 +122,19 @@ struct Scene
 
     // Geometry access
 
-/** Return the geometry type for a given global geometry instance ID.
+    /** Return the geometry type for a given global geometry instance ID.
         \param[in] instanceID Global geometry instance ID.
         \return The type of geometry this instance represents.
     */
-    GeometryType getGeometryInstanceType(const GeometryInstanceID instanceID)
-    {
+    GeometryType getGeometryInstanceType(const GeometryInstanceID instanceID) {
         if (instanceID.index >= customPrimitiveInstanceOffset) return GeometryType::Custom;
         return geometryInstances[instanceID.index].getType();
     }
 
     // Mesh and instance data access
 
-    float4x4 loadWorldMatrix(const uint matrixID)
-    {
-        float4x4 m =
-        {
+    float4x4 loadWorldMatrix(const uint matrixID) {
+        float4x4 m = {
             worldMatrices[matrixID * 4 + 0],
             worldMatrices[matrixID * 4 + 1],
             worldMatrices[matrixID * 4 + 2],
@@ -146,10 +143,8 @@ struct Scene
         return m;
     }
 
-    float4x4 loadPrevWorldMatrix(const uint matrixID)
-    {
-        float4x4 m =
-        {
+    float4x4 loadPrevWorldMatrix(const uint matrixID) {
+        float4x4 m = {
             prevWorldMatrices[matrixID * 4 + 0],
             prevWorldMatrices[matrixID * 4 + 1],
             prevWorldMatrices[matrixID * 4 + 2],
@@ -158,10 +153,8 @@ struct Scene
         return m;
     }
 
-    float3x3 loadInverseTransposeWorldMatrix(const uint matrixID)
-    {
-        float3x3 m =
-        {
+    float3x3 loadInverseTransposeWorldMatrix(const uint matrixID) {
+        float3x3 m = {
             inverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
             inverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
             inverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
@@ -169,10 +162,8 @@ struct Scene
         return m;
     }
 
-    float3x3 loadPrevInverseTransposeWorldMatrix(const uint matrixID)
-    {
-        float3x3 m =
-        {
+    float3x3 loadPrevInverseTransposeWorldMatrix(const uint matrixID) {
+        float3x3 m = {
             prevInverseTransposeWorldMatrices[matrixID * 4 + 0].xyz,
             prevInverseTransposeWorldMatrices[matrixID * 4 + 1].xyz,
             prevInverseTransposeWorldMatrices[matrixID * 4 + 2].xyz
@@ -180,57 +171,51 @@ struct Scene
         return m;
     }
 
-    float4x4 getWorldMatrix(const GeometryInstanceID instanceID)
-    {
+    float4x4 getWorldMatrix(const GeometryInstanceID instanceID) {
         uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadWorldMatrix(matrixID);
     }
 
-    float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID)
-    {
+    float4x4 getPrevWorldMatrix(const GeometryInstanceID instanceID) {
         uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadPrevWorldMatrix(matrixID);
     }
 
-    float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
-    {
+    float3x3 getInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
         uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadInverseTransposeWorldMatrix(matrixID);
     }
 
-    float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID)
-    {
+    float3x3 getPrevInverseTransposeWorldMatrix(const GeometryInstanceID instanceID) {
         uint matrixID = geometryInstances[instanceID.index].globalMatrixID;
         return loadPrevInverseTransposeWorldMatrix(matrixID);
     }
 
-    bool isWorldMatrixFlippedWinding(const GeometryInstanceID instanceID)
-    {
+    bool isWorldMatrixFlippedWinding(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::TransformFlipped)) != 0;
     }
 
-    bool isObjectShadowsReceiving(const GeometryInstanceID instanceID)
-    {
+    bool isObjectShadowsReceiving(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::ReceiveShadows)) != 0;
     }
 
-    bool doFixShadowTerminator(const GeometryInstanceID instanceID)
-    {
+    bool doFixShadowTerminator(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::FixShadowTerminator)) != 0;
     }
 
-    bool isObjectMatteShaded(const GeometryInstanceID instanceID)
-    {
+    bool isObjectMatteShaded(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::MatteShading)) != 0;
     }
 
-    bool isObjectFrontFaceCW(const GeometryInstanceID instanceID)
-    {
+    bool isObjectFrontFaceCW(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::IsObjectFrontFaceCW)) != 0;
     }
 
-    bool isWorldFrontFaceCW(const GeometryInstanceID instanceID)
-    {
+    bool isObjectDoubleSided(const GeometryInstanceID instanceID) {
+        return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::DoubleSided)) != 0;
+    }
+
+    bool isWorldFrontFaceCW(const GeometryInstanceID instanceID) {
         return (geometryInstances[instanceID.index].flags & uint(GeometryInstanceFlags::IsWorldFrontFaceCW)) != 0;
     }
 

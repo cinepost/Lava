@@ -56,8 +56,7 @@ class VBufferRaster : public GBufferBase {
     // Internal state
     Fbo::SharedPtr                  mpFbo;
 
-    struct
-    {
+    struct {
         GraphicsState::SharedPtr pState;
         GraphicsProgram::SharedPtr pProgram;
         GraphicsVars::SharedPtr pVars;

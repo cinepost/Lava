@@ -149,8 +149,8 @@ def header(now, propdefs):
         for i in range(1, len(defs)):
             cmd_comment("               : %s" % defs[i])
     if hip and hipname:
-        cmd_comment("       HIP File: %s/%s, $T=%g, $FPS=%g" %
-                        (hip.Value[0], hipname.Value[0], now, FPS))
+        cmd_comment("       HIP File: %s/%s, $T=%g, $FPS=%g" % (hip.Value[0], hipname.Value[0], now, FPS))
+    
     if ropname:
         cmd_comment("  Output driver: %s" % ropname.Value[0])
 
@@ -164,6 +164,7 @@ def header(now, propdefs):
     cmd_comment("Renderer configuration")
     vtoff = cfg_plist.get('lv_vtoff', None)
     cmd_config('vtoff', vtoff)
+    cmd_declare_parm('global', 'vtoff', vtoff)
 
     fconv = cfg_plist.get('lv_fconv', None)
     cmd_config('fconv', fconv)

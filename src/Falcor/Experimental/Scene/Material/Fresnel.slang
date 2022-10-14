@@ -39,12 +39,12 @@
 */
 float3 evalFresnelSchlick(float3 f0, float3 f90, float cosTheta)
 {
-    return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
+    return f0 + (f90 - f0) * pow(max(1.0f - cosTheta, .0f), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }
 
 float evalFresnelSchlick(float f0, float f90, float cosTheta)
 {
-    return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
+    return f0 + (f90 - f0) * pow(max(1.0f - cosTheta, .0f), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }
 
 /** Evaluates the Fresnel term using dieletric fresnel equations.
