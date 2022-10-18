@@ -51,6 +51,7 @@ class dlldecl SceneBuilder {
     using SharedPtr = std::shared_ptr<SceneBuilder>;
 
     static const uint32_t kInvalidNode = Animatable::kInvalidNode;
+    static const uint32_t kInvalidExportedID = Animatable::kInvalidNode;
 
     struct MeshInstanceShadingSpec {
         bool        isMatte = false;
@@ -347,11 +348,13 @@ class dlldecl SceneBuilder {
 
     /** Add a mesh instance to a node
     */
-    void addMeshInstance(uint32_t nodeID, uint32_t meshID,  MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID, MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
 
     /** Add a mesh instance to a node with material override
     */
     void addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial,  MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
+    void addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, const Material::SharedPtr& pMaterial,  MeshInstanceShadingSpec* shadingSpec = nullptr, MeshInstanceVisibilitySpec* visibilitySpec = nullptr);
 
     /** Add a mesh. This function will throw an exception if something went wrong.
         \param meshDesc The mesh's description.
@@ -424,7 +427,7 @@ class dlldecl SceneBuilder {
 
     /** Get the list of materials.
     */
-    const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.materials; }
+    //const std::vector<Material::SharedPtr>& getMaterials() const { return mSceneData.materials; }
 
     /** Get a material by name.
         Note: This returns the first material found with a matching name.
@@ -432,6 +435,8 @@ class dlldecl SceneBuilder {
         \return Returns the first material with a matching name or nullptr if none was found.
     */
     Material::SharedPtr getMaterial(const std::string& name) const;
+
+    bool getMaterialID(const std::string& name, uint32_t& materialId) const;
 
     /** Add a material.
         \param pMaterial The material.
@@ -598,6 +603,7 @@ protected:
     struct MeshInstanceSpec {
         uint32_t    nodeId;
         uint32_t    materialId;
+        uint32_t    exportedInstanceId = kInvalidExportedID; // instance id given by dcc software
         bool        overrideMaterial = false;
 
         MeshInstanceShadingSpec shading;

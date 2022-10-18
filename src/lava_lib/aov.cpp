@@ -203,6 +203,8 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::OBJECT_ID)) return AOVBuiltinName::OBJECT_ID;
     if(str == to_string(AOVBuiltinName::MATERIAL_ID)) return AOVBuiltinName::MATERIAL_ID;
     if(str == to_string(AOVBuiltinName::INSTANCE_ID)) return AOVBuiltinName::INSTANCE_ID;
+    if(str == to_string(AOVBuiltinName::Prim_Id)) return AOVBuiltinName::Prim_Id;
+    if(str == to_string(AOVBuiltinName::Op_Id)) return AOVBuiltinName::Op_Id;
 
     return AOVBuiltinName::UNKNOWN;
 }

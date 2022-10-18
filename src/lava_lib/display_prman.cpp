@@ -131,6 +131,9 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
     pDisplay->mDriverName = display_driver_name;
     pDisplay->mDisplayType = display_type;
 
+    LLOG_WRN << "Prman display driver " << pDisplay->mDriverName;
+    LLOG_WRN << "Prman display type " << to_string(pDisplay->mDisplayType);
+
     switch (pDisplay->mDisplayType) {
         case DisplayType::IP:
         case DisplayType::MD:
@@ -154,7 +157,6 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
         uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
         channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
     }
-
     return openImage(image_name, width, height, channels, imageHandle);
 }
 

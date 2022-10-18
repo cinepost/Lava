@@ -169,6 +169,11 @@ class dlldecl MaterialSystem {
 		*/
 		Material::SharedPtr getMaterialByName(const std::string& name) const;
 
+		/** Get a material id by name.
+			\return True if material found , or false if material doesn't exist.
+		*/
+		bool getMaterialIDByName(const std::string& name, uint32_t& materialID) const;
+
 		/** Remove all duplicate materials.
 			\param[in] idMap Vector that holds for each material the ID of the material that replaces it.
 			\return The number of materials removed.

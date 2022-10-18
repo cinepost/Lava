@@ -389,7 +389,9 @@ def quickImagePlanes(wrangler, cam, now, components):
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):
         return True
+
     filename = cam.wrangleString(wrangler, 'lv_picture', now, ['ip'])[0]
+    
     plist       = cam.wrangle(wrangler, displayParms, now)
     device      = plist['lv_device'].Value[0]
     foptions    = plist['lv_foptions'].Value[0]
@@ -446,7 +448,7 @@ def cameraDisplay(wrangler, cam, now):
                  wrangler, cam, now, showrelightingbuffer=True)
 
     # Initialize property for Op_Id generation
-    LSDsettings._Settings.GenerateOpId = cam.getDefaultedInt('lv_generate_opid', now, [0])[0]
+    LSDsettings._Settings.GenerateOpId = cam.getDefaultedInt('lv_generate_opid', now, [0])[0] or cam.getDefaultedInt('lv_quickplane_op_id', now, [0])[0]
 
     quickImagePlanes(wrangler, cam, now, components)
 
@@ -697,8 +699,7 @@ def _patternMatching(all_obj, obj_regex, cage_regex, hires_regex,
             outobj_list.append(outobj_path)
 
 def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
-    if LSDhooks.call('pre_outputCamera', cam, viewcam, now,
-                    fromlight, forphoton, cubemap):
+    if LSDhooks.call('pre_outputCamera', cam, viewcam, now, fromlight, forphoton, cubemap):
         return True
     times = LSDmisc.xform_mbsamples(cam, now)
     if fromlight:
@@ -719,12 +720,7 @@ def outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
 
     LSDsettings.outputGlobal(wrangler, cam, now)
 
-    if forphoton:
-        cmd_property('renderer', 'progressaction', ['Generating photon map'])
-        # Set the default for the photon target
-        target = cam.wrangleString(wrangler, 'lv_photontarget', now, ['*'])
-        cmd_property('light', 'photontarget', target)
-    elif fromlight and viewcam != None:
+    if fromlight and viewcam != None:
         cmd_property('renderer', 'progressaction', ['Generating point cloud'])
     elif fromlight:
         cmd_property('renderer', 'progressaction', ['Generating depth map'])
@@ -1528,9 +1524,7 @@ def saveRetained(now, objlist, lightlist):
 
 # This operation will produce the block containing the camera, imager and
 # global variables.
-def renderCamera(cam, now,
-                 fromlight=False, forphoton=False, cubemap=None,
-                 viewcam=None):
+def renderCamera(cam, now, fromlight=False, forphoton=False, cubemap=None, viewcam=None):
     cmd_time(now)
 
     wrangler = LSDsettings.getWrangler(cam, now, 'camera_wrangler')
@@ -1557,9 +1551,6 @@ def renderCamera(cam, now,
     if fromlight:
         type = 'shadow'
         label.append(type)
-    if forphoton:
-        type = 'photon'
-        label.append(type)
     if cubemap:
         type = 'envmap'
         label.append(type)
@@ -1575,6 +1566,7 @@ def renderCamera(cam, now,
     if not outputCamera(cam, viewcam, now, fromlight, forphoton, cubemap):
         cmd_comment('Error evaluating camera parameters: %s' % cam.getName())
         return False
+    
     return True
 
 # Output all objects in the scene

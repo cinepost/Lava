@@ -14,6 +14,9 @@ def add_geometry_lava_parameters(node, rebuild=True):
 	# Lava shading
 	shading_folder = hou.FolderParmTemplate('folder_lava_shading', "Shading", tags={'lava_name':'shading'})
 
+	#addParmTemplate(node, shading_folder, hou.StringParmTemplate('lv_materialpath', 'Material', 1, 
+	#	string_type=hou.stringParmType.NodeReference, tags={'opfilter':'!!CUSTOM/MATERIAL!!', 'oprelative':'.'}))
+
 	addParmTemplate(node, shading_folder, hou.ToggleParmTemplate('lv_biasnormal','Bias Along Normal', False))
 	addParmTemplate(node, shading_folder, hou.ToggleParmTemplate('lv_double_sided','Double Sided', True))
 	addParmTemplate(node, shading_folder, hou.ToggleParmTemplate('lv_fix_shadow','Fix shadow terminator', True))

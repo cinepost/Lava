@@ -52,6 +52,8 @@ RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 RasterizerOrderedTexture2D<float>  gOutOcclusion;
+RasterizerOrderedTexture2D<float>  gPrimID;
+RasterizerOrderedTexture2D<float>  gOpID;
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
@@ -280,6 +282,14 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     if (is_valid(gOutOcclusion)){
         gOutOcclusion[ipos] = AOV_occlusion;
+    }
+
+    if (is_valid(gPrimID)){
+        gPrimID[ipos] = 0.0f;
+    }
+
+    if (is_valid(gOpID)){
+        gOpID[ipos] = (float)vsOut.instanceID.index;
     }
 
     if (is_valid(gOutMotionVecs)){

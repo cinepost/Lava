@@ -73,12 +73,15 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       uint32_t imageHeight = 0;
       uint32_t imageSamples = 16;           // 0 for continuous rendering. 16 is default, roughly equal to 
       uint32_t frameNumber = 0;
-      Falcor::uint4 renderRegion = {0, 0, 0, 0}; // default full frame
+      Falcor::uint4 renderRegion = {0, 0, 0, 0}; // default full frame {left, top, width, height}
 
       Falcor::uint2 renderRegionDims() const {
         if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
         return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
+    
+      uint regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : renderRegion[2]); }
+      uint regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : renderRegion[3]); }
     };
 
   // __HYDRA__ oriented structs end .....

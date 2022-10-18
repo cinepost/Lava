@@ -67,7 +67,7 @@ bool Renderer::init(const Config& config) {
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-	sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+	//sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
 
 	mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
 	mpCamera = Falcor::Camera::create();
@@ -319,6 +319,24 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("LightingPass.albedo", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::Prim_Id:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("LightingPass.prim_id", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::Op_Id:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("LightingPass.op_id", pPlane->accumulationPassInputName());
 					}
 				}
 				break;

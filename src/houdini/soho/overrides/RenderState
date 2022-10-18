@@ -3,16 +3,16 @@
 // Viewport overrides for Lava
 {
     override.inherit	CommonView
-    override.name	Lava
+    override.name	    lava
 
     // Force the render to go to the "ip" device
-    lv_picture			[ "ip" ]
-    lv_device			[ "" ]
+    lv_picture			        [ "pizda" ]
+    lv_device			        [ "" ]
     lv_image_mplay_socketport	[ "$socket" ]
-    lv_stylesheets		[ "$stylesheets" ]
-    lv_preview			[ "$preview" ]
-    lv_relightingbuffer		[ "$relightingbuffer" ]
-    lv_renderinterrupt		[ "$renderinterrupt" ]
-    lv_previewtime		[ "$previewtime" ]
-    lv_previewmode		[ "$previewmode" ]
+    lv_stylesheets		        [ "$stylesheets" ]
+    lv_preview			        [ "$preview" ]
+    lv_relightingbuffer		    [ "$relightingbuffer" ]
+    lv_renderinterrupt		    [ "$renderinterrupt" ]
+    lv_previewtime		        [ "$previewtime" ]
+    lv_previewmode		        [ "$previewmode" ]
 }

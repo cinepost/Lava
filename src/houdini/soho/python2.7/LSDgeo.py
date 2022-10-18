@@ -459,7 +459,7 @@ def saveProperties(obj, soppath, gdp, now):
     prim_props = False
     opropmap = {}
     for style in ['geo:global', 'geo:prim', 'geo:point']:
-        # First process material overrides.
+        # First process material overrides.        
         attr = gdp.attribute(style, 'shop_materialpath')
         if attr >= 0:
             creator_path = creator_obj.path()   # Only set path if required

@@ -28,6 +28,8 @@ enum class AOVBuiltinName: uint8_t {
   OBJECT_ID   = 7,
   MATERIAL_ID = 8,
   INSTANCE_ID = 9,
+  Prim_Id     = 10,
+  Op_Id       = 11,
 
   UNKNOWN     = 0
 };
@@ -44,6 +46,8 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(OBJECT_ID);
     type_2_string(MATERIAL_ID);
     type_2_string(INSTANCE_ID);
+    type_2_string(Prim_Id);
+    type_2_string(Op_Id);
   default:
     should_not_get_here();
     return "unknown";

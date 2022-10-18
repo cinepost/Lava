@@ -29,6 +29,7 @@ file( GLOB SOURCES
     ./Scene/Volume/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
+    ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp
     ./Utils/Image/*.cpp
@@ -155,9 +156,13 @@ target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
-find_library( SLANG_LIBRARY slang PATHS ${DEPS_DIR}/lib )
+set(Slang_ROOT ${DEPS_DIR})
+#set(SLANG_LIBRARY "")
+find_library( SLANG_LIBRARY NAMES slang libslang PATHS "${DEPS_DIR}/lib" NO_CMAKE_FIND_ROOT_PATH NO_DEFAULT_PATH)
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
+message ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+message ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 # OpenVDB/NanoVDB
 set(OpenVDB_ROOT ${DEPS_DIR})

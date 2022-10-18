@@ -76,8 +76,8 @@ void Transformable::addTransform(const lsd::Matrix4& mat) {
 
 Global::SharedPtr Global::create() {
 	auto pGlobal = Global::SharedPtr(new Global());
-	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "rendertype", std::string("unknown"), Property::Owner::SYS)) return nullptr;
-	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "renderlabel", std::string("unnamed"), Property::Owner::SYS)) return nullptr;
+	//if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "rendertype", std::string("unknown"), Property::Owner::SYS)) return nullptr;
+	//if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "renderlabel", std::string("unnamed"), Property::Owner::SYS)) return nullptr;
 	if(!pGlobal->declareProperty(Style::RENDERER, Type::STRING, "udim_file_mask", std::string("<UDIM>"), Property::Owner::SYS)) return nullptr;
 	
 	if(!pGlobal->declareProperty(Style::IMAGE, Type::BOOL, "tiling", bool(false), Property::Owner::SYS)) return nullptr;

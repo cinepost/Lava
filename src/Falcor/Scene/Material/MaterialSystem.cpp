@@ -202,6 +202,18 @@ Material::SharedPtr MaterialSystem::getMaterialByName(const std::string& name) c
 	return nullptr;
 }
 
+bool MaterialSystem::getMaterialIDByName(const std::string& name, uint32_t& materialID) const {
+	uint32_t id = 0;
+	for (const auto& pMaterial : mMaterials) {
+		if (pMaterial->getName() == name) {
+			materialID = id;
+			return true;
+		}
+		id++;
+	}
+	return false;
+}
+
 size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {
 	std::vector<Material::SharedPtr> uniqueMaterials;
 	idMap.resize(mMaterials.size());

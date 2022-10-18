@@ -449,6 +449,6 @@ class alightLSD:
         return obj.evalParm(parm, now)
 
 def registerLight(list):
-    key = 'ArnoldLightToLava'
+    key = 'ArnoldLight-lava'
     if key not in list:
         list[key] = alightLSD

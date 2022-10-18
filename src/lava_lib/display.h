@@ -48,9 +48,9 @@ class Display {
     virtual bool opened(uint imageHandle) const = 0;
     virtual bool closed(uint imageHandle) const = 0;
 
-    virtual std::string& imageName(uint imageHandle) = 0;
-    virtual uint imageWidth(uint imageHandle) = 0;
-    virtual uint imageHeight(uint imageHandle) = 0;
+    virtual const std::string& imageName(uint imageHandle) const = 0;
+    virtual uint imageWidth(uint imageHandle) const = 0;
+    virtual uint imageHeight(uint imageHandle) const = 0;
 
     virtual bool setStringParameter(const std::string& name, const std::vector<std::string>& strings) = 0;
     virtual bool setIntParameter(const std::string& name, const std::vector<int>& ints) = 0;
@@ -95,29 +95,76 @@ inline size_t getFormatSizeInBytes(Display::TypeFormat format) {
 }
 
 inline std::string getDisplayDriverFileName(Display::DisplayType display_type) {
-  if (display_type != Display::DisplayType::NONE) {
-    switch(display_type) {
-      case Display::DisplayType::IP:
-      case Display::DisplayType::MD:
-      case Display::DisplayType::HOUDINI:
-        return "houdini";
-      case Display::DisplayType::SDL:
-        return "sdl";
-      case Display::DisplayType::IDISPLAY:
-        return "idisplay";
-      case Display::DisplayType::OPENEXR:
-        return "openexr";
-      case Display::DisplayType::JPEG:
-        return "jpeg";
-      case Display::DisplayType::TIFF:
-        return "tiff";
-      case Display::DisplayType::PNG:
-        return "png";
-      default:
-          break;
-    }
+  switch(display_type) {
+    case Display::DisplayType::IP:
+    case Display::DisplayType::MD:
+    case Display::DisplayType::HOUDINI:
+      return "houdini";
+    case Display::DisplayType::SDL:
+      return "sdl";
+    case Display::DisplayType::IDISPLAY:
+      return "idisplay";
+    case Display::DisplayType::OPENEXR:
+      return "openexr";
+    case Display::DisplayType::JPEG:
+      return "jpeg";
+    case Display::DisplayType::TIFF:
+      return "tiff";
+    case Display::DisplayType::PNG:
+      return "png";
+    case Display::DisplayType::NONE:
+    default:
+      return "null";
   }
-  return "";
+}
+
+inline std::string to_string(lava::Display::DisplayType display_type) {
+  switch(display_type) {
+    case Display::DisplayType::IP:
+      return "IP";
+    case Display::DisplayType::MD:
+      return "MD";
+    case Display::DisplayType::HOUDINI:
+      return "HOUDINI";
+    case Display::DisplayType::SDL:
+      return "SDL";
+    case Display::DisplayType::IDISPLAY:
+      return "IDISPLAY";
+    case Display::DisplayType::OPENEXR:
+      return "OPENEXR";
+    case Display::DisplayType::JPEG:
+      return "JPEG";
+    case Display::DisplayType::TIFF:
+      return "TIFF";
+    case Display::DisplayType::PNG:
+      return "PNG";
+    case Display::DisplayType::NONE:
+    default:
+      return "NONE";
+  }
+}
+
+inline std::string to_string(Display::TypeFormat typeFormat) {
+  switch(typeFormat) {
+    case Display::TypeFormat::FLOAT32:
+      return "FLOAT32";
+    case Display::TypeFormat::FLOAT16:
+      return "FLOAT16";
+    case Display::TypeFormat::UNSIGNED32:
+      return "UNSIGNED32";
+    case Display::TypeFormat::SIGNED32:
+      return "SIGNED32";
+    case Display::TypeFormat::UNSIGNED16:
+      return "UNSIGNED16";
+    case Display::TypeFormat::SIGNED16:
+      return "SIGNED16";
+    case Display::TypeFormat::UNSIGNED8:
+      return "UNSIGNED8";
+    case Display::TypeFormat::SIGNED8:
+      return "SIGNED8";
+    default:
+      return "UNKNOWN";
+  }
 }
 
 inline Display::TypeFormat falcorTypeToDiplay(Falcor::FormatType format_type, uint32_t numChannelBits) {

@@ -721,10 +721,11 @@ void SceneBuilder::waitForMaterialTextureLoading() {
 }
 
 Material::SharedPtr SceneBuilder::getMaterial(const std::string& name) const {
-    for (const auto& pMaterial : mSceneData.materials) {
-        if (pMaterial->getName() == name) return pMaterial;
-    }
-    return nullptr;
+    return mSceneData.pMaterialSystem->getMaterialByName(name);
+}
+
+bool SceneBuilder::getMaterialID(const std::string& name, uint32_t& materialId) const {
+    return mSceneData.pMaterialSystem->getMaterialIDByName(name, materialId);
 }
 
 // Cameras
@@ -807,10 +808,18 @@ uint32_t SceneBuilder::addNode(const Node& node) {
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
-    addMeshInstance(nodeID, meshID, nullptr, shadingSpec, visibilitySpec);
+    addMeshInstance(nodeID, meshID, kInvalidExportedID, nullptr, shadingSpec, visibilitySpec);
+}
+
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
+    addMeshInstance(nodeID, meshID, exportedInstanceID, nullptr, shadingSpec, visibilitySpec);
 }
 
 void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Material::SharedPtr& pMaterial, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
+    addMeshInstance(nodeID, meshID, kInvalidExportedID, pMaterial, shadingSpec, visibilitySpec);
+}
+
+void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, uint32_t exportedInstanceID, const Material::SharedPtr& pMaterial, MeshInstanceShadingSpec* shadingSpec, MeshInstanceVisibilitySpec* visibilitySpec) {
     if (nodeID >= mSceneGraph.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - nodeID " + std::to_string(nodeID) + " is out of range");
     if (meshID >= mMeshes.size()) throw std::runtime_error("SceneBuilder::addMeshInstance() - meshID " + std::to_string(meshID) + " is out of range");
 
@@ -822,12 +831,19 @@ void SceneBuilder::addMeshInstance(uint32_t nodeID, uint32_t meshID, const Mater
         mMeshes[meshID].instances.push_back({});
         MeshInstanceSpec &instance = mMeshes[meshID].instances.back();
         instance.nodeId = nodeID;
+        instance.exportedInstanceId = exportedInstanceID;
         instance.overrideMaterial = pMaterial ? true : false;
 
-        if (pMaterial) instance.materialId = addMaterial(pMaterial);
-        
-        if (shadingSpec) instance.shading = *shadingSpec;
+        if (instance.overrideMaterial && pMaterial) {
+            uint32_t materialID;
+            if(getMaterialID(pMaterial->getName(), materialID)) {
+                instance.materialId = materialID;
+            } else {
+                instance.materialId = addMaterial(pMaterial);
+            }
+        }
 
+        if (shadingSpec) instance.shading = *shadingSpec;
         if (visibilitySpec) instance.visibility = *visibilitySpec;
         
         LLOG_DBG << "SceneBuilder::addMeshInstance added mesh instance with material id " << std::to_string(instance.materialId);
@@ -2156,7 +2172,7 @@ void SceneBuilder::removeDuplicateMaterials() {
             mesh.materialId = idMap[mesh.materialId];
 
             for( auto& instance: mesh.instances ) {
-                LLOG_WRN << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
+                LLOG_DBG << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
                 if (instance.overrideMaterial) {
                     instance.materialId = idMap[instance.materialId];
                 } else {

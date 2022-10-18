@@ -23,7 +23,7 @@ class ReaderBase {
     virtual void                init(std::shared_ptr<Renderer> pRenderer, bool echo) = 0;
 
  public:
-    virtual const char*			formatName() const = 0;
+    virtual const char*			  formatName() const = 0;
     virtual bool                checkExtension(const char *name) = 0;
 
     virtual void                getFileExtensions(std::vector<std::string>& extensions) const = 0;
@@ -34,7 +34,6 @@ class ReaderBase {
  private:
     virtual bool                isInitialized() = 0;
     virtual bool                parseStream(std::istream &input) = 0;
-
 };
 
 }  // namespace lava

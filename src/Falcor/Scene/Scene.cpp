@@ -1860,17 +1860,19 @@ void Scene::createDrawList() {
     // Helper to create the draw-indirect buffer.
     auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
         if (drawMeshes.size() > 0) {
-            DrawArgs draw;
-            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
-            draw.pBuffer->setName("Scene draw buffer");
-            assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
-            draw.count = (uint32_t)drawMeshes.size();
-            draw.ccw = ccw;
-            draw.ibFormat = ibFormat;
-            mDrawArgs.push_back(draw);
+            for (const auto drawMesh: drawMeshes) {
+                DrawArgs draw;
+                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
+                draw.pBuffer->setName("Scene draw buffer");
+                //assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
+                draw.count = 1;//(uint32_t)drawMeshes.size();
+                draw.ccw = ccw;
+                draw.ibFormat = ibFormat;
+                mDrawArgs.push_back(draw);
 
-            //mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(&mDrawArgs.back());
-            mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(mDrawArgs.size() - 1);
+                //mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(mDrawArgs.size() - 1);
+                mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+            }
         }
     };
 

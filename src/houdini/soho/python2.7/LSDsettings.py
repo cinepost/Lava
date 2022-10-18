@@ -46,7 +46,7 @@ class Settings:
 
         self.GenerateOpId = False
         self.ShadowMap = False
-        self.GenerateMaterialname = False
+        self.GenerateMaterialname = True
         self.MatteOverrides = {}        # Objects forced to be matte
         self.PhantomOverrides = {}      # Objects forced to be phantom
 
@@ -137,7 +137,7 @@ def getLightWrangler(obj, now, style):
     if style != 'light_wrangler':
         return None
             
-    wrangler = soho.LightWranglers.get('ArnoldLightToLava', None)
+    wrangler = soho.LightWranglers.get('ArnoldLight-lava', None)
     if not wrangler:
         return None
 
@@ -145,7 +145,7 @@ def getLightWrangler(obj, now, style):
 
 def getWrangler(obj, now, style):
     wrangler = obj.getDefaultedString(style, now, [''])[0]
-    if not wrangler:
+    if not wrangler and style != 'camera_wrangler':
         return None
 
     wname = wrangler
@@ -155,6 +155,8 @@ def getWrangler(obj, now, style):
         wrangler = soho.LightWranglers.get(wrangler, None)
     elif style == 'camera_wrangler':
         wrangler = soho.CameraWranglers.get(wrangler, None)
+        if not wrangler:
+            wrangler = soho.CameraWranglers.get('HoudiniCamera-lava', None)
     elif style == 'object_wrangler':
          wrangler = soho.ObjectWranglers.get(wrangler, None)
     if not wrangler:
@@ -252,18 +254,15 @@ ostylesheetParms = [
 ]
 
 oshaderSkipParms = {
-    'shop_surfacepath' : SohoParm('shop_disable_surface_shader',  
-                                   'bool', [False], False, key='surface'),
-    'shop_displacepath' : SohoParm('shop_disable_displace_shader', 
-                                   'bool', [False], False, key='displace'),
-    'lv_matteshader' : SohoParm('shop_disable_surface_shader',  
-                                   'bool', [False], False, key='matteshader'),
+    'shop_surfacepath' : SohoParm('shop_disable_surface_shader', 'bool', [False], False, key='surface'),
+    'shop_displacepath' : SohoParm('shop_disable_displace_shader', 'bool', [False], False, key='displace'),
+    'lv_matteshader' : SohoParm('shop_disable_surface_shader',  'bool', [False], False, key='matteshader'),
 }
 
 oshaderMap = {       
     'shop_materialpath' : 'surface',
     'shop_surfacepath'  : 'surface',
-    'shop_photonpath'   : 'surface',
+    'lv_materialpath'   : 'surface',
     'lv_matteshader'    : 'matteshader',
     'shop_displacepath' : 'displace',
     'shop_cvexpath'     : 'cvex',
@@ -351,8 +350,7 @@ def _outputShaderList(objtype, obj, wrangler, now, shaderParms, skipParms):
                 if _Settings.GenerateMaterialname:
                     cmd_property('object', parm.Key, [parm.Value[0]])
             else:
-                cmd_shader(objtype, parm.Key, parm.Value[0],
-                        getattr(parm, "ShopType", soho.ShopTypeDefault))
+                cmd_shader(objtype, parm.Key, parm.Value[0], getattr(parm, "ShopType", soho.ShopTypeDefault))
 
 def _getObjectStyleSheets( obj, wrangler, now):
     stylesheets = []
@@ -754,10 +752,8 @@ def evaluateImagePlane(idx, wrangler, obj, now):
     return obj.evaluate(_Settings.IPlane, now)
 
 _iplay_specific = {
-    'rendermode' : SohoParm('lv_image_mplay_rendermode', 'string',
-                        ['current'], False, key='rendermode'),
-    'framemode'  : SohoParm('lv_image_mplay_framemode', 'string',
-                        ['append'], False, key='framemode'),
+    'rendermode' : SohoParm('lv_image_mplay_rendermode', 'string', ['current'], False, key='rendermode'),
+    'framemode'  : SohoParm('lv_image_mplay_framemode', 'string', ['append'], False, key='framemode'),
     'trange'     : SohoParm('trange', 'int', [0], False, key='trange')
 }
 
@@ -783,6 +779,7 @@ def outputMPlayFormatOptions(wrangler, cam, now):
     #  frame is at the beginning of the frame range
     if abs(curframe-frange[0]) < 0.01:
         rendermode = 'current'
+    
     if rendermode == 'new':
         if framemode == 'append':
             rendermode = 'new-append'
@@ -793,12 +790,18 @@ def outputMPlayFormatOptions(wrangler, cam, now):
             rendermode = 'append'
         else:
             rendermode = 'replace'
+    
+    #socketport = cam.wrangleString(wrangler, 'vm_image_mplay_socketport', now, [0])[0]
+    #cmd_declare('plane', 'int', 'IPlay.socketport', [socketport])
+
+    #sockethost = cam.wrangleString(wrangler, 'vm_image_mplay_sockethost', now, ['localhost'])[0]
+    #cmd_declare('plane', 'string', 'IPlay.sockethost', [sockethost])
+
     cmd_declare('plane', 'string', 'IPlay.rendermode', [rendermode])
     frange = '%d %d' % (int(frange[0]), int(frange[1]))
     cmd_declare('plane', 'string', 'IPlay.framerange', [frange])
-    cmd_declare('plane', 'float', 'IPlay.currentframe', [curframe])
-    rendersource = soho.getDefaultedString('lv_rendersource',
-                            [soho.getOutputDriver().getName()])
+    cmd_declare('plane', 'int', 'IPlay.currentframe', [int(curframe)])
+    rendersource = soho.getDefaultedString('lv_rendersource', [soho.getOutputDriver().getName()])
     cmd_declare('plane', 'string', 'IPlay.rendersource', rendersource)
 
 def outputImageFormatOptions(wrangler, cam, now):

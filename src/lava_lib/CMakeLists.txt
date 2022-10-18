@@ -4,6 +4,7 @@ include_directories(
 
 file( GLOB SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/../version.cpp
+    ./display_oiio.cpp
     ./*.cpp
 )
 
