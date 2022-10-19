@@ -80,8 +80,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
         return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
     
-      uint regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : renderRegion[2]); }
-      uint regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : renderRegion[3]); }
+      uint regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : (renderRegion[2] - renderRegion[0] + 1)); }
+      uint regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
     };
 
   // __HYDRA__ oriented structs end .....

@@ -37,7 +37,7 @@ DisplayOIIO::DisplayOIIO() {
 
 DisplayOIIO::~DisplayOIIO() {
     if (!closeAll())
-        std::cerr << "Error closing images !" << std::endl;
+        LLOG_ERR << "Error closing images !";
 }
 
 
@@ -120,9 +120,9 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
         if((existingImData.name == image_name) && !existingImData.isSubImage()) { // && existingImData.isOpened()) {
             if(existingImData.supportsMultiImage) {
                 // Try to add subimage
-                LLOG_WRN << "Adding subimage to " << image_name;
+                LLOG_DBG << "Adding subimage to " << image_name;
                 for(auto const& channel: channels) {
-                    LLOG_WRN << "subimage channel " << channel.name;
+                    LLOG_DBG << "subimage channel " << channel.name;
                 }
 
                 masterImageHandle = entry.first;
@@ -189,7 +189,6 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
 
     if(!allChannelFormalsAreEqual || imData.supportsPerChannelFormats || (pExistingImageData && pExistingImageData->supportsPerChannelFormats)) {
         for(const auto& channel: channels) {
-            LLOG_WRN << "Channel " << channel.name << " format is " << to_string(channel.format);
             spec.channelformats.push_back(channelFormatToOIIO(channel.format));
             spec.channelnames.push_back(channel.name);
         }
@@ -260,26 +259,22 @@ bool DisplayOIIO::closeImage(uint imageHandle) {
 
     auto& imData = found->second;
 
-    if(imData.closed) // already closed
-        return true;
+    // Check if already closed
+    if(imData.closed) return true;
 
-    if(!imData.pOut) // open was unsuccessfull
-        return false;
-
-    bool result = true;
+    // Check if oiio image exist
+    if(!imData.pOut && !imData.isSubImage()) return false;
 
     // If driver expects ONLY scan lines then the data is stored in temporary buffer
     if (imData.forceScanlines) {
         LLOG_DBG << "Sending " <<  std::to_string(imData.height) << " forced scan lines from temporary buffer";
-        
-
     }
 
-    imData.pOut->close();
+    if(!imData.isSubImage()) imData.pOut->close();
 
     imData.opened = false;
     imData.closed = true;
-    return result;
+    return true;
 }
 
 bool DisplayOIIO::sendImageRegion(uint imageHandle, uint x, uint y, uint width, uint height, const uint8_t *pData) {
