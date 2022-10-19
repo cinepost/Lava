@@ -50,8 +50,7 @@ static const float kMaxLightDistance = FLT_MAX;
     lighting integrals. Be careful not to access fields that are not needed,
     to make sure dead code elimination removes the computations.
 */
-struct AnalyticLightSample
-{
+struct AnalyticLightSample {
     float3  posW;           ///< Sampled point on the light source in world space (for local lights only).
     float3  normalW;        ///< Normal of the sampled point on the light source in world space (normalized).
     float3  dir;            ///< Direction from the shading point to the sampled point on the light in world space (normalized).
@@ -65,8 +64,10 @@ struct AnalyticLightSample
     The input sample must already have posW and normalW computed.
     \return True if the sample is valid, false otherwise.
 */
-bool validateAreaLightSample(const float3 shadingPosW, const LightData light, float cosTheta, inout AnalyticLightSample ls)
-{
+bool validateAreaLightSample(const float3 shadingPosW, const LightData light, inout AnalyticLightSample ls) {
+
+    ls.pdf = 0.0f;
+
     // Compute direction and distance to light.
     // The distance is clamped to a small epsilon to avoid div-by-zero below.
     float3 toLight = ls.posW - shadingPosW;
@@ -97,6 +98,24 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, fl
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
+bool _sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
+{
+    // Pick a random sample on the quad.
+    // The quad is from (-1.0, -1.0, 0.0) to (1.0, 1.0, 0.0) in object space, but may be scaled by its transform matrix.
+    float3 pos = float3(2.0f * (rnd.x - .5f), 2.0f * (rnd.y - .5f), 0.f);
+
+    // Apply model to world transformation matrix.
+    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+
+    // Setup world space normal.
+    // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
+    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
+
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
+
+    return true;
+}
+
 bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
 {
     // Pick a random sample on the quad.
@@ -110,18 +129,11 @@ bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2
     // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
     ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
-    // Compute direction and distance to light.
-    // The distance is clamped to a small epsilon to avoid div-by-zero below.
-    float3 toLight = ls.posW - shadingPosW;
-    float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
-    ls.distance = sqrt(distSqr);
-    ls.dir = ls.shadowDir = toLight / ls.distance;
-
-    float cosTheta = dot(ls.normalW, -ls.dir);
-    if (!validateAreaLightSample(shadingPosW, light, cosTheta, ls)) return false;
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     return true;
 }
+
 
 bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     
@@ -136,15 +148,7 @@ bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const Li
 
     ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
-    // Compute direction and distance to light.
-    // The distance is clamped to a small epsilon to avoid div-by-zero below.
-    float3 toLight = ls.posW - shadingPosW;
-    float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
-    ls.distance = sqrt(distSqr);
-    ls.dir = ls.shadowDir = toLight / ls.distance;
-
-    float cosTheta = dot(ls.normalW, -ls.dir);
-    if (!validateAreaLightSample(shadingPosW, light, cosTheta, ls)) return false;
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     return true;
 }
@@ -195,15 +199,7 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, floa
     // Setup world space normal.
     ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
 
-    // Compute direction and distance to light.
-    // The distance is clamped to a small epsilon to avoid div-by-zero below.
-    float3 toLight = ls.posW - shadingPosW;
-    float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
-    ls.distance = sqrt(distSqr);
-    ls.dir = ls.shadowDir = toLight / ls.distance;
-
-    float _cosTheta = dot(ls.normalW, -ls.dir);
-    if (!validateAreaLightSample(shadingPosW, light, _cosTheta, ls)) return false;
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     // Compute spherical light pdf
     ls.pdf = uniformConePdf(cosThetaMax);
@@ -224,15 +220,7 @@ bool intersectSphereAreaLight(const float3 shadingPosW, const float3 dir, const 
 
     ls.normalW = normalize(mul(float4(pos, 0.f), light.transMatIT).xyz);
 
-    // Compute direction and distance to light.
-    // The distance is clamped to a small epsilon to avoid div-by-zero below.
-    float3 toLight = ls.posW - shadingPosW;
-    float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
-    ls.distance = sqrt(distSqr);
-    ls.dir = ls.shadowDir = toLight / ls.distance;
-
-    float cosTheta = dot(ls.normalW, -ls.dir);
-    if (!validateAreaLightSample(shadingPosW, light, cosTheta, ls)) return false;
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     // Compute spherical light pdf
     float sph_r2 = 1.0f;
@@ -262,11 +250,7 @@ bool sampleDiscAreaLight(const float3 shadingPosW, const LightData light, float2
     // Setup world space normal.
     ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
-
-    ls.dir = ls.shadowDir = normalize(ls.posW - shadingPosW);
-
-    float cosTheta = dot(ls.normalW, -ls.dir);
-    if (! validateAreaLightSample(shadingPosW, light, cosTheta, ls)) return false;
+    if (! validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     return true;
 }
@@ -284,12 +268,7 @@ bool intersectDiscAreaLight(const float3 shadingPosW, const float3 dir, const Li
 
     ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
 
-    // Compute direction and distance to light.
-    // The distance is clamped to a small epsilon to avoid div-by-zero below.
-    ls.dir = ls.shadowDir = normalize(ls.posW - shadingPosW);
-
-    float cosTheta = dot(ls.normalW, -ls.dir);
-    if (!validateAreaLightSample(shadingPosW, light, cosTheta, ls)) return false;
+    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
 
     return true;
 }

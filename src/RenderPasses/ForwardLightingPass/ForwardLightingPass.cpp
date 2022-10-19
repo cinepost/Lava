@@ -218,6 +218,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
     mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
     mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
+    mpVars["PerFrameCB"]["gBias"] = 0.0001f;
 
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kForwardLightingPassExtraChannels) {

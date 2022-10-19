@@ -60,7 +60,7 @@ cbuffer PerFrameCB {
   uint              gSampleNumber;                 // Interframe sample number.
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-
+  float             gBias;
   float2            gRenderTargetDim;              // frame dimension
   uint              gSamplesPerFrame;
 
@@ -176,7 +176,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 #endif
 
-    rayOrigin += viewDir * 0.001f;
+    //rayOrigin += viewDir * 0.00001f;
 
     [loop]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
@@ -188,6 +188,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         AnalyticLightSample ls;
         
         // Sample light and reject sample if lower hemisphere.
+        sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
+        
         if (sampleLight(sd.posW, sd.faceN, light, sampleNext2D(sg), ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
         
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
@@ -196,7 +198,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                 RayDesc ray;
                 ray.Origin = rayOrigin;
                 ray.Direction = ls.shadowDir;
-                ray.TMin = .00001f;
+                ray.TMin = gBias;
 
                 ray.TMax = ls.distance;
 
@@ -218,25 +220,52 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
             surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor * misWeight;// * float3(1.0, 0.0, 0.0);
         }
-
         
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
         // Sample bsdf for non singular light
         if(!light.isDeltaLight()) {
             BSDFSample bsdfSample;
+
+            // Disffuse Component
+            sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
             if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
                     misWeight = power_heuristic(1., bsdfSample.pdf, 1., ls.pdf);
-
+                    
                     shadowFactor = float3(1.0f);
 
                     RayDesc ray;
                     ray.Origin = rayOrigin;
                     ray.Direction = ls.shadowDir;
-                    ray.TMin = .00001f;
+                    ray.TMin = gBias;
+
+                    ray.TMax = ls.distance;
+
+                    rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+                    rayShadowQuery.Proceed();
+                    shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
+
+                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;// * float3(0.0, 1.0, 0.0);
+                }
+            }
+
+            // Specular Component
+            sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+            if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
+                
+                // Intersect light source and reject invalid light sample.
+                if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
+                    misWeight = power_heuristic(1., bsdfSample.pdf, 1., ls.pdf);
+                    
+                    shadowFactor = float3(1.0f);
+
+                    RayDesc ray;
+                    ray.Origin = rayOrigin;
+                    ray.Direction = ls.shadowDir;
+                    ray.TMin = gBias;
 
                     ray.TMax = ls.distance;
 
@@ -269,7 +298,11 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 
     if (is_valid(gOutNormals)){
+#ifdef _AOV_NORMAL_FLOAT
+        gOutNormals[ipos] = float4(sd.N, 1.0f);
+#else
         gOutNormals[ipos] = float4(sd.N * 0.5f + 0.5f, 1.0f);
+#endif
     }
 
     if (is_valid(gOutShadows)){
