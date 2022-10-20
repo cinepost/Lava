@@ -21,7 +21,6 @@
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
 #include "RenderPasses/DepthPass/DepthPass.h"
 #include "RenderPasses/SkyBox/SkyBox.h"
-#include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/TexturesResolvePass/TexturesResolvePass.h"
 #include "RenderPasses/RTXDIPass/RTXDIPass.h"
 //#include "RenderPasses/MinimalPathTracer/MinimalPathTracer.h"
@@ -190,7 +189,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     DepthPass::SharedPtr            mpDepthPrePass = nullptr;
     DepthPass::SharedPtr            mpDepthPass = nullptr;
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
-    ForwardLightingPass::SharedPtr  mpLightingPass = nullptr;
+    //ForwardLightingPass::SharedPtr  mpForwardLightingPass = nullptr;
+    //DeferredLightingPass::SharedPtr mpDeferredLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
 

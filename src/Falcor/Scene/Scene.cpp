@@ -318,6 +318,8 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {
         initGeomDesc(pContext);
@@ -338,10 +340,10 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
         // If new TLAS was just created, get it so the iterator is valid
         if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
     }
-    FALCOR_ASSERT(mpSceneBlock);
+    assert(mpSceneBlock);
 
     // Bind TLAS.
-    FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
+    assert(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject);
     mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
@@ -349,8 +351,10 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
+    LLOG_WRN << "mDrawArgs size " << std::to_string(mDrawArgs.size());
+    auto _start = std::chrono::high_resolution_clock::now();
     for (const auto& draw : mDrawArgs) {
-
+        //LLOG_WRN << "draw count " << std::to_string(draw.count) << " with count buffer " << (draw.pCountBuffer ? "yes" : "no");
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
@@ -359,14 +363,19 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
 
         // Draw the primitives.
         if (isIndexed) {
-            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+            //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
+            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
         } else {
             pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
         }
-
     }
+    auto _stop = std::chrono::high_resolution_clock::now();
+    LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(_stop - _start).count() << " ms.";
 
     pState->setRasterizerState(pCurrentRS);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    LLOG_TRC << "Scene::rasterize() time " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
@@ -396,7 +405,8 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 
                 // Draw the primitives.
                 if (isIndexed) {
-                    pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+                    //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
+                    pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
                 } else {
                     pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
                 }
@@ -1860,6 +1870,19 @@ void Scene::createDrawList() {
     // Helper to create the draw-indirect buffer.
     auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
         if (drawMeshes.size() > 0) {
+/*
+            std::vector<uint32_t> drawCounts(drawMeshes.size(), 1);
+            DrawArgs draw;
+            draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
+            draw.pCountBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounts.data());
+            //draw.pBuffer->setName("Scene draw buffer");
+            draw.count = (uint32_t)drawMeshes.size();
+            draw.ccw = ccw;
+            draw.ibFormat = ibFormat;
+            mDrawArgs.push_back(draw);
+            //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+*/
+
             for (const auto drawMesh: drawMeshes) {
                 DrawArgs draw;
                 draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
@@ -1870,8 +1893,7 @@ void Scene::createDrawList() {
                 draw.ibFormat = ibFormat;
                 mDrawArgs.push_back(draw);
 
-                //mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(mDrawArgs.size() - 1);
-                mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+                //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
             }
         }
     };
@@ -1903,9 +1925,6 @@ void Scene::createDrawList() {
 
             //uint32_t instanceID = 0;
             for (const auto& drawInstance : instances) {
-                LLOG_DBG << "Scene::createDrawList() creating buffer for instance";
-                LLOG_DBG << "drawInstance.globalMatrixID " << std::to_string(drawInstance.instance->globalMatrixID);
-
                 const auto instance = drawInstance.instance;
                 const auto& mesh = mMeshDesc[instance->geometryID];
                 bool use16Bit = mesh.use16BitIndices();

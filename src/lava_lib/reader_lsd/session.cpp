@@ -161,7 +161,7 @@ bool Session::prepareDisplayData() {
 	}
 
 	// quantization parameters
-	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float32"));
+	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float16"));
 
 	mCurrentDisplayInfo.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 	return true;
@@ -1222,6 +1222,8 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
+    float           ao_distance = 1.0f;
+
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
     	surface_base_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor", lsd::Vector3{0.2, 0.2, 0.2}));
@@ -1235,13 +1237,15 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
     	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
 
-    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
-    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
-    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
-    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0);
+    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
+    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0f);
+    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3f);
+    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0f);
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
-    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0);
+    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0f);
+
+    	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
     	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
     } else {
@@ -1265,6 +1269,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setReflectivity(surface_reflectivity);
 	    pMaterial->setEmissiveColor(emissive_color);
 	    pMaterial->setEmissiveFactor(emissive_factor);
+	    pMaterial->setAODistance(ao_distance);
 	    pMaterial->setDoubleSided(!front_face);
 	  	
 	  	//bool loadAsSrgb = true;

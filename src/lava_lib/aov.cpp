@@ -200,6 +200,7 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::DEPTH)) return AOVBuiltinName::DEPTH;
     if(str == to_string(AOVBuiltinName::ALBEDO)) return AOVBuiltinName::ALBEDO;
     if(str == to_string(AOVBuiltinName::SHADOW)) return AOVBuiltinName::SHADOW;
+    if(str == to_string(AOVBuiltinName::OCCLUSION)) return AOVBuiltinName::OCCLUSION;
     if(str == to_string(AOVBuiltinName::OBJECT_ID)) return AOVBuiltinName::OBJECT_ID;
     if(str == to_string(AOVBuiltinName::MATERIAL_ID)) return AOVBuiltinName::MATERIAL_ID;
     if(str == to_string(AOVBuiltinName::INSTANCE_ID)) return AOVBuiltinName::INSTANCE_ID;

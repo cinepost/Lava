@@ -1161,6 +1161,7 @@ public:
 
     struct DrawArgs {
         Buffer::SharedPtr pBuffer;      ///< Buffer holding the draw-indirect arguments.
+        Buffer::SharedPtr pCountBuffer;
         uint32_t count = 0;             ///< Number of draws.
         bool ccw = true;                ///< True if counterclockwise triangle winding.
         ResourceFormat ibFormat = ResourceFormat::Unknown;  ///< Index buffer format.

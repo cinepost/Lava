@@ -19,7 +19,7 @@
         ResourceState srcState,                                                                         \
         SubresourceRange srcSubresource,                                                                \
         ITextureResource::Offset3D srcOffset,                                                           \
-        ITextureResource::Extents extent) override                                                         \
+        ITextureResource::Extents extent) override                                                      \
     {                                                                                                   \
         ResourceCommandEncoderBase::copyTexture(                                                        \
             dst,                                                                                        \

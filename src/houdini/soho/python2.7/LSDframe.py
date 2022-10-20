@@ -348,8 +348,10 @@ def quickImagePlanes(wrangler, cam, now, components):
         cmd_property('plane', 'variable', [variable])
         cmd_property('plane', 'channel', [channel])
         cmd_property('plane', 'type', [lsdtype])
+        
         if quantize != 'float16':
             cmd_property('plane', 'quantize', [quantize])
+        
         for opt, optvalue in opts.iteritems():
             cmd_property('plane', opt, optvalue)
 
@@ -364,6 +366,7 @@ def quickImagePlanes(wrangler, cam, now, components):
     plist = {}
     for p in toggleplanedict.keys():
         plist[p] = SohoParm(p, 'int', [0])
+
     plist = cam.wrangle(wrangler, plist, now)
 
     for parmname, varnames in toggleplanedict.iteritems():

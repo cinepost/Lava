@@ -136,6 +136,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     // pixel position
     int2 ipos = int2(vsOut.posH.xy);
 
+    float4 bnoise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
+
     // pseudo-random sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
 
@@ -168,9 +170,9 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     float3 rayOrigin = sd.posW;
 
+    float3 ffNormalW = faceforward(normalize(vsOut.normalW), -viewDir, sd.faceN);
 #ifdef _FIX_SHADOW_TERMINATOR
     // face forwaded interpolated normal
-    float3 ffNormalW = faceforward(normalize(vsOut.normalW), -viewDir, sd.faceN);
     if (gScene.doFixShadowTerminator(vsOut.instanceID)) {
         rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, ffNormalW, barycentrics);
     }
@@ -298,7 +300,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 
     if (is_valid(gOutNormals)){
-#ifdef _AOV_NORMAL_FLOAT
+#ifdef _AOV_NORMALS_FLOAT
         gOutNormals[ipos] = float4(sd.N, 1.0f);
 #else
         gOutNormals[ipos] = float4(sd.N * 0.5f + 0.5f, 1.0f);
@@ -314,7 +316,20 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 
     if (is_valid(gOutOcclusion)){
-        gOutOcclusion[ipos] = AOV_occlusion;
+        float pdf;
+        //float3 dir = normalize(sample_cosine_hemisphere_oriented(sampleNext2D(sg), ffNormalW, pdf));
+        float3 dir = normalize(sample_cosine_hemisphere_oriented(bnoise.xy, ffNormalW, pdf));
+
+        RayDesc ray;
+        ray.Origin = sd.posW;
+        ray.Direction = dir;
+        ray.TMin = gBias;
+
+        ray.TMax = 0.5f;
+
+        rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+        rayShadowQuery.Proceed();
+        gOutOcclusion[ipos] = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
     }
 
     if (is_valid(gPrimID)){

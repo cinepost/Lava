@@ -25,11 +25,12 @@ enum class AOVBuiltinName: uint8_t {
   NORMAL      = 4,
   ALBEDO      = 5,
   SHADOW      = 6,
-  OBJECT_ID   = 7,
-  MATERIAL_ID = 8,
-  INSTANCE_ID = 9,
-  Prim_Id     = 10,
-  Op_Id       = 11,
+  OCCLUSION   = 7,
+  OBJECT_ID   = 8,
+  MATERIAL_ID = 9,
+  INSTANCE_ID = 10,
+  Prim_Id     = 11,
+  Op_Id       = 12,
 
   UNKNOWN     = 0
 };
@@ -43,6 +44,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(NORMAL);
     type_2_string(ALBEDO);
     type_2_string(SHADOW);
+    type_2_string(OCCLUSION);
     type_2_string(OBJECT_ID);
     type_2_string(MATERIAL_ID);
     type_2_string(INSTANCE_ID);

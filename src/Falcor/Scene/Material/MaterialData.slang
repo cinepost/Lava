@@ -157,7 +157,7 @@ struct MaterialHeader
 #endif
 };
 
-/** This is a host/device structure for material payload data (120B).
+/** This is a host/device structure for material payload data (128B).
     The format of the data depends on the material type. 
 */
 struct MaterialPayload
@@ -165,7 +165,7 @@ struct MaterialPayload
     uint data[30];
 };
 
-/** This is a host/device structure representing a blob of material data (128B).
+/** This is a host/device structure representing a blob of material data (120B).
     The material data blob consists of a header and a payload. The header is always valid.
     The blob is sized to fit into one cacheline for efficient access. Do not change the size.
     All material types should keep their main material data within this footprint.

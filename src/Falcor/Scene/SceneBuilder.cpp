@@ -2172,7 +2172,7 @@ void SceneBuilder::removeDuplicateMaterials() {
             mesh.materialId = idMap[mesh.materialId];
 
             for( auto& instance: mesh.instances ) {
-                LLOG_DBG << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
+                LLOG_TRC << "Replace mesh instance materialId " << std::to_string(instance.materialId) << " to " << std::to_string(idMap[instance.materialId]);
                 if (instance.overrideMaterial) {
                     instance.materialId = idMap[instance.materialId];
                 } else {

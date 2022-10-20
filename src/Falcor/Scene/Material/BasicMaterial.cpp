@@ -365,6 +365,13 @@ void BasicMaterial::setDisplacementOffset(float offset) {
     }
 }
 
+void BasicMaterial::setAODistance(float distance) {
+    //if (mData.ao_distance != (float16_t)distance) {
+    //    mData.ao_distance = (float16_t)distance;
+    //    markUpdates(UpdateFlags::DataChanged);
+    //}
+}
+
 void BasicMaterial::setBaseColor(const float3& color) {
     if (mData.baseColor != (float16_t3)color) {
         mData.baseColor = (float16_t3)color;

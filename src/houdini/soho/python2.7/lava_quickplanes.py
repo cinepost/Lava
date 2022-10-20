@@ -17,9 +17,9 @@ __quickplanes = {
     
     "normals":       QuickPlane("NORMAL",              "vector3",      "float16",    False,      {'pfilter':['minmax omedian']}),
 
-    "albedo":        QuickPlane("ALBEDO",              "vector3",      "float16",    False,      {}),
+    "albedo":        QuickPlane("ALBEDO",              "vector3",      "float32",    False,      {}),
 
-    "shadow":        QuickPlane("SHADOW",              "float",        "float16",    False,      {}),
+    "shadow":        QuickPlane("SHADOW",              "vector3",      "float32",    False,      {}),
 
     "occlusion":     QuickPlane("OCCLUSION",           "float",        "float16",    False,      {}),
 

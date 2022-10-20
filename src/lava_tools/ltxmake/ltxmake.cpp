@@ -197,7 +197,7 @@ int main(int argc, char** argv){
             Falcor::LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = compressorTypeName;
             tlcParms.compressionLevel = compressionLevel;
-            if (!Falcor::LTX_Bitmap::convertToKtxFile(nullptr, input_filename, output_filename, tlcParms, true)) {
+            if (!Falcor::LTX_Bitmap::convertToLtxFile(nullptr, input_filename, output_filename, tlcParms, true)) {
                 LLOG_ERR << "Error converting texture " <<  input_filename << " !!!";
             } else {
                 LLOG_DBG << "Conversion done for " << input_filename;

@@ -539,12 +539,19 @@ public:
         Offset argOffset,
         IBufferResource* countBuffer,
         Offset countOffset) override;
+
     virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirect(
+        GfxCount maxDrawCount,
+        IBufferResource* argBuffer,
+        Offset argOffset) override;
+
+    virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirectCount(
         GfxCount maxDrawCount,
         IBufferResource* argBuffer,
         Offset argOffset,
         IBufferResource* countBuffer,
         Offset countOffset) override;
+
     virtual SLANG_NO_THROW void SLANG_MCALL setStencilReference(uint32_t referenceValue) override;
     virtual SLANG_NO_THROW Result SLANG_MCALL setSamplePositions(
         GfxCount samplesPerPixel,

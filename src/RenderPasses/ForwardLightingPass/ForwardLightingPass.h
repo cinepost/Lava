@@ -59,7 +59,7 @@ class ForwardLightingPass : public RenderPass {
 
 		/** Set samples per frame count
 		*/
-		void setFrameSampleCount(uint32_t samples);
+		ForwardLightingPass& setFrameSampleCount(uint32_t samples);
 
 		/** Set the color target format. This is always enabled
 		*/
