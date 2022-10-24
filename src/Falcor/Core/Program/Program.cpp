@@ -226,7 +226,7 @@ bool Program::addDefine(const std::string& name, const std::string& value) {
 
 bool Program::addDefines(const DefineList& dl) {
 	bool dirty = false;
-	for (auto it : dl) {
+	for (const auto& it : dl) {
 		if (addDefine(it.first, it.second)) {
 			dirty = true;
 		}
@@ -245,7 +245,7 @@ bool Program::removeDefine(const std::string& name) {
 
 bool Program::removeDefines(const DefineList& dl) {
 	bool dirty = false;
-	for (auto it : dl) {
+	for (const auto& it : dl) {
 		if (removeDefine(it.first)) {
 			dirty = true;
 		}

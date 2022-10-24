@@ -170,6 +170,8 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 
 	// Write 1+ MIP tiles
 	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		header.mipBases[mipLevel] = currentPageId;
+
 		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
 		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
 		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
@@ -271,6 +273,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	size_t tailDataSize = 0;
 	
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+		header.mipBases[mipTailLevel] = currentPageId;
 		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
 		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
@@ -400,6 +403,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	oiio::ImageBuf scaledBuff;
 
 	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		header.mipBases[mipLevel] = currentPageId;
 		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
 		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
 		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;
@@ -461,6 +465,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	size_t tailDataSize = 0;
 	
 	for(uint8_t mipTailLevel = mipInfo.mipTailStart; mipTailLevel < mipInfo.mipLevelsCount; mipTailLevel++) {
+		header.mipBases[mipTailLevel] = currentPageId;
 		uint32_t mipLevelWidth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].x);
 		uint32_t mipLevelHeight = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].y);
 		uint32_t mipLevelDepth = std::max(1u, mipInfo.mipLevelsDims[mipTailLevel].z);
@@ -651,6 +656,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 
 		// Write 1+ MIP tiles
 	for(uint8_t mipLevel = 1; mipLevel < mipInfo.mipTailStart; mipLevel++) {
+		header.mipBases[mipLevel] = currentPageId;
 		uint32_t mipLevelWidth = mipInfo.mipLevelsDims[mipLevel].x;
 		uint32_t mipLevelHeight = mipInfo.mipLevelsDims[mipLevel].y;
 		uint32_t mipLevelDepth = mipInfo.mipLevelsDims[mipLevel].z;

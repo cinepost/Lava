@@ -50,13 +50,14 @@ void writeTileID(int tileID) {
     resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
 }
 
-float4 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
-    let lod = ImplicitLodTextureSampler();
+float2 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
+    //return float4(calculateAnisoMipMapLevel2D2(uv, float2((float)vtexData.width, (float)vtexData.height), mipBias), 0, 255);
 
     float2 tc = uv * float2((float)vtexData.width / 128.0f, (float)vtexData.height / 128.0f);
-    
-    float2 gradX = ddx_fine(tc) * 1.1f; // x1.1 should be enough with 16x anisotropic filtering, otherwise -> x2;
-    float2 gradY = ddy_fine(tc) * 1.1f;
+    float c = 1.1f;  // x1.1 should be enough with 16x anisotropic filtering, otherwise -> x2;
+
+    float2 gradX = ddx_fine(tc) * c;
+    float2 gradY = ddy_fine(tc) * c;
 
     int mipLevelLo = -1;
     int mipLevelHi = -1;
@@ -72,7 +73,7 @@ float4 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler,
         mipLevelLo -= 1; 
     }
 
-    return float4(max(0, mipLevelLo), max(0, mipLevelHi), 0, 255);
+    return float2(max(0, mipLevelLo), max(0, mipLevelHi));
 }
 
 // calculate required texture mip levels using calibration texture
@@ -140,17 +141,20 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
         if (!vtexData.empty) {
             float mipBias = -0.0; // TODO: use actual texture sampler bias
 
-            float4 mips = clacTextureMipLevelsIterative(uv, gCalibrationSampler, vtexData, mipBias);
+            //float3 mips = calcTextureMipLevels(uv, gCalibrationSampler, vtexData, mipBias);
+            float2 mips = clacTextureMipLevelsIterative(uv, gCalibrationSampler, vtexData, mipBias);
 
             int loMipLevel = (int)mips.x; //max(0, (int)mips.x);
             int hiMipLevel = (int)mips.y; //max(0, (int)mips.y);
 
             debug_mip_level_lo = loMipLevel / 255.0f;
             debug_mip_level_hi = hiMipLevel / 255.0f;
-            debug_mip_level_f  += mips.z;
 
-            writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
-            writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
+            for( int m = loMipLevel; m <= hiMipLevel; m++) writeTileID(calculateTileID2D(uv, m, vtexData));
+
+            //writeTileID(calculateTileID2D(uv, 1, vtexData));
+            //writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
+            //writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
             
             //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
         }
@@ -158,7 +162,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
 
 #ifdef _OUTPUT_DEBUG_IMAGE
     //psOut.output = grad_test;
-    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, debug_mip_level_f, 1);
+    psOut.output = float4(debug_mip_level_lo, debug_mip_level_hi, 0, 1);
     return psOut;
 #else
     discard;

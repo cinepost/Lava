@@ -184,6 +184,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 
 		instanceExtensions.add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 		instanceExtensions.add(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+		instanceExtensions.add(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
 
 		// Software (swiftshader) implementation currently does not support surface extension,
 		// so only use it with a hardware implementation.
@@ -602,6 +603,16 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 		if(extensionNames.Contains(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
 			m_features.add("sampler_filter_minmax");
+		}
+
+		if(extensionNames.Contains(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
+			m_features.add("draw_inidirect_count");
+		}
+
+		if(extensionNames.Contains(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME);
+			m_features.add("image_footprint");
 		}
 
 		// ---------

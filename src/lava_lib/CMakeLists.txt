@@ -4,6 +4,7 @@ include_directories(
 
 file( GLOB SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/../version.cpp
+    ./display_oiio.cpp
     ./*.cpp
 )
 
@@ -25,6 +26,7 @@ target_link_libraries(
     AccumulatePass
     DepthPass
     ForwardLightingPass
+    DeferredLightingPass
     SkyBox
     RTXDIPass
     GBuffer

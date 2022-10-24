@@ -32,6 +32,8 @@
 #include "GFXFormats.h"
 #include "GFXRtAccelerationStructure.h"
 
+gfx::IRenderCommandEncoder* gEncoder = nullptr;
+
 namespace Falcor {
 
     namespace {
@@ -258,10 +260,25 @@ namespace Falcor {
         mCommandsPending = true;
     }
 
-    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+    void RenderContext::drawIndexedIndirect(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
         resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
         auto encoder = drawCallCommon(this, pState, pVars);
+        
+        //if(!gEncoder) {
+        //    gEncoder = drawCallCommon(this, pState, pVars);
+        //}
+        
         encoder->drawIndexedIndirect(
+            maxCommandCount,
+            static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
+            argBufferOffset);
+        mCommandsPending = true;
+    }
+
+    void RenderContext::drawIndexedIndirectCount(GraphicsState* pState, GraphicsVars* pVars, uint32_t maxCommandCount, const Buffer* pArgBuffer, uint64_t argBufferOffset, const Buffer* pCountBuffer, uint64_t countBufferOffset) {
+        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+        auto encoder = drawCallCommon(this, pState, pVars);
+        encoder->drawIndexedIndirectCount(
             maxCommandCount,
             static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()),
             argBufferOffset,

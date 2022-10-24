@@ -258,6 +258,14 @@ class dlldecl BasicMaterial : public Material {
 		*/
 		float getIndexOfRefraction() const { return (float)mData.IoR; }
 
+		/** Set the ambient occlusion query distance.
+		*/
+		void setAODistance(float distance);
+
+		/** Get the ambient occlusion query distance.
+		*/
+		float getAODistance() const { return 1.0f; /*(float)mData.ao_distance;*/ }
+
 		/** Returns the material data struct.
 		*/
 		const BasicMaterialData& getData() const { return mData; }

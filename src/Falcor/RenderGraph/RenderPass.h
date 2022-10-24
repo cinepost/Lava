@@ -31,6 +31,7 @@
 #include <memory>
 
 #include "Falcor/Core/API/Device.h"
+#include "Falcor/Core/API/Buffer.h"
 #include "Falcor/Utils/Scripting/Dictionary.h"
 #include "Falcor/Utils/InternalDictionary.h"
 #include "ResourceCache.h"
@@ -47,7 +48,7 @@ class dlldecl RenderData {
         \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
         \return If the name exists, a pointer to the resource. Otherwise, nullptr
     */
-    const Resource::SharedPtr& operator[](const std::string& name) const { return getResource(name); }
+    inline const Resource::SharedPtr& operator[](const std::string& name) const { return getResource(name); }
 
     /** Get a resource
         \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
@@ -55,21 +56,33 @@ class dlldecl RenderData {
     */
     const Resource::SharedPtr& getResource(const std::string& name) const;
 
-    /** Get the global dictionary. You can use it to pass data between different passes
+    /** Get a texture resource
+        \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
+        \return If the name exists, a pointer to the resource. Otherwise, nullptr
     */
-    InternalDictionary& getDictionary() const { return (*mpDictionary); }
+    const Texture::SharedPtr& getTexture(const std::string& name) const;
+
+    /** Get a buffer resource
+        \param[in] name The name of the pass' resource (i.e. "outputColor"). No need to specify the pass' name
+        \return If the name exists, a pointer to the resource. Otherwise, nullptr
+    */
+    const Buffer::SharedPtr& getBuffer(const std::string& name) const;
 
     /** Get the global dictionary. You can use it to pass data between different passes
     */
-    InternalDictionary::SharedPtr getDictionaryPtr() const { return mpDictionary; }
+    inline InternalDictionary& getDictionary() const { return (*mpDictionary); }
+
+    /** Get the global dictionary. You can use it to pass data between different passes
+    */
+    inline InternalDictionary::SharedPtr getDictionaryPtr() const { return mpDictionary; }
 
     /** Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
     */
-    const uint2& getDefaultTextureDims() const { return mDefaultTexDims; }
+    inline const uint2& getDefaultTextureDims() const { return mDefaultTexDims; }
 
     /** Get the default format used for Texture2Ds (when `Unknown` is specified as the format in `RenderPassReflection`)
     */
-    ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
+    inline ResourceFormat getDefaultTextureFormat() const { return mDefaultTexFormat; }
  protected:
     friend class RenderGraphExe;
     
@@ -83,6 +96,9 @@ class dlldecl RenderData {
     ResourceFormat mDefaultTexFormat;
     uint32_t mFrameNumber;
     uint32_t mSampleNumber;
+
+    Texture::SharedPtr mpNullTexture = nullptr;
+    Buffer::SharedPtr mpNullBuffer = nullptr;
 };
 
 /** Base class for render passes.
@@ -116,15 +132,15 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
 
     /** Get the render pass info data.
     */
-    const Info& getInfo() const { return mInfo; }
+    inline const Info& getInfo() const { return mInfo; }
 
     /** Get the render pass type.
     */
-    const std::string& getType() const { return mInfo.type; }
+    inline const std::string& getType() const { return mInfo.type; }
 
     /** Get the render pass description.
     */
-    const std::string& getDesc() const { return mInfo.desc; }
+    inline const std::string& getDesc() const { return mInfo.desc; }
 
 
     /** Called before render graph compilation. Describes I/O requirements of the pass.
@@ -159,14 +175,14 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
     */
     virtual void setScene(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene) {}
 
-    /** Called upon hot reload (by pressing F5).
+    /** Called upon hot reload.
         \param[in] reloaded Resources that have been reloaded.
     */
     virtual void onHotReload(HotReloadFlags reloaded) {}
 
     /** Get the current pass' name as defined in the graph
     */
-    const std::string& getName() const { return mName; }
+    inline const std::string& getName() const { return mName; }
 
  protected:
     friend class RenderGraph;
@@ -176,7 +192,7 @@ class dlldecl RenderPass : public std::enable_shared_from_this<RenderPass> {
         Call this function if the I/O requirements of the pass have changed.
         During the recompile, reflect() will be called for the pass to report the new requirements.
     */
-    void requestRecompile() { mPassChangedCB(); }
+    inline void requestRecompile() { mPassChangedCB(); }
 
     const Info mInfo;
     std::string mName;

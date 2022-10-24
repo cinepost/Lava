@@ -345,6 +345,7 @@ def initializeFeatures(settings):
     ImageOption("Cineon.cinlut", "string", "lv_image_cineon_lut")
     ImageOption("Cineon.cinspace", "string", "lv_image_cineon_space")
     ImageOption("Cineon.cinwhite", "int", "lv_image_cineon_whitepoint")
+
     ImageOption("IPlay.bgimage", "string", "lv_image_mplay_bgimage")
     ImageOption("IPlay.direction", "string", "lv_image_mplay_direction")
     ImageOption("IPlay.gamma", "float", "lv_image_mplay_gamma")
@@ -353,6 +354,7 @@ def initializeFeatures(settings):
     ImageOption("IPlay.lut", "string", "lv_image_mplay_lut")
     ImageOption("IPlay.sockethost", "string", "lv_image_mplay_sockethost")
     ImageOption("IPlay.socketport", "int", "lv_image_mplay_socketport")
+
     ImageOption("JPEG.quality", "int", "lv_image_jpeg_quality")
     ImageOption("OpenEXR.attributes", "string", "lv_image_exr_attributes")
     ImageOption("OpenEXR.compression", "string", "lv_image_exr_compression")

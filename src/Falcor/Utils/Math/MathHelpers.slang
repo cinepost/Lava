@@ -352,7 +352,7 @@ float3 sample_cosine_hemisphere_polar(float2 u)
 float3 sample_cosine_hemisphere_oriented(float2 rnd, float3 n, out float pdf) {
   float3 ph = sample_cosine_hemisphere_concentric(rnd, pdf);
 
-  float3 _up = float3(1.0f, 0.0f, 0.0f); //normalize(rnd);
+  float3 _up = (abs(dot(n,float3(0.0f, 1.0f, 0.0f))) < M_1_SQRT2) ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f);
   float3 bitangent = normalize(cross(_up, n));
   float3 tangent = normalize(cross(bitangent, n));
   

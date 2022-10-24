@@ -74,6 +74,16 @@ void ComputePass::removeDefine(const std::string& name, bool updateVars) {
     if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
 }
 
+void ComputePass::addDefines(const Shader::DefineList& dl, bool updateVars) {
+    for (const auto& it : dl) mpState->getProgram()->addDefine(it.first, it.second);
+    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
+}
+
+void ComputePass::removeDefines(const Shader::DefineList& dl, bool updateVars) {
+    for (const auto& it : dl) mpState->getProgram()->removeDefine(it.first);
+    if (updateVars) mpVars = ComputeVars::create(mpDevice, mpState->getProgram().get());
+}
+
 void ComputePass::setVars(const ComputeVars::SharedPtr& pVars) {
     mpVars = pVars ? pVars : ComputeVars::create(mpDevice, mpState->getProgram().get());
     assert(mpVars);

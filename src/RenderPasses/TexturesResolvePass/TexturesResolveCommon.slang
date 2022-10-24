@@ -129,6 +129,12 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
 
     int _mipLevel = max(0, mipLevel);
 
+    // Put texture coordinates in 0-1 range
+    float2 tx = float2(texCoord.x - floor(texCoord.x), texCoord.y - floor(texCoord.y));
+
+    // Now map them to texels
+    tx = float2(((float)vtexData.width - 1) * (tx.x / (float)vtexData.width), (float)(vtexData.height - 1) * (tx.y / (float)vtexData.height));
+
     // all mip levels greater or equal to mipTailStart stored in last page block
     //if( _mipLevel >= vtexData.mipTailStart) {
     //    _mipLevel = vtexData.mipTailStart - 1; // TODO: safety measure. Remove when mip tails work
@@ -137,14 +143,14 @@ int calculateTileID2D(float2 texCoord, int mipLevel, VirtualTextureData vtexData
     float currentMipTextureWidth = vtexData.width / pow(2, _mipLevel);
     float currentMipTextureHeight = vtexData.height / pow(2, _mipLevel);
 
-    uint cellsNumX = uint(ceil(currentMipTextureWidth / vtexData.pageSizeW)); // number of pages including partial last page on this mip level(_mipLevel)
-    uint cellsNumY = uint(ceil(currentMipTextureHeight / vtexData.pageSizeH)); // number of pages including partial last page on this mip level(_mipLevel)
+    uint cellsNumX = uint(ceil(currentMipTextureWidth / (float)vtexData.pageSizeW)); // number of pages including partial last page on this mip level(_mipLevel)
+    uint cellsNumY = uint(ceil(currentMipTextureHeight / (float)vtexData.pageSizeH)); // number of pages including partial last page on this mip level(_mipLevel)
 
-    float k_u = currentMipTextureWidth / (vtexData.pageSizeW * cellsNumX); // texture coordinate renormalization coefficient (addresses partial tiles)
-    float k_v = currentMipTextureHeight / (vtexData.pageSizeH * cellsNumY); // texture coordinate renormalization coefficient (addresses partial tiles)
+    float k_u = currentMipTextureWidth / ((float)vtexData.pageSizeW * (float)cellsNumX); // texture coordinate renormalization coefficient (addresses partial tiles)
+    float k_v = currentMipTextureHeight / ((float)vtexData.pageSizeH * (float)cellsNumY); // texture coordinate renormalization coefficient (addresses partial tiles)
 
-    int tX = int(texCoord.x * k_u * cellsNumX); //column index in current level of detail
-    int tY = int(texCoord.y * k_v * cellsNumY); //row index in current level of detail
+    int tX = int(tx.x * k_u * cellsNumX); //column index in current level of detail
+    int tY = int(tx.y * k_v * cellsNumY); //row index in current level of detail
 
     return vtexData.mipBases[_mipLevel] + tX + tY * cellsNumX + vtexData.pagesStartOffset;
 }

@@ -1242,12 +1242,22 @@ void DebugRenderCommandEncoder::drawIndirect(
 void DebugRenderCommandEncoder::drawIndexedIndirect(
 	GfxCount maxDrawCount,
 	IBufferResource* argBuffer,
+	Offset argOffset)
+{
+	SLANG_GFX_API_FUNC;
+	baseObject->drawIndexedIndirect(
+		maxDrawCount, getInnerObj(argBuffer), argOffset);
+}
+
+void DebugRenderCommandEncoder::drawIndexedIndirectCount(
+	GfxCount maxDrawCount,
+	IBufferResource* argBuffer,
 	Offset argOffset,
 	IBufferResource* countBuffer,
 	Offset countOffset)
 {
 	SLANG_GFX_API_FUNC;
-	baseObject->drawIndexedIndirect(
+	baseObject->drawIndexedIndirectCount(
 		maxDrawCount, getInnerObj(argBuffer), argOffset, getInnerObj(countBuffer), countOffset);
 }
 

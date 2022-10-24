@@ -43,8 +43,9 @@ namespace {
     const std::string kVBufferName = "vbuffer";
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const ChannelList kVBufferExtraChannels = {
+    const ChannelList kVBufferExtraOutputChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
+        { "texGrads",         "gTextureGrads",      "Texture coordiante gradients",     true /* optional */, ResourceFormat::RGBA16Float },
     };
 
     const std::string kDepthName = "depth";
@@ -60,7 +61,7 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
     
     // Add all the other outputs.
-    addRenderPassOutputs(reflector, kVBufferExtraChannels, Resource::BindFlags::UnorderedAccess, texDims);
+    addRenderPassOutputs(reflector, kVBufferExtraOutputChannels, Resource::BindFlags::UnorderedAccess, texDims);
 
     return reflector;
 }
@@ -127,7 +128,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Clear depth and output buffer.
     auto pDepth = getOutput(renderData, kDepthName);
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
-    pRenderContext->clearDsv(pDepth->getDSV().get(), 1.f, 0);
+    pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
     
     // Clear extra output buffers.
     //clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
@@ -142,7 +143,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
-    mRaster.pProgram->addDefines(getValidResourceDefines(kVBufferExtraChannels, renderData));
+    mRaster.pProgram->addDefines(getValidResourceDefines(kVBufferExtraOutputChannels, renderData));
 
     // Create program vars.
     if (!mRaster.pVars) {
@@ -154,8 +155,8 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
     mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
 
-    // Bind extra channels as UAV buffers.
-    for (const auto& channel : kVBufferExtraChannels) {
+    // Bind extra outpu channels as UAV buffers.
+    for (const auto& channel : kVBufferExtraOutputChannels) {
         Texture::SharedPtr pTex = getOutput(renderData, channel.name);
         mRaster.pVars[channel.texname] = pTex;
     }

@@ -318,6 +318,8 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
     PROFILE(mpDevice, "rasterizeScene");
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     // On first execution or if BLASes need to be rebuilt, create BLASes for all geometries.
     if (!mBlasDataValid) {
         initGeomDesc(pContext);
@@ -338,10 +340,10 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
         // If new TLAS was just created, get it so the iterator is valid
         if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
     }
-    FALCOR_ASSERT(mpSceneBlock);
+    assert(mpSceneBlock);
 
     // Bind TLAS.
-    FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
+    assert(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject);
     mpSceneBlock["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
     pVars->setParameterBlock("gScene", mpSceneBlock);
@@ -349,24 +351,41 @@ void Scene::rasterize(RenderContext* pContext, GraphicsState* pState, GraphicsVa
     auto pCurrentRS = pState->getRasterizerState();
     bool isIndexed = hasIndexBuffer();
 
+    LLOG_TRC << "mDrawArgs size " << std::to_string(mDrawArgs.size());
+    auto _start = std::chrono::high_resolution_clock::now();
     for (const auto& draw : mDrawArgs) {
-
+        //LLOG_WRN << "draw count " << std::to_string(draw.count) << " with count buffer " << (draw.pCountBuffer ? "yes" : "no");
         // Set state.
         pState->setVao(draw.ibFormat == ResourceFormat::R16Uint ? mpMeshVao16Bit : mpMeshVao);
 
-        if (draw.ccw) pState->setRasterizerState(pRasterizerStateCCW);
-        else pState->setRasterizerState(pRasterizerStateCW);
-
+        if (draw.ccw) {
+            if(draw.cullBackface) {
+                pState->setRasterizerState(mFrontCounterClockwiseRS[RasterizerState::CullMode::Back]);
+            } else {
+                pState->setRasterizerState(pRasterizerStateCCW);
+            }
+        } else {
+            if(draw.cullBackface) {
+                pState->setRasterizerState(mFrontClockwiseRS[RasterizerState::CullMode::Front]);
+            } else {
+                pState->setRasterizerState(pRasterizerStateCW);
+            }
+        }
         // Draw the primitives.
         if (isIndexed) {
-            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+            //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
+            pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
         } else {
             pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
         }
-
     }
+    auto _stop = std::chrono::high_resolution_clock::now();
+    LLOG_TRC << "Scene::rasterize() loop time " << std::chrono::duration_cast<std::chrono::milliseconds>(_stop - _start).count() << " ms.";
 
     pState->setRasterizerState(pCurrentRS);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    LLOG_TRC << "Scene::rasterize() time " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 }
 
 void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, const RasterizerState::SharedPtr& pRasterizerStateCW, const RasterizerState::SharedPtr& pRasterizerStateCCW) {
@@ -396,7 +415,8 @@ void Scene::rasterizeX(RenderContext* pContext, GraphicsState* pState, GraphicsV
 
                 // Draw the primitives.
                 if (isIndexed) {
-                    pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
+                    //pContext->drawIndexedIndirectCount(pState, pVars, draw.count, draw.pBuffer.get(), 0, draw.pCountBuffer.get(), 0);
+                    pContext->drawIndexedIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0);
                 } else {
                     pContext->drawIndirect(pState, pVars, draw.count, draw.pBuffer.get(), 0, nullptr, 0);
                 }
@@ -1858,25 +1878,128 @@ void Scene::createDrawList() {
     for( auto& draws: mMaterialDrawArgs) draws.clear();
 
     // Helper to create the draw-indirect buffer.
-    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, ResourceFormat ibFormat = ResourceFormat::Unknown) {
+    auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, bool isDoubleSided, ResourceFormat ibFormat = ResourceFormat::Unknown) {
         if (drawMeshes.size() > 0) {
+/*
+            std::vector<uint32_t> drawCounts(drawMeshes.size(), 1);
             DrawArgs draw;
             draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
-            draw.pBuffer->setName("Scene draw buffer");
-            assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
+            draw.pCountBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounts.data());
+            //draw.pBuffer->setName("Scene draw buffer");
             draw.count = (uint32_t)drawMeshes.size();
             draw.ccw = ccw;
             draw.ibFormat = ibFormat;
             mDrawArgs.push_back(draw);
+            //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+*/
 
-            //mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(&mDrawArgs.back());
-            mMaterialDrawArgs[drawMeshes[0].MaterialID].push_back(mDrawArgs.size() - 1);
+            for (const auto drawMesh: drawMeshes) {
+                DrawArgs draw;
+                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
+                draw.pBuffer->setName("Scene draw buffer");
+                //assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
+                draw.count = 1;//(uint32_t)drawMeshes.size();
+                draw.ccw = ccw;
+                draw.cullBackface = !isDoubleSided;
+                draw.ibFormat = ibFormat;
+                mDrawArgs.push_back(draw);
+                //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+            }
         }
     };
 
-    // Sort all instances by their materials
-    std::vector<std::vector<DrawInstance>> instancesByMaterial;
-    instancesByMaterial.resize(getMaterialCount());
+    auto processInstances = [this](const auto& instancesByMaterial, bool isDoubleSided) {
+        // Helper to create the draw-indirect buffer.
+        auto createDrawBuffer = [this](const auto& drawMeshes, bool ccw, bool isDoubleSided, ResourceFormat ibFormat = ResourceFormat::Unknown) {
+            if (drawMeshes.size() > 0) {
+    /*
+                std::vector<uint32_t> drawCounts(drawMeshes.size(), 1);
+                DrawArgs draw;
+                draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMeshes[0]) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawMeshes.data());
+                draw.pCountBuffer = Buffer::create(mpDevice, sizeof(uint32_t) * drawMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawCounts.data());
+                //draw.pBuffer->setName("Scene draw buffer");
+                draw.count = (uint32_t)drawMeshes.size();
+                draw.ccw = ccw;
+                draw.ibFormat = ibFormat;
+                mDrawArgs.push_back(draw);
+                //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+    */
+
+                for (const auto drawMesh: drawMeshes) {
+                    DrawArgs draw;
+                    draw.pBuffer = Buffer::create(mpDevice, sizeof(drawMesh), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, &drawMesh);
+                    draw.pBuffer->setName("Scene draw buffer");
+                    //assert(drawMeshes.size() <= std::numeric_limits<uint32_t>::max());
+                    draw.count = 1;//(uint32_t)drawMeshes.size();
+                    draw.ccw = ccw;
+                    draw.cullBackface = !isDoubleSided;
+                    draw.ibFormat = ibFormat;
+                    mDrawArgs.push_back(draw);
+                    //mMaterialDrawArgs[drawMesh.MaterialID].push_back(mDrawArgs.size() - 1);
+                }
+            }
+        };
+        
+        for (size_t materialID = 0; materialID < instancesByMaterial.size(); materialID++) {
+            const auto& instances = instancesByMaterial[materialID];
+            LLOG_DBG << "Scene::createDrawList() preapre draw for " << std::to_string(instances.size()) << " instances for materialID " << std::to_string(materialID);
+
+            if (hasIndexBuffer()) {
+                std::vector<DrawIndexedArguments> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
+
+                //uint32_t instanceID = 0;
+                for (const auto& drawInstance : instances) {
+                    const auto instance = drawInstance.instance;
+                    const auto& mesh = mMeshDesc[instance->geometryID];
+                    bool use16Bit = mesh.use16BitIndices();
+
+                    DrawIndexedArguments draw;
+                    draw.IndexCountPerInstance = mesh.indexCount;
+                    draw.InstanceCount = 1;
+                    draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
+                    draw.BaseVertexLocation = mesh.vbOffset;
+                    
+                    draw.StartInstanceLocation = drawInstance.instanceID;
+                    draw.MaterialID = materialID; //instance->materialID;
+
+                    int i = use16Bit ? 0 : 1;
+                    (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
+                }
+
+                createDrawBuffer(drawClockwiseMeshes[0], false, isDoubleSided, ResourceFormat::R16Uint);
+                createDrawBuffer(drawClockwiseMeshes[1], false, isDoubleSided, ResourceFormat::R32Uint);
+                createDrawBuffer(drawCounterClockwiseMeshes[0], true, isDoubleSided, ResourceFormat::R16Uint);
+                createDrawBuffer(drawCounterClockwiseMeshes[1], true, isDoubleSided, ResourceFormat::R32Uint);
+            } else {
+                std::vector<DrawArguments> drawClockwiseMeshes, drawCounterClockwiseMeshes;
+
+                for (const auto& drawInstance : instances) {
+                    const auto instance = drawInstance.instance;
+                    const auto& mesh = mMeshDesc[instance->geometryID];
+                    assert(mesh.indexCount == 0);
+
+                    DrawArguments draw;
+                    draw.VertexCountPerInstance = mesh.vertexCount;
+                    draw.InstanceCount = 1;
+                    draw.StartVertexLocation = mesh.vbOffset;
+                    
+                    draw.StartInstanceLocation = drawInstance.instanceID;
+                    draw.MaterialID = materialID; //instance->materialID;
+
+                    (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
+                }
+
+                createDrawBuffer(drawClockwiseMeshes, false, isDoubleSided);
+                createDrawBuffer(drawCounterClockwiseMeshes, true, isDoubleSided);
+            }
+        }
+    };
+
+    // Sort all instances by their sidedness and materials
+    std::vector<std::vector<DrawInstance>> doubleSidedInstancesByMaterial;
+    std::vector<std::vector<DrawInstance>> singleSidedInstancesByMaterial;
+    doubleSidedInstancesByMaterial.resize(getMaterialCount());
+    singleSidedInstancesByMaterial.resize(getMaterialCount());
 
     LLOG_DBG << "Scene::createDrawList() Number of materials to draw: " << std::to_string(getMaterialCount());
     LLOG_DBG << "Scene::createDrawList() mGeometryInstanceData size: " << std::to_string(mGeometryInstanceData.size());
@@ -1885,71 +2008,20 @@ void Scene::createDrawList() {
     for (size_t i = 0; i < mGeometryInstanceData.size(); i++) {
         // Push only primary visible instances
         if (((uint32_t)mGeometryInstanceData[i].flags & (uint32_t)GeometryInstanceFlags::VisibleToPrimaryRays) != 0x0) {
-            instancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID, &mGeometryInstanceData[i]});
+            if (((uint32_t)mGeometryInstanceData[i].flags & (uint32_t)GeometryInstanceFlags::DoubleSided) != 0x0) {
+                doubleSidedInstancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID, &mGeometryInstanceData[i]});
+            } else {
+                singleSidedInstancesByMaterial[mGeometryInstanceData[i].materialID].push_back({instanceID, &mGeometryInstanceData[i]});
+            }
         }
         instanceID++;
     }
 
-
     // Now prepare draws
-    for (size_t materialID = 0; materialID < instancesByMaterial.size(); materialID++) {
-        const auto& instances = instancesByMaterial[materialID];
-        LLOG_DBG << "Scene::createDrawList() preapre draw for " << std::to_string(instances.size()) << " instances for materialID " << std::to_string(materialID);
+    processInstances(doubleSidedInstancesByMaterial, true);
+    processInstances(singleSidedInstancesByMaterial, false);
 
-        if (hasIndexBuffer()) {
-            std::vector<DrawIndexedArguments> drawClockwiseMeshes[2], drawCounterClockwiseMeshes[2];
-
-            //uint32_t instanceID = 0;
-            for (const auto& drawInstance : instances) {
-                LLOG_DBG << "Scene::createDrawList() creating buffer for instance";
-                LLOG_DBG << "drawInstance.globalMatrixID " << std::to_string(drawInstance.instance->globalMatrixID);
-
-                const auto instance = drawInstance.instance;
-                const auto& mesh = mMeshDesc[instance->geometryID];
-                bool use16Bit = mesh.use16BitIndices();
-
-                DrawIndexedArguments draw;
-                draw.IndexCountPerInstance = mesh.indexCount;
-                draw.InstanceCount = 1;
-                draw.StartIndexLocation = mesh.ibOffset * (use16Bit ? 2 : 1);
-                draw.BaseVertexLocation = mesh.vbOffset;
-                
-                draw.StartInstanceLocation = drawInstance.instanceID;
-                draw.MaterialID = materialID; //instance->materialID;
-
-                int i = use16Bit ? 0 : 1;
-                (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes[i].push_back(draw) : drawCounterClockwiseMeshes[i].push_back(draw);
-            }
-
-            createDrawBuffer(drawClockwiseMeshes[0], false, ResourceFormat::R16Uint);
-            createDrawBuffer(drawClockwiseMeshes[1], false, ResourceFormat::R32Uint);
-            createDrawBuffer(drawCounterClockwiseMeshes[0], true, ResourceFormat::R16Uint);
-            createDrawBuffer(drawCounterClockwiseMeshes[1], true, ResourceFormat::R32Uint);
-        } else {
-            std::vector<DrawArguments> drawClockwiseMeshes, drawCounterClockwiseMeshes;
-
-            for (const auto& drawInstance : instances) {
-                const auto instance = drawInstance.instance;
-                const auto& mesh = mMeshDesc[instance->geometryID];
-                assert(mesh.indexCount == 0);
-
-                DrawArguments draw;
-                draw.VertexCountPerInstance = mesh.vertexCount;
-                draw.InstanceCount = 1;
-                draw.StartVertexLocation = mesh.vbOffset;
-                
-                draw.StartInstanceLocation = drawInstance.instanceID;
-                draw.MaterialID = materialID; //instance->materialID;
-
-                (instance->isWorldFrontFaceCW()) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
-            }
-
-            createDrawBuffer(drawClockwiseMeshes, false);
-            createDrawBuffer(drawCounterClockwiseMeshes, true);
-        }
-    }
-
-    LLOG_DBG << "Scene::createDrawList() mDrawArgs size: " << std::to_string(mDrawArgs.size());
+    LLOG_TRC << "Scene::createDrawList() mDrawArgs size: " << std::to_string(mDrawArgs.size());
 }
 
 void Scene::initGeomDesc(RenderContext* pContext) {

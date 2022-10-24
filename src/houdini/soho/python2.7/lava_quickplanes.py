@@ -15,19 +15,24 @@ __quickplanes = {
     
     "depth":         QuickPlane("DEPTH",               "float",        "float32",    False,      {'pfilter':['minmax omedian']}),
     
-    "normals":       QuickPlane("NORMAL",              "vector3",      "float16",    False,      {'pfilter':['minmax omedian']}),
+    "normals":       QuickPlane("NORMAL",              "vector3",      "float32",    False,      {'pfilter':['minmax omedian']}),
 
-    "albedo":        QuickPlane("ALBEDO",              "vector3",      "uint8",      False,      {}),
+    "albedo":        QuickPlane("ALBEDO",              "vector3",      "float32",     False,      {}),
 
-    "shadow":        QuickPlane("SHADOW",              "float",        "float16",    False,      {}),
+    "shadow":        QuickPlane("SHADOW",              "vector3",      "float16",    False,      {}),
 
-    "occlusion":     QuickPlane("OCCLUSION",           "float",        "float16",    False,      {}),
+    "occlusion":     QuickPlane("OCCLUSION",           "float",        "float32",    False,      {}),
 
     "object_id":     QuickPlane("OBJECT_ID",           "int",          "uint16",     False,      {}),
 
     "material_id":   QuickPlane("MATERIAL_ID",         "int",          "uint16",     False,      {}),
 
     "instance_id":   QuickPlane("INSTANCE_ID",         "int",          "uint32",     False,      {}),
+
+    # ipr/diagnostics
+
+    "op_id":         QuickPlane("Op_Id",               "float",        "float32",    False,      {}),
+    "prim_id":       QuickPlane("Prim_Id",             "float",        "float32",    False,      {}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -41,6 +46,10 @@ __toggleplanedict = {
     'lv_quickplane_object_id':              ['object_id'],
     'lv_quickplane_material_id':            ['material_id'],
     'lv_quickplane_instance_id':            ['instance_id'],
+
+    # ipr/diagnistics
+    'lv_quickplane_op_id':                  ['op_id'],
+    'lv_quickplane_prim_id':                ['prim_id'],
 }
 
 def getPlaneDict():

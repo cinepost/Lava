@@ -211,6 +211,11 @@ public:
     virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirect(
         GfxCount maxDrawCount,
         IBufferResource* argBuffer,
+        Offset argOffset) override;
+
+    virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirectCount(
+        GfxCount maxDrawCount,
+        IBufferResource* argBuffer,
         Offset argOffset,
         IBufferResource* countBuffer,
         Offset countOffset) override;

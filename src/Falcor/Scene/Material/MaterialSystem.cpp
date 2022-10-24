@@ -74,7 +74,7 @@ MaterialSystem::MaterialSystem(Device::SharedPtr pDevice): mpDevice(pDevice) {
 	desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
 	//desc.setBorderColor({0.0f, 1.0f, 0.0f, 1.0f});
 	desc.setMaxAnisotropy(16);
-	desc.setLodParams(0.0f, 1000.0f, 0.0f);
+	desc.setLodParams(-1000.0f, 1000.0f, 0.0f);
 	mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
 
 	desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
@@ -200,6 +200,18 @@ Material::SharedPtr MaterialSystem::getMaterialByName(const std::string& name) c
 		if (pMaterial->getName() == name) return pMaterial;
 	}
 	return nullptr;
+}
+
+bool MaterialSystem::getMaterialIDByName(const std::string& name, uint32_t& materialID) const {
+	uint32_t id = 0;
+	for (const auto& pMaterial : mMaterials) {
+		if (pMaterial->getName() == name) {
+			materialID = id;
+			return true;
+		}
+		id++;
+	}
+	return false;
 }
 
 size_t MaterialSystem::removeDuplicateMaterials(std::vector<uint32_t>& idMap) {

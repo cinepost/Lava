@@ -140,10 +140,8 @@ namespace Falcor
         mFboStack.pop();
     }
 
-    GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao)
-    {
-        if(mpVao != pVao)
-        {
+    GraphicsState& GraphicsState::setVao(const Vao::SharedConstPtr& pVao) {
+        if(mpVao != pVao) {
             mpVao = pVao;
             mpGsoGraph->walk(pVao ? (void*)pVao->getVertexLayout().get() : nullptr);
         }
@@ -160,10 +158,8 @@ namespace Falcor
         return *this;
     }
 
-    GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState)
-    {
-        if (mDesc.getRasterizerState() != pRasterizerState)
-        {
+    GraphicsState& GraphicsState::setRasterizerState(RasterizerState::SharedPtr pRasterizerState) {
+        if (mDesc.getRasterizerState() != pRasterizerState) {
             mDesc.setRasterizerState(pRasterizerState);
             mpGsoGraph->walk((void*)pRasterizerState.get());
         }

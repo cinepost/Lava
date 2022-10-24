@@ -1226,16 +1226,7 @@ void RenderCommandEncoder::drawIndirect(
 		sizeof(VkDrawIndirectCommand));
 }
 
-void RenderCommandEncoder::drawIndexedIndirect(
-	GfxCount maxDrawCount,
-	IBufferResource* argBuffer,
-	Offset argOffset,
-	IBufferResource* countBuffer,
-	Offset countOffset)
-{
-	// Vulkan does not support sourcing the count from a buffer.
-	assert(!countBuffer);
-
+void RenderCommandEncoder::drawIndexedIndirect(GfxCount maxDrawCount, IBufferResource* argBuffer, Offset argOffset) {
 	prepareDraw();
 	auto& api = *m_api;
 	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
@@ -1245,6 +1236,27 @@ void RenderCommandEncoder::drawIndexedIndirect(
 		argOffset,
 		maxDrawCount,
 		sizeof(VkDrawIndexedIndirectCommand));
+}
+
+void RenderCommandEncoder::drawIndexedIndirectCount(
+	GfxCount maxDrawCount,
+	IBufferResource* argBuffer,
+	Offset argOffset,
+	IBufferResource* countBuffer,
+	Offset countOffset)
+{
+	prepareDraw();
+	auto& api = *m_api;
+	auto argBufferImpl = static_cast<BufferResourceImpl*>(argBuffer);
+	auto countBufferImpl = static_cast<BufferResourceImpl*>(countBuffer);
+	api.vkCmdDrawIndexedIndirectCountKHR(
+    m_vkCommandBuffer,
+    argBufferImpl->m_buffer.m_buffer,
+    argOffset,
+    countBufferImpl->m_buffer.m_buffer,
+    countOffset,
+    maxDrawCount,
+    sizeof(VkDrawIndexedIndirectCommand));
 }
 
 Result RenderCommandEncoder::setSamplePositions(

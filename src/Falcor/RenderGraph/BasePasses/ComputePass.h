@@ -89,10 +89,12 @@ class dlldecl ComputePass : public std::enable_shared_from_this<ComputePass> {
     /** Add a define
     */
     void addDefine(const std::string& name, const std::string& value = "", bool updateVars = false);
+    void addDefines(const Shader::DefineList& dl, bool updateVars = false);
 
     /** Remove a define
     */
     void removeDefine(const std::string& name, bool updateVars = false);
+    void removeDefines(const Shader::DefineList& dl, bool updateVars = false);
 
     /** Get the program
     */

@@ -67,9 +67,9 @@ class dlldecl Material : public std::enable_shared_from_this<Material> {
 			BaseColor,
 			Metallic,
 			Emissive,
+			Roughness,
 			Normal,
 			Transmission,
-			Roughness,
 			Displacement,
 
 			Count // Must be last

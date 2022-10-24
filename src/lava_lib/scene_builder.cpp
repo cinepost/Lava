@@ -159,11 +159,6 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     vUV[ii], 
                     vUV[ii+1]
                 };
-#if defined(FIX_BGEO_UV)
-                //float int_pt;
-                //float f_pt = modff( uv_coords[i][1], &int_pt );
-                //uv_coords[i][1] = (1.0f - f_pt) + int_pt;
-#endif  // FIX_BGEO_UV
                 ii += 2;
             }
         } else if (UV.size() && unique_points) {
@@ -176,11 +171,6 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     UV[point_idx], 
                     UV[point_idx+1]
                 };
-#if defined(FIX_BGEO_UV)
-                //float int_pt;
-                //float f_pt = modff( uv_coords[i][1], &int_pt );
-                //uv_coords[i][1] = (1.0f - f_pt) + int_pt;
-#endif  // FIX_BGEO_UV
             }
         } else {
             // no coords provided from bgeo. fill with zeroes as this field is required
@@ -288,72 +278,7 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                     LLOG_DBG << "prim vertex count: " << pPoly->getVertexCount();
                     LLOG_DBG << "prim faces count: " << pPoly->getFaceCount();
                 } else {
-                    const auto& sides_list = pPoly->getSidesList();
 
-                    // process faces
-                    uint64_t cur_i = 0;
-                    for(const auto& sides: sides_list){
-                        switch(sides) {
-                            case 0:
-                            case 1:
-                            case 2:
-                                LLOG_ERR << "Polygon sides count should be 3 or more !!!";
-                                break;
-                            case 3:
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i+1]);
-                                indices.push_back(vtx_list[cur_i]);
-                                face_count += 1;
-                                break;
-                            case 4:
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i+1]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+3]);
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i]);
-                                face_count += 2;
-                                break;
-                            case 5:
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i+1]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+3]);
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+4]);
-                                indices.push_back(vtx_list[cur_i+3]);
-                                indices.push_back(vtx_list[cur_i]);
-                                face_count += 3;
-                                break;
-                            case 6:
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i+1]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+3]);
-                                indices.push_back(vtx_list[cur_i+2]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+4]);
-                                indices.push_back(vtx_list[cur_i+3]);
-                                indices.push_back(vtx_list[cur_i]);
-
-                                indices.push_back(vtx_list[cur_i+5]);
-                                indices.push_back(vtx_list[cur_i+4]);
-                                indices.push_back(vtx_list[cur_i]);
-                                face_count += 4;
-                                break;
-                            default:
-                                LLOG_WRN << "Poly sides more than 6 unsupported for now !";
-                                break;
-                        }
-
-                        cur_i += sides;
-                    }
                 }
 
                 break;
@@ -366,11 +291,12 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     Mesh mesh;
     mesh.faceCount = face_count;
 
-    mesh.positions.frequency = Mesh::AttributeFrequency::Vertex;
     if(unique_points) {
+        mesh.positions.frequency = Mesh::AttributeFrequency::Vertex;
         mesh.vertexCount = positions.size();
         mesh.positions.pData = (float3*)positions.data();
     } else {
+        mesh.positions.frequency = Mesh::AttributeFrequency::FaceVarying;
         mesh.vertexCount = P.size() / 3;
         mesh.positions.pData = (float3*)P.data();
     }
@@ -378,17 +304,19 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     mesh.indexCount = indices.size();
     mesh.pIndices = (uint32_t*)indices.data();
     
-    mesh.normals.frequency = Mesh::AttributeFrequency::Vertex;
     if(unique_points) {
+        mesh.normals.frequency = Mesh::AttributeFrequency::Vertex;
         mesh.normals.pData = (float3*)normals.data();
     } else {
+        mesh.normals.frequency = Mesh::AttributeFrequency::FaceVarying;
         mesh.normals.pData = (float3*)N.data();
     }
 
-    mesh.texCrds.frequency = Mesh::AttributeFrequency::Vertex;
     if(unique_points) {
+        mesh.texCrds.frequency = Mesh::AttributeFrequency::Vertex;
         mesh.texCrds.pData = (float2*)uv_coords.data();
     } else {
+        mesh.texCrds.frequency = Mesh::AttributeFrequency::FaceVarying;
         mesh.texCrds.pData = (float2*)UV.data();
     }
 

@@ -301,6 +301,10 @@ class Device;
         return type == FormatType::Uint || type == FormatType::Sint;
     }
 
+    inline bool isFloatFormat(ResourceFormat format) {
+        return !isIntegerFormat(format);
+    }
+
     inline uint32_t getNumChannelBits(ResourceFormat format, int channel) {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
     }

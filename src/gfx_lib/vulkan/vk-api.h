@@ -156,6 +156,8 @@ namespace gfx {
     x(vkGetPhysicalDeviceSurfaceFormatsKHR) \
     x(vkGetPhysicalDeviceSurfacePresentModesKHR) \
     x(vkGetPhysicalDeviceSurfaceCapabilitiesKHR) \
+    x(vkCmdDrawIndexedIndirectCountKHR) \
+    x(vkCmdDrawIndirectCountKHR) \
     x(vkDestroySurfaceKHR) \
 
     /* */

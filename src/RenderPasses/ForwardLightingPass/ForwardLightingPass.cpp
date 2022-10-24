@@ -70,6 +70,8 @@ namespace {
         { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "occlusion",        "gOutOcclusion",      "Ambient occlusion buffer",      true /* optional */, ResourceFormat::R16Float },
         { "motion_vecs",      "gOutMotionVecs",     "Motion vectors buffer",         true /* optional */, ResourceFormat::RG16Float },
+        { "prim_id",          "gPrimID",            "Primitive id buffer",           true /* optional */, ResourceFormat::R32Float },
+        { "op_id",            "gOpID",              "Operator id buffer",            true /* optional */, ResourceFormat::R32Float },
     };
 
     const std::string kVisBuffer = "visibilityBuffer";
@@ -145,6 +147,7 @@ RenderPassReflection ForwardLightingPass::reflect(const CompileData& compileData
 }
 
 void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
+    mDirty = true;
     mFrameDim = compileData.defaultTexDims;
     auto pDevice = pRenderContext->device();
 
@@ -153,6 +156,8 @@ void ForwardLightingPass::compile(RenderContext* pRenderContext, const CompileDa
 }
 
 void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+
     mpScene = pScene;
     mpVars = nullptr;
 
@@ -163,6 +168,8 @@ void ForwardLightingPass::setScene(RenderContext* pRenderContext, const Scene::S
 }
 
 void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& renderData) {
+    if(!mDirty) return;
+
     const auto& pTexture = renderData[kDepth]->asTexture();
 
     if (pTexture) {
@@ -178,6 +185,8 @@ void ForwardLightingPass::initDepth(RenderContext* pContext, const RenderData& r
 }
 
 void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& renderData) {
+    if(!mDirty) return;
+
     mpFbo->attachColorTarget(renderData[kColor]->asTexture(), 0);
     
     for (uint32_t i = 1; i < 1; i++) {
@@ -190,15 +199,24 @@ void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData& ren
 }
 
 void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& renderData) {
+    if (!mpScene) return;
     initDepth(pContext, renderData);
     initFbo(pContext, renderData);
     
-    if (!mpScene) return;
-
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
     mpState->getProgram()->addDefines(getValidResourceDefines(kForwardLightingPassExtraChannels, renderData));
     
+    {
+        // AOV channels processing
+        const auto pAovNormalsTex = renderData.getTexture("normals");
+        if(pAovNormalsTex && isFloatFormat(pAovNormalsTex->getFormat())) {
+            mpState->getProgram()->addDefine("_AOV_NORMALS_FLOAT", "");
+        } else {
+            mpState->getProgram()->removeDefine("_AOV_NORMALS_FLOAT");
+        }
+    }
+
     // Create program vars.
     if (!mpVars) {
         mpVars = GraphicsVars::create(pContext->device(), mpState->getProgram()->getReflector());
@@ -216,6 +234,7 @@ void ForwardLightingPass::execute(RenderContext* pContext, const RenderData& ren
     mpVars["PerFrameCB"]["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
     mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
     mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
+    mpVars["PerFrameCB"]["gBias"] = 0.0001f;
 
     // Bind extra channels as UAV buffers.
     for (const auto& channel : kForwardLightingPassExtraChannels) {
@@ -263,25 +282,35 @@ void ForwardLightingPass::prepareVars(RenderContext* pContext) {
 }
 
 ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format) {
+    if(mColorFormat == format) return *this;
+
     mColorFormat = format;
-    mPassChangedCB();
+    //mPassChangedCB();
+    mDirty = true;
     return *this;
 }
 
-void ForwardLightingPass::setFrameSampleCount(uint32_t samples) {
-    if (mFrameSampleCount == samples) return;
+ForwardLightingPass& ForwardLightingPass::setFrameSampleCount(uint32_t samples) {
+    if (mFrameSampleCount == samples) return *this;
 
     mFrameSampleCount = samples;
+    //mPassChangedCB();
     mDirty = true;
+    return *this;
 }
 
 ForwardLightingPass& ForwardLightingPass::setSuperSampleCount(uint32_t samples) {
+    if (mFrameSampleCount == samples) return *this;
+
     mSuperSampleCount = samples;
-    mPassChangedCB();
+    //mPassChangedCB();
+    mDirty = true;
     return *this;
 }
 
 ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable) {
+    if(mEnableSuperSampling == enable) return *this;
+    
     mEnableSuperSampling = enable;
     if (mEnableSuperSampling) {
         mpState->getProgram()->addDefine("INTERPOLATION_MODE", "sample");
@@ -293,15 +322,20 @@ ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable) {
 }
 
 ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable) {
+    if(mUsePreGenDepth == enable) return *this;
+
     mUsePreGenDepth = enable;
     mPassChangedCB();
     mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
-
+    mDirty = true;
     return *this;
 }
 
 ForwardLightingPass& ForwardLightingPass::setRasterizerState(const RasterizerState::SharedPtr& pRsState) {
+    if(mpRsState == pRsState) return *this;
+
     mpRsState = pRsState;
     mpState->setRasterizerState(mpRsState);
+    mDirty = true;
     return *this;
 }

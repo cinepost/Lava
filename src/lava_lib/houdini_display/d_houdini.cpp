@@ -38,6 +38,9 @@
 #include <fstream>
 #include <cstdlib>
 
+#include <string>
+#include <regex>
+
 #if _DEBUG
 	#define D_HOUDINI_DEBUG_LEVEL 0	// Debug logging
 #else
@@ -638,27 +641,37 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
 	// Read port from .mplay_lock
     const char* env_hih = std::getenv("HIH");
     const char* env_hostname = std::getenv("HOSTNAME");
-
-    std::string mplay_lock_filename = "";
-    if ( env_hih && env_hostname ) mplay_lock_filename += std::string(env_hih) + "/.mplay_lock." + std::string(env_hostname);
-
-    std::ifstream mplay_lock_file(mplay_lock_filename);
-    if (mplay_lock_file.is_open()) {
-        mplay_lock_file >> g_mplayPortNumber;
-        mplay_lock_file >> g_mplayPortNumber; // We need second int value
-    } else {
-    	g_mplayPortNumber = 0;
-    }
-    log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
     
-    // If not reserved name, we should try to open MPlay
-    if (!strstr(filename, "socket:") || !strstr(filename, "iprsocket:")) {
-    	if (g_mplayPortNumber == 0) {
-			std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
-			int status = system(cmd.c_str());
-		}
-	}
+    // Check if iprsocket port provided
+    if (g_mplayPortNumber == 0) {
+    	std::regex r("socket:([0-9]*)");
+    	std::string s(filename);
+    	for(std::sregex_iterator i = std::sregex_iterator(s.begin(), s.end(), r); i != std::sregex_iterator(); ++i) {
+    		std::smatch m = *i;
+    		g_mplayPortNumber = std::stoi(m[1].str().c_str());
+    	}
+    	if (g_mplayPortNumber > 0) log(0, "Socket port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
+    } 
+    
+    // Check if mplay already opened using lock file
+    if (g_mplayPortNumber == 0 ) {
+    	std::string mplay_lock_filename = "";
+    	if ( env_hih && env_hostname ) mplay_lock_filename += std::string(env_hih) + "/.mplay_lock." + std::string(env_hostname);
 
+    	std::ifstream mplay_lock_file(mplay_lock_filename);
+    	if (mplay_lock_file.is_open()) {
+        	mplay_lock_file >> g_mplayPortNumber;
+        	mplay_lock_file >> g_mplayPortNumber; // We need second int value
+    		log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
+    	}
+    }
+
+    // If we still dont have MPlay port, we should try to open MPlay first
+    if (g_mplayPortNumber == 0) {
+		std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
+		int status = system(cmd.c_str());
+	}
+	
 	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n", "drivername", filename, width, height, paramCount, nformats);
 
 #ifndef WIN32
@@ -810,6 +823,8 @@ DspyImageClose(PtDspyImageHandle pvImage) {
     
     isMultiRes pred2(multiRes);
     std::remove_if(g_multiRes.begin(), g_multiRes.end(), pred2);
+
+    log(0, "DspyImageClose()\n");
 
 	return PkDspyErrorNone;
 }
@@ -1079,21 +1094,20 @@ int H_Image::openPipe(void) {
         return 0;
     }
 
-    
     cmdss << "imdisplay -k -p -f -n \"" << img->getName() << "\"";
     
     // Port number is negative if this was opened with "iprsocket:<name>"
     if (img->getPort() > 0) {
         cmdss << " -s " << img->getPort();
     } else if (img->getPort() < 0) {
-        cmdss << " -s " << -img->getPort();
+       // cmdss << " -s localhost:" << -img->getPort();
     }
 
     cmd = cmdss.str();
 
     if (img->hasDisplayOptions()) {
-        //cmd += img->getDisplayOptions();
-        cmd.append(img->getDisplayOptions());
+        cmd += img->getIMDisplayOptions();
+        //cmd.append(img->getDisplayOptions());
     }
 
     log(0, "popen: '%s'\n", cmd.c_str());
@@ -1260,6 +1274,12 @@ H_Image::parseOptions(int paramCount, const UserParameter* parameters) {
 		if (int_buf[1] <= int_buf[2] && int_buf[0] >= int_buf[1] && int_buf[0] <= int_buf[2]) {
 			sprintf(tmp, " -F %d %d %d", int_buf[0], int_buf[1], int_buf[2]);
 			strcat(options, tmp);
+		}
+	} else {
+		err = DspyFindStringInParamList("frange", &str_ptr, paramCount, parameters);
+		if (err == PkDspyErrorNone) {
+			strcat(options, " -F ");
+			strcat(options, str_ptr);
 		}
 	}
 

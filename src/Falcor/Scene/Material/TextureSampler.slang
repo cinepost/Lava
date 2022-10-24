@@ -131,7 +131,7 @@ struct ExplicitRayDiffsIsotropicTextureSampler : ITextureSampler {
 */
 struct ExplicitGradientTextureSampler : ITextureSampler {
     float2 gradX; ///< Gradient of texture coordinate in the screen-space X direction
-    float2 gradY; ///< Gradient of texture coordiante in teh screen-space Y direction
+    float2 gradY; ///< Gradient of texture coordiante in the screen-space Y direction
 
     __init(float2 gradX, float2 gradY) {
         this.gradX = gradX;

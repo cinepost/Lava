@@ -210,7 +210,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
     if(mFrameCount == 0) {
-        LLOG_DBG << "add defines";
         pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
     }
 

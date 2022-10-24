@@ -52,13 +52,15 @@ RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 RasterizerOrderedTexture2D<float>  gOutOcclusion;
+RasterizerOrderedTexture2D<float>  gPrimID;
+RasterizerOrderedTexture2D<float>  gOpID;
 
 cbuffer PerFrameCB {
   uint2             gNoiseOffset;
   uint              gSampleNumber;                 // Interframe sample number.
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-
+  float             gBias;
   float2            gRenderTargetDim;              // frame dimension
   uint              gSamplesPerFrame;
 
@@ -134,6 +136,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     // pixel position
     int2 ipos = int2(vsOut.posH.xy);
 
+    float4 bnoise = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
+
     // pseudo-random sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
 
@@ -166,15 +170,15 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     float3 rayOrigin = sd.posW;
 
+    float3 ffNormalW = faceforward(normalize(vsOut.normalW), -viewDir, sd.faceN);
 #ifdef _FIX_SHADOW_TERMINATOR
     // face forwaded interpolated normal
-    float3 ffNormalW = faceforward(normalize(vsOut.normalW), -viewDir, sd.faceN);
     if (gScene.doFixShadowTerminator(vsOut.instanceID)) {
         rayOrigin = gScene.computeShadingPosition(vsOut.instanceID, triangleIndex, vsOut.posW, ffNormalW, barycentrics);
     }
 #endif
 
-    rayOrigin += viewDir * 0.001f;
+    //rayOrigin += viewDir * 0.00001f;
 
     [loop]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
@@ -186,6 +190,8 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         AnalyticLightSample ls;
         
         // Sample light and reject sample if lower hemisphere.
+        sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
+        
         if (sampleLight(sd.posW, sd.faceN, light, sampleNext2D(sg), ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
         
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(vsOut.instanceID))) {
@@ -194,7 +200,7 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
                 RayDesc ray;
                 ray.Origin = rayOrigin;
                 ray.Direction = ls.shadowDir;
-                ray.TMin = .00001f;
+                ray.TMin = gBias;
 
                 ray.TMax = ls.distance;
 
@@ -216,25 +222,52 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
             surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor * misWeight;// * float3(1.0, 0.0, 0.0);
         }
-
         
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
         // Sample bsdf for non singular light
         if(!light.isDeltaLight()) {
             BSDFSample bsdfSample;
+
+            // Disffuse Component
+            sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
             if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
                     misWeight = power_heuristic(1., bsdfSample.pdf, 1., ls.pdf);
-
+                    
                     shadowFactor = float3(1.0f);
 
                     RayDesc ray;
                     ray.Origin = rayOrigin;
                     ray.Direction = ls.shadowDir;
-                    ray.TMin = .00001f;
+                    ray.TMin = gBias;
+
+                    ray.TMax = ls.distance;
+
+                    rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+                    rayShadowQuery.Proceed();
+                    shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
+
+                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;// * float3(0.0, 1.0, 0.0);
+                }
+            }
+
+            // Specular Component
+            sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+            if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
+                
+                // Intersect light source and reject invalid light sample.
+                if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
+                    misWeight = power_heuristic(1., bsdfSample.pdf, 1., ls.pdf);
+                    
+                    shadowFactor = float3(1.0f);
+
+                    RayDesc ray;
+                    ray.Origin = rayOrigin;
+                    ray.Direction = ls.shadowDir;
+                    ray.TMin = gBias;
 
                     ray.TMax = ls.distance;
 
@@ -267,7 +300,11 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 
     if (is_valid(gOutNormals)){
+#ifdef _AOV_NORMALS_FLOAT
+        gOutNormals[ipos] = float4(sd.N, 1.0f);
+#else
         gOutNormals[ipos] = float4(sd.N * 0.5f + 0.5f, 1.0f);
+#endif
     }
 
     if (is_valid(gOutShadows)){
@@ -279,7 +316,28 @@ PsOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     }
 
     if (is_valid(gOutOcclusion)){
-        gOutOcclusion[ipos] = AOV_occlusion;
+        float pdf;
+        //float3 dir = normalize(sample_cosine_hemisphere_oriented(sampleNext2D(sg), ffNormalW, pdf));
+        float3 dir = normalize(sample_cosine_hemisphere_oriented(bnoise.xy, ffNormalW, pdf));
+
+        RayDesc ray;
+        ray.Origin = sd.posW;
+        ray.Direction = dir;
+        ray.TMin = gBias;
+
+        ray.TMax = 0.5f;
+
+        rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+        rayShadowQuery.Proceed();
+        gOutOcclusion[ipos] = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
+    }
+
+    if (is_valid(gPrimID)){
+        gPrimID[ipos] = 0.0f;
+    }
+
+    if (is_valid(gOpID)){
+        gOpID[ipos] = (float)vsOut.instanceID.index;
     }
 
     if (is_valid(gOutMotionVecs)){

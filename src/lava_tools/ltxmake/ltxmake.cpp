@@ -28,6 +28,8 @@ namespace fs = boost::filesystem;
 
 
 #include "Falcor/Utils/Image/LTX_Bitmap.h"
+
+#include "lava_lib/version.h"
 #include "lava_utils_lib/logging.h"
 
 static uint8_t kMajorVersion = 1;
@@ -42,6 +44,7 @@ static void atexitHandler()  {
 
 int main(int argc, char** argv){
     std::atexit(atexitHandler);
+    bool showLtxInfo = false;
 
     /// Program options
     std::string configFile;
@@ -52,7 +55,8 @@ int main(int argc, char** argv){
     generic.add_options() 
         ("help,h", "Show helps") 
         ("version,v", "Shout version information")
-        ("force,f", "Show helps")
+        ("force", "Show helps")
+        ("show-info,i", po::bool_switch(&showLtxInfo), "Show LTX texture info")
         ("config-file", po::value<std::string>(&configFile), "Configuration file") 
         ;
 
@@ -60,7 +64,7 @@ int main(int argc, char** argv){
     std::vector<std::string> outputFilenames;
     po::options_description input("Input");
     input.add_options()
-        ("input-files,i", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
+        ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
         ("output-files,o", po::value< std::vector<std::string> >(&outputFilenames), "Output files")
         ;
 
@@ -126,7 +130,7 @@ int main(int argc, char** argv){
     }
 
     if (vm.count("version")) {
-      std::cout << "Ltxmake, version 0.0\n";
+      std::cout << "Ltxmake, version " << lava::versionString() << "\n";
       exit(EXIT_SUCCESS);
     }
 
@@ -149,19 +153,19 @@ int main(int argc, char** argv){
 
     if (vm.count("input-files")) {
       // Check for input and output filenames count. Should match
-      if ((inputFilenames.size() != outputFilenames.size()) && (outputFilenames.size() > 0)) {
-        LLOG_FTL << "Wrong output filenames count !!!";
+      if ((outputFilenames.size() > 0) && (inputFilenames.size() != outputFilenames.size())) {
+        LLOG_FTL << "Wrong output file names count !!!";
         exit(EXIT_FAILURE);
       }
 
       // Check if output filenames provided at all
       bool useAutoNaming = false;
-      if ((outputFilenames.size() < 1) || (inputFilenames.size() != outputFilenames.size())) {
+      
+      if (!showLtxInfo && (outputFilenames.size() < 1)) {
         useAutoNaming = true;
-        LLOG_INF << "No output filenames provided.\n"
-        << "Output files would be named automatically and placed alongside input files.";
-      }
-
+        LLOG_WRN << "No output file names provided.\n" << "Output files would be named automatically and placed alongside input files.";
+      } 
+      
       // check for container compression level boundaries (0-9)
       if( Falcor::LTX_Bitmap::getTLCFromString(compressorTypeName) != Falcor::LTX_Header::TopLevelCompression::NONE ) {
         if(compressionLevel < 0) {
@@ -180,30 +184,65 @@ int main(int argc, char** argv){
       for( size_t i = 0; i < inputFilenames.size(); i++) {
 
         const std::string& input_filename = inputFilenames[i];
-        std::string output_filename;
-        
-        if (useAutoNaming) {
-          output_filename = input_filename + ".ltx";
-        } else {
-          output_filename = outputFilenames[i];
+
+        if(!fs::exists(input_filename)) {
+          LLOG_ERR << "Input file " << input_filename << " does not exist!";
+          continue;
         }
 
-        bool ltxMagicMatch = false;
-        if(fs::exists(input_filename) && Falcor::LTX_Bitmap::checkFileMagic(input_filename, true)) ltxMagicMatch = true;
+        if(showLtxInfo) {
+          // Show info
+          auto pLTXBitmap = Falcor::LTX_Bitmap::createFromFile(nullptr, input_filename);
+          if (!pLTXBitmap) {
+            LLOG_ERR << "Error reading LTX texture file " << input_filename;
+            continue;
+          }
+          std::cout << "LTX texture " << input_filename << " info ...\n";
+          std::cout << "---------------------------------------------\n";
+          const auto& header = pLTXBitmap->header();
+          std::cout << "LTX format version: " << header.versionString() << std::endl;
+          std::cout << "Dimensions: " << std::to_string(header.width) << " x " << std::to_string(header.height) << " x " << std::to_string(header.depth) << std::endl;
+          std::cout << "Mip levels: " << std::to_string(header.mipLevelsCount) << std::endl;
 
-        if(forceConversion || !fs::exists(input_filename) || !ltxMagicMatch ) {
+          std::cout << "Data pages count: " << std::to_string(header.pagesCount) << std::endl;
+          std::cout << "Data page dimensions: " << 
+            std::to_string(header.pageDims.width) << " x " << std::to_string(header.pageDims.height) << " x " << std::to_string(header.pageDims.depth) << std::endl;
+
+          std::cout << "Data page size: "  << std::to_string(header.pageDataSize) << " bytes" << std::endl;
+
+          for (uint mipLevel = 0; mipLevel < header.mipLevelsCount; mipLevel++) {
+            uint32_t numPagesInMipLevel = (mipLevel == (header.mipLevelsCount-1)) ? 1 : (header.mipBases[mipLevel + 1] - header.mipBases[mipLevel]);
+            std::cout << "Mip level " << std::to_string(mipLevel) << " contains " << std::to_string(numPagesInMipLevel) << " data pages. ";
+            
+            if (numPagesInMipLevel > 1) {
+              std::cout << "Page indices start: " << std::to_string(header.mipBases[mipLevel]) << " end: " << std::to_string(header.mipBases[mipLevel] + numPagesInMipLevel - 1);
+            } else {
+              std::cout << "Page index: " << std::to_string(header.mipBases[mipLevel]);
+            }
+            std::cout << std::endl;
+          }
+
+          std::cout << "---------------------------------------------\n";
+          std::cout << std::endl;
+        } else {
+          std::string output_filename = useAutoNaming ? (input_filename + ".ltx") : inputFilenames[i];
+          bool ltxMagicMatch = false;
+          if(fs::exists(output_filename)) ltxMagicMatch = Falcor::LTX_Bitmap::checkFileMagic(input_filename, true); // true is here for strict checking
+
+          if(forceConversion || !fs::exists(output_filename) || !ltxMagicMatch ) {
+            // Conversion
             LLOG_INF << "Converting texture " << input_filename << " to LTX format ...";
 
             Falcor::LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = compressorTypeName;
             tlcParms.compressionLevel = compressionLevel;
-            if (!Falcor::LTX_Bitmap::convertToKtxFile(nullptr, input_filename, output_filename, tlcParms, true)) {
-                LLOG_ERR << "Error converting texture " <<  input_filename << " !!!";
+            if (!Falcor::LTX_Bitmap::convertToLtxFile(nullptr, input_filename, output_filename, tlcParms, true)) {
+              LLOG_ERR << "Error converting texture " <<  input_filename << " !!!";
             } else {
-                LLOG_DBG << "Conversion done for " << input_filename;
+              LLOG_DBG << "Conversion done for " << input_filename;
             }
+          }
         }
-
       }
     }
 

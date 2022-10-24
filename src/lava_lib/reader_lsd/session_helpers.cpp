@@ -6,6 +6,7 @@
 #include "lava_utils_lib/ut_fsys.h"
 
 #include "../display_prman.h"
+#include "../display_oiio.h"
 
 namespace lava {
 
@@ -198,7 +199,7 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 		LLOG_ERR << "No plane variable specified for plane !!!";
 	}
 
-	std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float32"));
+	std::string quantization_name = pPlane->getPropertyValue(ast::Style::PLANE, "quantize", std::string("float16"));
 	std::string type_name = pPlane->getPropertyValue(ast::Style::PLANE, "type", std::string("vector4"));
 
 	aovInfo.name = AOVName(channel_name);
@@ -209,8 +210,12 @@ AOVPlaneInfo aovInfoFromLSD(scope::Plane::SharedPtr pPlane) {
 }
 
 Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
-	//Display::SharedPtr pDisplay = Display::create(display_info.displayType);
-	Display::SharedPtr pDisplay = DisplayPrman::create(display_info.displayType);
+	Display::SharedPtr pDisplay = nullptr;
+	if(DisplayOIIO::isDiplayTypeSupported(display_info.displayType)) {
+		pDisplay = DisplayOIIO::create(display_info.displayType);
+	} else {
+		pDisplay = DisplayPrman::create(display_info.displayType);
+	}
 	
 	if(!pDisplay) {
         LLOG_ERR << "Unable to create display !!!";

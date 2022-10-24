@@ -19,7 +19,12 @@
 #include "Falcor/Scene/Lights/EnvMap.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 
+#include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
+#include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
+
 #include "lava_utils_lib/logging.h"
+
+//#define USE_FORWARD_LIGHTING_PASS
 
 namespace Falcor {  
 	IFramework* gpFramework = nullptr;  // TODO: probably it's safe to remove now...
@@ -67,7 +72,9 @@ bool Renderer::init(const Config& config) {
 
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
-	sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+	//sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+
+	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
 	mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
 	mpCamera = Falcor::Camera::create();
@@ -231,12 +238,24 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	lightingPassDictionary["frameSampleCount"] =  frame_info.imageSamples;
 
-	mpLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
-	mpLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
-	mpLightingPass->setScene(pRenderContext, pScene);
-	mpLightingPass->setColorFormat(ResourceFormat::RGBA16Float);
+#ifdef USE_FORWARD_LIGHTING_PASS
 
-	mpRenderGraph->addPass(mpLightingPass, "LightingPass");
+	auto pForwardLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
+	pForwardLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
+	pForwardLightingPass->setScene(pRenderContext, pScene);
+	pForwardLightingPass->setColorFormat(ResourceFormat::RGBA16Float);
+
+	mpRenderGraph->addPass(pForwardLightingPass, "LightingPass");
+
+#else
+
+	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+	pDeferredLightingPass->setScene(pRenderContext, pScene);
+	
+	mpRenderGraph->addPass(pDeferredLightingPass, "LightingPass");
+
+#endif
+
 
 	// VBuffer
 	Falcor::Dictionary vbufferPassDictionary;
@@ -263,12 +282,21 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 	
 	mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
-
-	mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
 	mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
-	
+
+#ifdef USE_FORWARD_LIGHTING_PASS
+	// Forward lighting pass
+	mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
 	
+#else
+	// Deferred lighting pass
+	mpRenderGraph->addEdge("VBufferPass.vbuffer", "LightingPass.vbuffer");
+	mpRenderGraph->addEdge("VBufferPass.texGrads", "LightingPass.texGrads");
+	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+
+#endif
+
 	// Create anf bind main "beauty" plane
 	pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
 	mpRenderGraph->addEdge("LightingPass.color", pMainAOV->accumulationPassInputName());
@@ -283,7 +311,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
-						mpRenderGraph->addEdge("LightingPass.depth", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("VBufferPass.depth", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -319,6 +347,32 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("LightingPass.albedo", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::OCCLUSION:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						mpRenderGraph->addEdge("LightingPass.occlusion", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::Prim_Id:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("LightingPass.prim_id", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::Op_Id:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("LightingPass.op_id", pPlane->accumulationPassInputName());
 					}
 				}
 				break;

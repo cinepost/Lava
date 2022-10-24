@@ -13,11 +13,12 @@
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
+#include "Falcor/Utils/Math/FalcorMath.h"
 
 #include "session.h"
 #include "session_helpers.h"
 
-#include "../display_prman.h"
+#include "../display.h"
 #include "../aov.h"
 #include "../renderer.h"
 #include "../scene_builder.h" 
@@ -125,7 +126,6 @@ std::string Session::getExpandedString(const std::string& s) {
 }
 
 void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& filename) {
-	LLOG_DBG << "cmdImage";
 	mCurrentDisplayInfo.outputFileName = ((!filename.empty()) ? filename : std::string("unnamed"));
 
 	if (mIPR) {
@@ -139,8 +139,6 @@ void Session::cmdImage(lsd::ast::DisplayType display_type, const std::string& fi
 
 // initialize frame independet render data
 bool Session::prepareDisplayData() {
-	LLOG_DBG << "prepareDisplayData";
-
 	// prepare display driver parameters
 	auto& props_container = mpGlobal->filterProperties(ast::Style::PLANE, std::regex("^IPlay\\.[a-zA-Z]*"));
 	for( auto const& item: props_container.properties()) {
@@ -164,18 +162,18 @@ bool Session::prepareDisplayData() {
 	}
 
 	// quantization parameters
-	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float32"));
+	std::string typeFormatName = mpGlobal->getPropertyValue(ast::Style::IMAGE, "quantize", std::string("float16"));
 
 	mCurrentDisplayInfo.typeFormat = resolveDisplayTypeFormat(typeFormatName);
 	return true;
 }
 
 void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 cropRegion) {
-	LLOG_DBG << "setUpCamera";
 	assert(pCamera);
 	
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
+
 	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
 
 	auto dims = mCurrentFrameInfo.renderRegionDims();
@@ -191,6 +189,21 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
+
+		float 	camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
+		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 0.0f);
+		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 0.0f);
+	
+		float apertureRadius = 0.0f;
+		{
+			float sceneUnit = 1.0f;
+			float focalLength = camera_focal;
+	 		apertureRadius = apertureFNumberToRadius(camera_fstop, focalLength, sceneUnit);
+		}
+
+		pCamera->setFocalDistance(camera_focus_distance);
+		pCamera->setApertureRadius(apertureRadius);
+
 		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
@@ -303,26 +316,7 @@ static void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSiz
 	}
 }
 
-static bool sendImageRegionData(uint hImage, Display::SharedPtr pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
-	if (!pAOVPlane) return false;
-	if (!pDisplay) return false;
-
-	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
-	if(!pAOVPlane->getImageData(textureData.data())) {
-		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
-		return false;
-	}
-	LLOG_DBG << "Image data read done!";
-	
-	auto renderRegionDims = frameInfo.renderRegionDims();
-	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
-        LLOG_ERR << "Error sending image region to display !";
-        return false;
-    }
-    return true;
-};
-
-static bool sendImageData(uint hImage, Display::SharedPtr pDisplay, AOVPlane::SharedPtr pAOVPlane, std::vector<uint8_t>& textureData) {
+static bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
 	if (!pAOVPlane) return false;
 	if (!pDisplay) return false;
 
@@ -345,8 +339,30 @@ static bool sendImageData(uint hImage, Display::SharedPtr pDisplay, AOVPlane::Sh
     return true;
 };
 
+static bool sendImageRegionData(uint hImage, Display* pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
+	if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight = frameInfo.regionHeight())) {
+		// If sending region that is equal to full frame we just send full image data
+		return sendImageData(hImage, pDisplay, pAOVPlane, textureData);
+	}
+	if (!pAOVPlane) return false;
+	if (!pDisplay) return false;
+
+	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image region data";
+	if(!pAOVPlane->getImageData(textureData.data())) {
+		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
+		return false;
+	}
+	LLOG_DBG << "Image data read done!";
+	
+	auto renderRegionDims = frameInfo.renderRegionDims();
+	if (!pDisplay->sendImageRegion(hImage, frameInfo.renderRegion[0], frameInfo.renderRegion[1], renderRegionDims[0], renderRegionDims[1], textureData.data())) {
+        LLOG_ERR << "Error sending image region to display !";
+        return false;
+    }
+    return true;
+};
+
 bool Session::cmdRaytrace() {
-	LLOG_DBG << "cmdRaytrace";
 	PROFILE(mpDevice, "cmdRaytrace");
 
 	int  sampleUpdateInterval = mpGlobal->getPropertyValue(ast::Style::IMAGE, "sampleupdate", 0);
@@ -355,7 +371,7 @@ bool Session::cmdRaytrace() {
 	bool tiled_rendering_mode = mpGlobal->getPropertyValue(ast::Style::IMAGE, "tiling", false);
 
 
-	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN");
+	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
 
 	if(!pMainAOVPlane) {
 		LLOG_ERR << "NO main AOV plane specified !!!";
@@ -373,9 +389,11 @@ bool Session::cmdRaytrace() {
 		}
 	}
 
-	bool doLiveUpdate = mpDisplay->supportsLiveUpdate();
+	Display* pDisplay = mpDisplay.get();
 
-	if (!mpDisplay->supportsLiveUpdate()) {
+	bool doLiveUpdate = pDisplay->supportsLiveUpdate();
+
+	if (!pDisplay->supportsLiveUpdate()) {
 		// Non interactive display. No need to make intermediate updates
 		sampleUpdateInterval = 0;
 	}
@@ -436,23 +454,40 @@ bool Session::cmdRaytrace() {
 	// Open display image
 	uint hImage;
 
-    mpDisplay->closeAll(); // close previous frame display images (if still opened) 
+    if(!mIPR) pDisplay->closeAll(); // close previous frame display images (if still opened) 
 
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
+	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "renderlabel", std::string(""));
 
 	// houdini display driver section
-	if((mpDisplay->type() == DisplayType::HOUDINI) || (mpDisplay->type() == DisplayType::MD) || (mpDisplay->type() == DisplayType::IP)) {
-		int houdiniPortNum = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); // Do we need it only for interactive rendeings/IPR ?????
-		imageFileName = mpCurrentScope->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
-		if ((houdiniPortNum > 0) && (mIPR)) {
-    		// Negative port num is for IPR
-    		imageFileName = "iprsocket:" + std::to_string(houdiniPortNum);
+	if((pDisplay->type() == DisplayType::HOUDINI) || (pDisplay->type() == DisplayType::MD) || (pDisplay->type() == DisplayType::IP)) {
+		int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
+		int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
+		std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
+		std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
+		std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
+		int  mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
+
+		imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+		
+		if (renderLabel != "") pDisplay->setStringParameter("label", {renderLabel});
+		if (mplayRendermode != "") pDisplay->setStringParameter("numbering", {mplayRendermode});
+
+		pDisplay->setStringParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange});
+
+		if ((mplayPortNum > 0) && mIPR) {
+    		pDisplay->setStringParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)});
+    		imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
+    	}// else 
+
+    	if (houdiniPortNum > 0) {
+    		pDisplay->setIntParameter("houdiniportnum", {houdiniPortNum});
     	}
 	}
 
     // Open main image plane
 
-    if(!mpDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage)) {
+    if(!pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage)) {
         LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
         return false;
     }
@@ -463,7 +498,7 @@ bool Session::cmdRaytrace() {
     	std::string aovImageFileName = imageFileName;
     	std::string channel_prefix = std::string(pPlane->name());
 
-    	if(!mpDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, channel_prefix)) {
+    	if(!pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, channel_prefix)) {
         	LLOG_ERR << "Unable to open AOV image " << pPlane->name() << " !!!";
     		entry.second = nullptr;
     	}
@@ -500,9 +535,9 @@ bool Session::cmdRaytrace() {
 				long int updateIter = ldiv(sample_number, sampleUpdateInterval).quot;
 				if (updateIter > sampleUpdateIterations) {
 					LLOG_DBG << "Updating display data at sample number " << std::to_string(sample_number);
-					if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
-						break;
-					}
+					
+					// Send image/region region
+					if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane, textureData)) break;
 					sampleUpdateIterations = updateIter;
 				}
 			}
@@ -511,14 +546,13 @@ bool Session::cmdRaytrace() {
 		LLOG_DBG << "Rendering image samples done !";
 
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
-		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pMainAOVPlane, textureData)) {
-			break;
-		}
-
+		// Send image region
+		if (!sendImageRegionData(hImage, pDisplay, frameInfo, pMainAOVPlane, textureData)) break;
+		
 		// Send secondary aov image planes data
     	for(auto& entry: aovPlanes) {
     		uint hImage = entry.first;
-	    	auto& pPlane = entry.second;
+	    	auto pPlane = entry.second.get();
 	    	if (pPlane) {
 	    		AOVPlaneGeometry aov_geometry;
 				if(!pPlane->getAOVPlaneGeometry(aov_geometry)) {
@@ -530,27 +564,29 @@ bool Session::cmdRaytrace() {
 				std::vector<uint8_t> textureData(textureDataSize);
 
 				LLOG_DBG << "Sending AOV " << std::string(pPlane->name()) << " data to image handle " << std::to_string(hImage);
-	    		if (!sendImageRegionData(hImage, mpDisplay, frameInfo, pPlane, textureData)) {
+				
+				// Send image region
+				if (!sendImageRegionData(hImage, pDisplay, frameInfo, pPlane, textureData)) {
 					LLOG_ERR << "Error sending AOV " << std::string(pPlane->name()) << " to display!";
 					continue;
 				}
 	    	}
 	    }
 
-		//if (!sendImageData(hImage, mpDisplay, pMainAOVPlane, textureData)) {
+		//if (!sendImageData(hImage, pDisplay, pMainAOVPlane, textureData)) {
 		//	break;
 		//}
 	}
 
 	LLOG_DBG << "Closing display...";
-    mpDisplay->closeImage(hImage);
+    if(!mIPR) pDisplay->closeImage(hImage);
 
     // Close secondary aov images
 	for(auto& entry: aovPlanes) {
 		uint hImage = entry.first;
     	auto& pPlane = entry.second;
     	if (pPlane) {
-    		mpDisplay->closeImage(hImage);
+    		if(!mIPR) pDisplay->closeImage(hImage);
     	}
     }
 
@@ -565,8 +601,7 @@ bool Session::cmdRaytrace() {
 }
 
 void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
-	LLOG_DBG << "pushBgeo";
-
+	
 #ifdef _DEBUG
     bgeo.printSummary(std::cout);
 #endif
@@ -602,9 +637,7 @@ void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr 
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
-	LLOG_DBG << "pushLight";
-	
-    auto pSceneBuilder = mpRenderer->sceneBuilder();
+	auto pSceneBuilder = mpRenderer->sceneBuilder();
 
     if (!pSceneBuilder) {
 		LLOG_ERR << "Unable to push light. SceneBuilder not ready !!!";
@@ -783,7 +816,6 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 }
 
 void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const Property::Value& value) {
-	LLOG_DBG << "cmdProperty " << token << " " << to_string(value);
 	if(!mpCurrentScope) {
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
@@ -797,7 +829,6 @@ void Session::cmdProperty(lsd::ast::Style style, const std::string& token, const
 }
 
 void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<std::string, Property::Value>>& values) {
-	LLOG_DBG << "cmdPropertyV ";
 	if(!mpCurrentScope) {
 		LLOG_ERR << "No current scope is set !!!";
 		return; 
@@ -828,7 +859,6 @@ void Session::cmdPropertyV(lsd::ast::Style style, const std::vector<std::pair<st
 }
 
 void Session::cmdEdge(const std::string& src_node_uuid, const std::string& src_node_output_socket, const std::string& dst_node_uuid, const std::string& dst_node_input_socket) {
-	LLOG_DBG << "cmdEdge";
 	auto pNode = std::dynamic_pointer_cast<scope::Node>(mpCurrentScope);
 	if(pNode) {
 		pNode->addChildEdge(src_node_uuid, src_node_output_socket, dst_node_uuid, dst_node_input_socket);
@@ -836,14 +866,12 @@ void Session::cmdEdge(const std::string& src_node_uuid, const std::string& src_n
 }
 
 void Session::cmdDeclare(lsd::ast::Style style, lsd::ast::Type type, const std::string& token, const lsd::PropValue& value) {
-	LLOG_DBG << "cmdDeclare";
 	if(mpCurrentScope) {
 		mpCurrentScope->declareProperty(style, type, token, value.get(), Property::Owner::USER);
 	}
 }
 
 void Session::cmdTransform(const Matrix4& transform) {
-	LLOG_DBG << "cmdTransform";
 	auto pScope = std::dynamic_pointer_cast<scope::Transformable>(mpCurrentScope);
 	if(!pScope) {
 		LLOG_DBG << "Trying to set transform on non-transformable scope !!!";
@@ -853,7 +881,6 @@ void Session::cmdTransform(const Matrix4& transform) {
 }
 
 void Session::cmdMTransform(const Matrix4& transform) {
-	LLOG_DBG << "cmdMTransform";
 	auto pScope = std::dynamic_pointer_cast<scope::Transformable>(mpCurrentScope);
 	if(!pScope) {
 		LLOG_DBG << "Trying to add transform to non-transformable scope !!!";
@@ -876,14 +903,12 @@ scope::ScopeBase::SharedPtr Session::getCurrentScope() {
 }
 
 void Session::cmdIPRmode(lsd::ast::IPRMode mode, bool stash) {
-	LLOG_ERR << "cmdIPRmode " << to_string(mode) << " stash " << stash << " !!!!!!!!!!!!!!!!!!!!!!!!!!";
+	LLOG_DBG << "cmdIPRmode " << to_string(mode) << " stash " << stash;
 	if (!mIPR) mIPR = true;
-	//mpRendererIface->setIPRMode(mIPRmode);
+	mIPRmode = mode;
 }
 
 bool Session::cmdStart(lsd::ast::Style object_type) {
-	LLOG_DBG << "cmdStart";
-
 	mpRenderer->init(mRendererConfig);
 
 	switch (object_type) {
@@ -967,7 +992,6 @@ bool Session::cmdStart(lsd::ast::Style object_type) {
 }
 
 bool Session::cmdEnd() {
-	LLOG_DBG << "cmdEnd";
 	auto pGlobal = std::dynamic_pointer_cast<scope::Global>(mpCurrentScope);
 	if(pGlobal) {
 		LLOG_FTL << "Can't end global scope !!!";
@@ -982,7 +1006,7 @@ bool Session::cmdEnd() {
 
 	const auto& configStore = Falcor::ConfigStore::instance();
 
-	bool pushGeoAsync = configStore.get<bool>("async_geo", true);
+	bool pushGeoAsync = mpGlobal->getPropertyValue(ast::Style::GLOBAL, "async_geo", bool(true));
 	bool result = true;
 
 	scope::Geo::SharedPtr pGeo;
@@ -1145,6 +1169,11 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 		return false;
 	}
 
+	uint32_t exportedInstanceID = SceneBuilder::kInvalidExportedID;
+	const Property* pIDProperty = pObj->getProperty(ast::Style::OBJECT, "id");
+	if(pIDProperty) {
+		exportedInstanceID = pIDProperty->get<uint32_t>();
+	}
 	std::string obj_name = pObj->getPropertyValue(ast::Style::OBJECT, "name", std::string("unnamed"));
 
 	uint32_t mesh_id = std::numeric_limits<uint32_t>::max();
@@ -1194,11 +1223,13 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     std::string 	surface_base_normal_texture_path = "";
     std::string 	surface_metallic_texture_path    = "";
     std::string 	surface_roughness_texture_path   = "";
+    std::string		surface_emission_texture_path    = "";
 
     bool 			surface_use_basecolor_texture  = false;
     bool 			surface_use_roughness_texture  = false;
     bool 			surface_use_metallic_texture   = false;
     bool 			surface_use_basenormal_texture = false;
+    bool 			surface_use_emission_texture   = false;
 
     bool            front_face = false;
 
@@ -1210,7 +1241,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
-    LLOG_WRN << "Base color before " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+    float           ao_distance = 1.0f;
 
     if(pShaderProp) {
     	auto pShaderProps = pShaderProp->subContainer();
@@ -1219,57 +1250,74 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
     	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
     	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
+    	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
 
     	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
     	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
     	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
+    	surface_use_emission_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_useTexture", false);
     	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
 
-    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5);
-    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0);
-    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3);
-    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0);
+    	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
+    	surface_metallic = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic", 0.0f);
+    	surface_roughness = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough", 0.3f);
+    	surface_reflectivity = pShaderProps->getPropertyValue(ast::Style::OBJECT, "reflect", 1.0f);
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
-    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0);
+    	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0f);
+
+    	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
     	front_face = pShaderProps->getPropertyValue(ast::Style::OBJECT, "frontface", false);
     } else {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
-    LLOG_WRN << "Base color " << std::to_string(surface_base_color[0]) << " " << std::to_string(surface_base_color[1]) << " " << std::to_string(surface_base_color[2]);
+    std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name));
+    
+	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
+	
+	if (!pMaterial) {
+		// It's the first time material declaration or instance default material that should be resolved to instanced object material instead 
+		pMaterial = Falcor::StandardMaterial::create(mpDevice, material_name);
+	}
 
-    auto pMaterial = Falcor::StandardMaterial::create(mpDevice, obj_name);
-    pMaterial->setBaseColor(surface_base_color);
-    pMaterial->setIndexOfRefraction(surface_ior);
-    pMaterial->setMetallic(surface_metallic);
-    pMaterial->setRoughness(surface_roughness);
-    pMaterial->setReflectivity(surface_reflectivity);
-    pMaterial->setEmissiveColor(emissive_color);
-    pMaterial->setEmissiveFactor(emissive_factor);
-    pMaterial->setDoubleSided(!front_face);
-  	
-  	//bool loadAsSrgb = true;
-    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
+	if (pMaterial) {
+	    pMaterial->setBaseColor(surface_base_color);
+	    pMaterial->setIndexOfRefraction(surface_ior);
+	    pMaterial->setMetallic(surface_metallic);
+	    pMaterial->setRoughness(surface_roughness);
+	    pMaterial->setReflectivity(surface_reflectivity);
+	    pMaterial->setEmissiveColor(emissive_color);
+	    pMaterial->setEmissiveFactor(emissive_factor);
+	    pMaterial->setAODistance(ao_distance);
+	    pMaterial->setDoubleSided(!front_face);
+	  	
+	  	//bool loadAsSrgb = true;
+	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 
-    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
+	    LLOG_DBG << "Setting " << (loadTexturesAsSparse ? "sparse" : "simple") << " textures for material: " << pMaterial->getName();
 
-    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse);
-    }
+	    if(surface_base_color_texture_path != "" && surface_use_basecolor_texture) {
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::BaseColor, surface_base_color_texture_path, loadTexturesAsSparse);
+	    }
 
-    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
-    }
+	    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
+	    }
 
-    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse);
-    }
+	    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse);
+	    }
 
-    if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
-    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
-    }
+	    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Roughness, surface_roughness_texture_path, loadTexturesAsSparse);
+	    }
+
+	    if(surface_base_normal_texture_path != "" && surface_use_basenormal_texture) { 
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Normal, surface_base_normal_texture_path, loadTexturesAsSparse);
+	    }
+	}
 
     // instance shading spec
     SceneBuilder::MeshInstanceShadingSpec shadingSpec;
@@ -1289,14 +1337,13 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     
 
     // add a mesh instance to a node
-    pSceneBuilder->addMeshInstance(node_id, mesh_id, pMaterial, &shadingSpec, &visibilitySpec);
+    pSceneBuilder->addMeshInstance(node_id, mesh_id, exportedInstanceID, pMaterial, &shadingSpec, &visibilitySpec);
     
 	return true;
 }
 
 
 bool Session::cmdGeometry(const std::string& name) {
- 	LLOG_DBG << "cmdGeometry";
  	if( mpCurrentScope->type() != ast::Style::OBJECT) {
  		LLOG_ERR << "cmd_geometry outside object scope !!!";
  		return false;

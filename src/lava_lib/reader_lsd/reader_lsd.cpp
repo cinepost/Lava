@@ -32,13 +32,15 @@ void ReaderLSD::init(std::shared_ptr<Renderer> pRenderer, bool echo) {
         return;
     }
 
-    if (!echo) {
+    mEchoInput = echo;
+
+    //if (!echo) {
         // standard LSD visitor
         mpVisitor = std::make_unique<lsd::Visitor>(pSession);
-    } else {
+    //} else {
         // LSD visitor with parsed console echo (for debug purposes)
-        mpVisitor = std::make_unique<lsd::EchoVisitor>(pSession);
-    }
+    //    mpVisitor = std::make_unique<lsd::EchoVisitor>(pSession);
+    //}
 
     mInitialized = true;
 
@@ -85,6 +87,8 @@ bool ReaderLSD::parseStream(std::istream& in) {
             eof = true;
             break;
         }
+
+        if(mEchoInput) std::cout << str;
 
         begin = str.begin(); end = str.end();
         

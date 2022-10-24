@@ -965,7 +965,7 @@ public:
         float cameraSpeed = 1.f;                                ///< Camera speed.
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
         MaterialSystem::SharedPtr pMaterialSystem;              ///< Material system. This holds data and resources for all materials.
-        std::vector<Material::SharedPtr> materials;             ///< List of materials.
+        //std::vector<Material::SharedPtr> materials;             ///< List of materials.
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
         std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
         std::vector<Grid::SharedPtr> grids;                     ///< List of volume grids.
@@ -1161,8 +1161,10 @@ public:
 
     struct DrawArgs {
         Buffer::SharedPtr pBuffer;      ///< Buffer holding the draw-indirect arguments.
+        Buffer::SharedPtr pCountBuffer;
         uint32_t count = 0;             ///< Number of draws.
         bool ccw = true;                ///< True if counterclockwise triangle winding.
+        bool cullBackface = true;
         ResourceFormat ibFormat = ResourceFormat::Unknown;  ///< Index buffer format.
     };
 

@@ -163,14 +163,13 @@ def header(now, propdefs):
     cfg_plist = rop.evaluate(configParms, now)
     cmd_comment("Renderer configuration")
     vtoff = cfg_plist.get('lv_vtoff', None)
-    cmd_config('vtoff', vtoff)
     cmd_declare_parm('global', 'vtoff', vtoff)
 
     fconv = cfg_plist.get('lv_fconv', None)
     cmd_config('fconv', fconv)
 
     async_geo = cfg_plist.get('lv_async_geo', None)
-    cmd_config('async_geo', async_geo)
+    cmd_declare_parm('global', 'async_geo', async_geo)
 
     async_vtex = cfg_plist.get('lv_async_vtex', None)
     cmd_config('async_vtex', async_vtex)

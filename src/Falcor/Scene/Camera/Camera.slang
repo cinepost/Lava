@@ -35,6 +35,7 @@ struct Camera
 
     float3 getPosition() { return data.posW; }
     float4x4 getViewProj() { return data.viewProjMat; }
+    float4x4 getViewProjMatNoJitter() { return data.viewProjMatNoJitter; }
 
     /** Computes a camera ray for a given pixel assuming a pinhole camera model.
         The camera jitter is taken into account to compute the sample position on the image plane.

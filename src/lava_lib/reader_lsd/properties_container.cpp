@@ -37,6 +37,11 @@ const int Property::get() const {
 }
 
 template<>
+const unsigned int Property::get() const {
+    return (unsigned int)boost::get<int>(mValue);
+}
+
+template<>
 const Int2 Property::get() const {
     return boost::get<Int2>(mValue);
 }

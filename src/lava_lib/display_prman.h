@@ -33,9 +33,9 @@ class DisplayPrman: private Display {
     inline virtual bool opened(uint imageHandle) const final { return mImages[imageHandle].opened; }
     inline virtual bool closed(uint imageHandle) const final { return mImages[imageHandle].closed; }
 
-    inline virtual std::string& imageName(uint imageHandle) final { return mImages[imageHandle].name; }
-    inline virtual uint imageWidth(uint imageHandle) final { return mImages[imageHandle].width; }
-    inline virtual uint imageHeight(uint imageHandle) final { return mImages[imageHandle].height; }
+    inline virtual const std::string& imageName(uint imageHandle) const final { return mImages[imageHandle].name; }
+    inline virtual uint imageWidth(uint imageHandle) const final { return mImages[imageHandle].width; }
+    inline virtual uint imageHeight(uint imageHandle) const final { return mImages[imageHandle].height; }
 
  private:
     struct ImageData {
@@ -58,8 +58,6 @@ class DisplayPrman: private Display {
     static void makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter);
 
  private:
-    DisplayType mDisplayType = DisplayType::NONE;
-
     std::string mDriverName = "";
     void* mLibHandle = nullptr;
 

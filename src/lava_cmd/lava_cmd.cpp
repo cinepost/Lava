@@ -91,6 +91,7 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
 int main(int argc, char** argv){
 
     int gpuID = -1; // automatic gpu selection
+    bool stdin_mode = false;
 
 #ifdef _DEBUG
     bool echo_input = true;
@@ -142,7 +143,8 @@ int main(int argc, char** argv){
     std::vector<std::string> inputFilenames;
     po::options_description input("Input");
     input.add_options()
-      ("stdin,C", "stdin compatibility mode")
+      ("stdin,C", po::bool_switch(&stdin_mode), "stdin compatibility mode")
+      ("echo-input,e", po::bool_switch(&echo_input), "Echo input scene")
       ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
       ;
 
@@ -250,7 +252,7 @@ int main(int argc, char** argv){
 
     Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-    if (vm.count("input-files")) {
+    if (vm.count("input-files") && !stdin_mode) {
       // Reading scenes from files...
       for (const std::string& inputFilename: inputFilenames) {
         std::ifstream in_file(inputFilename, std::ifstream::binary);

@@ -1719,43 +1719,56 @@ public:
 	}
 
 	virtual SLANG_NO_THROW void SLANG_MCALL setPrimitiveTopology(PrimitiveTopology topology) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL setVertexBuffers(
 		GfxIndex startSlot,
 		GfxCount slotCount,
 		IBufferResource* const* buffers,
 		const Offset* offsets) = 0;
-	inline void setVertexBuffer(
-		GfxIndex slot, IBufferResource* buffer, Offset offset = 0)
-	{
+	
+	inline void setVertexBuffer(GfxIndex slot, IBufferResource* buffer, Offset offset = 0) {
 		setVertexBuffers(slot, 1, &buffer, &offset);
 	}
 
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		setIndexBuffer(IBufferResource* buffer, Format indexFormat, Offset offset = 0) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		draw(GfxCount vertexCount, GfxIndex startVertex = 0) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL
 		drawIndexed(GfxCount indexCount, GfxIndex startIndex = 0, GfxIndex baseVertex = 0) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL drawIndirect(
 		GfxCount maxDrawCount,
 		IBufferResource* argBuffer,
 		Offset argOffset,
 		IBufferResource* countBuffer = nullptr,
 		Offset countOffset = 0) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirect(
+		GfxCount maxDrawCount,
+		IBufferResource* argBuffer,
+		Offset argOffset) = 0;
+
+	virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedIndirectCount(
 		GfxCount maxDrawCount,
 		IBufferResource* argBuffer,
 		Offset argOffset,
 		IBufferResource* countBuffer = nullptr,
 		Offset countOffset = 0) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL setStencilReference(uint32_t referenceValue) = 0;
+	
 	virtual SLANG_NO_THROW Result SLANG_MCALL setSamplePositions(
 		GfxCount samplesPerPixel, GfxCount pixelCount, const SamplePosition* samplePositions) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL drawInstanced(
 		GfxCount vertexCount,
 		GfxCount instanceCount,
 		GfxIndex startVertex,
 		GfxIndex startInstanceLocation) = 0;
+	
 	virtual SLANG_NO_THROW void SLANG_MCALL drawIndexedInstanced(
 		GfxCount indexCount,
 		GfxCount instanceCount,

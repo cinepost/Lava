@@ -59,10 +59,4 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
   /* Resize output for integer texture. */
   gOutput[ipos] = packHorizons(output);
 
-
-  // DBG
-  //gOutput[ipos] = packHorizons(0.1 * float4(sampleDepthTexture(uvs)));
-  //gOutput[ipos] = packHorizons(float4(0, 0.5, 1, 1));
-  //gOutput[ipos] = packHorizons(float4(sampleHiMaxZTexture(uvs, 0), sampleHiMaxZTexture(uvs, 1), sampleHiMaxZTexture(uvs, 2), sampleHiMaxZTexture(uvs, 3)));
-
 }

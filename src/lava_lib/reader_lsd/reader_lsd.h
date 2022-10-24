@@ -45,6 +45,8 @@ class ReaderLSD: public ReaderBase {
     // factory methods
     static ReaderBase::SharedPtr        myConstructor();
     static std::vector<std::string>*    myExtensions();
+
+    bool mEchoInput = false;
 };
 
 }  // namespace lava

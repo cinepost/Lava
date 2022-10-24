@@ -191,7 +191,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		std::vector<std::pair<TextureSlot, Texture::SharedPtr>> materialSparseTextures;
 
-		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal})) {
+		for( const auto& slot: std::vector<TextureSlot>({TextureSlot::BaseColor, TextureSlot::Metallic, TextureSlot::Roughness, TextureSlot::Normal, TextureSlot::Emissive})) {
 			auto const& pTexture = pMaterial->getTexture(slot);
 			if(pTexture && (pTexture->isSparse() || pTexture->isUDIMTexture())) {
 				if(pTexture->isUDIMTexture()) {

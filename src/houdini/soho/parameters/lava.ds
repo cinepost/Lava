@@ -1,12 +1,113 @@
 // $Id$
-// Houdini Parameters for Arnold 5.0
+// Houdini Parameters for Lava
 
 #include "$HH/soho/parameters/CommonMacros.ds"
 
-//#include "override_parms.ds"
-#include "object_parms.ds"
-#include "instance_parms.ds"
-//#include "procedural_parms.ds"
-//#include "camera_parms.ds"
-//#include "vrcamera_parms.ds"
-//#include "hairgen_parms.ds"
+//#include "object_parms.ds"
+//#include "instance_parms.ds"
+
+
+#define LAVA_PROP(CLASS, NAME)	\
+	parmtag	{ lava_class	CLASS } \
+	parmtag	{ lava_name	NAME }
+
+{
+	name lava
+  label	Lava
+
+	parmtag	{ spare_opfilter	"!!SHOP/PROPERTIES!!" }
+	parmtag	{ spare_classtags	"render" }
+
+#include "$HH/soho/parameters/CommonControl.ds"
+#include "$HH/soho/parameters/CommonView.ds"
+#include "$HH/soho/parameters/CommonObject.ds"
+#include "$HH/soho/parameters/Instance.ds"
+
+	parm {
+		SOHO_STRING(lv_image_mplay_rendermode, "MPlay Render Mode", META_DATA_LABEL, "current")
+		menu {
+			"current"	"Render to current sequence"
+			"new"		"Start new sequence"
+		}
+		LAVA_PROP("imageoption", "IPlay.rendermode")
+	}
+	
+	parm {
+		SOHO_STRING(lv_image_mplay_framemode, "MPlay Frame Mode", META_DATA_LABEL, "append")
+		menu {
+			"append"	"Append Frames To Sequence"
+			"match"	"Match Houdini Frame Numbers (overwrite frame)"
+		}
+		LAVA_PROP("imageoption", "IPlay.framemode")
+	}
+
+	parm {
+		name	lv_image_mplay_label
+		label	"MPlay Session Label"
+		parmtag { spare_category META_DATA_LABEL }
+		size	1
+		type	string
+		//default { "`pythonexprs(\"__import__('os').getpid()\")`" }
+		default { "" }
+		menureplace {
+			"`pythonexprs(\"__import__('os').getpid()\")`" "One per Houdini Process"
+			"$HIPNAME"	"One per Houdini File Name (.hip)"
+			"$OS"	"One per Output Driver Name (ROP)"
+			""		"One MPlay session only"
+		}
+		LAVA_PROP("imageoption", "IPlay.label")
+	}
+	
+	parm {
+		name	lv_image_mplay_bgimage
+		label	"MPlay Background Image"
+		parmtag { spare_category META_DATA_LABEL }
+		size	1
+		type	string
+		default { "" }
+		LAVA_PROP("imageoption", "IPlay.bgimage")
+	}
+	
+	collection {
+		name    lv_remote_mplay_display
+		label   "Remote MPlay Display"
+		parmtag { spare_category        META_DATA_LABEL }
+		parm {
+						SOHO_STRING("lv_image_mplay_sockethost",
+						"MPlay Remote Host", META_DATA_LABEL, "")
+						help "(Advanced) The name of the remote host where mplay is running"
+			LAVA_PROP("imageoption", "IPlay.sockethost")
+		}
+		
+		parm {
+						SOHO_INT("lv_image_mplay_socketport",
+						"MPlay Remote Port", META_DATA_LABEL, "")
+						help "(Advanced) The socket port number associated with mplay on the remote host (see mplay -K)"
+			LAVA_PROP("imageoption", "IPlay.socketport")
+		}
+	}
+	
+	parm {
+		SOHO_STRING(lv_image_mplay_direction, "MPlay Tile Order", META_DATA_LABEL, "middle")
+		menu {
+			"middle"	"Interactive (starting in middle)"
+			"top"		"Top down"
+			"bottom"	"Bottom up"
+			"hilbert"	"Hilbert Curve"
+		}
+		LAVA_PROP("imageoption", "IPlay.direction")
+	}
+	
+	parm {
+		SOHO_FLOAT(lv_image_mplay_gamma, "MPlay Gamma", META_DATA_LABEL, 2.2)
+		range	{ 0.001	4 }
+		LAVA_PROP("imageoption", "IPlay.gamma")
+	}
+	
+	parm {
+		SOHO_FILE(lv_image_mplay_lut, "MPlay Display LUT", META_DATA_LABEL, "")
+		parmtag	{ filechooser_mode	"read" }
+		LAVA_PROP("imageoption", "IPlay.lut")
+	}
+}
+#endif
