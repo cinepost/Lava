@@ -24,6 +24,8 @@
 
 #include "lava_utils_lib/logging.h"
 
+//#define USE_FORWARD_LIGHTING_PASS
+
 namespace Falcor {  
 	IFramework* gpFramework = nullptr;  // TODO: probably it's safe to remove now...
 }
@@ -71,6 +73,8 @@ bool Renderer::init(const Config& config) {
 	//sceneBuilderFlags |= SceneBuilder::Flags::Force32BitIndices;
 	sceneBuilderFlags |= SceneBuilder::Flags::DontOptimizeMaterials;
 	//sceneBuilderFlags |= SceneBuilder::Flags::DontMergeMaterials;
+
+	sceneBuilderFlags != SceneBuilder::Flags::AssumeLinearSpaceTextures;
 
 	mpSceneBuilder = lava::SceneBuilder::create(mpDevice, sceneBuilderFlags);
 	mpCamera = Falcor::Camera::create();
@@ -234,7 +238,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	lightingPassDictionary["frameSampleCount"] =  frame_info.imageSamples;
 
-#ifdef USE_3D_LIGHTING_PASS
+#ifdef USE_FORWARD_LIGHTING_PASS
 
 	auto pForwardLightingPass = ForwardLightingPass::create(pRenderContext, lightingPassDictionary);
 	pForwardLightingPass->setRasterizerState(Falcor::RasterizerState::create(rsDesc));
@@ -280,14 +284,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
 	mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
 
-#ifdef USE_3D_LIGHTING_PASS
-
+#ifdef USE_FORWARD_LIGHTING_PASS
+	// Forward lighting pass
 	mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
 	
 #else
-
+	// Deferred lighting pass
 	mpRenderGraph->addEdge("VBufferPass.vbuffer", "LightingPass.vbuffer");
+	mpRenderGraph->addEdge("VBufferPass.texGrads", "LightingPass.texGrads");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
 
 #endif
@@ -306,7 +311,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
-						mpRenderGraph->addEdge("LightingPass.depth", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("VBufferPass.depth", pPlane->accumulationPassInputName());
 					}
 				}
 				break;

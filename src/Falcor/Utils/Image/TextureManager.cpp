@@ -339,7 +339,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   						pPage->allocate();
   						pContext->updateTexturePage(pPage.get(), pTmpPageData);
   					}
-  					LLOG_TRC << "Thread " << thread_id << ": loaded page mip level " << std::to_string(pPage->mipLevel());
+  					LLOG_TRC << "Thread " << thread_id << ": loaded page " << std::to_string(pPage->index()) << " of mip level " << std::to_string(pPage->mipLevel());
 					}
 				} else {
 					LLOG_ERR << "Thread " << thread_id << ": Error updating texture page " << std::to_string(pPage->index());

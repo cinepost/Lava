@@ -68,7 +68,7 @@ struct StandardMaterial : IMaterial
 
         // Sample base color.
         const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;
-
+        
 #if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
         if (data.getShadingModel() == ShadingModel::MetalRough)
 #endif
@@ -119,6 +119,6 @@ struct StandardMaterial : IMaterial
         // TODO: handle dedicated opacity texture;
         return 1.0f;
         //SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        //return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
+        //return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).r;
     }
 };

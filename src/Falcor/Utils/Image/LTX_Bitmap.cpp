@@ -140,6 +140,10 @@ static void makeMagic(unsigned char *magic) {
 	magic[6] = 48 + static_cast<unsigned char>(kLtxVersionMinor);
 }
 
+LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
+	return createFromFile(pDevice, fs::path(filename), isTopDown);
+}
+
 LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool isTopDown) {
 	if(!checkFileMagic(path, true)) {
 		LLOG_ERR << "Wrong LTX texture file magic!";

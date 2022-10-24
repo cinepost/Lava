@@ -13,6 +13,7 @@
 #include "Falcor/Scene/MaterialX/MxNode.h"
 #include "Falcor/Scene/MaterialX/MaterialX.h"
 #include "Falcor/Utils/ConfigStore.h"
+#include "Falcor/Utils/Math/FalcorMath.h"
 
 #include "session.h"
 #include "session_helpers.h"
@@ -172,6 +173,7 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	
 	// set up camera data
 	Vector2 camera_clip = mpGlobal->getPropertyValue(ast::Style::CAMERA, "clip", Vector2{0.01, 1000.0});
+
 	std::string camera_projection_name = mpGlobal->getPropertyValue(ast::Style::CAMERA, "projection", std::string("perspective"));
 
 	auto dims = mCurrentFrameInfo.renderRegionDims();
@@ -187,6 +189,21 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	const auto& segments = mpGlobal->segments();
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
+
+		float 	camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
+		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 0.0f);
+		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 0.0f);
+	
+		float apertureRadius = 0.0f;
+		{
+			float sceneUnit = 1.0f;
+			float focalLength = camera_focal;
+	 		apertureRadius = apertureFNumberToRadius(camera_fstop, focalLength, sceneUnit);
+		}
+
+		pCamera->setFocalDistance(camera_focus_distance);
+		pCamera->setApertureRadius(apertureRadius);
+
 		pCamera->setFocalLength(50.0 * pSegment->getPropertyValue(ast::Style::CAMERA, "zoom", (double)1.0));
 		pCamera->setFrameHeight((1.0f / aspect_ratio) * 50.0);
 	}
@@ -1206,11 +1223,13 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     std::string 	surface_base_normal_texture_path = "";
     std::string 	surface_metallic_texture_path    = "";
     std::string 	surface_roughness_texture_path   = "";
+    std::string		surface_emission_texture_path    = "";
 
     bool 			surface_use_basecolor_texture  = false;
     bool 			surface_use_roughness_texture  = false;
     bool 			surface_use_metallic_texture   = false;
     bool 			surface_use_basenormal_texture = false;
+    bool 			surface_use_emission_texture   = false;
 
     bool            front_face = false;
 
@@ -1231,10 +1250,12 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	surface_base_normal_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseNormal_texture", std::string());
     	surface_metallic_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_texture", std::string());
     	surface_roughness_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_texture", std::string());
+    	surface_emission_texture_path = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_texture", std::string());
 
     	surface_use_basecolor_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "basecolor_useTexture", false);
     	surface_use_metallic_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "metallic_useTexture", false);
     	surface_use_roughness_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "rough_useTexture", false);
+    	surface_use_emission_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor_useTexture", false);
     	surface_use_basenormal_texture = pShaderProps->getPropertyValue(ast::Style::OBJECT, "baseBumpAndNormal_enable", false);
 
     	surface_ior = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ior", 1.5f);
@@ -1283,6 +1304,10 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
 	    if(surface_metallic_texture_path != "" && surface_use_metallic_texture) {
 	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Metallic, surface_metallic_texture_path, loadTexturesAsSparse);
+	    }
+
+	    if(surface_emission_texture_path != "" && surface_use_emission_texture) { 
+	    	pSceneBuilder->loadMaterialTexture(pMaterial, Falcor::Material::TextureSlot::Emissive, surface_emission_texture_path, loadTexturesAsSparse);
 	    }
 
 	    if(surface_roughness_texture_path != "" && surface_use_roughness_texture) {

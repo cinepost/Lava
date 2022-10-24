@@ -29,6 +29,7 @@ import Scene.Raster;
 import Utils.Math.MathHelpers;
 
 RasterizerOrderedTexture2D<float2> gMotionVector;
+RasterizerOrderedTexture2D<float4> gTextureGrads;
 
 cbuffer PerFrameCB
 {
@@ -42,6 +43,10 @@ struct VBufferPSOut
     PackedHitInfo packedHitInfo : SV_TARGET0;
 };
 
+#ifndef INTERPOLATION_MODE
+#define INTERPOLATION_MODE linear
+#endif
+
 struct VBufferVSOut
 {
     float2 texC : TEXCRD;
@@ -52,6 +57,7 @@ struct VBufferVSOut
 
     float3 posW : POSITION;  ///< Position in world space.
     float4 posH : SV_POSITION;  ///< Position in clip space.
+    INTERPOLATION_MODE float3 normalW    : NORMAL;      ///< Shading normal in world space.
 
 #if is_valid(gMotionVector)
     float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
@@ -64,10 +70,11 @@ VBufferVSOut vsMain(VSIn vsIn)
     const GeometryInstanceID instanceID = { vsIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+    
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
     vsOut.posH = mul(float4( vsOut.posW, 1.f), gScene.camera.getViewProj());
-
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
+    vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
 
     vsOut.instanceID = instanceID;
     vsOut.materialID = gScene.getMaterialID(instanceID);
@@ -89,30 +96,15 @@ VBufferVSOut vsMain(VSIn vsIn)
     return vsOut;
 }
 
-float3 getGeometricFaceNormalW(const GeometryInstanceID instanceID, const uint triangleIndex) {
-    uint3 vtxIndices = gScene.getIndices(instanceID, triangleIndex);
-    float3 p0 = gScene.vertices[vtxIndices[0]].position;
-    float3 p1 = gScene.vertices[vtxIndices[1]].position;
-    float3 p2 = gScene.vertices[vtxIndices[2]].position;
-    float3 N = cross(p1 - p0, p2 - p0);
-    
-    if (gScene.isObjectFrontFaceCW(instanceID)) N = -N;
-    
-    float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(instanceID);
-    return normalize(mul(N, worldInvTransposeMat));
-}
-
+[earlydepthstencil]
 VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
 
-    // Early discard (single sided backface, phantom, etc)
-    float3 faceNormal = getGeometricFaceNormalW(vsOut.instanceID, triangleIndex);
-    float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-
-    if ((!gScene.isObjectDoubleSided(vsOut.instanceID)) && (dot(viewDir, faceNormal) < 0.f)) discard;
-
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);
+
+    float2 gradX = ddx_fine(vsOut.texC); ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY = ddy_fine(vsOut.texC); ///< Gradient of texture coordiante in teh screen-space Y direction
 
 #if USE_ALPHA_TEST
     // Alpha test.
@@ -122,7 +114,7 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     v.texC = vsOut.texC;
     float lod = 0.f;
 
-    if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
+    //if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 #endif
 
     // Note on barycentrics:
@@ -139,13 +131,25 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     triangleHit.barycentrics = barycentrics.yz;
     psOut.packedHitInfo = triangleHit.pack();
 
+#if is_valid(gTextureGrads)
+    // Store screen space texture gradients
+    {
+        beginInvocationInterlock();
+        gTextureGrads[ipos] = float4(gradX, gradY);
+        endInvocationInterlock();
+    }
+#endif
+
 #if is_valid(gMotionVector)
     // Compute motion vector.
     {
         const float2 pixelPos = ipos + float2(0.5, 0.5); // Current sample in pixel coords.
         const float4 prevPosH = vsOut.prevPosH; // Sample in previous frame in clip space coords, no jittering applied.
         const float2 mv = calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+        
+        beginInvocationInterlock();
         gMotionVector[ipos] = mv;
+        endInvocationInterlock();
     }
 #endif
 

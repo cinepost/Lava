@@ -15,13 +15,13 @@ __quickplanes = {
     
     "depth":         QuickPlane("DEPTH",               "float",        "float32",    False,      {'pfilter':['minmax omedian']}),
     
-    "normals":       QuickPlane("NORMAL",              "vector3",      "float16",    False,      {'pfilter':['minmax omedian']}),
+    "normals":       QuickPlane("NORMAL",              "vector3",      "float32",    False,      {'pfilter':['minmax omedian']}),
 
-    "albedo":        QuickPlane("ALBEDO",              "vector3",      "float32",    False,      {}),
+    "albedo":        QuickPlane("ALBEDO",              "vector3",      "float32",     False,      {}),
 
-    "shadow":        QuickPlane("SHADOW",              "vector3",      "float32",    False,      {}),
+    "shadow":        QuickPlane("SHADOW",              "vector3",      "float16",    False,      {}),
 
-    "occlusion":     QuickPlane("OCCLUSION",           "float",        "float16",    False,      {}),
+    "occlusion":     QuickPlane("OCCLUSION",           "float",        "float32",    False,      {}),
 
     "object_id":     QuickPlane("OBJECT_ID",           "int",          "uint16",     False,      {}),
 

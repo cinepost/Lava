@@ -92,12 +92,11 @@ class MikkTSpaceWrapper {
             return {};
         }
 
-        /* TODO: Is this still relevant !?
-        if (mesh.pIndices) {
+        // TODO: Is this still relevant !?
+        if (!mesh.pIndices) {
             LLOG_WRN << "Can't generate tangent space. The mesh '" << std::string(mesh.name)  << "' doesn't have indices !!!";
             return {};
         }
-        */
 
         // Generate new tangent space.
         SMikkTSpaceInterface mikktspace = {};

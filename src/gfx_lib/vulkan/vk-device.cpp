@@ -610,6 +610,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 			m_features.add("draw_inidirect_count");
 		}
 
+		if(extensionNames.Contains(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME);
+			m_features.add("image_footprint");
+		}
+
 		// ---------
 
 		if (extensionNames.Contains(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {

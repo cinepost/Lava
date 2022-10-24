@@ -57,6 +57,10 @@ struct LTX_Header {
     uint8_t topLevelCompressionLevel = 0; // 0 - 9
 
     uint32_t dataOffset = sizeof(LTX_Header);
+
+    std::string versionString() const {
+        return magic[5] + "." + magic[6];
+    }
 };
 
 struct LTX_MipInfo {
@@ -100,6 +104,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
         \return If loading was successful, a new object. Otherwise, nullptr.
     */
     static SharedConstPtr createFromFile(std::shared_ptr<Device> pDevice, const fs::path& path, bool isTopDown = true);
+    static SharedConstPtr createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown = true);
 
     
     /** Store a memory buffer to a sparse file.

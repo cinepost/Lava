@@ -23,6 +23,7 @@ set_target_properties( ltxmake PROPERTIES OUTPUT_NAME "ltxmake-bin" )
  
 target_link_libraries( 
 	ltxmake
+	lava_lib
 	lava_utils_lib
 	falcor_lib 
 	Boost::log 
