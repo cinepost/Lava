@@ -341,9 +341,9 @@ def lightExportPlanes(wrangler, cam, now, lexport,
 def quickImagePlanes(wrangler, cam, now, components):
     def _quickPlane(wrangler, cam, now, variable, channel,
                     lsdtype, quantize, opts):
-        if LSDhooks.call('pre_defplane', variable, lsdtype, -1,
-                    wrangler, cam, now, '', 0):
+        if LSDhooks.call('pre_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
+
         cmd_start('plane')
         cmd_property('plane', 'variable', [variable])
         cmd_property('plane', 'channel', [channel])
@@ -355,9 +355,9 @@ def quickImagePlanes(wrangler, cam, now, components):
         for opt, optvalue in opts.iteritems():
             cmd_property('plane', opt, optvalue)
 
-        if LSDhooks.call('post_defplane', variable, lsdtype, -1,
-                    wrangler, cam, now, '', 0):
+        if LSDhooks.call('post_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
+
         cmd_end()
 
     quickplanedict = quickplanes.getPlaneDict()
@@ -375,19 +375,25 @@ def quickImagePlanes(wrangler, cam, now, components):
             continue
         for variable in varnames:
             plane = quickplanedict[variable]
-            channel = cam.wrangleString(wrangler,
-                                parmname+'_channel', now, [''])[0]
+            channel = cam.wrangleString(wrangler, parmname+'_channel', now, [''])[0]
+            quantize = cam.wrangleString(wrangler, 'lv_quantize_' + variable, now, [''])[0]
+            
+            if not quantize:
+                quantize = plane.quantize
+            
             if not channel:
                 channel = variable if len(plane.channel) == 0 else plane.channel
+
+
             if plane.percomp:
                 for comp in components.split():
                     compvariable = re.sub('_comp$', "_" + comp, variable)
                     compchannel = re.sub('_comp$', "_" + comp, channel)
                     _quickPlane(cam, wrangler, now, compvariable, compchannel,
-                                plane.lsdtype, plane.quantize, plane.opts)
+                                plane.lsdtype, quantize, plane.opts)
             else:
                 _quickPlane(cam, wrangler, now, variable, channel,
-                            plane.lsdtype, plane.quantize, plane.opts)
+                            plane.lsdtype, quantize, plane.opts)
 
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):

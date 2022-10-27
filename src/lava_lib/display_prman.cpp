@@ -18,7 +18,7 @@ BOOST_STATIC_ASSERT(sizeof(PtDspySigned8) == 1);
 
 namespace lava {
 
-static std::string getDspyErrorMessage(const PtDspyError& err) {
+inline static std::string getDspyErrorMessage(const PtDspyError& err) {
     switch (err) {
         case PkDspyErrorNoMemory:
             return "Out of memory";
@@ -34,7 +34,7 @@ static std::string getDspyErrorMessage(const PtDspyError& err) {
     }
 }
 
-static unsigned getTypeFormat(Display::TypeFormat tformat) {
+inline static unsigned getTypeFormat(Display::TypeFormat tformat) {
     switch (tformat) {
         case Display::TypeFormat::UNSIGNED32:
             return PkDspyUnsigned32;
@@ -42,18 +42,21 @@ static unsigned getTypeFormat(Display::TypeFormat tformat) {
             return PkDspySigned32;
         case Display::TypeFormat::UNSIGNED16:
             return PkDspyUnsigned16;
+        case Display::TypeFormat::FLOAT16:
         case Display::TypeFormat::SIGNED16:
             return PkDspySigned16;
         case Display::TypeFormat::UNSIGNED8:
             return PkDspyUnsigned8;
         case Display::TypeFormat::SIGNED8:
             return PkDspySigned8;
-        case Display::TypeFormat::FLOAT16:
-            return PkDspyFloat16;
         case Display::TypeFormat::FLOAT32:
         default:
             return PkDspyFloat32;
     }
+}
+
+inline static bool isHalfFloatFormat(Display::TypeFormat tformat) {
+    return (tformat == Display::TypeFormat::FLOAT16) ? true : false;
 }
 
 DisplayPrman::DisplayPrman() {
@@ -147,7 +150,7 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
     return SharedPtr((Display*)pDisplay);
 }
 
-bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix) {
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -157,21 +160,23 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
         uint32_t numChannelBits = Falcor::getNumChannelBits(format, (int)i);
         channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
     }
-    return openImage(image_name, width, height, channels, imageHandle);
+    return openImage(image_name, width, height, channels, imageHandle, userParams);
 }
 
-bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
+bool DisplayPrman::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) {
     if( width == 0 || height == 0) {
         LLOG_FTL << "Wrong image dimensions !!!";
         return false;
     }
 
     uint entrySize = 0;
+    bool halfFloatFormat = false;
 
     PtDspyDevFormat *outformat = new PtDspyDevFormat[channels.size()]();
     PtDspyDevFormat *f_ptr = &outformat[0];
     for(const auto& channel: channels){
-        f_ptr->type = getTypeFormat(channel.format);//PkDspyFloat32;
+        f_ptr->type = getTypeFormat(channel.format);
+        halfFloatFormat = isHalfFloatFormat(channel.format);
 
         const std::string& channel_name = channel.name;
         char* pname = reinterpret_cast<char*>(malloc(channel_name.size()+1));
@@ -184,8 +189,13 @@ bool DisplayPrman::openImage(const std::string& image_name, uint width, uint hei
     }
 
     PtDspyImageHandle pvImage;
-    PtDspyError err = mOpenFunc(&pvImage, mDriverName.c_str(), image_name.c_str(), width, height, mUserParameters.size(), mUserParameters.data(), 
-        channels.size(), outformat, &mFlagstuff);
+    std::vector<UserParameter> _userParams = userParams;
+
+    if(halfFloatFormat) {
+        _userParams.push_back(Display::makeStringsParameter("type", {std::string("half")}));
+    }
+
+    PtDspyError err = mOpenFunc(&pvImage, mDriverName.c_str(), image_name.c_str(), width, height, _userParams.size(), _userParams.data(), channels.size(), outformat, &mFlagstuff);
 
     PtDspySizeInfo img_info;
 
@@ -406,7 +416,7 @@ bool DisplayPrman::setStringParameter(const std::string& name, const std::vector
     //    return false;
     //}
     mUserParameters.push_back({});
-    makeStringsParameter(name, strings, mUserParameters.back());
+    Display::makeStringsParameter(name, strings, mUserParameters.back());
     return true;
 }
 
@@ -417,7 +427,7 @@ bool DisplayPrman::setIntParameter(const std::string& name, const std::vector<in
     //    return false;
     //}
     mUserParameters.push_back({});
-    makeIntsParameter(name, ints, mUserParameters.back());
+    Display::makeIntsParameter(name, ints, mUserParameters.back());
     return true;
 }
 
@@ -428,76 +438,8 @@ bool DisplayPrman::setFloatParameter(const std::string& name, const std::vector<
     //    return false;
     //}
     mUserParameters.push_back({});
-    makeFloatsParameter(name, floats, mUserParameters.back());
+    Display::makeFloatsParameter(name, floats, mUserParameters.back());
     return true;
-}
-
-/* static */
-void DisplayPrman::makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter) {
-    // Allocate and fill in the name.
-    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
-    strcpy(pname, name.c_str());
-    parameter.name = pname;
-    
-    // Allocate enough space for the string pointers, and the strings, in one big block,
-    // makes it easy to deallocate later.
-    int count = strings.size();
-    int totallen = count * sizeof(char*);
-    for ( uint i = 0; i < count; i++ )
-        totallen += (strings[i].size()+1) * sizeof(char);
-
-    char** pstringptrs = reinterpret_cast<char**>(malloc(totallen));
-    char* pstrings = reinterpret_cast<char*>(&pstringptrs[count]);
-
-    for ( uint i = 0; i < count; i++ ) {
-        // Copy each string to the end of the block.
-        strcpy(pstrings, strings[i].c_str());
-        pstringptrs[i] = pstrings;
-        pstrings += strings[i].size()+1;
-    }
-
-    parameter.value = reinterpret_cast<RtPointer>(pstringptrs);
-    parameter.vtype = 's';
-    parameter.vcount = count;
-    parameter.nbytes = totallen;
-}
-
-void DisplayPrman::makeIntsParameter(const std::string& name, const std::vector<int>& ints, UserParameter& parameter) {
-    // Allocate and fill in the name.
-    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
-    strcpy(pname, name.c_str());
-    parameter.name = pname;
-    
-
-    // Allocate an ints array.
-    uint32_t count = ints.size();
-    uint32_t totallen = count * sizeof(int);
-    int* pints = reinterpret_cast<int*>(malloc(totallen));
-    // Then just copy the whole lot in one go.
-    memcpy(pints, ints.data(), totallen);
-    parameter.value = reinterpret_cast<RtPointer>(pints);
-    parameter.vtype = 'i';
-    parameter.vcount = count;
-    parameter.nbytes = totallen;
-}
-
-void DisplayPrman::makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter) {
-    // Allocate and fill in the name.
-    char* pname = reinterpret_cast<char*>(malloc(name.size()+1));
-    strcpy(pname, name.c_str());
-    parameter.name = pname;
-    
-
-    // Allocate an ints array.
-    uint32_t count = floats.size();
-    uint32_t totallen = count * sizeof(float);
-    float* pfloats = reinterpret_cast<float*>(malloc(totallen));
-    // Then just copy the whole lot in one go.
-    memcpy(pfloats, floats.data(), totallen);
-    parameter.value = reinterpret_cast<RtPointer>(pfloats);
-    parameter.vtype = 'f';
-    parameter.vcount = count;
-    parameter.nbytes = totallen;
 }
 
 }  // namespace lava

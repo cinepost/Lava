@@ -18,8 +18,8 @@ class DisplayPrman: private Display {
     static SharedPtr create(Display::DisplayType display_type);
 
 
-    virtual bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) override;
-    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix = "") override;
+    virtual bool openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) override;
+    virtual bool openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix = "") override;
     virtual bool closeImage(uint imageHandle) override;
     virtual bool closeAll() override;
 
@@ -37,7 +37,7 @@ class DisplayPrman: private Display {
     inline virtual uint imageWidth(uint imageHandle) const final { return mImages[imageHandle].width; }
     inline virtual uint imageHeight(uint imageHandle) const final { return mImages[imageHandle].height; }
 
- private:
+  private:
     struct ImageData {
       PtDspyImageHandle handle;
       std::string name = "";
@@ -52,12 +52,7 @@ class DisplayPrman: private Display {
 
     DisplayPrman();
 
-    //static void makeStringsParameter(const char* name, const char** strings, int count, UserParameter& parameter);
-    static void makeStringsParameter(const std::string& name, const std::vector<std::string>& strings, UserParameter& parameter);
-    static void makeIntsParameter(const std::string& name, const std::vector<int>& ints, UserParameter& parameter);
-    static void makeFloatsParameter(const std::string& name, const std::vector<float>& floats, UserParameter& parameter);
-
- private:
+  private:
     std::string mDriverName = "";
     void* mLibHandle = nullptr;
 

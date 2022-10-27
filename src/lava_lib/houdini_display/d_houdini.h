@@ -25,6 +25,8 @@
 #include <memory>
 #include <boost/shared_ptr.hpp>
 
+#include "glm/detail/type_half.hpp"
+
 using namespace boost;
 using namespace std;
 
@@ -77,8 +79,7 @@ public:
 	void	destroy();
 	int		addChannel(const string& name, const int size, const int count, const int off[4]);
     
-    int
-    writeChannelHeader(void);
+    int 	writeChannelHeader(void);
 
 	int		writeData(const int x0, const int x1, const int y0, const int y1,
                       const char* data, const int bytes_per_pixel,
@@ -94,28 +95,26 @@ public:
 	static int openPipe(void);
 
 	void	parseOptions(const int paramCount, const UserParameter *parameters);
-	const string& getIMDisplayOptions() const {return myIMDisplayOptions;}
 
-    char const* getDisplayOptions(void) const { return myIMDisplayOptions.c_str(); }
-    
-    IMDisplayPtr getIMDisplay(void) { return myIMD; }
-    
-    char const* getName(void) const { return myName.c_str(); }
-    
-    int
-    getPort(void) const { return myPort; }
-    
-    bool
-    hasDisplayOptions(void) const { return !myIMDisplayOptions.empty(); }
-    
-    void
-    setIMDisplay(IMDisplayPtr p) { myIMD = p; }
-    
-    void
-    setChannelOffset(int id) { myChannelOffset = id; }
+	inline bool isHalfFloat() const { return mHalfFloat; }
 
-    size_t
-    getChannelCount(void) const { return myChannels.size(); }
+	inline const string& getIMDisplayOptions() const { return myIMDisplayOptions; }
+
+    inline char const* getDisplayOptions(void) const { return myIMDisplayOptions.c_str(); }
+    
+    inline IMDisplayPtr getIMDisplay(void) { return myIMD; }
+    
+    inline char const* getName(void) const { return myName.c_str(); }
+    
+    inline int getPort(void) const { return myPort; }
+    
+    inline bool hasDisplayOptions(void) const { return !myIMDisplayOptions.empty(); }
+    
+    inline void setIMDisplay(IMDisplayPtr p) { myIMD = p; }
+    
+    inline void setChannelOffset(int id) { myChannelOffset = id; }
+
+    inline size_t getChannelCount(void) const { return myChannels.size(); }
     
 private:
     
@@ -123,7 +122,8 @@ private:
 	string myIMDisplayOptions;
 	vector< h_shared_ptr < H_Channel > > myChannels;
     
-    int     myChannelOffset; // my first channel's id
+    bool    mHalfFloat = false; // Indicates that pixel data is 16 bit float (half)
+    int     myChannelOffset;    // my first channel's id
     
 	int		myXoff, myYoff;
 	int		myOrigXres, myOrigYres;

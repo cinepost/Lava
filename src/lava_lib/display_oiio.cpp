@@ -94,7 +94,7 @@ bool DisplayOIIO::_open(uint imageHandle) {
     return true;
 }
 
-bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, std::string channel_prefix) {
+bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint height, Falcor::ResourceFormat format, uint &imageHandle, const std::vector<UserParameter>& userParams, std::string channel_prefix) {
     std::vector<Channel> channels;
 
     Falcor::FormatType format_type = Falcor::getFormatType(format);
@@ -105,10 +105,10 @@ bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint heig
         channels.push_back(makeDisplayChannel(channel_prefix, i, format_type, numChannelBits, NamingScheme::RGBA));
     }
 
-    return openImage(image_name, width, height, channels, imageHandle);
+    return openImage(image_name, width, height, channels, imageHandle, userParams);
 }
 
-bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle) {
+bool DisplayOIIO::openImage(const std::string& image_name, uint width, uint height, const std::vector<Channel>& channels, uint &imageHandle, const std::vector<UserParameter>& userParams) {
     if( channels.size() < 1) { LLOG_FTL << "No image channels specified !!!"; return false; }
     if( width == 0 || height == 0) { LLOG_FTL << "Wrong image dimensions !!!"; return false; }
 

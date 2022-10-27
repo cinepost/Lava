@@ -91,6 +91,7 @@ class dlldecl SceneBuilder {
         UseCompressedHitInfo            = 0x8000,   ///< Use compressed hit info (on scenes with triangle meshes only).
         TessellateCurvesIntoPolyTubes   = 0x10000,  ///< Tessellate curves into poly-tubes (the default is linear swept spheres).
         UseRaytracing                   = 0x20000,  ///< Use raytracing
+        UseCryptomatte                  = 0x40000,  ///< Use cryptomatte system
 
         UseCache                    = 0x10000000, ///< Enable scene caching. This caches the runtime scene representation on disk to reduce load time.
         RebuildCache                = 0x20000000, ///< Rebuild scene cache.

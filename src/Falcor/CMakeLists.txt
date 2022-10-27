@@ -36,7 +36,14 @@ file( GLOB SOURCES
     ./Utils/Image/TextureDataCacheLRU.cpp
     ./Utils/Textures/*.cpp
     ./Utils/Perception/*.cpp
-    ./Utils/SampleGenerators/*.cpp
+    
+    # CPU sample generators
+    ./Utils/SampleGenerators/DxSamplePattern.cpp
+    ./Utils/SampleGenerators/HaltonSamplePattern.cpp
+    ./Utils/SampleGenerators/StratifiedSamplePattern.cpp
+    #./Utils/SampleGenerators/PoissonSamplePattern.cpp
+
+    ./Utils/Cryptomatte/*.cpp
     ./Utils/Sampling/*.cpp
     ./Utils/Sampling/Pseudorandom/*.cpp
     ./Utils/Scripting/*.cpp

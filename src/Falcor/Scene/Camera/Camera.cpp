@@ -26,10 +26,14 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "stdafx.h"
-#include "Camera.h"
-#include "Utils/Math/AABB.h"
-#include "Utils/Math/FalcorMath.h"
+
+#include <stdlib.h>
+
+#include "Falcor/Utils/Math/AABB.h"
+#include "Falcor/Utils/Math/FalcorMath.h"
 #include "glm/gtc/type_ptr.hpp"
+
+#include "Camera.h"
 
 namespace Falcor {
 
@@ -42,8 +46,11 @@ namespace {
 
 static_assert(sizeof(CameraData) % (sizeof(float4)) == 0, "CameraData size should be a multiple of 16");
 
+constexpr float M_2PI = 2.0f * M_PI;
+
 // Default dimensions of full frame cameras and 35mm film
 const float Camera::kDefaultFrameHeight = 24.0f;
+
 
 Camera::Camera() {}
 
@@ -130,8 +137,6 @@ void Camera::calculateCameraParameters() const {
 			mData.projMat = mPersistentProjMat;
 		} else {
 			if (fovY != 0.f) {
-				//mData.projMat = glm::perspective(fovY, mData.aspectRatio, mData.nearZ, mData.farZ);
-
 				float left   = ((mData.cropRegion[0]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
 				float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
 				float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
@@ -155,6 +160,24 @@ void Camera::calculateCameraParameters() const {
 		mData.viewProjMatNoJitter = mData.projMat * mData.viewMat;
 		mData.projMatNoJitter = mData.projMat;
 		mData.projMat = jitterMat * mData.projMat;
+
+		// DOF matrix
+		{
+			float R = .5f;
+			float r = R * sqrt(static_cast <float>(rand()) / static_cast<float>(RAND_MAX));
+			float theta = (static_cast <float>(rand()) / static_cast<float>(RAND_MAX)) * M_2PI;
+
+			float2 p = {(r * cos(theta)) / static_cast <float>(mData.frameWidth), (r * sin(theta)) / static_cast <float>(mData.frameHeight)};
+/*
+			glm::mat4 dofMat(
+				1.0f, 0.0f, 0.0f, 0.0f,
+				0.0f, 1.0f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				p.x, p.y, 0.0f, 1.0f
+			);
+			mData.projMat = dofMat * mData.projMat;
+*/
+		}
 
 		mData.viewProjMat = mData.projMat * mData.viewMat;
 		mData.invViewProj = glm::inverse(mData.viewProjMat);
@@ -268,12 +291,8 @@ void Camera::setJitter(float jitterX, float jitterY) {
 }
 
 void Camera::setJitterInternal(float jitterX, float jitterY) {
-	// Crop region jitter scale coefficient
-	float invJitterScaleX = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[2] - mData.cropRegion[0]);
-	float invJitterScaleY = 1.0f / std::max(std::numeric_limits<float>::min(), mData.cropRegion[3] - mData.cropRegion[1]);
-
-	mData.jitterX = jitterX;// * invJitterScaleX;
-	mData.jitterY = jitterY;// * invJitterScaleY;
+	mData.jitterX = jitterX;
+	mData.jitterY = jitterY;
 	mDirty = true;
 }
 

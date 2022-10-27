@@ -6,17 +6,21 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-# find boost libs
+# Find Boost libs
 find_package( Boost COMPONENTS log REQUIRED )
+
+# OpenMP
+find_package(OpenMP REQUIRED)
 
 include_directories( 
 	${CMAKE_SOURCE_DIR}
 	${Boost_INCLUDE_DIRS} 
 )
 
-# define wrapper library
 add_library( d_houdini SHARED ${SOURCES} )
-target_link_libraries( d_houdini ${Boost_LIBRARIES} )
+
+#if(OpenMP_CXX_FOUND)
+target_link_libraries(d_houdini PUBLIC ${Boost_LIBRARIES} OpenMP::OpenMP_CXX )
 
 # don't prepend wrapper library name with lib
 set_target_properties( d_houdini PROPERTIES PREFIX "" )

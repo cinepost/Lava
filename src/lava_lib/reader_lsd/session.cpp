@@ -459,38 +459,40 @@ bool Session::cmdRaytrace() {
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
 	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "renderlabel", std::string(""));
 
-	// houdini display driver section
-	if((pDisplay->type() == DisplayType::HOUDINI) || (pDisplay->type() == DisplayType::MD) || (pDisplay->type() == DisplayType::IP)) {
-		int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
-		int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
-		std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
-		std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
-		std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
-		int  mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
+	{
+		std::vector<Display::UserParm> userParams;
+	
+		// houdini display driver section
+		if((pDisplay->type() == DisplayType::HOUDINI) || (pDisplay->type() == DisplayType::MD) || (pDisplay->type() == DisplayType::IP)) {
+			int houdiniPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.houdiniportnum", int(0)); 
+			int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
+			std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
+			std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
+			std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
+			int  mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
 
-		imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
-		
-		if (renderLabel != "") pDisplay->setStringParameter("label", {renderLabel});
-		if (mplayRendermode != "") pDisplay->setStringParameter("numbering", {mplayRendermode});
+			imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
+			
+			if (renderLabel != "") userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
+			
+			if (mplayRendermode != "") userParams.push_back(Display::makeStringsParameter("numbering", {mplayRendermode}));
 
-		pDisplay->setStringParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange});
+			userParams.push_back(Display::makeStringsParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange}));
+	    	
+			if ((mplayPortNum > 0) && mIPR) {
+	    		userParams.push_back(Display::makeStringsParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)}));
+	    		imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
+	    	}
 
-		if ((mplayPortNum > 0) && mIPR) {
-    		pDisplay->setStringParameter("remotedisplay", {mplayHostname + ":" + std::to_string(mplayPortNum)});
-    		imageFileName = "iprsocket:" + std::to_string(mplayPortNum);
-    	}// else 
+	    	if (houdiniPortNum > 0) userParams.push_back(Display::makeIntsParameter("houdiniportnum", {houdiniPortNum}));
+		}
 
-    	if (houdiniPortNum > 0) {
-    		pDisplay->setIntParameter("houdiniportnum", {houdiniPortNum});
+    	// Open main image plane
+    	if(!pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage, userParams)) {
+        	LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
+        	return false;
     	}
 	}
-
-    // Open main image plane
-
-    if(!pDisplay->openImage(imageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pMainAOVPlane->format(), hImage)) {
-        LLOG_FTL << "Unable to open image " << imageFileName << " !!!";
-        return false;
-    }
 
     // Open secondary aov image planes
     for(auto& entry: aovPlanes) {
@@ -498,7 +500,9 @@ bool Session::cmdRaytrace() {
     	std::string aovImageFileName = imageFileName;
     	std::string channel_prefix = std::string(pPlane->name());
 
-    	if(!pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, channel_prefix)) {
+    	std::vector<Display::UserParm> userParams;
+
+    	if(!pDisplay->openImage(aovImageFileName, mCurrentFrameInfo.imageWidth, mCurrentFrameInfo.imageHeight, pPlane->format(), entry.first, userParams, channel_prefix)) {
         	LLOG_ERR << "Unable to open AOV image " << pPlane->name() << " !!!";
     		entry.second = nullptr;
     	}
@@ -1273,7 +1277,7 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     	LLOG_ERR << "No surface property set for object " << obj_name;
     }
 
-    std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name));
+    std::string material_name = pObj->getPropertyValue(ast::Style::OBJECT, "materialname", std::string(obj_name + "_material"));
     
 	Falcor::StandardMaterial::SharedPtr pMaterial = std::dynamic_pointer_cast<Falcor::StandardMaterial>(pSceneBuilder->getMaterial(material_name));
 	
@@ -1335,7 +1339,6 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     visibilitySpec.visibleToRefractionRays = pObj->getPropertyValue(ast::Style::OBJECT, "visible_refract", true);
     visibilitySpec.receiveShadows = pObj->getPropertyValue(ast::Style::OBJECT, "receive_shadows", true);
     
-
     // add a mesh instance to a node
     pSceneBuilder->addMeshInstance(node_id, mesh_id, exportedInstanceID, pMaterial, &shadingSpec, &visibilitySpec);
     

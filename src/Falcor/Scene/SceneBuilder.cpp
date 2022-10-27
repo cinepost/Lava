@@ -188,6 +188,7 @@ SceneCache::Key computeSceneCacheKey(const std::string& scenePath, SceneBuilder:
 SceneBuilder::SceneBuilder(std::shared_ptr<Device> pDevice, Flags flags) : mpDevice(pDevice), mFlags(flags) {
     mpFence = GpuFence::create(mpDevice);
     mSceneData.pMaterialSystem = MaterialSystem::create(mpDevice);
+    mSceneData.pCryptomatteSystem = CryptomatteSystem::create(mpDevice);
 };
 
 SceneBuilder::SharedPtr SceneBuilder::create(std::shared_ptr<Device> pDevice, Flags flags) {
@@ -704,7 +705,9 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
-    return mSceneData.pMaterialSystem->addMaterial(pMaterial);
+    uint32_t materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
+    if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
+    return materialID;
 }
 
 void SceneBuilder::loadMaterialTexture(const Material::SharedPtr& pMaterial, Material::TextureSlot slot, const fs::path& path, bool loadAsSparse) {
