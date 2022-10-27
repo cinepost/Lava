@@ -119,4 +119,11 @@ float util_hash_to_float(uint32_t hash) {
   return f;
 }
 
+float3 util_hash_name_to_rgb(const unsigned char *name) {
+  size_t str_len = 0;
+  while (name[str_len] != '\0') str_len++;
+  uint32_t m3hash = util_murmur_hash3(static_cast<const void *>(name), str_len, 0);
+  return {util_hash_to_float(m3hash), ((float)((m3hash << 8)) / (float) UINT32_MAX), ((float)((m3hash << 8)) / (float) UINT32_MAX)};
+}
+
 }  // namespace Falcor

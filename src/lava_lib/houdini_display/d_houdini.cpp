@@ -41,6 +41,8 @@
 #include <string>
 #include <regex>
 
+#include <omp.h>
+
 #if _DEBUG
 	#define D_HOUDINI_DEBUG_LEVEL 0	// Debug logging
 #else
@@ -423,8 +425,7 @@ public:
 	}
 };
 
-static void
-addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDef > >& list, const int foff) {
+static void addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDef > >& list, const int foff, bool isHalfFloat) {
 	char* name;
 	const char* dot;
 	std::string prefix;
@@ -434,7 +435,6 @@ addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDef > >& list,
 	// Map the RIB types to the types expected by imdisplay
 	switch (def.type & PkDspyMaskType) {
 		case PkDspyFloat32:
-		case PkDspyFloat16:
 			format = 0;
 			break;
 		case PkDspyUnsigned32:
@@ -443,7 +443,7 @@ addChanDef(const PtDspyDevFormat& def, vector<h_shared_ptr< H_ChanDef > >& list,
 			break;
 		case PkDspyUnsigned16:
 		case PkDspySigned16:
-			format = 2;
+			format = isHalfFloat ? 0 : 2;
 			break;
 		case PkDspyUnsigned8:
 		case PkDspySigned8:
@@ -577,7 +577,7 @@ static int addImageChannels(ImagePtr img, const int nformats, const PtDspyDevFor
     }
 
     for (i = 0; i < nformats; ++i) {
-		addChanDef(formats[i], defs, i);
+		addChanDef(formats[i], defs, i, img->isHalfFloat());
     }
 
 	log(0, "Found %d unique channels\n", defs.size());
@@ -623,8 +623,7 @@ H_MultiRes::init(const int xres, const int yres, const int level) {
 
 static int dbgCont = 0;
 
-PtDspyError
-DspyImageOpen(PtDspyImageHandle* pvImage,
+PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
 	const char*, // drivername
 	const char* filename,
 	int width,
@@ -720,13 +719,15 @@ DspyImageOpen(PtDspyImageHandle* pvImage,
 
 		log(0, "Create: %p\n", img.get());
         g_masterImages.push_back(img);
-        
+    /*
         if (g_masterImages.size() == 1) {
             // initialize the options we might send to mplay or Houdini. Only
             // the first H_Image gets to open mplay so don't bother with
             // subsequent ones
             img->parseOptions(paramCount, parameters);
         }
+    */
+        img->parseOptions(paramCount, parameters);
     } else {
         // a LOD image
         vector<ImagePtr>::const_iterator i;
@@ -1156,9 +1157,7 @@ int H_Image::openPipe(void) {
     return 1;
 }
 
-int
-H_Image::writeChannelHeader()
-{
+int H_Image::writeChannelHeader() {
     FILE* fp = myIMD->GetFile();
 
     int header[8];
@@ -1181,13 +1180,16 @@ H_Image::writeChannelHeader()
     return 1; // succcess
 }
 
-int
-H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1,
-                   const char* data_base, int bpp,
-                   float tileScaleX, float tileScaleY) {
+int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_base, int bpp, float tileScaleX, float tileScaleY) {
 	int sx, sy;
 	int xres, yres;
 	int ch;
+
+	if(mHalfFloat) {
+		log(0, "H_Image::writeData is Float16 (half)\n");
+	}else{
+		log(0, "H_Image::writeData is NOT Float16 (half)\n");
+	}
 
 	// since we are going to move through the data based on per pixel information
 	// we store a reference back to the original memory base address here....
@@ -1218,12 +1220,22 @@ H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1,
 	if (xres <= 0 || yres <= 0)
 		return 1;
 
+	// Format check for HalfFloat conversion support
+	bool isFloatFormat = false;
+	for (ch = 0; ch < myChannels.size(); ch++)
+		if(myChannels[ch]->getFormat() == 0) isFloatFormat = true;
+
 	// begint the tile for all channels
 	for (ch = 0; ch < myChannels.size(); ++ch)
 		myChannels[ch]->startTile(xres, yres);
 
 	// for each y pixel of the destination tile
 	int destPixelOffset = 0;
+
+	int nProcessors = std::max(1, omp_get_max_threads() - 1);
+	omp_set_num_threads(nProcessors);
+
+	#pragma omp parallel for collapse(2) private(sy, sx, data_curr, destPixelOffset)
 	for (sy = 0; sy < yres; ++sy) {
 		// for each x pixel of the destination tile
 		for (sx = 0; sx < xres; ++sx) {
@@ -1238,8 +1250,20 @@ H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1,
 			data_curr = data_base + (sourceX + a_xres * sourceY) * bpp;
 
 			// copy the data for each channel....
-			for (ch = 0; ch < myChannels.size(); ++ch)
-				myChannels[ch]->writePixel(data_curr, destPixelOffset);
+			if(isHalfFloat() & isFloatFormat) {
+				// Our data is in float16 format. We have to convert it to float32 for now (idisplay libitation)
+				float f[4]; //buffer
+				for (ch = 0; ch < myChannels.size(); ++ch) {
+					for(int _i = 0; _i < myChannels[ch]->getArraySize(); _i++) {
+						f[_i] = glm::detail::toFloat32(*reinterpret_cast<const short*>(data_curr + _i*2));
+					}
+					myChannels[ch]->writePixel(reinterpret_cast<const char*>(&f[0]), destPixelOffset);
+				}
+			} else {
+				// Just send data as it is
+				for (ch = 0; ch < myChannels.size(); ++ch)
+					myChannels[ch]->writePixel(data_curr, destPixelOffset);
+			}
 		}
 	}
 
@@ -1287,6 +1311,14 @@ H_Image::parseOptions(int paramCount, const UserParameter* parameters) {
 	if (err == PkDspyErrorNone) {
 		sprintf(tmp, " -P %d", int_buf[0]);
 		strcat(options, tmp);
+	}
+
+	err = DspyFindStringInParamList("type", &str_ptr, paramCount, parameters);
+	if (err == PkDspyErrorNone) {
+		if(!strcmp("half", str_ptr)) {
+			log(0, "Data is Float16 (half) !\n");
+			mHalfFloat = true;
+		}
 	}
 
 	err = DspyFindStringInParamList("sequence", &str_ptr, paramCount, parameters);

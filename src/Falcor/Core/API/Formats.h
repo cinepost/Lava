@@ -305,6 +305,11 @@ class Device;
         return !isIntegerFormat(format);
     }
 
+    inline bool isHalfFloatFormat(ResourceFormat format) {
+        if(!isIntegerFormat(format) && ((getFormatBytesPerBlock(format) / getFormatChannelCount(format)) == 2)) return true;
+        return false;
+    }
+
     inline uint32_t getNumChannelBits(ResourceFormat format, int channel) {
         return kFormatDesc[(uint32_t)format].numChannelBits[channel];
     }

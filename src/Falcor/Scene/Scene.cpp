@@ -130,6 +130,7 @@ Scene::Scene(std::shared_ptr<Device> pDevice, SceneData&& sceneData): mpDevice(p
     mLights = std::move(sceneData.lights);
 
     mpMaterialSystem = std::move(sceneData.pMaterialSystem);
+    mpCryptomatteSystem = std::move(sceneData.pCryptomatteSystem);
     mMaterialXs = std::move(sceneData.materialxs);
     mGridVolumes = std::move(sceneData.gridVolumes);
     mGrids = std::move(sceneData.grids);
@@ -1068,6 +1069,7 @@ void Scene::finalize() {
     // TODO: Remove this when unbounded descriptor arrays are supported (#1321).
     assert(mpMaterialSystem);
     mpMaterialSystem->finalize();
+
 
     updateGeometryTypes();
     initSDFGrids();

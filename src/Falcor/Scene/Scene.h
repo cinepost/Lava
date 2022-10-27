@@ -65,6 +65,7 @@
 #include "Falcor/Scene/HitInfo.h"
 
 #include "Falcor/Scene/Material/MaterialSystem.h"
+#include "Falcor/Utils/Cryptomatte/CryptomatteSystem.h"
 
 #include "SDFs/SDFGrid.h"
 
@@ -964,8 +965,10 @@ public:
         uint32_t selectedCamera = 0;                            ///< Index of selected camera.
         float cameraSpeed = 1.f;                                ///< Camera speed.
         std::vector<Light::SharedPtr> lights;                   ///< List of light sources.
-        MaterialSystem::SharedPtr pMaterialSystem;              ///< Material system. This holds data and resources for all materials.
-        //std::vector<Material::SharedPtr> materials;             ///< List of materials.
+        
+        MaterialSystem::SharedPtr       pMaterialSystem;        ///< Material system. This holds data and resources for all materials.
+        CryptomatteSystem::SharedPtr    pCryptomatteSystem;     ///< Cryptomatte system. This holds material name, instance name and custom attribute hashes.
+
         std::vector<MaterialX::SharedPtr> materialxs;           ///< List of MaterialX materials.
         std::vector<GridVolume::SharedPtr> gridVolumes;         ///< List of grid volumes.
         std::vector<Grid::SharedPtr> grids;                     ///< List of volume grids.
@@ -1226,7 +1229,7 @@ public:
     Buffer::SharedPtr mpRtAABBBuffer;                           ///< GPU Buffer of raw AABB data. Used for acceleration structure creation, and bound to the Scene for access in shaders.
 
     // Materials
-    MaterialSystem::SharedPtr        mpMaterialSystem = nullptr;
+    MaterialSystem::SharedPtr         mpMaterialSystem = nullptr;
     std::vector<MaterialX::SharedPtr> mMaterialXs;
     std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
     std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.
@@ -1283,6 +1286,9 @@ public:
     };
     std::vector<Viewpoint> mViewpoints;
     uint32_t mCurrentViewpoint = 0;
+
+    // Cryptomatte
+    CryptomatteSystem::SharedPtr mpCryptomatteSystem = nullptr;
 
     // Rendering
     std::map<RasterizerState::CullMode, RasterizerState::SharedPtr> mFrontClockwiseRS;
