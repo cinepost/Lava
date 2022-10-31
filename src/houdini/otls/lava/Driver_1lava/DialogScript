@@ -989,12 +989,6 @@
         group {
             name    "output6_2"
             label   "Cryptomatte"
-
-            parm {
-                name    "lv_cryptolayers"
-                label   "Cryptomatte Layers"
-            }
-
         }
 
         group {
@@ -1093,18 +1087,49 @@
 
             parm {
                 name    "lv_samples"
-                label   "Samples"
+                label   "Camera Samples"
                 type    integer
                 default { "16" }
                 help    "Samples per pixel"
                 range   { 1 1024 }
+                parmtag { "spare_category" "Sampling" }
             }
+
+            parm {
+                name    "lv_shadingrate"
+                label   "Shading Rate"
+                type    integer
+                default { "1" }
+                help    "Shading samples per camera sample. Be careful as this will affect the performance. "
+                range   { 1 16 }
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
+                name    "lv_stbn_sampling"
+                label   "STBN Sampling"
+                type    toggle
+                default { "0" }
+                help    "Prefer Spatiotemporal Blue Noise sampling where applicable."
+                parmtag { "spare_category" "Sampling" }
+            }
+
+            parm {
+                name    "lv_samplelock"
+                label   "Sample Lock"
+                type    toggle
+                default { "0" }
+                help    ""
+                parmtag { "spare_category" "Sampling" }
+            }
+
             parm {
                 name    "lv_sampling_pattern"
                 label   "Sampling Pattern"
                 type    string
                 default { "stratified" }
-                help    "Sample generator pattern used for antialiasing"
+                hidewhen "{ 0 == 0 }"
+                help    "Sample generator pattern used for antialiasing. Has no effect right now."
                 menu {
                     "center"        "Center"
                     "stratified"    "Stratified"
@@ -1116,6 +1141,60 @@
 
         group {
             name    "images_4_1_1"
+            label   "Shading"
+
+            parm {
+                name    "lv_ray_bias"
+                label   "Ray Bias"
+                type    float
+                default { "0.0001" }
+                range   { 0.0001 0.01 }
+                disablewhen "{ lv_enable_rt == 0 }"
+                parmtag { "script_callback_language" "python" }
+            }
+        }
+
+        group {
+            name    "images_4_1_2"
+            label   "Limits"
+
+            groupsimple {
+                name    "limits_1_1"
+                label   "Experimental"
+
+                parm {
+                    name    "lv_reflect_limit"
+                    label   "Reflect Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_diffuse_limit"
+                    label   "Diffuse Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+            }
+
+            parm {
+                name    "lv_colorlimit"
+                label   "Color Limit"
+                type    float
+                size    3
+                default { "10" "10" "10" }
+                help    ""
+            }
+        }
+
+        group {
+            name    "images_4_1_3"
             label   "Performance"
 
             parm {
@@ -1163,7 +1242,7 @@
         }
 
         group {
-            name    "images_4_1_2"
+            name    "images_4_1_4"
             label   "Geometry"
 
             parm {
@@ -1195,7 +1274,7 @@
         }
 
         group {
-            name    "images_4_1_3"
+            name    "images_4_1_5"
             label   "Texturing"
 
             parm {
@@ -1257,7 +1336,7 @@
         }
 
         group {
-            name    "images_4_1_4"
+            name    "images_4_1_6"
             label   "Effects"
             invisibletab
 
@@ -1317,24 +1396,7 @@
                     parmtag { "script_callback_language" "python" }
                 }
             }
-
         }
-
-        group {
-            name    "images_4_1_5"
-            label   "Ray Tracing"
-            disablewhentab "{ lv_enable_rt == 0 }"
-
-            parm {
-                name    "lv_ray_bias"
-                label   "Ray Bias"
-                type    float
-                default { "0.001" }
-                range   { 0 0.1 }
-                parmtag { "script_callback_language" "python" }
-            }
-        }
-
     }
 
     group {

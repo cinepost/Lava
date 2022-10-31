@@ -83,8 +83,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       uint regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
     };
 
-  // __HYDRA__ oriented structs end .....
-
   public:
  	  virtual ~Renderer();
     using SharedPtr = std::shared_ptr<Renderer>;
@@ -122,8 +120,16 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     */
     bool queryAOVPlaneGeometry(const AOVName& name, AOVPlaneGeometry& aov_plane_geometry) const;
 
-  // HYDRA related section end ....
+    /** Well.. This is kind of ugly, but it does it's job. This is basically all purpose dictionary that might be used
+        by any render pass in the rendering graph of the renderer. So for example we can store some named value here hoping that some render pass
+        recognizes it and behaves in a way we wanted to. Ideally if we say set "bias" key to some value like 0.001 we expect
+        that any render pass that uses varible bias ray tracing would adjust itsef acoording to this value.
+        Because render graphs are dynamic in their nature we are yet to come up with a better approach.
+      \return Dictionary.
+    */ 
 
+    Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+  
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);
 #endif
@@ -193,6 +199,9 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     //DeferredLightingPass::SharedPtr mpDeferredLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
+
+    Falcor::Dictionary              mRendererConfigurationDictionary;
+    Falcor::Dictionary              mRenderPassesDictionary;
 
     std::map<std::string, AOVPlane::SharedPtr> mAOVPlanes;
 

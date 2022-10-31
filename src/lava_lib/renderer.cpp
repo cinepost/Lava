@@ -197,7 +197,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		mpTexturesResolvePassGraph = RenderGraph::create(mpDevice, imageSize, vtexResolveChannelOutputFormat, "VirtualTexturesGraph");
 
 		// Depth pre-pass
-		Falcor::Dictionary depthPrePassDictionary;
+		Falcor::Dictionary depthPrePassDictionary(mRenderPassesDictionary);
 		depthPrePassDictionary["disableAlphaTest"] = true; // no virtual textures loaded at this point
 
 		auto pDepthPrePass = DepthPass::create(pRenderContext, depthPrePassDictionary);
@@ -224,7 +224,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph = RenderGraph::create(mpDevice, imageSize, ResourceFormat::RGBA32Float, "MainImageRenderGraph");
 	
 	// Depth pass
-	Falcor::Dictionary depthPassDictionary;
+	Falcor::Dictionary depthPassDictionary(mRenderPassesDictionary);
 	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
 
 	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
@@ -234,7 +234,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
 
 	// Forward lighting
-	Falcor::Dictionary lightingPassDictionary;
+	Falcor::Dictionary lightingPassDictionary(mRenderPassesDictionary);
 
 	lightingPassDictionary["frameSampleCount"] =  frame_info.imageSamples;
 
@@ -245,20 +245,20 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	pForwardLightingPass->setScene(pRenderContext, pScene);
 	pForwardLightingPass->setColorFormat(ResourceFormat::RGBA16Float);
 
-	mpRenderGraph->addPass(pForwardLightingPass, "LightingPass");
+	mpRenderGraph->addPass(pForwardLightingPass, "ShadingPass");
 
 #else
 
 	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
 	pDeferredLightingPass->setScene(pRenderContext, pScene);
 	
-	mpRenderGraph->addPass(pDeferredLightingPass, "LightingPass");
+	mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
 
 #endif
 
 
 	// VBuffer
-	Falcor::Dictionary vbufferPassDictionary;
+	Falcor::Dictionary vbufferPassDictionary(mRenderPassesDictionary);
 	auto pVBufferPass = VBufferRaster::create(pRenderContext, vbufferPassDictionary);
 	pVBufferPass->setScene(pRenderContext, pScene);
 	pVBufferPass->setCullMode(cullMode);
@@ -266,7 +266,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
 
 	// RTXDIPass
-	Falcor::Dictionary rtxdiPassDictionary;
+	Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
 	auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
 	pRTXDIPass->setScene(pRenderContext, pScene);
 
@@ -286,20 +286,20 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
-	mpRenderGraph->addEdge("VBufferPass.depth", "LightingPass.depth");
-	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
+	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
 	
 #else
 	// Deferred lighting pass
-	mpRenderGraph->addEdge("VBufferPass.vbuffer", "LightingPass.vbuffer");
-	mpRenderGraph->addEdge("VBufferPass.texGrads", "LightingPass.texGrads");
-	mpRenderGraph->addEdge("SkyBoxPass.target", "LightingPass.color");
+	mpRenderGraph->addEdge("VBufferPass.vbuffer", "ShadingPass.vbuffer");
+	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
+	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
 
 #endif
 
 	// Create anf bind main "beauty" plane
 	pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
-	mpRenderGraph->addEdge("LightingPass.color", pMainAOV->accumulationPassInputName());
+	mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassInputName());
 	//mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
 
 	// Create and bind additional AOV planes
@@ -319,7 +319,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpRenderGraph->addEdge("LightingPass.posW", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.posW", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -328,7 +328,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("LightingPass.normals", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.normals", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -337,7 +337,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("LightingPass.shadows", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.shadows", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -346,7 +346,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("LightingPass.albedo", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -354,7 +354,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
-						mpRenderGraph->addEdge("LightingPass.occlusion", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.occlusion", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -363,7 +363,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("LightingPass.prim_id", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.prim_id", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -372,7 +372,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
-						mpRenderGraph->addEdge("LightingPass.op_id", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.op_id", pPlane->accumulationPassInputName());
 					}
 				}
 				break;

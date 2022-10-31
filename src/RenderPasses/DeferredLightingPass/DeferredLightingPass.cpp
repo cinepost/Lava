@@ -59,6 +59,12 @@ namespace {
     const std::string kFrameSampleCount = "frameSampleCount";
     const std::string kSuperSampleCount = "superSampleCount";
     const std::string kSuperSampling = "enableSuperSampling";
+    const std::string kColorLimit = "colorLimit";
+    const std::string kUseSTBN = "useSTBN";
+    const std::string kRayBias = "rayBias";
+    const std::string kShadingRate = "shadingRate";
+    const std::string kRayReflectLimit = "rayReflectLimit";
+    const std::string kRayDiffuseLimit = "rayDiffuseLimit";
 }
 
 DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -68,7 +74,12 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
         else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kSuperSampling) pThis->setSuperSampling(value);
-        else LLOG_WRN << "Unknown field '" << key << "' in a DeferredLightingPass dictionary";
+        else if (key == kColorLimit) pThis->setColorLimit(value);
+        else if (key == kUseSTBN) pThis->setSTBNSampling(value);
+        else if (key == kRayBias) pThis->setRayBias(value);
+        else if (key == kShadingRate) pThis->setShadingRate(value);
+        else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
+        else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
     }
 
     return pThis;
@@ -138,16 +149,19 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         defines.add(getValidResourceDefines(kExtraOutputChannels, renderData));
         
         // AOV channels processing
-        //const auto& pAovNormalsTex = renderData.getTexture("normals");
         Texture::SharedPtr pAovNormalsTex = renderData["normals"]->asTexture();
         if(pAovNormalsTex) {
             if(isFloatFormat(pAovNormalsTex->getFormat())) defines.add("_AOV_NORMALS_FLOAT", "");
         }
 
-        // Super sampling
+        // Sampling / Shading
+        if (mShadingRate > 1) defines.add("_SHADING_RATE", std::to_string(mShadingRate));
+        if (mUseSTBN) defines.add("_USE_STBN_SAMPLING", "1");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
-
-        // Sample generator
+        
+        uint maxRayLevel = std::max(mRayDiffuseLimit, mRayReflectLimit);
+        if(maxRayLevel > 0) defines.add("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
+        
         if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
 
         mpLightingPass = ComputePass::create(mpDevice, desc, defines, true);
@@ -182,12 +196,54 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
 
     cb_var["gFrameDim"] = mFrameDim;
     cb_var["gNoiseOffset"] = noiseOffset;
-    cb_var["gViewInvMat"] = glm::inverse(mpScene->getCamera()->getViewMatrix());
     cb_var["gSamplesPerFrame"]  = mFrameSampleCount;
     cb_var["gSampleNumber"] = mSampleNumber++;
-    cb_var["gBias"] = 0.001f;
+    cb_var["gColorLimit"] = mColorLimit;
+    cb_var["gBias"] = mRayBias;
     
     mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
+}
+
+
+DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {
+    uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
+    if(mRayReflectLimit == _limit) return *this;
+    mRayReflectLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setRayDiffuseLimit(int limit) {
+    uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
+    if(mRayDiffuseLimit == _limit) return *this;
+    mRayDiffuseLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setRayBias(float bias) {
+    mRayBias = bias;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setColorLimit(float3 limit) {
+    mColorLimit = limit;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setShadingRate(int rate) {
+    rate = std::max(1, rate);
+    if(mShadingRate == rate) return *this;
+    mShadingRate = rate;
+    mDirty = true;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setSTBNSampling(bool enable) {
+    if (mUseSTBN == enable) return *this;
+    mUseSTBN = enable;
+    mDirty = true;
+    return *this;
 }
 
 DeferredLightingPass& DeferredLightingPass::setFrameSampleCount(uint32_t samples) {
