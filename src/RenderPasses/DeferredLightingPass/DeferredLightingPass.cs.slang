@@ -267,7 +267,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
     }
     
 #if is_valid(gOutOcclusion)
-    if(if(rayLevel == 0) {
+    if(rayLevel == 0) {
         float pdf;
         float3 dir = normalize(sample_cosine_hemisphere_oriented(rnd.xy, sd.N, pdf));
 
