@@ -258,16 +258,14 @@ struct SpecularReflectionMicrofacet : IBxDF
 
         float3 h = normalize(wi + wo);
         float wiDotH = dot(wi, h);
-
-        float3 F = evalFresnelSchlick(albedo, 1.f, wiDotH);
-        //if (alpha == 0.f) return F;
-
+    
         float D = evalNdfGGX(alpha, h.z);
 #if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
         float G = evalMaskingSmithGGXSeparable(alpha, wi.z, wo.z);
 #elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
         float G = evalMaskingSmithGGXCorrelated(alpha, wi.z, wo.z);
 #endif
+        float3 F = evalFresnelSchlick(albedo, 1.f, wiDotH);
         return F * D * G * 0.25f / wi.z;
     }
 

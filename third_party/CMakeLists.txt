@@ -106,14 +106,9 @@ else()
   message("Blosc version ${EXTERNAL_BLOSC_VERSION} not found! Running external build ...")
   set(BLOSC_PREFIX blosc)
 
-  if( LAVA_3RD_LIB_LINK_WITH_STATIC)
-    set(BLOSC_BUILD_STATIC ON)
-    set(BLOSC_BUILD_SHARED OFF)
-  else()
-    set(BLOSC_BUILD_STATIC OFF)
-    set(BLOSC_BUILD_SHARED ON)
-  endif()
-
+  set(BLOSC_BUILD_STATIC ON)
+  set(BLOSC_BUILD_SHARED OFF)
+  
   ExternalProject_Add( Blosc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BLOSC_PREFIX}
     GIT_REPOSITORY https://github.com/Blosc/c-blosc.git
@@ -121,12 +116,13 @@ else()
     UPDATE_DISCONNECTED true
     
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D BUILD_STATIC:BOOL=${BLOSC_BUILD_STATIC}
-    CMAKE_ARGS -D BUILD_SHARED:BOOL=${BLOSC_BUILD_SHARED}
+    CMAKE_ARGS -D BUILD_STATIC:BOOL=ON
+    CMAKE_ARGS -D BUILD_SHARED:BOOL=OFF
     CMAKE_ARGS -D BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D BUILD_FUZZERS:BOOL=OFF
     CMAKE_ARGS -D BUILD_BENCHMARKS:BOOL=OFF
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_C_FLAGS "-fPIC"
     CMAKE_ARGS <SOURCE_DIR>
 
     BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
@@ -640,12 +636,8 @@ set(VMA_PREFIX vulkan_memory_allocator)
 
 ExternalProject_Add ( VMA
   PREFIX ${EXTERNALS_SOURCE_DIR}/${VMA_PREFIX}
-  #GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
-  #GIT_TAG ${EXTERNAL_VMA_VERSION}
   UPDATE_DISCONNECTED true
   
-  #URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v2.3.0.zip
-  #DOWNLOAD_NAME VulkanMemoryAllocator
   DOWNLOAD_COMMAND ""
 
   CONFIGURE_COMMAND ""
@@ -779,6 +771,47 @@ endif()
 
 
 ########################
+# FreeImage section
+########################
+
+set(FREEIMAGE_VERSION 3.18.0) 
+
+
+set(FreeImage_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(FreeImage ${FREEIMAGE_VERSION})
+
+if( FreeImage_FOUND )
+  message("FreeImage version ${FreeImage_VERSION} found ...")
+  add_custom_target( FreeImage COMMAND echo "FreeImage build exists, skipping rebuild ...")
+else()
+
+  ExternalProject_Add( FreeImage
+    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/freeimage
+    UPDATE_DISCONNECTED ON
+    LOG_BUILD ON
+    USES_TERMINAL ON
+    USES_TERMINAL_CONFIGURE ON
+    DOWNLOAD_COMMAND ""
+
+    CONFIGURE_COMMAND ""
+
+    BUILD_COMMAND 
+      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu -j ${N}
+
+    INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
+      -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
+
+    BINARY_DIR ${EXTERNALS_SOURCE_DIR}/../freeimage
+    TMP_DIR ${EXTERNALS_TMP_DIR}/freeimage
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/freeimage
+  )
+  ExternalProject_Add_StepDependencies(FreeImage configure tiff)
+
+endif()
+
+########################
 # Slang section
 ########################
 
@@ -869,7 +902,7 @@ add_dependencies( dummy_target
   PyBind
   OpenEXR
   Assimp
-  OpenVDB
+  #OpenVDB
   OpenImageIO
   RTXDI
   RTXGI
@@ -879,4 +912,5 @@ add_dependencies( dummy_target
   zmq
   cppzmq
   tiff
+  FreeImage
 )

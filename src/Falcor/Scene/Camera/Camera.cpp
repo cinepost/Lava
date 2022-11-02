@@ -51,7 +51,6 @@ constexpr float M_2PI = 2.0f * M_PI;
 // Default dimensions of full frame cameras and 35mm film
 const float Camera::kDefaultFrameHeight = 24.0f;
 
-
 Camera::Camera() {}
 
 Camera::~Camera() = default;
@@ -168,6 +167,30 @@ void Camera::calculateCameraParameters() const {
 			float theta = (static_cast <float>(rand()) / static_cast<float>(RAND_MAX)) * M_2PI;
 
 			float2 p = {(r * cos(theta)) / static_cast <float>(mData.frameWidth), (r * sin(theta)) / static_cast <float>(mData.frameHeight)};
+
+			float left   = ((mData.cropRegion[0]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
+			float right  = ((mData.cropRegion[2]-.5f) / mData.focalLength) * (mData.nearZ * mData.frameWidth);
+			float top    = ((mData.cropRegion[1]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
+			float bottom = ((mData.cropRegion[3]-.5f) / mData.focalLength) * (mData.nearZ * -mData.frameHeight);
+
+			float xwsize = right - left;
+			float ywsize = top - bottom;
+			float focus = 1.0f;//mData.focalDistance;
+			float dx = (p.x * mData.nearZ / focus) * 0.0;
+   		float dy = (p.y * mData.nearZ / focus) * 0.0;
+
+   		//mData.projMat = glm::frustum(left + dx, right + dx, bottom + dy, top + dy, mData.nearZ, mData.farZ);
+
+   		//mData.projMat[2][0] += dx;
+   		//mData.projMat[2][1] += dy;
+
+   		//mData.viewMat[3][0] -= dx * 2.0;
+   		//mData.viewMat[3][1] -= dy * 10.0;
+   		
+   		//mData.viewMat = glm::translate(mData.viewMat, {-p.x, -p.y, 0.0});
+
+   		//mData.projMat[0][0] /= dx;
+   		//mData.projMat[1][1] /= dy;
 /*
 			glm::mat4 dofMat(
 				1.0f, 0.0f, 0.0f, 0.0f,

@@ -146,10 +146,14 @@ if (NOT Vulkan_FOUND)
 endif()
 
 # FreeImage
-find_package( FreeImage REQUIRED )
-include_directories( ${FREEIMAGE_INCLUDE_DIRS} )
+set(FreeImage_ROOT ${DEPS_DIR})
+find_package( FreeImage 3.18.0 REQUIRED )
+if(FreeImage_FOUND)
+    message( "FreeImage version: ${FreeImage_VERSION}")
+endif()
+include_directories( ${FreeImage_INCLUDE_DIRS} )
 
-# TIFF (required by FreeImage )
+# TIFF
 find_package( TIFF REQUIRED )
 include_directories( ${TIFF_INCLUDE_DIRS} )
 
@@ -164,12 +168,9 @@ add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
 set(Slang_ROOT ${DEPS_DIR})
-#set(SLANG_LIBRARY "")
 find_library( SLANG_LIBRARY NAMES slang libslang PATHS "${DEPS_DIR}/lib" NO_CMAKE_FIND_ROOT_PATH NO_DEFAULT_PATH)
 
 message ("Using SLANG library: ${SLANG_LIBRARY}")
-message ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-message ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 # OpenVDB/NanoVDB
 set(OpenVDB_ROOT ${DEPS_DIR})
@@ -217,6 +218,7 @@ target_link_libraries(
         ${ZLIB_LIBRARY}
         ${LZ4_LIBRARY}
         Python3::Python
+        FreeImage::FreeImage
 )
 
 if(backend_type STREQUAL "gfx")

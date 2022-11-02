@@ -15,13 +15,15 @@ import Experimental.Scene.Material.Microfacet;
 import Experimental.Scene.Material.StandardMaterial;
 import Experimental.Scene.Material.IBxDF;
 
+#define is_valid(name) (is_valid_##name != 0)
+
 import DeferredLightingHelpers;
+import DeferredLightingAOV;
 
 #ifndef _MAX_RAY_LEVEL
 #define _MAX_RAY_LEVEL 0
 #endif
 
-//#define _USE_STBN_SAMPLING
 #define _FIX_SHADOW_TERMINATOR
 #define _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
@@ -47,15 +49,15 @@ cbuffer PerFrameCB {
   uint              gSampleNumber;                 // Interframe sample number.
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-  float3            gColorLimit;
-  float             gBias;
+  float3            gColorLimit = float3(10.0, 10.0, 10.0);
+  uint              gRayDiffuseLimit = 0;
+  uint              gRayReflectLimit = 0;
+  float             gRayBias = 0.0001;
   uint2             gFrameDim;
   uint              gSamplesPerFrame;
 
   EnvMapSampler     gEnvMapSampler;
 };
-
-#define is_valid(name) (is_valid_##name != 0)
 
 EnvMapLighting gEnvMapLighting; 
 
@@ -94,8 +96,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         return surfaceColor;
     }
 
-    sd.posW = p;
-    float3 rayOrigin = sd.posW;
+    //sd.posW = p;
+    float3 rayOrigin = sd.posW; //rayLevel == 0 ? sd.posW : p;
 
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
     float3 ffNormalW = faceforward(geometryFaceNormalW, -rayDir, sd.faceN);
@@ -105,7 +107,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         //rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, ffNormalW, triangleHit.getBarycentricWeights());
     }
 
-    rayOrigin -= rayDir * gBias;
+    rayOrigin -= rayDir * gRayBias;
 
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
@@ -122,8 +124,12 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         AnalyticLightSample ls;
 
         // Sample light and reject sample if lower hemisphere.
-        sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
-        
+        if( rayLevel == 0) {
+            sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
+        } else {
+            sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection );
+        }
+
         if (sampleLight(sd.posW, sd.faceN, light, rnd.xy, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
                 
@@ -224,8 +230,13 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
     hit = {};
     float hitT = 0.f;
 
-    //sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-    sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
+    uint lobes = (uint)LobeType::None;
+
+    if(rayLevel < gRayDiffuseLimit) lobes |= (uint)LobeType::DiffuseReflection;
+    if(rayLevel < gRayReflectLimit) lobes |= (uint)LobeType::SpecularReflection;
+    
+    sd.mtl.setActiveLobes(lobes);
+    //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
 
     BSDFSample bsdfSample;
     if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
@@ -246,22 +257,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
 
         rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
         rayQuery.Proceed();
-/*        
-        while (rayQuery.Proceed()) {
-//#if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_TRIANGLE_MESH)
-            if (useAlphaTest && rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE) {
-                // Alpha test for non-opaque geometry.
-                const TriangleHit hit = getCandidateTriangleHit(rayQuery);
-                const VertexData v = gScene.getVertexData(hit);
-                const uint materialID = gScene.getMaterialID(hit.instanceID);
-
-                if (gScene.materials.alphaTest(v, materialID, 0.f)) continue;
-
-                rayQuery.CommitNonOpaqueTriangleHit();
-            }
-//#endif
-        }
-*/
 
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
             hit = HitInfo(getCommittedTriangleHit(rayQuery));
@@ -270,7 +265,23 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         }
 
     }
-    ///
+    
+#if is_valid(gOutOcclusion)
+    if(if(rayLevel == 0) {
+        float pdf;
+        float3 dir = normalize(sample_cosine_hemisphere_oriented(rnd.xy, sd.N, pdf));
+
+        RayDesc ray;
+        ray.Origin = rayOrigin;
+        ray.Direction = dir;
+        ray.TMin = .0f;
+        ray.TMax = 1.0f;
+
+        rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+        rayShadowQuery.Proceed();
+        gOutOcclusion[ipos] = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
+    }
+#endif  // gOutOcclusion
 
     return surfaceColor;
 }
@@ -290,9 +301,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
 
     let lod = createTextureSampler(ipos);
-    //bool isValidSurface = (hit.isValid() && hit.getType() == HitType::Triangle);
-    //bool isValidSurface = loadShadingData(ipos, gFrameDim, gScene.camera, gVbuffer, lod, sd, triangleHit);
-    bool isValidSurface = calcShadingData(rayDir, hit, lod, sd, triangleHit);
+    bool isValidSurface = (hit.isValid() && hit.getType() == HitType::Triangle);
 
     if (!isValidSurface) {
 #if is_valid(gOutAlbedo)
@@ -345,7 +354,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         //rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, ffNormalW, triangleHit.getBarycentricWeights());
     }
 
-    //rayOrigin -= rayDir * gBias;
+    //rayOrigin -= rayDir * gRayBias;
 
     const uint maxRayLevel = _MAX_RAY_LEVEL;
 
@@ -405,20 +414,5 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #if is_valid(gOutPosition)
         gOutPosition[ipos] = float4(sd.posW, 1.0f);
 #endif  // gOutPosition
-
-#if is_valid(gOutOcclusion)
-        float pdf;
-        float3 dir = normalize(sample_cosine_hemisphere_oriented(stbn.xy, sd.N, pdf));
-
-        RayDesc ray;
-        ray.Origin = rayOrigin;
-        ray.Direction = dir;
-        ray.TMin = .0f;
-        ray.TMax = 1.0f;
-
-        rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-        rayShadowQuery.Proceed();
-        gOutOcclusion[ipos] = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
-#endif  // gOutOcclusion
 
 }

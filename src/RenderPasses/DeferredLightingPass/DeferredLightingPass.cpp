@@ -199,7 +199,9 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gSamplesPerFrame"]  = mFrameSampleCount;
     cb_var["gSampleNumber"] = mSampleNumber++;
     cb_var["gColorLimit"] = mColorLimit;
-    cb_var["gBias"] = mRayBias;
+    cb_var["gRayDiffuseLimit"] = mRayDiffuseLimit;
+    cb_var["gRayReflectLimit"] = mRayReflectLimit;
+    cb_var["gRayBias"] = mRayBias;
     
     mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 }
