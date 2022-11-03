@@ -235,10 +235,9 @@ if(UNIX AND COLLECT)
       
       message(" ")
       message("Collecting and installing portable build dependencies ...")
-      
+
       # Feel free to add some missing system dependecies here ;)
       set(REQ_SYS_LIBS 
-          "libfreeimage"
           "libpython"
           "libavcodec"
           "libavformat"
@@ -248,8 +247,6 @@ if(UNIX AND COLLECT)
           "libOpenColorIO"
           "libicui18n"
           "libicuuc"
-          "libtiff"
-          "libblosc"
           "libjxrglue"
           "libraw"
           "ibIlmImf-2_2"

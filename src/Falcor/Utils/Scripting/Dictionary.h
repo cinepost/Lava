@@ -49,6 +49,7 @@ class __attribute__((visibility("default"))) Dictionary {
 
 		Dictionary() = default;
 		Dictionary(const Container& c) : mMap(c) {}
+		Dictionary(const Dictionary& d) : mMap(d.c) {}
 
 		class Value {
 			public:

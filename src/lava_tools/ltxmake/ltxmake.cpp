@@ -225,13 +225,13 @@ int main(int argc, char** argv){
           std::cout << "---------------------------------------------\n";
           std::cout << std::endl;
         } else {
-          std::string output_filename = useAutoNaming ? (input_filename + ".ltx") : inputFilenames[i];
+          std::string output_filename = useAutoNaming ? (input_filename + ".ltx") : outputFilenames[i];
           bool ltxMagicMatch = false;
           if(fs::exists(output_filename)) ltxMagicMatch = Falcor::LTX_Bitmap::checkFileMagic(input_filename, true); // true is here for strict checking
 
           if(forceConversion || !fs::exists(output_filename) || !ltxMagicMatch ) {
             // Conversion
-            LLOG_INF << "Converting texture " << input_filename << " to LTX format ...";
+            LLOG_INF << "Converting texture " << input_filename << " to LTX format texture " << output_filename;
 
             Falcor::LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = compressorTypeName;

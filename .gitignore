@@ -38,6 +38,8 @@ deps
 deps/
 tmp
 tmp/
+Dist
+Dist/
 build
 build/
 build_external

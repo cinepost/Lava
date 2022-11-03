@@ -56,7 +56,6 @@ void DepthPass::parseDictionary(const Dictionary& dict) {
     for (const auto& [key, value] : dict) {
         if (key == kDepthFormat) setDepthBufferFormat(value);
         else if (key == kDisableAlphaTest) setAlphaTestDisabled(value);
-        else LLOG_WRN << "Unknown field '" << key << "' in a DepthPass dictionary";
     }
 }
 
