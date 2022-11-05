@@ -135,6 +135,7 @@ def initializeFeatures(settings):
     Image("image", "checkpointname", "string", "lv_checkpointname")
     Image("image", "checkpointperiod", "float", "lv_checkpointperiod")
     Image("image", "colorlimit", "float", "lv_colorlimit")
+    Image("image", "indirectcolorlimit", "float", "lv_indirectcolorlimit")
     Image("image", "colorlimitdecay", "float", "lv_colorlimitdecay")
     Image("image", "colorlimitdepth", "int", "lv_colorlimitdepth")
     Image("image", "decorrelatedof", "bool", "lv_decorrelatedof")
@@ -285,6 +286,11 @@ def initializeFeatures(settings):
     Light("visible_primary", "bool", "lv_visible_primary")
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
+
+    Light("diffuse_color",           "float", "lv_diffuse_color", skipdefault=True)
+    Light("specular_color",          "float", "lv_specular_color", skipdefault=True)
+    Light("indirect_diffuse_color",  "float", "lv_indirect_diffuse_color", skipdefault=True)
+    Light("indirect_specular_color", "float", "lv_indirect_specular_color", skipdefault=True)
 
     # -- Fog --
     Fog("name", "string", "object:name")

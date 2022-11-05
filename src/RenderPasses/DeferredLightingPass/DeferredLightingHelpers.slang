@@ -97,7 +97,6 @@ bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camer
     return valid;
 }
 
-
 bool calcShadingData(const float3 rayDir, const HitInfo hit, const ITextureSampler lod, out ShadingData sd, out TriangleHit triangleHit) {
     sd = {};
 

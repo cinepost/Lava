@@ -88,33 +88,39 @@ enum class LightDataFlags : uint32_t {
 /** This is a host/device structure that describes analytic light sources.
 */
 struct LightData {
-    uint32_t type               = uint(LightType::Point); ///< Type of the light source (see above)
-    float    openingAngle       = float(M_PI);      ///< For point (spot) light: Opening half-angle of a spot light cut-off, pi by default (full sphere).
-    float    cosOpeningAngle    = -1.f;             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
-    float    cosSubtendedAngle  = 0.9999893f;       ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
+    uint32_t    type                = uint(LightType::Point); ///< Type of the light source (see above)
+    float       openingAngle        = float(M_PI);          ///< For point (spot) light: Opening half-angle of a spot light cut-off, pi by default (full sphere).
+    float       cosOpeningAngle     = -1.f;                 ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
+    float       cosSubtendedAngle   = 0.9999893f;           ///< For distant light; cosine of the half-angle subtended by the light. Default corresponds to the sun as viewed from earth
 
-    float3   posW               = float3(0, 0, 0);  ///< World-space position of the center of a light source
-    uint32_t flags              = uint(LightDataFlags::None);
+    float3      posW                = float3(0, 0, 0);      ///< World-space position of the center of a light source
+    uint32_t    flags               = uint(LightDataFlags::None);
 
-    float3   dirW               = float3(0, -1, 0); ///< World-space orientation of the light source (normalized).
-    float    penumbraAngle      = 0.f;              ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
+    float3      dirW                = float3(0, -1, 0);     ///< World-space orientation of the light source (normalized).
+    float       penumbraAngle       = 0.f;                  ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
     
-    float3   intensity          = float3(1, 1, 1);  ///< Emitted radiance of a light source
-    float    surfaceArea        = 1.f;              ///< Surface area of a light shape
+    float16_t3  diffuseIntensity    = float16_t3(1, 1, 1);  ///< Emitted diffuse radiance of a light source
+    float16_t3  specularIntensity   = float16_t3(1, 1, 1);  ///< Emitted specular radiance of a light source
+    float       surfaceArea         = 1.f;                  ///< Surface area of a light shape
     
-    float3   shadowColor        = float3(0, 0, 0);
-    uint32_t shadowType         = uint(LightShadowType::None); ///< Type of the light shadow (see above)
+    float16_t3  shadowColor         = float16_t3(0, 0, 0);
+    float16_t3  indirectDiffuseIntensity   = float16_t3(1.0, 1.0, 1.0); ///< Indirect diffuse light intensity
+    uint32_t    shadowType          = uint(LightShadowType::None); ///< Type of the light shadow (see above)
 
     // Extra parameters for analytic area lights
-    float3   tangent            = float3(1, 0, 0);  ///< Tangent vector of the light shape
-    float    radius             = .0f;              ///< Analytic light radius. Used mostly for soft shadowing
+    float3   tangent                = float3(1, 0, 0);      ///< Tangent vector of the light shape
+    float    radius                 = .0f;                  ///< Analytic light radius. Used mostly for soft shadowing
 
-    float3   bitangent          = float3(0, 1 ,0);  ///< Bitangent vector of the light shape
-    float    _pad5;
+    float3   bitangent              = float3(0, 1 ,0);      ///< Bitangent vector of the light shape
+    uint32_t pad_0;
 
-    float4x4 transMat           = {};               ///< Transformation matrix of the light shape, from local to world space.
-    float4x4 transMatIT         = {};               ///< Inverse-transpose of transformation matrix of the light shape
-    float4x4 transMatInv        = {};               ///< Inverse of transformation matrix of the light shape
+    float16_t3  indirectSpecularIntensity = float16_t3(1.0, 1.0, 1.0); ///< Indirect specular light intensity
+    float16_t3  pad_1;
+    uint32_t    pad_2;
+
+    float4x4 transMat               = {};                   ///< Transformation matrix of the light shape, from local to world space.
+    float4x4 transMatIT             = {};                   ///< Inverse-transpose of transformation matrix of the light shape
+    float4x4 transMatInv            = {};                   ///< Inverse of transformation matrix of the light shape
 
     bool isSingleSided() CONST_FUNCTION 
     {

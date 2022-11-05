@@ -12,7 +12,7 @@
 
 using namespace Falcor;
 
-static constexpr float MAX_COLOR_COMPONENT_VALUE = std::numeric_limits<float>::max();
+//static constexpr float16_t MAX_COLOR_COMPONENT_VALUE = std::numeric_limits<float16_t>::max();
 
 class DeferredLightingPass : public RenderPass {
 	public:
@@ -46,9 +46,13 @@ class DeferredLightingPass : public RenderPass {
 		*/
 		DeferredLightingPass& setSuperSampling(bool enable);
 
-		/** Set the final color limit (MAIN pass only)
+		/** Set the color limit
 		*/
-		DeferredLightingPass& setColorLimit(float3 limit);
+		DeferredLightingPass& setColorLimit(const float3& limit);
+
+		/** Set the indirect color limit
+		*/
+		DeferredLightingPass& setIndirectColorLimit(const float3& limit);
 
 		/** Set the STBN sampling as preferred samping method
 		*/
@@ -70,18 +74,19 @@ class DeferredLightingPass : public RenderPass {
 		
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpLightingPass;
-		
+
 		uint2 mFrameDim = { 0, 0 };
 		uint32_t mFrameSampleCount = 16;
 		uint32_t mSuperSampleCount = 1;
 
-		uint32_t 	mSampleNumber = 0;
-		float3   	mColorLimit = float3(MAX_COLOR_COMPONENT_VALUE, MAX_COLOR_COMPONENT_VALUE, MAX_COLOR_COMPONENT_VALUE);
-		bool     	mUseSTBN = false;
-		float    	mRayBias = 0.001f;
-		int      	mShadingRate = 1;
-		uint 			mRayReflectLimit = 0;
-		uint      mRayDiffuseLimit = 0;
+		uint32_t 		mSampleNumber = 0;
+		float16_t3  mColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
+		float16_t3  mIndirectColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
+		bool     		mUseSTBN = false;
+		float    		mRayBias = 0.001f;
+		int      		mShadingRate = 1;
+		uint 				mRayReflectLimit = 0;
+		uint      	mRayDiffuseLimit = 0;
 
 		Sampler::SharedPtr                  mpNoiseSampler;
 		Texture::SharedPtr                  mpBlueNoiseTexture;

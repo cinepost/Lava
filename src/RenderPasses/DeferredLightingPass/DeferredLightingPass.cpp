@@ -60,6 +60,7 @@ namespace {
     const std::string kSuperSampleCount = "superSampleCount";
     const std::string kSuperSampling = "enableSuperSampling";
     const std::string kColorLimit = "colorLimit";
+    const std::string kIndirectColorLimit = "indirectColorLimit";
     const std::string kUseSTBN = "useSTBN";
     const std::string kRayBias = "rayBias";
     const std::string kShadingRate = "shadingRate";
@@ -71,10 +72,9 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
     auto pThis = SharedPtr(new DeferredLightingPass(pRenderContext->device()));
         
     for (const auto& [key, value] : dict) {
-        if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
-        else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
-        else if (key == kSuperSampling) pThis->setSuperSampling(value);
+        if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kColorLimit) pThis->setColorLimit(value);
+        else if (key == kIndirectColorLimit) pThis->setIndirectColorLimit(value);
         else if (key == kUseSTBN) pThis->setSTBNSampling(value);
         else if (key == kRayBias) pThis->setRayBias(value);
         else if (key == kShadingRate) pThis->setShadingRate(value);
@@ -199,6 +199,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gSamplesPerFrame"]  = mFrameSampleCount;
     cb_var["gSampleNumber"] = mSampleNumber++;
     cb_var["gColorLimit"] = mColorLimit;
+    cb_var["gIndirectColorLimit"] = mIndirectColorLimit;
     cb_var["gRayDiffuseLimit"] = mRayDiffuseLimit;
     cb_var["gRayReflectLimit"] = mRayReflectLimit;
     cb_var["gRayBias"] = mRayBias;
@@ -228,8 +229,13 @@ DeferredLightingPass& DeferredLightingPass::setRayBias(float bias) {
     return *this;
 }
 
-DeferredLightingPass& DeferredLightingPass::setColorLimit(float3 limit) {
-    mColorLimit = limit;
+DeferredLightingPass& DeferredLightingPass::setColorLimit(const float3& limit) {
+    mColorLimit = (float16_t3)limit;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setIndirectColorLimit(const float3& limit) {
+    mIndirectColorLimit = (float16_t3)limit;
     return *this;
 }
 

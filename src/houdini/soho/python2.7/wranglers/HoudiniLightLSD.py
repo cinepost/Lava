@@ -210,6 +210,8 @@ def envString(plist):
             env += ' envscale %f' % areamapscale
     return env
 
+
+
 def get_light_color(plist):
     color = plist['light_color'].Value
     if len(color) == 1:
@@ -253,6 +255,55 @@ lshaderParms = {
     'edgerolloff': SohoParm('edgerolloff',      'real', [1], False),
     'sharpspot' : SohoParm('sharpspot',         'int', [0], False),
 }
+
+def get_lava_light_intensity(obj, now):
+    plist       = obj.evaluate(lshaderParms, now)
+    
+    intensity = plist['light_intensity'].Value[0]
+    exposure = plist['light_exposure'].Value[0]
+    
+    return intensity * pow(2, exposure)
+
+
+def light_diffuse_color(obj, now, value):
+    intensity = get_lava_light_intensity(obj, now)
+    if obj.evalFloat('lv_light_diffuse_color', now, value):
+        value[0] = value[0] * intensity
+        value[1] = value[1] * intensity
+        value[2] = value[2] * intensity
+        return True
+
+    return False
+
+def light_specular_color(obj, now, value):
+    intensity = get_lava_light_intensity(obj, now)
+    if obj.evalFloat('lv_light_specular_color', now, value):
+        value[0] = value[0] * intensity
+        value[1] = value[1] * intensity
+        value[2] = value[2] * intensity
+        return True
+
+    return False
+
+def light_indirect_diffuse_color(obj, now, value):
+    intensity = get_lava_light_intensity(obj, now)
+    if obj.evalFloat('lv_light_indirect_diffuse_color', now, value):
+        value[0] = value[0] * intensity
+        value[1] = value[1] * intensity
+        value[2] = value[2] * intensity
+        return True
+
+    return True
+
+def light_indirect_specular_color(obj, now, value):
+    intensity = get_lava_light_intensity(obj, now)
+    if obj.evalFloat('lv_light_indirect_specular_color', now, value):
+        value[0] = value[0] * intensity
+        value[1] = value[1] * intensity
+        value[2] = value[2] * intensity
+        return True
+
+    return True
 
 def light_shader(obj, now, value):
     if obj.evalShader('shop_lightpath', now, value):
@@ -585,9 +636,11 @@ parmMap = {
     'render_shadowmap'  :       render_shadowmap,
     'render_pointcloud' :       render_pointcloud,
     'lv_picture'        :       vm_picture,
-    'lv_deepresolver'   :       vm_deepresolver,
-    'lv_dsmfilename'    :       vm_dsmfilename,
-    'lv_setexrdatawindow' :     vm_setexrdatawindow,
+
+    'lv_diffuse_color'              :    light_diffuse_color,
+    'lv_specular_color'             :    light_specular_color,
+    'lv_indirect_diffuse_color'     :    light_indirect_diffuse_color,
+    'lv_indirect_specular_color'    :    light_indirect_specular_color,
 
     # Settings for point cloud lights
     'lv_renderengine'   :       vm_renderengine,

@@ -27,6 +27,7 @@ target_link_libraries(
     DepthPass
     ForwardLightingPass
     DeferredLightingPass
+    DeferredLightingCachedPass
     SkyBox
     RTXDIPass
     GBuffer

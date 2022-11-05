@@ -376,6 +376,7 @@ bool Session::cmdRaytrace() {
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
+	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
 	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
 	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
 
@@ -660,7 +661,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	const std::string& light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", std::string(""));
 	glm::mat4 transform = pLightScope->getTransformList()[0];
 
-	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
+	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	
@@ -669,10 +670,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	if(pShaderProp) {
 		pShaderProps = pShaderProp->subContainer();
-		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+		light_color = pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0});
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
+
+	lsd::Vector3 light_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "diffuse_color", light_color);
+	lsd::Vector3 light_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "specular_color", light_diffuse_color);
+	lsd::Vector3 light_indirect_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color", light_diffuse_color);
+	lsd::Vector3 light_indirect_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color", light_specular_color);
 
 	Falcor::Light::SharedPtr pLight = nullptr;
 
@@ -772,20 +778,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     	}
     	
     	EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    	pEnvMap->setTint(light_color);
+    	pEnvMap->setTint(to_float3(light_color));
     	pEnvMap->setPhantom(phantom);
 
     	pSceneBuilder->setEnvMap(pEnvMap);
 
     	// New EnvironmentLight test
     	auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
-    	pEnvLight->setShadowType(LightShadowType::RayTraced);
-    	pEnvLight->setIntensity(light_color);
-    	uint32_t light_id = pSceneBuilder->addLight(pEnvLight);
-		mLightsMap[light_name] = light_id;
-    	//
-    	
-    	return;
+    	pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
 		return;
@@ -821,7 +822,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			}
 		}
 
-		pLight->setIntensity(light_color);
+		pLight->setDiffuseIntensity(to_float3(light_diffuse_color));
+		pLight->setSpecularIntensity(to_float3(light_specular_color));
+		pLight->setIndirectDiffuseIntensity(to_float3(light_indirect_diffuse_color));
+		pLight->setIndirectSpecularIntensity(to_float3(light_indirect_specular_color));
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
 	}

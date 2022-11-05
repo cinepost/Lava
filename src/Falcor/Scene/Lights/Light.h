@@ -98,13 +98,38 @@ class dlldecl Light : public Animatable {
     */
     static uint32_t getShaderStructSize() { return kDataSize; }
 
-    /** Set the light intensity.
+    /** Set the light diffuse intensity.
     */
-    virtual void setIntensity(const float3& intensity);
+    virtual void setDiffuseIntensity(const float3& intensity);
 
-    /** Get the light intensity.
+    /** Set the light specular intensity.
     */
-    const float3& getIntensity() const { return mData.intensity; }
+    virtual void setSpecularIntensity(const float3& intensity);
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity);
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity);
+
+    /** Get the light diffuse intensity.
+    */
+    float3 getDiffuseIntensity() const { return (float3)mData.diffuseIntensity; }
+
+    /** Get the light specular intensity.
+    */
+    float3 getSpecularIntensity() const { return (float3)mData.specularIntensity; }
+
+    /** Get the light indirect diffuse intensity.
+    */
+    float3 getIndirectDiffuseIntensity() const { return (float3)mData.indirectDiffuseIntensity; }
+
+    /** Get the light indirect specular intensity.
+    */
+    float3 getIndirectSpecularIntensity() const { return (float3)mData.indirectSpecularIntensity; }
+
 
     /** Set the light shadow color
     */
@@ -112,7 +137,7 @@ class dlldecl Light : public Animatable {
 
     /** Get the light shadow color
     */
-    const float3& getShadowColor() const { return mData.shadowColor; }
+    float3 getShadowColor() const { return (float3)mData.shadowColor; }
 
     void setShadowType(LightShadowType shadowType);
 
@@ -154,9 +179,6 @@ class dlldecl Light : public Animatable {
 
     Texture::SharedPtr mpTexture = nullptr;
 
-    /* These two variables track mData values for consistent UI operation.*/
-    float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
-    float mUiLightIntensityScale = 1.0f;
     LightData mData, mPrevData;
     Changes mChanges = Changes::None;
 
@@ -300,13 +322,15 @@ class dlldecl DistantLight : public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
-    void setIntensity(const float3& intensity) override;
+    void setDiffuseIntensity(const float3& intensity) override;
+    void setSpecularIntensity(const float3& intensity) override;
 
   private:
     DistantLight(const std::string& name);
     void update();
     float mAngle;       ///<< Half-angle subtended by the source.
-    float3 mIntensity;
+    float3 mDiffuseIntensity;
+    float3 mSpecularIntensity;
 
     friend class SceneCache;
 };
@@ -355,8 +379,6 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Get total light power (needed for light picking)
     */
     float getPower() const override;
-
-    void setIntensity(const float3& intensity) override;
 
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix

@@ -79,14 +79,12 @@ class ToneMapper : public RenderPass, public inherit_shared_from_this<RenderPass
 
     void createToneMapPass(std::shared_ptr<Device> pDevice);
     void createLuminancePass(std::shared_ptr<Device> pDevice);
-    void createLuminanceFbo(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pSrc);
 
     void updateWhiteBalanceTransform();
     void updateColorTransform();
 
-    FullScreenPass::SharedPtr mpToneMapPass;
-    FullScreenPass::SharedPtr mpLuminancePass;
-    Fbo::SharedPtr mpLuminanceFbo;
+    ComputePass::SharedPtr mpToneMapPass;
+    ComputePass::SharedPtr mpLuminancePass;
     Sampler::SharedPtr mpPointSampler;
     Sampler::SharedPtr mpLinearSampler;
 

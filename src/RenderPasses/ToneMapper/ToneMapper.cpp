@@ -29,16 +29,6 @@
 #include "Utils/Color/ColorUtils.h"
 
 namespace {
-
-    const Gui::DropdownList kOperatorList = {
-        { (uint32_t)ToneMapper::Operator::Linear, "Linear" },
-        { (uint32_t)ToneMapper::Operator::Reinhard, "Reinhard" },
-        { (uint32_t)ToneMapper::Operator::ReinhardModified, "Modified Reinhard" },
-        { (uint32_t)ToneMapper::Operator::HejiHableAlu, "Heji's approximation" },
-        { (uint32_t)ToneMapper::Operator::HableUc2, "Uncharted 2" },
-        { (uint32_t)ToneMapper::Operator::Aces, "ACES" },
-    };
-
     const char kSrc[] = "src";
     const char kDst[] = "dst";
 
@@ -140,10 +130,9 @@ ToneMapper::SharedPtr ToneMapper::create(RenderContext* pRenderContext, const Di
             else if (v.key() == kClamp) pTM->setClamp(v.val());
             else if (v.key() == kWhiteMaxLuminance) pTM->setWhiteMaxLuminance(v.val());
             else if (v.key() == kWhiteScale) pTM->setWhiteScale(v.val());
-            else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");
         }
     } catch (const std::exception& e) {
-        logWarning("Unable to convert dictionary to expected type: " + std::string(e.what()));
+        LLOG_WRN << "Unable to convert dictionary to expected type: " << std::string(e.what());
     }
 
     return ToneMapper::SharedPtr(pTM);
@@ -169,8 +158,8 @@ RenderPassReflection ToneMapper::reflect(const CompileData& compileData) {
     RenderPassReflection reflector;
     reflector.addInput(kSrc, "Source texture");
     auto& output = reflector.addOutput(kDst, "Tone-mapped output texture");
-    if (mOutputFormat != ResourceFormat::Unknown)
-    {
+    
+    if (mOutputFormat != ResourceFormat::Unknown) {
         output.format(mOutputFormat);
     }
 

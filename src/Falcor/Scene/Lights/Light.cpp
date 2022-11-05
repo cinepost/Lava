@@ -57,12 +57,24 @@ void Light::setActive(bool active) {
     }
 }
 
-void Light::setIntensity(const float3& intensity) {
-    mData.intensity = intensity * M_2PI; // We do this to match mantra intensity
+void Light::setDiffuseIntensity(const float3& intensity) {
+    mData.diffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+}
+
+void Light::setSpecularIntensity(const float3& intensity) {
+    mData.specularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+}
+
+void Light::setIndirectDiffuseIntensity(const float3& intensity) {
+    mData.indirectDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+}
+
+void Light::setIndirectSpecularIntensity(const float3& intensity) {
+    mData.indirectSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
 }
 
 void Light::setShadowColor(const float3& shadowColor) {
-    mData.shadowColor = shadowColor;
+    mData.shadowColor = (float16_t3)shadowColor;
 }
 
 void Light::setShadowType(LightShadowType shadowType) { 
@@ -78,7 +90,12 @@ Light::Changes Light::beginFrame() {
     if (mActiveChanged) mChanges |= Changes::Active;
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Position;
     if (mPrevData.dirW != mData.dirW) mChanges |= Changes::Direction;
-    if (mPrevData.intensity != mData.intensity) mChanges |= Changes::Intensity;
+    
+    if (mPrevData.diffuseIntensity != mData.diffuseIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.specularIntensity != mData.specularIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.indirectDiffuseIntensity != mData.indirectDiffuseIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.indirectSpecularIntensity != mData.indirectSpecularIntensity) mChanges |= Changes::Intensity;
+
     if (mPrevData.openingAngle != mData.openingAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.penumbraAngle != mData.penumbraAngle) mChanges |= Changes::SurfaceArea;
     if (mPrevData.cosSubtendedAngle != mData.cosSubtendedAngle) mChanges |= Changes::SurfaceArea;
@@ -105,7 +122,8 @@ void Light::setShaderData(const ShaderVar& var) {
 //#if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
     check_offset(dirW);
-    check_offset(intensity);
+    check_offset(diffuseIntensity);
+    check_offset(specularIntensity);
     check_offset(penumbraAngle);
     check_offset(transMat);
 #undef check_offset
@@ -165,7 +183,7 @@ void PointLight::setWorldPosition(const float3& pos) {
 }
 
 float PointLight::getPower() const {
-    return luminance(mData.intensity) * 4.f * (float)M_PI;
+    return luminance((float3)mData.diffuseIntensity) * 4.f * (float)M_PI;
 }
 
 void PointLight::setOpeningAngle(float openingAngle) {
@@ -239,8 +257,13 @@ DistantLight::DistantLight(const std::string& name) : Light(name, LightType::Dis
     mPrevData = mData;
 }
 
-void DistantLight::setIntensity(const float3& intensity) {
-    mIntensity = intensity;
+void DistantLight::setDiffuseIntensity(const float3& intensity) {
+    mDiffuseIntensity = intensity;
+    update();
+};
+
+void DistantLight::setSpecularIntensity(const float3& intensity) {
+    mSpecularIntensity = intensity;
     update();
 };
 
@@ -281,10 +304,12 @@ void DistantLight::update() {
 
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
-        mData.intensity = mIntensity;
+        mData.diffuseIntensity = (float16_t3)mDiffuseIntensity;
+        mData.specularIntensity = (float16_t3)mSpecularIntensity;
     } else {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
-        mData.intensity = mIntensity / (1.0f - mData.cosSubtendedAngle);
+        mData.diffuseIntensity = (float16_t3)(mDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
+        mData.specularIntensity = (float16_t3)(mSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
     }
 
 }
@@ -332,12 +357,7 @@ void AnalyticAreaLight::setScaling(float3 scale) {
 }
 
 float AnalyticAreaLight::getPower() const {
-    return luminance(mData.intensity) * (float)M_PI * mData.surfaceArea;
-}
-
-void AnalyticAreaLight::setIntensity(const float3& intensity) {
-    mData.intensity = intensity;
-    update();
+    return luminance((float3)mData.diffuseIntensity) * (float)M_PI * mData.surfaceArea;
 }
 
 void AnalyticAreaLight::setSingleSided(bool value) { 
@@ -369,8 +389,6 @@ void RectLight::update() {
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
 
     mData.surfaceArea = std::max(std::numeric_limits<float>::min(), 4.0f * rx * ry );
-
-    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
 }
 
 // DiscLight
@@ -385,8 +403,6 @@ void DiscLight::update() {
     float rx = glm::length(mData.transMat * float4(1.0f, 0.0f, 0.0f, 0.0f));
     float ry = glm::length(mData.transMat * float4(0.0f, 1.0f, 0.0f, 0.0f));
     mData.surfaceArea = std::max(std::numeric_limits<float>::min(), (float)M_PI * rx * ry);
-    
-    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
 }
 
 // SphereLight
@@ -403,9 +419,7 @@ void SphereLight::update() {
     float rz = glm::length(mData.transMat * float4(0.0f, 0.0f, 1.0f, 0.0f));
     mData.surfaceArea = std::max(
         std::numeric_limits<float>::min(), 
-        4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));
-    
-    if(mNormalizeArea) mData.intensity /= mData.surfaceArea;
+        4.0f * (float)M_PI * std::pow((std::pow(rx * ry, 1.6075f) + std::pow(ry * rz, 1.6075f) + std::pow(rx * rz, 1.6075f)) / 3.0f, (1.0f / 1.6075f)));    
 }
 
 
@@ -415,7 +429,7 @@ SCRIPT_BINDING(Light) {
     light.def_property_readonly("name", &Light::getName);
     light.def_property("active", &Light::isActive, &Light::setActive);
     light.def_property("animated", &Light::isAnimated, &Light::setIsAnimated);
-    light.def_property("intensity", &Light::getIntensityForScript, &Light::setIntensityFromScript);
+    //light.def_property("intensity", &Light::getIntensityForScript, &Light::setIntensityFromScript);
     light.def_property("color", &Light::getColorForScript, &Light::setColorFromScript);
 
     pybind11::class_<DirectionalLight, Light, DirectionalLight::SharedPtr> directionalLight(m, "DirectionalLight");

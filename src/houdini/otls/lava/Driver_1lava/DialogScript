@@ -1191,6 +1191,15 @@
                 default { "10" "10" "10" }
                 help    ""
             }
+
+            parm {
+                name    "lv_indirectcolorlimit"
+                label   "Indirect Color Limit"
+                type    float
+                size    3
+                default { "3" "3" "3" }
+                help    ""
+            }
         }
 
         group {

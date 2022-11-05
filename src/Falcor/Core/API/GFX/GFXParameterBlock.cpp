@@ -33,6 +33,8 @@
 #include "Falcor/Core/Program/ProgramVersion.h"
 #include "Falcor/Core/API/ParameterBlock.h"
 
+#include "Falcor/Utils/Math/Float16.h"
+
 namespace Falcor {
 
 namespace {
@@ -221,6 +223,11 @@ set_constant_by_offset(float);
 set_constant_by_offset(float2);
 set_constant_by_offset(float3);
 set_constant_by_offset(float4);
+
+set_constant_by_offset(float16_t);
+set_constant_by_offset(float16_t2);
+set_constant_by_offset(float16_t3);
+set_constant_by_offset(float16_t4);
 
 set_constant_by_offset(glm::mat2);
 set_constant_by_offset(glm::mat2x3);

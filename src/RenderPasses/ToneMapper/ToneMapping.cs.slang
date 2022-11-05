@@ -146,8 +146,14 @@ float3 toneMap(float3 color)
     }
 }
 
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
-{
+[numthreads(16, 16, 1)]
+void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
+    // pixel position
+    const uint2 ipos = dispatchThreadId.xy;
+
+    // early out
+    if (any(ipos >= gFrameDim)) return;
+
     float4 color = gColorTex.Sample(gColorSampler, texC);
     float3 finalColor = color.rgb;
 

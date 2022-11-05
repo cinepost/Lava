@@ -49,7 +49,8 @@ cbuffer PerFrameCB {
   uint              gSampleNumber;                 // Interframe sample number.
   bool              gUseImportanceSampling = true; // Use BRDF importance sampling.
   int               usePdf = 0;                    // Use BRDF sampling pdf explicitly, otherwise the precomputed weight (for debugging).
-  float3            gColorLimit = float3(10.0, 10.0, 10.0);
+  float16_t3        gColorLimit = float3(10.0, 10.0, 10.0);
+  float16_t3        gIndirectColorLimit = float3(3.0, 3.0, 3.0);
   uint              gRayDiffuseLimit = 0;
   uint              gRayReflectLimit = 0;
   float             gRayBias = 0.0001;
@@ -65,6 +66,7 @@ SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
 Texture2D gDepthTex;
 Texture2D gNoiseTex;
+
 
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
     uint txw, txh;
@@ -86,19 +88,19 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
     }
 }
 
-float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p, inout float3 rayDir, inout HitInfo hit, inout float3 sampleWeight, inout S sg, const float4 rnd, L lod, uint rayLevel, uint maxRayLevel) {
+float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, inout float3 sampleWeight, inout S sg, const float4 rnd, L lod, uint rayLevel, uint maxRayLevel){
+
     float3 surfaceColor = float3(0.0);
     
     TriangleHit triangleHit;
     ShadingData sd;
+
     if ((rayLevel > maxRayLevel) || !calcShadingData(rayDir, hit, lod, sd, triangleHit)) {
         hit = {};
         return surfaceColor;
     }
 
-    //sd.posW = p;
-    float3 rayOrigin = sd.posW; //rayLevel == 0 ? sd.posW : p;
-
+    float3 rayOrigin = sd.posW;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
     float3 ffNormalW = faceforward(geometryFaceNormalW, -rayDir, sd.faceN);
 
@@ -221,8 +223,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         surfaceColor += bsdf.getProperties(sd).emission;
     }
 
-    surfaceColor = float3(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b));
-    surfaceColor *= sampleWeight;
+    surfaceColor = float3(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b)) * sampleWeight;
 
     if( rayLevel >= maxRayLevel) return surfaceColor;
 
@@ -261,7 +262,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 p
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
             hit = HitInfo(getCommittedTriangleHit(rayQuery));
             hitT = rayQuery.CommittedRayT();
-            p = p + rayDir * hitT;
+            //p = p + rayDir * hitT;
         }
 
     }
@@ -295,15 +296,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     if (any(ipos >= gFrameDim)) return;
 
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
-    TriangleHit triangleHit;
-    ShadingData sd;
-
-    const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
-
-    let lod = createTextureSampler(ipos);
-    bool isValidSurface = (hit.isValid() && hit.getType() == HitType::Triangle);
-
-    if (!isValidSurface) {
+    
+    if (!(hit.isValid() && hit.getType() == HitType::Triangle)) {
 #if is_valid(gOutAlbedo)
         gOutAlbedo[ipos] = float4(.0f);
 #endif  // gOutAlbedo
@@ -327,40 +321,25 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
+    const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
+    let lod = createTextureSampler(ipos);
+
     // Sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
 
-    // Create BSDF instance and query its properties.
-    let bsdf = gScene.materials.getBSDF(sd, lod);
-    let bsdfProperties = bsdf.getProperties(sd);
-
     // AOV varibles
     float3 surfaceColor = float3(0.0f);
-    float3 AOV_albedo = bsdfProperties.diffuseReflectionAlbedo;
+    float3 AOV_albedo = float3(1.0f, 1.0f, 1.0f);
     float3 AOV_shadow = float3(1.0f, 1.0f, 1.0f);
     float  AOV_occlusion = 1.0f;
-
-    // Lighting ray query
-    RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
-    let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
-
-    float3 rayOrigin = sd.posW;
-    
-    float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
-    float3 ffNormalW = faceforward(geometryFaceNormalW, -rayDir, sd.faceN);
-
-    // face forwaded interpolated normal
-    if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
-        //rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, ffNormalW, triangleHit.getBarycentricWeights());
-    }
-
-    //rayOrigin -= rayDir * gRayBias;
 
     const uint maxRayLevel = _MAX_RAY_LEVEL;
 
 #ifdef _SHADING_RATE
     [unroll]
-    for(int _sr = 0; _sr < _SHADING_RATE; _sr++) {
+    for(int shadingIter = 0; shadingIter < _SHADING_RATE; shadingIter++) {
+#else
+    const int shadingIter = 0;
 #endif
 
     // Spatio temporal blue noise
@@ -371,7 +350,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #endif
     
     float3 _sampleWeight = float3(1.0);
-    float3 _p = rayOrigin;
     float3 _rayDir = rayDir;
     HitInfo _hit = hit;
     
@@ -381,7 +359,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #else
     const float rayLevel = 0;
 #endif
-        surfaceColor += calcIlluminance(_p, _rayDir, _hit, _sampleWeight, sg, stbn, lod, rayLevel, maxRayLevel);
+        surfaceColor += calcIlluminance(_rayDir, _hit, _sampleWeight, sg, stbn, lod, rayLevel, maxRayLevel);
 #if _MAX_RAY_LEVEL != 0
     }
 #endif

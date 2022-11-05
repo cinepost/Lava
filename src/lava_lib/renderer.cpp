@@ -21,6 +21,7 @@
 
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
+#include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -249,7 +250,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #else
 
-	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+	//auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+	auto pDeferredLightingPass = DeferredLightingCachedPass::create(pRenderContext, lightingPassDictionary);
 	pDeferredLightingPass->setScene(pRenderContext, pScene);
 	
 	mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
@@ -291,6 +293,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	
 #else
 	// Deferred lighting pass
+	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
 	mpRenderGraph->addEdge("VBufferPass.vbuffer", "ShadingPass.vbuffer");
 	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");

@@ -11,11 +11,32 @@ def add_light_lava_parameters(node, rebuild=True):
 	old_lava_folder = group.findFolder('Lava') or group.find('folder_lava')
 	lava_folder = hou.FolderParmTemplate('folder_lava', "Lava", tags={'lava_name':'root'})
 
-	# Lava light shadows
-	shading_folder = hou.FolderParmTemplate('folder_lava_shading', "Shadows", tags={'lava_name':'shadows'})
+	# Lava light common
+	common_folder = hou.FolderParmTemplate('folder_lava_common', "Common", tags={'lava_name':'common'})
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_diffuse_color','Diffuse Color', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
 
-	addParmTemplate(node, shading_folder, hou.FloatParmTemplate('lv_light_radius','Point/Spot radius', 1, (0.0,), min=0.0, max=1.0, min_is_strict=True, disable_when='{ light_type != "point" }'))
-	lava_folder.addParmTemplate(shading_folder)
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_specular_color','Specular Color', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_diffuse_color','Indirect Diffuse Color', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+
+	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_specular_color','Indirect Specular Color', 3, 
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+	
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_diffuse','Contribute Direct Diffuse', True))
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_specular','Contribute Direct Specular', True))
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_indirect_diffuse','Contribute Indirect Diffuse', True))
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_indirect_specular','Contribute Indirect Specular', True))
+
+
+	# Lava light shadows
+	shadows_folder = hou.FolderParmTemplate('folder_lava_shadows', "Shadows", tags={'lava_name':'shadows'})
+	addParmTemplate(node, shadows_folder, hou.FloatParmTemplate('lv_light_radius','Point/Spot radius', 1, (0.0,), min=0.0, max=1.0, min_is_strict=True, disable_when='{ light_type != "point" }'))
+	
+	lava_folder.addParmTemplate(common_folder)
+	lava_folder.addParmTemplate(shadows_folder)
 		
 	addParmTemplate(node, lava_folder, hou.ToggleParmTemplate('lv_skip','Skip', False))
 
