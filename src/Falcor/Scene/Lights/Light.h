@@ -169,6 +169,7 @@ class dlldecl Light : public Animatable {
     void updateFromAnimation(const glm::mat4& transform) override {}
 
   protected:
+    virtual void update();
     Light(const std::string& name, LightType type);
 
     static const size_t kDataSize = sizeof(LightData);
@@ -248,7 +249,7 @@ class dlldecl PointLight : public Light {
     void updateFromAnimation(const glm::mat4& transform) override;
 
   private:
-    void update();
+    virtual void update() override;
     PointLight(const std::string& name);
 };
 
@@ -327,7 +328,7 @@ class dlldecl DistantLight : public Light {
 
   private:
     DistantLight(const std::string& name);
-    void update();
+    virtual void update();
     float mAngle;       ///<< Half-angle subtended by the source.
     float3 mDiffuseIntensity;
     float3 mSpecularIntensity;
@@ -424,7 +425,7 @@ class dlldecl RectLight : public AnalyticAreaLight {
   private:
     RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
 
-    virtual void update() override;
+    virtual void update();
 };
 
 /** Disc area light source.

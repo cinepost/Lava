@@ -14,19 +14,23 @@ def add_light_lava_parameters(node, rebuild=True):
 	# Lava light common
 	common_folder = hou.FolderParmTemplate('folder_lava_common', "Common", tags={'lava_name':'common'})
 	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_diffuse_color','Diffuse Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
+		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
 
 	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_specular_color','Specular Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
+		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
 
 	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_diffuse_color','Indirect Diffuse Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
+		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
 
 	addParmTemplate(node, common_folder, hou.FloatParmTemplate('lv_light_indirect_specular_color','Indirect Specular Color', 3, 
-		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, min_is_strict=True))
+		(1.0, 1.0, 1.0), min=0.0, max=1.0, look=hou.parmLook.ColorSquare, naming_scheme=hou.parmNamingScheme.RGBA, 
+		default_expression=('ch("light_colorr")', 'ch("light_colorg")', 'ch("light_colorb")'), min_is_strict=True))
 	
-	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_diffuse','Contribute Direct Diffuse', True))
-	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_specular','Contribute Direct Specular', True))
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_direct_diffuse','Contribute Direct Diffuse', True))
+	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_direct_specular','Contribute Direct Specular', True))
 	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_indirect_diffuse','Contribute Indirect Diffuse', True))
 	addParmTemplate(node, common_folder, hou.ToggleParmTemplate('lv_contribute_indirect_specular','Contribute Indirect Specular', True))
 

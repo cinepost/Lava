@@ -122,36 +122,57 @@ struct LightData {
     float4x4 transMatIT             = {};                   ///< Inverse-transpose of transformation matrix of the light shape
     float4x4 transMatInv            = {};                   ///< Inverse of transformation matrix of the light shape
 
-    bool isSingleSided() CONST_FUNCTION 
-    {
+    bool isSingleSided() CONST_FUNCTION  {
         return (flags & (uint)LightDataFlags::SingleSided) != 0;
     }
 
-    bool isReversed() CONST_FUNCTION
-    {
+    bool isReversed() CONST_FUNCTION {
         return (flags & (uint)LightDataFlags::ReversedDirection) != 0;
     }
 
-    bool isOpaque() CONST_FUNCTION
-    {
+    bool isOpaque() CONST_FUNCTION {
         return (flags & (uint)LightDataFlags::OpaqueShadows) != 0;
     }
 
-    bool isAreaLight() CONST_FUNCTION
-    {
+    bool isAreaLight() CONST_FUNCTION {
         return (flags & (uint)LightDataFlags::Area) != 0;
     }
 
-    bool isInfiniteLight() CONST_FUNCTION
-    {
+    bool isInfiniteLight() CONST_FUNCTION {
         return (flags & (uint)LightDataFlags::Infinite) != 0;
     }
 
-    bool isDeltaLight() CONST_FUNCTION
-    {
+    bool isDeltaLight() CONST_FUNCTION {
         return (flags & (uint)LightDataFlags::DeltaPosition) ||
                (flags & (uint)LightDataFlags::DeltaDirection); 
     }
+
+    bool contributesDirectIllumination() CONST_FUNCTION {
+        return (flags & (uint)LightDataFlags::ContribureDirectDiffuse) ||
+               (flags & (uint)LightDataFlags::ContributeDirectSpecular); 
+    }
+
+    bool contributesDirectDiffuseIllumination() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::ContribureDirectDiffuse; 
+    }
+
+    bool contributesDirectSpecularIllumination() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::ContributeDirectSpecular; 
+    }
+
+    bool contributesIndirectIllumination() CONST_FUNCTION {
+        return (flags & (uint)LightDataFlags::ContributeIndirectDiffuse) ||
+               (flags & (uint)LightDataFlags::ContributeIndirectSpecular); 
+    }
+
+    bool contributesIndirectDiffuseIllumination() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::ContributeIndirectDiffuse; 
+    }
+
+    bool contributesIndirectSpecularIllumination() CONST_FUNCTION {
+        return flags & (uint)LightDataFlags::ContributeIndirectSpecular; 
+    }
+
 };
 
 END_NAMESPACE_FALCOR

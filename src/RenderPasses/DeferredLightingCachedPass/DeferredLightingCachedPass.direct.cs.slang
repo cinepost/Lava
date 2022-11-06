@@ -156,6 +156,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         float3 shadowFactor = float3(1.0f);
         LightData light = gScene.getLight(lightIndex);
+        if(!light.contributesDirectIllumination()) continue;
+        
         AnalyticLightSample ls;
 
         // Sample light and reject sample if lower hemisphere.
