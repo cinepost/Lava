@@ -950,6 +950,49 @@
             }
 
             parm {
+                name    "lv_quickplane_cryptomatte_mat"
+                label   "Cryptomatte Material"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_cryptomatte_mat"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_cryptomatte_mat == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_quickplane_cryptomatte_obj"
+                label   "Cryptomatte Object"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_cryptomatte_obj"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_cryptomatte_obj == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+
+            parm {
                 name    "sepparm4_"
                 label   "Separator"
                 type    separator

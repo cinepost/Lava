@@ -181,9 +181,9 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
 	
 	pCamera->setAspectRatio(aspect_ratio);
+	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
-	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	pCamera->setCropRegion(cropRegion);
 
 	const auto& segments = mpGlobal->segments();

@@ -108,6 +108,7 @@ Camera::Changes Camera::beginFrame(bool firstFrame) {
 
 void Camera::calculateCameraParameters() const {
 	if (mDirty) {
+
 		if (mPreserveHeight) {
 			// Set frame width based on height and aspect ratio
 			mData.frameWidth = mData.frameHeight * mData.aspectRatio;
@@ -125,7 +126,7 @@ void Camera::calculateCameraParameters() const {
 
 			// set camera word position from our persistent view matrix
 			mData.posW = {viewInvMat[3][0], viewInvMat[3][1], viewInvMat[3][2]};
-			mData.target = mData.posW - float3({mData.viewMat[0][2], mData.viewMat[1][2], mData.viewMat[2][2]});
+			mData.target = mData.posW - glm::normalize(float3({mData.viewMat[0][2], mData.viewMat[1][2], mData.viewMat[2][2]}));
 			mData.up = glm::normalize(float3({mData.viewMat[0][1], mData.viewMat[1][1], mData.viewMat[2][1]}));
 		} else {
 			mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);

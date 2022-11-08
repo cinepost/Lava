@@ -36,6 +36,7 @@
 
 #if defined(_FLACOR_API_BACKEND_GFX)
 #define FALCOR_GFX_VK 1
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #else
 #define FALCOR_VK 1
 #endif

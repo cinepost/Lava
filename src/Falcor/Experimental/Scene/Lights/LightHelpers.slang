@@ -56,10 +56,8 @@ struct AnalyticLightSample {
     float3  dir;            ///< Direction from the shading point to the sampled point on the light in world space (normalized).
     float3  shadowDir;      ///< Shadow ray direction. Used for artificial soft shadows.
     float   distance;       ///< Distance from the shading point to sampled point on the light.
-    float3  Li;             ///< Incident diffuse radiance at the shading point (unshadowed). Note: Already divided by the pdf.
-    float3  specularLi;         ///< Incident specular radiance at the shading point (unshadowed). Note: Already divided by the pdf.
-    float3  indirectLi;         ///< Incident indirect diffuse radiance at the shading point (unshadowed). Note: Already divided by the pdf.
-    float3  indirectSpecularLi; ///< Incident indirect specular radiance at the shading point (unshadowed). Note: Already divided by the pdf.
+    float3  Li;             ///< Classic incident radiance at the shading point (unshadowed). Note: Already divided by the pdf. For old workflow without separate contributions
+    float3  Lii;            ///< Classic incident radiance at the shading point (unshadowed). Note: Unaffected by light source color intensity. e.g light intensity treated as (1, 1, 1)
     
     float   pdf;            ///< Probability density function with respect to solid angle at the shading point.
 };
@@ -88,9 +86,9 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, in
         ls.normalW *= -1.0f;
     }
 
-    ls.Li = light.diffuseIntensity;
-    ls.specularLi = light.specularIntensity;
-
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
+    
     // Compute the PDF with respect to solid angle. Note this may be +inf.
     ls.pdf = distSqr / (abs(cosTheta) * light.surfaceArea);
     return true;
@@ -300,8 +298,8 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, float2 
     // A DistantLight's angle defines the solid angle it subtends.
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
-    ls.Li = light.diffuseIntensity;
-    ls.specularLi = light.specularIntensity;
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
     
     ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
     return true;
@@ -323,9 +321,9 @@ bool intersectDistantLight(const float3 shadingPosW, const float3 dir, const Lig
     // A DistantLight's angle defines the solid angle it subtends.
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
-    ls.Li = light.diffuseIntensity;
-    ls.specularLi = light.specularIntensity;
-
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
+    
     ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
     return true;
 }
@@ -348,9 +346,9 @@ bool sampleDirectionalLight(const float3 shadingPosW, const LightData light, out
     ls.dir = ls.shadowDir = -light.dirW;
 
     // Setup incident radiance. For directional lights there is no falloff or cosine term.
-    ls.Li = light.diffuseIntensity;
-    ls.specularLi = light.specularIntensity;
-
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
+    
     // For a directional light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
 
@@ -398,9 +396,9 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, float2 rn
 
     // Compute incident radiance at shading point.
     float _k = falloff / distSqr;
-    ls.Li = light.diffuseIntensity * _k;
-    ls.specularLi = light.specularIntensity * _k;
-
+    ls.Lii = float3(1.0, 1.0, 1.0) * _k;
+    ls.Li = light.directDiffuseIntensity * _k;
+    
     // For a point light, the PDF with respect to solid angle is a Dirac function. Set to zero.
     ls.pdf = 0.f;
 
@@ -414,9 +412,9 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     ls.distance = kMaxLightDistance;
     ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd, shadingNormalW); 
 
-    ls.Li = light.diffuseIntensity;
-    ls.specularLi = light.specularIntensity;
-
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
+    
     return true;
 }
 

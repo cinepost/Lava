@@ -118,11 +118,20 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     let bsdf = gScene.materials.getBSDF(sd, lod);
 #endif
 
-    // Process lights    
+    // Process lights
+    float3 diffuseColor = float3(0.0f);
+    float3 specularColor = float3(0.0f);    
     [loop]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
         float3 shadowFactor = float3(1.0f);
         LightData light = gScene.getLight(lightIndex);
+        
+        if(rayLevel == 0) {
+            if(!light.contributesDirectIllumination()) continue;
+        } else {
+            if(!light.contributesIndirectIllumination()) continue;
+        }
+
         AnalyticLightSample ls;
 
         // Sample light and reject sample if lower hemisphere.
@@ -158,7 +167,11 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             }
 #endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
 
-            surfaceColor += bsdf.eval(sd, ls.dir, sg) * ls.Li * shadowFactor * misWeight;
+            sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
+            diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.Lii * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
+
+            sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+            specularColor += bsdf.eval(sd, ls.dir, sg) * ls.Lii * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
         }
     
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
@@ -187,7 +200,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     rayShadowQuery.Proceed();
                     shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
 
-                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;
+                    diffuseColor += bsdfSample.weight * ls.Lii * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
                 }
             }
 
@@ -211,20 +224,23 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     rayShadowQuery.Proceed();
                     shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
 
-                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;
+                    specularColor += bsdfSample.weight * ls.Lii * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
                 }
             }
         }
 #endif  // _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
-    }
+    } // light loop
 
-    if(rayLevel < 1) {
-        surfaceColor += bsdf.getProperties(sd).emission;
-    }
+    float3 _surfaceColor = diffuseColor + specularColor;
 
-    surfaceColor = float3(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b)) * sampleWeight;
-
+    bool emissionIllumnatesObjects = false;
+    _surfaceColor += ((rayLevel == 0) || emissionIllumnatesObjects) ? bsdf.getProperties(sd).emission : float3(0.0);
+    _surfaceColor *= sampleWeight;
+    
+    float3 colorLimit = rayLevel == 0 ? (float3)gColorLimit : (float3)gIndirectColorLimit;
+    surfaceColor = float3(min(_surfaceColor.r, colorLimit.r), min(_surfaceColor.g, colorLimit.g), min(_surfaceColor.b, colorLimit.b));
+    
     if( rayLevel >= maxRayLevel) return surfaceColor;
 
     /// Next hit point

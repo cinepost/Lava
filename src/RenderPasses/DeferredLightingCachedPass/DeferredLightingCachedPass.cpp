@@ -231,6 +231,12 @@ void DeferredLightingCachedPass::execute(RenderContext* pContext, const RenderDa
             // Bind mandatory input channels
             mpIndirectLightingPass["gInOutColor"] = renderData[kInputColor]->asTexture();
             mpIndirectLightingPass["gVbuffer"] = renderData[kInputVBuffer]->asTexture();
+
+            // Bind extra input channels
+            for (const auto& channel : kExtraInputChannels) {
+                Texture::SharedPtr pTex = renderData[channel.name]->asTexture();
+                mpIndirectLightingPass[channel.texname] = pTex;
+            }
         }
 
         mDirty = false;
@@ -260,19 +266,6 @@ void DeferredLightingCachedPass::execute(RenderContext* pContext, const RenderDa
         cb_var["gRayReflectLimit"] = mRayReflectLimit;
         cb_var["gRayBias"] = mRayBias;
         cb_var["gClipInfo"] = computeClipInfo(mpCamera->getNearPlane(), mpCamera->getFarPlane());
-
-
-        glm::mat4 texMat(
-            0.5f,0.0f,0.0f,0.0f,
-            0.0f,-0.5f,0.0f,0.0f,
-            0.f,0.f,0.5f,0.0f,
-            0.5f,0.5f,0.5f,1.0f
-        );
-
-        //rhi_->SetShaderParameter("viewToTextureSpaceMatrix",proj*tex);
-
-        //cb_var["gViewToTextureSpaceMatrix"] = mpCamera->getProjMatrix() * texMat;
-        cb_var["gViewToTextureSpaceMatrix"] = glm::inverse(mpCamera->getProjMatrix());
     }
 
     mpDirectLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);

@@ -22,6 +22,7 @@
 #include "RenderPasses/ForwardLightingPass/ForwardLightingPass.h"
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
 #include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
+#include "RenderPasses/CryptomattePass/CryptomattePass.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -250,8 +251,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #else
 
-	//auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
-	auto pDeferredLightingPass = DeferredLightingCachedPass::create(pRenderContext, lightingPassDictionary);
+	auto pDeferredLightingPass = DeferredLightingPass::create(pRenderContext, lightingPassDictionary);
+	//auto pDeferredLightingPass = DeferredLightingCachedPass::create(pRenderContext, lightingPassDictionary);
 	pDeferredLightingPass->setScene(pRenderContext, pScene);
 	
 	mpRenderGraph->addPass(pDeferredLightingPass, "ShadingPass");
@@ -266,13 +267,13 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	pVBufferPass->setCullMode(cullMode);
 
 	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
+	mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
 
 	// RTXDIPass
-	Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
-	auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
-	pRTXDIPass->setScene(pRenderContext, pScene);
-
-	mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
+	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
+	//auto pRTXDIPass = RTXDIPass::create(pRenderContext, rtxdiPassDictionary);
+	//pRTXDIPass->setScene(pRenderContext, pScene);
+	//mpRenderGraph->addPass(pRTXDIPass, "RTXDIPass");
 
 	// SkyBox
 	mpSkyBoxPass = SkyBox::create(pRenderContext);
@@ -283,22 +284,46 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpSkyBoxPass->setScene(pRenderContext, pScene);
 	mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 	
-	mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
-	mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
+	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
+	mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
-	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
+	mpRenderGraph->addEdge("DepthPass.depth", "ShadingPass.depth");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
 	
 #else
 	// Deferred lighting pass
-	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
+	mpRenderGraph->addEdge("DepthPass.depth", "ShadingPass.depth");
 	mpRenderGraph->addEdge("VBufferPass.vbuffer", "ShadingPass.vbuffer");
 	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
 
 #endif
+
+	// Optional cryptomatte pass
+	bool createCryptomattePass = false;
+	
+	for (const auto &entry: mAOVPlanes) {
+		auto &pPlane = entry.second;
+		switch(pPlane->name()) {
+			case AOVBuiltinName::CRYPTOMATTE_MAT:
+			case AOVBuiltinName::CRYPTOMATTE_OBJ:
+				createCryptomattePass = true;
+				break;
+			default:
+				break;
+		}
+	}
+
+	if (createCryptomattePass) {
+		auto pCryptomattePass = CryptomattePass::create(pRenderContext, {});
+		pCryptomattePass->setScene(pRenderContext, pScene);
+
+		mpRenderGraph->addPass(pCryptomattePass, "CryptomattePass");
+		mpRenderGraph->addEdge("VBufferPass.vbuffer", "CryptomattePass.vbuffer");
+	}
+
 
 	// Create anf bind main "beauty" plane
 	pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
@@ -306,7 +331,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	//mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
 
 	// Create and bind additional AOV planes
-	
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
 		switch(pPlane->name()) {
@@ -314,7 +338,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
-						mpRenderGraph->addEdge("VBufferPass.depth", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("DepthPass.depth", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -379,6 +403,24 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::CRYPTOMATTE_MAT:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("CryptomattePass.material_color", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
+			case AOVBuiltinName::CRYPTOMATTE_OBJ:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("CryptomattePass.object_color", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
 			default:
 				break;
 		}
@@ -394,6 +436,10 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	LLOG_DBG << "createRenderGraph done";
 }
 
+bool Renderer::hasAOVPlane(const AOVName& name) const {
+	if(mAOVPlanes.find(name) != mAOVPlanes.end()) return true;
+	return false;
+}
 
 std::vector<std::string> Renderer::getGraphOutputs(const Falcor::RenderGraph::SharedPtr& pGraph) {
 	std::vector<std::string> outputs;
@@ -595,7 +641,7 @@ void Renderer::renderSample() {
 	
 	// Hard sync every 16 samples. TODO: this is UGLY !
 	if (mCurrentSampleNumber % 16 == 0) {
-		pRenderContext->flush(true);
+		//pRenderContext->flush(true);
 	}
 
 	double currentTime = 0;

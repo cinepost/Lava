@@ -63,11 +63,11 @@ void Light::setActive(bool active) {
 }
 
 void Light::setDiffuseIntensity(const float3& intensity) {
-    mData.diffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    mData.directDiffuseIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
 }
 
 void Light::setSpecularIntensity(const float3& intensity) {
-    mData.specularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
+    mData.directSpecularIntensity = (float16_t3)(intensity * M_2PI); // We do this to match mantra intensity
 }
 
 void Light::setIndirectDiffuseIntensity(const float3& intensity) {
@@ -91,11 +91,11 @@ void Light::setLightRadius(float radius) {
 }
 
 void Light::update() {
-    if(maxColorComponentValue(mData.diffuseIntensity) > kMinColorComponentContribution) {
+    if(maxColorComponentValue(mData.directDiffuseIntensity) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContribureDirectDiffuse;
     }
 
-    if(maxColorComponentValue(mData.specularIntensity) > kMinColorComponentContribution) {
+    if(maxColorComponentValue(mData.directSpecularIntensity) > kMinColorComponentContribution) {
         mData.flags |= (uint32_t)LightDataFlags::ContributeDirectSpecular;
     }
 
@@ -114,8 +114,8 @@ Light::Changes Light::beginFrame() {
     if (mPrevData.posW != mData.posW) mChanges |= Changes::Position;
     if (mPrevData.dirW != mData.dirW) mChanges |= Changes::Direction;
     
-    if (mPrevData.diffuseIntensity != mData.diffuseIntensity) mChanges |= Changes::Intensity;
-    if (mPrevData.specularIntensity != mData.specularIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.directDiffuseIntensity != mData.directDiffuseIntensity) mChanges |= Changes::Intensity;
+    if (mPrevData.directSpecularIntensity != mData.directSpecularIntensity) mChanges |= Changes::Intensity;
     if (mPrevData.indirectDiffuseIntensity != mData.indirectDiffuseIntensity) mChanges |= Changes::Intensity;
     if (mPrevData.indirectSpecularIntensity != mData.indirectSpecularIntensity) mChanges |= Changes::Intensity;
 
@@ -207,7 +207,7 @@ void PointLight::setWorldPosition(const float3& pos) {
 }
 
 float PointLight::getPower() const {
-    return luminance((float3)mData.diffuseIntensity) * 4.f * (float)M_PI;
+    return luminance((float3)mData.directDiffuseIntensity) * 4.f * (float)M_PI;
 }
 
 void PointLight::setOpeningAngle(float openingAngle) {
@@ -328,12 +328,12 @@ void DistantLight::update() {
 
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
-        mData.diffuseIntensity = (float16_t3)mDiffuseIntensity;
-        mData.specularIntensity = (float16_t3)mSpecularIntensity;
+        mData.directDiffuseIntensity = (float16_t3)mDiffuseIntensity;
+        mData.directSpecularIntensity = (float16_t3)mSpecularIntensity;
     } else {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
-        mData.diffuseIntensity = (float16_t3)(mDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
-        mData.specularIntensity = (float16_t3)(mSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
+        mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
+        mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
     }
     Light::update();
 }
@@ -381,7 +381,7 @@ void AnalyticAreaLight::setScaling(float3 scale) {
 }
 
 float AnalyticAreaLight::getPower() const {
-    return luminance((float3)mData.diffuseIntensity) * (float)M_PI * mData.surfaceArea;
+    return luminance((float3)mData.directDiffuseIntensity) * (float)M_PI * mData.surfaceArea;
 }
 
 void AnalyticAreaLight::setSingleSided(bool value) { 

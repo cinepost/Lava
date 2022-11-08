@@ -116,11 +116,11 @@ class dlldecl Light : public Animatable {
 
     /** Get the light diffuse intensity.
     */
-    float3 getDiffuseIntensity() const { return (float3)mData.diffuseIntensity; }
+    float3 getDiffuseIntensity() const { return (float3)mData.directDiffuseIntensity; }
 
     /** Get the light specular intensity.
     */
-    float3 getSpecularIntensity() const { return (float3)mData.specularIntensity; }
+    float3 getSpecularIntensity() const { return (float3)mData.directSpecularIntensity; }
 
     /** Get the light indirect diffuse intensity.
     */

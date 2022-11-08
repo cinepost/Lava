@@ -63,7 +63,6 @@ cbuffer PerFrameCB {
   uint2             gFrameDim;
   uint              gSamplesPerFrame;
   float3            gClipInfo;
-  float4x4          gViewToTextureSpaceMatrix;
 
   EnvMapSampler     gEnvMapSampler;
 };
@@ -130,7 +129,10 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     [loop]
     for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
         float3 shadowFactor = float3(1.0f);
+        
         LightData light = gScene.getLight(lightIndex);
+        if(!light.contributesIndirectIllumination()) continue;
+
         AnalyticLightSample ls;
 
         // Sample light and reject sample if lower hemisphere.
@@ -206,7 +208,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     rayShadowQuery.Proceed();
                     shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0f);
 
-                    surfaceColor += bsdfSample.weight * ls.Li * shadowFactor * misWeight;
+                    surfaceColor += bsdfSample.weight * ls.specularLi * shadowFactor * misWeight;
                 }
             }
         }
@@ -307,15 +309,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         float3 _rayDir = normalize(bsdfSample.wo);
 
         float maxSteps = 100.0f;
-        float maxRayTraceDistance = 10.0f;
-        float csZThickness = 1.0;
+        float maxRayTraceDistance = .1f;
+        float csZThickness = 1.0f;
         bool csZBufferIsHyperbolic = false;
         
         float3 csOrigin = mul(float4( sd.posW, 1.f), gScene.camera.data.viewMat).xyz;
         float3 csDirection = normalize(mul(float4( _rayDir, 1.f), gScene.camera.data.viewMat).xyz);
-
-        //float3 csOrigin = mul(float4( sd.posW, 1.f), gScene.camera.getViewProj()).xyz;
-        //float3 csDirection = normalize(mul(float4( _rayDir, 1.f), gScene.camera.getViewProj()).xyz);
 
         float stride = 1.0f;
         float jitterFraction = 0.0f; 
@@ -323,7 +322,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         float2 hitPixel;
         int which;
         float3 csHitPoint;
-/*
+
         bool traced = traceScreenSpaceRay1(
             csOrigin, 
             csDirection,
@@ -344,13 +343,19 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
             csHitPoint);
 
         if( traced) {
-            //surfaceColor += float3(0.0, 1.0, 0.0);
+            surfaceColor += float3(0.0, 1.0, 0.0);
             //surfaceColor += gDirectDiffuseBuffer[int2(hitPixel)].rgb;
         }
-*/
-        float4 screenPt = mul(float4(csOrigin, 1.0), gViewToTextureSpaceMatrix);
-        //surfaceColor += screenPt.xyz / screenPt.w;
-        surfaceColor += csOrigin;
+
+
+        float4 screenPt = mul(float4(csOrigin, 1.f), gScene.camera.data.projMat);
+        screenPt.xy = screenPt.xy;// * float2(0.5, -0.5) + 0.5;
+        
+        float k = 1.0 / screenPt.w;
+        screenPt.xy *= k;
+
+        //surfaceColor += gDepthBuffer.SampleLevel(gDepthSampler, screenPt.xy, 0).rrr;
+        //surfaceColor += gDirectDiffuseBuffer[int2(screenPt.xy * (float2)gFrameDim)].rrr;
 
 /*
         RayDesc ray;
@@ -383,8 +388,8 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     // Write main channel output color
     float4 inColor = gInOutColor[ipos];
     //gInOutColor[ipos] = inColor + float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 0.0);
-    gInOutColor[ipos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 0.0);
-    
+    //gInOutColor[ipos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 0.0);
+    gInOutColor[ipos] = float4(surfaceColor, 1.0);
 
     // Write available AOVs
 }

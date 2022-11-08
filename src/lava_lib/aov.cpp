@@ -206,6 +206,8 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::INSTANCE_ID)) return AOVBuiltinName::INSTANCE_ID;
     if(str == to_string(AOVBuiltinName::Prim_Id)) return AOVBuiltinName::Prim_Id;
     if(str == to_string(AOVBuiltinName::Op_Id)) return AOVBuiltinName::Op_Id;
+    if(str == to_string(AOVBuiltinName::CRYPTOMATTE_MAT)) return AOVBuiltinName::CRYPTOMATTE_MAT;
+    if(str == to_string(AOVBuiltinName::CRYPTOMATTE_OBJ)) return AOVBuiltinName::CRYPTOMATTE_OBJ;
 
     return AOVBuiltinName::UNKNOWN;
 }

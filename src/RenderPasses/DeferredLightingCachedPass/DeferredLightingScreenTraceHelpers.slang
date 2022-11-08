@@ -80,14 +80,12 @@ bool traceScreenSpaceRay1
 
     // Project into screen space
     float4 H0 = mul(float4(csOrigin, 1.0), viewToTextureSpaceMatrix);
-    //H0.xy = (H0.xy / H0.w) * -0.5 + 0.5;
-    //H0.x = 1.0f - H0.x;
-    //H0.xy *= csZBufferSize;
+    H0.xy = (H0.xy / H0.w) * float2(0.5, -0.5) + 0.5;
+    H0.xy *= csZBufferSize;
 
     float4 H1 = mul(float4(csEndPoint, 1.0), viewToTextureSpaceMatrix);
-    //H1.xy = (H1.xy / H1.w) * -0.5 + 0.5;
-    //H1.x = 1.0f - H1.x;
-    //H1.xy *= csZBufferSize;
+    H1.xy = (H1.xy / H1.w) * float2(0.5, -0.5) + 0.5;
+    H1.xy *= csZBufferSize;
 
     // There are a lot of divisions by w that can be turned into multiplications
     // at some minor precision loss...and we need to interpolate these 1/w values
@@ -102,10 +100,12 @@ bool traceScreenSpaceRay1
     // Switch the original points to values that interpolate linearly in 2D
     float3 Q0 = csOrigin * k0; 
     float3 Q1 = csEndPoint * k1;
+    //float3 Q0 = csOrigin / H0.w; 
+    //float3 Q1 = csEndPoint / H1.w;
 
     // Screen-space endpoints
-    float2 P0 = H0.xy * k0;
-    float2 P1 = H1.xy * k1;
+    float2 P0 = H0.xy;// * k0;
+    float2 P1 = H1.xy;// * k1;
 
     // [Optional clipping to frustum sides here]
 
@@ -192,8 +192,8 @@ bool traceScreenSpaceRay1
 
         // Camera-space z of the background
         //sceneZMax = texelFetch(csZBuffer, int2(hitPixel), 0).r;
-        //sceneZMax = csZBuffer[int2(hitPixel)].r;
-        sceneZMax = csZBuffer.SampleLevel(depthSampler, hitPixel, 0).r;
+        sceneZMax = csZBuffer[int2(hitPixel)].r;
+        //sceneZMax = csZBuffer.SampleLevel(depthSampler, hitPixel, 0).r;
 
         // This compiles away when csZBufferIsHyperbolic = false
         if (csZBufferIsHyperbolic) {

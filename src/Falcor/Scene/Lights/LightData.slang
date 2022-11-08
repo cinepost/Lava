@@ -99,8 +99,8 @@ struct LightData {
     float3      dirW                = float3(0, -1, 0);     ///< World-space orientation of the light source (normalized).
     float       penumbraAngle       = 0.f;                  ///< For point (spot) light: Opening half-angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default
     
-    float16_t3  diffuseIntensity    = float16_t3(1, 1, 1);  ///< Emitted diffuse radiance of a light source
-    float16_t3  specularIntensity   = float16_t3(1, 1, 1);  ///< Emitted specular radiance of a light source
+    float16_t3  directDiffuseIntensity    = float16_t3(1, 1, 1);  ///< Emitted diffuse radiance of a light source
+    float16_t3  directSpecularIntensity   = float16_t3(1, 1, 1);  ///< Emitted specular radiance of a light source
     float       surfaceArea         = 1.f;                  ///< Surface area of a light shape
     
     float16_t3  shadowColor         = float16_t3(0, 0, 0);
