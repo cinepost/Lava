@@ -55,6 +55,8 @@ FORCE_INLINE uint32_t mm_hash_fmix32(uint32_t h) {
   return h;
 }
 
+  constexpr uint32_t _UINT32_MAX = std::numeric_limits<uint32_t>::max();
+
 }  // namespace
 
 uint32_t util_murmur_hash3(const void *key, int len, uint32_t seed) {
@@ -105,11 +107,12 @@ uint32_t util_murmur_hash3(const void *key, int len, uint32_t seed) {
 }
 
 /* This is taken from the cryptomatte specification 1.0 */
+/*
 float util_hash_to_float(uint32_t hash) {
   uint32_t mantissa = hash & ((1 << 23) - 1);
   uint32_t exponent = (hash >> 23) & ((1 << 8) - 1);
-  exponent = std::max(exponent, (uint32_t)1);
-  exponent = std::min(exponent, (uint32_t)254);
+  exponent = std::max(exponent, uint32_t(1));
+  exponent = std::min(exponent, uint32_t(254));
   exponent = exponent << 23;
   uint32_t sign = (hash >> 31);
   sign = sign << 31;
@@ -118,12 +121,33 @@ float util_hash_to_float(uint32_t hash) {
   std::memcpy(&f, &float_bits, sizeof(uint32_t));
   return f;
 }
+*/
+float util_hash_to_float(uint32_t hash) {
+    // if all exponent bits are 0 (subnormals, +zero, -zero) set exponent to 1
+    // if all exponent bits are 1 (NaNs, +inf, -inf) set exponent to 254
+    uint32_t exponent = hash >> 23 & 255; // extract exponent (8 bits)
+    if (exponent == 0 || exponent == 255)
+        hash ^= 1 << 23; // toggle bit
+    float f;
+    std::memcpy(&f, &hash, 4);
+    return f;
+}
 
 float3 util_hash_name_to_rgb(const unsigned char *name) {
   size_t str_len = 0;
   while (name[str_len] != '\0') str_len++;
   uint32_t m3hash = util_murmur_hash3(static_cast<const void *>(name), str_len, 0);
-  return {util_hash_to_float(m3hash), ((float)((m3hash << 8)) / (float) UINT32_MAX), ((float)((m3hash << 8)) / (float) UINT32_MAX)};
+  return {util_hash_to_float(m3hash), ((float)((m3hash << 8)) / (float) _UINT32_MAX), ((float)((m3hash << 16)) / (float) _UINT32_MAX)};
+}
+
+float3 util_hash_to_rgb(uint32_t hash) {
+  
+  float r = util_hash_to_float(hash);
+  float g = ((float) ((hash << 8)) / (float) _UINT32_MAX);
+  float b = ((float) ((hash << 16)) / (float) _UINT32_MAX);
+
+  //return {util_hash_to_float(hash), ((float)((hash << 8)) / (float) _UINT32_MAX), ((float)((hash << 16)) / (float) _UINT32_MAX)};
+  return {r, g, b};
 }
 
 }  // namespace Falcor

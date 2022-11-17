@@ -53,6 +53,7 @@ cbuffer PerFrameCB {
   float16_t3        gIndirectColorLimit = float3(3.0, 3.0, 3.0);
   uint              gRayDiffuseLimit = 0;
   uint              gRayReflectLimit = 0;
+  uint              gRayRefractLimit = 0;
   float             gRayBias = 0.0001;
   uint2             gFrameDim;
   uint              gSamplesPerFrame;
@@ -95,6 +96,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     TriangleHit triangleHit;
     ShadingData sd;
 
+    [branch]
     if ((rayLevel > maxRayLevel) || !calcShadingData(rayDir, hit, lod, sd, triangleHit)) {
         hit = {};
         return surfaceColor;
@@ -102,14 +104,15 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 
     float3 rayOrigin = sd.posW;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
-    float3 ffNormalW = faceforward(geometryFaceNormalW, -rayDir, sd.faceN);
 
     // face forwaded interpolated normal
+    float3 ffNormalW = faceforward(geometryFaceNormalW, -rayDir, sd.faceN);
+
     if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
         //rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, ffNormalW, triangleHit.getBarycentricWeights());
     }
 
-    rayOrigin -= rayDir * gRayBias;
+    //rayOrigin -= rayDir * gRayBias;
 
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
     let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
@@ -141,6 +144,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection );
         }
 
+        [branch]
         if (sampleLight(sd.posW, sd.faceN, light, rnd.xy, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
                 
@@ -148,7 +152,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 RayDesc ray;
                 ray.Origin = rayOrigin;
                 ray.Direction = ls.shadowDir;
-                ray.TMin = .0f;
+                ray.TMin = .001f;
                 ray.TMax = ls.distance;
 
                 rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
@@ -177,6 +181,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
         // Sample bsdf for non singular light
+        [branch]
         if(!light.isDeltaLight()) {
             BSDFSample bsdfSample;
 
@@ -241,6 +246,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     float3 colorLimit = rayLevel == 0 ? (float3)gColorLimit : (float3)gIndirectColorLimit;
     surfaceColor = float3(min(_surfaceColor.r, colorLimit.r), min(_surfaceColor.g, colorLimit.g), min(_surfaceColor.b, colorLimit.b));
     
+    [branch]
     if( rayLevel >= maxRayLevel) return surfaceColor;
 
     /// Next hit point
@@ -251,11 +257,13 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 
     if(rayLevel < gRayDiffuseLimit) lobes |= (uint)LobeType::DiffuseReflection;
     if(rayLevel < gRayReflectLimit) lobes |= (uint)LobeType::SpecularReflection;
+    if(rayLevel < gRayRefractLimit) lobes |= (uint)LobeType::SpecularTransmission; //(uint)LobeType::DeltaTransmission;
     
     sd.mtl.setActiveLobes(lobes);
     //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection );
 
     BSDFSample bsdfSample;
+    [branch]
     if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
 
         sampleWeight *= bsdfSample.weight;
@@ -267,9 +275,9 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         rayDir = normalize(bsdfSample.wo);
 
         RayDesc ray;
-        ray.Origin = rayOrigin;
+        ray.Origin = sd.posW;
         ray.Direction = rayDir;
-        ray.TMin =  .0f;
+        ray.TMin =  .001f;
         ray.TMax = 100000.0f;
 
         rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);

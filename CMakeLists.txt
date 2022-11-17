@@ -212,6 +212,7 @@ endif()
 add_subdirectory( src )
 add_subdirectory( contrib )
 
+install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 #------------------------------------------
 # Install third party dependencies

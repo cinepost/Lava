@@ -1216,6 +1216,16 @@
                 }
 
                 parm {
+                    name    "lv_refract_limit"
+                    label   "Refract Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_diffuse_limit"
                     label   "Diffuse Limit"
                     type    int

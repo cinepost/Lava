@@ -31,10 +31,23 @@ class CryptomattePass : public RenderPass {
 		CryptomattePass& setColorFormat(ResourceFormat format);
 
 	private:
+		void calculateHashTables( const RenderData& renderData);
 		CryptomattePass(Device::SharedPtr pDevice);
 		
 		Scene::SharedPtr                mpScene;
 		ComputePass::SharedPtr          mpPass;
+
+		Buffer::SharedPtr               mpMaterialHashBuffer;
+		Buffer::SharedPtr               mpInstanceHashBuffer;
+		Buffer::SharedPtr               mpCustattrHashBuffer;
+
+		Buffer::SharedPtr               mpMaterialPreviewColorBuffer;
+		Buffer::SharedPtr               mpInstancePreviewColorBuffer;
+		Buffer::SharedPtr               mpCustattrPreviewColorBuffer;
+
+		bool                            mOutputMaterialPreview = false;
+		bool                            mOutputInstancePreview = false;
+		bool                            mOutputCustattrPreview = false;
 
 		uint2 mFrameDim = { 0, 0 };
 

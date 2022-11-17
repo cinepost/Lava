@@ -323,8 +323,21 @@ class dlldecl DistantLight : public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
-    void setDiffuseIntensity(const float3& intensity) override;
-    void setSpecularIntensity(const float3& intensity) override;
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
   private:
     DistantLight(const std::string& name);
@@ -332,6 +345,8 @@ class dlldecl DistantLight : public Light {
     float mAngle;       ///<< Half-angle subtended by the source.
     float3 mDiffuseIntensity;
     float3 mSpecularIntensity;
+    float3 mIndirectDiffuseIntensity;
+    float3 mIndirectSpecularIntensity;
 
     friend class SceneCache;
 };
@@ -353,7 +368,25 @@ class dlldecl EnvironmentLight: public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
+
   private:
+    virtual void update();
+
     EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
 
     friend class SceneCache;  

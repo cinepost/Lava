@@ -5,6 +5,8 @@ from lava_version import LAVA_VERSION_STRING
 
 
 def add_light_lava_parameters(node, rebuild=True):
+	type_name = node.type().name()
+	is_env_light = type_name == "envlight"
 	group = node.parmTemplateGroup()
 
 	# Check for existing Lava folder. If it's there then just remove it and reinstall parameters
@@ -36,11 +38,16 @@ def add_light_lava_parameters(node, rebuild=True):
 
 
 	# Lava light shadows
+
 	shadows_folder = hou.FolderParmTemplate('folder_lava_shadows', "Shadows", tags={'lava_name':'shadows'})
-	addParmTemplate(node, shadows_folder, hou.FloatParmTemplate('lv_light_radius','Point/Spot radius', 1, (0.0,), min=0.0, max=1.0, min_is_strict=True, disable_when='{ light_type != "point" }'))
+
+	if not is_env_light:
+		addParmTemplate(node, shadows_folder, hou.FloatParmTemplate('lv_light_radius','Point/Spot radius', 1, (0.0,), min=0.0, max=1.0, min_is_strict=True, disable_when='{ light_type != "point" }'))
 	
 	lava_folder.addParmTemplate(common_folder)
-	lava_folder.addParmTemplate(shadows_folder)
+
+	if not is_env_light:
+		lava_folder.addParmTemplate(shadows_folder)
 		
 	addParmTemplate(node, lava_folder, hou.ToggleParmTemplate('lv_skip','Skip', False))
 

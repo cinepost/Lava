@@ -1283,6 +1283,7 @@ void Scene::updateLightStats() {
     s.rectLightCount = 0;
     s.sphereLightCount = 0;
     s.distantLightCount = 0;
+    s.environmentLightCount = 0;
 
     for (const auto& light : mLights) {
         switch (light->getType()) {
@@ -1300,6 +1301,9 @@ void Scene::updateLightStats() {
                 break;
             case LightType::Distant:
                 s.distantLightCount++;
+                break;
+            case LightType::Env:
+                s.environmentLightCount++;
                 break;
         }
     }

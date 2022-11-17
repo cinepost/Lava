@@ -58,7 +58,7 @@ struct StandardMaterial : IMaterial
         d.specularTransmission = data.specularTransmission;
         if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
         {
-            d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(data.transmission, 0.f), lod).rgb;
+            d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(1.f), lod).rgb * data.transmission;
         }
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].

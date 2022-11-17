@@ -28,6 +28,10 @@ def sceneLoadedEventCallback(event_type):
 			for node in hou.nodeType(hou.objNodeTypeCategory(), "hlight::2.0").instances():
 				add_light_lava_parameters(node, rebuild)
 
+			# Loop over all light nodes
+			for node in hou.nodeType(hou.objNodeTypeCategory(), "envlight").instances():
+				add_light_lava_parameters(node, rebuild)
+
 		# Store current LAVA_VERSION_STRING
 		hou.session.__LAVA_VERSION_STRING__ = LAVA_VERSION_STRING
 

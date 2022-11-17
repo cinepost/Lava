@@ -378,6 +378,7 @@ bool Session::cmdRaytrace() {
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
 	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
 	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
+	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
 	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
@@ -1257,6 +1258,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
+    Falcor::float3  trans_color = {1.0, 1.0, 1.0};
+    float           transmission = 0.0f;
+
     float           ao_distance = 1.0f;
 
     if(pShaderProp) {
@@ -1281,6 +1285,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
     	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0f);
+
+    	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+    	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
 
     	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
@@ -1308,7 +1315,10 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setEmissiveFactor(emissive_factor);
 	    pMaterial->setAODistance(ao_distance);
 	    pMaterial->setDoubleSided(!front_face);
-	  	
+
+	    pMaterial->setTransmissionColor(trans_color);
+	    pMaterial->setSpecularTransmission(transmission);
+
 	  	//bool loadAsSrgb = true;
 	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 

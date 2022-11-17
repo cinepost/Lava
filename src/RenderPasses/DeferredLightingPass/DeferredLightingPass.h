@@ -67,6 +67,7 @@ class DeferredLightingPass : public RenderPass {
 		DeferredLightingPass& setShadingRate(int rate);
 
 		DeferredLightingPass& setRayReflectLimit(int limit);
+		DeferredLightingPass& setRayRefractLimit(int limit);
 		DeferredLightingPass& setRayDiffuseLimit(int limit);
 
 	private:
@@ -86,6 +87,7 @@ class DeferredLightingPass : public RenderPass {
 		float    		mRayBias = 0.001f;
 		int      		mShadingRate = 1;
 		uint 				mRayReflectLimit = 0;
+		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;
 
 		Sampler::SharedPtr                  mpNoiseSampler;

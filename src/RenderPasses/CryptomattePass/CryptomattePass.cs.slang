@@ -7,6 +7,8 @@ import Utils.Math.MathHelpers;
 
 #define is_valid(name) (is_valid_##name != 0)
 
+#define MAX_CRYPTOMATTE_LAYERS 16
+
 // Input channel
 Texture2D<PackedHitInfo> gVbuffer;
 
@@ -19,6 +21,22 @@ RasterizerOrderedTexture2D<float4> gAttribColor;
 cbuffer PerFrameCB {
   uint2             gFrameDim;
 };
+
+#if _OUTPUT_MATERIALS
+Buffer<float32_t> gMaterialHashBuffer;
+#endif 
+
+#if _OUTPUT_INSTANCES
+Buffer<float32_t> gInstanceHashBuffer;
+#endif 
+
+#if _OUTPUT_CUSTATTRS
+Buffer<float32_t> gCustattrHashBuffer;
+#endif
+
+#if is_valid(gMatColor)
+Buffer<float32_t3> gMaterialPreviewColorBuffer;
+#endif
 
 
 [numthreads(16, 16, 1)]
@@ -33,7 +51,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     
     if (!hit.isValid()) {
 #if is_valid(gMatColor)
-        gMatColor[ipos] = float4(1.0, 0.0, 1.0, 1.0f);
+        gMatColor[ipos] = float4(.0f);
 #endif  // gMatColor
 
 #if is_valid(gObjColor)
@@ -47,9 +65,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         return;
     }
 
+    uint materialID = 0;
+
+    if (hit.getType() == HitType::Triangle) {
+        TriangleHit triangleHit = hit.getTriangleHit();
+        materialID = gScene.getMaterialID(triangleHit.instanceID);
+    }
+
     // Write available false color AOVs
 #if is_valid(gMatColor)
-        gMatColor[ipos] = float4(1.0, 0.0, 0.0, 1.0f);
+#if _OUTPUT_MATERIALS
+    gMatColor[ipos] = float4(gMaterialPreviewColorBuffer[materialID], 1.0f);
+#else
+    gMatColor[ipos] = float4(0.0f);
+#endif
 #endif  // gMatColor
 
 #if is_valid(gObjColor)

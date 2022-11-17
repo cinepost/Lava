@@ -291,6 +291,16 @@ void DistantLight::setSpecularIntensity(const float3& intensity) {
     update();
 };
 
+void DistantLight::setIndirectDiffuseIntensity(const float3& intensity) {
+    mIndirectDiffuseIntensity = intensity;
+    update();
+}
+
+void DistantLight::setIndirectSpecularIntensity(const float3& intensity) {
+    mIndirectSpecularIntensity = intensity;
+    update();
+}
+
 void DistantLight::setAngle(float angle) {
     mAngle = glm::clamp(angle, 0.f, (float)M_PI_2);
     mData.cosSubtendedAngle = std::cos(mAngle);
@@ -328,12 +338,16 @@ void DistantLight::update() {
 
     if(mData.cosSubtendedAngle == 1.0f) {
         mData.flags |= (uint32_t)LightDataFlags::DeltaDirection;
-        mData.directDiffuseIntensity = (float16_t3)mDiffuseIntensity;
-        mData.directSpecularIntensity = (float16_t3)mSpecularIntensity;
+        mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity * M_2PI);
+        mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity * M_2PI);
+        mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity * M_2PI);
+        mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity * M_2PI);
     } else {
         mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
         mData.directDiffuseIntensity = (float16_t3)(mDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
         mData.directSpecularIntensity = (float16_t3)(mSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
+        mData.indirectDiffuseIntensity = (float16_t3)(mIndirectDiffuseIntensity / (1.0f - mData.cosSubtendedAngle));
+        mData.indirectSpecularIntensity = (float16_t3)(mIndirectSpecularIntensity / (1.0f - mData.cosSubtendedAngle));
     }
     Light::update();
 }
@@ -346,7 +360,12 @@ void DistantLight::updateFromAnimation(const glm::mat4& transform) {
 // EnvironmentLight
 
 EnvironmentLight::EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture) : Light(name, LightType::Env) {
-    setTexture(pTexture);
+    mData.flags &= !(uint32_t)LightDataFlags::DeltaPosition;
+    mData.flags &= !(uint32_t)LightDataFlags::DeltaDirection;
+
+    if(pTexture) setTexture(pTexture);
+    update();
+    mPrevData = mData;
 }
 
 EnvironmentLight::SharedPtr EnvironmentLight::create(const std::string& name, Texture::SharedPtr pTexture) {
@@ -357,9 +376,29 @@ void EnvironmentLight::updateFromAnimation(const glm::mat4& transform) {
 
 }
 
+void EnvironmentLight::update() {
+    Light::update();
+}
+
 float EnvironmentLight::getPower() const { 
     // TODO: calculate total power in prepass or use special ltx value
     return 0.f; 
+}
+
+void EnvironmentLight::setDiffuseIntensity(const float3& intensity) {
+    mData.directDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void EnvironmentLight::setSpecularIntensity(const float3& intensity) {
+    mData.directSpecularIntensity = (float16_t3)(intensity);
+}
+
+void EnvironmentLight::setIndirectDiffuseIntensity(const float3& intensity) {
+    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void EnvironmentLight::setIndirectSpecularIntensity(const float3& intensity) {
+    mData.indirectSpecularIntensity = (float16_t3)(intensity);
 }
 
 // AnalyticAreaLight

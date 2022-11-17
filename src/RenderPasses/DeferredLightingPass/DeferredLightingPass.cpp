@@ -65,6 +65,7 @@ namespace {
     const std::string kRayBias = "rayBias";
     const std::string kShadingRate = "shadingRate";
     const std::string kRayReflectLimit = "rayReflectLimit";
+    const std::string kRayRefractLimit = "rayRefractLimit";
     const std::string kRayDiffuseLimit = "rayDiffuseLimit";
 }
 
@@ -79,6 +80,7 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayBias) pThis->setRayBias(value);
         else if (key == kShadingRate) pThis->setShadingRate(value);
         else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
+        else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
     }
 
@@ -202,16 +204,24 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gIndirectColorLimit"] = mIndirectColorLimit;
     cb_var["gRayDiffuseLimit"] = mRayDiffuseLimit;
     cb_var["gRayReflectLimit"] = mRayReflectLimit;
+    cb_var["gRayRefractLimit"] = mRayRefractLimit;
     cb_var["gRayBias"] = mRayBias;
     
     mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 }
 
-
 DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {
     uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
     if(mRayReflectLimit == _limit) return *this;
     mRayReflectLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setRayRefractLimit(int limit) {
+    uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
+    if(mRayRefractLimit == _limit) return *this;
+    mRayRefractLimit = _limit;
     mDirty = true;
     return *this;
 }

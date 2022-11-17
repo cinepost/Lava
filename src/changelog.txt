@@ -1,0 +1,9 @@
+17.11.2022
+----------------------------------------------------------------------
+
+Added: Basic refraction support added.
+
+Added: Environment light (no hdr texture support yet).
+
+Fixed: Directional light (Houdini light type "Sun") direct and 
+			 indirect shading intensities fixed.

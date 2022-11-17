@@ -412,9 +412,30 @@ bool sampleEnvironmentLight(const float3 shadingPosW, const float3 shadingNormal
     ls.distance = kMaxLightDistance;
     ls.dir = ls.shadowDir = sample_hemisphere_oriented(rnd, shadingNormalW); 
 
+    ls.normalW = -normalize(ls.dir);
+
     ls.Lii = float3(1.0, 1.0, 1.0);
     ls.Li = light.directDiffuseIntensity;
+
+    ls.pdf = 1.0f;
     
+    return true;
+}
+
+bool intersectEnvironmentLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
+    // An environmentl light doesn't have a position. Just clear to zero.
+    ls.posW = float3(0, 0, 0);
+
+    ls.distance = kMaxLightDistance;
+    ls.dir = ls.shadowDir = normalize(dir);
+
+    ls.normalW = -normalize(ls.dir);
+
+    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Li = light.directDiffuseIntensity;
+
+    ls.pdf = 0.0f;
+
     return true;
 }
 
@@ -481,6 +502,8 @@ bool intersectLight(const float3 shadingPosW, const float3 dir, const LightData 
             return intersectDiscAreaLight(shadingPosW, dir, light, ls);
         case LightType::Distant:
             return intersectDistantLight(shadingPosW, dir, light, ls);
+        case LightType::Env:
+            return intersectEnvironmentLight(shadingPosW, dir, light, ls);
         default:
             ls = {};
             return false;

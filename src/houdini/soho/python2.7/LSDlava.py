@@ -165,6 +165,7 @@ def initializeFeatures(settings):
 
     Image("image", "diffuselimit", "int", "lv_diffuse_limit")
     Image("image", "reflectlimit", "int", "lv_reflect_limit")
+    Image("image", "refractlimit", "int", "lv_refract_limit")
 
     # -- Photon --
     Photon("photon", "photoncfile", "string", "lv_photoncfile")
