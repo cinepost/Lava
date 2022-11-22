@@ -399,6 +399,13 @@ class dlldecl AnalyticAreaLight : public Light {
     using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
     using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
 
+    enum class LightSamplingMode {
+      MONTE_CARLO,
+      SOLID_ANGLE,
+      SPHERICAL_SOLID_ANGLE,
+      LTC,
+    };
+
     ~AnalyticAreaLight() = default;
 
     /** Set light source scaling
@@ -432,6 +439,22 @@ class dlldecl AnalyticAreaLight : public Light {
     inline glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
     void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
+
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
   protected:
     AnalyticAreaLight(const std::string& name, LightType type);

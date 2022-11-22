@@ -1158,6 +1158,19 @@
             }
 
             parm {
+                name    "lv_area_lights_sampling_mode"
+                label   "Area Lights Sampling"
+                type    string
+                default { "urena" }
+                menu {
+                    "sa"    "Solid Angle"
+                    "urena" "Projected Spherical Cap"
+                    "ltc"   "LTC"
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "lv_samplelock"
                 label   "Sample Lock"
                 type    toggle

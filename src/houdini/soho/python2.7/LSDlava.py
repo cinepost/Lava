@@ -151,11 +151,14 @@ def initializeFeatures(settings):
     Image("image", "readcheckpoint", "bool", "lv_readcheckpoint")
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
+    
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
     Image("image", "shadingrate", "int", "lv_shadingrate", skipdefault=False)
     Image("image", "raybias", "float", "lv_ray_bias", skipdefault=False)
+    Image("image", "areasampling", "string", "lv_area_lights_sampling_mode", skipdefault=False)
+
     Image("image", "saveoptions", "string", "lv_saveoptions")
     Image("image", "setexrdatawindow", "bool", "lv_setexrdatawindow")
     Image("image", "subpixel", "bool", "lv_subpixel")

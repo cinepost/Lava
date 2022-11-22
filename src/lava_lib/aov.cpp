@@ -3,6 +3,8 @@
 #include "aov.h"
 #include "renderer.h"
 
+#include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
+
 #include "lava_utils_lib/logging.h"
 
 
@@ -67,31 +69,60 @@ bool AOVPlane::bindToTexture(Falcor::Texture::SharedPtr pTexture) {
     return true;
 }
 
-bool AOVPlane::getImageData(uint8_t* pData) const {
+bool AOVPlane::getTextureData(Texture* pTexture, uint8_t* pData) const {
     assert(pData);
+    assert(pTexture);
     assert(mFormat != Falcor::ResourceFormat::Unknown);
     assert(mInfo.format != Falcor::ResourceFormat::Unknown);
 
-    auto start = std::chrono::high_resolution_clock::now();
-
-    if (!mpTexture) {
-        LLOG_ERR << "No texture associated to AOV plane " << mInfo.name << " !!!";
-        return false;
-    }
-
-    if (mInfo.format == mpTexture->getFormat()) {
+    if (mInfo.format == pTexture->getFormat()) {
         // Requested and available resource formats are the same
-        mpTexture->readTextureData(0, 0, pData);
+        pTexture->readTextureData(0, 0, pData);
     } else {
         LLOG_WRN << "Do blit !";
         // Requested and available resource formats are different. Do conversion/blit here
-        mpTexture->readConvertedTextureData(0, 0, pData, mInfo.format);
+        pTexture->readConvertedTextureData(0, 0, pData, mInfo.format);
     }
 
-    auto stop = std::chrono::high_resolution_clock::now();
-    LLOG_DBG << "AOV plane " << name() << " data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
-
     return true;
+}
+
+bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (!mpInternalRenderGraph) {
+        LLOG_WRN << "No internal graph AOV plane " << mInfo.name << " effects. Reading raw image data.";
+        return getImageData(pData);
+    }
+
+    auto pResource = mpInternalRenderGraph->getOutput("chainOutput");
+    auto pEffectsGraphTexture = pResource->asTexture();
+    if (!pEffectsGraphTexture) {
+        LLOG_WRN << "No effects chain output texture associated with AOV plane " << mInfo.name << "!!! Unable to read data !!!";
+        return false;
+    }
+
+    bool result = getTextureData(pEffectsGraphTexture.get(), pData);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    LLOG_DBG << "AOV plane " << name() << " processed image data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
+
+    return result;
+}
+
+bool AOVPlane::getImageData(uint8_t* pData) const {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (!mpTexture) {
+        LLOG_WRN << "No output texture associated with AOV plane " << mInfo.name << "!!! Unable to read data !!!";
+        return false;
+    }
+    bool result = getTextureData(mpTexture.get(), pData);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    LLOG_DBG << "AOV plane " << name() << " image data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
+
+    return result;
 }
 
 bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
@@ -164,6 +195,36 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
     mpRenderGraph->markOutput(mAccumulatePassOutputName);
 
     return mpAccumulatePass;
+}
+
+ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass( Falcor::RenderContext* pContext) {
+    if (mpToneMapperPass) {
+        LLOG_WRN << "Accumulation pass for AOV plane " << mInfo.name << " already created !!!";
+        return mpToneMapperPass;
+    }
+
+    createInternalRenderGraph(pContext);
+
+    if(!mpInternalRenderGraph) {
+        LLOG_ERR << "No internal render graph for " << name() << "! ToneMapperPass disabled!";
+    }
+
+    mpToneMapperPass = ToneMapperPass::create(pContext);
+
+}
+
+void AOVPlane::createInternalRenderGraph( Falcor::RenderContext* pContext, bool force) {
+    if (mpInternalRenderGraph && !force) return;
+
+    std::string internalGraphName = name() + " internal graph";
+    AOVPlaneGeometry aov_plane_geometry;
+    
+    if (!getAOVPlaneGeometry(aov_plane_geometry)) {
+        LLOG_ERR << "Error creating " << internalGraphName << ". Chain effects disabled!";
+        return; 
+    }
+
+    mpInternalRenderGraph = RenderGraph::create(pContext->device(), {aov_plane_geometry.width, aov_plane_geometry.height}, internalGraphName);
 }
 
 void AOVPlane::setOutputFormat(Falcor::ResourceFormat format) {

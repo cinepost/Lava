@@ -67,6 +67,7 @@ namespace {
     const std::string kRayReflectLimit = "rayReflectLimit";
     const std::string kRayRefractLimit = "rayRefractLimit";
     const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+    const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
 }
 
 DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -82,6 +83,7 @@ DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRen
         else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
         else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
+        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
     }
 
     return pThis;
@@ -163,7 +165,13 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         
         uint maxRayLevel = std::max(mRayDiffuseLimit, mRayReflectLimit);
         if(maxRayLevel > 0) defines.add("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
-        
+
+        uint32_t scene_lights_count = mpScene->getLightCount();
+        defines.add("_SCENE_LIGHT_COUNT", (scene_lights_count > 0) ? std::to_string(scene_lights_count) : "0");
+
+        defines.add("AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA", 
+            (mAreaLightsSamplingMode == AnalyticAreaLight::LightSamplingMode::SPHERICAL_SOLID_ANGLE) ? "1" : "0");
+
         if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
 
         mpLightingPass = ComputePass::create(mpDevice, desc, defines, true);
@@ -263,6 +271,24 @@ DeferredLightingPass& DeferredLightingPass::setSTBNSampling(bool enable) {
     mDirty = true;
     return *this;
 }
+
+DeferredLightingPass& DeferredLightingPass::setAreaLightsSamplingMode(const std::string& areaLightsSamplingModeName) {
+    if (areaLightsSamplingModeName == "sa") {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::SOLID_ANGLE);
+    } else if (areaLightsSamplingModeName == "urena") {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::SPHERICAL_SOLID_ANGLE);
+    } else {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::LTC);
+    }
+}
+
+DeferredLightingPass& DeferredLightingPass::setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode areaLightsSamplingMode) {
+    if(mAreaLightsSamplingMode == areaLightsSamplingMode) return *this;
+    mAreaLightsSamplingMode = areaLightsSamplingMode;
+    mDirty = true;
+    return *this;
+}
+
 
 DeferredLightingPass& DeferredLightingPass::setFrameSampleCount(uint32_t samples) {
     if (mFrameSampleCount == samples) return *this;

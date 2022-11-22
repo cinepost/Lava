@@ -380,6 +380,7 @@ bool Session::cmdRaytrace() {
 	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
 	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
 	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
+	passDict["areaLightsSamplingMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "areasampling", std::string("urena"));
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
 

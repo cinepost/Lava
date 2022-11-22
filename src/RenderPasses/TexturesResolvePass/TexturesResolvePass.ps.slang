@@ -100,7 +100,7 @@ float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualT
     return float3(f1, f2, fMipLevel);
 }
 
-[earlydepthstencil]
+//[earlydepthstencil]
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC : TEXCOORD) {
 
     PsOut psOut;
@@ -115,9 +115,9 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
     
     float4 grad_test;
 
+    [loop]
     for(uint v = 0; v < matData.virtualTexturesCount; v++) {
         SamplerState currTextureSampler = gCalibrationSampler; // TODO: use actual texture sampler
-        bool anisotropicFilteringRequired = true; // TODO: calculate maximum anisotropy level needed for given texture with the given sampler
         
         float2 uv = vOut.texC;
         uint32_t vtexDataID = matData.virtualTextureDataIDs[v];
@@ -150,6 +150,7 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_lo = loMipLevel / 255.0f;
             debug_mip_level_hi = hiMipLevel / 255.0f;
 
+            [unroll]
             for( int m = loMipLevel; m <= hiMipLevel; m++) writeTileID(calculateTileID2D(uv, m, vtexData));
 
             //writeTileID(calculateTileID2D(uv, 1, vtexData));

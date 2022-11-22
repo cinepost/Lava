@@ -29,6 +29,7 @@ target_link_libraries(
     DeferredLightingPass
     DeferredLightingCachedPass
     CryptomattePass
+    ToneMapperPass
     SkyBox
     RTXDIPass
     GBuffer

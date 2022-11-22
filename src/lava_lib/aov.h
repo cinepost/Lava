@@ -12,7 +12,9 @@
 
 #include "Falcor/RenderGraph/RenderGraph.h"
 #include "Falcor/RenderGraph/RenderPass.h"
+
 #include "RenderPasses/AccumulatePass/AccumulatePass.h"
+#include "RenderPasses/ToneMapperPass/ToneMapperPass.h"
 
 namespace lava {
 
@@ -141,6 +143,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
 
     bool getImageData(uint8_t* pData) const;
+    bool getProcessedImageData(uint8_t* pData) const;
     bool getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const;
 
     void setFormat(Falcor::ResourceFormat format);
@@ -155,19 +158,29 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool bindToTexture(Falcor::Texture::SharedPtr pTexture);
 
     AccumulatePass::SharedPtr               createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph);
+    ToneMapperPass::SharedPtr               createTonemappingPass( Falcor::RenderContext* pContext);
     inline AccumulatePass::SharedPtr        accumulationPass() { return mpAccumulatePass; }
     inline AccumulatePass::SharedConstPtr   accumulationPass() const { return mpAccumulatePass; }
 
+    inline ToneMapperPass::SharedPtr        tonemappingPass() { return mpToneMapperPass; }
+    inline ToneMapperPass::SharedConstPtr   tonemappingPass() const { return mpToneMapperPass; }
+
     inline const std::string&               accumulationPassInputName() const { return mAccumulatePassInputName; }
     inline const std::string&               accumulationPassOutputName() const { return mAccumulatePassOutputName; }
+
+    void createInternalRenderGraph( Falcor::RenderContext* pContext, bool force = false);
+
+    bool getTextureData(Texture* pTexture, uint8_t* pData) const;
 
   private:
     AOVPlaneInfo                        mInfo;
     Falcor::ResourceFormat              mFormat = Falcor::ResourceFormat::Unknown;  // internal 'real' format that might be different from requested
     Falcor::Texture::SharedPtr          mpTexture = nullptr;
 
-    Falcor::RenderGraph::SharedPtr      mpRenderGraph = nullptr;
+    Falcor::RenderGraph::SharedPtr      mpRenderGraph = nullptr;                    ///< Shared pointer to renderer graph
+    Falcor::RenderGraph::SharedPtr      mpInternalRenderGraph = nullptr;            ///< AOV internal render graph for chained effects
     AccumulatePass::SharedPtr           mpAccumulatePass = nullptr;
+    ToneMapperPass::SharedPtr           mpToneMapperPass = nullptr;
 
     std::string                         mAccumulatePassName;
     std::string                         mAccumulatePassInputName;

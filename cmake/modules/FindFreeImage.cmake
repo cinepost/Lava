@@ -8,10 +8,14 @@
 #
 # It also creates the IMPORTED target: FreeImage::FreeImage
 
+unset( _FreeImage_INCLUDE_DIR CACHE)
+unset( _FreeImage_LIBRARY_RELEASE CACHE)
+unset( _FreeImage_LIBRARY_DEBUG CACHE)
+unset( FreeImage_FOUND CACHE)
 
 find_path(_FreeImage_INCLUDE_DIR 
 	NAMES FreeImage.h
-	PATHS /usr/include ${FreeImage_ROOT}/include
+	PATHS ${FreeImage_ROOT}/include
 	NO_DEFAULT_PATH
 )
 
@@ -71,7 +75,7 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(FreeImage
   REQUIRED_VARS _FreeImage_INCLUDE_DIR
   VERSION_VAR FreeImage_VERSION
- )
+)
 
 
 mark_as_advanced(_FreeImage_INCLUDE_DIR

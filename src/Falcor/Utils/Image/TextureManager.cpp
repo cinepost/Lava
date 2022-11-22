@@ -309,6 +309,8 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
   	if(!pTexture) return (Texture*)nullptr;
   	if(pageIds.size() < 1) return (Texture*)nullptr;
 
+  	bool loadForRTX = true;
+
     std::thread::id thread_id = std::this_thread::get_id();
     auto pContext = pTexture->device()->getRenderContext();
 
@@ -349,8 +351,9 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 
 		}
 
-		if(tailPages.size() > 1) {
+		if((tailPages.size() > 1) || loadForRTX) {
 			// Fill mip tail data
+			LLOG_WRN << "Loading mip tail texture data";
 			pContext->fillMipTail(pTexture, nullptr);
 		}
 

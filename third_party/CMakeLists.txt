@@ -425,6 +425,8 @@ else()
     CMAKE_ARGS -D OpenEXR_ROOT=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D pybind11_ROOT=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D USE_PYTHON:BOOL=OFF
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=OFF
+    CMAKE_ARGS -D LINKSTATIC:BOOL=ON
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
@@ -595,6 +597,85 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CppZMQ_PREFIX}
   )
   ExternalProject_Add_StepDependencies(cppzmq configure zmq)
+
+endif()
+
+#######################
+# Intel SPMD Compiler (ISPC)
+#######################
+
+set(EXTERNAL_ISPC_VERSION 1.17.0)
+
+set(ISPC_PREFIX ispc)
+
+set(ISPC_ROOT ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX})
+find_package(ISPC ${EXTERNAL_ISPC_VERSION} EXACT)
+
+if(ISPC_EXECUTABLE)
+
+  message("Intel SPMD Compiler version ${ISPC_VERSION} found ...")
+  add_custom_target( ispc COMMAND echo "Intel SPMD Compiler found, skipping ...")
+
+else()
+  message("Intel SPMD Compiler not found! Downloading ...")
+
+  ExternalProject_Add ( ispc
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
+    URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+  )
+
+endif()
+
+#######################
+# OpenImageDenoise
+#######################
+
+set(EXTERNAL_OIDN_VERSION 1.4.3)
+
+set(OIDN_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(OIDN ${EXTERNAL_OIDN_VERSION} EXACT)
+
+if(OIDN_FOUND)
+
+  message("OIDN version ${OIDN_VERSION} found ...")
+  add_custom_target( OpenImageDenoise COMMAND echo "OpenImageDenoise build exists, skipping rebuild ...")
+
+else()
+
+  message("OpenImageDenoise not found! Running external build ...")
+  set(OIDN_PREFIX openimagedenoise)
+
+  get_filename_component(ISPC_EXECUTABLE_DIR ${ISPC_EXECUTABLE} DIRECTORY)
+  
+  ExternalProject_Add ( OpenImageDenoise
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${OIDN_PREFIX}
+    GIT_REPOSITORY https://github.com/OpenImageDenoise/oidn.git
+    GIT_TAG v${EXTERNAL_OIDN_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D ISPC_DIR_HINT=${ISPC_EXECUTABLE_DIR}
+    CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=ON
+    CMAKE_ARGS -D OIDN_API_NAMESPACE:STRING=oidn
+    CMAKE_ARGS -D OIDN_FILTER_RT:BOOL=ON
+    CMAKE_ARGS -D OIDN_FILTER_RTLIGHTMAP:BOOL=OFF
+    CMAKE_ARGS -D OIDN_APPS:BOOL=OFF
+    CMAKE_ARGS -D OIDN_APPS_OPENIMAGEIO:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${OIDN_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${OIDN_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${OIDN_PREFIX}
+  )
+  ExternalProject_Add_StepDependencies( OpenImageDenoise configure ispc OpenImageIO Tbb )
 
 endif()
 
@@ -903,6 +984,7 @@ add_dependencies( dummy_target
   OpenEXR
   Assimp
   #OpenVDB
+  OpenImageDenoise
   OpenImageIO
   RTXDI
   RTXGI

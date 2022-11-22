@@ -1,9 +1,27 @@
+22.11.2022
+----------------------------------------------------------------------
+
+Added:   	Area lights spherical projected solid angle sampling (Urena)
+
+Fixed: 		Deferred shading path tracing optimized, number of shadow rays
+			 		reduced. Better path prediction. Ray termination.
+
+Fixed: 		Non normalized area lights intencities
+
+Notes:    Spherical projected solid angle sampling for area lights 
+					supports only sphere aread light type at the moment. More
+					types (rectangular, disk, tube) to be supported soon.
+
+					As a general rule of thumb spherical projected solid angle
+					sampling provides better diffuse illumination of area lights
+					at a very small performance cost.
+
 17.11.2022
 ----------------------------------------------------------------------
 
-Added: Basic refraction support added.
+Added: 		Basic refraction support added.
 
-Added: Environment light (no hdr texture support yet).
+Added: 		Environment light (no hdr texture support yet).
 
-Fixed: Directional light (Houdini light type "Sun") direct and 
-			 indirect shading intensities fixed.
+Fixed: 		Directional light (Houdini light type "Sun") direct and 
+			 		indirect shading intensities fixed.

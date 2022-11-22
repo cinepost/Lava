@@ -7,6 +7,7 @@
 #include "Falcor/RenderGraph/RenderPass.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/Scene/Lights/Light.h"
 #include "Experimental/Scene/Lights/EnvMapLighting.h"
 #include "Experimental/Scene/Lights/EnvMapSampler.h"
 
@@ -66,6 +67,11 @@ class DeferredLightingPass : public RenderPass {
 		*/
 		DeferredLightingPass& setShadingRate(int rate);
 
+		/** Set area lights sampling mode
+		*/
+		DeferredLightingPass& setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode areaLightsSamplingMode);
+		DeferredLightingPass& setAreaLightsSamplingMode(const std::string& areaLightsSamplingModeName);
+
 		DeferredLightingPass& setRayReflectLimit(int limit);
 		DeferredLightingPass& setRayRefractLimit(int limit);
 		DeferredLightingPass& setRayDiffuseLimit(int limit);
@@ -100,6 +106,7 @@ class DeferredLightingPass : public RenderPass {
 
 		bool mEnableSuperSampling = false;
 		bool mUseSimplifiedEnvLighting = false;
+		AnalyticAreaLight::LightSamplingMode mAreaLightsSamplingMode = AnalyticAreaLight::LightSamplingMode::SOLID_ANGLE;
 		
 		bool mDirty = true;
 		bool mEnvMapDirty = true;

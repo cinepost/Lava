@@ -36,10 +36,14 @@
 */
 
 #include "Utils/Math/MathConstants.slangh"
+#include "LightSolidAngleHelpers.slangh"
 
 import Scene.Lights.LightData;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGeneratorInterface;
+
+__exported import Utils.Sampling.SamplingSphericalCaps;
+__exported import PSCMaps;
 
 static const float kMinLightDistSqr = 1e-9f;
 static const float kMaxLightDistance = FLT_MAX;
@@ -101,8 +105,7 @@ bool validateAreaLightSample(const float3 shadingPosW, const LightData light, in
     \param[out] ls Light sample struct.
     \return True if a sample was generated, false otherwise.
 */
-bool _sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
-{
+bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls) {
     // Pick a random sample on the quad.
     // The quad is from (-1.0, -1.0, 0.0) to (1.0, 1.0, 0.0) in object space, but may be scaled by its transform matrix.
     float3 pos = float3(2.0f * (rnd.x - .5f), 2.0f * (rnd.y - .5f), 0.f);
@@ -118,25 +121,6 @@ bool _sampleRectAreaLight(const float3 shadingPosW, const LightData light, float
 
     return true;
 }
-
-bool sampleRectAreaLight(const float3 shadingPosW, const LightData light, float2 rnd, out AnalyticLightSample ls)
-{
-    // Pick a random sample on the quad.
-    // The quad is from (-1.0, -1.0, 0.0) to (1.0, 1.0, 0.0) in object space, but may be scaled by its transform matrix.
-    float3 pos = float3(2.0f * (rnd.x - .5f), 2.0f * (rnd.y - .5f), 0.f);
-
-    // Apply model to world transformation matrix.
-    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
-
-    // Setup world space normal.
-    // TODO: normalW is not correctly oriented for mesh instances that have flipped triangle winding.
-    ls.normalW = normalize(mul(float4(0.f, 0.f, -1.f, 0.f), light.transMatIT).xyz);
-
-    if (!validateAreaLightSample(shadingPosW, light, ls)) return false;
-
-    return true;
-}
-
 
 bool intersectRectAreaLight(const float3 shadingPosW, const float3 dir, const LightData light, out AnalyticLightSample ls) {
     
@@ -206,6 +190,38 @@ bool sampleSphereAreaLight(const float3 shadingPosW, const LightData light, floa
 
     // Compute spherical light pdf
     ls.pdf = uniformConePdf(cosThetaMax);
+
+    return true;
+}
+
+bool sampleRectAreaLightSAU(const float3 shadingPosW, const float3 shadingNormalW, const LightData light, float2 rnd, out AnalyticLightSample ls) {
+
+    float3 localShadingPos = mul(float4(shadingPosW, 1.f), light.transMatInv).xyz;
+    float3 localNormal = normalize(mul(float4(shadingNormalW, 0.f), light.transMatInv).xyz);
+    ProjectedSphericalCap cap;
+
+    prepareProjectedSphericalCapSampling(cap, localNormal, -localShadingPos, 1.0f);
+
+    float3 lightSampleDirLocal = normalize(sampleProjectedSphericalCap(ls.pdf, cap, rnd));
+
+    float isect = intersect_sphere(localShadingPos, lightSampleDirLocal).x;
+    if(isect == -1.0f) return false;
+
+    float3 pos = localShadingPos + isect * lightSampleDirLocal;
+    ls.posW = mul(float4(pos, 1.f), light.transMat).xyz;
+    float3 toLight = ls.posW - shadingPosW;
+    float distSqr = max(dot(toLight, toLight), kMinLightDistSqr);
+    ls.distance = sqrt(distSqr);
+
+    ls.dir = ls.shadowDir = normalize(mul(float4(lightSampleDirLocal, 0.f), light.transMat).xyz);
+
+    ls.distance = 100.0f;
+
+    ls.pdf *= dot(normalize(lightSampleDirLocal), localNormal);
+    //ls.pdf *= light.surfaceArea;
+
+    ls.Lii = float3(1.0f);
+    ls.Li = light.directDiffuseIntensity;
 
     return true;
 }
@@ -298,7 +314,7 @@ bool sampleDistantLight(const float3 shadingPosW, const LightData light, float2 
     // A DistantLight's angle defines the solid angle it subtends.
     // But because the angle is intended to affect penumbra size, but not
     // perceived brigthness, we treat intensity as radiance.
-    ls.Lii = float3(1.0, 1.0, 1.0);
+    ls.Lii = float3(1.0);
     ls.Li = light.directDiffuseIntensity;
     
     ls.pdf = 1.f / ((float)M_2PI * (1.f - light.cosSubtendedAngle));
@@ -457,7 +473,11 @@ bool sampleLight(const float3 shadingPosW, const float3 shadingNormalW, const Li
         case LightType::Rect:
             return sampleRectAreaLight(shadingPosW, light, rnd, ls);
         case LightType::Sphere:
+#if AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA
+            return sampleRectAreaLightSAU(shadingPosW, shadingNormalW, light, rnd, ls);
+#else
             return sampleSphereAreaLight(shadingPosW, light, rnd, ls);
+#endif
         case LightType::Disc:
             return sampleDiscAreaLight(shadingPosW, light, rnd, ls);
         case LightType::Distant:

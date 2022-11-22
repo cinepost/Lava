@@ -430,6 +430,22 @@ void AnalyticAreaLight::setSingleSided(bool value) {
     update();
 }
 
+void AnalyticAreaLight::setDiffuseIntensity(const float3& intensity) {
+    mData.directDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void AnalyticAreaLight::setSpecularIntensity(const float3& intensity) {
+    mData.directSpecularIntensity = (float16_t3)(intensity);
+}
+
+void AnalyticAreaLight::setIndirectDiffuseIntensity(const float3& intensity) {
+    mData.indirectDiffuseIntensity = (float16_t3)(intensity);
+}
+
+void AnalyticAreaLight::setIndirectSpecularIntensity(const float3& intensity) {
+    mData.indirectSpecularIntensity = (float16_t3)(intensity);
+}
+
 void AnalyticAreaLight::update() {
     // Update matrix
     mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
