@@ -94,6 +94,21 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #endif  // gOutOcclusion
 }
 
+struct RayData {
+    float  depth;
+    float3 origin;
+    float3 direction;
+    uint   lobes;
+    
+    static RayData create() {
+        RayData r;
+        r.depth = 0.0f;
+        r.origin = r.direction = float3(0.0);
+        r.lobes = (uint)LobeType::All;
+        return r;
+    }
+};
+
 float _computeEnvironmentMapLOD(float pdf, Texture2D environmentMap) {
     uint txw, txh;
     environmentMap.GetDimensions(txw, txh);
@@ -154,7 +169,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         // Ray level 1+
 
         // Terminate specular caustics.
-        shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission;
+        shadingLobes = (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::SpecularReflection;
     } else {
         // Ray level 0 (camera ray)
         aov_data.position = sd.posW;
@@ -209,7 +224,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
                 rayShadowQuery.Proceed();
                 shadowFactor = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? light.shadowColor : float3(1.0);
-                //AOV_shadow *= shadowFactor;
             }
 
             float misDiffWeight = 1.0f;
@@ -245,7 +259,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayShadowQuery;
             let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE;
 #endif
-
+            //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+            //validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
             if(validBsdfSample && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
@@ -256,7 +271,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 
                     RayDesc ray;
                     ray.Origin = rayOrigin;
-                    ray.Direction = nextRayDir;
+                    ray.Direction = bsdfSample.wo;
                     ray.TMin = .001f;
                     ray.TMax = ls.distance;
 
@@ -271,13 +286,14 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 #endif
                     }
 
+                    [branch]
                     if(bsdfSample.isLobe(LobeType::DiffuseReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                         float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         diffuseColor += bsdfSample.weight * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-                        float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
+                        float misWeight = 1.0f; //evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
                         specularColor += bsdfSample.weight * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
                     }
                 }
@@ -318,7 +334,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         return surfaceColor;
     }
 
-    if(bsdfHitT > 0.0) {
+    if(bsdfHitT > 0.0 && (1 == 2)) {
         // Reuse found surface hit
         
         sampleWeight *= bsdfSample.weight;
@@ -447,6 +463,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     float3 _sampleWeight = float3(1.0);
     float3 _rayDir = rayDir;
     HitInfo _hit = hit;
+
+    RayData rayData = RayData.create();
+    //rayData.origin = 
+    rayData.direction = rayDir;
     
 #if _MAX_RAY_LEVEL != 0
     [loop]

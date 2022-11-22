@@ -215,10 +215,7 @@ bool sampleRectAreaLightSAU(const float3 shadingPosW, const float3 shadingNormal
 
     ls.dir = ls.shadowDir = normalize(mul(float4(lightSampleDirLocal, 0.f), light.transMat).xyz);
 
-    ls.distance = 100.0f;
-
     ls.pdf *= dot(normalize(lightSampleDirLocal), localNormal);
-    //ls.pdf *= light.surfaceArea;
 
     ls.Lii = float3(1.0f);
     ls.Li = light.directDiffuseIntensity;
