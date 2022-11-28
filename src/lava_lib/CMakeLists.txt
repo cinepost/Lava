@@ -28,6 +28,7 @@ target_link_libraries(
     ForwardLightingPass
     DeferredLightingPass
     DeferredLightingCachedPass
+    PathTracer
     CryptomattePass
     ToneMapperPass
     SkyBox

@@ -1084,6 +1084,18 @@
         label   "Rendering"
 
         parm {
+            name    "lv_renderengine"
+            label   "Rendering Engine"
+            type    string
+            default { "hybrid" }
+            menu {
+                "hybrid"      "Hybrid"
+                "pathtracer"  "Path Tracer"
+            }
+            parmtag { "script_callback_language" "python" }
+        }
+
+        parm {
             name    "lv_enable_rt"
             label   "Enable Ray Tracing"
             type    toggle
@@ -1164,7 +1176,7 @@
                 default { "urena" }
                 menu {
                     "sa"    "Solid Angle"
-                    "urena" "Projected Spherical Cap"
+                    "urena" "Spherical Projected"
                     "ltc"   "LTC"
                 }
                 parmtag { "script_callback_language" "python" }

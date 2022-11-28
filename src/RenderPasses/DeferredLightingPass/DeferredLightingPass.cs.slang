@@ -211,7 +211,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         sd.mtl.setActiveLobes(shadingLobes);
 
         [branch]
-        if (sampleLight(sd.posW, sd.N, light, rnd.xy, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
+        if (sampleLight(sd.posW, sd.N, light, rnd, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
                 
                 // Test visibility by tracing a shadow ray.
@@ -238,18 +238,21 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
                 misSpecWeight = evalMIS(1.0f, ls.pdf, 1.0f, bsdf.evalPdf(sd, ls.dir));
                 misSpecWeight /= ls.pdf;
-
-                //misSpecWeight = misDiffWeight;
             }
 #endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
 
+            //misDiffWeight = 1.0f;
+            //misSpecWeight = 1.0f;
+
             sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-            diffuseColor += bsdf.eval(sd, ls.dir, sg) * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
+            diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
 
             sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-            specularColor += bsdf.eval(sd, ls.dir, sg) * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
+            specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
         }
-    
+
+        //return float3(ls.dbg);
+
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
         // Sample bsdf for non singular light
@@ -261,7 +264,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 #endif
             //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
             //validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
-            if(validBsdfSample && (bsdfSample.pdf > 0.0f)) {
+            if((1 == 1) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
@@ -290,11 +293,11 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     if(bsdfSample.isLobe(LobeType::DiffuseReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                         float misWeight = evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
-                        diffuseColor += bsdfSample.weight * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
+                        diffuseColor += bsdfSample.weight * ls.i * ((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misWeight;
                     } else if(bsdfSample.isLobe(LobeType::SpecularReflection)) {
                         sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
                         float misWeight = 1.0f; //evalMIS(1., bsdf.evalPdf(sd, bsdfSample.wo), 1., ls.pdf);
-                        specularColor += bsdfSample.weight * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
+                        specularColor += bsdfSample.weight * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misWeight;
                     }
                 }
             }
@@ -455,9 +458,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     // Spatio temporal blue noise
 #ifdef _USE_STBN_SAMPLING
-    float4 stbn = gNoiseTex.SampleLevel(gNoiseSampler, ((ipos + gNoiseOffset) / float2(64)), 0);
+    float4 rnd = gNoiseTex.SampleLevel(gNoiseSampler, float2((ipos + gNoiseOffset + uint2(sampleNext2D(sg) * uint2(64))) / float2(64)), 0);
 #else
-    float4 stbn = float4(sampleNext2D(sg), sampleNext2D(sg));
+    float4 rnd = float4(sampleNext2D(sg), sampleNext2D(sg));
 #endif
     
     float3 _sampleWeight = float3(1.0);
@@ -465,7 +468,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     HitInfo _hit = hit;
 
     RayData rayData = RayData.create();
-    //rayData.origin = 
     rayData.direction = rayDir;
     
 #if _MAX_RAY_LEVEL != 0
@@ -474,7 +476,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #else
     const float rayLevel = 0;
 #endif
-        surfaceColor += calcIlluminance(_rayDir, _hit, _sampleWeight, sg, aov_data, stbn, lod, rayLevel, maxRayLevel);
+        surfaceColor += calcIlluminance(_rayDir, _hit, _sampleWeight, sg, aov_data, rnd, lod, rayLevel, maxRayLevel);
 #if _MAX_RAY_LEVEL != 0
         if(!_hit.isValid()) break;
     }
