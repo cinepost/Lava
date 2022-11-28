@@ -343,12 +343,14 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::Sha
         std::string fullpath = pGeo->detailFilePath().string();
         pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
 
+        pBgeo->preCachePrimitives();
+        auto result = this->addGeometry(pBgeo, name);
+        
         if(pGeo->isTemporary()) {
             fs::remove(fullpath);
         }
-
-        pBgeo->preCachePrimitives();
-        return this->addGeometry(pBgeo, name);
+        
+        return result;
     }));
 
     return mAddGeoTasks.back();
