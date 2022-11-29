@@ -162,7 +162,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     let bsdf = gScene.materials.getBSDF(sd, _lod);
     let bsdfProperties = bsdf.getProperties(sd);
 
-    uint shadingLobes = (uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection;
+    uint shadingLobes = (uint)LobeType::SpecularReflection | (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularTransmission;
     
     // Ray level common stuff
     if (rayLevel > 0) { 
@@ -385,7 +385,21 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
                 hit = HitInfo(getCommittedTriangleHit(rayQuery));
                 hitT = rayQuery.CommittedRayT();
-            }
+            } else {
+                if(bsdfSample.isLobe(LobeType::SpecularTransmission) || bsdfSample.isLobe(LobeType::DeltaTransmission)) {
+
+                    [loop]
+                    for (int lightIndex = 0; lightIndex < gScene.getLightCount(); lightIndex++) {
+                        LightData light = gScene.getLight(lightIndex);
+                        if(!light.isDeltaLight()) {
+                            AnalyticLightSample ls;
+                            if (intersectLight(sd.posW, rayDir, light, ls)) {
+                                surfaceColor += sampleWeight * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity );
+                            }
+                        }
+                    }
+                }
+            }   
         }
     }
 #else
