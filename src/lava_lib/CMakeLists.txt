@@ -31,6 +31,8 @@ target_link_libraries(
     PathTracer
     CryptomattePass
     ToneMapperPass
+    OpenDenoisePass
+    ImageLoaderPass
     SkyBox
     RTXDIPass
     GBuffer

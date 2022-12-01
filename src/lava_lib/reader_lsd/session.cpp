@@ -321,7 +321,7 @@ static bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, s
 	if (!pDisplay) return false;
 
 	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
-	if(!pAOVPlane->getImageData(textureData.data())) {
+	if(!pAOVPlane->getProcessedImageData(textureData.data())) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
 	}
@@ -381,6 +381,15 @@ bool Session::cmdRaytrace() {
 	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
 	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
 	passDict["areaLightsSamplingMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "areasampling", std::string("urena"));
+
+	passDict["MAIN.ToneMappingPass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.enable", bool(false));
+	passDict["MAIN.ToneMappingPass.operator"] = (uint32_t)mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.operator", int(4));
+
+	passDict["MAIN.ToneMappingPass.filmSpeed"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.filmSpeed", float(100.0));
+	passDict["MAIN.ToneMappingPass.exposureValue"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.exposureValue", float(0.0));
+	passDict["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
+
+	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
 

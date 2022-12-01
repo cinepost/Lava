@@ -592,13 +592,16 @@ struct SpecularReflectionTransmissionMicrofacet : IBxDF
 struct StandardBSDFData
 {
     float3 diffuse;                 ///< Diffuse albedo.
+    float  metallic;                ///< Metallic parameter, blends between dielectric and conducting BSDFs.
+    
     float3 specular;                ///< Specular albedo.
-    float roughness;                ///< This is the original roughness, before remapping.
-    float metallic;                 ///< Metallic parameter, blends between dielectric and conducting BSDFs.
-    float eta;                      ///< Relative index of refraction (incident IoR / transmissive IoR).
+    float  roughness;               ///< This is the original roughness, before remapping.
+    
     float3 transmission;            ///< Transmission color.
-    float diffuseTransmission;      ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
-    float specularTransmission;     ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
+    float  diffuseTransmission;     ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
+    
+    float  specularTransmission;    ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
+    float  eta;                     ///< Relative index of refraction (incident IoR / transmissive IoR).
 }
 
 /** Mixed BSDF used for the standard material in Falcor.
@@ -681,7 +684,7 @@ struct FalcorBSDF : IBxDF
 
         pDiffuseReflection = (activeLobes & (uint)LobeType::DiffuseReflection) ? diffuseWeight * dielectricBSDF * (1.f - diffTrans) : 0.f;
         pDiffuseTransmission = (activeLobes & (uint)LobeType::DiffuseTransmission) ? diffuseWeight * dielectricBSDF * diffTrans : 0.f;
-        pSpecularReflection = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection)) ? specularWeight * (metallicBRDF + dielectricBSDF) : 0.f;
+        pSpecularReflection = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection)) ? specularWeight * (metallicBRDF + dielectricBSDF): 0.f;
         pSpecularReflectionTransmission = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection | (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission)) ? specularBSDF : 0.f;
 
         float normFactor = pDiffuseReflection + pDiffuseTransmission + pSpecularReflection + pSpecularReflectionTransmission;

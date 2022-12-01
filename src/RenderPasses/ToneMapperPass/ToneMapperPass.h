@@ -54,6 +54,8 @@ class ToneMapperPass : public RenderPass {
 		virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
+		void setOutputFormat(ResourceFormat format);
+
 		// Scripting functions
 		void setExposureCompensation(float exposureCompensation);
 		void setAutoExposure(bool autoExposure);
@@ -93,14 +95,13 @@ class ToneMapperPass : public RenderPass {
 
 
 		ResourceFormat mOutputFormat;       // Output format (uses default when set to ResourceFormat::Unknown).
-		uint2 mFrameDim = { 0, 0 };
 
 		float mExposureCompensation = 0.f;  // Exposure compensation (in F-stops).
 		bool  mAutoExposure = false;        // Enable auto exposure.
 		float mExposureValue = 0.0f;        // Exposure value (EV), only used when auto exposure is disabled.
 		float mFilmSpeed = 100.f;           // Film speed (ISO), only used when auto exposure is disabled.
 
-		bool  mWhiteBalance = false;         // Enable white balance.
+		bool  mWhiteBalance = false;        // Enable white balance.
 		float mWhitePoint = 6500.0f;        // White point (K).
 
 		Operator mOperator;                 // Tone mapping operator.

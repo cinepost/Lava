@@ -98,16 +98,19 @@ makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "DeferredLightingPass")
 makeRenderPassLib(NAME "DeferredLightingCachedPass")
 makeRenderPassLib(NAME "ToneMapperPass")
+makeRenderPassLib(NAME "OpenDenoisePass")
 makeRenderPassLib(NAME "CryptomattePass")
+makeRenderPassLib(NAME "ImageLoaderPass")
 makeRenderPassLib(NAME "SkyBox")
 makeRenderPassLib(NAME "RTXDIPass")
 makeRenderPassLib(NAME "PathTracer")
+
+
 
 #makeRenderPassLib(NAME "WhittedRayTracer")
 #makeRenderPassLib(NAME "MinimalPathTracer")
 #makeRenderPassLib(NAME "MegakernelPathTracer")
 
-#makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
 
 #makeRenderPassLib(NAME "PixelInspectorPass")

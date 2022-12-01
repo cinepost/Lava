@@ -90,13 +90,14 @@ bool AOVPlane::getTextureData(Texture* pTexture, uint8_t* pData) const {
 bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (!mpInternalRenderGraph) {
-        LLOG_WRN << "No internal graph AOV plane " << mInfo.name << " effects. Reading raw image data.";
+    if (!mpInternalRenderGraph || mProcessedPassOutputName.empty() || !mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
+        LLOG_WRN << "No AOV plane " << mInfo.name << " post effects exist. Reading raw image data.";
         return getImageData(pData);
     }
 
-    auto pResource = mpInternalRenderGraph->getOutput("chainOutput");
-    auto pEffectsGraphTexture = pResource->asTexture();
+    mpInternalRenderGraph->execute();
+    auto pResource = mpInternalRenderGraph->getOutput(mProcessedPassOutputName);
+    auto pEffectsGraphTexture = pResource ? pResource->asTexture() : nullptr;
     if (!pEffectsGraphTexture) {
         LLOG_WRN << "No effects chain output texture associated with AOV plane " << mInfo.name << "!!! Unable to read data !!!";
         return false;
@@ -105,7 +106,7 @@ bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
     bool result = getTextureData(pEffectsGraphTexture.get(), pData);
 
     auto stop = std::chrono::high_resolution_clock::now();
-    LLOG_DBG << "AOV plane " << name() << " processed image data read time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
+    LLOG_DBG << "AOV plane " << name() << " processed image data read from " << mProcessedPassOutputName << " time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms.";
 
     return result;
 }
@@ -163,7 +164,7 @@ void AOVPlane::setFormat(Falcor::ResourceFormat format) {
     if (format == pTexture->getFormat()) return;
 }
 
-AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph) {
+AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContext* pContext, Falcor::RenderGraph::SharedPtr pGraph, const Falcor::Dictionary& dict) {
     assert(pGraph);
 
     if (mpAccumulatePass) {
@@ -173,7 +174,7 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
 
     mpRenderGraph = pGraph;
     
-    mpAccumulatePass = AccumulatePass::create(pContext);
+    mpAccumulatePass = AccumulatePass::create(pContext, dict);
     if (!mpAccumulatePass) {
         LLOG_ERR << "Error creating accumulation pass for AOV plane " << mInfo.name << " !!!";
         return nullptr;
@@ -197,34 +198,110 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
     return mpAccumulatePass;
 }
 
-ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass( Falcor::RenderContext* pContext) {
+ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext* pContext, const Falcor::Dictionary& dict) {
     if (mpToneMapperPass) {
         LLOG_WRN << "Accumulation pass for AOV plane " << mInfo.name << " already created !!!";
         return mpToneMapperPass;
     }
 
-    createInternalRenderGraph(pContext);
-
     if(!mpInternalRenderGraph) {
-        LLOG_ERR << "No internal render graph for " << name() << "! ToneMapperPass disabled!";
+        createInternalRenderGraph(pContext);
+        if(!mpInternalRenderGraph) return nullptr;
     }
 
-    mpToneMapperPass = ToneMapperPass::create(pContext);
+    LLOG_DBG << "Creating ToneMapperPass";
 
+    mpToneMapperPass = ToneMapperPass::create(pContext, dict);
+    if (!mpToneMapperPass) {
+        LLOG_ERR << "Error creating tonemapper pass for AOV plane " << mInfo.name << " !!!";
+        return nullptr;
+    }
+
+    std::string tonemapperPassName = "ToneMapperPass_" + mInfo.name;
+
+    LLOG_DBG << tonemapperPassName << " created";
+    mpToneMapperPass->setOutputFormat(mFormat);
+
+    // Unmark previously marked output
+    if(!mProcessedPassOutputName.empty() && mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
+        mpInternalRenderGraph->unmarkOutput(mProcessedPassOutputName);
+        LLOG_DBG << "Unmarked output " << mProcessedPassOutputName;
+    }
+
+    mpInternalRenderGraph->addPass(mpToneMapperPass, "ToneMapperPass_" + mInfo.name);
+    mpInternalRenderGraph->addEdge(mProcessedPassOutputName, tonemapperPassName + ".input");
+
+    mProcessedPassOutputName = tonemapperPassName + ".output";
+    mpInternalRenderGraph->markOutput(mProcessedPassOutputName);
+
+    LLOG_DBG << "Marked output " << mProcessedPassOutputName;
+
+    if(!compileInternalRenderGraph(pContext)) {
+        mpToneMapperPass = nullptr;
+    }
+
+    return mpToneMapperPass;
 }
 
-void AOVPlane::createInternalRenderGraph( Falcor::RenderContext* pContext, bool force) {
+OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContext* pContext, const Falcor::Dictionary& dict) {
+    if (mpDenoiserPass) {
+        LLOG_WRN << "Denoiser pass for AOV plane " << mInfo.name << " already created !!!";
+        return mpDenoiserPass;
+    }
+
+    return mpDenoiserPass;
+}
+
+void AOVPlane::createInternalRenderGraph(Falcor::RenderContext* pContext, bool force) {
     if (mpInternalRenderGraph && !force) return;
 
     std::string internalGraphName = name() + " internal graph";
-    AOVPlaneGeometry aov_plane_geometry;
-    
-    if (!getAOVPlaneGeometry(aov_plane_geometry)) {
-        LLOG_ERR << "Error creating " << internalGraphName << ". Chain effects disabled!";
-        return; 
+
+    mpInternalRenderGraph = RenderGraph::create(pContext->device(), mpRenderGraph->dims(), internalGraphName);
+    if (! mpInternalRenderGraph) {
+        LLOG_ERR << "Error creating internal render graph " << internalGraphName;
     }
 
-    mpInternalRenderGraph = RenderGraph::create(pContext->device(), {aov_plane_geometry.width, aov_plane_geometry.height}, internalGraphName);
+    if(!mpImageLoaderPass) {
+        //Falcor::Dictionary dict;
+        //dict["filename"] = fs::path("/home/max/Desktop/Screenshot from 2022-10-31 16-27-52.png");
+
+        mpImageLoaderPass = ImageLoaderPass::create(pContext);
+        if(!mAccumulatePassOutputName.empty() && mpRenderGraph->isGraphOutput(mAccumulatePassOutputName)) {
+            auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+            auto pTex = pResource ? pResource->asTexture() : nullptr;
+            if(pTex) {
+                mpImageLoaderPass->setSourceTexture(pTex);
+            } else {
+                LLOG_WRN << "No accumulation pass texture exist for processing !";
+            }
+        }
+    }
+
+    std::string imageLoaderPassName = "ImageLoaderPass_" + mInfo.name;
+
+    mProcessedPassOutputName = imageLoaderPassName + ".output";
+    mpInternalRenderGraph->addPass(mpImageLoaderPass, "ImageLoaderPass_" + mInfo.name);
+    mpInternalRenderGraph->markOutput(mProcessedPassOutputName);
+}
+
+bool AOVPlane::compileInternalRenderGraph(Falcor::RenderContext* pContext) {
+    if(!mpInternalRenderGraph) {
+        LLOG_WRN << "No internal render graph exist for plane " << name() << "! Nothing to compile.";
+        return false;
+    }
+
+    // Compile internal rendering graph
+    std::string log;
+    bool result = mpInternalRenderGraph->compile(pContext, log);
+    if(!result) {
+        LLOG_ERR << "Error compiling internal render graph for plane " << name() << " !\n" << log;
+        mpInternalRenderGraph = nullptr;
+        return false;
+    }
+
+    LLOG_DBG << name() << " internal render graph done";
+    return true;
 }
 
 void AOVPlane::setOutputFormat(Falcor::ResourceFormat format) {

@@ -352,6 +352,10 @@ bool RenderGraph::compile(RenderContext* pContext, std::string& log) {
     }
 }
 
+void RenderGraph::execute() {
+    execute(mpDevice->getRenderContext(), 0, 0);
+}
+
 void RenderGraph::execute(RenderContext* pContext, uint32_t frameNumber, uint32_t sampleNumber) {
     std::string log;
     if (!compile(pContext, log)) {

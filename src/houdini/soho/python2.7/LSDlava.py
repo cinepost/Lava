@@ -170,6 +170,14 @@ def initializeFeatures(settings):
     Image("image", "reflectlimit", "int", "lv_reflect_limit")
     Image("image", "refractlimit", "int", "lv_refract_limit")
 
+    Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
+
+    Image("image", "ToneMappingPass.enable", "bool", "lv_postfx_tonemap")
+    Image("image", "ToneMappingPass.operator", "int", "lv_tonemap_operator")
+    Image("image", "ToneMappingPass.filmSpeed", "float", "lv_tonemap_filmspeed")
+    Image("image", "ToneMappingPass.exposureValue", "float", "lv_tonemap_exposure")
+    Image("image", "ToneMappingPass.autoExposure", "bool", "lv_tonemap_auto_exposure")
+
     # -- Photon --
     Photon("photon", "photoncfile", "string", "lv_photoncfile")
     Photon("photon", "photoncount", "int", "lv_photoncount")

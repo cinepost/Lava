@@ -238,7 +238,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Forward lighting
 	Falcor::Dictionary lightingPassDictionary(mRenderPassesDictionary);
 
-	lightingPassDictionary["frameSampleCount"] =  frame_info.imageSamples;
+	lightingPassDictionary["frameSampleCount"] = frame_info.imageSamples;
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 
@@ -325,7 +325,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	}
 
 
-	// Create anf bind main "beauty" plane
+	// Create MAIN (beauty) plane accumulation pass and bind with render graph output
 	pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
 	mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassInputName());
 	//mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
@@ -432,7 +432,37 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	if(!result) {
 		LLOG_ERR << "Error compiling rendering graph !!!\n" << log;
 		mpRenderGraph = nullptr;
+		return;
 	}
+
+	// Once rendering graph compiled we can create additional AOV processing (tonemapping, denoising, etc.) if required
+
+	// MAIN (Beauty) pass image processing
+	if(mRenderPassesDictionary.getValue<bool>("MAIN.ToneMappingPass.enable", false) == true) {
+		Falcor::Dictionary lightingPassDictionary({});
+
+		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.operator"))
+			lightingPassDictionary["operator"] = static_cast<ToneMapperPass::Operator>(uint32_t(mRenderPassesDictionary["MAIN.ToneMappingPass.operator"]));
+
+		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.filmSpeed"))
+			lightingPassDictionary["filmSpeed"] = mRenderPassesDictionary["MAIN.ToneMappingPass.filmSpeed"];
+
+		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.exposureValue"))
+			lightingPassDictionary["exposureValue"] = mRenderPassesDictionary["MAIN.ToneMappingPass.exposureValue"];
+
+		if(mRenderPassesDictionary.keyExists("MAIN.ToneMappingPass.autoExposure"))
+			lightingPassDictionary["autoExposure"] = mRenderPassesDictionary["MAIN.ToneMappingPass.autoExposure"];
+	
+		auto pToneMapperPass = pMainAOV->createTonemappingPass(pRenderContext, lightingPassDictionary);
+	}
+
+	if(mRenderPassesDictionary.getValue<bool>("MAIN.OpenDenoisePass.enable", false) == true) {
+		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
+		if (pDenoisingPass) {
+			//Set denoiser parameters here
+		}
+	}
+
 	LLOG_DBG << "createRenderGraph done";
 }
 

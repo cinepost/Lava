@@ -51,7 +51,7 @@ struct BasicMaterialData
     float       emissiveFactor          = 1.f;              ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
 
     float16_t3  baseColor               = float16_t3(1.f);  ///< Material base color (RGB) and opacity (A).
-    float16_t   reflectivity            = float16_t(1.f);     ///< Material reflectivity.
+    float16_t   reflectivity            = float16_t(1.f);   ///< Material reflectivity.
 
     float16_t3  emissive                = float16_t3(0.f);  ///< Emissive color (RGB).
     float16_t   specularTransmission    = float16_t(0.f);   ///< Specular transmission. Range [0,1].

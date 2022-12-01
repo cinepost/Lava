@@ -32,16 +32,22 @@ static const float kExposureKey = 0.042;
 static const float kLuminanceLod = 16.0; // Lookup highest mip level to get average luminance
 
 
-cbuffer PerFrameCB {
+//[[vk::binding(0, 2)]]
+cbuffer PerFrameCB // : register(b0)
+{
     ToneMapperParams gParams;
     uint2            gFrameDim;
 };
 
-SamplerState gLuminanceTexSampler;
-SamplerState gColorSampler;
+//[[vk::binding(0, 0)]]
+SamplerState gLuminanceTexSampler;// : register(s0);
 
-Texture2D<float4>   gColorTex;
-Texture2D<float>    gLuminanceTex;
+//[[vk::binding(0, 1)]]
+SamplerState gColorSampler;// : register(s1);
+
+Texture2D<float4> gColorTex;
+Texture2D<float> gLuminanceTex;
+
 RWTexture2D<float4> gDstColorTex;
 
 

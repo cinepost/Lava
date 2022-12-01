@@ -25,39 +25,40 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_
-#define SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_
+#ifndef SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_
+#define SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_
 
 #include "Falcor/Falcor.h"
 #include "FalcorExperimental.h"
 
 using namespace Falcor;
 
-class ImageLoader : public RenderPass, public inherit_shared_from_this<RenderPass, ImageLoader> {
- public:
-    using SharedPtr = std::shared_ptr<ImageLoader>;
-    using inherit_shared_from_this<RenderPass, ImageLoader>::shared_from_this;
-    static const char* kDesc;
+class ImageLoaderPass : public RenderPass {
+	public:
+		using SharedPtr = std::shared_ptr<ImageLoaderPass>;
+		using SharedConstPtr = std::shared_ptr<const ImageLoaderPass>;
+		static const Info kInfo;
 
-    /** Create a new object
-    */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+		static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
 
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
-    virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
-    virtual Dictionary getScriptingDictionary() override;
-    virtual std::string getDesc() override { return kDesc; }
+		virtual RenderPassReflection reflect(const CompileData& compileData) override;
+		virtual void compile(RenderContext* pContext, const CompileData& compileData) override;
+		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
+		virtual Dictionary getScriptingDictionary() override;
 
- private:
-    ImageLoader(Device::SharedPtr pDevice);
+		void   setSourceTexture(Texture::SharedPtr pTexture);
 
-    Texture::SharedPtr mpTex;
-    std::string mImageName;
-    uint32_t mArraySlice = 0;
-    uint32_t mMipLevel = 0;
-    bool mGenerateMips = false;
-    bool mLoadSRGB = true;
+	private:
+		ImageLoaderPass(Device::SharedPtr pDevice);
+
+		Texture::SharedPtr 	mpSrcTexture;
+		fs::path		 				mImageName;
+		
+		uint32_t 	mArraySlice = 0;
+		uint32_t 	mMipLevel = 0;
+		
+		bool 	mGenerateMips = false;
+		bool 	mLoadSRGB = true;
 };
 
-#endif  // SRC_FALCOR_RENDERPASSES_IMAGELOADER_IMAGELOADER_H_
+#endif  // SRC_FALCOR_RENDERPASSES_IMAGELOADERPASS_IMAGELOADERPASS_H_

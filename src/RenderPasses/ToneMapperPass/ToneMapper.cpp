@@ -41,27 +41,27 @@ const RenderPass::Info ToneMapperPass::kInfo
 };
 
 namespace {
-    const char kSrc[] = "src";
-    const char kDst[] = "dst";
-    const char kLuminanceTex[] = "luminanceTex";
+    const std::string kSrc = "input";
+    const std::string kDst = "output";
+    const std::string kLuminanceTex = "luminanceTex";
 
-    const char kOutputFormat[] = "outputFormat";
+    const std::string kOutputFormat = "outputFormat";
 
-    const char kExposureCompensation[] = "exposureCompensation";
-    const char kAutoExposure[] = "autoExposure";
-    const char kExposureValue[] = "exposureValue";
-    const char kFilmSpeed[] = "filmSpeed";
+    const std::string kExposureCompensation = "exposureCompensation";
+    const std::string kAutoExposure = "autoExposure";
+    const std::string kExposureValue = "exposureValue";
+    const std::string kFilmSpeed = "filmSpeed";
 
-    const char kWhiteBalance[] = "whiteBalance";
-    const char kWhitePoint[] = "whitePoint";
+    const std::string kWhiteBalance = "whiteBalance";
+    const std::string kWhitePoint = "whitePoint";
 
-    const char kOperator[] = "operator";
-    const char kClamp[] = "clamp";
-    const char kWhiteMaxLuminance[] = "whiteMaxLuminance";
-    const char kWhiteScale[] = "whiteScale";
+    const std::string kOperator = "operator";
+    const std::string kClamp = "clamp";
+    const std::string kWhiteMaxLuminance = "whiteMaxLuminance";
+    const std::string kWhiteScale = "whiteScale";
 
-    const char kLuminanceShaderFile[] = "RenderPasses/ToneMapperPass/Luminance.ps.slang";
-    const char kToneMappingShaderFile[] = "RenderPasses/ToneMapperPass/ToneMapping.ps.slang";
+    const char kLuminanceShaderFile[] = "RenderPasses/ToneMapperPass/Luminance.cs.slang";
+    const char kToneMappingShaderFile[] = "RenderPasses/ToneMapperPass/ToneMapping.cs.slang";
 
     const std::string kShaderModel = "6_5";
 
@@ -84,30 +84,6 @@ extern "C" falcorexport const char* getProjDir() {
     return PROJECT_DIR;
 }
 
-/*
-static void regToneMapperPass(ScriptBindings::Module& m) {
-    auto c = m.regClass(ToneMapperPass);
-    c.property(kExposureCompensation, &ToneMapperPass::getExposureCompensation, &ToneMapperPass::setExposureCompensation);
-    c.property(kAutoExposure, &ToneMapperPass::getAutoExposure, &ToneMapperPass::setAutoExposure);
-    c.property(kExposureValue, &ToneMapperPass::getExposureValue, &ToneMapperPass::setExposureValue);
-    c.property(kFilmSpeed, &ToneMapperPass::getFilmSpeed, &ToneMapperPass::setFilmSpeed);
-    c.property(kWhiteBalance, &ToneMapperPass::getWhiteBalance, &ToneMapperPass::setWhiteBalance);
-    c.property(kWhitePoint, &ToneMapperPass::getWhitePoint, &ToneMapperPass::setWhitePoint);
-    c.property(kOperator, &ToneMapperPass::getOperator, &ToneMapperPass::setOperator);
-    c.property(kClamp, &ToneMapperPass::getClamp, &ToneMapperPass::setClamp);
-    c.property(kWhiteMaxLuminance, &ToneMapperPass::getWhiteMaxLuminance, &ToneMapperPass::setWhiteMaxLuminance);
-    c.property(kWhiteScale, &ToneMapperPass::getWhiteScale, &ToneMapperPass::setWhiteScale);
-
-    auto op = m.enum_<ToneMapperPass::Operator>("ToneMapOp");
-    op.regEnumVal(ToneMapperPass::Operator::Linear);
-    op.regEnumVal(ToneMapperPass::Operator::Reinhard);;
-    op.regEnumVal(ToneMapperPass::Operator::ReinhardModified);
-    op.regEnumVal(ToneMapperPass::Operator::HejiHableAlu);;
-    op.regEnumVal(ToneMapperPass::Operator::HableUc2);
-    op.regEnumVal(ToneMapperPass::Operator::Aces);
-}
-*/
-
 extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
     lib.registerPass(ToneMapperPass::kInfo, ToneMapperPass::create);
 }
@@ -128,9 +104,7 @@ ToneMapperPass::ToneMapperPass(Device::SharedPtr pDevice, ToneMapperPass::Operat
 ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     // outputFormat can only be set on construction
     ResourceFormat outputFormat = ResourceFormat::Unknown;
-    if (dict.keyExists(kOutputFormat)) outputFormat = dict[kOutputFormat];
-
-    ToneMapperPass* pThis = new ToneMapperPass(pRenderContext->device(), Operator::Aces, outputFormat);
+    auto pThis = SharedPtr(new ToneMapperPass(pRenderContext->device(), Operator::HableUc2, ResourceFormat::Unknown));
 
     for (const auto& [key, value] : dict) {
         if (key == kExposureCompensation) pThis->setExposureCompensation(value);
@@ -143,9 +117,10 @@ ToneMapperPass::SharedPtr ToneMapperPass::create(RenderContext* pRenderContext, 
         else if (key == kClamp) pThis->setClamp(value);
         else if (key == kWhiteMaxLuminance) pThis->setWhiteMaxLuminance(value);
         else if (key == kWhiteScale) pThis->setWhiteScale(value);
+        else if (key == kOutputFormat) pThis->setOutputFormat(value);
     }
 
-    return ToneMapperPass::SharedPtr(pThis);
+    return pThis;
 }
 
 Dictionary ToneMapperPass::getScriptingDictionary() {
@@ -179,7 +154,7 @@ RenderPassReflection ToneMapperPass::reflect(const CompileData& compileData) {
 }
 
 void ToneMapperPass::compile(RenderContext* pRenderContext, const CompileData& compileData) {
-    mFrameDim = compileData.defaultTexDims;
+
 }
 
 void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
@@ -188,6 +163,13 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
     auto pDst = renderData[kDst]->asTexture();
     auto pLuminanceTex = renderData[kLuminanceTex]->asTexture();
 
+    if(!pSrc) {
+        LLOG_WRN << "No input specified for ToneMapperPass. Bypassing.";
+        return;
+    }
+
+    uint2 dims = {pSrc->getWidth(), pSrc->getHeight()};
+
     // Run luminance pass if auto exposure is enabled
     if (mAutoExposure) {
         mpLuminancePass["gColorTex"] = pSrc;
@@ -195,9 +177,9 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
         mpLuminancePass["gLuminanceOutColor"] = pLuminanceTex;
 
         auto cb_var = mpLuminancePass["PerFrameCB"];
-        cb_var["gFrameDim"] = mFrameDim;
+        cb_var["gFrameDim"] = dims;
 
-        mpLuminancePass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+        mpLuminancePass->execute(pRenderContext, dims.x, dims.y);
         pLuminanceTex->generateMips(pRenderContext);
     }
 
@@ -218,7 +200,7 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
         params.colorTransform = static_cast<float3x4>(mColorTransform);
         
         auto cb_var = mpToneMapPass["PerFrameCB"];
-        cb_var["gFrameDim"] = mFrameDim;
+        cb_var["gFrameDim"] = dims;
         cb_var["gParams"].setBlob(&params, sizeof(params));
 
         mUpdateToneMapPass = false;
@@ -233,33 +215,14 @@ void ToneMapperPass::execute(RenderContext* pRenderContext, const RenderData& re
         mpToneMapPass["gLuminanceTex"] = pLuminanceTex;
     }
 
-    mpToneMapPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
+    mpToneMapPass->execute(pRenderContext, dims.x, dims.y);
 }
-/*
-void ToneMapperPass::createLuminanceFbo(std::shared_ptr<Device> pDevice, const Texture::SharedPtr& pSrc) {
 
-    bool createFbo = mpLuminanceFbo == nullptr;
-    ResourceFormat srcFormat = pSrc->getFormat();
-    uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
-
-    // Find the required texture size and format
-    ResourceFormat luminanceFormat = (bytesPerChannel == 32) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
-    uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
-    uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
-
-    if (createFbo == false) {
-        createFbo = (requiredWidth != mpLuminanceFbo->getWidth()) ||
-            (requiredHeight != mpLuminanceFbo->getHeight()) ||
-            (luminanceFormat != mpLuminanceFbo->getColorTexture(0)->getFormat());
-    }
-
-    if (createFbo) {
-        Fbo::Desc desc(pDevice);
-        desc.setColorTarget(0, luminanceFormat);
-        mpLuminanceFbo = Fbo::create2D(pDevice, requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
-    }
+void ToneMapperPass::setOutputFormat(ResourceFormat format) {
+    if(mOutputFormat == format) return;
+    mOutputFormat = format;
+    mPassChangedCB();
 }
-*/
 
 void ToneMapperPass::setExposureCompensation(float exposureCompensation) {
     mExposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
@@ -267,45 +230,52 @@ void ToneMapperPass::setExposureCompensation(float exposureCompensation) {
 }
 
 void ToneMapperPass::setAutoExposure(bool autoExposure) {
+    if(mAutoExposure == autoExposure) return;
     mAutoExposure = autoExposure;
     mRecreateToneMapPass = true;
 }
 
 void ToneMapperPass::setExposureValue(float exposureValue) {
-    mExposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
+    auto _exposureValue = glm::clamp(exposureValue, kExposureValueMin, kExposureValueMax);
+    if(mExposureValue == _exposureValue) return;
+    mExposureValue = _exposureValue;
     mUpdateToneMapPass = true;
 }
 
 void ToneMapperPass::setFilmSpeed(float filmSpeed) {
-    mFilmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
+    _filmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
+    if(mFilmSpeed == _filmSpeed) return;
+    mFilmSpeed = _filmSpeed;
     mUpdateToneMapPass = true;
 }
 
 void ToneMapperPass::setWhiteBalance(bool whiteBalance) {
+    if(mWhiteBalance == whiteBalance) return;
     mWhiteBalance = whiteBalance;
     mUpdateToneMapPass = true;
 }
 
 void ToneMapperPass::setWhitePoint(float whitePoint) {
-    mWhitePoint = glm::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
+    auto _whitePoint = glm::clamp(whitePoint, kWhitePointMin, kWhitePointMax);
+    if(mWhitePoint == _whitePoint) return;
+    mWhitePoint = _whitePoint;
     mUpdateToneMapPass = true;
 }
 
 void ToneMapperPass::setOperator(Operator op) {
-    if (op != mOperator) {
-        mOperator = op;
-        mRecreateToneMapPass = true;
-    }
+    if(mOperator == op) return;
+    mOperator = op;
+    mRecreateToneMapPass = true;
 }
 
 void ToneMapperPass::setClamp(bool clamp) {
-    if (clamp != mClamp) {
-        mClamp = clamp;
-        mRecreateToneMapPass = true;
-    }
+    if(mClamp == clamp) return;
+    mClamp = clamp;
+    mRecreateToneMapPass = true;
 }
 
 void ToneMapperPass::setWhiteMaxLuminance(float maxLuminance) {
+    if(mWhiteMaxLuminance == maxLuminance) return;
     mWhiteMaxLuminance = maxLuminance;
     mUpdateToneMapPass = true;
 }
