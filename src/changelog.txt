@@ -1,3 +1,25 @@
+30.11.2022
+----------------------------------------------------------------------
+
+Added:    Denosing of the main (beauty) channel. Please note that 
+					auxiliary channels "albedo" and "normals" are not 
+					handled by the denoiser yet.
+
+27.11.2022
+----------------------------------------------------------------------
+
+Added:    Tone mapping of the main (beauty) channel. Please note that 
+					not all ROP_Lava user interface tonemapper settings are not
+					handled by the tonemapper yet.
+
+25.11.2022
+----------------------------------------------------------------------
+
+Added:    Sherical projected solid angle sampling for rectangular area
+          lights. Less noise, better surface light.
+
+Fixed:    Area lights visibility through refractive surfaces.
+
 22.11.2022
 ----------------------------------------------------------------------
 

@@ -739,25 +739,51 @@
                 parmtag { "script_callback_language" "python" }
             }
 
-            parm {
-                name    "lv_postfx_denoise"
-                label   "Denoise"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
-            }
+            groupsimple {
+                name    "output6_1"
+                label   "Denoiser Parameters"
 
-            parm {
-                name    "lv_postfx_tonemap"
-                label   "Tonemap"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
+                parm {
+                    name    "lv_postfx_denoise"
+                    label   "Enable Denoiser"
+                    type    toggle
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_denoise_use_albedo"
+                    label   "Use Albedo"
+                    type    toggle
+                    default { "1" }
+                    help    "Use auxilary albedo channel if available."
+                    disablewhen "{ lv_postfx_denoise == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_denoise_use_normal"
+                    label   "Use Normal"
+                    type    toggle
+                    default { "1" }
+                    help    "Use auxilary normal channel if available."
+                    disablewhen "{ lv_postfx_denoise == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
             }
 
             groupsimple {
-                name    "output6_1"
+                name    "output6_2"
                 label   "Tonemapper Parameters"
+
+                parm {
+                    name    "lv_postfx_tonemap"
+                    label   "Enable Tonemapper"
+                    type    toggle
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
 
                 parm {
                     name    "lv_tonemap_operator"

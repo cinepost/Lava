@@ -51,12 +51,18 @@ class OpenDenoisePass : public RenderPass {
 		virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 		void setOutputFormat(ResourceFormat format);
+    void disableHDRInput(bool value);
 
   private:
 		OpenDenoisePass(Device::SharedPtr pDevice, ResourceFormat outputFormat);
 
+    // Bypasses denoising by just copying input image to output
+    void bypass(RenderContext* pRenderContext, const RenderData& renderData);
+
 		ResourceFormat mOutputFormat;       // Output format (uses default when set to ResourceFormat::Unknown).
 		uint2 mFrameDim = { 0, 0 };
+
+    bool  mDisableHDRInput = false;
 
 		oidn::DeviceRef mIntelDevice;
 

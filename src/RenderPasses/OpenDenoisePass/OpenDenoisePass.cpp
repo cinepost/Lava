@@ -54,7 +54,8 @@ namespace {
     };
 
     inline oidn::Format toOIDNFormat(ResourceFormat format) {
-        bool isFloat = isFloatFormat(format), isHalf = isHalfFloatFormat(format);
+        bool isHalf = isHalfFloatFormat(format);
+        bool isFloat = isFloatFormat(format) && !isHalf;
         if(!isFloat && !isHalf) return oidn::Format::Undefined;
 
         auto channelCount = getFormatChannelCount(format);
@@ -72,6 +73,24 @@ namespace {
         }
         return oidn::Format::Undefined;
     }
+
+#define str(a) case oidn::Format::a: return #a
+    inline std::string to_string(oidn::Format type) {
+        switch (type) {
+            str(Float);
+            str(Float2);
+            str(Float3);
+            str(Float4);
+            str(Half);
+            str(Half2);
+            str(Half3);
+            str(Half4);
+        default:
+            should_not_get_here();
+            return "oidn::Format::Undefined";
+        }
+    }
+#undef str
 
 }
 
@@ -128,42 +147,90 @@ void OpenDenoisePass::compile(RenderContext* pRenderContext, const CompileData& 
 void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     auto pInputTex = renderData[kInput]->asTexture();
     auto pOutputTex = renderData[kOutput]->asTexture();
+
+    if(pInputTex->getWidth() != pOutputTex->getWidth() || pInputTex->getHeight() != pOutputTex->getHeight()) {
+        LLOG_ERR << "OpenDenoisePass input and output images dimensions mismatch!";
+        bypass(pRenderContext, renderData);
+        return;
+    }
     
     auto pAlbedoTex = renderData[kAlbedoInput]->asTexture();
     auto pNormalTex = renderData[kNormalInput]->asTexture();
 
-    auto mainImageFormat = pInputTex->getFormat();
-    uint32_t mainImageDataSize = pInputTex->getWidth(0) * pInputTex->getHeight(0) * getFormatBytesPerBlock(mainImageFormat);
-    mMainImageData.resize(mainImageDataSize);
-    mOutputImageData.resize(mainImageDataSize);
+    auto inputImageFormat = pInputTex->getFormat();
+    auto outputImageFormat = pOutputTex->getFormat();
+    oidn::Format inputImageOIDNFormat = toOIDNFormat(inputImageFormat);
+    oidn::Format outputImageOIDNFormat = toOIDNFormat(outputImageFormat);
+    uint32_t inputImageDataSize = pInputTex->getWidth(0) * pInputTex->getHeight(0) * getFormatBytesPerBlock(inputImageFormat);
+    uint32_t outputImageDataSize = pOutputTex->getWidth(0) * pOutputTex->getHeight(0) * getFormatBytesPerBlock(outputImageFormat);
+    
+    mMainImageData.resize(inputImageDataSize);
+    mOutputImageData.resize(outputImageDataSize);
 
-    auto auxAlbedoFormat = ResourceFormat::Unknown;
+    auto auxAlbedoImageFormat = ResourceFormat::Unknown;
+    oidn::Format auxAlbedoOIDNFormat = oidn::Format::Undefined;
     if(pAlbedoTex) {
-        mAlbedoImageData.resize(pAlbedoTex->getWidth(0) * pAlbedoTex->getHeight(0) * getFormatBytesPerBlock(mainImageFormat));
+        if(pInputTex->getWidth() != pAlbedoTex->getWidth() || pInputTex->getHeight() != pAlbedoTex->getHeight()) {
+            LLOG_ERR << "OpenDenoisePass input and albedo images dimensions mismatch!";
+            bypass(pRenderContext, renderData);
+            return;
+        }
+
+        auxAlbedoOIDNFormat = toOIDNFormat(auxAlbedoImageFormat);
+        mAlbedoImageData.resize(pAlbedoTex->getWidth(0) * pAlbedoTex->getHeight(0) * getFormatBytesPerBlock(auxAlbedoImageFormat));
     }
 
-    auto auxNormalFormat = ResourceFormat::Unknown;
+    auto auxNormalImageFormat = ResourceFormat::Unknown;
+    oidn::Format auxNormalOIDNFormat = oidn::Format::Undefined;
     if(pNormalTex) {
-        mNormalImageData.resize(pNormalTex->getWidth(0) * pNormalTex->getHeight(0) * getFormatBytesPerBlock(mainImageFormat));
+        if(pInputTex->getWidth() != pNormalTex->getWidth() || pInputTex->getHeight() != pNormalTex->getHeight()) {
+            LLOG_ERR << "OpenDenoisePass input and normal images dimensions mismatch!";
+            bypass(pRenderContext, renderData);
+            return;
+        }
+
+        auxNormalOIDNFormat = toOIDNFormat(auxNormalImageFormat);
+        mNormalImageData.resize(pNormalTex->getWidth(0) * pNormalTex->getHeight(0) * getFormatBytesPerBlock(auxNormalImageFormat));
     }
 
     oidn::FilterRef filter = mIntelDevice.newFilter("RT");
 
-    filter.setImage("color",  mMainImageData.data(),  oidn::Format::Float3, mFrameDim.x, mFrameDim.y); // beauty
+    size_t inputImageDataByteOffset = 0;
+    size_t inputImageBytePixelStride = getFormatBytesPerBlock(inputImageFormat);
+
+    if(inputImageOIDNFormat == oidn::Format::Half4) inputImageOIDNFormat = oidn::Format::Half3;
+    if(inputImageOIDNFormat == oidn::Format::Float4) inputImageOIDNFormat = oidn::Format::Float3;
+
+    pRenderContext->readTextureSubresource(pInputTex.get(), pInputTex->getSubresourceIndex(0, 0), mMainImageData.data());
+    filter.setImage("color",  mMainImageData.data(),  inputImageOIDNFormat, mFrameDim.x, mFrameDim.y, 
+        inputImageDataByteOffset, inputImageBytePixelStride); // beauty
     
     if(pAlbedoTex) {
         LLOG_DBG << "Denosing image using \"albedo\" auxiliary channel";
-        filter.setImage("albedo", mAlbedoImageData.data(), oidn::Format::Float3, mFrameDim.x, mFrameDim.y); // auxiliary
+        size_t albedoImageDataByteOffset = 0;
+        size_t albedoImageBytePixelStride = getFormatBytesPerBlock(auxAlbedoImageFormat);
+        filter.setImage("albedo", mAlbedoImageData.data(), auxAlbedoOIDNFormat, mFrameDim.x, mFrameDim.y, 
+            albedoImageDataByteOffset, albedoImageBytePixelStride); // auxiliary
     }
 
     if(pNormalTex) {
         LLOG_DBG << "Denosing image using \"normal\" auxiliary channel";
-        filter.setImage("normal", mNormalImageData.data(), oidn::Format::Float3, mFrameDim.x, mFrameDim.y); // auxiliary
+        size_t normalImageDataByteOffset = 0;
+        size_t normalImageBytePixelStride = getFormatBytesPerBlock(auxNormalImageFormat);
+        filter.setImage("normal", mNormalImageData.data(), auxNormalOIDNFormat, mFrameDim.x, mFrameDim.y, 
+            normalImageDataByteOffset, normalImageBytePixelStride); // auxiliary
     }
 
-    filter.setImage("output", mOutputImageData.data(), oidn::Format::Float3, mFrameDim.x, mFrameDim.y); // denoised beauty
+    size_t outputImageDataByteOffset = 0;
+    size_t outputImageBytePixelStride = getFormatBytesPerBlock(outputImageFormat);
 
-    if(isFloatFormat(mainImageFormat) || isHalfFloatFormat(mainImageFormat)) {
+    if(outputImageOIDNFormat == oidn::Format::Half4) outputImageOIDNFormat = oidn::Format::Half3;
+    if(outputImageOIDNFormat == oidn::Format::Float4) outputImageOIDNFormat = oidn::Format::Float3;
+
+    filter.setImage("output", mOutputImageData.data(), outputImageOIDNFormat, mFrameDim.x, mFrameDim.y, 
+        outputImageDataByteOffset, outputImageBytePixelStride); // denoised beauty
+
+    if(!mDisableHDRInput && (isFloatFormat(inputImageFormat) || isHalfFloatFormat(inputImageFormat))) {
         filter.set("hdr", true); // MAIN (beauty) image is HDR
     }
 
@@ -178,9 +245,30 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     if (mIntelDevice.getError(errorMessage) != oidn::Error::None) {
         bool hasErrors = true;
         LLOG_ERR << "OpenDenoisePass error: " << std::string(errorMessage);
+        
+        bypass(pRenderContext, renderData);
+        return;
     }
+
+    LLOG_DBG << "OpenDenoisePass filter executed. Uploading denoised data.";
+
+    // Upload denoised image back to GPU
+    pRenderContext->updateTextureData(pOutputTex.get(), (const void*)mOutputImageData.data());
 }
 
+void OpenDenoisePass::bypass(RenderContext* pRenderContext, const RenderData& renderData) {
+    LLOG_DBG << "OpenDenoisePass bypass.";
+
+    auto pInputTex = renderData[kInput]->asTexture();
+    auto pOutputTex = renderData[kOutput]->asTexture();
+
+    pRenderContext->blit(pInputTex->getSRV(0, 1, 0, 1), pOutputTex->getRTV(0, 0, 1));
+}
+
+void OpenDenoisePass::disableHDRInput(bool value) {
+    if (mDisableHDRInput == value) return;
+    mDisableHDRInput = value;
+}
 
 void OpenDenoisePass::setOutputFormat(ResourceFormat format) {
     if(mOutputFormat == format) return;

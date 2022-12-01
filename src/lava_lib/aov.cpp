@@ -228,7 +228,7 @@ ToneMapperPass::SharedPtr AOVPlane::createTonemappingPass(Falcor::RenderContext*
         LLOG_DBG << "Unmarked output " << mProcessedPassOutputName;
     }
 
-    mpInternalRenderGraph->addPass(mpToneMapperPass, "ToneMapperPass_" + mInfo.name);
+    mpInternalRenderGraph->addPass(mpToneMapperPass, tonemapperPassName);
     mpInternalRenderGraph->addEdge(mProcessedPassOutputName, tonemapperPassName + ".input");
 
     mProcessedPassOutputName = tonemapperPassName + ".output";
@@ -249,6 +249,41 @@ OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContex
         return mpDenoiserPass;
     }
 
+    if(!mpInternalRenderGraph) {
+        createInternalRenderGraph(pContext);
+        if(!mpInternalRenderGraph) return nullptr;
+    }
+
+    LLOG_DBG << "Creating OpenDenoiserPass";
+
+    mpDenoiserPass = OpenDenoisePass::create(pContext, dict);
+    if (!mpDenoiserPass) {
+        LLOG_ERR << "Error creating denoiser pass for AOV plane " << mInfo.name << " !!!";
+        return nullptr;
+    }
+
+    std::string denoiserPassName = "OpenDenoisePass_" + mInfo.name;
+
+    LLOG_DBG << denoiserPassName << " created";
+
+    // Unmark previously marked output
+    if(!mProcessedPassOutputName.empty() && mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
+        mpInternalRenderGraph->unmarkOutput(mProcessedPassOutputName);
+        LLOG_DBG << "Unmarked output " << mProcessedPassOutputName;
+    }
+
+    mpInternalRenderGraph->addPass(mpDenoiserPass, denoiserPassName);
+    mpInternalRenderGraph->addEdge(mProcessedPassOutputName, denoiserPassName + ".input");
+
+    mProcessedPassOutputName = denoiserPassName + ".output";
+    mpInternalRenderGraph->markOutput(mProcessedPassOutputName);
+
+    LLOG_DBG << "Marked output " << mProcessedPassOutputName;
+
+    if(!compileInternalRenderGraph(pContext)) {
+        mpDenoiserPass = nullptr;
+    }
+
     return mpDenoiserPass;
 }
 
@@ -263,9 +298,6 @@ void AOVPlane::createInternalRenderGraph(Falcor::RenderContext* pContext, bool f
     }
 
     if(!mpImageLoaderPass) {
-        //Falcor::Dictionary dict;
-        //dict["filename"] = fs::path("/home/max/Desktop/Screenshot from 2022-10-31 16-27-52.png");
-
         mpImageLoaderPass = ImageLoaderPass::create(pContext);
         if(!mAccumulatePassOutputName.empty() && mpRenderGraph->isGraphOutput(mAccumulatePassOutputName)) {
             auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);

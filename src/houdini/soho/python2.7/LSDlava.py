@@ -171,6 +171,8 @@ def initializeFeatures(settings):
     Image("image", "refractlimit", "int", "lv_refract_limit")
 
     Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
+    Image("image", "OpenDenoisePass.useAlbedo", "bool", "lv_denoise_use_albedo")
+    Image("image", "OpenDenoisePass.useNormal", "bool", "lv_denoise_use_normal")
 
     Image("image", "ToneMappingPass.enable", "bool", "lv_postfx_tonemap")
     Image("image", "ToneMappingPass.operator", "int", "lv_tonemap_operator")

@@ -183,6 +183,14 @@ find_package(OpenSSL REQUIRED)
 message("OpenVDB ${OpenVDB_LIBRARY}")
 message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
 
+# OpenImageDenoiser
+set(EXTERNAL_OIDN_VERSION 1.4.3)
+set(OIDN_ROOT ${DEPS_DIR})
+find_package(OIDN ${EXTERNAL_OIDN_VERSION} EXACT REQUIRED)
+
+message("OIDN ${OIDN_LIBRARIES}")
+message("OIDN::oidn " OIDN::oidn)
+
 # RTXDi/Gi
 include_directories( ${DEPS_DIR}/rtxdi-sdk/include )
 include_directories( ${DEPS_DIR}/rtxgi-sdk/include )
@@ -219,6 +227,7 @@ target_link_libraries(
         ${LZ4_LIBRARY}
         Python3::Python
         FreeImage::FreeImage
+        ${OIDN_LIBRARIES}
 )
 
 if(backend_type STREQUAL "gfx")

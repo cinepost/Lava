@@ -225,7 +225,9 @@ void ToneMapperPass::setOutputFormat(ResourceFormat format) {
 }
 
 void ToneMapperPass::setExposureCompensation(float exposureCompensation) {
-    mExposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
+    auto _exposureCompensation = glm::clamp(exposureCompensation, kExposureCompensationMin, kExposureCompensationMax);
+    if(mExposureCompensation == _exposureCompensation) return;
+    mExposureCompensation = _exposureCompensation;
     mUpdateToneMapPass = true;
 }
 
@@ -243,7 +245,7 @@ void ToneMapperPass::setExposureValue(float exposureValue) {
 }
 
 void ToneMapperPass::setFilmSpeed(float filmSpeed) {
-    _filmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
+    auto _filmSpeed = glm::clamp(filmSpeed, kFilmSpeedMin, kFilmSpeedMax);
     if(mFilmSpeed == _filmSpeed) return;
     mFilmSpeed = _filmSpeed;
     mUpdateToneMapPass = true;
@@ -281,7 +283,9 @@ void ToneMapperPass::setWhiteMaxLuminance(float maxLuminance) {
 }
 
 void ToneMapperPass::setWhiteScale(float whiteScale) {
-    mWhiteScale = std::max(0.001f, whiteScale);
+    auto _whiteScale = std::max(0.001f, whiteScale);
+    if( mWhiteScale == _whiteScale) return;
+    mWhiteScale = _whiteScale;
     mUpdateToneMapPass = true;
 }
 

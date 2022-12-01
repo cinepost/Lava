@@ -460,6 +460,8 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		auto pDenoisingPass = pMainAOV->createOpenDenoisePass(pRenderContext, {});
 		if (pDenoisingPass) {
 			//Set denoiser parameters here
+			const auto pToneMapperPass = pMainAOV->tonemappingPass();
+			if(pToneMapperPass) pDenoisingPass->disableHDRInput(pToneMapperPass->getClamp());
 		}
 	}
 
