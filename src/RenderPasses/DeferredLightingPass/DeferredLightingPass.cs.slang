@@ -276,7 +276,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 #endif
             //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
             //validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
-            if((1 == 1) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
+            if((1 == 2) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
