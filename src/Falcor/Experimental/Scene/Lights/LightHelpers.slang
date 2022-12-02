@@ -157,6 +157,7 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
 
     [branch]
     if( all(cosT == 1) ) {
+/*
         // Test
         float3 lVector[4] = {p[0] - localShadingPos, p[1] - localShadingPos, p[2] - localShadingPos ,p[3] - localShadingPos};
 
@@ -179,8 +180,8 @@ bool sampleRectAreaLightRIS(const float3 shadingPosW, const float3 shadingNormal
         
         ls.pdf = 1.0;
         ls.i = factor;
-
-        return result;
+*/
+        return sampleRectAreaLight(shadingPosW, light, rnd, ls);
     } else if( all(cosT == 0) ) {
         // All corners below shading surface.
         return false;
