@@ -56,7 +56,7 @@ try:
 except ImportError:
     def call(name='', *args, **kwargs):
         return False
-except Exception, e:
+except Exception as e:
     error = e
     def call(name='', *args, **kwargs):
         cmd_comment('Error: %s' % str(error))
