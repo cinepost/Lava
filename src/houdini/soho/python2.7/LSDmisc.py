@@ -382,7 +382,7 @@ def _fillTime(now, nseg, delta, shutter):
     t1 = t0 + shutter
     times = []
     tinc = (t1 - t0)/float(nseg-1)
-    for i in xrange(nseg):
+    for i in range(nseg):
         times.append(t0)
         t0 += tinc
     return times

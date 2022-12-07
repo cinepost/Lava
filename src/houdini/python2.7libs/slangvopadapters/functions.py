@@ -17,7 +17,7 @@ def getVopNodeAdapter(vop_node_wrapper):
 		if subnet_adapter_class:
 			return subnet_adapter_class
 
-	print 'No vop node adapter of vop type "%s" registered for %s !!!' % (vop_node_wrapper.type().name(), vop_node_wrapper.path())
+	print('No vop node adapter of vop type "%s" registered for %s !!!' % (vop_node_wrapper.type().name(), vop_node_wrapper.path()))
 	return None
 
 def incrLastStringNum(text):

@@ -3,6 +3,7 @@
 import os
 import types
 import importlib
+from imp import reload  # This way we can use reload in Python 2 and 3.
 
 def reload_package(package):
 	assert(hasattr(package, "__package__"))
@@ -30,7 +31,7 @@ import slangvopadapters
 
 
 def processMaterialNode(vop_node):
-	print "Registered Slang adapters", slangvopadapters.VopNodeAdapterRegistry.registeredAdapterTypes()
+	print("Registered Slang adapters %s" % slangvopadapters.VopNodeAdapterRegistry.registeredAdapterTypes())
 
 	if vop_node.shaderType() != hou.shaderType.VopMaterial:
 		# For now only VopMaterial shader types
@@ -41,7 +42,7 @@ def processMaterialNode(vop_node):
 
 	shaders = processor.generateShaders()
 
-	print shaders['surface']
+	print(shaders['surface'])
 	
 
 def _processMaterialNode(mat_node):

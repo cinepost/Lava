@@ -41,26 +41,26 @@ def cmd_formatReal(v):
 
 def cmd_comment(msg):
     if msg != None:
-        print "#", msg
+        print("# %s" % msg)
     else:
         print
 
 def cmd_setenv(name, value):
     soho.indent()
-    print 'setenv', name, '=', cmd_quote(value)
+    print('setenv %s = %s' % (name, cmd_quote(value)))
 
 def cmd_version(ver):
     soho.indent()
-    print 'cmd_version VER%s' % ver
+    print('cmd_version VER%s' % ver)
 
 def cmd_hscript(cmd):
     # The LSD language is a subset of the hscript language.  This command lets
     # you inject hscript commands into the LSD stream
-    print cmd
+    print(cmd)
 
 def cmd_defaults(file):
     soho.indent()
-    print 'cmd_defaults', repr(file)
+    print('cmd_defaults %s' % repr(file))
 
 def cmd_config(prop_name, soho_parm):
     if not soho_parm:
@@ -75,7 +75,7 @@ def cmd_config(prop_name, soho_parm):
     if prop_type == "bool":
         prop_value_repr = int(prop_value)
 
-    print 'cmd_config', prop_type, prop_name, prop_value_repr
+    print('cmd_config %s %s %s' % (prop_type, prop_name, prop_value_repr))
 
 def cmd_loadotl(otls, from_text_block=False):
     cmd = 'cmd_loadotl '
@@ -112,11 +112,11 @@ def cmd_detail(name, file):
     soho.indent()
     if file.find(' ') >= 0:
         file = '"%s"' % file
-    print 'cmd_detail', name, file
+    print('cmd_detail %s %s' % (name, file))
 
 def cmd_geometry(file):
     soho.indent()
-    print 'cmd_geometry', file
+    print('cmd_geometry %s' % file)
 
 def cmd_start(objecttype):
     soho.indent(1, ' '.join(['cmd_start', objecttype]))
@@ -125,13 +125,13 @@ def cmd_end():
     soho.indent(-1, 'cmd_end')
 
 def cmd_delete(type, name):
-    print 'cmd_delete', type, name
+    print('cmd_delete %s %s' % (type, name))
 
 def cmd_procedural(bounds, proc, shoptype = soho.ShopTypeDefault):
     soho.indent()
     shader = soho.processShader(proc[0], ForceEmbedVex, False, shoptype)
     if len(shader[1]):
-        print shader[1]
+        print(shader[1])
     if bounds[0] <= bounds[3]:
         soho.printArray('cmd_procedural -m ', bounds[0:3], '')
         soho.printArray(              ' -M ', bounds[3:6], ' '),
@@ -139,15 +139,15 @@ def cmd_procedural(bounds, proc, shoptype = soho.ShopTypeDefault):
         sys.stdout.write('cmd_procedural ')
     sys.stdout.write(shader[0])
     sys.stdout.write('\n')
-    print
+    print()
 
 def cmd_shop(shop, shaderstring, shoptype = soho.ShopTypeDefault):
     # Declare an old style shader
     shader = soho.processShader(shaderstring, ForceEmbedVex, False, shoptype)
     if len(shader[1]):
-        print shader[1]
+        print(shader[1])
     soho.indent()
-    print 'cmd_shop', shop, shader[0]
+    print('cmd_shop %s %s' % (shop, shader[0]))
 
 def cmd_shader(style, name, orgshader, shoptype = soho.ShopTypeDefault):
     # Processing  the shader may generate VEX code or COP maps and
@@ -155,36 +155,36 @@ def cmd_shader(style, name, orgshader, shoptype = soho.ShopTypeDefault):
     # should be printed before the shader string.
     shader = soho.processShader(orgshader, ForceEmbedVex, False, shoptype)
     if len(shader[1]):
-        print shader[1]
+        print(shader[1])
     soho.indent()
-    print 'cmd_property', style, name, shader[0]
+    print('cmd_property %s %s %s' % (style, name, shader[0]))
 
 def cmd_textblock(name, value, encoding=None):
     soho.indent()
     if encoding:
-        print 'cmd_textblock -e', encoding, name
+        print('cmd_textblock -e %s %s' % (encoding, name))
     else:
-        print 'cmd_textblock', name
-    print value
-    print 'cmd_endtext'
+        print('cmd_textblock %s' % name)
+    print(value)
+    print('cmd_endtext')
 
 def cmd_erase_textblock(name):
     soho.indent()
-    print 'cmd_textblock -x', name
+    print('cmd_textblock -x %s' % name)
 
 def cmd_stylesheet(name):
     soho.indent()
-    print 'cmd_stylesheet', name
+    print('cmd_stylesheet %s' % name)
 
 def cmd_bundle(bundle, node_paths):
     soho.indent()
-    print 'cmd_bundlecreate', bundle
+    print('cmd_bundlecreate %s' % bundle)
     soho.addBundleDependency(bundle)
     start = 0
     step = 100
     while len(node_paths) > start:
         end = start + step
-        print 'cmd_bundleadd', bundle, " ".join(node_paths[start:end])
+        print('cmd_bundleadd %s %s' % (bundle, " ".join(node_paths[start:end])))
         start = end
 
 def cmd_property(style, name, value, quoted=True):
@@ -229,7 +229,7 @@ def cmd_declare_parm(style, name, soho_parm):
     if parm_type == "bool":
         parm_value_repr = int(parm_value)
 
-    print 'cmd_declare', style, parm_type, name, parm_value_repr
+    print('cmd_declare %s %s %s %s' % (style, parm_type, name, parm_value_repr))
 
 def cmd_time(now):
     soho.indent()
@@ -238,7 +238,7 @@ def cmd_time(now):
 
 def cmd_commandline(options):
     soho.indent()
-    print "cmd_cmdopt", options
+    print("cmd_cmdopt %s" % options)
 
 def cmd_image(filename, device="", options=""):
     soho.makeFilePathDirsIfEnabled(filename)
@@ -254,7 +254,7 @@ def cmd_image(filename, device="", options=""):
 
 def cmd_photon():
     soho.indent()
-    print "cmd_photon"
+    print("cmd_photon")
 
 def cmd_defplane(filename, variable, vextype):
     soho.indent()
@@ -271,7 +271,7 @@ def cmd_planepropertyV(parmlist):
 
 def cmd_raytrace():
     soho.indent()
-    print 'cmd_raytrace'
+    print('cmd_raytrace')
 
 def cmd_reset(light=True, obj=True, fog=True):
     options = ''

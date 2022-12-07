@@ -72,13 +72,13 @@ class VopNodeAdapterProcessor(object):
 		node = self._root_node
 		shader_type = node.shaderType()
 		if   shader_type == hou.shaderType.VopMaterial:
-			print "generateShaders VopMaterial"
+			print("generateShaders VopMaterial")
 			return {
 				'surface': self._process(node, 'surface'),
 				'displacement': self._process(node, 'displacement')
 			}
 		elif shader_type == hou.shaderType.Surface:
-			print "generateShaders Surface"
+			print("generateShaders Surface")
 			return {
 				'surface': self._process(node, 'surface'),
 			}
@@ -106,13 +106,13 @@ class VopNodeAdapterProcessor(object):
 
 		if node_adapter:
 			graph = generateGraph(vop_node)
-			print "generate", vop_node.path()
+			print("generate", vop_node.path())
 			
 			node_wrapper = graph.nodeWrapper(vop_node.path())
 			node_context = VopNodeContext(node_wrapper, shading_context)
 			
 			for res in node_adapter.generateCode(node_context):
-				print "res", type(res)
+				print("res %s" % type(res))
 				printHighlightedSlangCode(res)
 			
 			#node_context.printArgsCache()

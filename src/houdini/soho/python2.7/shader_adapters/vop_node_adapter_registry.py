@@ -17,11 +17,11 @@ class VopNodeAdapterRegistry(type):
 				return newclass
 
 		if newclass.__name__ in _vop_adapter_registry_by_cls_name:
-			print "VOP adapter class %s already registered !!!" % newclass.__name__
+			print("VOP adapter class %s already registered !!!" % newclass.__name__)
 			return newclass
 
 		if newclass.vopTypeName() in _vop_adapter_registry_by_type_name:
-			print "VOP adapter class with type name %s already registered !!!" % newclass.vopTypeName()
+			print("VOP adapter class with type name %s already registered !!!" % newclass.vopTypeName())
 			return newclass
 
 		_vop_adapter_registry_by_cls_name[newclass.__name__] = newclass

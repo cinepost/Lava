@@ -60,12 +60,12 @@ def hashSopPathName(soppath):
     return "%s_%s" % (sopname, hashlib.sha256(safe_soppath).hexdigest()[:max_hexdigest_len])
 
 def _dummyGeometry():
-    print """PGEOMETRY V5
+    print("""PGEOMETRY V5
 NPoints 0 NPrims 0
 NPointGroups 0 NPrimGroups 0
 NPointAttrib 0 NVertexAttrib 0 NPrimAttrib 0 NAttrib 0
 beginExtra
-endExtra"""
+endExtra""")
 
 def reset(full = True):
     global theDetailRefs, theDetailRefsInv, theSavedDetails, theSavedProperties
@@ -242,7 +242,7 @@ def processGlobalPropertyOverrides(obj, soppath, gdp, pathattrib, overattrib, no
         else:
             fullpaths.append(p)
     n = min(len(paths), len(overs))
-    for i in xrange(n):
+    for i in range(n):
         processOverrideProperty(soppath, fullpaths[i], overs[i], now)
     return
 
@@ -267,7 +267,7 @@ def processPrimOrPointPropertyOverrides(obj, creator_obj, soppath, gdp, style,
                 fullpaths[p] = hou_shop.path()
             else:
                 fullpaths[p] = p
-        for item in xrange(nitems):
+        for item in range(nitems):
             path = gdp.value(pathattrib, item)[0]
             if path:
                 over = gdp.value(overattrib, item)[0]
@@ -275,7 +275,7 @@ def processPrimOrPointPropertyOverrides(obj, creator_obj, soppath, gdp, style,
                 have_prim_props = True
     elif ostyle == 'compact':
         unique_shops = set()
-        for item in xrange(nitems):
+        for item in range(nitems):
             path = gdp.value(pathattrib, item)[0]
             if path:
                 over = gdp.value(overattrib, item)[0]
@@ -324,7 +324,7 @@ def processPrimStyleSheet(gdp, style, stylesheetattrib, now):
     
     unique_mats = set()
     unique_bundles = set()
-    for item in xrange(nitems):
+    for item in range(nitems):
         stylesheet = gdp.value(stylesheetattrib, item)
         if len(stylesheet) > 0:
             stylesheet = stylesheet[0]
@@ -930,7 +930,7 @@ def _computeVBounds(geo, box, tscale):
     vhandle = geo.attribute('geo:point', 'v')
     if vhandle >= 0:
         npts = geo.globalValue('geo:pointcount')[0]
-        for pt in xrange(npts):
+        for pt in range(npts):
             v = geo.value(vhandle, pt)
             vbox[0] = min(vbox[0], v[0]*tscale)
             vbox[1] = min(vbox[1], v[1]*tscale)
@@ -1016,7 +1016,7 @@ def getInstantiatedObjects(obj, now):
         return inst_path
 
     unique_inst = set(inst_path)
-    for pt in xrange(npts):
+    for pt in range(npts):
         inst_path = geo.value(attrib_map['instance'], pt)[0]
         unique_inst.add(LSDmisc.absoluteObjectPath(obj, now, inst_path))
 
@@ -1056,7 +1056,7 @@ def getPointInstanceSHOPs(pt_shaders, now, geo, attrib_name, npts, shader_types 
 
     # Collect unique SHOPs from the point attribute
     unique_shops = set()
-    for pt in xrange(npts):
+    for pt in range(npts):
         (shop_hash,overrides) = getPointInstanceSHOPHash(geo, pt, attrib_handle, override_handle)
         if shop_hash:
             unique_shops.add( shop_hash )
