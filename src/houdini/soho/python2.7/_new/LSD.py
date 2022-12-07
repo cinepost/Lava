@@ -16,6 +16,7 @@
 #
 
 import time
+from imp import reload  # This 2ay we can user reload in Python 2 and 3.
 import soho
 import hou
 import LSDapi
@@ -298,7 +299,7 @@ else:
 
     if mode == 'generate':
         # Notify mantra that it's rendering for IPR
-        print 'cmd_iprmode generate'
+        print('cmd_iprmode generate')
 
     for i in range(0, numpathmap):
         map = soho.getDefaultedString('lv_pathmap%d' % (i+1), [])

@@ -121,7 +121,7 @@ class VopNodeContext(object):
 			if adapter:
 				yield (adapter, VopNodeContext(child_vop_node_wrapper, self._shading_context, parent_vop_node_context=self))
 			else:
-				print "missing adapter", child_vop_node_wrapper.path()
+				print("missing adapter %s" % child_vop_node_wrapper.path())
 
 	def terminalChildren(self):
 		from vop_node_graph import NodeSubnetWrapper
@@ -135,7 +135,7 @@ class VopNodeContext(object):
 			if adapter:
 				yield (adapter, VopNodeContext(child_vop_node_wrapper, self._shading_context, parent_vop_node_context=self))
 			else:
-				print "missing adapter", child_vop_node_wrapper.path()
+				print("missing adapter %s" % child_vop_node_wrapper.path())
 
 	def inputNodes(self):
 		if not self._parent_vop_node_context:
@@ -147,12 +147,12 @@ class VopNodeContext(object):
 				#if self._parent_vop_node_context.vop_node_wrapper.hasChildByName(input_node_wrapper_name):
 				input_wrapper = self._parent_vop_node_context.vop_node_wrapper.getChildByName(input_node_wrapper_name)
 				if input_wrapper:
-					print "input_wrapper", input_wrapper
+					print("input_wrapper %s" % input_wrapper)
 					adapter = input_wrapper.adapter()
 					if adapter:
 						yield (adapter, VopNodeContext(input_wrapper, self._shading_context, parent_vop_node_context=self._parent_vop_node_context))
 					else:
-						print "missing adapter", input_wrapper.path()
+						print("missing adapter %s" % input_wrapper.path())
 	
 	def __str__(self):
 		return "VopNodeContext for %s" % self._vop_node_path
@@ -267,7 +267,7 @@ class VopNodeContext(object):
 		return arg_name
 
 	def printArgsCache(self):
-		print "args cache"
+		print("args cache")
 		for scope_name in self._scoped_args_names_cache:
 			for path in self._scoped_args_names_cache[scope_name]:
-				print path, self._scoped_args_names_cache[scope_name][path] 
+				print("%s %s" % (path, self._scoped_args_names_cache[scope_name][path]))
