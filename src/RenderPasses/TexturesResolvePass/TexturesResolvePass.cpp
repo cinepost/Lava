@@ -31,10 +31,18 @@ namespace {
 	const std::string kTexResolveData = "gTexResolveData";
 	const std::string kParameterBlockName = "gResolveData";
 
+    const std::string kRayReflectLimit = "rayReflectLimit";
+    const std::string kRayRefractLimit = "rayRefractLimit";
+    const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+
 }  // namespace
 
 void TexturesResolvePass::parseDictionary(const Dictionary& dict) {
-	float3 a;
+	for (const auto& [key, value] : dict) {
+        if (key == kRayReflectLimit) setRayReflectLimit(value);
+        else if (key == kRayRefractLimit) setRayRefractLimit(value);
+        else if (key == kRayDiffuseLimit) setRayDiffuseLimit(value);
+    }
 }
 
 Dictionary TexturesResolvePass::getScriptingDictionary() {
@@ -44,6 +52,8 @@ Dictionary TexturesResolvePass::getScriptingDictionary() {
 
 TexturesResolvePass::SharedPtr TexturesResolvePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
 	auto pTexturesResolvePass = new TexturesResolvePass(pRenderContext->device(), dict);
+
+	pTexturesResolvePass->parseDictionary(dict);
 
 	// Create calibration textures
 	pTexturesResolvePass->createMipCalibrationTexture(pRenderContext);
@@ -150,6 +160,11 @@ static void calculateVirtualTextureData(const Texture::SharedPtr& pTexture, uint
 void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& renderData) {
 	if (!mpScene)
 		return;
+
+	if(mDirty) {
+		uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
+        mpState->getProgram()->addDefine("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
+	}
 
 	initDepth(pContext, renderData);
 
@@ -268,7 +283,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		materialsResolveBuffer.push_back(materialResolveData);
 	}
 
-if (1 == 1) {
 	// Now add texture tiles information
 	for (const auto& pair: udimTextureTiles) {
 		const auto &pTexture = pair.second;
@@ -289,18 +303,15 @@ if (1 == 1) {
 
 		uint32_t materialSystemTextureID = textureManagerHandle.getID();
 
-////////////////////////////////////
-
-    // Material texture handle.
-	TextureHandle textureHandle;
-    if(!pTexture->isSolid()) {
-        textureHandle.setMode(TextureHandle::Mode::Texture);
-    } else {
-    	textureHandle.setMode(TextureHandle::Mode::Uniform);
-    }
-    textureHandle.setTextureID(materialSystemTextureID);
+		// Material texture handle.
+		TextureHandle textureHandle;
+		if(!pTexture->isSolid()) {
+		    textureHandle.setMode(TextureHandle::Mode::Texture);
+		} else {
+			textureHandle.setMode(TextureHandle::Mode::Uniform);
+		}
+		textureHandle.setTextureID(materialSystemTextureID);
         
-////////////////////////////////////
 
 		uint32_t vtexDataID = vtexDataBuffer.size();
 		vtexDataBuffer.push_back({});
@@ -324,7 +335,6 @@ if (1 == 1) {
 
 		texturesMap[textureID] = pTexture;
 	}
-}
 
 	totalPagesToUpdateCount = currPagesStartOffset;
 	totalPagesToUpdateCount += 16;
@@ -345,7 +355,7 @@ if (1 == 1) {
 #endif
 
 	std::vector<int8_t> pagesInitDataBuffer(totalPagesToUpdateCount, 0);
-	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::Read, pagesInitDataBuffer.data());
+	auto pPagesBuffer = Buffer::create(mpDevice, totalPagesToUpdateCount, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, pagesInitDataBuffer.data());
 	mpVars->setBuffer("resolvedPagesBuff", pPagesBuffer);
 
 	mpVars["PerFrameCB"]["gRenderTargetDim"] = float2(mpFbo->getWidth(), mpFbo->getHeight());
@@ -404,6 +414,7 @@ if (1 == 1) {
 			pTextureManager->loadPages(pTexture, pageIDs); 
 		}
 	}
+	pPagesBuffer->unmap();
 
 	// In async mode we have to call updateSparseBindInfo on TextureManager as it triggers wait() function on pages loading multi-future
 	if(mLoadPagesAsync) pTextureManager->updateSparseBindInfo();
@@ -412,6 +423,8 @@ if (1 == 1) {
 	LLOG_DBG << "Pages loading done in: " << std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count() << " ms.";
 	LLOG_INF << "TexturesResolvePass done in: " << std::setprecision(6) 
 			 << (.001f * (float)std::chrono::duration_cast<std::chrono::milliseconds>(done-exec_started).count()) << " s";
+
+	mDirty = false;
 }
 
 TexturesResolvePass& TexturesResolvePass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState) {
@@ -500,4 +513,28 @@ void TexturesResolvePass::setDefaultSampler() {
 	mpMinSampler = Sampler::create(mpDevice, desc);
 	desc.setReductionMode(Sampler::ReductionMode::Max);
 	mpMaxSampler = Sampler::create(mpDevice, desc);
+}
+
+TexturesResolvePass& TexturesResolvePass::setRayReflectLimit(int limit) {
+    uint32_t _limit = std::max(0u, std::min(10u, static_cast<uint32_t>(limit)));
+    if(mRayReflectLimit == _limit) return *this;
+    mRayReflectLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+TexturesResolvePass& TexturesResolvePass::setRayRefractLimit(int limit) {
+    uint32_t _limit = std::max(0u, std::min(10u, static_cast<uint32_t>(limit)));
+    if(mRayRefractLimit == _limit) return *this;
+    mRayRefractLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+TexturesResolvePass& TexturesResolvePass::setRayDiffuseLimit(int limit) {
+    uint32_t _limit = std::max(0u, std::min(10u, static_cast<uint32_t>(limit)));
+    if(mRayDiffuseLimit == _limit) return *this;
+    mRayDiffuseLimit = _limit;
+    mDirty = true;
+    return *this;
 }

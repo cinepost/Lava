@@ -145,8 +145,8 @@ void Light::setShaderData(const ShaderVar& var) {
 //#if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
     check_offset(dirW);
-    check_offset(diffuseIntensity);
-    check_offset(specularIntensity);
+    check_offset(directDiffuseIntensity);
+    check_offset(directSpecularIntensity);
     check_offset(penumbraAngle);
     check_offset(transMat);
 #undef check_offset

@@ -20,14 +20,14 @@ find_path(_FreeImage_INCLUDE_DIR
 )
 
 find_library(_FreeImage_LIBRARY_RELEASE 
-	NAMES FreeImage freeimage
-	PATHS ${FreeImage_ROOT}/../release/lib
+	NAMES freeimage.a freeimage freeimage-3.18.0
+	PATHS ${FreeImage_ROOT}/lib
 	NO_DEFAULT_PATH
 )
 
 find_library(_FreeImage_LIBRARY_DEBUG
-  NAMES FreeImage freeimage
-  PATHS ${FreeImage_ROOT}/../debug/lib
+  NAMES freeimage.a freeimage freeimage-3.18.0
+  PATHS ${FreeImage_ROOT}/lib
   NO_DEFAULT_PATH
 )
 

@@ -1,3 +1,6 @@
+include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
+
+
 file( GLOB SOURCES
     ./*.cpp
 )
@@ -5,18 +8,16 @@ file( GLOB SOURCES
 add_library( reader_lsd_lib SHARED ${SOURCES} ${HEADERS} )
 
 # Find Boost libs
-find_package( Boost 1.73.0 COMPONENTS system filesystem REQUIRED )
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS system filesystem EXACT REQUIRED)
 if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS}) 
+    include_directories(${Boost_INCLUDE_DIRS})
+    add_definitions( -DBOOST_LOG_DYN_LINK )
 endif()
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 find_package(Python3 REQUIRED COMPONENTS Development)
 target_include_directories(reader_lsd_lib PUBLIC ${Python3_INCLUDE_DIRS})
-
-# We use Boost static libs
-add_definitions( -DBOOST_LOG_DYN_LINK )
 
 target_link_libraries(
     reader_lsd_lib

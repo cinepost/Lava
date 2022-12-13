@@ -32,6 +32,10 @@
 namespace Falcor {
 
     GpuMemoryHeap::~GpuMemoryHeap() {
+        if(mpActivePage && mpActivePage->pResourceHandle.get()) {
+            auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+            pBufferResource->unmap(nullptr);
+        }
         mDeferredReleases = decltype(mDeferredReleases)();
     }
 
@@ -99,19 +103,32 @@ namespace Falcor {
 
     void GpuMemoryHeap::executeDeferredReleases() {
         uint64_t gpuVal = mpFence->getGpuValue();
+
         while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal) {
             const Allocation& data = mDeferredReleases.top();
-            
+
             if (data.pageID == mCurrentPageId) {
                 mpActivePage->allocationsCount--;
                 if (mpActivePage->allocationsCount == 0) {
                     mpActivePage->currentOffset = 0;
+
+                    if(mpActivePage->pResourceHandle.get()) {
+                        auto pBufferResource = static_cast<gfx::IBufferResource*>(mpActivePage->pResourceHandle.get());
+                        pBufferResource->unmap(nullptr);
+                    }
                 }
             } else {
                 if (data.pageID != Allocation::kMegaPageId) {
                     auto& pData = mUsedPages[data.pageID];
                     pData->allocationsCount--;
+                    
                     if (pData->allocationsCount == 0) {
+
+                        if(pData->pResourceHandle.get()) {
+                            auto pBufferResource = static_cast<gfx::IBufferResource*>(pData->pResourceHandle.get());
+                            pBufferResource->unmap(nullptr);
+                        }
+
                         mAvailablePages.push(std::move(pData));
                         mUsedPages.erase(data.pageID);
                     }

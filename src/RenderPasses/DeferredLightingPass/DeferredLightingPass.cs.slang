@@ -250,14 +250,18 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             //misSpecWeight = 1.0f;
             //misRefrWeight = 1.0f;
 
-            sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
-            diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
+            if ((rayLevel == 0 && light.contributesDirectDiffuseIllumination()) || (rayLevel > 0 && light.contributesIndirectDiffuseIllumination())) {
+                sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
+                diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
+            }
 
-            sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-            specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
+            if ((rayLevel == 0 && light.contributesDirectSpecularIllumination()) || (rayLevel > 0 && light.contributesIndirectSpecularIllumination())) {
+                sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
+                specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
 
-            sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
-            specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misSpecWeight;
+                sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
+                specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misRefrWeight;
+            }
         }
 
         //return float3(ls.dbg);
@@ -274,9 +278,19 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
             let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
 #endif
-            //sd.mtl.setActiveLobes((uint)LobeType::SpecularReflection);
-            //validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
-            if((1 == 2) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
+
+            uint _shadingLobes = 0;
+            if ((rayLevel == 0 && light.contributesDirectDiffuseIllumination()) || (rayLevel > 0 && light.contributesIndirectDiffuseIllumination())) {
+                _shadingLobes |= (uint)LobeType::DiffuseReflection;
+            }
+
+            if ((rayLevel == 0 && light.contributesDirectSpecularIllumination()) || (rayLevel > 0 && light.contributesIndirectSpecularIllumination())) {
+                _shadingLobes |= (uint)LobeType::SpecularReflection | (uint)LobeType::SpecularTransmission;
+            }
+            sd.mtl.setActiveLobes(_shadingLobes);
+            validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
+            
+            if((1 == 1) && validBsdfSample && (bsdfSample.pdf > 0.0f)) {
                 
                 // Intersect light source and reject invalid light sample.
                 if (intersectLight(sd.posW, bsdfSample.wo, light, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {

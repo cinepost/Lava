@@ -62,7 +62,7 @@ else(WIN32)
 
 	find_library(
 	  assimp_LIBRARIES
-	  NAMES assimp
+	  NAMES libassimp.a assimp
 	  PATHS ${assimp_ROOT}
 	  PATHS /usr/local/lib/
 	  PATHS /usr/lib64/

@@ -28,6 +28,7 @@
 #include <array>
 #include <thread>
 #include <cmath>
+#include <limits>
 
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -38,7 +39,9 @@
 #include "reader_bgeo/bgeo/Run.h"
 #include "reader_bgeo/bgeo/Poly.h"
 #include "reader_bgeo/bgeo/PrimType.h"
+#include "reader_bgeo/bgeo/parser/types.h"
 #include "reader_bgeo/bgeo/parser/Detail.h"
+#include "reader_bgeo/bgeo/parser/ReadError.h"
 
 namespace lava {    
 
@@ -73,33 +76,33 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
     const int64_t bgeo_point_count = pBgeo->getPointCount();
     const int64_t bgeo_vertex_count = pBgeo->getTotalVertexCount();
 
-    LLOG_DBG << "bgeo point count: " << bgeo_point_count;
-    LLOG_DBG << "bgeo total vertex count: " << bgeo_vertex_count;
-    LLOG_DBG << "bgeo prim count: " << pBgeo->getPrimitiveCount();
-    LLOG_DBG << "------------------------------------------------";
+    LLOG_TRC << "bgeo point count: " << bgeo_point_count;
+    LLOG_TRC << "bgeo total vertex count: " << bgeo_vertex_count;
+    LLOG_TRC << "bgeo prim count: " << pBgeo->getPrimitiveCount();
+    LLOG_TRC << "------------------------------------------------";
 
     // get basic bgeo data P, N, UV
 
     std::vector<float> P;
     pBgeo->getP(P);
     assert(P.size() / 3 == bgeo_point_count && "P positions count not equal to the bgeo points count !!!");
-    LLOG_DBG << "P<float> size: " << P.size();
+    LLOG_TRC << "P<float> size: " << P.size();
 
     std::vector<float> N;
     pBgeo->getPointN(N);
-    LLOG_DBG << "N<float> size: " << N.size();
+    LLOG_TRC << "N<float> size: " << N.size();
     
     std::vector<float> UV;
     pBgeo->getPointUV(UV);
-    LLOG_DBG << "UV<float> size: " << UV.size();
+    LLOG_TRC << "UV<float> size: " << UV.size();
 
     std::vector<float> vN;
     pBgeo->getVertexN(vN);
-    LLOG_DBG << "vN<float> size: " << vN.size();
+    LLOG_TRC << "vN<float> size: " << vN.size();
     
     std::vector<float> vUV;
     pBgeo->getVertexUV(vUV);
-    LLOG_DBG << "vUV<float> size: " << vUV.size();
+    LLOG_TRC << "vUV<float> size: " << vUV.size();
 
     bool unique_points = false; // separate points only if we have any vertex data present
     if(vN.size() || vUV.size()) unique_points = true; 
@@ -275,8 +278,8 @@ uint32_t SceneBuilder::addGeometry(ika::bgeo::Bgeo::SharedConstPtr pBgeo, const 
                                 break;
                         }
                     }
-                    LLOG_DBG << "prim vertex count: " << pPoly->getVertexCount();
-                    LLOG_DBG << "prim faces count: " << pPoly->getFaceCount();
+                    LLOG_TRC << "prim vertex count: " << pPoly->getVertexCount();
+                    LLOG_TRC << "prim faces count: " << pPoly->getFaceCount();
                 } else {
 
                 }
@@ -338,16 +341,31 @@ std::shared_future<uint32_t> SceneBuilder::addGeometryAsync(lsd::scope::Geo::Sha
     ThreadPool& pool = ThreadPool::instance();
     mAddGeoTasks.push_back(pool.submit([this, pGeo, &name]
     {
+        uint32_t result = std::numeric_limits<uint32_t>::max();
         ika::bgeo::Bgeo::SharedPtr pBgeo = ika::bgeo::Bgeo::create();
 
         std::string fullpath = pGeo->detailFilePath().string();
-        pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+        try {
+            pBgeo->readGeoFromFile(fullpath.c_str(), false); // FIXME: don't check version for now
+            pBgeo->preCachePrimitives();
+        } catch (const ika::bgeo::parser::ReadError& e) {
+            LLOG_ERR << "Error parsing bgeo file " << fullpath;
+            LLOG_ERR << "Parsing error: " << e.what();
+            return result;
+        } catch (const std::runtime_error& e) {
+            LLOG_ERR << "Error loading bgeo from file " << fullpath;
+            LLOG_ERR << e.what();
+            return result;
+        } catch (...) {
+            LLOG_ERR << "Unknown error while loading bgeo from file " << fullpath;
+            return result;
+        }
 
-        pBgeo->preCachePrimitives();
-        auto result = this->addGeometry(pBgeo, name);
+        result = this->addGeometry(pBgeo, name);
         
         if(pGeo->isTemporary()) {
-            fs::remove(fullpath);
+            // TODO: delete temporary geometry as a deffered job (when no references left or when rendering is done).
+            //fs::remove(fullpath);
         }
         
         return result;

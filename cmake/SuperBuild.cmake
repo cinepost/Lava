@@ -22,9 +22,17 @@ if( NOT DEFINED FALCOR_API_BACKEND)
   set(FALCOR_API_BACKEND "GFX")
 endif()
 
+if( USE_MEGALIB )
+  list(APPEND 3RD_ARGS "-DLAVA_3RD_LIB_LINK_WITH_STATIC:BOOL=ON")
+  list(APPEND SRC_ARGS "-DBUILD_3RD_MEGALIB:BOOL=ON")
+else()
+  list(APPEND 3RD_ARGS "-DLAVA_3RD_LIB_LINK_WITH_STATIC:BOOL=OFF")
+  list(APPEND SRC_ARGS "-DBUILD_3RD_MEGALIB:BOOL=OFF")
+endif()
+
 list(APPEND SRC_ARGS "-DFALCOR_API_BACKEND=${FALCOR_API_BACKEND}")
 
-message("Using Falcor backend: " ${FALCOR_API_BACKEND})
+message("Using rendering backend API: " ${FALCOR_API_BACKEND})
 
 string( TOLOWER ${DEPS_BUILD_TYPE} deps_build_type )
 if(deps_build_type STREQUAL "release")

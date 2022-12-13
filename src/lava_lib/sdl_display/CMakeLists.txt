@@ -1,3 +1,5 @@
+include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
+
 file( GLOB SOURCES 
 	./*.cpp
 	./dspyhlpr.c
@@ -19,7 +21,7 @@ endif()
 add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # Boost
-find_package( Boost 1.73.0 COMPONENTS log REQUIRED )
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR} )
 
 find_package( SDL2 REQUIRED )

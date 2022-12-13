@@ -100,7 +100,9 @@ float3 calcTextureMipLevels(float2 uv, SamplerState calibrationSampler, VirtualT
     return float3(f1, f2, fMipLevel);
 }
 
-//[earlydepthstencil]
+#if _MAX_RAY_LEVEL == 0
+[earlydepthstencil]
+#endif
 PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC : TEXCOORD) {
 
     PsOut psOut;

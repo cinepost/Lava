@@ -163,7 +163,7 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         if (mUseSTBN) defines.add("_USE_STBN_SAMPLING", "1");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         
-        uint maxRayLevel = std::max(mRayDiffuseLimit, mRayReflectLimit);
+        uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
         if(maxRayLevel > 0) defines.add("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
 
         uint32_t scene_lights_count = mpScene->getLightCount();
@@ -258,7 +258,7 @@ DeferredLightingPass& DeferredLightingPass::setIndirectColorLimit(const float3& 
 }
 
 DeferredLightingPass& DeferredLightingPass::setShadingRate(int rate) {
-    rate = std::max(1, rate);
+    rate = std::max(1u, static_cast<uint>(rate));
     if(mShadingRate == rate) return *this;
     mShadingRate = rate;
     mDirty = true;

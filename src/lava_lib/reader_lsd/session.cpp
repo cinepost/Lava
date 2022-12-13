@@ -6,7 +6,6 @@
 
 #include <math.h>
 
-
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -191,8 +190,8 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 		const auto& pSegment = segments[0];
 
 		float 	camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
-		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 0.0f);
-		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 0.0f);
+		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
+		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
 	
 		float apertureRadius = 0.0f;
 		{
@@ -340,6 +339,9 @@ static bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, s
 };
 
 static bool sendImageRegionData(uint hImage, Display* pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
+	assert(pDisplay);
+	assert(pAOVPlane);
+
 	if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight = frameInfo.regionHeight())) {
 		// If sending region that is equal to full frame we just send full image data
 		return sendImageData(hImage, pDisplay, pAOVPlane, textureData);
@@ -627,10 +629,7 @@ bool Session::cmdRaytrace() {
 }
 
 void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
-	
-#ifdef _DEBUG
-    bgeo.printSummary(std::cout);
-#endif
+	assert(pGeo);
 
     auto pSceneBuilder = mpRenderer->sceneBuilder();
     if(!pSceneBuilder) {
@@ -648,10 +647,16 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
    		return;
    	}
 
+#ifdef _DEBUG
+    pBgeo->printSummary(std::cout);
+#endif
+
    	mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
 }
 
 void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
+	assert(pGeo);
+
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if(!pSceneBuilder) {
 		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
@@ -663,6 +668,8 @@ void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr 
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
+	assert(pLightScope);
+
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 
     if (!pSceneBuilder) {
@@ -1048,6 +1055,11 @@ bool Session::cmdEnd() {
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
+			if(!pGeo) {
+				LLOG_ERR << "Error ending scope of type \"geometry\"!!!";
+				return false;
+			}
+
 			if( pGeo->isInline() || !pushGeoAsync) {
 				pushBgeo(pGeo->detailName(), pGeo);
 			} else {
@@ -1056,6 +1068,11 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
+			if(!pObj) {
+				LLOG_ERR << "Error ending scope of type \"object\"!!!";
+				return false;
+			}
+
 			if(!pushGeometryInstance(pObj)) {
 				result = false;
 			}
@@ -1066,6 +1083,10 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
+			if(!pLight) {
+				LLOG_ERR << "Error ending scope of type \"light\"!!!";
+				return false;
+			}
 			pushLight(pLight);
 			break;
 		case ast::Style::MATERIAL:
@@ -1184,6 +1205,8 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 }
 
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
+	assert(pObj);
+
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
 	
 	auto pSceneBuilder = mpRenderer->sceneBuilder();

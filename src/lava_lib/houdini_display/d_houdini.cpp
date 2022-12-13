@@ -1181,7 +1181,6 @@ int H_Image::writeChannelHeader() {
 }
 
 int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_base, int bpp, float tileScaleX, float tileScaleY) {
-	int sx, sy;
 	int xres, yres;
 	int ch;
 
@@ -1193,7 +1192,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 
 	// since we are going to move through the data based on per pixel information
 	// we store a reference back to the original memory base address here....
-	const char* data_curr = data_base;
+	//const char* data_curr = data_base;
 
 	// scale into the current tile lod, assume tile scale of 1 to start with
 	int x0 = a_x0;
@@ -1230,30 +1229,31 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 		myChannels[ch]->startTile(xres, yres);
 
 	// for each y pixel of the destination tile
-	int destPixelOffset = 0;
+	//int destPixelOffset = 0;
 
 	int nProcessors = std::max(1, omp_get_max_threads() - 1);
 	omp_set_num_threads(nProcessors);
 
-	#pragma omp parallel for collapse(2) private(sy, sx, data_curr, destPixelOffset)
-	for (sy = 0; sy < yres; ++sy) {
+//	#pragma omp parallel for collapse(2) private(sy, sx, data_curr, destPixelOffset)
+	#pragma omp parallel for
+	for (int sy = 0; sy < yres; ++sy) {
 		// for each x pixel of the destination tile
-		for (sx = 0; sx < xres; ++sx) {
+		for (int sx = 0; sx < xres; ++sx) {
 			// the destination pixel location
-			destPixelOffset = sx + xres * sy;
+			int destPixelOffset = sx + xres * sy;
 
 			// the source pixel data location
 			// to map to this, we use nearest neighbor interpolation to look into the source array
 			int sourceX = int(float(sx) / tileScaleX);
 			int sourceY = int(float(sy) / tileScaleY);
 
-			data_curr = data_base + (sourceX + a_xres * sourceY) * bpp;
+			const char* data_curr = data_base + (sourceX + a_xres * sourceY) * bpp;
 
 			// copy the data for each channel....
 			if(isHalfFloat() & isFloatFormat) {
 				// Our data is in float16 format. We have to convert it to float32 for now (idisplay libitation)
 				float f[4]; //buffer
-				for (ch = 0; ch < myChannels.size(); ++ch) {
+				for (int ch = 0; ch < myChannels.size(); ++ch) {
 					for(int _i = 0; _i < myChannels[ch]->getArraySize(); _i++) {
 						f[_i] = glm::detail::toFloat32(*reinterpret_cast<const short*>(data_curr + _i*2));
 					}
@@ -1261,7 +1261,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 				}
 			} else {
 				// Just send data as it is
-				for (ch = 0; ch < myChannels.size(); ++ch)
+				for (int ch = 0; ch < myChannels.size(); ++ch)
 					myChannels[ch]->writePixel(data_curr, destPixelOffset);
 			}
 		}

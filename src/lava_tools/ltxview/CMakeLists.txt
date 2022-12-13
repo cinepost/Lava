@@ -1,6 +1,3 @@
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 set (SOURCES 
 	./ltxview.cpp
 
@@ -37,12 +34,6 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/deps/include/NVPro_Core/nvh
 
 )
-
-# RPATH 
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE) # use, i.e. don't skip the full RPATH for the build tree
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) # when building, don't use the install RPATH already (but later on when installing)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE) # add the automatically determined parts of the RPATH which point to directories outside the build tree to the install RPATH
 
 # Executable 
 add_executable ( ltxview ${SOURCES} )

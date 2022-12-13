@@ -6,8 +6,11 @@ include_directories(
     ${EXTERNALS_INSTALL_DIR}
 )
 
+include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
+
 file( GLOB SOURCES
-    ./Core/*.cpp
+    ./Core/ErrorHandling.cpp
+    ./Core/Framework.cpp
     ./Core/API/*.cpp
     ./Core/API/BlitToBufferContext.cpp
     ./Core/Platform/*.cpp
@@ -81,10 +84,11 @@ endif()
 
 # Blosc
 set(Blosc_ROOT ${DEPS_DIR})
-find_package(Blosc 1.21.0 REQUIRED)
+find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT REQUIRED)
 
 # PyBind11
-find_package(pybind11 REQUIRED CONFIG)
+set(pybind11_ROOT ${DEPS_DIR})
+find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT REQUIRED CONFIG)
 
 # Python
 find_package( Python3 REQUIRED COMPONENTS Development )
@@ -92,7 +96,7 @@ target_include_directories(falcor_lib PUBLIC ${Python3_INCLUDE_DIRS})
 
 # Assimp
 set(assimp_ROOT ${DEPS_DIR})
-find_package(assimp 5.0.0 REQUIRED)
+find_package(assimp ${EXTERNAL_ASSIMP_VERSION} REQUIRED)
 
 # LZ4
 find_package( LZ4 REQUIRED )
@@ -119,11 +123,11 @@ endif()
 
 # OpenEXR
 set(OpenEXR_ROOT ${DEPS_DIR})
-find_package( OpenEXR 2.5 REQUIRED )
+find_package( OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT REQUIRED )
 
 # OpenImageIO
 set(OpenImageIO_ROOT ${DEPS_DIR})
-find_package( OpenImageIO REQUIRED )
+find_package( OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT REQUIRED )
 if (OpenImageIO_FOUND)
     message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
@@ -147,24 +151,22 @@ endif()
 
 # FreeImage
 set(FreeImage_ROOT ${DEPS_DIR})
-find_package( FreeImage 3.18.0 REQUIRED )
+find_package( FreeImage ${EXTERNAL_FREEIMAGE_VERSION} EXACT REQUIRED )
 if(FreeImage_FOUND)
     message( "FreeImage version: ${FreeImage_VERSION}")
 endif()
 include_directories( ${FreeImage_INCLUDE_DIRS} )
 
 # TIFF
-find_package( TIFF REQUIRED )
+set(TIFF_ROOT ${DEPS_DIR})
+find_package( TIFF ${EXTERNAL_TIFF_VERSION} EXACT REQUIRED )
 include_directories( ${TIFF_INCLUDE_DIRS} )
 
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${DEPS_DIR})
-find_package( Boost 1.73.0 COMPONENTS filesystem system thread REQUIRED )
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS filesystem system thread EXACT REQUIRED )
 target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
-
-# We use Boost static libs
-add_definitions( -DBOOST_LOG_DYN_LINK )
 
 # SLANG
 set(Slang_ROOT ${DEPS_DIR})
@@ -174,22 +176,18 @@ message ("Using SLANG library: ${SLANG_LIBRARY}")
 
 # OpenVDB/NanoVDB
 set(OpenVDB_ROOT ${DEPS_DIR})
-find_package(OpenVDB 9.0.0 REQUIRED COMPONENTS openvdb)
+find_package(OpenVDB ${EXTERNAL_OPENVDB_VERSION} REQUIRED COMPONENTS openvdb)
 include_directories( ${OpenVDB_INCLUDE_DIRS})
 
 # OpenSSL
 find_package(OpenSSL REQUIRED)
 
 message("OpenVDB ${OpenVDB_LIBRARY}")
-message("OpenVDB inc ${OpenVDB_INCLUDE_DIRS}")
+message("OpenVDB include ${OpenVDB_INCLUDE_DIRS}")
 
 # OpenImageDenoiser
-set(EXTERNAL_OIDN_VERSION 1.4.3)
 set(OIDN_ROOT ${DEPS_DIR})
 find_package(OIDN ${EXTERNAL_OIDN_VERSION} EXACT REQUIRED)
-
-message("OIDN ${OIDN_LIBRARIES}")
-message("OIDN::oidn " OIDN::oidn)
 
 # RTXDi/Gi
 include_directories( ${DEPS_DIR}/rtxdi-sdk/include )
@@ -200,35 +198,54 @@ find_library( NVTT_LIBRARY libnvtt.so PATHS ${DEPS_DIR}/lib )
 
 # GLFW3
 set(GLFW_ROOT ${DEPS_DIR})
-find_package(glfw3 3.3 REQUIRED)
+find_package(GLFW ${EXTERNAL_GLFW_VERSION} EXACT REQUIRED)
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 add_definitions(-DFALCOR_DLL)
 
-target_link_libraries(
-    falcor_lib
-    PUBLIC
-        stdc++fs
-        Blosc::blosc
-        glfw3
-        OpenSSL::SSL
-        OpenImageIO::OpenImageIO
-        OpenVDB::openvdb
-        ${assimp_LIBRARIES}
-        ${SLANG_LIBRARY}
-        Boost::system
-        Boost::filesystem
-        Boost::thread
-        ${Vulkan_LIBRARY}
-        ${GTK3_LIBRARIES}
-        ${FREEIMAGE_LIBRARIES}
-        ${TIFF_LIBRARIES}
-        ${ZLIB_LIBRARY}
-        ${LZ4_LIBRARY}
-        Python3::Python
-        FreeImage::FreeImage
-        ${OIDN_LIBRARIES}
-)
+if(USE_MEGALIB)
+    target_link_libraries(
+        falcor_lib
+        PUBLIC
+            mega_lib
+            stdc++fs
+            #OpenSSL::SSL
+            #${SLANG_LIBRARY}
+            #${Vulkan_LIBRARY}
+            #${GTK3_LIBRARIES}
+            #${TIFF_LIBRARIES}
+            #${ZLIB_LIBRARY}
+            #${LZ4_LIBRARY}
+            #Python3::Python
+    )
+else()
+    add_definitions( -DBOOST_LOG_DYN_LINK )
+    target_link_libraries(
+        falcor_lib
+        PUBLIC
+            stdc++fs
+            Blosc::blosc
+            ${GLFW_LIBRARY}
+            OpenSSL::SSL
+            OpenImageIO::OpenImageIO
+            OpenVDB::openvdb
+            OpenEXR::IlmImf
+            ${assimp_LIBRARIES}
+            ${SLANG_LIBRARY}
+            Boost::system
+            Boost::filesystem
+            Boost::thread
+            ${Vulkan_LIBRARY}
+            ${GTK3_LIBRARIES}
+            ${TIFF_LIBRARIES}
+            ${ZLIB_LIBRARY}
+            ${LZ4_LIBRARY}
+            Python3::Python
+            FreeImage::FreeImage
+            #${FreeImage_LIBRARIES}
+            ${OIDN_LIBRARIES}
+    )
+endif()
 
 if(backend_type STREQUAL "gfx")
 target_link_libraries(

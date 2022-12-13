@@ -257,7 +257,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     auto& blitData = getBlitToBufferContext();
 
     // Fetch textures from views.
-    assert(pSrc && pDst);
+    assert(pSrc && pBuffer);
     auto pSrcResource = pSrc->getResource();
     if (pSrcResource->getType() == Resource::Type::Buffer) {
         throw std::runtime_error("RenderContext::blitToBuffer() does not support buffer source !");

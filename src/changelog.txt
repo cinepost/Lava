@@ -1,6 +1,11 @@
 02.12.2022
 ----------------------------------------------------------------------
 
+Added:    Diffuse and specular light contribution support.
+
+02.12.2022
+----------------------------------------------------------------------
+
 Fixed:    16 bit float (half) single channel LTX bitmap conversion.
 
 30.11.2022

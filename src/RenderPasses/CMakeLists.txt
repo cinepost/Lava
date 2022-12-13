@@ -58,6 +58,13 @@ function (makeRenderPassLib)
         lava_utils_lib
     )
 
+if(USE_MEGALIB)
+    target_link_libraries(
+        ${PASS_LIB}
+        mega_lib
+    )
+endif()
+
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})

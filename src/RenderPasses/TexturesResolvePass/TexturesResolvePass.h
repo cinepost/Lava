@@ -64,8 +64,12 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
 		virtual Dictionary getScriptingDictionary() override;
 
-		TexturesResolvePass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-		TexturesResolvePass& setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+		TexturesResolvePass& 	setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
+		TexturesResolvePass& 	setRasterizerState(const RasterizerState::SharedPtr& pRsState);
+
+		TexturesResolvePass& 	setRayReflectLimit(int limit);
+		TexturesResolvePass& 	setRayRefractLimit(int limit);
+		TexturesResolvePass&  setRayDiffuseLimit(int limit);
 
 	private:
 		TexturesResolvePass(Device::SharedPtr pDevice, const Dictionary& dict);
@@ -99,6 +103,11 @@ class dllpassdecl TexturesResolvePass : public RenderPass {
 		bool                        mUsePreGenDepth = false;
 
 		bool                        mLoadPagesAsync = true;
+		bool 												mDirty = true;
+
+		uint32_t                    mRayReflectLimit = 0;
+		uint32_t                    mRayRefractLimit = 0;
+		uint32_t                    mRayDiffuseLimit = 0;
 
 		Texture::SharedPtr          mpMipCalibrationTexture = nullptr;
 		std::vector<Texture::SharedPtr> mMipCalibrationTextures;

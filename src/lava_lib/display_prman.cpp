@@ -134,8 +134,8 @@ Display::SharedPtr DisplayPrman::create(Display::DisplayType display_type) {
     pDisplay->mDriverName = display_driver_name;
     pDisplay->mDisplayType = display_type;
 
-    LLOG_WRN << "Prman display driver " << pDisplay->mDriverName;
-    LLOG_WRN << "Prman display type " << to_string(pDisplay->mDisplayType);
+    LLOG_DBG << "Prman display driver " << pDisplay->mDriverName;
+    LLOG_DBG << "Prman display type " << to_string(pDisplay->mDisplayType);
 
     switch (pDisplay->mDisplayType) {
         case DisplayType::IP:
