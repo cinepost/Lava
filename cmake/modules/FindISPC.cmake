@@ -1,6 +1,7 @@
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
 find_package(PkgConfig)
 
+unset(ISPC_FOUND CACHE)
 unset(ISPC_EXECUTABLE CACHE)
 
 set(ISPC_SEARCH_PATHS ${ISPC_ROOT} ${ISPC_ROOT}/bin ${ISPC_ROOT}/src/ispc/bin)
@@ -15,10 +16,7 @@ find_program(ISPC_EXECUTABLE
 )
 
 if (NOT ISPC_EXECUTABLE)
-  message("********************************************")
-    message("Could not find Intel SPMD Compiler (ISPC) (looked in PATH and ${ISPC_ROOT})")
-  message("********************************************")
-  message(FATAL_ERROR "Could not find ISPC. Exiting.")
+  message("Could not find Intel SPMD Compiler (ISPC) (looked in PATH and ${ISPC_ROOT})")
 else()
   message(STATUS "Found Intel SPMD Compiler (ISPC): ${ISPC_EXECUTABLE}")
 endif()

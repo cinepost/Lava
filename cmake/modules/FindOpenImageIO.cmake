@@ -28,9 +28,7 @@
 #   OpenImageIO::oiiotool      The oiiotool executable.
 #
 # Special inputs:
-#   OpenImageIO_ROOT - if using CMake >= 3.12, will automatically search
-#                          this area for OIIO components.
-#   OPENIMAGEIO_ROOT_DIR - custom "prefix" location of OIIO installation
+#   OpenImageIO_ROOT - location of OIIO installation
 #                          (expecting bin, lib, include subdirectories)
 #                          This is deprecated, but will work for a while.
 #   OpenImageIO_FIND_QUIETLY - if set, print minimal console output
@@ -48,23 +46,30 @@
 #
 ###########################################################################
 
+unset(OpenImageIO_FOUND)
+unset(OPENIMAGEIO_LIBRARY)
 
 # If 'OPENIMAGE_HOME' not set, use the env variable of that name if available
-if (NOT OPENIMAGEIO_ROOT_DIR AND NOT $ENV{OPENIMAGEIO_ROOT_DIR} STREQUAL "")
-    set (OPENIMAGEIO_ROOT_DIR $ENV{OPENIMAGEIO_ROOT_DIR})
+if (NOT OPENIMAGEIO_ROOT AND NOT $ENV{OPENIMAGEIO_ROOT} STREQUAL "")
+    set (OPENIMAGEIO_ROOT $ENV{OPENIMAGEIO_ROOT})
 endif ()
 
 
 find_library ( OPENIMAGEIO_LIBRARY
-               NAMES OpenImageIO${OIIO_LIBNAME_SUFFIX}
-               HINTS ${OPENIMAGEIO_ROOT_DIR}
-               PATH_SUFFIXES lib64 lib )
+               NAMES OpenImageIO OpenImageIO${OIIO_LIBNAME_SUFFIX}
+               PATHS ${OPENIMAGEIO_ROOT}/lib 
+               NO_DEFAULT_PATH)
+
 find_path ( OPENIMAGEIO_INCLUDE_DIR
-            NAMES OpenImageIO/imageio.h
-            HINTS ${OPENIMAGEIO_ROOT_DIR} )
+            NAMES OpenImageIO/oiioversion.h
+            PATHS ${OPENIMAGEIO_ROOT}/include 
+            #HINTS ${OPENIMAGEIO_ROOT} 
+            NO_DEFAULT_PATH)
+
 find_program ( OIIOTOOL_BIN
                NAMES oiiotool
-               HINTS ${OPENIMAGEIO_ROOT_DIR} )
+               HINTS ${OPENIMAGEIO_ROOT} 
+               NO_DEFAULT_PATH)
 
 # Try to figure out version number
 set (OIIO_VERSION_HEADER "${OPENIMAGEIO_INCLUDE_DIR}/OpenImageIO/oiioversion.h")
@@ -84,15 +89,16 @@ if (EXISTS "${OIIO_VERSION_HEADER}")
     set (OPENIMAGEIO_VERSION "${OPENIMAGEIO_VERSION_MAJOR}.${OPENIMAGEIO_VERSION_MINOR}.${OPENIMAGEIO_VERSION_PATCH}.${OPENIMAGEIO_VERSION_TWEAK}")
 endif ()
 
-
-include (FindPackageHandleStandardArgs)
-find_package_handle_standard_args (OpenImageIO
-    FOUND_VAR     OpenImageIO_FOUND
-    REQUIRED_VARS OPENIMAGEIO_INCLUDE_DIR OPENIMAGEIO_LIBRARY
-                  OPENIMAGEIO_VERSION
-    VERSION_VAR   OPENIMAGEIO_VERSION
-    )
-set (OPENIMAGEIO_FOUND ${OpenImageIO_FOUND})  # Old name
+if(EXISTS ${OPENIMAGEIO_LIBRARY})
+    include (FindPackageHandleStandardArgs)
+    find_package_handle_standard_args (OpenImageIO
+        FOUND_VAR     OpenImageIO_FOUND
+        REQUIRED_VARS OPENIMAGEIO_INCLUDE_DIR OPENIMAGEIO_LIBRARY
+                      OPENIMAGEIO_VERSION
+        VERSION_VAR   OPENIMAGEIO_VERSION
+        )
+    set (OPENIMAGEIO_FOUND ${OpenImageIO_FOUND})  # Old name
+endif()
 
 if (OpenImageIO_FOUND)
     set (OPENIMAGEIO_INCLUDES ${OPENIMAGEIO_INCLUDE_DIR})

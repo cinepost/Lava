@@ -126,10 +126,10 @@ set(OpenEXR_ROOT ${DEPS_DIR})
 find_package( OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT REQUIRED )
 
 # OpenImageIO
-set(OpenImageIO_ROOT ${DEPS_DIR})
+set(OPENIMAGEIO_ROOT ${DEPS_DIR})
 find_package( OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT REQUIRED )
 if (OpenImageIO_FOUND)
-    message( "OpenImageIO root: ${OpenImageIO_ROOT}")   
+    message( "OpenImageIO root: ${OPENIMAGEIO_ROOT}")   
     message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
     message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
 endif()

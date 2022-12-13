@@ -567,12 +567,12 @@ if( NOT EXTERNAL_OIIO_VERSION )
   set(EXTERNAL_OIIO_VERSION 2.2.18.0)
 endif()
 
-set(OpenImageIO_ROOT ${EXTERNALS_INSTALL_DIR})
+set(OPENIMAGEIO_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT)
 
 if(OpenImageIO_FOUND)
 
-  message("OpenImageIO version ${OPENIMAGEIO_VERSION} found ...")
+  message("OpenImageIO version ${OpenImageIO_VERSION} found ...")
   add_custom_target( OpenImageIO COMMAND echo "OpenImageIO build exists, skipping rebuild ...")
 
 else()
@@ -1238,6 +1238,7 @@ add_dependencies( dummy_target
   OpenEXR
   Assimp
   OpenVDB
+  ispc
   OpenImageDenoise
   OpenImageIO
   RTXDI
