@@ -6,7 +6,6 @@
 
 #include <math.h>
 
-
 #include "Falcor/Core/API/Texture.h"
 #include "Falcor/Scene/Lights/Light.h"
 #include "Falcor/Scene/Material/StandardMaterial.h"
@@ -181,9 +180,9 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	float aspect_ratio = static_cast<float>(mCurrentFrameInfo.imageWidth) / static_cast<float>(mCurrentFrameInfo.imageHeight);
 	
 	pCamera->setAspectRatio(aspect_ratio);
+	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	pCamera->setNearPlane(camera_clip[0]);
 	pCamera->setFarPlane(camera_clip[1]);
-	pCamera->setViewMatrix(mpGlobal->getTransformList()[0]);
 	pCamera->setCropRegion(cropRegion);
 
 	const auto& segments = mpGlobal->segments();
@@ -191,8 +190,8 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 		const auto& pSegment = segments[0];
 
 		float 	camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
-		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 0.0f);
-		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 0.0f);
+		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
+		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
 	
 		float apertureRadius = 0.0f;
 		{
@@ -321,7 +320,7 @@ static bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, s
 	if (!pDisplay) return false;
 
 	LLOG_DBG << "Reading " << pAOVPlane->name() << " AOV image data";
-	if(!pAOVPlane->getImageData(textureData.data())) {
+	if(!pAOVPlane->getProcessedImageData(textureData.data())) {
 		LLOG_ERR << "Error reading AOV " << pAOVPlane->name() << " texture data !!!";
 		return false;
 	}
@@ -340,6 +339,9 @@ static bool sendImageData(uint hImage, Display* pDisplay, AOVPlane* pAOVPlane, s
 };
 
 static bool sendImageRegionData(uint hImage, Display* pDisplay, Renderer::FrameInfo& frameInfo,  AOVPlane* pAOVPlane, std::vector<uint8_t>& textureData) {
+	assert(pDisplay);
+	assert(pAOVPlane);
+
 	if ((frameInfo.imageWidth == frameInfo.regionWidth()) && (frameInfo.imageHeight = frameInfo.regionHeight())) {
 		// If sending region that is equal to full frame we just send full image data
 		return sendImageData(hImage, pDisplay, pAOVPlane, textureData);
@@ -376,8 +378,22 @@ bool Session::cmdRaytrace() {
 	passDict["shadingRate"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "shadingrate", int(1));
 	passDict["rayBias"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "raybias", 0.001f);
 	passDict["colorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "colorlimit", lsd::Vector3{10.0f, 10.0f, 10.0f}));
+	passDict["indirectColorLimit"] = to_float3(mpGlobal->getPropertyValue(ast::Style::IMAGE, "indirectcolorlimit", lsd::Vector3{3.0f, 3.0f, 3.0f}));
 	passDict["rayReflectLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "reflectlimit", int(0));
+	passDict["rayRefractLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "refractlimit", int(0));
 	passDict["rayDiffuseLimit"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "diffuselimit", int(0));
+	passDict["areaLightsSamplingMode"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "areasampling", std::string("urena"));
+
+	passDict["MAIN.ToneMappingPass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.enable", bool(false));
+	passDict["MAIN.ToneMappingPass.operator"] = (uint32_t)mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.operator", int(4));
+
+	passDict["MAIN.ToneMappingPass.filmSpeed"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.filmSpeed", float(100.0));
+	passDict["MAIN.ToneMappingPass.exposureValue"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.exposureValue", float(0.0));
+	passDict["MAIN.ToneMappingPass.autoExposure"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "ToneMappingPass.autoExposure", bool(false));
+
+	passDict["MAIN.OpenDenoisePass.enable"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.enable", bool(false));
+	passDict["MAIN.OpenDenoisePass.useAlbedo"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useAlbedo", bool(true));
+	passDict["MAIN.OpenDenoisePass.useNormal"] = mpGlobal->getPropertyValue(ast::Style::IMAGE, "OpenDenoisePass.useNormal", bool(true));
 
 	auto pMainAOVPlane = mpRenderer->getAOVPlane("MAIN").get();
 
@@ -613,10 +629,7 @@ bool Session::cmdRaytrace() {
 }
 
 void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
-	
-#ifdef _DEBUG
-    bgeo.printSummary(std::cout);
-#endif
+	assert(pGeo);
 
     auto pSceneBuilder = mpRenderer->sceneBuilder();
     if(!pSceneBuilder) {
@@ -634,10 +647,16 @@ void Session::pushBgeo(const std::string& name, lsd::scope::Geo::SharedPtr pGeo)
    		return;
    	}
 
+#ifdef _DEBUG
+    pBgeo->printSummary(std::cout);
+#endif
+
    	mMeshMap[name] = pSceneBuilder->addGeometry(pBgeo, name);
 }
 
 void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr pGeo) {
+	assert(pGeo);
+
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 	if(!pSceneBuilder) {
 		LLOG_ERR << "Can't push geometry (bgeo). SceneBuilder not ready !!!";
@@ -649,6 +668,8 @@ void Session::pushBgeoAsync(const std::string& name, lsd::scope::Geo::SharedPtr 
 }
 
 void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
+	assert(pLightScope);
+
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
 
     if (!pSceneBuilder) {
@@ -660,7 +681,7 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 	const std::string& light_name = pLightScope->getPropertyValue(ast::Style::OBJECT, "name", std::string(""));
 	glm::mat4 transform = pLightScope->getTransformList()[0];
 
-	Falcor::float3 light_color = {1.0, 1.0, 1.0}; // defualt light color
+	lsd::Vector3 light_color = lsd::Vector3{1.0, 1.0, 1.0}; // defualt light color
 	Falcor::float3 light_pos = {transform[3][0], transform[3][1], transform[3][2]}; // light position
 	Falcor::float3 light_dir = {-transform[2][0], -transform[2][1], -transform[2][2]};
 	
@@ -669,10 +690,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 
 	if(pShaderProp) {
 		pShaderProps = pShaderProp->subContainer();
-		light_color = to_float3(pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+		light_color = pShaderProps->getPropertyValue(ast::Style::LIGHT, "lightcolor", lsd::Vector3{1.0, 1.0, 1.0});
 	} else {
 		LLOG_ERR << "No shader property set for light " << light_name;
 	}
+
+	lsd::Vector3 light_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "diffuse_color", light_color);
+	lsd::Vector3 light_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "specular_color", light_diffuse_color);
+	lsd::Vector3 light_indirect_diffuse_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_diffuse_color", light_diffuse_color);
+	lsd::Vector3 light_indirect_specular_color = pLightScope->getPropertyValue(ast::Style::LIGHT, "indirect_specular_color", light_specular_color);
 
 	Falcor::Light::SharedPtr pLight = nullptr;
 
@@ -772,20 +798,15 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
     	}
     	
     	EnvMap::SharedPtr pEnvMap = EnvMap::create(pDevice, pEnvMapTexture);
-    	pEnvMap->setTint(light_color);
+    	pEnvMap->setTint(to_float3(light_color));
     	pEnvMap->setPhantom(phantom);
 
     	pSceneBuilder->setEnvMap(pEnvMap);
 
     	// New EnvironmentLight test
     	auto pEnvLight = EnvironmentLight::create(light_name, pEnvMapTexture);
-    	pEnvLight->setShadowType(LightShadowType::RayTraced);
-    	pEnvLight->setIntensity(light_color);
-    	uint32_t light_id = pSceneBuilder->addLight(pEnvLight);
-		mLightsMap[light_name] = light_id;
-    	//
-    	
-    	return;
+    	pLight = std::dynamic_pointer_cast<Falcor::Light>(pEnvLight);
+
 	} else { 
 		LLOG_WRN << "Unsupported light type " << light_type << ". Skipping...";
 		return;
@@ -821,7 +842,10 @@ void Session::pushLight(const scope::Light::SharedPtr pLightScope) {
 			}
 		}
 
-		pLight->setIntensity(light_color);
+		pLight->setDiffuseIntensity(to_float3(light_diffuse_color));
+		pLight->setSpecularIntensity(to_float3(light_specular_color));
+		pLight->setIndirectDiffuseIntensity(to_float3(light_indirect_diffuse_color));
+		pLight->setIndirectSpecularIntensity(to_float3(light_indirect_specular_color));
 		uint32_t light_id = pSceneBuilder->addLight(pLight);
 		mLightsMap[light_name] = light_id;
 	}
@@ -1031,6 +1055,11 @@ bool Session::cmdEnd() {
 	switch(mpCurrentScope->type()) {
 		case ast::Style::GEO:
 			pGeo = std::dynamic_pointer_cast<scope::Geo>(mpCurrentScope);
+			if(!pGeo) {
+				LLOG_ERR << "Error ending scope of type \"geometry\"!!!";
+				return false;
+			}
+
 			if( pGeo->isInline() || !pushGeoAsync) {
 				pushBgeo(pGeo->detailName(), pGeo);
 			} else {
@@ -1039,6 +1068,11 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::OBJECT:
 			pObj = std::dynamic_pointer_cast<scope::Object>(mpCurrentScope);
+			if(!pObj) {
+				LLOG_ERR << "Error ending scope of type \"object\"!!!";
+				return false;
+			}
+
 			if(!pushGeometryInstance(pObj)) {
 				result = false;
 			}
@@ -1049,6 +1083,10 @@ bool Session::cmdEnd() {
 			break;
 		case ast::Style::LIGHT:
 			pLight = std::dynamic_pointer_cast<scope::Light>(mpCurrentScope);
+			if(!pLight) {
+				LLOG_ERR << "Error ending scope of type \"light\"!!!";
+				return false;
+			}
 			pushLight(pLight);
 			break;
 		case ast::Style::MATERIAL:
@@ -1167,6 +1205,8 @@ bool Session::cmdSocket(Falcor::MxSocketDirection direction, Falcor::MxSocketDat
 }
 
 bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
+	assert(pObj);
+
 	LLOG_DBG << "pushGeometryInstance for geometry (mesh) name: " << pObj->geometryName();
 	
 	auto pSceneBuilder = mpRenderer->sceneBuilder();
@@ -1253,6 +1293,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
     Falcor::float3  emissive_color = {0.0, 0.0, 0.0};
     float           emissive_factor = 1.0f;
 
+    Falcor::float3  trans_color = {1.0, 1.0, 1.0};
+    float           transmission = 0.0f;
+
     float           ao_distance = 1.0f;
 
     if(pShaderProp) {
@@ -1277,6 +1320,9 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 
     	emissive_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitcolor", lsd::Vector3{0.0, 0.0, 0.0}));
     	emissive_factor = pShaderProps->getPropertyValue(ast::Style::OBJECT, "emitint", 1.0f);
+
+    	trans_color = to_float3(pShaderProps->getPropertyValue(ast::Style::OBJECT, "transcolor", lsd::Vector3{1.0, 1.0, 1.0}));
+    	transmission = pShaderProps->getPropertyValue(ast::Style::OBJECT, "transparency", 0.0f);
 
     	ao_distance = pShaderProps->getPropertyValue(ast::Style::OBJECT, "ao_distance", 1.0f);
 
@@ -1304,7 +1350,10 @@ bool Session::pushGeometryInstance(scope::Object::SharedConstPtr pObj) {
 	    pMaterial->setEmissiveFactor(emissive_factor);
 	    pMaterial->setAODistance(ao_distance);
 	    pMaterial->setDoubleSided(!front_face);
-	  	
+
+	    pMaterial->setTransmissionColor(trans_color);
+	    pMaterial->setSpecularTransmission(transmission);
+
 	  	//bool loadAsSrgb = true;
 	    bool loadTexturesAsSparse = !mpGlobal->getPropertyValue(ast::Style::GLOBAL, "vtoff", bool(false));
 

@@ -25,8 +25,14 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_UTILS_COLOR_COLORUTILS_H_
+#define SRC_FALCOR_UTILS_COLOR_COLORUTILS_H_
+
+#include "Falcor/Utils/Math/Vector.h"
+
 #include <glm/gtx/matrix_operation.hpp>
+
+#include "lava_utils_lib/logging.h"
 
 /** Color conversion utility functions.
 
@@ -59,51 +65,44 @@
 
 */
 
-namespace Falcor
-{
+namespace Falcor {
     // Transform from RGB color in Rec.709 to CIE XYZ.
-    static const glm::float3x3 kColorTransform_RGBtoXYZ_Rec709 =
-    {
+    static const glm::float3x3 kColorTransform_RGBtoXYZ_Rec709 = {
         0.4123907992659595, 0.2126390058715104, 0.0193308187155918,
         0.3575843393838780, 0.7151686787677559, 0.1191947797946259,
         0.1804807884018343, 0.0721923153607337, 0.9505321522496608
     };
 
     // Transform from XYZ color to RGB in Rec.709.
-    static const glm::float3x3 kColorTransform_XYZtoRGB_Rec709 =
-    {
+    static const glm::float3x3 kColorTransform_XYZtoRGB_Rec709 = {
         3.2409699419045213, -0.9692436362808798, 0.0556300796969936,
         -1.5373831775700935, 1.8759675015077206, -0.2039769588889765,
         -0.4986107602930033, 0.0415550574071756, 1.0569715142428784
     };
 
     // Transform from CIE XYZ to LMS using the CAT02 transform.
-    static const glm::float3x3 kColorTransform_XYZtoLMS_CAT02 =
-    {
+    static const glm::float3x3 kColorTransform_XYZtoLMS_CAT02 = {
         0.7328, -0.7036, 0.0030,
         0.4296, 1.6975, 0.0136,
         -0.1624, 0.0061, 0.9834
     };
 
     // Transform from LMS to CIE XYZ using the inverse CAT02 transform.
-    static const glm::float3x3 kColorTransform_LMStoXYZ_CAT02 =
-    {
+    static const glm::float3x3 kColorTransform_LMStoXYZ_CAT02 = {
         1.096123820835514, 0.454369041975359, -0.009627608738429,
         -0.278869000218287, 0.473533154307412, -0.005698031216113,
         0.182745179382773, 0.072097803717229, 1.015325639954543
     };
 
     // Transform from CIE XYZ to LMS using the Bradford transform.
-    static const glm::float3x3 kColorTransform_XYZtoLMS_Bradford =
-    {
+    static const glm::float3x3 kColorTransform_XYZtoLMS_Bradford = {
         0.8951, -0.7502, 0.0389,
         0.2664, 1.7135, -0.0685,
         -0.1614, 0.0367, 1.0296
     };
 
     // Transform from LMS to CIE XYZ using the inverse Bradford transform.
-    static const glm::float3x3 kColorTransform_LMStoXYZ_Bradford =
-    {
+    static const glm::float3x3 kColorTransform_LMStoXYZ_Bradford = {
         0.98699290546671214, 0.43230526972339445, -0.00852866457517732,
         -0.14705425642099013, 0.51836027153677744, 0.04004282165408486,
         0.15996265166373122, 0.04929122821285559, 0.96848669578754998
@@ -111,22 +110,19 @@ namespace Falcor
 
     /** Transforms an RGB color in Rec.709 to CIE XYZ.
     */
-    static float3 RGBtoXYZ_Rec709(float3 c)
-    {
+    static float3 RGBtoXYZ_Rec709(float3 c) {
         return kColorTransform_RGBtoXYZ_Rec709 * c;
     }
 
     /** Transforms an XYZ color to RGB in Rec.709.
     */
-    static float3 XYZtoRGB_Rec709(float3 c)
-    {
+    static float3 XYZtoRGB_Rec709(float3 c) {
         return kColorTransform_XYZtoRGB_Rec709 * c;
     }
 
     /** Converts (chromaticities, luminance) to XYZ color.
     */
-    static float3 xyYtoXYZ(float x, float y, float Y)
-    {
+    static float3 xyYtoXYZ(float x, float y, float Y) {
         return float3(x * Y / y, Y, (1.f - x - y) * Y / y);
     }
 
@@ -139,11 +135,9 @@ namespace Falcor
         \param[in] Y Luminance.
         \return CIE XYZ color.
     */
-    static float3 colorTemperatureToXYZ(float T, float Y = 1.f)
-    {
-        if (T < 1667.f || T > 25000.f)
-        {
-            logError("colorTemperatureToXYZ() - T is out of range");
+    static float3 colorTemperatureToXYZ(float T, float Y = 1.f) {
+        if (T < 1667.f || T > 25000.f) {
+            LLOG_ERR << "colorTemperatureToXYZ() - T is out of range";
             return float3(0, 0, 0);
         }
 
@@ -167,8 +161,7 @@ namespace Falcor
         double x3 = x * x * x;
 
         double yc = 0.0;
-        if (T < 2222.f)
-        {
+        if (T < 2222.f) {
             yc = -1.1063814 * x3 - 1.34811020 * x2 + 2.18555832 * x - 0.20219683;
         }
         else if (T < 4000.f)
@@ -197,8 +190,7 @@ namespace Falcor
         \param[in] T Target color temperature (K).
         \return 3x3 matrix M, which transforms linear RGB in Rec.709 using c' = M * c.
     */
-    static glm::float3x3 calculateWhiteBalanceTransformRGB_Rec709(float T)
-    {
+    static glm::float3x3 calculateWhiteBalanceTransformRGB_Rec709(float T) {
         static const glm::float3x3 MA = kColorTransform_XYZtoLMS_CAT02 * kColorTransform_RGBtoXYZ_Rec709;    // RGB -> LMS
         static const glm::float3x3 invMA = kColorTransform_XYZtoRGB_Rec709 * kColorTransform_LMStoXYZ_CAT02; // LMS -> RGB
 
@@ -214,4 +206,7 @@ namespace Falcor
 
         return invMA * D * MA;
     }
-}
+
+}  // namespace Falcor
+
+#endif  // SRC_FALCOR_UTILS_COLOR_COLORUTILS_H_

@@ -57,6 +57,9 @@ CryptomatteSystem::CryptomatteSystem(Device::SharedPtr pDevice): mpDevice(pDevic
 
 	mInstanceHashes.reserve(1024);
 	mInstanceHashes.resize(128, 0);
+
+	mCustattrHashes.reserve(1024);
+	mCustattrHashes.resize(128, 0);
 }
 
 void CryptomatteSystem::finalize() {
@@ -71,6 +74,11 @@ void CryptomatteSystem::addMaterial(const std::string& name, uint32_t materialID
 void CryptomatteSystem::addInstance(const std::string& name, uint32_t instanceID) {
 	if(mInstanceHashes.size() <= instanceID) mInstanceHashes.resize(instanceID);
 	mInstanceHashes[instanceID] = util_murmur_hash3(static_cast<const void *>(name.data()), name.size(), gSeed);
+}
+
+void CryptomatteSystem::addCustattr(const std::string& name, uint32_t instanceID) {
+	if(mCustattrHashes.size() <= instanceID) mCustattrHashes.resize(instanceID);
+	mCustattrHashes[instanceID] = util_murmur_hash3(static_cast<const void *>(name.data()), name.size(), gSeed);
 }
 
 void CryptomatteSystem::addMaterials(const MaterialSystem* pMaterials) {

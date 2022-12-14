@@ -52,7 +52,7 @@ env/
 third_party/null.cpp
 third_party/external
 third_party/external/
-!third_party/tiff-4.4.0/*
+!third_party/tiff-4.0.9/*
 
 # lava textures
 *.ltx

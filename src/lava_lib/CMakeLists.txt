@@ -8,6 +8,11 @@ file( GLOB SOURCES
     ./*.cpp
 )
 
+include_directories(
+  ${HOUDINI_HOME}/toolkit/include
+)
+add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
+
 add_subdirectory(reader_bgeo)
 add_subdirectory(reader_lsd)
 add_subdirectory(houdini_display)
@@ -27,6 +32,12 @@ target_link_libraries(
     DepthPass
     ForwardLightingPass
     DeferredLightingPass
+    DeferredLightingCachedPass
+    PathTracer
+    CryptomattePass
+    ToneMapperPass
+    OpenDenoisePass
+    ImageLoaderPass
     SkyBox
     RTXDIPass
     GBuffer

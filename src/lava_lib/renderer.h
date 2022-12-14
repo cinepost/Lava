@@ -105,7 +105,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
     AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
-
+    bool hasAOVPlane(const AOVName& name) const;
 
     bool prepareFrame(const FrameInfo& frame_info); // prepares/resets frame rendering
     void renderSample();
@@ -195,8 +195,6 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     DepthPass::SharedPtr            mpDepthPrePass = nullptr;
     DepthPass::SharedPtr            mpDepthPass = nullptr;
     SkyBox::SharedPtr               mpSkyBoxPass = nullptr;
-    //ForwardLightingPass::SharedPtr  mpForwardLightingPass = nullptr;
-    //DeferredLightingPass::SharedPtr mpDeferredLightingPass = nullptr;
     TexturesResolvePass::SharedPtr  mpTexturesResolvePass = nullptr;
     ///
 

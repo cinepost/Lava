@@ -56,8 +56,9 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
 
     const auto& texDims = compileData.defaultTexDims;
 
-    // Add the required outputs. These always exist.
-    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);
+    reflector.addInputOutput(kDepthName, "Pre-initialized depth-buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil)
+        .flags(RenderPassReflection::Field::Flags::Optional);//.texture2D(texDims);
+
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
     
     // Add all the other outputs.
@@ -93,27 +94,52 @@ VBufferRaster::VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict) 
     mRaster.pState->setProgram(mRaster.pProgram);
 
     // Set depth function
-    DepthStencilState::Desc dsDesc;
-    dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
-    mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
+    //DepthStencilState::Desc dsDesc;
+    //dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
+    //mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
     mpFbo = Fbo::create(pDevice);
 }
 
-void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
-{
+void VBufferRaster::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
+    if(mpScene == pScene) return;
+
     GBufferBase::setScene(pRenderContext, pScene);
 
     mRaster.pVars = nullptr;
 
     if (pScene) {
-        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
-        {
+        if (pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList) {
             throw std::runtime_error("VBufferRaster only works with triangle list geometry due to usage of SV_Barycentrics.");
         }
 
         mRaster.pProgram->addDefines(pScene->getSceneDefines());
         mRaster.pProgram->setTypeConformances(pScene->getTypeConformances());
+    }
+}
+
+void VBufferRaster::initDepth(RenderContext* pContext, const RenderData& renderData) {
+    if(!mDirty) return;
+
+    const auto& pDepth = renderData[kDepthName]->asTexture();
+
+    if (pDepth) {
+        // Using external depth buffer texture
+        LLOG_DBG << "VBufferRaster using external depth buffer";
+
+        DepthStencilState::Desc dsDesc;
+        dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+        mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
+        mpFbo->attachDepthStencilTarget(pDepth);
+    } else {
+        // Using own generated depth buffer texture
+        LLOG_DBG << "VBufferRaster using internal depth buffer";
+        
+        mpDepth = Texture::create2D(pContext->device(), mFrameDim.x, mFrameDim.y, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource);
+        
+        DepthStencilState::Desc dsDesc;
+        dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true).setDepthEnabled(false); // WTF !?
+        mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
     }
 }
 
@@ -125,11 +151,16 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     assert(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
     
-    // Clear depth and output buffer.
-    auto pDepth = getOutput(renderData, kDepthName);
+    initDepth(pRenderContext, renderData);
+
+    // Clear output buffer.
     pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0)); // Clear as UAV for integer clear value
-    pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
     
+    /// Cleat depth if we are using internal
+    if(mpDepth) {
+        pRenderContext->clearDsv(mpDepth->getDSV().get(), 1, 0);
+    }
+
     // Clear extra output buffers.
     //clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
     
@@ -139,7 +170,10 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Set program defines.
+    const auto& pExternalDepth = renderData[kDepthName]->asTexture();
     mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+    mRaster.pProgram->addDefine("_USE_EXTERNAL_DEPTH_BUFFER", pExternalDepth ? "1" : "0");
+    mRaster.pProgram->addDefine("_USE_INTERNAL_DEPTH_BUFFER", mpDepth ? "1" : "0");
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
@@ -151,7 +185,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     mpFbo->attachColorTarget(pOutput, 0);
-    mpFbo->attachDepthStencilTarget(pDepth);
+    mpFbo->attachDepthStencilTarget(mpDepth ? mpDepth : renderData[kDepthName]->asTexture());
     mRaster.pState->setFbo(mpFbo); // Sets the viewport
     mRaster.pVars["PerFrameCB"]["gFrameDim"] = mFrameDim;
 
@@ -164,4 +198,6 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Rasterize the scene.
     RasterizerState::CullMode cullMode = mForceCullMode ? mCullMode : kDefaultCullMode;
     mpScene->rasterize(pRenderContext, mRaster.pState.get(), mRaster.pVars.get(), cullMode);
+
+    mDirty = false;
 }

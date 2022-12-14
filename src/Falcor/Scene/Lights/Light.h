@@ -98,13 +98,38 @@ class dlldecl Light : public Animatable {
     */
     static uint32_t getShaderStructSize() { return kDataSize; }
 
-    /** Set the light intensity.
+    /** Set the light diffuse intensity.
     */
-    virtual void setIntensity(const float3& intensity);
+    virtual void setDiffuseIntensity(const float3& intensity);
 
-    /** Get the light intensity.
+    /** Set the light specular intensity.
     */
-    const float3& getIntensity() const { return mData.intensity; }
+    virtual void setSpecularIntensity(const float3& intensity);
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity);
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity);
+
+    /** Get the light diffuse intensity.
+    */
+    float3 getDiffuseIntensity() const { return (float3)mData.directDiffuseIntensity; }
+
+    /** Get the light specular intensity.
+    */
+    float3 getSpecularIntensity() const { return (float3)mData.directSpecularIntensity; }
+
+    /** Get the light indirect diffuse intensity.
+    */
+    float3 getIndirectDiffuseIntensity() const { return (float3)mData.indirectDiffuseIntensity; }
+
+    /** Get the light indirect specular intensity.
+    */
+    float3 getIndirectSpecularIntensity() const { return (float3)mData.indirectSpecularIntensity; }
+
 
     /** Set the light shadow color
     */
@@ -112,7 +137,7 @@ class dlldecl Light : public Animatable {
 
     /** Get the light shadow color
     */
-    const float3& getShadowColor() const { return mData.shadowColor; }
+    float3 getShadowColor() const { return (float3)mData.shadowColor; }
 
     void setShadowType(LightShadowType shadowType);
 
@@ -144,6 +169,7 @@ class dlldecl Light : public Animatable {
     void updateFromAnimation(const glm::mat4& transform) override {}
 
   protected:
+    virtual void update();
     Light(const std::string& name, LightType type);
 
     static const size_t kDataSize = sizeof(LightData);
@@ -154,9 +180,6 @@ class dlldecl Light : public Animatable {
 
     Texture::SharedPtr mpTexture = nullptr;
 
-    /* These two variables track mData values for consistent UI operation.*/
-    float3 mUiLightIntensityColor = float3(0.5f, 0.5f, 0.5f);
-    float mUiLightIntensityScale = 1.0f;
     LightData mData, mPrevData;
     Changes mChanges = Changes::None;
 
@@ -226,7 +249,7 @@ class dlldecl PointLight : public Light {
     void updateFromAnimation(const glm::mat4& transform) override;
 
   private:
-    void update();
+    virtual void update() override;
     PointLight(const std::string& name);
 };
 
@@ -300,13 +323,30 @@ class dlldecl DistantLight : public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
-    void setIntensity(const float3& intensity) override;
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
   private:
     DistantLight(const std::string& name);
-    void update();
+    virtual void update();
     float mAngle;       ///<< Half-angle subtended by the source.
-    float3 mIntensity;
+    float3 mDiffuseIntensity;
+    float3 mSpecularIntensity;
+    float3 mIndirectDiffuseIntensity;
+    float3 mIndirectSpecularIntensity;
 
     friend class SceneCache;
 };
@@ -328,7 +368,25 @@ class dlldecl EnvironmentLight: public Light {
 
     void updateFromAnimation(const glm::mat4& transform) override;
 
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
+
   private:
+    virtual void update();
+
     EnvironmentLight(const std::string& name, Texture::SharedPtr pTexture);
 
     friend class SceneCache;  
@@ -340,6 +398,13 @@ class dlldecl AnalyticAreaLight : public Light {
   public:
     using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
     using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
+
+    enum class LightSamplingMode {
+      MONTE_CARLO,
+      SOLID_ANGLE,
+      SPHERICAL_SOLID_ANGLE,
+      LTC,
+    };
 
     ~AnalyticAreaLight() = default;
 
@@ -355,8 +420,6 @@ class dlldecl AnalyticAreaLight : public Light {
     /** Get total light power (needed for light picking)
     */
     float getPower() const override;
-
-    void setIntensity(const float3& intensity) override;
 
     /** Set transform matrix
         \param[in] mtx object to world space transform matrix
@@ -376,6 +439,22 @@ class dlldecl AnalyticAreaLight : public Light {
     inline glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
 
     void updateFromAnimation(const glm::mat4& transform) override { setTransformMatrix(transform); }
+
+    /** Set the light diffuse intensity.
+    */
+    virtual void setDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light specular intensity.
+    */
+    virtual void setSpecularIntensity(const float3& intensity) override;
+
+    /** Set the light indirect diffuse intensity.
+    */
+    virtual void setIndirectDiffuseIntensity(const float3& intensity) override;
+
+    /** Set the light indirect specular intensity.
+    */
+    virtual void setIndirectSpecularIntensity(const float3& intensity) override;
 
   protected:
     AnalyticAreaLight(const std::string& name, LightType type);
@@ -402,7 +481,7 @@ class dlldecl RectLight : public AnalyticAreaLight {
   private:
     RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
 
-    virtual void update() override;
+    virtual void update();
 };
 
 /** Disc area light source.

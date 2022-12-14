@@ -414,6 +414,16 @@ float intersect_plane(const float3 rayOrigin, const float3 rayDirection, const f
     return -(dot(rayOrigin, plane.xyz) + plane.w) / dot(rayDirection, plane.xyz);
 }
 
+float point_to_plane_distance(const float3 rayOrigin, const float3 rayDirection, const float4 plane = float4(0.0f, 0.0f, 1.0f, 0.0f)) {
+    return intersect_plane(rayOrigin, rayDirection, plane);
+}
+
+float point_to_plane_distance_unsigned(const float3 rayOrigin, const float3 rayDirection, const float4 plane = float4(0.0f, 0.0f, 1.0f, 0.0f)) {
+    float3 planeNormalFaceforward = dot(rayDirection, plane.xyz) < 0.0 ? plane.xyz : -plane.xyz;
+    return -(dot(rayOrigin, planeNormalFaceforward) + plane.w) / dot(rayDirection, planeNormalFaceforward);
+}
+
+
 /******************************************************************************
     
     Pdf calculations

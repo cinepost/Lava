@@ -1,13 +1,13 @@
+include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
+
 set (SOURCES 
 	./d_houdini.cpp
 )
 
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
 
 # Find Boost libs
-find_package( Boost COMPONENTS log REQUIRED )
+set(Boost_USE_MULTITHREADED ON)
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log EXACT REQUIRED )
 
 # OpenMP
 find_package(OpenMP REQUIRED)

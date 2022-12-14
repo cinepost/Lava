@@ -58,6 +58,13 @@ function (makeRenderPassLib)
         lava_utils_lib
     )
 
+if(USE_MEGALIB)
+    target_link_libraries(
+        ${PASS_LIB}
+        mega_lib
+    )
+endif()
+
     # Copy/install all needed shaders
     set( SHADERS_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/RenderPasses)
     file(MAKE_DIRECTORY ${SHADERS_OUTPUT_DIRECTORY})
@@ -96,15 +103,21 @@ makeRenderPassLib(NAME "DepthPass")
 makeRenderPassLib(NAME "TexturesResolvePass")
 makeRenderPassLib(NAME "ForwardLightingPass")
 makeRenderPassLib(NAME "DeferredLightingPass")
+makeRenderPassLib(NAME "DeferredLightingCachedPass")
+makeRenderPassLib(NAME "ToneMapperPass")
+makeRenderPassLib(NAME "OpenDenoisePass")
+makeRenderPassLib(NAME "CryptomattePass")
+makeRenderPassLib(NAME "ImageLoaderPass")
 makeRenderPassLib(NAME "SkyBox")
 makeRenderPassLib(NAME "RTXDIPass")
 makeRenderPassLib(NAME "PathTracer")
+
+
 
 #makeRenderPassLib(NAME "WhittedRayTracer")
 #makeRenderPassLib(NAME "MinimalPathTracer")
 #makeRenderPassLib(NAME "MegakernelPathTracer")
 
-#makeRenderPassLib(NAME "ToneMapper")
 #makeRenderPassLib(NAME "ImageLoader")
 
 #makeRenderPassLib(NAME "PixelInspectorPass")

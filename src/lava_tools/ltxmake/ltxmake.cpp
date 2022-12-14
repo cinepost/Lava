@@ -203,12 +203,14 @@ int main(int argc, char** argv){
           std::cout << "LTX format version: " << header.versionString() << std::endl;
           std::cout << "Dimensions: " << std::to_string(header.width) << " x " << std::to_string(header.height) << " x " << std::to_string(header.depth) << std::endl;
           std::cout << "Mip levels: " << std::to_string(header.mipLevelsCount) << std::endl;
-
+          std::cout << "Data format: " << to_string(header.format) << std::endl;
           std::cout << "Data pages count: " << std::to_string(header.pagesCount) << std::endl;
           std::cout << "Data page dimensions: " << 
             std::to_string(header.pageDims.width) << " x " << std::to_string(header.pageDims.height) << " x " << std::to_string(header.pageDims.depth) << std::endl;
 
           std::cout << "Data page size: "  << std::to_string(header.pageDataSize) << " bytes" << std::endl;
+
+          std::cout << "Mip tail start: "  << std::to_string(header.mipTailStart) << std::endl;
 
           for (uint mipLevel = 0; mipLevel < header.mipLevelsCount; mipLevel++) {
             uint32_t numPagesInMipLevel = (mipLevel == (header.mipLevelsCount-1)) ? 1 : (header.mipBases[mipLevel + 1] - header.mipBases[mipLevel]);

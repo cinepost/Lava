@@ -192,10 +192,19 @@ if(EXISTS "${OpenEXR_INCLUDE_DIR}/OpenEXRConfig.h")
   )
   string(STRIP "${_openexr_version_minor_string}" OpenEXR_VERSION_MINOR)
 
+  file(STRINGS "${OpenEXR_INCLUDE_DIR}/OpenEXRConfig.h"
+     _openexr_version_patch_string REGEX "#define OPENEXR_VERSION_PATCH "
+  )
+  string(REGEX REPLACE "#define OPENEXR_VERSION_PATCH" ""
+    _openexr_version_patch_string "${_openexr_version_patch_string}"
+  )
+  string(STRIP "${_openexr_version_patch_string}" OPENEXR_VERSION_PATCH)
+
   unset(_openexr_version_major_string)
   unset(_openexr_version_minor_string)
+  unset(_openexr_version_patch_string)
 
-  set(OpenEXR_VERSION ${OpenEXR_VERSION_MAJOR}.${OpenEXR_VERSION_MINOR})
+  set(OpenEXR_VERSION ${OpenEXR_VERSION_MAJOR}.${OpenEXR_VERSION_MINOR}.${OPENEXR_VERSION_PATCH})
 endif()
 
 # ------------------------------------------------------------------------

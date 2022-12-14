@@ -192,6 +192,8 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 					return ResourceFormat::R16Unorm;
 				case BASETYPE::UINT32:
 					return ResourceFormat::R32Uint;
+				case BASETYPE::HALF:
+					return ResourceFormat::R16Float;
 				case BASETYPE::FLOAT:
 					return ResourceFormat::R32Float;
 				default:

@@ -263,6 +263,7 @@ void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t
 }
 
 void AccumulatePass::setOutputFormat(ResourceFormat format) {
+    if(mOutputFormat == format) return;
     mOutputFormat = format;
     mPassChangedCB();
 }

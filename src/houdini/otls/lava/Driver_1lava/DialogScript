@@ -738,33 +738,172 @@
                 }
                 parmtag { "script_callback_language" "python" }
             }
-            parm {
-                name    "render_any_shadowmap"
-                label   "Auto-Generate Shadow Maps"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
+
+            groupsimple {
+                name    "output6_1"
+                label   "Denoiser Parameters"
+
+                parm {
+                    name    "lv_postfx_denoise"
+                    label   "Enable Denoiser"
+                    type    toggle
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_denoise_use_albedo"
+                    label   "Use Albedo"
+                    type    toggle
+                    default { "1" }
+                    help    "Use auxilary albedo channel if available."
+                    disablewhen "{ lv_postfx_denoise == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_denoise_use_normal"
+                    label   "Use Normal"
+                    type    toggle
+                    default { "1" }
+                    help    "Use auxilary normal channel if available."
+                    disablewhen "{ lv_postfx_denoise == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
             }
-            parm {
-                name    "render_any_envmap"
-                label   "Auto-Generate Environment Maps"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
-            }
-            parm {
-                name    "render_any_photonmap"
-                label   "Auto-Generate Photon Maps"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
-            }
-            parm {
-                name    "render_any_pointcloud"
-                label   "Auto-Generate Light Point Clouds"
-                type    toggle
-                default { "0" }
-                parmtag { "script_callback_language" "python" }
+
+            groupsimple {
+                name    "output6_2"
+                label   "Tonemapper Parameters"
+
+                parm {
+                    name    "lv_postfx_tonemap"
+                    label   "Enable Tonemapper"
+                    type    toggle
+                    default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_operator"
+                    label   "Operator"
+                    type    int
+                    size    1
+                    default { "4" }
+                    
+                    menu {
+                        "0"   "Linear"
+                        "1"   "Reinhard"
+                        "2"   "ReinhardModified"
+                        "3"   "HejiHableAlu"
+                        "4"   "HableUc2"
+                        "5"   "Aces"
+                    }
+
+                    disablewhen "{ lv_postfx_tonemap == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_exposure_compensation"
+                    label   "Exposure Compensation"
+                    type    float
+                    size    1
+                    range   { 10.0 800.0 }
+                    default { "0.0" }
+                    help    "Exposure compensation (in F-stops)."
+                    disablewhen "{ lv_postfx_tonemap == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_auto_exposure"
+                    label   "Auto Exposure"
+                    type    toggle
+                    default { "0" }
+                    help    "Enable auto exposure."
+                    disablewhen "{ lv_postfx_tonemap == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_exposure"
+                    label   "Exposure"
+                    type    float
+                    size    1
+                    default { "0.0" }
+                    help    "Exposure value (EV), only used when auto exposure is disabled."
+                    disablewhen "{ lv_postfx_tonemap == 0 } { lv_tonemap_auto_exposure == 1 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_filmspeed"
+                    label   "Film Speed"
+                    type    float
+                    size    1
+                    range   { 10.0 800.0 }
+                    default { "100.0" }
+                    help    "Film speed (ISO), only used when auto exposure is disabled."
+                    disablewhen "{ lv_postfx_tonemap == 0 } { lv_tonemap_auto_exposure == 1 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_white_balance"
+                    label   "White Balance"
+                    type    toggle
+                    default { "0" }
+                    help    "Enable white balance."
+                    disablewhen "{ lv_postfx_tonemap == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_white_point"
+                    label   "White Point"
+                    type    float
+                    size    1
+                    default { "6500.0" }
+                    range   { 1000.0 15000.0 }
+                    help    "White point (K)."
+                    disablewhen "{ lv_postfx_tonemap == 0 } { lv_tonemap_white_balance == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_clamp"
+                    label   "Clamp"
+                    type    toggle
+                    default { "1" }
+                    help    "Clamp output to [0,1]."
+                    disablewhen "{ lv_postfx_tonemap == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_white_max_luminance"
+                    label   "White Max Luminance"
+                    type    float
+                    size    1
+                    default { "1.0" }
+                    help    "Parameter used in ModifiedReinhard operator."
+                    disablewhen "{ lv_postfx_tonemap == 0 } { lv_tonemap_operator != 2 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_tonemap_white_scale"
+                    label   "White Scale"
+                    type    float
+                    size    1
+                    default { "12.2" }
+                    range   { 5.0 25.0 }
+                    help    "Parameter used in Uc2Hable operator."
+                    disablewhen "{lv_postfx_tonemap == 0} {lv_tonemap_operator != 4}"
+                    parmtag { "script_callback_language" "python" }
+                }
             }
         }
 
@@ -950,6 +1089,49 @@
             }
 
             parm {
+                name    "lv_quickplane_cryptomatte_mat"
+                label   "Cryptomatte Material"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_cryptomatte_mat"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_cryptomatte_mat == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_quickplane_cryptomatte_obj"
+                label   "Cryptomatte Object"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_cryptomatte_obj"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_cryptomatte_obj == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+
+            parm {
                 name    "sepparm4_"
                 label   "Separator"
                 type    separator
@@ -1041,6 +1223,18 @@
         label   "Rendering"
 
         parm {
+            name    "lv_renderengine"
+            label   "Rendering Engine"
+            type    string
+            default { "hybrid" }
+            menu {
+                "hybrid"      "Hybrid"
+                "pathtracer"  "Path Tracer"
+            }
+            parmtag { "script_callback_language" "python" }
+        }
+
+        parm {
             name    "lv_enable_rt"
             label   "Enable Ray Tracing"
             type    toggle
@@ -1115,6 +1309,19 @@
             }
 
             parm {
+                name    "lv_area_lights_sampling_mode"
+                label   "Area Lights Sampling"
+                type    string
+                default { "urena" }
+                menu {
+                    "sa"    "Solid Angle"
+                    "urena" "Spherical Projected"
+                    "ltc"   "LTC"
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
                 name    "lv_samplelock"
                 label   "Sample Lock"
                 type    toggle
@@ -1173,6 +1380,16 @@
                 }
 
                 parm {
+                    name    "lv_refract_limit"
+                    label   "Refract Limit"
+                    type    int
+                    default { "0" }
+                    range   { 0 5 }
+                    disablewhen "{ lv_enable_rt == 0 }"
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
                     name    "lv_diffuse_limit"
                     label   "Diffuse Limit"
                     type    int
@@ -1189,6 +1406,15 @@
                 type    float
                 size    3
                 default { "10" "10" "10" }
+                help    ""
+            }
+
+            parm {
+                name    "lv_indirectcolorlimit"
+                label   "Indirect Color Limit"
+                type    float
+                size    3
+                default { "3" "3" "3" }
                 help    ""
             }
         }

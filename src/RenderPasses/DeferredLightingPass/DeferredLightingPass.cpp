@@ -60,26 +60,30 @@ namespace {
     const std::string kSuperSampleCount = "superSampleCount";
     const std::string kSuperSampling = "enableSuperSampling";
     const std::string kColorLimit = "colorLimit";
+    const std::string kIndirectColorLimit = "indirectColorLimit";
     const std::string kUseSTBN = "useSTBN";
     const std::string kRayBias = "rayBias";
     const std::string kShadingRate = "shadingRate";
     const std::string kRayReflectLimit = "rayReflectLimit";
+    const std::string kRayRefractLimit = "rayRefractLimit";
     const std::string kRayDiffuseLimit = "rayDiffuseLimit";
+    const std::string kAreaLightsSamplingMode = "areaLightsSamplingMode";
 }
 
 DeferredLightingPass::SharedPtr DeferredLightingPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     auto pThis = SharedPtr(new DeferredLightingPass(pRenderContext->device()));
         
     for (const auto& [key, value] : dict) {
-        if (key == kSuperSampleCount) pThis->setSuperSampleCount(value);
-        else if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
-        else if (key == kSuperSampling) pThis->setSuperSampling(value);
+        if (key == kFrameSampleCount) pThis->setFrameSampleCount(value);
         else if (key == kColorLimit) pThis->setColorLimit(value);
+        else if (key == kIndirectColorLimit) pThis->setIndirectColorLimit(value);
         else if (key == kUseSTBN) pThis->setSTBNSampling(value);
         else if (key == kRayBias) pThis->setRayBias(value);
         else if (key == kShadingRate) pThis->setShadingRate(value);
         else if (key == kRayReflectLimit) pThis->setRayReflectLimit(value);
+        else if (key == kRayRefractLimit) pThis->setRayRefractLimit(value);
         else if (key == kRayDiffuseLimit) pThis->setRayDiffuseLimit(value);
+        else if (key == kAreaLightsSamplingMode) pThis->setAreaLightsSamplingMode(std::string(value));
     }
 
     return pThis;
@@ -159,9 +163,15 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
         if (mUseSTBN) defines.add("_USE_STBN_SAMPLING", "1");
         if (mEnableSuperSampling) defines.add("INTERPOLATION_MODE", "sample");
         
-        uint maxRayLevel = std::max(mRayDiffuseLimit, mRayReflectLimit);
+        uint maxRayLevel = std::max(std::max(mRayDiffuseLimit, mRayReflectLimit), mRayRefractLimit);
         if(maxRayLevel > 0) defines.add("_MAX_RAY_LEVEL", std::to_string(maxRayLevel));
-        
+
+        uint32_t scene_lights_count = mpScene->getLightCount();
+        defines.add("_SCENE_LIGHT_COUNT", (scene_lights_count > 0) ? std::to_string(scene_lights_count) : "0");
+
+        defines.add("AREA_LIGHTS_SAMPLING_SPHERICAL_SOLID_ANGLE_URENA", 
+            (mAreaLightsSamplingMode == AnalyticAreaLight::LightSamplingMode::SPHERICAL_SOLID_ANGLE) ? "1" : "0");
+
         if (mpSampleGenerator) defines.add(mpSampleGenerator->getDefines());
 
         mpLightingPass = ComputePass::create(mpDevice, desc, defines, true);
@@ -199,18 +209,27 @@ void DeferredLightingPass::execute(RenderContext* pContext, const RenderData& re
     cb_var["gSamplesPerFrame"]  = mFrameSampleCount;
     cb_var["gSampleNumber"] = mSampleNumber++;
     cb_var["gColorLimit"] = mColorLimit;
+    cb_var["gIndirectColorLimit"] = mIndirectColorLimit;
     cb_var["gRayDiffuseLimit"] = mRayDiffuseLimit;
     cb_var["gRayReflectLimit"] = mRayReflectLimit;
+    cb_var["gRayRefractLimit"] = mRayRefractLimit;
     cb_var["gRayBias"] = mRayBias;
     
     mpLightingPass->execute(pContext, mFrameDim.x, mFrameDim.y);
 }
 
-
 DeferredLightingPass& DeferredLightingPass::setRayReflectLimit(int limit) {
     uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
     if(mRayReflectLimit == _limit) return *this;
     mRayReflectLimit = _limit;
+    mDirty = true;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setRayRefractLimit(int limit) {
+    uint _limit = std::max(0u, std::min(10u, static_cast<uint>(limit)));
+    if(mRayRefractLimit == _limit) return *this;
+    mRayRefractLimit = _limit;
     mDirty = true;
     return *this;
 }
@@ -228,13 +247,18 @@ DeferredLightingPass& DeferredLightingPass::setRayBias(float bias) {
     return *this;
 }
 
-DeferredLightingPass& DeferredLightingPass::setColorLimit(float3 limit) {
-    mColorLimit = limit;
+DeferredLightingPass& DeferredLightingPass::setColorLimit(const float3& limit) {
+    mColorLimit = (float16_t3)limit;
+    return *this;
+}
+
+DeferredLightingPass& DeferredLightingPass::setIndirectColorLimit(const float3& limit) {
+    mIndirectColorLimit = (float16_t3)limit;
     return *this;
 }
 
 DeferredLightingPass& DeferredLightingPass::setShadingRate(int rate) {
-    rate = std::max(1, rate);
+    rate = std::max(1u, static_cast<uint>(rate));
     if(mShadingRate == rate) return *this;
     mShadingRate = rate;
     mDirty = true;
@@ -247,6 +271,24 @@ DeferredLightingPass& DeferredLightingPass::setSTBNSampling(bool enable) {
     mDirty = true;
     return *this;
 }
+
+DeferredLightingPass& DeferredLightingPass::setAreaLightsSamplingMode(const std::string& areaLightsSamplingModeName) {
+    if (areaLightsSamplingModeName == "sa") {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::SOLID_ANGLE);
+    } else if (areaLightsSamplingModeName == "urena") {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::SPHERICAL_SOLID_ANGLE);
+    } else {
+        return setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode::LTC);
+    }
+}
+
+DeferredLightingPass& DeferredLightingPass::setAreaLightsSamplingMode(AnalyticAreaLight::LightSamplingMode areaLightsSamplingMode) {
+    if(mAreaLightsSamplingMode == areaLightsSamplingMode) return *this;
+    mAreaLightsSamplingMode = areaLightsSamplingMode;
+    mDirty = true;
+    return *this;
+}
+
 
 DeferredLightingPass& DeferredLightingPass::setFrameSampleCount(uint32_t samples) {
     if (mFrameSampleCount == samples) return *this;

@@ -39,7 +39,7 @@ using namespace Falcor;
     as well as the barycentrics at the hit point.
 */
 class VBufferRaster : public GBufferBase {
- public:
+  public:
     using SharedPtr = std::shared_ptr<VBufferRaster>;
 
     static const Info kInfo;
@@ -50,11 +50,16 @@ class VBufferRaster : public GBufferBase {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
- private:
+  private:
     VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
+
+    void initDepth(RenderContext* pContext, const RenderData& renderData);
 
     // Internal state
     Fbo::SharedPtr                  mpFbo;
+    Texture::SharedPtr              mpDepth;
+
+    bool mDirty = true;
 
     struct {
         GraphicsState::SharedPtr pState;

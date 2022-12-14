@@ -35,6 +35,8 @@ namespace po = boost::program_options;
 
 #include "lava_utils_lib/logging.h"
 
+#define PRE_RELEASE_TRACEBACK_HANDLER
+
 using namespace lava;
 
 void signalHandler( int signum ){
@@ -42,7 +44,10 @@ void signalHandler( int signum ){
 }
 
 void signalTraceHandler( int signum ){
-#ifdef _DEBUG
+#ifdef PRE_RELEASE_TRACEBACK_HANDLER
+  fprintf(stderr, "****************************************\n");
+  fprintf(stderr, "************ Lava Traceback ************\n");
+  fprintf(stderr, "****************************************\n");
   fprintf(stderr, "Error: signal %d:\n", signum);
   void *array[30];
   size_t size;

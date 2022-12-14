@@ -99,6 +99,13 @@ class dlldecl CryptomatteSystem {
 		*/
 		void addInstance(const std::string& name, uint32_t instanceID);
 
+		/** Add and calculate custom string attribute instance hash.
+			If an identical instance id exists, the instance hash is not added.
+			\param[in] name The instance name.
+			\param[in] instanceID The instance id used by Scene.
+		*/
+		void addCustattr(const std::string& name, uint32_t instanceID);
+
 	private:
 		CryptomatteSystem(Device::SharedPtr pDevice);
 
@@ -108,6 +115,7 @@ class dlldecl CryptomatteSystem {
 
 		std::vector<uint32_t> mMaterialHashes;  ///< Map of all material hashes.
 		std::vector<uint32_t> mInstanceHashes;  ///< Map of all instance hashes.
+		std::vector<uint32_t> mCustattrHashes;  ///< Map of all instance custom string attrubute hashes.
 		
 		bool mMaterialsChanged = false;                             ///< Flag indicating if materials were added/removed since last update. Per-material updates are tracked by each material's update flags.
 		Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.

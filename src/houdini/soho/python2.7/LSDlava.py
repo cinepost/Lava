@@ -135,6 +135,7 @@ def initializeFeatures(settings):
     Image("image", "checkpointname", "string", "lv_checkpointname")
     Image("image", "checkpointperiod", "float", "lv_checkpointperiod")
     Image("image", "colorlimit", "float", "lv_colorlimit")
+    Image("image", "indirectcolorlimit", "float", "lv_indirectcolorlimit")
     Image("image", "colorlimitdecay", "float", "lv_colorlimitdecay")
     Image("image", "colorlimitdepth", "int", "lv_colorlimitdepth")
     Image("image", "decorrelatedof", "bool", "lv_decorrelatedof")
@@ -150,11 +151,14 @@ def initializeFeatures(settings):
     Image("image", "readcheckpoint", "bool", "lv_readcheckpoint")
     Image("image", "resolution", "int", "lv_uvunwrapres")
     Image("image", "samplelock", "bool", "lv_samplelock")
+    
     Image("image", "samples", "int", "lv_samples", skipdefault=False)
     Image("image", "samplingpattern", "string", "lv_sampling_pattern", skipdefault=False)
     Image("image", "stbn_sampling", "bool", "lv_stbn_sampling", skipdefault=False)
     Image("image", "shadingrate", "int", "lv_shadingrate", skipdefault=False)
     Image("image", "raybias", "float", "lv_ray_bias", skipdefault=False)
+    Image("image", "areasampling", "string", "lv_area_lights_sampling_mode", skipdefault=False)
+
     Image("image", "saveoptions", "string", "lv_saveoptions")
     Image("image", "setexrdatawindow", "bool", "lv_setexrdatawindow")
     Image("image", "subpixel", "bool", "lv_subpixel")
@@ -164,6 +168,17 @@ def initializeFeatures(settings):
 
     Image("image", "diffuselimit", "int", "lv_diffuse_limit")
     Image("image", "reflectlimit", "int", "lv_reflect_limit")
+    Image("image", "refractlimit", "int", "lv_refract_limit")
+
+    Image("image", "OpenDenoisePass.enable", "bool", "lv_postfx_denoise")
+    Image("image", "OpenDenoisePass.useAlbedo", "bool", "lv_denoise_use_albedo")
+    Image("image", "OpenDenoisePass.useNormal", "bool", "lv_denoise_use_normal")
+
+    Image("image", "ToneMappingPass.enable", "bool", "lv_postfx_tonemap")
+    Image("image", "ToneMappingPass.operator", "int", "lv_tonemap_operator")
+    Image("image", "ToneMappingPass.filmSpeed", "float", "lv_tonemap_filmspeed")
+    Image("image", "ToneMappingPass.exposureValue", "float", "lv_tonemap_exposure")
+    Image("image", "ToneMappingPass.autoExposure", "bool", "lv_tonemap_auto_exposure")
 
     # -- Photon --
     Photon("photon", "photoncfile", "string", "lv_photoncfile")
@@ -285,6 +300,11 @@ def initializeFeatures(settings):
     Light("visible_primary", "bool", "lv_visible_primary")
     Light("shadowcategories", "string", "shadowcategories")
     Light("shadowmask", "oplist", "shadowmask")
+
+    Light("diffuse_color",           "float", "lv_diffuse_color", skipdefault=True)
+    Light("specular_color",          "float", "lv_specular_color", skipdefault=True)
+    Light("indirect_diffuse_color",  "float", "lv_indirect_diffuse_color", skipdefault=True)
+    Light("indirect_specular_color", "float", "lv_indirect_specular_color", skipdefault=True)
 
     # -- Fog --
     Fog("name", "string", "object:name")

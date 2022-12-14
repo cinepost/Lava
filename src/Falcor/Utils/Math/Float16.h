@@ -44,6 +44,8 @@ namespace Falcor
         explicit float16_t(float v) : bits(glm::detail::toFloat16(v)) {}
         explicit operator float() const { return glm::detail::toFloat32(bits); }
 
+        bool operator>(const float16_t& other) const { return glm::detail::toFloat32(bits) > glm::detail::toFloat32(other.bits); }
+        bool operator<(const float16_t& other) const { return glm::detail::toFloat32(bits) < glm::detail::toFloat32(other.bits); }
         bool operator==(const float16_t& other) const { return bits == other.bits; }
         bool operator!=(const float16_t& other) const { return bits != other.bits; }
 

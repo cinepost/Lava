@@ -389,7 +389,7 @@ static void randomPattern(uint8_t* buffer, uint32_t width, uint32_t height) {
 
 void CopyContext::fillMipTail(const Texture::SharedPtr& pTexture, const void* pData) {
 	assert(pTexture);
-	assert(pData);
+	if(!pData) return;
 
 	mpDevice->getApiHandle()->allocateTailMemory(pTexture.get());
 

@@ -344,6 +344,7 @@ class dlldecl Scene : public std::enable_shared_from_this<Scene> {
         uint64_t rectLightCount = 0;                ///< Number of rect lights.
         uint64_t sphereLightCount = 0;              ///< Number of sphere lights.
         uint64_t distantLightCount = 0;             ///< Number of distant lights.
+        uint64_t environmentLightCount = 0;         ///< Number of environment lights.
         uint64_t lightsMemoryInBytes = 0;           ///< Total memory in bytes used by the analytic lights.
         uint64_t envMapMemoryInBytes = 0;           ///< Total memory in bytes used by the environment map.
         uint64_t emissiveMemoryInBytes = 0;         ///< Total memory in bytes used by the emissive lights.

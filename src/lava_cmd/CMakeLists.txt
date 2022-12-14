@@ -1,6 +1,3 @@
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
 )
@@ -10,16 +7,8 @@ set (SOURCES
 )
 
 # Find BOOST
-find_package( Boost 1.73.0 COMPONENTS program_options log REQUIRED )
+find_package( Boost 1.73.0 COMPONENTS program_options log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
-# we will use static libs
-add_definitions(-DBOOST_LOG_DYN_LINK)
-
-# RPATH 
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE) # use, i.e. don't skip the full RPATH for the build tree
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) # when building, don't use the install RPATH already (but later on when installing)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE) # add the automatically determined parts of the RPATH which point to directories outside the build tree to the install RPATH
 
 # Executable 
 add_executable ( lava_cmd ${SOURCES} )
@@ -29,10 +18,20 @@ target_link_libraries( lava_cmd
 	gfx_lib
 	lava_lib
 	lava_utils_lib
-	falcor_lib 
-	Boost::log 
-	Boost::program_options 
+	falcor_lib  
 )
+
+if(USE_MEGALIB)
+	target_link_libraries( lava_cmd
+		mega_lib
+	)
+else()
+	add_definitions(-DBOOST_LOG_DYN_LINK)
+	target_link_libraries( lava_cmd
+		Boost::log 
+		Boost::program_options 
+	)
+endif()
 
 install(
 	TARGETS lava_cmd 

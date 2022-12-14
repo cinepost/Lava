@@ -32,6 +32,9 @@ VSOut vsMain(VSIn vIn) {
 }
 
 void psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET {
+    // Early camera range out
+    if((vsOut.posH.z < 0.0) || (vsOut.posH.z > 1.0)) discard; 
+    
 #if USE_ALPHA_TEST
     //let lod = ImplicitLodTextureSampler();
     //if (alphaTest(vsOut, triangleIndex, lod)) discard;

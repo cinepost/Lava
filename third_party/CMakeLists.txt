@@ -4,21 +4,19 @@ project("ThirdParty_External")
 
 include(ExternalProject)
 include(ProcessorCount)
-#ProcessorCount(N)
 
 message("Running third party dependencies build...")
 
 #we need git executable
 find_package(Git REQUIRED)
 
-set(N 4)
-
 set( CMAKE_MODULE_PATH 
   ${PROJECT_SOURCE_DIR}/../cmake/modules
 )
 
+include(${PROJECT_SOURCE_DIR}/external_versions.cmake)
+
 set(EXTRA_CMAKE_ARGS)
-set(LAVA_3RD_LIB_LINK_WITH_STATIC OFF)
 
 set(EXTERNALS_BINARY_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external)
 set(EXTERNALS_STAMP_DIR ${PROJECT_SOURCE_DIR}/../build/${DEPS_BUILD_TYPE}/external/stamp)
@@ -47,7 +45,10 @@ endif()
 # TBB
 #######################
 
-set(EXTERNAL_TBB_VERSION 2020.2)
+if( NOT EXTERNAL_TBB_VERSION )
+  set(EXTERNAL_TBB_VERSION 2020.2)
+endif()
+
 set(TBB_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package( TBB ${EXTERNAL_TBB_VERSION} EXACT)
 
@@ -69,7 +70,7 @@ else()
     
     CONFIGURE_COMMAND ""
     
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j ${N} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
+    BUILD_COMMAND ${MAKE_EXECUTABLE} tbb_build_dir=${EXTERNALS_BINARY_DIR}/tbb/build tbb_build_prefix=${TBB_PREFIX}
 
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
     
@@ -91,7 +92,9 @@ endif()
 # Blosc2
 #######################
 
-set(EXTERNAL_BLOSC_VERSION 1.21.0)
+if( NOT EXTERNAL_BLOSC_VERSION)
+  set(EXTERNAL_BLOSC_VERSION 1.21.0)
+endif()
 
 set(Blosc_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT)
@@ -106,9 +109,14 @@ else()
   message("Blosc version ${EXTERNAL_BLOSC_VERSION} not found! Running external build ...")
   set(BLOSC_PREFIX blosc)
 
-  set(BLOSC_BUILD_STATIC ON)
-  set(BLOSC_BUILD_SHARED OFF)
-  
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(BLOSC_BUILD_STATIC ON)
+    set(BLOSC_BUILD_SHARED OFF)
+  else()
+    set(BLOSC_BUILD_STATIC OFF)
+    set(BLOSC_BUILD_SHARED ON)
+  endif()
+
   ExternalProject_Add( Blosc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BLOSC_PREFIX}
     GIT_REPOSITORY https://github.com/Blosc/c-blosc.git
@@ -116,16 +124,17 @@ else()
     UPDATE_DISCONNECTED true
     
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D BUILD_STATIC:BOOL=ON
-    CMAKE_ARGS -D BUILD_SHARED:BOOL=OFF
+    CMAKE_ARGS -D BUILD_STATIC:BOOL=${BLOSC_BUILD_STATIC}
+    CMAKE_ARGS -D BUILD_SHARED:BOOL=${BLOSC_BUILD_SHARED}
     CMAKE_ARGS -D BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D BUILD_FUZZERS:BOOL=OFF
     CMAKE_ARGS -D BUILD_BENCHMARKS:BOOL=OFF
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
-    CMAKE_ARGS -D CMAKE_C_FLAGS "-fPIC"
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS:STRING="-fPIC"
+    CMAKE_ARGS -D CMAKE_C_FLAGS:STRING="-fPIC"
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/blosc
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/blosc
@@ -139,7 +148,17 @@ endif()
 # Boost
 #######################
 
-set(EXTERNAL_BOOST_VERSION 1.73.0)
+set(Boost_USE_MULTITHREADED ON)
+
+if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
+endif()
+
+if( NOT EXTERNAL_BOOST_VERSION )
+  set(EXTERNAL_BOOST_VERSION 1.73.0)
+endif()
+
 set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT COMPONENTS filesystem system date_time iostreams program_options)
 
@@ -153,10 +172,14 @@ else()
   message("Boost version ${EXTERNAL_BOOST_VERSION} not found! Running external build ...")
   set(BOOST_PREFIX boost)
 
-  if( LAVA_3RD_LIB_LINK_WITH_STATIC)
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
     set(BOOST_LINK_STYLE static)
+    set(BOOST_CXX_FLAGS "cxxflags=-fPIC")
+    set(BOOST_C_FLAGS "cflags=-fPIC")
   else()
     set(BOOST_LINK_STYLE shared)
+    set(BOOST_CXX_FLAGS "")
+    set(BOOST_C_FLAGS "")
   endif()
 
   ExternalProject_Add ( Boost
@@ -174,7 +197,7 @@ else()
       --with-libraries=log 
       --with-libraries=thread
       --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=release threading=multi runtime-link=${BOOST_LINK_STYLE} -j ${N}
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${DEPS_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
@@ -188,7 +211,9 @@ endif()
 # Pybind11
 #######################
 
-set(EXTERNAL_PYBIND_VERSION 2.5.0)
+if( NOT EXTERNAL_PYBIND_VERSION )
+  set(EXTERNAL_PYBIND_VERSION 2.5.0)
+endif()
 
 set(pybind11_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(pybind11 ${EXTERNAL_PYBIND_VERSION} EXACT)
@@ -216,7 +241,7 @@ else()
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/pybind
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/pybind
@@ -230,7 +255,14 @@ endif()
 # OpenEXR
 #######################
 
-set(EXTERNAL_OPENEXR_VERSION 2.5.8)
+if( NOT EXTERNAL_OPENEXR_VERSION )
+  set(EXTERNAL_OPENEXR_VERSION 2.5.8)
+endif()
+
+if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+set(OPENEXR_USE_STATIC_LIBS ON)
+endif()
+
 set(OpenEXR_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT)
 
@@ -244,7 +276,7 @@ else()
   message("OpenEXR not found! Running external build ...")
   set(OPENEXR_PREFIX openexr)
 
-  if( LAVA_3RD_LIB_LINK_WITH_STATIC)
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
     set(OPENEXR_BUILD_SHARED OFF)
   else()
     set(OPENEXR_BUILD_SHARED ON)
@@ -258,13 +290,14 @@ else()
     
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D BUILD_TESTING:BOOL=OFF
+    CMAKE_ARGS -D OPENEXR_BUILD_UTILS:BOOL=OFF
     CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${OPENEXR_BUILD_SHARED}
     CMAKE_ARGS -D PYILMBASE_ENABLE:BOOL=OFF
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openexr
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
@@ -279,19 +312,22 @@ endif()
 # Assimp
 #######################
 
-set(EXTERNAL_ASSIMP_VERSION 5.0.0)
+if( NOT EXTERNAL_ASSIMP_VERSION )
+  set(EXTERNAL_ASSIMP_VERSION 5.0.0)
+endif()
+
 set(assimp_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
 
-#if(assimp_FOUND)
-#  message("Assimp version ${assimp_VERSION} found ...")
-#  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
-#else()
+if(assimp_FOUND)
+  message("Assimp version ${assimp_VERSION} found ...")
+  add_custom_target( Assimp COMMAND echo "Assimp build exists, skipping rebuild ...")
+else()
 
   message("Assimp version ${EXTERNAL_ASSIMP_VERSION} not found! Running external build ...")
   set(ASSIMP_PREFIX assimp)
 
-  if( LAVA_3RD_LIB_LINK_WITH_STATIC)
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
     set(ASSIMP_BUILD_SHARED OFF)
   else()
     set(ASSIMP_BUILD_SHARED ON)
@@ -307,12 +343,15 @@ find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
     CMAKE_ARGS -D ASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF
     CMAKE_ARGS -D ASSIMP_BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D ASSIMP_INSTALL:BOOL=ON
-
+    CMAKE_ARGS -D ASSIMP_BUILD_OBJ_IMPORTER:BOOL=TRUE
+    CMAKE_ARGS -D ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT:BOOL=OFF
+    CMAKE_ARGS -D ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT:BOOL=OFF
+    CMAKE_ARGS -D ASSIMP_INSTALL_PDB:BOOL=OFF
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/assimp
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
@@ -320,14 +359,20 @@ find_package(assimp ${EXTERNAL_ASSIMP_VERSION} EXACT)
   )
   ExternalProject_Add_StepDependencies(Assimp configure Tbb OpenVDB Blosc)
 
-#endif()
+endif()
 
 
 #######################
 # OpenVDB
 #######################
 
-set(EXTERNAL_OPENVDB_VERSION 9.0.0)
+if( NOT EXTERNAL_OPENVDB_VERSION)
+  set(EXTERNAL_OPENVDB_VERSION 9.0.0)
+endif()
+
+if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+set(OPENVDB_USE_STATIC_LIBS ON)
+endif()
 
 set(OpenVDB_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenVDB ${EXTERNAL_OPENVDB_VERSION} EXACT)
@@ -342,12 +387,15 @@ else()
   message("OpenVDB version ${EXTERNAL_OPENVDB_VERSION} not found! Running external build ...")
   set(OPENVDB_PREFIX openvdb)
 
-  if( LAVA_3RD_LIB_LINK_WITH_STATIC)
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
     set(OPENVDB_USE_BOOST_STATIC_RUNTIME ON)
     set(OPENVDB_BUILD_CORE_SHARED OFF)
+    set(OPENVDB_CXX_FLAGS "-fPIC")
+    set(OPENVDB_C_FLAGS "-fPIC")
   else()
     set(OPENVDB_USE_BOOST_STATIC_RUNTIME OFF)
     set(OPENVDB_BUILD_CORE_SHARED ON)
+    set(OPENVDB_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
   endif()
 
   ExternalProject_Add ( OpenVDB
@@ -357,6 +405,11 @@ else()
     
     CMAKE_ARGS -D USE_NANOVDB:BOOL=ON
     CMAKE_ARGS -D USE_BLOSC:BOOL=OFF
+    CMAKE_ARGS -D USE_TBB:BOOL=OFF
+    CMAKE_ARGS -D USE_EXPLICIT_INSTANTIATION:BOOL=OFF
+
+    CMAKE_ARGS -D OPENVDB_BUILD_AX:BOOL=OFF
+    CMAKE_ARGS -D OPENVDB_BUILD_CORE:BOOL=ON
     CMAKE_ARGS -D OPENVDB_BUILD_NANOVDB:BOOL=ON
     
     CMAKE_ARGS -D DISABLE_CMAKE_SEARCH_PATHS:BOOL=ON
@@ -374,12 +427,13 @@ else()
     CMAKE_ARGS -D TBB_INCLUDEDIR:PATH=${EXTERNALS_INSTALL_DIR}/include/
     CMAKE_ARGS -D TBB_LIBRARYDIR:PATH=${EXTERNALS_INSTALL_DIR}/lib/
     
-    CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS=${OPENVDB_CXX_FLAGS}
+    CMAKE_ARGS -D CMAKE_C_FLAGS=${OPENVDB_C_FLAGS}
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/openvdb
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openvdb
@@ -392,23 +446,156 @@ endif()
 
 
 #######################
+# PNG
+#######################
+
+if( NOT EXTERNAL_PNG_VERSION )
+  set(EXTERNAL_PNG_VERSION 1.6.37)
+endif()
+
+set(PNG_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(PNG ${EXTERNAL_PNG_VERSION} EXACT)
+
+if(PNG_FOUND)
+
+  message("PNG found ...")
+  add_custom_target( png COMMAND echo "PNG build exists, skipping rebuild ...")
+
+else()
+
+  message("PNG not found! Running external build ...")
+  set(PNG_PREFIX png)
+
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(PNG_BUILD_STATIC_LIB ON)
+    set(PNG_BUILD_SHARED_LIB OFF)
+  else()
+    set(PNG_BUILD_STATIC_LIB OFF)
+    set(PNG_BUILD_SHARED_LIB ON)
+  endif()
+
+  ExternalProject_Add ( png
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpng-${EXTERNAL_PNG_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D PNG_TESTS:BOOL=OFF
+    CMAKE_ARGS -D PNG_STATIC:BOOL=${PNG_BUILD_STATIC_LIB}
+    CMAKE_ARGS -D PNG_SHARED:BOOL=${PNG_BUILD_SHARED_LIB}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${PNG_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${PNG_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${PNG_PREFIX}
+  )
+
+endif()
+
+#######################
+# OpenColorIO
+#######################
+
+if( NOT EXTERNAL_OCIO_VERSION )
+  set(EXTERNAL_OCIO_VERSION 2.0.4)
+endif()
+
+set(OpenColorIO_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(OpenColorIO ${EXTERNAL_OCIO_VERSION} EXACT)
+
+unset(OpenColorIO_FOUND)
+
+if(OpenColorIO_FOUND)
+
+  message("OpenColorIO version ${OpenColorIO_VERSION} found ...")
+  add_custom_target( OpenColorIO COMMAND echo "OpenColorIO build exists, skipping rebuild ...")
+
+elseif(NOT USE_OpenColorIO)
+  add_custom_target( OpenColorIO COMMAND echo "OpenColorIO disabled, skipping build ...")
+else()
+
+  message("OpenColorIO not found! Running external build ...")
+  set(OCIO_PREFIX opencolorio)
+
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(OPENCOLORIO_BUILD_SHARED_LIBS OFF)
+  else()
+    set(OPENCOLORIO_BUILD_SHARED_LIBS ON)
+  endif()
+
+  if(${DEPS_BUILD_TYPE} STREQUAL "release")
+    set(OPENCOLORIO_BUILD_TYPE "Release")
+  else()
+    set(OPENCOLORIO_BUILD_TYPE "Debug")
+  endif()
+
+  ExternalProject_Add ( OpenColorIO
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${OCIO_PREFIX}
+    GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/OpenColorIO.git
+    GIT_TAG v${EXTERNAL_OCIO_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${OPENCOLORIO_BUILD_SHARED_LIBS}
+    CMAKE_ARGS -D OCIO_BUILD_APPS:BOOL=OFF
+    CMAKE_ARGS -D OCIO_BUILD_OPENFX:BOOL=OFF
+    CMAKE_ARGS -D OCIO_BUILD_GPU_TESTS:BOOL=OFF
+    CMAKE_ARGS -D OCIO_USE_HEADLESS:BOOL=ON
+    CMAKE_ARGS -D OCIO_BUILD_TESTS:BOOL=OFF
+    CMAKE_ARGS -D OCIO_BUILD_DOCS:BOOL=OFF
+    CMAKE_ARGS -D OCIO_BUILD_PYTHON:BOOL=OFF
+
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${OPENCOLORIO_BUILD_TYPE}
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/ocio
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/ocio
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/ocio
+  )
+endif()
+
+#######################
 # OpenImageIO
 #######################
 
-set(EXTERNAL_OIIO_VERSION 2.2.18.0)
+if( NOT EXTERNAL_OIIO_VERSION )
+  set(EXTERNAL_OIIO_VERSION 2.2.18.0)
+endif()
 
-set(OpenImageIO_ROOT ${EXTERNALS_INSTALL_DIR})
+set(OPENIMAGEIO_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT)
 
 if(OpenImageIO_FOUND)
 
-  message("OpenImageIO version ${OPENIMAGEIO_VERSION} found ...")
+  message("OpenImageIO version ${OpenImageIO_VERSION} found ...")
   add_custom_target( OpenImageIO COMMAND echo "OpenImageIO build exists, skipping rebuild ...")
 
 else()
 
   message("OpenImageIO not found! Running external build ...")
   set(OIIO_PREFIX openimageio)
+
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(OPENIMAGEIO_LINK_STATIC ON)
+    set(OPENIMAGEIO_BUILD_SHARED_LIBS OFF)
+  else()
+    set(OPENIMAGEIO_LINK_STATIC OFF)
+    set(OPENIMAGEIO_BUILD_SHARED_LIBS ON)
+  endif()
+
+  set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
+  find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT)
+
+  set(PNG_ROOT ${EXTERNALS_INSTALL_DIR})
+  find_package(PNG ${EXTERNAL_PNG_VERSION} EXACT)
+
+  set(OpenColorIO_ROOT ${EXTERNALS_INSTALL_DIR})
+  find_package(OpenColorIO ${EXTERNAL_OCIO_VERSION} EXACT)
 
   ExternalProject_Add ( OpenImageIO
     PREFIX ${EXTERNALS_SOURCE_DIR}/${OIIO_PREFIX}
@@ -417,26 +604,40 @@ else()
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D CMAKE_CXX_STANDARD=14
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${OPENIMAGEIO_BUILD_SHARED_LIBS}
+    CMAKE_ARGS -D LINKSTATIC:BOOL=${OPENIMAGEIO_LINK_STATIC}
+    
     CMAKE_ARGS -D OIIO_BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D OIIO_BUILD_TOOLS:BOOL=OFF
     CMAKE_ARGS -D BUILD_DOCS:BOOL=OFF
-    CMAKE_ARGS -D Boost_ROOT=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D TBB_ROOT=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D OpenEXR_ROOT=${EXTERNALS_INSTALL_DIR}
-    CMAKE_ARGS -D pybind11_ROOT=${EXTERNALS_INSTALL_DIR}
+
+    CMAKE_ARGS -D Boost_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D OpenEXR_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D OpenColorIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D Png_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D pybind11_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    
+    CMAKE_ARGS -D USE_FFMPEG:BOOL=OFF
+    CMAKE_ARGS -D USE_RAW:BOOL=OFF
     CMAKE_ARGS -D USE_PYTHON:BOOL=OFF
+    CMAKE_ARGS -D USE_FIELD3D:BOOL=OFF
+    CMAKE_ARGS -D USE_OCIO:BOOL=OFF
+    CMAKE_ARGS -D USE_OPENVDB:BOOL=OFF
+    CMAKE_ARGS -D USE_OPENCOLORIO:BOOL=OFF
+
     CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/oiio
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/oiio
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/oiio
   )
-  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB tiff)
+  ExternalProject_Add_StepDependencies(OpenImageIO configure Tbb Blosc PyBind OpenEXR OpenVDB png tiff)
 
 endif()
 
@@ -445,10 +646,12 @@ endif()
 # GLFW3
 #######################
 
-set(EXTERNAL_GLFW_VERSION 3.3.7)
+if( NOT EXTERNAL_GLFW_VERSION )
+  set(EXTERNAL_GLFW_VERSION 3.3.7)
+endif()
 
 set(GLFW_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(glfw3 ${EXTERNAL_GLFW_VERSION} EXACT)
+find_package(glfw ${EXTERNAL_GLFW_VERSION} EXACT)
 
 if(glfw_FOUND)
 
@@ -460,13 +663,19 @@ else()
   message("Glfw not found! Running external build ...")
   set(GLFW_PREFIX glfw)
 
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(GLFW_BUILD_SHARED_LIBS OFF)
+  else()
+    set(GLFW_BUILD_SHARED_LIBS ON)
+  endif()
+
   ExternalProject_Add ( Glfw
     PREFIX ${EXTERNALS_SOURCE_DIR}/${GLFW_PREFIX}
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG ${EXTERNAL_GLFW_VERSION}
     UPDATE_DISCONNECTED true
 
-    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=ON
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${GLFW_BUILD_SHARED_LIBS}
     CMAKE_ARGS -D GLFW_BUILD_EXAMPLES:BOOL=OFF
     CMAKE_ARGS -D GLFW_BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D GLFW_BUILD_DOCS:BOOL=OFF
@@ -475,7 +684,7 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${GLFW_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${GLFW_PREFIX}
@@ -488,14 +697,16 @@ endif()
 # TIFF
 #######################
 
-set(EXTERNAL_TIFF_VERSION 4.4.0)
+if( NOT EXTERNAL_TIFF_VERSION )
+  set(EXTERNAL_TIFF_VERSION 4.0.9)
+endif()
 
-set(TIFF_DIR ${EXTERNALS_INSTALL_DIR})
+set(TIFF_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
 
 if(TIFF_FOUND)
-
-  message("TIFF found ...")
+  
+  message("TIFF version ${TIFF_VERSION} found ...")
   add_custom_target( tiff COMMAND echo "TIFF build exists, skipping rebuild ...")
 
 else()
@@ -503,15 +714,22 @@ else()
   message("TIFF not found! Running external build ...")
   set(TIFF_PREFIX tiff)
 
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(TIFF_BUILD_SHARED_LIBS OFF)
+  else()
+    set(TIFF_BUILD_SHARED_LIBS ON)
+  endif()
+
   ExternalProject_Add ( tiff
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tiff-${EXTERNAL_TIFF_VERSION}
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D BUILD_SHARED_LIBS:BOOL=${TIFF_BUILD_SHARED_LIBS}
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${TIFF_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${TIFF_PREFIX}
@@ -524,7 +742,9 @@ endif()
 # ZMQ
 #######################
 
-set(EXTERNAL_ZMQ_VERSION 4.3.4)
+if( NOT EXTERNAL_ZMQ_VERSION)
+  set(EXTERNAL_ZMQ_VERSION 4.3.4)
+endif()
 
 set(ZeroMQ_DIR ${EXTERNALS_INSTALL_DIR})
 find_package(ZeroMQ ${EXTERNAL_ZMQ_VERSION} EXACT)
@@ -539,6 +759,14 @@ else()
   message("ZMQ not found! Running external build ...")
   set(ZMQ_PREFIX zmq)
 
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(ZMQ_BUILD_STATIC_LIBS ON)
+    set(ZMQ_BUILD_SHARED_LIBS OFF)
+  else()
+    set(ZMQ_BUILD_STATIC_LIBS OFF)
+    set(ZMQ_BUILD_SHARED_LIBS ON)
+  endif()
+
   ExternalProject_Add ( zmq
     PREFIX ${EXTERNALS_SOURCE_DIR}/${ZMQ_PREFIX}
     GIT_REPOSITORY https://github.com/zeromq/libzmq.git
@@ -546,10 +774,14 @@ else()
     UPDATE_DISCONNECTED true
 
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D BUILD_SHARED:BOOL=${ZMQ_BUILD_SHARED_LIBS}
+    CMAKE_ARGS -D BUILD_STATIC:BOOL=${ZMQ_BUILD_STATIC_LIBS}
+    CMAKE_ARGS -D WITH_DOCS:BOOL=OFF
+    CMAKE_ARGS -D BUILD_TESTS:BOOL=OFF
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${ZMQ_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${ZMQ_PREFIX}
@@ -562,7 +794,9 @@ endif()
 # CPPZMQ
 #######################
 
-set(EXTERNAL_CPPZMQ_VERSION 4.8.1)
+if( NOT EXTERNAL_CPPZMQ_VERSION )
+  set(EXTERNAL_CPPZMQ_VERSION 4.8.1)
+endif()
 
 set(CppZMQ_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(CppZMQ ${EXTERNAL_CPPZMQ_VERSION} EXACT)
@@ -588,13 +822,104 @@ else()
     CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS <SOURCE_DIR>
 
-    BUILD_COMMAND ${MAKE_EXECUTABLE} -j${N}
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
 
     TMP_DIR ${EXTERNALS_TMP_DIR}/${CppZMQ_PREFIX}
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${CppZMQ_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${CppZMQ_PREFIX}
   )
   ExternalProject_Add_StepDependencies(cppzmq configure zmq)
+
+endif()
+
+#######################
+# Intel SPMD Compiler (ISPC)
+#######################
+
+if( NOT EXTERNAL_ISPC_VERSION )
+  set(EXTERNAL_ISPC_VERSION 1.17.0)
+endif()
+
+set(ISPC_PREFIX ispc)
+
+set(ISPC_ROOT ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX})
+find_package(ISPC ${EXTERNAL_ISPC_VERSION} EXACT)
+
+if(ISPC_EXECUTABLE)
+
+  message("Intel SPMD Compiler version ${ISPC_VERSION} found ...")
+  add_custom_target( ispc COMMAND echo "Intel SPMD Compiler found, skipping ...")
+
+else()
+  message("Intel SPMD Compiler not found! Downloading ...")
+
+  ExternalProject_Add ( ispc
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ISPC_PREFIX}
+    URL https://github.com/ispc/ispc/releases/download/v1.17.0/ispc-v1.17.0-linux.tar.gz
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+  )
+
+endif()
+
+#######################
+# OpenImageDenoise
+#######################
+
+if( NOT EXTERNAL_OIDN_VERSION )
+  set(EXTERNAL_OIDN_VERSION 1.4.3)
+endif()
+
+set(OIDN_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package(OIDN ${EXTERNAL_OIDN_VERSION} EXACT)
+
+if(OIDN_FOUND)
+
+  message("OIDN version ${OIDN_VERSION} found ...")
+  add_custom_target( OpenImageDenoise COMMAND echo "OpenImageDenoise build exists, skipping rebuild ...")
+
+else()
+
+  message("OpenImageDenoise not found! Running external build ...")
+  set(OIDN_PREFIX openimagedenoise)
+
+  get_filename_component(ISPC_EXECUTABLE_DIR ${ISPC_EXECUTABLE} DIRECTORY)
+  
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(OIDN_BUILD_STATIC_LIBS ON)
+  else()
+    set(OIDN_BUILD_STATIC_LIBS OFF)
+  endif()
+
+  ExternalProject_Add ( OpenImageDenoise
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${OIDN_PREFIX}
+    GIT_REPOSITORY https://github.com/OpenImageDenoise/oidn.git
+    GIT_TAG v${EXTERNAL_OIDN_VERSION}
+    UPDATE_DISCONNECTED true
+
+    CMAKE_ARGS -D ISPC_DIR_HINT=${ISPC_EXECUTABLE_DIR}
+    CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D OPENIMAGEIO_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS -D OIDN_STATIC_LIB:BOOL=${OIDN_BUILD_STATIC_LIBS}
+    CMAKE_ARGS -D OIDN_API_NAMESPACE:STRING=oidn
+    CMAKE_ARGS -D OIDN_FILTER_RT:BOOL=ON
+    CMAKE_ARGS -D OIDN_FILTER_RTLIGHTMAP:BOOL=OFF
+    CMAKE_ARGS -D OIDN_APPS:BOOL=OFF
+    CMAKE_ARGS -D OIDN_APPS_OPENIMAGEIO:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_CXX_STANDARD=14
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${OIDN_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${OIDN_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${OIDN_PREFIX}
+  )
+  ExternalProject_Add_StepDependencies( OpenImageDenoise configure ispc OpenImageIO Tbb )
 
 endif()
 
@@ -655,7 +980,9 @@ ExternalProject_Add ( VMA
 # RTXGI
 #######################
 
-set(EXTERNAL_RTXGI_VERSION 1.2.11)
+if( NOT EXTERNAL_RTXGI_VERSION )
+  set(EXTERNAL_RTXGI_VERSION 1.2.11)
+endif()
 
 set(RTXGI_PREFIX RTXGI)
 
@@ -681,7 +1008,9 @@ ExternalProject_Add ( RTXGI
 # RTXDI
 #######################
 
-set(EXTERNAL_RTXDI_VERSION 1.3.0)
+if( NOT EXTERNAL_RTXDI_VERSION)
+  set(EXTERNAL_RTXDI_VERSION 1.3.0)
+endif()
 
 set(RTXDI_PREFIX RTXDI)
 
@@ -774,17 +1103,20 @@ endif()
 # FreeImage section
 ########################
 
-set(FREEIMAGE_VERSION 3.18.0) 
-
+if( NOT EXTERNAL_FREEIMAGE_VERSION)
+  set(EXTERNAL_FREEIMAGE_VERSION 3.18.0) 
+endif()
 
 set(FreeImage_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(FreeImage ${FREEIMAGE_VERSION})
+find_package(FreeImage ${EXTERNAL_FREEIMAGE_VERSION} EXACT)
 
 if( FreeImage_FOUND )
-  message("FreeImage version ${FreeImage_VERSION} found ...")
   add_custom_target( FreeImage COMMAND echo "FreeImage build exists, skipping rebuild ...")
 else()
 
+  set(TIFF_ROOT ${EXTERNALS_INSTALL_DIR})
+  find_package(TIFF ${EXTERNAL_TIFF_VERSION} EXACT)
+  
   ExternalProject_Add( FreeImage
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/freeimage
     UPDATE_DISCONNECTED ON
@@ -796,9 +1128,10 @@ else()
     CONFIGURE_COMMAND ""
 
     BUILD_COMMAND 
-      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu -j ${N}
+      COMMAND ${MAKE_EXECUTABLE} -f Makefile.gnu
 
     INSTALL_COMMAND ${CMAKE_COMMAND}
+      -D STATIC_LIB=${LAVA_3RD_LIB_LINK_WITH_STATIC}
       -D SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/freeimage/build
       -D DEST_DIR=${EXTERNALS_INSTALL_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/freeimage_install_files.cmake
@@ -815,6 +1148,10 @@ endif()
 # Slang section
 ########################
 
+if( NOT EXTERNAL_SLANG_VERSION )
+  set(EXTERNAL_SLANG_VERSION 0.24.8) # last tested version was 0.18.6
+endif()
+
 set(Slang_ROOT ${EXTERNALS_INSTALL_DIR})
 find_package(Slang)
 
@@ -822,8 +1159,6 @@ if( Slang_FOUND )
   message("Slang version ${Slang_VERSION} found ...")
   add_custom_target( Slang COMMAND echo "Slang build exists, skipping rebuild ...")
 else()
-
-set(EXTERNAL_SLANG_VERSION 0.24.8) # last tested version was 0.18.6
 
 set(SLANG_PREFIX slang)
 set(SLANG_PLATFORM linux-x64)
@@ -877,7 +1212,7 @@ ExternalProject_Add( Slang
     #  -D SOURCE_DIR=<SOURCE_DIR>
     #  -P ${CMAKE_CURRENT_SOURCE_DIR}/slang_patch.cmake
     COMMAND
-      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG} -j ${N}
+      ${MAKE_EXECUTABLE} ${SLANG_BUILD_LIBS_LIST} config=${SLANG_BUILD_CONFIG}
 
   INSTALL_COMMAND ${CMAKE_COMMAND}
     -D SLANG_LIBS_LIST=${SLANG_BUILD_LIBS}
@@ -902,7 +1237,9 @@ add_dependencies( dummy_target
   PyBind
   OpenEXR
   Assimp
-  #OpenVDB
+  OpenVDB
+  ispc
+  OpenImageDenoise
   OpenImageIO
   RTXDI
   RTXGI

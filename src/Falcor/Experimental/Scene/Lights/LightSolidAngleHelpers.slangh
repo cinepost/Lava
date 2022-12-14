@@ -1,0 +1,19 @@
+/** A helper function to feed Urena's method. Given a surface normal, the 
+    vector from the shading point to the center of the sphere light and the 
+    radius of the sphere light, it constructs a local frame that meets the 
+    requirements of this technique and expresses the spherical cap in terms of 
+    angles.
+*/
+
+void getUrenaCoordinateFrame(out float3 outTangent, out float3 outBitangent, out float outAlpha, out float outBeta, float3 normal, float3 relativeSphereCenter, float radius)
+{
+    float invCenterDistance = rsqrt(dot(relativeSphereCenter, relativeSphereCenter));
+    float3 normalizedCenter = invCenterDistance * relativeSphereCenter;
+    float normalizedCenterElevation = dot(normal,normalizedCenter);
+    outTangent = mad(-normalizedCenterElevation, normal, normalizedCenter);
+    float invTangentLength = rsqrt(dot(outTangent, outTangent));
+    outTangent *= invTangentLength;
+    outBitangent = cross(normal, outTangent);
+    outAlpha = asin(min(1.0f, max(-1.0f, radius * invCenterDistance)));
+    outBeta = asin(min(1.0f, max(-1.0f, normalizedCenterElevation)));
+}

@@ -30,6 +30,8 @@ __exported import Experimental.Scene.Material.StandardBSDF;
 import Scene.Material.BasicMaterialData;
 import Scene.Material.ShadingUtils;
 
+#include "Experimental/Scene/Material/ExtendedBSDFData.slangh"
+
 /** Implementation of Falcor's standard surface material.
 
     The material is a linear combination of six BSDF lobes handling
@@ -52,19 +54,23 @@ struct StandardMaterial : IMaterial
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
         StandardBSDFData d = {};
+        ExtendedBSDFData e = {};
 
         d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
         d.diffuseTransmission = data.diffuseTransmission;
         d.specularTransmission = data.specularTransmission;
         if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
         {
-            d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(data.transmission, 0.f), lod).rgb;
+            d.transmission = ms.sampleTexture(data.texTransmission, s, sd.uv, float4(1.f), lod).rgb * data.transmission;
         }
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
         float f = (data.IoR - 1.f) / (data.IoR + 1.f);
         float F0 = f * f;
+
+        e.reflectivity = data.reflectivity;
+        //F0 *= data.reflectivity;
 
         // Sample base color.
         const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, float4(1.f), lod).rgb * data.baseColor.rgb;

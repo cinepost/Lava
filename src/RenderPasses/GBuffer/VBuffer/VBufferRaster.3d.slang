@@ -64,15 +64,14 @@ struct VBufferVSOut
 #endif
 };
 
-VBufferVSOut vsMain(VSIn vsIn)
-{
+VBufferVSOut vsMain(VSIn vsIn) {
     VBufferVSOut vsOut;
     const GeometryInstanceID instanceID = { vsIn.instanceID };
 
     float4x4 worldMat = gScene.getWorldMatrix(instanceID);
     
     vsOut.posW = mul(float4(vsIn.pos, 1.f), worldMat).xyz;
-    vsOut.posH = mul(float4( vsOut.posW, 1.f), gScene.camera.getViewProj());
+    vsOut.posH = mul(float4(vsOut.posW, 1.f), gScene.camera.getViewProj());
     vsOut.texC = float2(vsIn.texU, vsIn.texV);
     vsOut.normalW = normalize(mul(vsIn.unpack().normal, gScene.getInverseTransposeWorldMatrix(instanceID)));
 
@@ -96,9 +95,16 @@ VBufferVSOut vsMain(VSIn vsIn)
     return vsOut;
 }
 
+#if _USE_EXTERNAL_DEPTH_BUFFER
 [earlydepthstencil]
+#endif
 VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
+
+#if _USE_INTERNAL_DEPTH_BUFFER
+    // Early camera range out
+    if((vsOut.posH.z < 0.0) || (vsOut.posH.z > 1.0)) discard;
+#endif    
 
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);

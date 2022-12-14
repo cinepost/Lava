@@ -1,110 +1,137 @@
+# Module to find OpenColorIO
 #
-# Copyright 2019 Pixar
+# This module will first look into the directories hinted by the variables:
+#   - OpenColorIO_ROOT
 #
-# Licensed under the Apache License, Version 2.0 (the "Apache License")
-# with the following modification; you may not use this file except in
-# compliance with the Apache License and the following modification to it:
-# Section 6. Trademarks. is deleted and replaced with:
+# This module defines the following targets:
 #
-# 6. Trademarks. This License does not grant permission to use the trade
-#    names, trademarks, service marks, or product names of the Licensor
-#    and its affiliates, except as required to comply with Section 4(c) of
-#    the License and to reproduce the content of the NOTICE file.
+#   - OpenColorIO::OpenColorIO
 #
-# You may obtain a copy of the Apache License at
+# Old style CMake, this module also defines the following variables:
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# OpenColorIO_FOUND       - True if OpenColorIO was found.
+# OPENCOLORIO_INCLUDES    - where to find OpenColorIO.h
+# OPENCOLORIO_LIBRARIES   - list of libraries to link against when using OpenColorIO
+# OPENCOLORIO_DEFINITIONS - Definitions needed when using OpenColorIO
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the Apache License with the above modification is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied. See the Apache License for the specific
-# language governing permissions and limitations under the Apache License.
+# Hints and overrides:
+#
+#   - OPENCOLORIO_INTERFACE_LINK_LIBRARIES - override for interface link
+#     libraries on the OpenColorIO::OpenColorIO target.
+#   - OPENCOLORIO_NO_CONFIG - if ON, this module will be used even if an
+#     OCIO >= 2.1 cmake config is found. If OFF (the default), a config file
+#     will be preferred if found.
+#
+# OpenColorIO 2.1 exports proper cmake config files on its own.
+# Once OCIO 2.1 is our new minimum, this FindOpenColorIO.cmake will
+# eventually be deprecated and disappear.
 #
 
-if(UNIX)
-    find_path(OCIO_BASE_DIR
-            include/OpenColorIO/OpenColorABI.h
-        HINTS
-            "${OCIO_LOCATION}"
-            "$ENV{OCIO_LOCATION}"
-            "/opt/ocio"
-    )
-    find_path(OCIO_LIBRARY_DIR
-            libOpenColorIO.so
-        HINTS
-            "${OCIO_LOCATION}"
-            "$ENV{OCIO_LOCATION}"
-            "${OCIO_BASE_DIR}"
-        PATH_SUFFIXES
-            lib/
-        DOC
-            "OpenColorIO library path"
-    )
-elseif(WIN32)
-    find_path(OCIO_BASE_DIR
-            include/OpenColorIO/OpenColorABI.h
-        HINTS
-            "${OCIO_LOCATION}"
-            "$ENV{OCIO_LOCATION}"
-    )
-    find_path(OCIO_LIBRARY_DIR
-            OpenColorIO.lib
-        HINTS
-            "${OCIO_LOCATION}"
-            "$ENV{OCIO_LOCATION}"
-            "${OCIO_BASE_DIR}"
-        PATH_SUFFIXES
-            lib/
-        DOC
-            "OpenColorIO library path"
-    )
-endif()
+if (NOT OPENCOLORIO_NO_CONFIG)
+    find_package(OpenColorIO CONFIG)
+endif ()
 
-find_path(OCIO_INCLUDE_DIR
-        OpenColorIO/OpenColorABI.h
+if (TARGET OpenColorIO::OpenColorIO)
+    if (OPENCOLORIO_INTERFACE_LINK_LIBRARIES)
+        set_target_properties(OpenColorIO::OpenColorIO PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${OPENCOLORIO_INTERFACE_LINK_LIBRARIES}")
+    endif ()
+
+else ()
+# vvvv the rest is if no OCIO exported config file is found
+
+include (FindPackageHandleStandardArgs)
+include (FindPackageMessage)
+
+find_path (OPENCOLORIO_INCLUDE_DIR
+    OpenColorIO/OpenColorIO.h
     HINTS
-        "${OCIO_LOCATION}"
-        "$ENV{OCIO_LOCATION}"
-        "${OCIO_BASE_DIR}"
-    PATH_SUFFIXES
-        include/
-    DOC
-        "OpenColorIO headers path"
-)
+        ${OPENCOLORIO_INCLUDE_PATH}
+        ENV OPENCOLORIO_INCLUDE_PATH
+    PATHS
+        ${OpenColorIO_ROOT}
+        ${OpenColorIO_ROOT}/include
+        #/sw/include
+        #/opt/local/include
+    DOC "The directory where OpenColorIO/OpenColorIO.h resides")
 
-list(APPEND OCIO_INCLUDE_DIRS ${OCIO_INCLUDE_DIR})
+if (EXISTS "${OPENCOLORIO_INCLUDE_DIR}/OpenColorIO/OpenColorABI.h")
+    # Search twice, because this symbol changed between OCIO 1.x and 2.x
+    file(STRINGS "${OPENCOLORIO_INCLUDE_DIR}/OpenColorIO/OpenColorABI.h" TMP
+         REGEX "^#define OCIO_VERSION_STR[ \t].*$")
+    if (NOT TMP)
+        file(STRINGS "${OPENCOLORIO_INCLUDE_DIR}/OpenColorIO/OpenColorABI.h" TMP
+             REGEX "^#define OCIO_VERSION[ \t].*$")
+    endif ()
+    string (REGEX MATCHALL "([0-9]+)\\.([0-9]+)\\.[0-9]+" OPENCOLORIO_VERSION ${TMP})
+    set (OPENCOLORIO_VERSION_MAJOR ${CMAKE_MATCH_1})
+    set (OPENCOLORIO_VERSION_MINOR ${CMAKE_MATCH_2})
+endif ()
 
-find_library(OCIO_LIBRARY
+find_library (OPENCOLORIO_LIBRARY
+    NAMES
         OpenColorIO
+        OpenColorIO_${OPENCOLORIO_VERSION_MAJOR}_${OPENCOLORIO_VERSION_MINOR}
     HINTS
-        "${OCIO_LOCATION}"
-        "$ENV{OCIO_LOCATION}"
-        "${OCIO_BASE_DIR}"
-    PATH_SUFFIXES
-        lib/
-    DOC
-        "OCIO's ${OCIO_LIB} library path"
-)
+        ${OPENCOLORIO_LIBRARY_PATH}
+        ENV OPENCOLORIO_LIBRARY_PATH
+    PATHS
+        ${OpenColorIO_ROOT}
+        ${OpenColorIO_ROOT}/lib
+        #/usr/lib64
+        #/usr/local/lib64
+        #/sw/lib
+        #/opt/local/lib
+    DOC "The OCIO library")
 
-list(APPEND OCIO_LIBRARIES ${OCIO_LIBRARY})
+find_package_handle_standard_args (OpenColorIO
+    REQUIRED_VARS   OPENCOLORIO_INCLUDE_DIR OPENCOLORIO_LIBRARY
+    FOUND_VAR       OpenColorIO_FOUND
+    VERSION_VAR     OPENCOLORIO_VERSION
+    )
 
-if(OCIO_INCLUDE_DIRS AND EXISTS "${OCIO_INCLUDE_DIR}/OpenColorIO/OpenColorABI.h")
-    file(STRINGS ${OCIO_INCLUDE_DIR}/OpenColorIO/OpenColorABI.h
-        fullVersion
-        REGEX
-        "#define OCIO_VERSION .*$")
-    string(REGEX MATCH "[0-9]+.[0-9]+.[0-9]+" OCIO_VERSION ${fullVersion})
+if (OpenColorIO_FOUND)
+    set (OPENCOLORIO_INCLUDES ${OPENCOLORIO_INCLUDE_DIR})
+    set (OPENCOLORIO_LIBRARIES ${OPENCOLORIO_LIBRARY})
+    set (OPENCOLORIO_DEFINITIONS "")
+    if (NOT TARGET OpenColorIO::OpenColorIO)
+        add_library(OpenColorIO::OpenColorIO UNKNOWN IMPORTED)
+        set_target_properties(OpenColorIO::OpenColorIO PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${OPENCOLORIO_INCLUDES}")
+
+        set_property(TARGET OpenColorIO::OpenColorIO APPEND PROPERTY
+            IMPORTED_LOCATION "${OPENCOLORIO_LIBRARIES}")
+        if (OPENCOLORIO_INTERFACE_LINK_LIBRARIES)
+            set_target_properties(OpenColorIO::OpenColorIO PROPERTIES
+                INTERFACE_LINK_LIBRARIES "${OPENCOLORIO_INTERFACE_LINK_LIBRARIES}")
+        endif ()
+        if (LINKSTATIC)
+            target_compile_definitions(OpenColorIO::OpenColorIO
+                INTERFACE "-DOpenColorIO_STATIC")
+        endif()
+    endif ()
+    if (NOT TARGET OpenColorIO::OpenColorIOHeaders)
+        add_library(OpenColorIO::OpenColorIOHeaders INTERFACE IMPORTED)
+        set_target_properties(OpenColorIO::OpenColorIOHeaders PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${OPENCOLORIO_INCLUDES}")
+    endif ()
+endif ()
+
+if (OpenColorIO_FOUND AND LINKSTATIC)
+    # Is this necessary?
+    set (OPENCOLORIO_DEFINITIONS "-DOpenColorIO_STATIC")
+    find_library (TINYXML_LIBRARY NAMES tinyxml)
+    if (TINYXML_LIBRARY)
+        set (OPENCOLORIO_LIBRARIES "${OPENCOLORIO_LIBRARIES};${TINYXML_LIBRARY}" CACHE STRING "" FORCE)
+    endif ()
+    find_library (YAML_LIBRARY NAMES yaml-cpp)
+    if (YAML_LIBRARY)
+        set (OPENCOLORIO_LIBRARIES "${OPENCOLORIO_LIBRARIES};${YAML_LIBRARY}" CACHE STRING "" FORCE)
+    endif ()
+    find_library (LCMS2_LIBRARY NAMES lcms2)
+    if (LCMS2_LIBRARY)
+        set (OPENCOLORIO_LIBRARIES "${OPENCOLORIO_LIBRARIES};${LCMS2_LIBRARY}" CACHE STRING "" FORCE)
+    endif ()
+endif ()
+
 endif()
-
-# handle the QUIETLY and REQUIRED arguments and set OCIO_FOUND to TRUE if
-# all listed variables are TRUE
-include(FindPackageHandleStandardArgs)
-
-find_package_handle_standard_args(OpenColorIO
-    REQUIRED_VARS
-        OCIO_LIBRARIES
-        OCIO_INCLUDE_DIRS
-    VERSION_VAR
-        OCIO_VERSION
-)

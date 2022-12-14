@@ -29,7 +29,12 @@ endif()
 option (USE_PROFILING "Enable/Disable renderer performance profiler." OFF)
 if (USE_PROFILING)
   add_definitions(-DFALCOR_ENABLE_PROFILER)
-endif ()
+endif()
+
+option (USE_MEGALIB "Build most of the third-party dependencies as a separate mega library." OFF)
+if(USE_MEGALIB)
+  set(Boost_USE_STATIC_RUNTIME ON)
+endif()
 
 option (COLLECT "Enable/Disable portable build dependencies collection." OFF)
 if (COLLECT)
@@ -171,7 +176,7 @@ set(CMAKE_SKIP_BUILD_RPATH FALSE)
 # (but later on when installing)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/lib/3rdparty")
 
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
@@ -208,17 +213,22 @@ endif()
 #------------------------------------------
 # Our stuff
 #------------------------------------------
-
 add_subdirectory( src )
 add_subdirectory( contrib )
 
+install(FILES src/changelog.txt DESTINATION ${CMAKE_INSTALL_PREFIX})
 
 #------------------------------------------
 # Install third party dependencies
 #------------------------------------------
 
 # third party libs
-install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty)
+install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/lib/ DESTINATION lib/3rdparty
+        FILES_MATCHING PATTERN "*.so*"
+        PATTERN "cmake" EXCLUDE
+        PATTERN "pkgconfig" EXCLUDE
+        PATTERN "libpng" EXCLUDE
+)
 
 # third additional shaders and dependencies
 install(DIRECTORY ${EXTERNALS_INSTALL_DIR}/shaders/ DESTINATION shaders)
@@ -239,29 +249,17 @@ if(UNIX AND COLLECT)
       # Feel free to add some missing system dependecies here ;)
       set(REQ_SYS_LIBS 
           "libpython"
-          "libavcodec"
-          "libavformat"
-          "libavutil"
-          "libswscale"
-          "libraw_r"
           "libOpenColorIO"
           "libicui18n"
           "libicuuc"
           "libjxrglue"
-          "libraw"
-          "ibIlmImf-2_2"
           "libHalf"
-          "libIex-2_2"
-          "libswresample"
           "libcrystalhd"
-          "libx265"
-          "libx264"
           "libvpx"
           "libtinyxml"
           "libyaml-cpp"
           "libjpegxr"
           "libicudata"
-          "libIlmThread-2_2"
       )
 
       string (REPLACE " " ";" REQ_SYS "${REQ_SYS}")
