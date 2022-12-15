@@ -46,12 +46,15 @@ class ImageLoaderPass : public RenderPass {
 		virtual void execute(RenderContext* pContext, const RenderData& renderData) override;
 		virtual Dictionary getScriptingDictionary() override;
 
-		void   setSourceTexture(Texture::SharedPtr pTexture);
-
+		void 	setSourceTexture(Texture::SharedPtr pTexture);
+		void 	setSourceAlbedoTexture(Texture::SharedPtr pTexture);
+		void 	setSourceNormalTexture(Texture::SharedPtr pTexture);
 	private:
 		ImageLoaderPass(Device::SharedPtr pDevice);
 
 		Texture::SharedPtr 	mpSrcTexture;
+		Texture::SharedPtr 	mpSrcAlbedoTexture;
+		Texture::SharedPtr 	mpSrcNormalTexture;
 		fs::path		 				mImageName;
 		
 		uint32_t 	mArraySlice = 0;

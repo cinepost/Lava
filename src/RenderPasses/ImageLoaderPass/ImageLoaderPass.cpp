@@ -48,6 +48,8 @@ extern "C" falcorexport void getPasses(Falcor::RenderPassLibrary& lib) {
 
 namespace {
     const std::string kDst   = "output";
+    const std::string kDstAlbedo   = "outputAlbedo";
+    const std::string kDstNormal   = "outputNormal";
     const std::string kImage = "filename";
     const std::string kMips  = "mips";
     const std::string kSrgb  = "srgb";
@@ -60,11 +62,25 @@ RenderPassReflection ImageLoaderPass::reflect(const CompileData& compileData) {
     
     if(mpSrcTexture) {
         uint2 texDims = {mpSrcTexture->getWidth(), mpSrcTexture->getHeight()};
-        reflector.addOutput(kDst, "Destination texture")
+        reflector.addOutput(kDst, "Destination color texture")
             .format(mpSrcTexture->getFormat())
             .texture2D(texDims, mpSrcTexture->getSampleCount(), mpSrcTexture->getMipCount(), mpSrcTexture->getArraySize());
     } else {
-        reflector.addOutput(kDst, "Destination texture");
+        reflector.addOutput(kDst, "Destination color texture");
+    }
+
+    if(mpSrcTexture && mpSrcAlbedoTexture) {
+        uint2 texDims = {mpSrcTexture->getWidth(), mpSrcTexture->getHeight()};
+        reflector.addOutput(kDstAlbedo, "Destination albedo texture")
+            .format(mpSrcTexture->getFormat())
+            .texture2D(texDims, mpSrcTexture->getSampleCount(), mpSrcTexture->getMipCount(), mpSrcTexture->getArraySize());
+    }
+
+    if(mpSrcTexture && mpSrcNormalTexture) {
+        uint2 texDims = {mpSrcTexture->getWidth(), mpSrcTexture->getHeight()};
+        reflector.addOutput(kDstNormal, "Destination normal texture")
+            .format(mpSrcTexture->getFormat())
+            .texture2D(texDims, mpSrcTexture->getSampleCount(), mpSrcTexture->getMipCount(), mpSrcTexture->getArraySize());
     }
     
     return reflector;
@@ -113,13 +129,32 @@ void ImageLoaderPass::execute(RenderContext* pContext, const RenderData& renderD
         return;
     }
 
-    //pContext->blit(mpSrcTexture->getSRV(mMipLevel, 1, mArraySlice, 1), pDstTexture->getRTV());
     pContext->blit(mpSrcTexture->getSRV(0, 1, 0, 1), pDstTexture->getRTV(0, 0, 1));
+
+    auto pDstAlbedoTex = renderData[kDstAlbedo]->asTexture();
+    if(mpSrcAlbedoTexture && pDstAlbedoTex) pContext->blit(mpSrcAlbedoTexture->getSRV(0, 1, 0, 1), pDstAlbedoTex->getRTV(0, 0, 1));
+
+    auto pDstNormalTex = renderData[kDstAlbedo]->asTexture();
+    if(mpSrcNormalTexture && pDstNormalTex) pContext->blit(mpSrcNormalTexture->getSRV(0, 1, 0, 1), pDstNormalTex->getRTV(0, 0, 1));
 }
 
 void ImageLoaderPass::setSourceTexture(Texture::SharedPtr pTexture) {
     if(!pTexture || (mpSrcTexture == pTexture)) return;
 
     mpSrcTexture = pTexture;
+    mPassChangedCB();
+}
+
+void ImageLoaderPass::setSourceAlbedoTexture(Texture::SharedPtr pTexture) {
+    if(!pTexture || (mpSrcAlbedoTexture == pTexture)) return;
+
+    mpSrcAlbedoTexture = pTexture;
+    mPassChangedCB();
+}
+
+void ImageLoaderPass::setSourceNormalTexture(Texture::SharedPtr pTexture) {
+    if(!pTexture || (mpSrcNormalTexture == pTexture)) return;
+
+    mpSrcNormalTexture = pTexture;
     mPassChangedCB();
 }

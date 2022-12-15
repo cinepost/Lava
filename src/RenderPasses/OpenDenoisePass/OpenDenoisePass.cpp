@@ -145,8 +145,16 @@ void OpenDenoisePass::compile(RenderContext* pRenderContext, const CompileData& 
 }
 
 void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
-    auto pInputTex = renderData[kInput]->asTexture();
-    auto pOutputTex = renderData[kOutput]->asTexture();
+    auto pInputResource = renderData[kInput];
+    auto pOutputResource = renderData[kOutput];
+
+    if(!pInputResource || !pOutputResource) {
+        LLOG_ERR << "No input or output resource specified for OpenDenoisePass!";
+        return;
+    }
+
+    auto pInputTex = pInputResource->asTexture();
+    auto pOutputTex = pOutputResource->asTexture();
 
     if(pInputTex->getWidth() != pOutputTex->getWidth() || pInputTex->getHeight() != pOutputTex->getHeight()) {
         LLOG_ERR << "OpenDenoisePass input and output images dimensions mismatch!";
@@ -202,6 +210,11 @@ void OpenDenoisePass::execute(RenderContext* pRenderContext, const RenderData& r
     if(inputImageOIDNFormat == oidn::Format::Float4) inputImageOIDNFormat = oidn::Format::Float3;
 
     pRenderContext->readTextureSubresource(pInputTex.get(), pInputTex->getSubresourceIndex(0, 0), mMainImageData.data());
+    
+    // Copy input data to output vector. We need this to keep our source image alpha channel;
+    // TODO: find a better faster way without full copy
+    memcpy(&mOutputImageData[0], &mMainImageData[0], mMainImageData.size());
+
     filter.setImage("color",  mMainImageData.data(),  inputImageOIDNFormat, mFrameDim.x, mFrameDim.y, 
         inputImageDataByteOffset, inputImageBytePixelStride); // beauty
     
