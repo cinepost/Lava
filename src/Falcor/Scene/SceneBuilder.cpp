@@ -705,8 +705,12 @@ uint32_t SceneBuilder::addProcessedCurve(const ProcessedCurve& curve) {
 
 uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial) {
     assert(pMaterial);
-    uint32_t materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
-    if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
+    uint32_t materialID = std::numeric_limits<uint32_t>::max();
+    {
+        std::scoped_lock lock(g_materials_mutex);
+        materialID = mSceneData.pMaterialSystem->addMaterial(pMaterial);
+        if(is_set(mFlags, Flags::UseCryptomatte)) mSceneData.pCryptomatteSystem->addMaterial(pMaterial->getName(), materialID); 
+    }
     return materialID;
 }
 

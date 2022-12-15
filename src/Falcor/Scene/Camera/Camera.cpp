@@ -192,15 +192,15 @@ void Camera::calculateCameraParameters() const {
 
    		//mData.projMat[0][0] /= dx;
    		//mData.projMat[1][1] /= dy;
-/*
+
 			glm::mat4 dofMat(
 				1.0f, 0.0f, 0.0f, 0.0f,
 				0.0f, 1.0f, 0.0f, 0.0f,
 				0.0f, 0.0f, 1.0f, 0.0f,
 				p.x, p.y, 0.0f, 1.0f
 			);
-			mData.projMat = dofMat * mData.projMat;
-*/
+			//mData.projMat = dofMat * mData.projMat;
+
 		}
 
 		mData.viewProjMat = mData.projMat * mData.viewMat;

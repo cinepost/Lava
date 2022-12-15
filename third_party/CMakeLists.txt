@@ -40,6 +40,61 @@ if(Git_FOUND)
   message("Git found: ${GIT_EXECUTABLE}")
 endif()
 
+#######################
+# ZLIB
+#######################
+
+if( NOT EXTERNAL_ZLIB_VERSION )
+  set(EXTERNAL_ZLIB_VERSION 1.2.11)
+endif()
+
+unset(ZLIB_FOUND)
+unset(ZLIB_LIBRARY CACHE)
+unset(ZLIB_INCLUDE_DIR CACHE)
+
+if(NOT LAVA_3RD_LIB_LINK_WITH_STATIC)
+  set(ZLIB_USE_STATIC_LIBS OFF)
+endif()
+
+set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
+find_package( ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
+
+if( ZLIB_FOUND )
+
+  message("ZLIB version ${ZLIB_VERSION_STRING} found ...")
+  add_custom_target( zlib COMMAND echo "ZLIB build exists, skipping rebuild ...")
+
+else()
+
+  message("ZLIB version ${ZLIB_VERSION_STRING} not found! Running external build ...")
+  set(ZLIB_PREFIX zlib)
+
+  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(ZLIB_USE_STATIC_LIBS ON)
+    set(ZLIB_BUILD_SHARED OFF)
+  else()
+    set(ZLIB_BUILD_SHARED ON)
+  endif()
+
+  ExternalProject_Add( zlib
+    PREFIX ${EXTERNALS_SOURCE_DIR}/${ZLIB_PREFIX}
+    GIT_REPOSITORY https://github.com/madler/zlib.git
+    GIT_TAG v${EXTERNAL_ZLIB_VERSION}
+    UPDATE_DISCONNECTED true
+    
+    CMAKE_ARGS -D CMAKE_INSTALL_PREFIX:PATH=${EXTERNALS_INSTALL_DIR}
+    CMAKE_ARGS -D SKIP_INSTALL_LIBRARIES:BOOL=OFF
+    CMAKE_ARGS -D CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+    CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
+    CMAKE_ARGS <SOURCE_DIR>
+
+    BUILD_COMMAND ${MAKE_EXECUTABLE}
+
+    TMP_DIR ${EXTERNALS_TMP_DIR}/${ZLIB_PREFIX}
+    STAMP_DIR ${EXTERNALS_STAMP_DIR}/${ZLIB_PREFIX}
+    BINARY_DIR ${EXTERNALS_BINARY_DIR}/${ZLIB_PREFIX}
+  )
+endif()
 
 #######################
 # TBB
@@ -474,10 +529,13 @@ else()
     set(PNG_BUILD_SHARED_LIB ON)
   endif()
 
+  set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
+
   ExternalProject_Add ( png
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpng-${EXTERNAL_PNG_VERSION}
     UPDATE_DISCONNECTED true
 
+    CMAKE_ARGS -D PNG_BUILD_ZLIB:BOOL:ON
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D PNG_TESTS:BOOL=OFF
     CMAKE_ARGS -D PNG_STATIC:BOOL=${PNG_BUILD_STATIC_LIB}
@@ -491,7 +549,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/${PNG_PREFIX}
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/${PNG_PREFIX}
   )
-
+  ExternalProject_Add_StepDependencies(png configure zlib)
 endif()
 
 #######################
@@ -591,6 +649,12 @@ else()
   set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
   find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT)
 
+  if(NOT LAVA_3RD_LIB_LINK_WITH_STATIC)
+    set(ZLIB_USE_STATIC_LIBS OFF)
+  endif()
+  set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
+  find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT)
+
   set(PNG_ROOT ${EXTERNALS_INSTALL_DIR})
   find_package(PNG ${EXTERNAL_PNG_VERSION} EXACT)
 
@@ -611,6 +675,7 @@ else()
     CMAKE_ARGS -D OIIO_BUILD_TOOLS:BOOL=OFF
     CMAKE_ARGS -D BUILD_DOCS:BOOL=OFF
 
+    CMAKE_ARGS -D ZLIB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D Boost_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D TBB_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
     CMAKE_ARGS -D OpenEXR_ROOT:PATH=${EXTERNALS_INSTALL_DIR}
@@ -1231,6 +1296,7 @@ endif()
 
 add_custom_target( dummy_target COMMAND echo "Third party project dummy target")
 add_dependencies( dummy_target 
+  zlib
   Tbb
   Blosc
   Boost
