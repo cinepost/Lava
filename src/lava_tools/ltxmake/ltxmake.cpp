@@ -68,7 +68,7 @@ int main(int argc, char** argv){
         ("output-files,o", po::value< std::vector<std::string> >(&outputFilenames), "Output files")
         ;
 
-    std::string compressorTypeName = "blosclz";
+    std::string compressorTypeName = "lz4";
     int compressionLevel = 9;
     po::options_description tlc_compression("Container compression");
     tlc_compression.add_options()
@@ -80,7 +80,7 @@ int main(int argc, char** argv){
 #ifdef DEBUG
     boost::log::trivial::severity_level logSeverity = boost::log::trivial::debug;
 #else
-    boost::log::trivial::severity_level logSeverity = boost::log::trivial::warning;
+    boost::log::trivial::severity_level logSeverity = boost::log::trivial::info;
 #endif
 
 
@@ -233,15 +233,21 @@ int main(int argc, char** argv){
 
           if(forceConversion || !fs::exists(output_filename) || !ltxMagicMatch ) {
             // Conversion
-            LLOG_INF << "Converting texture " << input_filename << " to LTX format texture " << output_filename;
+            LLOG_INF << "Converting texture " << input_filename << " to LTX format texture " << output_filename << "\n" <<
+              "using compressor " << compressorTypeName << " with compression level " << std::to_string(compressionLevel);
 
             Falcor::LTX_Bitmap::TLCParms tlcParms;
             tlcParms.compressorName = compressorTypeName;
             tlcParms.compressionLevel = compressionLevel;
+
+            auto started = std::chrono::high_resolution_clock::now();
             if (!Falcor::LTX_Bitmap::convertToLtxFile(nullptr, input_filename, output_filename, tlcParms, true)) {
               LLOG_ERR << "Error converting texture " <<  input_filename << " !!!";
             } else {
-              LLOG_DBG << "Conversion done for " << input_filename;
+              auto done = std::chrono::high_resolution_clock::now();
+              LLOG_INF << "Conversion done for " << input_filename << " in: " << std::setprecision(6) << 
+                (.001f * (float)std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count()) << " seconds.";
+
             }
           }
         }

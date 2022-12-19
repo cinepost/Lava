@@ -74,7 +74,7 @@ LTX_Header::TopLevelCompression LTX_Bitmap::getTLCFromString(const std::string& 
 	if(name == "lz4hc") return LTX_Header::TopLevelCompression::LZ4HC;
 	if(name == "snappy") return LTX_Header::TopLevelCompression::SNAPPY;
 	if(name == "zlib") return LTX_Header::TopLevelCompression::ZLIB;
-	if(name == "ztsd") return LTX_Header::TopLevelCompression::ZSTD;
+	if(name == "zstd") return LTX_Header::TopLevelCompression::ZSTD;
 	if(name == "blosclz") return LTX_Header::TopLevelCompression::BLOSC_LZ;
 	return LTX_Header::TopLevelCompression::NONE;
 } 
@@ -92,7 +92,7 @@ const char* getBloscCompressionName(LTX_Header::TopLevelCompression tlc) {
 		case LTX_Header::TopLevelCompression::ZLIB:
 			return "zlib";
 		case LTX_Header::TopLevelCompression::ZSTD:
-			return "ztsd";
+			return "zstd";
 		default:
 			return "none";
 	}
@@ -564,6 +564,7 @@ const std::string to_string(LTX_Header::TopLevelCompression type) {
 			type_2_string(LZ4HC);
 			type_2_string(SNAPPY);
 			type_2_string(ZLIB);
+			type_2_string(ZSTD);
 		default:
 			should_not_get_here();
 			return "";

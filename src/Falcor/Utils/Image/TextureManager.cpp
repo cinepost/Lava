@@ -142,7 +142,7 @@ Texture::SharedPtr TextureManager::loadSparseTexture(const fs::path& path, bool 
 	if(ltxFileExists && LTX_Bitmap::checkFileMagic(ltxPath, true)) ltxMagicMatch = true;
 
 	LTX_Bitmap::TLCParms tlcParms;
-	tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "blosclz");
+	tlcParms.compressorName = configStore.get<std::string>("vtex_tlc", "lz4");
 	tlcParms.compressionLevel = (uint8_t)configStore.get<int>("vtex_tlc_level", 9);
 
 	if(!ltxFileExists || !ltxMagicMatch ) {

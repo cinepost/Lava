@@ -407,7 +407,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		// It's important to sort page ids for later fseek() & fread() calls
 		std::sort(pageIDs.begin(), pageIDs.end());
 		
-		if(mLoadPagesAsync) {
+		if((1==2) && mLoadPagesAsync) {
 			// Critical!!! Call loadPagesAsync once per texture !!!
 			pTextureManager->loadPagesAsync(pTexture, pageIDs); 
 		} else {

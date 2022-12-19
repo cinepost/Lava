@@ -643,7 +643,8 @@ if(OpenVDB_USES_BLOSC)
 endif()
 
 if(OpenVDB_USES_ZLIB)
-  find_package(ZLIB REQUIRED)
+  find_package(ZLIB)
+  #find_package(ZLIB REQUIRED)
 endif()
 
 if(OpenVDB_USES_LOG4CPLUS)

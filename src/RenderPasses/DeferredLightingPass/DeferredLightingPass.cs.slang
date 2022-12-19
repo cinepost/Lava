@@ -145,13 +145,14 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     }
 
     float3 rayOrigin = sd.posW;
+    float3 rayShadow = rayOrigin;
     float3 geometryFaceNormalW = getGeometricFaceNormalW(triangleHit.instanceID, triangleHit.primitiveIndex);
 
     // Face forwad interpolated normal
     //sd.N = faceforward(sd.N, rayDir, geometryFaceNormalW);
 
     if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
-        //rayOrigin = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.N, triangleHit.getBarycentricWeights());
+        //rayShadow = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.N, triangleHit.getBarycentricWeights());
     }
 
     //rayOrigin -= rayDir * gRayBias;
@@ -216,7 +217,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 
                 // Test visibility by tracing a shadow ray.
                 RayDesc ray;
-                ray.Origin = rayOrigin;
+                ray.Origin = rayShadow;
                 ray.Direction = ls.shadowDir;
                 ray.TMin = .001f;
                 ray.TMax = ls.distance;
@@ -299,7 +300,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                     shadowFactor = float3(1.0f);
 
                     RayDesc ray;
-                    ray.Origin = rayOrigin;
+                    ray.Origin = rayShadow;
                     ray.Direction = bsdfSample.wo;
                     ray.TMin = .001f;
                     ray.TMax = ls.distance;

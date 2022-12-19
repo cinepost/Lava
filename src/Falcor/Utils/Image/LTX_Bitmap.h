@@ -53,8 +53,8 @@ struct LTX_Header {
         SNAPPY,
         ZLIB,
         ZSTD
-    } topLevelCompression = TopLevelCompression::NONE;
-    uint8_t topLevelCompressionLevel = 0; // 0 - 9
+    } topLevelCompression = TopLevelCompression::LZ4;
+    uint8_t topLevelCompressionLevel = 5; // 0 - 9
 
     uint32_t dataOffset = sizeof(LTX_Header);
 

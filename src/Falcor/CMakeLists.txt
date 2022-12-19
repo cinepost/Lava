@@ -83,6 +83,7 @@ else()
 endif()
 
 # Blosc
+set(BLOSC_USE_STATIC_LIBS ON)
 set(Blosc_ROOT ${DEPS_DIR})
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT REQUIRED)
 

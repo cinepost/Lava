@@ -50,14 +50,31 @@ void writeTileID(int tileID) {
     resolvedPagesBuff.InterlockedOr(byte4_addr, 1 << (byte_num * 8));
 }
 
+struct gl_TextureFootprint2DNV {
+    uint2 anchor;
+    uint2 offset;
+    uint2 mask;
+    uint lod;
+    uint granularity;
+};
+
+// OpImageSampleFootprintNV
+[[vk::spirv_instruction(5283)]]
+bool textureFootprintGradNV(out gl_TextureFootprint2DNV footprint, Sampler2D sampler, float2 uv, int granularity, bool coarse, float2 dx, float2 dy);
+
 float2 clacTextureMipLevelsIterative(float2 uv, SamplerState calibrationSampler, VirtualTextureData vtexData, float mipBias) {
-    //return float4(calculateAnisoMipMapLevel2D2(uv, float2((float)vtexData.width, (float)vtexData.height), mipBias), 0, 255);
 
     float2 tc = uv * float2((float)vtexData.width / 128.0f, (float)vtexData.height / 128.0f);
     float c = 1.1f;  // x1.1 should be enough with 16x anisotropic filtering, otherwise -> x2;
 
     float2 gradX = ddx_fine(tc) * c;
     float2 gradY = ddy_fine(tc) * c;
+
+    gl_TextureFootprint2DNV footprint;
+    //Sampler2D<vector<float,4>> tst(mipCalibrationTextures[0], gCalibrationSampler);
+    //bool _res = textureFootprintGradNV(footprint, tst ,uv,  1, false, ddx_fine(tc), ddy_fine(tc));
+
+    //float _mip = ltxCalibrationTexture.CalculateLevelOfDetail(gCalibrationSampler, uv);
 
     int mipLevelLo = -1;
     int mipLevelHi = -1;
@@ -153,12 +170,10 @@ PsOut psMain(VSOut vOut, uint triangleIndex : SV_PrimitiveID, float2 screenTexC 
             debug_mip_level_hi = hiMipLevel / 255.0f;
 
             [unroll]
-            for( int m = loMipLevel; m <= hiMipLevel; m++) writeTileID(calculateTileID2D(uv, m, vtexData));
+            for( int m = loMipLevel; m <= hiMipLevel; m++) {
+                writeTileID(calculateTileID2D(uv, m, vtexData));
+            }
 
-            //writeTileID(calculateTileID2D(uv, 1, vtexData));
-            //writeTileID(calculateTileID2D(uv, loMipLevel, vtexData));
-            //writeTileID(calculateTileID2D(uv, hiMipLevel, vtexData));
-            
             //grad_test = clacTextureMipLevelsIterativeDBG(uv, gCalibrationSampler, vtexData, mipBias);
         }
     }

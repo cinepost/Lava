@@ -49,8 +49,8 @@ if( NOT EXTERNAL_ZLIB_VERSION )
 endif()
 
 unset(ZLIB_FOUND)
-unset(ZLIB_LIBRARY CACHE)
-unset(ZLIB_INCLUDE_DIR CACHE)
+unset(ZLIB_LIBRARY)
+unset(ZLIB_INCLUDE_DIR)
 
 if(NOT LAVA_3RD_LIB_LINK_WITH_STATIC)
   set(ZLIB_USE_STATIC_LIBS OFF)
@@ -73,6 +73,7 @@ else()
     set(ZLIB_USE_STATIC_LIBS ON)
     set(ZLIB_BUILD_SHARED OFF)
   else()
+    set(ZLIB_USE_STATIC_LIBS OFF)
     set(ZLIB_BUILD_SHARED ON)
   endif()
 
@@ -152,6 +153,7 @@ if( NOT EXTERNAL_BLOSC_VERSION)
 endif()
 
 set(Blosc_ROOT ${EXTERNALS_INSTALL_DIR})
+set(BLOSC_USE_STATIC_LIBS ON)
 find_package(Blosc ${EXTERNAL_BLOSC_VERSION} EXACT)
 
 if( Blosc_FOUND )
@@ -164,13 +166,17 @@ else()
   message("Blosc version ${EXTERNAL_BLOSC_VERSION} not found! Running external build ...")
   set(BLOSC_PREFIX blosc)
 
-  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
-    set(BLOSC_BUILD_STATIC ON)
-    set(BLOSC_BUILD_SHARED OFF)
-  else()
-    set(BLOSC_BUILD_STATIC OFF)
-    set(BLOSC_BUILD_SHARED ON)
-  endif()
+  # Always build Blosc as a static lib
+  set(BLOSC_BUILD_STATIC ON)
+  set(BLOSC_BUILD_SHARED OFF)
+
+#  if(LAVA_3RD_LIB_LINK_WITH_STATIC)
+#    set(BLOSC_BUILD_STATIC ON)
+#    set(BLOSC_BUILD_SHARED OFF)
+#  else()
+#    set(BLOSC_BUILD_STATIC OFF)
+#    set(BLOSC_BUILD_SHARED ON)
+#  endif()
 
   ExternalProject_Add( Blosc
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BLOSC_PREFIX}
@@ -358,7 +364,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/openexr
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openexr
   )
-  ExternalProject_Add_StepDependencies(OpenEXR configure Tbb OpenVDB Blosc)
+  ExternalProject_Add_StepDependencies(OpenEXR configure zlib Tbb OpenVDB Blosc)
 
 endif()
 
@@ -412,7 +418,7 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/assimp
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/assimp
   )
-  ExternalProject_Add_StepDependencies(Assimp configure Tbb OpenVDB Blosc)
+  ExternalProject_Add_StepDependencies(Assimp configure zlib Tbb OpenVDB Blosc)
 
 endif()
 
@@ -495,7 +501,7 @@ else()
     BINARY_DIR ${EXTERNALS_BINARY_DIR}/openvdb
   )
   ExternalProject_Get_property(OpenVDB SOURCE_DIR)
-  ExternalProject_Add_StepDependencies(OpenVDB configure Tbb Boost Blosc)
+  ExternalProject_Add_StepDependencies(OpenVDB configure zlib Tbb Boost Blosc)
 
 endif()
 
@@ -530,12 +536,14 @@ else()
   endif()
 
   set(ZLIB_ROOT ${EXTERNALS_INSTALL_DIR})
-
+  find_package(ZLIB ${EXTERNAL_ZLIB_VERSION} EXACT REQUIRED)
+  message("ZLIB_LIBRARY " ${ZLIB_LIBRARY})
+  
   ExternalProject_Add ( png
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpng-${EXTERNAL_PNG_VERSION}
     UPDATE_DISCONNECTED true
 
-    CMAKE_ARGS -D PNG_BUILD_ZLIB:BOOL:ON
+    CMAKE_ARGS -D PNG_BUILD_ZLIB:BOOL=OFF
     CMAKE_ARGS -D CMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE}
     CMAKE_ARGS -D PNG_TESTS:BOOL=OFF
     CMAKE_ARGS -D PNG_STATIC:BOOL=${PNG_BUILD_STATIC_LIB}
