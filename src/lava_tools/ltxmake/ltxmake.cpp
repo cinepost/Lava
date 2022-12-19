@@ -68,8 +68,8 @@ int main(int argc, char** argv){
         ("output-files,o", po::value< std::vector<std::string> >(&outputFilenames), "Output files")
         ;
 
-    std::string compressorTypeName = "lz4";
-    int compressionLevel = 9;
+    std::string compressorTypeName = "zlib";
+    int compressionLevel = 5;
     po::options_description tlc_compression("Container compression");
     tlc_compression.add_options()
         ("compressor,z", po::value<std::string>(&compressorTypeName)->default_value(compressorTypeName), "Compressor type")
@@ -201,6 +201,7 @@ int main(int argc, char** argv){
           std::cout << "---------------------------------------------\n";
           const auto& header = pLTXBitmap->header();
           std::cout << "LTX format version: " << header.versionString() << std::endl;
+          std::cout << "LTX compressor name: " <<to_string(header.topLevelCompression);
           std::cout << "Dimensions: " << std::to_string(header.width) << " x " << std::to_string(header.height) << " x " << std::to_string(header.depth) << std::endl;
           std::cout << "Mip levels: " << std::to_string(header.mipLevelsCount) << std::endl;
           std::cout << "Data format: " << to_string(header.format) << std::endl;

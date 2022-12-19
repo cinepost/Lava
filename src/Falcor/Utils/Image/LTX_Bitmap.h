@@ -58,9 +58,7 @@ struct LTX_Header {
 
     uint32_t dataOffset = sizeof(LTX_Header);
 
-    std::string versionString() const {
-        return magic[5] + "." + magic[6];
-    }
+    std::string versionString() const;
 };
 
 struct LTX_MipInfo {

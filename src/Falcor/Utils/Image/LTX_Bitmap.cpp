@@ -114,6 +114,10 @@ static bool checkMagic(const unsigned char* magic, bool strict) {
 	return false;
 }
 
+std::string LTX_Header::versionString() const {
+  return std::to_string(magic[5]) + "." + std::to_string(magic[6]);
+}
+
 bool LTX_Bitmap::checkFileMagic(const fs::path& path, bool strict) {
 	return checkFileMagic(path.string(), strict);
 }
@@ -525,12 +529,18 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		fseek(pFile, page_data_offset, SEEK_SET);
 		fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
 
-		auto nbytes = 0;
+		int nbytes = 0;
 
 		//nbytes = blosc_decompress(tmp.data(), pData, kLtxPageSize);
 		nbytes = blosc_decompress_ctx(tmp.data(), pData, kLtxPageSize, 1);
-		if((nbytes == 0) || (nbytes > 65536)) {
+		if(nbytes < 0) {
+			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "!";
+			return false;
+		} else if( nbytes > kLtxPageSize) {
 			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "! " << std::to_string(nbytes) << " bytes decompressed !!!";
+			return false;
+		} else if (nbytes == 0) {
+			LLOG_ERR << "Error reading texture page " << std::to_string(pageNum) << " data! Source buffer is empty!";
 			return false;
 		}
 		LLOG_TRC << "Compressed page (read) " << std::to_string(pageNum) << " size is " << std::to_string(mCompressedPageDataSize[pageNum]) 

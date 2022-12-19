@@ -13,6 +13,13 @@ static int32_t gBloscForceBlocksize = 0;
 
 static const int kDoBloscShuffle = BLOSC_NOSHUFFLE;; //BLOSC_SHUFFLE;
 
+/*
+int blosc_compress_ctx(int clevel, int doshuffle, size_t typesize,
+                       size_t nbytes, const void* src, void* dest,
+                       size_t destsize, const char* compressor,
+                       size_t blocksize, int numinternalthreads)
+*/
+
 static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset, TLCInfo& compressionInfo, const std::vector<uint8_t>& page_data, std::vector<uint8_t>* tmp_compressed_page_data) {
 	size_t bytes_written = 0;
 	if(compressionInfo.topLevelCompression != LTX_Header::TopLevelCompression::NONE) {
@@ -21,7 +28,13 @@ static uint32_t writePageData(FILE *pFile, uint32_t pageId, uint32_t pageOffset,
 		int cbytes = blosc_compress_ctx(compressionInfo.compressionLevel, kDoBloscShuffle, compressionInfo.compressionTypeSize, 
 			kLtxPageSize, page_data.data(), tmp_compressed_page_data->data(), 
 			tmp_compressed_page_data->size(), getBloscCompressionName(compressionInfo.topLevelCompression),
-			gBloscForceBlocksize, 1);
+			gBloscForceBlocksize, 4);
+
+		if (cbytes == 0 ) {
+			throw std::runtime_error("Compression error! Data cannot be copied without overrun destination.");
+		} else if (cbytes < 0) {
+			throw std::runtime_error("Compression error!");
+		}
 
 		LLOG_TRC << "Compressed page: " << pageId << " size is: " << cbytes << " offset: " << pageOffset;// << " ftell: " << ftell(pFile);
 
@@ -62,7 +75,7 @@ bool ltxCpuGenerateAndWriteMIPTilesHQSlow(LTX_Header &header, LTX_MipInfo &mipIn
 	uint32_t dstChannelCount = getFormatChannelCount(format);
 	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-	compressionInfo.compressionTypeSize = dstChannelBits; // compressor shuffle preconditioner
+	compressionInfo.compressionTypeSize = dstChannelBits / 8; // compressor shuffle preconditioner
 
 	size_t srcBytesPerPixel = spec.pixel_bytes();
 	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
@@ -339,7 +352,7 @@ bool ltxCpuGenerateAndWriteMIPTilesPOT(LTX_Header &header, LTX_MipInfo &mipInfo,
 	uint32_t dstChannelCount = getFormatChannelCount(format);
 	uint32_t dstChannelBits = getNumChannelBits(format, 0);
 
-	compressionInfo.compressionTypeSize = dstChannelBits; // compressor shuffle preconditioner
+	compressionInfo.compressionTypeSize = dstChannelBits / 8; // compressor shuffle preconditioner
 
 	size_t srcBytesPerPixel = spec.pixel_bytes();
 	size_t dstBytesPerPixel = dstChannelCount * dstChannelBits / 8;
@@ -532,7 +545,7 @@ bool ltxCpuGenerateDebugMIPTiles(LTX_Header &header, LTX_MipInfo &mipInfo, oiio:
 		assert(compressionInfo.pCompressedPageSizes);
 	}
 
-	compressionInfo.compressionTypeSize = 8; // default compresssor shuffle preconditioner
+	compressionInfo.compressionTypeSize = 1; // default compresssor shuffle preconditioner
 
 	// image dimesions
 	uint32_t img_width  = header.width;
