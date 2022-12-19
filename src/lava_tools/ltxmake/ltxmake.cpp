@@ -179,7 +179,7 @@ int main(int argc, char** argv){
 
       // Process input texture files
       size_t numFiles = inputFilenames.size();
-      LLOG_INF << "Processing total " << numFiles << " textures...\n";
+      std::cout << "Processing total " << numFiles << " textures...\n";
 
       for( size_t i = 0; i < inputFilenames.size(); i++) {
 
@@ -201,7 +201,8 @@ int main(int argc, char** argv){
           std::cout << "---------------------------------------------\n";
           const auto& header = pLTXBitmap->header();
           std::cout << "LTX format version: " << header.versionString() << std::endl;
-          std::cout << "LTX compressor name: " <<to_string(header.topLevelCompression);
+          std::cout << "LTX compressor name: " << to_string(header.topLevelCompression) << std::endl;
+          std::cout << "LTX compression level: " << std::to_string(header.topLevelCompressionLevel) << std::endl;
           std::cout << "Dimensions: " << std::to_string(header.width) << " x " << std::to_string(header.height) << " x " << std::to_string(header.depth) << std::endl;
           std::cout << "Mip levels: " << std::to_string(header.mipLevelsCount) << std::endl;
           std::cout << "Data format: " << to_string(header.format) << std::endl;
@@ -246,8 +247,8 @@ int main(int argc, char** argv){
               LLOG_ERR << "Error converting texture " <<  input_filename << " !!!";
             } else {
               auto done = std::chrono::high_resolution_clock::now();
-              LLOG_INF << "Conversion done for " << input_filename << " in: " << std::setprecision(6) << 
-                (.001f * (float)std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count()) << " seconds.";
+              std::cout << "Conversion done for " << input_filename << " in: " << std::setprecision(6) << 
+                (.001f * (float)std::chrono::duration_cast<std::chrono::milliseconds>(done-started).count()) << " seconds.\n";
 
             }
           }
