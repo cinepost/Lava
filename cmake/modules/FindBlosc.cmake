@@ -91,6 +91,8 @@ may be provided to tell this module where to look.
 cmake_minimum_required(VERSION 3.12)
 include(GNUInstallDirs)
 
+unset(Blosc_FOUND)
+
 mark_as_advanced(
   Blosc_INCLUDE_DIR
   Blosc_LIBRARY
@@ -131,10 +133,11 @@ endif()
 
 set(_BLOSC_INCLUDE_SEARCH_DIRS "")
 list(APPEND _BLOSC_INCLUDE_SEARCH_DIRS
-  ${BLOSC_INCLUDEDIR}
   ${_BLOSC_ROOT}
-  ${PC_Blosc_INCLUDE_DIRS}
-  ${SYSTEM_LIBRARY_PATHS}
+  ${_BLOSC_ROOT}/include
+  #${BLOSC_INCLUDEDIR}
+  #${PC_Blosc_INCLUDE_DIRS}
+  #${SYSTEM_LIBRARY_PATHS}
 )
 
 # Look for a standard blosc header file.
@@ -142,6 +145,7 @@ find_path(Blosc_INCLUDE_DIR blosc.h
   ${_FIND_BLOSC_ADDITIONAL_OPTIONS}
   PATHS ${_BLOSC_INCLUDE_SEARCH_DIRS}
   PATH_SUFFIXES ${CMAKE_INSTALL_INCLUDEDIR} include
+  NO_DEFAULT_PATH
 )
 
 if(EXISTS "${Blosc_INCLUDE_DIR}/blosc.h")
@@ -182,10 +186,11 @@ endif()
 
 set(_BLOSC_LIBRARYDIR_SEARCH_DIRS "")
 list(APPEND _BLOSC_LIBRARYDIR_SEARCH_DIRS
-  ${BLOSC_LIBRARYDIR}
   ${_BLOSC_ROOT}
-  ${PC_Blosc_LIBRARY_DIRS}
-  ${SYSTEM_LIBRARY_PATHS}
+  ${_BLOSC_ROOT}/lib
+  #${BLOSC_LIBRARYDIR}
+  #${PC_Blosc_LIBRARY_DIRS}
+  #${SYSTEM_LIBRARY_PATHS}
 )
 
 # Library suffix handling
@@ -238,6 +243,7 @@ foreach(BUILD_TYPE ${BLOSC_BUILD_TYPES})
     ${_FIND_BLOSC_ADDITIONAL_OPTIONS}
     PATHS ${_BLOSC_LIBRARYDIR_SEARCH_DIRS}
     PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} lib64 lib
+    NO_DEFAULT_PATH
   )
 
   list(APPEND Blosc_LIB_COMPONENTS ${Blosc_LIBRARY_${BUILD_TYPE}})
