@@ -136,6 +136,11 @@ Texture::SharedPtr Texture::createUDIMFromFile(std::shared_ptr<Device> pDevice, 
 	Texture::SharedPtr pTexture = std::make_shared<Texture>(pDevice, 1, 1, 1, 1, 1, 1, ResourceFormat::R8Unorm, Type::Texture2D, BindFlags::None);
 	pTexture->mIsUDIMTexture = true;
 	pTexture->mSourceFilename = path.string();
+
+	for(uint i = 0; i < 100; i++) {
+		pTexture->mUDIMTileInfos[i].pTileTexture = nullptr;
+	}
+
 	return pTexture;
 }
 

@@ -276,9 +276,9 @@ namespace Falcor {
         }
 
         vkGetImageMemoryRequirements(mpDevice->getApiHandle(), mImage, &mMemRequirements);
-        std::cout << "Image memory requirements:" << std::endl;
-        std::cout << "\t Size: " << mMemRequirements.size << std::endl;
-        std::cout << "\t Alignment: " << mMemRequirements.alignment << std::endl;
+        LLOG_TRC << "Image memory requirements:";
+        LLOG_TRC << "\t Size: " << mMemRequirements.size << std::endl;
+        LLOG_TRC << "\t Alignment: " << mMemRequirements.alignment << std::endl;
 
         if (mIsSparse) {
 #ifdef _DEBUG
@@ -304,7 +304,7 @@ namespace Falcor {
             // Get actual requirements
             vkGetImageSparseMemoryRequirements(mpDevice->getApiHandle(), mImage, &sparseMemoryReqsCount, sparseMemoryReqs.data());
 
-            std::cout << "Sparse image memory requirements: " << sparseMemoryReqsCount << std::endl;
+            LLOG_TRC << "Sparse image memory requirements: " << sparseMemoryReqsCount;
             
             for (auto reqs : sparseMemoryReqs) {
                 std::cout << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " << reqs.formatProperties.imageGranularity.depth << std::endl;

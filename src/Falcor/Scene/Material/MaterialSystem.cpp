@@ -88,10 +88,12 @@ void MaterialSystem::finalize() {
 	// so there is some room for adding materials at runtime after scene creation until running into this limit.
 	// TODO: Remove this when unbounded descriptor arrays are supported (#1321).
 
-	mTextureDescCount = 0;
+	mTextureDescCount = textureManager()->getUDIMTextureTilesCount();;
 	for(const auto& pMaterial: mMaterials) {
 		mTextureDescCount += pMaterial->getTextureCount();
 	}
+
+	mTextureDescCount = textureManager()->getTextureDescCount(); // TODO: make it scene dependent!
 
 	//mTextureDescCount = getMaterialCount() * (size_t)Material::TextureSlot::Count + textureManager()->getUDIMTextureTilesCount();
 	mBufferDescCount = getMaterialCount() * kMaxBufferCountPerMaterial;
@@ -368,9 +370,10 @@ Material::UpdateFlags MaterialSystem::update(bool forceUpdate) {
 		for(const auto& pMaterial: mMaterials) {
 			pMaterial->getTextures(textures, true); // true to append instead of erasing vector
 		}
-		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], textures);
 
-		//textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+		//textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], textures);
+		textureManager()->setShaderData(mpMaterialsBlock[kMaterialTexturesName], mTextureDescCount);
+
 		textureManager()->setUDIMTableShaderData(mpMaterialsBlock[kMaterialUDIMTilesTableName], mUDIMTextureCount * 100);
 	}
 

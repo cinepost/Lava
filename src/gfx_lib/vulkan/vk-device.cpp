@@ -1290,7 +1290,7 @@ Result DeviceImpl::createTextureResource(
 
 	if (pTexture && sparse) {
 #ifdef _DEBUG
-		std::cout << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize << std::endl;
+		LOG_DBG << "Sparse address space size: " << m_basicProps.limits.sparseAddressSpaceSize;
 #endif		
 
 		// Check requested image size against hardware sparse limit            
@@ -1313,15 +1313,15 @@ Result DeviceImpl::createTextureResource(
 		// Get actual requirements
 		m_api.vkGetImageSparseMemoryRequirements(m_device, texture->m_image, &sparseMemoryReqsCount, sparseMemoryReqs.data());
 
-		LLOG_DBG << "Sparse image memory requirements: " << sparseMemoryReqsCount;
+		LLOG_TRC << "Sparse image memory requirements: " << sparseMemoryReqsCount;
 		
 		for (auto reqs : sparseMemoryReqs) {
-			LLOG_DBG << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " 
+			LLOG_TRC << "\t Image granularity: w = " << reqs.formatProperties.imageGranularity.width << " h = " << reqs.formatProperties.imageGranularity.height << " d = " 
 							 << reqs.formatProperties.imageGranularity.depth;
-			LLOG_DBG << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod;
-			LLOG_DBG << "\t Mip tail size: " << reqs.imageMipTailSize;
-			LLOG_DBG << "\t Mip tail offset: " << reqs.imageMipTailOffset;
-			LLOG_DBG << "\t Mip tail stride: " << reqs.imageMipTailStride;
+			LLOG_TRC << "\t Mip tail first LOD: " << reqs.imageMipTailFirstLod;
+			LLOG_TRC << "\t Mip tail size: " << reqs.imageMipTailSize;
+			LLOG_TRC << "\t Mip tail offset: " << reqs.imageMipTailOffset;
+			LLOG_TRC << "\t Mip tail stride: " << reqs.imageMipTailStride;
 			
 			//todo:multiple reqs
 			pTexture->mMipTailStart = reqs.imageMipTailFirstLod;
@@ -1427,7 +1427,7 @@ Result DeviceImpl::createTextureResource(
 
 			
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {	
-				LLOG_DBG << "Layer " << layer << "single mip tail";
+				LLOG_TRC << "Layer " << layer << "single mip tail";
 				// Allocate memory for the layer mip tail
 				VkMemoryAllocateInfo memAllocInfo = {};
 				memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1456,7 +1456,7 @@ Result DeviceImpl::createTextureResource(
 
 		// Check if format has one mip tail for all layers
 		if ((sparseMemoryReq.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {
-			LLOG_DBG << "One mip tail for all mip layers ";
+			LLOG_TRC << "One mip tail for all mip layers ";
 			// Allocate memory for the mip tail
 			VkMemoryAllocateInfo memAllocInfo = {};
 			memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1479,12 +1479,12 @@ Result DeviceImpl::createTextureResource(
 			pTexture->mOpaqueMemoryBinds.push_back(sparseMemoryBind);
 		}
 
-		LLOG_DBG << "Texture info:";
-		LLOG_DBG << "\tDim: " << pTexture->mWidth << " x " << pTexture->mHeight;
-		LLOG_DBG << "\tVirtual pages: " << pTexture->sparseDataPages().size();
-		LLOG_DBG << "\tSingle mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No");
-		LLOG_DBG << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod;
-		LLOG_DBG << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize;
+		LLOG_TRC << "Texture info:";
+		LLOG_TRC << "\tDim: " << pTexture->mWidth << " x " << pTexture->mHeight;
+		LLOG_TRC << "\tVirtual pages: " << pTexture->sparseDataPages().size();
+		LLOG_TRC << "\tSingle mip tail: " << (pTexture->mMipTailInfo.singleMipTail ? "Yes" : "No");
+		LLOG_TRC << "\tMip tail start: " << sparseMemoryReq.imageMipTailFirstLod;
+		LLOG_TRC << "\tMip tail size: " << sparseMemoryReq.imageMipTailSize;
 
 		// Create signal semaphore for sparse binding
 		VkSemaphoreCreateInfo semaphoreCreateInfo = {};

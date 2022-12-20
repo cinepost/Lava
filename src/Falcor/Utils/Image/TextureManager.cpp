@@ -736,6 +736,11 @@ void TextureManager::setShaderData(const ShaderVar& var, const std::vector<Textu
 void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t descCount) const {
 	LLOG_DBG << "Setting UDIM table shader data " << to_string(descCount) << " descriptors";
 
+	if (descCount == 0) {
+		LLOG_DBG << "No descriptors to update for UDIM table";
+		return;
+	}
+
 	std::lock_guard<std::mutex> lock(mMutex);
 
 	for (size_t i = 0; i < mTextureDescs.size(); i++) {
@@ -746,7 +751,7 @@ void TextureManager::setUDIMTableShaderData(const ShaderVar& var, const size_t d
 				if( tileInfo.pTileTexture ) {
 					auto const& it = mTextureToHandle.find(tileInfo.pTileTexture.get());
 					if(it != mTextureToHandle.end()) {
-						LLOG_DBG << "Tile idx: " << std::to_string(udim_tile_idx);
+						LLOG_DBG << "Tile idx: " << std::to_string(udim_tile_idx) << " handle: " << std::to_string(it->second.id);
 						var[udim_tile_idx] = it->second.id;
 					}
 				}
