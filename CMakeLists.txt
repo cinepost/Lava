@@ -70,14 +70,6 @@ CPMAddPackage(
   VERSION 1.2
 )
 
-# Set up houdini hdk and installation paths
-set(HOUDINI_HOME "/opt/houdini18.5")
-set(HOUDINI_USER "$ENV{HOME}/houdini18.5")
-
-# TODO move to houdini related subproject
-#list( APPEND CMAKE_PREFIX_PATH "${HOUDINI_HOME}/toolkit/cmake" )
-
-
 # Add folder where are supportive functions
 set( CMAKE_MODULE_PATH 
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake 
@@ -115,6 +107,7 @@ endif()
 set( BUILD_SUBDIR "")
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_SUBDIR)
 
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR})
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/bin )
@@ -134,7 +127,11 @@ if (build_type STREQUAL "debug")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
 
-set(FALCOR_API_BACKEND "Default" CACHE STRING "Vulkan")
+set(FALCOR_API_BACKEND "Vulkan" CACHE STRING "Rendering API")
+
+# Set up houdini hdk and installation paths
+set(HOUDINI_USER "$ENV{HOME}/houdini19.5" CACHE PATH "Houdini home user path")
+set(HOUDINI_ROOT "/opt/hfs19.5" CACHE PATH "Houdini installation path")
 
 option (PROFILING "Enable/Disable renderer performance profiler." OFF)
 option (PROFILING_LOG "Enable/Disable renderer performance profiler logging." OFF)

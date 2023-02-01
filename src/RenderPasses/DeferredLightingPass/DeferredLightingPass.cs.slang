@@ -152,7 +152,7 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     //sd.N = faceforward(sd.N, rayDir, geometryFaceNormalW);
 
     if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
-        //rayShadow = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.N, triangleHit.getBarycentricWeights());
+        rayShadow = gScene.computeShadingPosition(triangleHit.instanceID, triangleHit.primitiveIndex, sd.posW, sd.N, triangleHit.getBarycentricWeights());
     }
 
     //rayOrigin -= rayDir * gRayBias;

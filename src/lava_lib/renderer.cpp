@@ -612,7 +612,6 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 
 	if (!mpRenderGraph) {
 		createRenderGraph(frame_info);
-		bindAOVPlanesToResources();
 	} else if (
 		(mCurrentFrameInfo.imageWidth != frame_info.imageWidth) || 
 		(mCurrentFrameInfo.imageHeight != frame_info.imageHeight) || 
@@ -629,8 +628,8 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 			LLOG_ERR << "Error render graph compilation ! " << compilationLog;
 			return false;
 		}
-		bindAOVPlanesToResources();
 	}
+	bindAOVPlanesToResources();
 
 	for(auto &pair: mAOVPlanes) {
 		pair.second->reset();

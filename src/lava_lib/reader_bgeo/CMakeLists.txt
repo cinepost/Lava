@@ -4,10 +4,10 @@ file( GLOB SOURCES
 )
 
 include_directories(
-  ${HOUDINI_HOME}/toolkit/include
+  ${HOUDINI_ROOT}/toolkit/include
 )
 
-set( HOU_LIBS ${HOUDINI_HOME}/dsolib/libHoudiniUT.so)
+set( HOU_LIBS ${HOUDINI_ROOT}/dsolib/libHoudiniUT.so)
 
 add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
 add_library( reader_bgeo_lib SHARED ${SOURCES} ${HEADERS} )

@@ -9,7 +9,7 @@ file( GLOB SOURCES
 )
 
 include_directories(
-  ${HOUDINI_HOME}/toolkit/include
+  ${HOUDINI_ROOT}/toolkit/include
 )
 add_definitions(-DAMD64 -DLINUX -DUSE_PTHREADS -DSIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P})
 

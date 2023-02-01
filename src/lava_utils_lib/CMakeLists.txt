@@ -9,7 +9,7 @@ add_library( lava_utils_lib SHARED ${SOURCES} ${HEADERS} )
 
 # Find boost
 set(BOOST_ROOT ${DEPS_DIR})
-find_package( Boost ${EXTERNAL_BOOST_VERIOSN} COMPONENTS log thread filesystem system EXACT REQUIRED)
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS log thread filesystem system EXACT REQUIRED)
 target_include_directories(lava_utils_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
 # we will use static libs
