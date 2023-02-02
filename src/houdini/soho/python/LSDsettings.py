@@ -522,7 +522,7 @@ def outputGlobal(wrangler, obj, now):
     lv_numuserattrib = xparms.get('lv_numuserattrib', None)
     if lv_numuserattrib:
         n = lv_numuserattrib.Value[0]
-        for i in xrange(1, n+1):
+        for i in range(1, n+1):
             _outputUserAttribute(i, obj, now)
 
     (val, type) = obj.wrangleShaderAndType(wrangler, 'lv_pbrshader', now, [''])
@@ -616,7 +616,7 @@ def outputObject(obj, now, name=None, wrangler=None, output_shader=True, check_r
             cmd_propertyAndParms('object', 'measure', measure, plist)
     if lv_numuserattrib:
         n = lv_numuserattrib.Value[0]
-        for i in xrange(1, n+1):
+        for i in range(1, n+1):
             _outputUserAttribute(i, obj, now)
     # For velocity motion blur, we need to have access to the velocity
     # scale in the instance as well for volume rendering.
