@@ -21,14 +21,20 @@ else()
         message(WARNING "Houdini python libs path environment variable not set !")
     endif()
 
-    set(HYTHON_VERSION "python3.7")
-    if(HOUDINI_HHP MATCHES "python3\\.7libs")
-        message(STATUS "Using python version 3.7 for Houdini-Lava integration.")
-    else()
-        set(HYTHON_VERSION "python2.7")
-        message(STATUS "Using python version 2.7 for Houdini-Lava integration.")
+    string(REGEX REPLACE "^.*(python)([0-9]+).*$" "\\2" HYTHON_VERSION_MAJOR "${HOUDINI_HHP}")
+    string(REGEX REPLACE "^.*(python)[0-9]+\\.([0-9]+).*$" "\\2" HYTHON_VERSION_MINOR "${HOUDINI_HHP}")
+
+    if(NOT HYTHON_VERSION_MAJOR MATCHES "[23]")
+        message( FATAL_ERROR "Invalid Houdini python major version " ${HYTHON_VERSION_MAJOR})
     endif()
 
+    if(NOT HYTHON_VERSION_MINOR MATCHES "[0-9]")
+        message( FATAL_ERROR "Invalid Houdini python nimor version " ${HYTHON_VERSION_MINOR})
+    endif()
+
+    set(HYTHON_VERSION "${HYTHON_VERSION_MAJOR}.${HYTHON_VERSION_MINOR}")
+    message(STATUS "Using python version " ${HYTHON_VERSION} " for Houdini-Lava integration.")
+    
 endif()
 
 
@@ -72,7 +78,7 @@ install(
     RENAME
     	lava_version.py
     DESTINATION
-    	houdini/${HYTHON_VERSION}libs
+    	houdini/python${HYTHON_VERSION}libs
 )
 
 
@@ -80,9 +86,9 @@ install(
 install(DIRECTORY scripts DESTINATION houdini)
 install(DIRECTORY config DESTINATION houdini)
 install(DIRECTORY soho DESTINATION houdini PATTERN "python" EXCLUDE)
-install(DIRECTORY soho/python/ DESTINATION houdini/soho/${HYTHON_VERSION})
+install(DIRECTORY soho/python/ DESTINATION houdini/soho/python${HYTHON_VERSION})
 
-install(DIRECTORY python/ DESTINATION houdini/${HYTHON_VERSION}libs)
+install(DIRECTORY python/ DESTINATION houdini/python${HYTHON_VERSION}libs)
 
 install(FILES OPmenu.xml DESTINATION houdini)
 install(FILES FBrenderLava DESTINATION houdini)
