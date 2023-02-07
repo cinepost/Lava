@@ -86,8 +86,8 @@ static void writeProfilerStatsToFile(const std::string& outputFilename) {
   gProfiler->endFrame();
   Falcor::Profiler::Capture::SharedPtr profilerCapture = gProfiler->endCapture();
   if(profilerCapture) {
-    LLOG_INF << "Writing performance profiler stats to file \'" << outputFilename << "\'";
-    profilerCapture->writeToFile(outputFilename);
+    profilerCapture->writeToFile(outputFilename, Falcor::Profiler::Capture::OuputFactory::BOOST_JSON);
+    std::cout << "Profiler performance stats are written to file \'" << outputFilename << "\'";
   }
 #endif
 }
@@ -226,6 +226,12 @@ int main(int argc, char** argv){
       app_config.set<bool>("fconv", true);
     }
 
+    // Early termination
+    if(!vm.count("input-files") && !stdin_mode) {
+      std::cout << "No input (scene) specified!\n";
+      exit(EXIT_SUCCESS);
+    }
+
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(
       ReaderLSD::myExtensions, 
@@ -262,7 +268,7 @@ int main(int argc, char** argv){
       for (const std::string& inputFilename: inputFilenames) {
         std::ifstream in_file(inputFilename, std::ifstream::binary);
         if(!in_file) {
-          LLOG_ERR << "Unable to open file \'" << inputFilename << "\'' !\n";
+          LLOG_ERR << "Unable to open scene file \'" << inputFilename << "\'' !\n";
           exit(EXIT_FAILURE);
         }
         
@@ -278,7 +284,7 @@ int main(int argc, char** argv){
         std::string _captureFilename = profilerCaptureFilename;;
         if(profilerCaptureFilename == profilerCaptureDefaultFilename) {
           fs::path p(inputFilename);
-          _captureFilename = p.filename().string() + "_profilig_stats.json";
+          _captureFilename = p.string() + ".profilig_stats.json";
         }
         writeProfilerStatsToFile(_captureFilename);
       }

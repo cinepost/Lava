@@ -33,9 +33,11 @@
 #include <memory>
 
 #include <boost/filesystem.hpp>
+#include <boost/json.hpp>
 namespace fs = boost::filesystem;
 
 #include "CpuTimer.h"
+#include "FrameRate.h"
 #include "Core/API/GpuTimer.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
@@ -67,7 +69,8 @@ class dlldecl Profiler {
 		  float mean;
 		  float stdDev;
 
-		  pybind11::dict toPython() const;
+		  pybind11::dict 			toPython() const;
+		  boost::json::object toBoostJSON() const;
 
 		  static Stats compute(const float* data, size_t len);
 	  };
@@ -126,6 +129,11 @@ class dlldecl Profiler {
 			public:
 				using SharedPtr = std::shared_ptr<Capture>;
 
+				enum OuputFactory {
+					PYTHON,
+					BOOST_JSON
+				};
+
 				struct Lane {
 					std::string name;
 					Stats stats;
@@ -135,9 +143,11 @@ class dlldecl Profiler {
 				size_t getFrameCount() const { return mFrameCount; }
 				const std::vector<Lane>& getLanes() const { return mLanes; }
 
-				pybind11::dict toPython() const;
+				pybind11::dict 			toPython() const;
+				boost::json::object toBoostJSON() const;
+
 				std::string toJsonString() const;
-				void writeToFile(const fs::path& path) const;
+				void writeToFile(const fs::path& path, Capture::OuputFactory factory=Capture::OuputFactory::BOOST_JSON) const;
 
 			private:
 				Capture(size_t reservedEvents, size_t reservedFrames);
@@ -281,6 +291,18 @@ class ProfilerEvent {
 	  const std::string mName;
 	  Profiler::Flags mFlags;
 };
+
+inline std::string to_string(Profiler::Capture::OuputFactory f) {
+#define f2s(fa_) case Profiler::Capture::OuputFactory::fa_: return #fa_;
+    switch (f) {
+        f2s(PYTHON);
+        f2s(BOOST_JSON);
+        default:
+          assert(false);
+          return "";
+    }
+#undef f2s
+}
 
 }  // namespace Falcor
 

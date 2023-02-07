@@ -2,12 +2,14 @@ include_directories(
     ${EXTERNALS_INSTALL_DIR}
 )
 
+include(${PROJECT_SOURCE_DIR}/third_party/external_versions.cmake)
+
 set (SOURCES 
 	./lava_cmd.cpp
 )
 
 # Find BOOST
-find_package( Boost 1.73.0 COMPONENTS program_options log EXACT REQUIRED )
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS program_options log EXACT REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # Executable 

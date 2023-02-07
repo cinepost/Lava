@@ -166,7 +166,7 @@ include_directories( ${TIFF_INCLUDE_DIRS} )
 # Find Boost libs
 set(Boost_NO_SYSTEM_PATHS ON)
 set(BOOST_ROOT ${DEPS_DIR})
-find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS filesystem system thread EXACT REQUIRED )
+find_package( Boost ${EXTERNAL_BOOST_VERSION} COMPONENTS json filesystem system thread EXACT REQUIRED )
 target_include_directories(falcor_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
 # SLANG
@@ -236,6 +236,7 @@ else()
             Boost::system
             Boost::filesystem
             Boost::thread
+            Boost::json
             ${Vulkan_LIBRARY}
             ${GTK3_LIBRARIES}
             ${TIFF_LIBRARIES}

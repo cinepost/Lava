@@ -217,11 +217,11 @@ set(Boost_USE_STATIC_RUNTIME ON)
 endif()
 
 if( NOT EXTERNAL_BOOST_VERSION )
-  set(EXTERNAL_BOOST_VERSION 1.73.0)
+  set(EXTERNAL_BOOST_VERSION 1.75.0)
 endif()
 
 set(BOOST_ROOT ${EXTERNALS_INSTALL_DIR})
-find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT COMPONENTS filesystem system date_time iostreams program_options)
+find_package(Boost ${EXTERNAL_BOOST_VERSION} EXACT COMPONENTS json filesystem system date_time iostreams program_options)
 
 if(Boost_FOUND)
 
@@ -257,6 +257,7 @@ else()
       --with-libraries=regex
       --with-libraries=log 
       --with-libraries=thread
+      --with-libraries=json
       --prefix=<INSTALL_DIR>
     BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${DEPS_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
     BUILD_IN_SOURCE 1
@@ -266,7 +267,6 @@ else()
     STAMP_DIR ${EXTERNALS_STAMP_DIR}/boost
   )
 endif()
-
 
 #######################
 # Pybind11

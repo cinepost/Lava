@@ -71,7 +71,15 @@ pybind11::dict Profiler::Stats::toPython() const {
     d["max"] = max;
     d["mean"] = mean;
     d["stdDev"] = stdDev;
+    return d;
+}
 
+boost::json::object Profiler::Stats::toBoostJSON() const {
+    boost::json::object d;
+    d["min"] = min;
+    d["max"] = max;
+    d["mean"] = mean;
+    d["stdDev"] = stdDev;
     return d;
 }
 
@@ -204,6 +212,29 @@ pybind11::dict Profiler::Capture::toPython() const {
     return pyCapture;
 }
 
+boost::json::object Profiler::Capture::toBoostJSON() const {
+    boost::json::object dCapture;
+    boost::json::object dEvents;
+
+    for (const auto& lane : mLanes) {
+        boost::json::object dLane;
+        dLane["name"] = lane.name;
+        dLane["stats"] = lane.stats.toBoostJSON();
+
+        boost::json::array records;
+        for (float value: lane.records) records.emplace_back(value);
+
+        dLane["records"] = records;
+        dEvents[lane.name.c_str()] = dLane;
+    }
+
+    dCapture["frameCount"] = mFrameCount;
+    dCapture["events"] = dEvents;
+
+    return dCapture;
+}
+
+
 std::string Profiler::Capture::toJsonString() const {
     // We use pythons JSON encoder to encode the python dictionary to a JSON string.
     pybind11::module json = pybind11::module::import("json");
@@ -211,10 +242,26 @@ std::string Profiler::Capture::toJsonString() const {
     return pybind11::cast<std::string>(dumps(toPython(), "indent"_a = 2));
 }
 
-void Profiler::Capture::writeToFile(const fs::path& path) const {
-    auto json = toJsonString();
+void Profiler::Capture::writeToFile(const fs::path& path, Profiler::Capture::OuputFactory factory) const {
+    LLOG_DBG << "Writing profiler capture using " << to_string(factory) << " factory.";
     std::ofstream ofs(path.string());
-    ofs.write(json.data(), json.size());
+    switch (factory) {
+        case Profiler::Capture::OuputFactory::PYTHON:
+            {
+                auto json = toJsonString();
+                ofs.write(json.data(), json.size());
+            }
+            break;
+        case Profiler::Capture::OuputFactory::BOOST_JSON:
+            {
+                boost::json::object bjson = toBoostJSON();
+                ofs << bjson;
+            }
+            break;
+        default:
+            assert(false);
+            break;
+    }
 }
 
 Profiler::Capture::Capture(size_t reservedEvents, size_t reservedFrames): mReservedFrames(reservedFrames) {
@@ -286,9 +333,7 @@ void Profiler::startEvent(const std::string& name, Flags flags) {
         }
     }
     if (is_set(flags, Flags::Pix)) {
-#if defined(FALCOR_D3D12)
-        PIXBeginEvent((ID3D12GraphicsCommandList*)mpDevice->getRenderContext()->getLowLevelData()->getD3D12CommandList(), PIX_COLOR(0, 0, 0), name.c_str());
-#elif defined(FALCOR_GFX)
+#if defined(FALCOR_GFX)
         mpDevice->getRenderContext()->getLowLevelData()->beginDebugEvent(name.c_str());
 #else 
         LLOG_WRN << "Profiler::startEvent non implemented in VK backend yet!";
