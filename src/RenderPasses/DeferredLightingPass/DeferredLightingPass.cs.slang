@@ -29,10 +29,12 @@ import DeferredLightingAOV;
 #define _CACHE_NEXT_RAY
 
 // Extra input channels
+Texture2D<float> gDepth;
 Texture2D<PackedHitInfo> gVbuffer;
 Texture2D<float4> gTextureGrads;
 
 // Extra UAV output channels
+RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
 RasterizerOrderedTexture2D<float4> gOutShadows;
@@ -66,13 +68,16 @@ EnvMapLighting gEnvMapLighting;
 
 SamplerState gNoiseSampler;
 SamplerState gDepthSampler;
-Texture2D gDepthTex;
 Texture2D gNoiseTex;
 
 
 /** write AOVData
 */
 void writeAOV(uint2 ipos, const AOVData d) {
+#if is_valid(gOutPz)
+        gOutPz[ipos] = d.depth;
+#endif  // gOutPz
+
 #if is_valid(gOutAlbedo)
         gOutAlbedo[ipos] = float4(d.albedo, .0);
 #endif  // gOutAlbedo
@@ -90,7 +95,7 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #endif  // gOutPosition
 
 #if is_valid(gOutOcclusion)
-        gOutOcclusion[ipos] = d.occlusion;
+        gOutOcclusion[ipos] = 1.f - d.occlusion;
 #endif  // gOutOcclusion
 }
 
@@ -129,20 +134,11 @@ ITextureSampler createTextureSampler(const uint2 pixel_pos) {
     }
 }
 
-float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, uint maxRayLevel){
+float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 rayDir, inout HitInfo hit, TriangleHit triangleHit, ShadingData sd, inout float3 sampleWeight, inout S sg, inout AOVData aov_data, const float4 rnd, L lod, uint rayLevel, uint maxRayLevel){
 
     float3 surfaceColor = float3(0.0);
     
-    TriangleHit triangleHit;
-    ShadingData sd;
-
     ITextureSampler _lod = lod; //ExplicitLodTextureSampler(4.0);
-
-    [branch]
-    if ((rayLevel > maxRayLevel) || !calcShadingData(rayDir, hit, _lod, sd, triangleHit)) {
-        hit = {};
-        return surfaceColor;
-    }
 
     float3 rayOrigin = sd.posW;
     float3 rayShadow = rayOrigin;
@@ -178,16 +174,17 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         aov_data.albedo = bsdfProperties.diffuseReflectionAlbedo;
     }
 
-    HitInfo bsdfHit = {};  // We store bsdf hit here as a candidate for the next bounce
-    float bsdfHitT = 0.0f; // We store hit distance to check agains potential light source to sample from the surface bsdf
+    HitInfo bsdfHit = {}; // We store bsdf hit here as a candidate for the next bounce
+    float bsdfHitT = 0.f; // We store hit distance to check agains potential light source to sample from the surface bsdf
     BSDFSample bsdfSample;
 
     sd.mtl.setActiveLobes(shadingLobes);
     bool validBsdfSample = bsdf.sample(sd, sg, bsdfSample, true);
     float3 nextRayDir = normalize(bsdfSample.wo);
 
-    float3 diffuseColor = float3(0.0f);
-    float3 specularColor = float3(0.0f);
+    float3 diffuseColor  = float3(0.f);
+    float3 specularColor = float3(0.f);
+    float3 shadowColor   = float3(1.f);
 
     // Process lights
 #if _SCENE_LIGHT_COUNT
@@ -211,7 +208,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         // Sample light and reject sample if lower hemisphere.
         sd.mtl.setActiveLobes(shadingLobes);
 
-        [branch]
         if (sampleLight(sd.posW, sd.N, light, rnd, ls) && dot(ls.dir, sd.N) > kMinCosTheta) {
             if ((light.shadowType == uint(LightShadowType.RayTraced)) && (gScene.isObjectShadowsReceiving(triangleHit.instanceID))) {
                 
@@ -247,10 +243,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
             }
 #endif //_USE_MULTIPLE_IMPORTANCE_SAMPLING
 
-            //misDiffWeight = 1.0f;
-            //misSpecWeight = 1.0f;
-            //misRefrWeight = 1.0f;
-
             if ((rayLevel == 0 && light.contributesDirectDiffuseIllumination()) || (rayLevel > 0 && light.contributesIndirectDiffuseIllumination())) {
                 sd.mtl.setActiveLobes((uint)LobeType::DiffuseReflection);
                 diffuseColor += bsdf.eval(sd, ls.dir, sg) * ls.i *((rayLevel == 0) ? light.directDiffuseIntensity : light.indirectDiffuseIntensity ) * shadowFactor * misDiffWeight;
@@ -263,14 +255,13 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
                 sd.mtl.setActiveLobes((uint)LobeType::SpecularTransmission);
                 specularColor += bsdf.eval(sd, ls.dir, sg) * ls.i * ((rayLevel == 0) ? light.directSpecularIntensity : light.indirectSpecularIntensity ) * shadowFactor * misRefrWeight;
             }
-        }
 
-        //return float3(ls.dbg);
+            shadowColor *= shadowFactor;
+        }
 
 #ifdef _USE_MULTIPLE_IMPORTANCE_SAMPLING
 
         // Sample bsdf for non singular light
-        [branch]
         if(!light.isDeltaLight()) {
 #ifdef _CACHE_NEXT_RAY
             //RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayShadowQuery;
@@ -337,6 +328,8 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
 
     } // light loop
 
+    aov_data.shadow += float3(1.f) - shadowColor;
+
     float3 _surfaceColor = diffuseColor + specularColor;
 
     bool emissionIllumnatesObjects = false;
@@ -346,7 +339,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
     float3 colorLimit = rayLevel == 0 ? (float3)gColorLimit : (float3)gIndirectColorLimit;
     surfaceColor = float3(min(_surfaceColor.r, colorLimit.r), min(_surfaceColor.g, colorLimit.g), min(_surfaceColor.b, colorLimit.b));
     
-    [branch]
     if( rayLevel >= maxRayLevel) return surfaceColor;
 
     /// Next hit point
@@ -418,7 +410,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         }
     }
 #else
-    [branch]
     if(bsdf.sample(sd, sg, bsdfSample, true) && (bsdfSample.pdf > 0.0f)) {
 
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayQuery;
@@ -438,7 +429,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
         rayQuery.Proceed();
 
-        [branch]
         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) {
             // Next hit
             hit = HitInfo(getCommittedTriangleHit(rayQuery));
@@ -446,23 +436,6 @@ float3 calcIlluminance<S : ISampleGenerator, L : ITextureSampler>(inout float3 r
         }
     }
 #endif
-    
-#if is_valid(gOutOcclusion)
-    if(rayLevel == 0) {
-        float pdf;
-        float3 dir = normalize(sample_cosine_hemisphere_oriented(rnd.xy, sd.N, pdf));
-
-        RayDesc ray;
-        ray.Origin = rayOrigin;
-        ray.Direction = dir;
-        ray.TMin = .001f;
-        ray.TMax = 1.0f;
-
-        rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-        rayShadowQuery.Proceed();
-        aov_data.occlusion = (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
-    }
-#endif  // gOutOcclusion
 
     return surfaceColor;
 }
@@ -486,8 +459,15 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gFrameDim).dir);
     let lod = createTextureSampler(ipos);
 
+    // Primary ray surface data
+    TriangleHit primaryTriangleHit;
+    ShadingData primaryShadingData;
+    if(!calcShadingData(rayDir, hit, lod, primaryShadingData, primaryTriangleHit)) return;
+
     // Sample generator
     SampleGenerator sg = SampleGenerator.create(ipos, gSampleNumber);
+
+    float2 screenUV = float2(ipos) / float2(gFrameDim); 
 
     // Beauty pass color
     float3 surfaceColor = float3(0.0f);
@@ -515,14 +495,47 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
     RayData rayData = RayData.create();
     rayData.direction = rayDir;
+
+    TriangleHit _triangleHit = primaryTriangleHit;
+    ShadingData _shadingData = primaryShadingData;
     
 #if _MAX_RAY_LEVEL != 0
     [loop]
     for(uint rayLevel = 0; rayLevel <= maxRayLevel; rayLevel++) {
+        if(rayLevel > 0) {
+            if(!calcShadingData(_rayDir, _hit, lod, _shadingData, _triangleHit)) continue;
+        }
 #else
-    const float rayLevel = 0;
+        const float rayLevel = 0;
 #endif
-        surfaceColor += calcIlluminance(_rayDir, _hit, _sampleWeight, sg, aov_data, rnd, lod, rayLevel, maxRayLevel);
+
+        surfaceColor += calcIlluminance(_rayDir, _hit, _triangleHit, _shadingData, _sampleWeight, sg, aov_data, rnd, lod, rayLevel, maxRayLevel);
+
+        #if is_valid(gOutOcclusion)
+        if(rayLevel == 0) {
+            float3 rayShadowOrigin = primaryShadingData.posW;
+            if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
+                rayShadowOrigin = gScene.computeShadingPosition(primaryTriangleHit.instanceID, primaryTriangleHit.primitiveIndex, primaryShadingData.posW, 
+                    primaryShadingData.N, primaryTriangleHit.getBarycentricWeights());
+            }
+
+            RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
+            let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
+
+            float pdf;
+            
+            RayDesc ray;
+            ray.Origin = rayShadowOrigin;
+            ray.Direction = normalize(sample_cosine_hemisphere_oriented(rnd.xy, primaryShadingData.N, pdf));
+            ray.TMin = .001f;
+            ray.TMax = 1.0f;
+
+            rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
+            rayShadowQuery.Proceed();
+            aov_data.occlusion += (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 1.0f : 0.0f;
+        }
+        #endif  // gOutOcclusion
+
 #if _MAX_RAY_LEVEL != 0
         if(!_hit.isValid()) break;
     }
@@ -531,11 +544,34 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #ifdef _SHADING_RATE
     }
     surfaceColor /= (float)_SHADING_RATE;
+    #if is_valid(gOutOcclusion)
+        aov_data.occlusion /= (float)_SHADING_RATE;
+    #endif  // gOutOcclusion
 #endif
 
     // Write main channel output color
     gInOutColor[ipos] = float4(min(surfaceColor.r, gColorLimit.r), min(surfaceColor.g, gColorLimit.g), min(surfaceColor.b, gColorLimit.b), 1.0);
-        
+
+    // Calc aov variables
+#if is_valid(gOutPz)
+    {
+    #if is_valid(gDepth)
+        float2 _screenUV = screenUV * 2.0 - float2(1.f);
+        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[ipos].r, 1.0);
+    #else
+        float4 screenP = mul(float4(primaryShadingData.posW, 1.f), gScene.camera.getViewProj());
+    #endif  // gDepth
+        float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
+        aov_data.depth = -(viewP.z / viewP.w);
+    }
+#endif  // gOutPz
+
+#if is_valid(gOutShadows)
+    #ifdef _SHADING_RATE
+        aov_data.shadow /= (float)_SHADING_RATE;
+    #endif
+#endif  // gOutShadows
+
     // Write available AOVs
     writeAOV(ipos, aov_data);
 }

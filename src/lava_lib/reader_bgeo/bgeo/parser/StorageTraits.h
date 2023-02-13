@@ -37,6 +37,16 @@ public:
 };
 
 template <>
+class Traits<fpreal64>
+{
+public:
+    constexpr static storage::Storage StorageId = storage::Fpreal64;
+    constexpr static const char* Name = "fpreal64";
+    typedef fpreal64 Type;
+    constexpr static size_t Size = sizeof(Type);
+};
+
+template <>
 class Traits<int32>
 {
 public:

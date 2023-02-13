@@ -28,13 +28,15 @@ namespace
 const char* storageNameTable[] = {
     "unknown",
     Traits<int32>::Name,
-    Traits<fpreal32>::Name
+    Traits<fpreal32>::Name,
+    Traits<fpreal64>::Name
 };
 
 uint8_t storageSizeTable[] = {
     0,
     Traits<int32>::Size,
-    Traits<fpreal32>::Size
+    Traits<fpreal32>::Size,
+    Traits<fpreal64>::Size
 };
 
 } // anonymous namespace
@@ -49,6 +51,10 @@ Storage toStorage(const char* string)
     else if (storage == Traits<int32>::Name)
     {
         return Traits<int32>::StorageId;
+    }
+    else if (storage == Traits<fpreal64>::Name)
+    {
+        return Traits<fpreal64>::StorageId;
     }
 
     return storage::UnknownStorage;

@@ -11,12 +11,12 @@ struct AOVData {
     static AOVData create()
     {
         AOVData d;
-        d.depth = 1.0;
-        d.position = float3(0.0);
-        d.albedo = float3(0.0);
-        d.shadow = float3(1.0);
-        d.normal = float3(0.0);
-        d.occlusion = 1.0;
+        d.depth = 0.f;
+        d.position = float3(0.f);
+        d.albedo = float3(0.f);
+        d.shadow = float3(0.f);
+        d.normal = float3(0.f);
+        d.occlusion = 0.f;
 
         return d;
     }

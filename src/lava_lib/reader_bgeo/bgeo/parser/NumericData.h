@@ -104,6 +104,13 @@ public:
                 }
             }
         }
+//        else if (storage == storage::Fpreal64)
+//        {
+//            assert(sourceIndex * tupleSize < data.sizeAs<fpreal64>());
+//            // can copy directly
+//            const fpreal64* source = this->data.dataAs<fpreal64>();
+//        }
+
 //        else if (storage == RealStorage64)
 //        {
 //            assert(sourceIndex * tupleSize < data.sizeAs<fpreal64>());
@@ -141,6 +148,13 @@ public:
                        sizeof(fpreal32) * targetTupleSize);
             }
         }
+//        else if (storage == storage::Fpreal64)
+//        {
+//            assert(sourceIndex * tupleSize < data.sizeAs<fpreal64>());
+//            // can copy directly
+//            const fpreal64* source = this->data.dataAs<fpreal64>();
+//        }
+
 //        else if (storage == RealStorage64)
 //        {
 //            assert(sourceIndex * tupleSize < data.sizeAs<fpreal64>());

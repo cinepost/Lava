@@ -13,11 +13,14 @@ class TextureManager;
 class ResourceManager;
 
 const size_t kLtxPageSize = 65536;
+const uint8_t kLtxVersionMajor = 1;
+const uint8_t kLtxVersionMinor = 1;
+const uint8_t kLtxVersionBuild = 2;
 
-const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', ' ', ' ', ' ', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 5,6 used to store major,minor versions
+const unsigned char gLtxFileMagic[12] = {0xAB, 'L', 'T', 'X', '0', '0', '0', 0xBB, '\r', '\n', '\x1A', '\n'};  // indices 4,5,6 used to store major,minor,build versions
 
 struct LTX_Header {
-    unsigned char   magic[12] = {0xAB, 'L', 'T', 'X', ' ', '1', '1', 0xBB, '\r', '\n', '\x1A', '\n'};
+    unsigned char   magic[12];
     time_t          srcLastWriteTime; // Source texture creation time
     uint32_t        width = 0;
     uint32_t        height = 0;
@@ -156,7 +159,7 @@ class dlldecl LTX_Bitmap : public std::enable_shared_from_this<LTX_Bitmap> {
     
  protected:
     bool readPageData (size_t pageNum, void *pData) const;
-    bool readPageData (size_t pageNum, void *pData, FILE *pFile) const;
+    bool readPageData (size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const;
     void readPagesData (std::vector<std::pair<size_t, void*>>& pages, bool unsorted = false) const;
 
     friend class ResourceManager;

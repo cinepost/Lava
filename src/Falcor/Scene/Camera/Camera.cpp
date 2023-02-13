@@ -205,6 +205,7 @@ void Camera::calculateCameraParameters() const {
 
 		mData.viewProjMat = mData.projMat * mData.viewMat;
 		mData.invViewProj = glm::inverse(mData.viewProjMat);
+		mData.invProjMat = glm::inverse(mData.projMat);
 
 		// Extract camera space frustum planes from the VP matrix
 		// See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
@@ -246,6 +247,11 @@ const glm::mat4& Camera::getPrevViewMatrix() const {
 const glm::mat4& Camera::getProjMatrix() const {
 	calculateCameraParameters();
 	return mData.projMat;
+}
+
+const glm::mat4& Camera::getInvProjMatrix() const {
+	calculateCameraParameters();
+	return mData.invProjMat;
 }
 
 const glm::mat4& Camera::getViewProjMatrix() const {

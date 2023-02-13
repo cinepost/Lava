@@ -62,7 +62,8 @@ static_assert(sizeof(PackedStaticVertexData) % 16 == 0, "PackedStaticVertexData 
 namespace {
     // Large scenes are split into multiple BLAS groups in order to reduce build memory usage.
     // The target is max 0.5GB intermediate memory per BLAS group. Note that this is not a strict limit.
-    const size_t kMaxBLASBuildMemory = 1ull << 29;
+    const size_t kMaxBLASBuildMemory = 1ull << 29; // 512mb
+    //const size_t kMaxBLASBuildMemory = 1ull << 27; // 128mb
 
     const std::string kParameterBlockName = "gScene";
     const std::string kGeometryInstanceBufferName = "geometryInstances";

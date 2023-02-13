@@ -34,14 +34,7 @@ list(APPEND SRC_ARGS "-DFALCOR_API_BACKEND=${FALCOR_API_BACKEND}")
 
 message("Using rendering backend API: " ${FALCOR_API_BACKEND})
 
-string( TOLOWER ${DEPS_BUILD_TYPE} deps_build_type )
-if(deps_build_type STREQUAL "release")
-  set(DEPS_BUILD_TYPE "release")
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/release)
-else()
-  set(DEPS_BUILD_TYPE "debug")
-  set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/debug)
-endif()
+set(EXTERNALS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps/${DEPS_BUILD_TYPE})
 
 message("Externals build type: " ${DEPS_BUILD_TYPE})
 

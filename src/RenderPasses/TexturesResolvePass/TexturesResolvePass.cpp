@@ -181,8 +181,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	createMipCalibrationTexture(pContext);
 
 	uint32_t totalPagesToUpdateCount = 0;
-	uint32_t currPagesStartOffset = 0;
-	uint32_t currTextureResolveID = 0; // texture id used to identify texture inside pass. always starts from 0.
+	uint32_t currTextureResolveID = 0; // texture id used to identify texture inside this pass. always starts from 0. nothing to do with real unique texture id or handle
 
 	std::vector<MaterialResolveData> materialsResolveBuffer;
 	std::map<uint32_t, Texture::SharedPtr> texturesMap; // maps real texture ID to textures
@@ -251,16 +250,17 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 
 				auto textureHandle = pMaterial->getTextureHandle(slot);
-				calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, textureHandle, vtexDataBuffer.back());
+				auto currentPagesStartOffset = totalPagesToUpdateCount;
+				calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexDataBuffer.back());
 
 				if(!pTexture->isUDIMTexture()) {
 					if(texturePagesStartMap.size() <= textureID) {
 						texturePagesStartMap.resize(textureID + 1);
 					}
-					texturePagesStartMap[textureID] = currPagesStartOffset;
+					texturePagesStartMap[textureID] = currentPagesStartOffset;
 
 					currTextureResolveID++;
-					currPagesStartOffset += pTexture->sparseDataPagesCount();
+					totalPagesToUpdateCount += pTexture->sparseDataPagesCount();
 					texturesMap[textureID] = pTexture;
 				}
 
@@ -315,18 +315,20 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		uint32_t vtexDataID = vtexDataBuffer.size();
 		vtexDataBuffer.push_back({});
+		
 		auto &vtexData = vtexDataBuffer.back();
+		auto currentPagesStartOffset = totalPagesToUpdateCount;
 
 		LLOG_DBG << "calculating virtual texture data for UDIM tile materialSystem textureHandleID " << std::to_string(materialSystemTextureID);
-		calculateVirtualTextureData(pTexture, currTextureResolveID, currPagesStartOffset, textureHandle, vtexData);
+		calculateVirtualTextureData(pTexture, currTextureResolveID, currentPagesStartOffset, textureHandle, vtexData);
 
 		if(texturePagesStartMap.size() <= textureID) {
 			texturePagesStartMap.resize(textureID + 1);
 		}
-		texturePagesStartMap[textureID] = currPagesStartOffset;
+		texturePagesStartMap[textureID] = currentPagesStartOffset;
 
 		currTextureResolveID++;
-		currPagesStartOffset += pTexture->sparseDataPagesCount();
+		totalPagesToUpdateCount += pTexture->sparseDataPagesCount();
 
 		if(vtexDataIdMapBuffer.size() <= materialSystemTextureID) {
 			vtexDataIdMapBuffer.resize(materialSystemTextureID + 1);
@@ -335,9 +337,6 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 
 		texturesMap[textureID] = pTexture;
 	}
-
-	totalPagesToUpdateCount = currPagesStartOffset;
-	totalPagesToUpdateCount += 16;
 
 	auto pVtexDataBuffer = Buffer::createStructured(mpDevice, sizeof(VirtualTextureData), vtexDataBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, vtexDataBuffer.data());
 	mpVars->setBuffer("virtualTextureDataBuffer", pVtexDataBuffer);
@@ -348,7 +347,7 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 	auto pTextureIdToVtexDataIdBuffer = Buffer::createTyped<uint32_t>(mpDevice, vtexDataIdMapBuffer.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, vtexDataIdMapBuffer.data());
 	mpVars->setBuffer("textureIdToVtexDataIdBuffer", pTextureIdToVtexDataIdBuffer);
 
-	uint32_t resolvedTexturesCount = currTextureResolveID;
+	uint32_t resolvedTexturesCount = currTextureResolveID + 1;
 
 #ifdef _DEBUG
 	printf("Total pages to update for %u textures is %u\n", resolvedTexturesCount, totalPagesToUpdateCount);
@@ -398,7 +397,8 @@ void TexturesResolvePass::execute(RenderContext* pContext, const RenderData& ren
 		// index 'i' is a page index relative to the texture. starts with 0
 		for(uint32_t i = 0; i < texturePagesCount; i++) {
 			if (pOutPagesData[i + pagesStartOffset] != 0) {
-				pageIDs.push_back(i + pagesStartOffset);
+				//pageIDs.push_back(i + pagesStartOffset);
+				pageIDs.push_back(i);
 			}
 		}
 

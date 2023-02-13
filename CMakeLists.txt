@@ -62,13 +62,13 @@ include (cmake/GenerateLavaVersionPython.cmake)
 
 
 # ccache
-include(cmake/CPM.cmake)
+#include(cmake/CPM.cmake)
 
-CPMAddPackage(
-  NAME Ccache.cmake
-  GITHUB_REPOSITORY TheLartians/Ccache.cmake
-  VERSION 1.2
-)
+#CPMAddPackage(
+#  NAME Ccache.cmake
+#  GITHUB_REPOSITORY TheLartians/Ccache.cmake
+#  VERSION 1.2
+#)
 
 # Add folder where are supportive functions
 set( CMAKE_MODULE_PATH 
@@ -88,7 +88,7 @@ set( COPYRIGHT "Copyright (c) 2020 Parovoz" )
 set( IDENTIFIER "com.parovoz" )
 
 # Set python virtualenv for USD
-set( PYTHON_EXECUTABLE "python3.7")
+set( PYTHON_EXECUTABLE "python3.8")
 
 if( APPLE )
   if(POLICY CMP0068)
@@ -104,13 +104,10 @@ elseif(UNIX)
 endif()
 
 # Specify build paths
-set( BUILD_SUBDIR "")
-string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_SUBDIR)
-
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR})
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/lib )
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BUILD_SUBDIR}/bin )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin)
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin )
 
 add_definitions(-DLAVA_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
 
@@ -121,8 +118,7 @@ if (WIN32 OR APPLE)
   endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(WIN32 OR APPLE)
 
-string( TOLOWER ${CMAKE_BUILD_TYPE} build_type )
-if (build_type STREQUAL "debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(-D_DEBUG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 endif ()
@@ -149,7 +145,7 @@ endif ()
 if ( MSVC )
   ADD_DEFINITIONS(/W3)
 elseif ( UNIX ) #(CMAKE_COMPILER_IS_GNUCXX)
-  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -g3 -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
+  ADD_DEFINITIONS(-Wall -fPIC -Wfatal-errors -D_GLIBCXX_USE_CXX11_ABI=0) # -Wno-reorder -pedantic
 else ()
   MESSAGE(FATAL_ERROR "CMakeLists.txt has not been tested/written for your compiler.")
 endif ()
@@ -194,7 +190,7 @@ ADD_CUSTOM_COMMAND(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
            ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
     COMMAND ${CMAKE_COMMAND} -P
-            versionZ.cmake
+            version.cmake
 )
 
 #------------------------------------------

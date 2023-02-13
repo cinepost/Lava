@@ -255,19 +255,24 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   // read data and fill pages
   std::string ltxFilename = pLtxBitmap->getFileName();
   auto pFile = fopen(ltxFilename.c_str(), "rb");
-  std::array<uint8_t, 65536> tmpPage;
+  
+  std::array<uint8_t, kLtxPageSize> tmpPage;
   auto pTmpPageData = tmpPage.data();
 
-  std::vector<VirtualTexturePage*> tailPages;
-  tailPages.reserve(8);
+  std::array<uint8_t, kLtxPageSize> scratchBuffer;
+  auto pScratchBufferData = scratchBuffer.data();
 
-  for( uint32_t page_id: _pageIds ) {
-    const auto& pPage = mSparseDataPages[page_id];
-  
-    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile)) {
+  bool loadTailData = false;
+
+  const auto& texturePages = pTexture->sparseDataPages();
+
+  for( uint32_t pageIndex: _pageIds ) {
+    //const auto& pPage = mSparseDataPages[pageIndex];
+  	const auto& pPage = texturePages[pageIndex];
+
+    if(pLtxBitmap->readPageData(pPage->index(), pTmpPageData, pFile, pScratchBufferData)) {
     	if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
-    		// Push tail pages for separate full mip tail (multiple pages) loading
-    		tailPages.push_back(pPage.get());
+    		loadTailData = true;
     	} else {
     		// Load non-tail texture data page
     		pPage->allocate();
@@ -280,7 +285,7 @@ void TextureManager::loadPages(const Texture::SharedPtr& pTexture, const std::ve
   	}
   }
 
-  mpDevice->getRenderContext()->fillMipTail(pTexture, nullptr);
+  if (loadTailData) mpDevice->getRenderContext()->fillMipTail(pTexture, nullptr);
 
   fclose(pFile);
   pTexture->updateSparseBindInfo();
@@ -314,26 +319,28 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
     std::thread::id thread_id = std::this_thread::get_id();
     auto pContext = pTexture->device()->getRenderContext();
 
-    std::array<uint8_t, 65536> tmpPageData;
+    std::array<uint8_t, kLtxPageSize> tmpPageData;
     auto pTmpPageData = tmpPageData.data();
 
-    // Tail pages reserve
-    std::vector<VirtualTexturePage*> tailPages;
-		tailPages.reserve(8);
+    std::array<uint8_t, kLtxPageSize> scratchBuffer;
+    auto pScratchBufferData = scratchBuffer.data();
+
+    bool loadTailData = false;
+    const auto& texturePages = pTexture->sparseDataPages();
 
 		std::string ltxFilename = pLtxBitmap->getFileName();
 		auto pFile = fopen(ltxFilename.c_str(), "rb");
 
-		for( uint32_t page_id: pageIds ) {
-  		const auto& pPage = mSparseDataPages[page_id];
+		for( uint32_t pageIndex: pageIds ) {
+  		//const auto& pPage = mSparseDataPages[pageIndex];
+  		const auto& pPage = texturePages[pageIndex];
     
   		uint32_t page_index = pPage->index();
 
   		if(!pPage->isResident()) {
-    		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile)) {
+    		if(pLtxBitmap->readPageData(page_index, pTmpPageData, pFile, pScratchBufferData)) {
   				if(pPage->mipLevel() >= pTexture->getMipTailStart()) {
-  					// Push tail pages for separate full mip tail (multiple pages) loading
-  					tailPages.push_back(pPage.get());
+  					loadTailData = true;
   				} else {
   					// Load non-tail texture data page
   					{
@@ -351,11 +358,7 @@ void TextureManager::loadPagesAsync(const Texture::SharedPtr& pTexture, const st
 
 		}
 
-		if((tailPages.size() > 1) || loadForRTX) {
-			// Fill mip tail data
-			LLOG_WRN << "Loading mip tail texture data";
-			pContext->fillMipTail(pTexture, nullptr);
-		}
+		if(loadTailData) pContext->fillMipTail(pTexture, nullptr);
 
 		fclose(pFile);
     return pTexture.get();

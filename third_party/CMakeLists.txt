@@ -243,6 +243,12 @@ else()
     set(BOOST_C_FLAGS "")
   endif()
 
+  if(DEPS_BUILD_TYPE STREQUAL "Debug")
+    set(BOOST_BUILD_TYPE "debug")
+  else()
+    set(BOOST_BUILD_TYPE "release")
+  endif()
+
   ExternalProject_Add ( Boost
     PREFIX ${EXTERNALS_SOURCE_DIR}/${BOOST_PREFIX}
     GIT_REPOSITORY https://github.com/boostorg/boost.git
@@ -259,7 +265,7 @@ else()
       --with-libraries=thread
       --with-libraries=json
       --prefix=<INSTALL_DIR>
-    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${DEPS_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
+    BUILD_COMMAND ./b2 define=_GLIBCXX_USE_CXX11_ABI=0 --build-dir=${EXTERNALS_BINARY_DIR}/boost install link=${BOOST_LINK_STYLE} variant=${BOOST_BUILD_TYPE} threading=multi runtime-link=${BOOST_LINK_STYLE} ${BOOST_CXX_FLAGS} ${BOOST_C_FLAGS}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND ""
     INSTALL_DIR ${EXTERNALS_INSTALL_DIR}
@@ -1246,7 +1252,13 @@ if(NOT DEFINED SLANG_BUILD_TYPE)
 endif()
 
 
-if (SLANG_BUILD_TYPE STREQUAL "Release")
+if(SLANG_BUILD_TYPE STREQUAL "Release")
+  set(SLANG_BUILD_CONFIG release_x64)
+  set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
+elseif(SLANG_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  set(SLANG_BUILD_CONFIG release_x64)
+  set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
+elseif(SLANG_BUILD_TYPE STREQUAL "MinSizeRel")
   set(SLANG_BUILD_CONFIG release_x64)
   set(SLANG_BIN_DIR ${SLANG_RELEASE_BIN_DIR})
 else()

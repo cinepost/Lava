@@ -289,15 +289,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
-	mpRenderGraph->addEdge("DepthPass.depth", "ShadingPass.depth");
+	mpRenderGraph->addEdge("VBufferPass.depth", "ShadingPass.depth");
 	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
 	
 #else
 	// Deferred lighting pass
-	mpRenderGraph->addEdge("DepthPass.depth", "ShadingPass.depth");
-	mpRenderGraph->addEdge("VBufferPass.vbuffer", "ShadingPass.vbuffer");
+	mpRenderGraph->addEdge("VBufferPass.depth",    "ShadingPass.depth");
+	mpRenderGraph->addEdge("VBufferPass.vbuffer",  "ShadingPass.vbuffer");
 	mpRenderGraph->addEdge("VBufferPass.texGrads", "ShadingPass.texGrads");
-	mpRenderGraph->addEdge("SkyBoxPass.target", "ShadingPass.color");
+	mpRenderGraph->addEdge("SkyBoxPass.target",    "ShadingPass.color");
 
 #endif
 
@@ -338,7 +338,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
-						mpRenderGraph->addEdge("DepthPass.depth", pPlane->accumulationPassInputName());
+						mpRenderGraph->addEdge("ShadingPass.Pz", pPlane->accumulationPassInputName());
 					}
 				}
 				break;
@@ -642,6 +642,8 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	if (pScene) {
 		_mpScene = pScene.get();
 	}
+
+	mpDevice->getRenderContext()->flush(true);
 }
 
 void Renderer::renderSample() {

@@ -54,9 +54,6 @@ namespace Falcor {
 
 namespace oiio = OIIO;
 
-static const uint8_t kLtxVersionMajor = 1;
-static const uint8_t kLtxVersionMinor = 2;
-
 static const size_t kLtxHeaderOffset = sizeof(LTX_Header);
 
 static bool isPowerOfTwo(int x) {
@@ -105,17 +102,31 @@ static bool checkMagic(const unsigned char* magic, bool strict) {
 	if(match != 0) return false;
 
 	if (strict) {
-		if( magic[5] != 48 + static_cast<unsigned char>(kLtxVersionMajor)) return false;
-		if( magic[6] != 48 + static_cast<unsigned char>(kLtxVersionMinor)) return false;
+		if( magic[4] != 48 + static_cast<unsigned char>(kLtxVersionMajor)) {
+			LLOG_ERR << "LTX major version mismatch.";
+			return false;
+		}
+		if( magic[5] != 48 + static_cast<unsigned char>(kLtxVersionMinor)) {
+			LLOG_ERR << "LTX minor version mismatch.";
+			return false;
+		}
+		if( magic[6] != 48 + static_cast<unsigned char>(kLtxVersionBuild)) {
+			LLOG_ERR << "LTX build version mismatch.";
+			return false;
+		}
 	}
 
-	if(48 <= magic[5] && magic[5] <= 57 && 48 <= magic[6] && magic[6] <= 57) return true;
+	if(	48 <= magic[4] && magic[4] <= 57 && 
+		48 <= magic[5] && magic[5] <= 57 && 
+		48 <= magic[6] && magic[6] <= 57 ) return true;
 
 	return false;
 }
 
 std::string LTX_Header::versionString() const {
-  return std::to_string(magic[5]) + "." + std::to_string(magic[6]);
+	std::ostringstream stringStream;
+  	stringStream << magic[4] << "." << magic[5] << "." << magic[6];
+  	return stringStream.str();
 }
 
 bool LTX_Bitmap::checkFileMagic(const fs::path& path, bool strict) {
@@ -124,24 +135,29 @@ bool LTX_Bitmap::checkFileMagic(const fs::path& path, bool strict) {
 
 bool LTX_Bitmap::checkFileMagic(const std::string& filename, bool strict) {
 	std::ifstream file(filename, std::ios::in | std::ios::binary);
-	if(!file.is_open()) return false;
-
+	
 	unsigned char magic[12];
 	file.read((char *)&magic, 12);
 	file.seekg(0, file.beg);
-	file.close();
+	if(!file) {
+		LLOG_ERR << "Error reading LTX header magic from file " << filename;
+		file.close();
+		return false;
+	}
 
-	if (!checkMagic(magic, strict)) return false;
-	return true;       
+	file.close();
+	return checkMagic(magic, strict);
 }
 
 static void makeMagic(unsigned char *magic) {
 	static_assert((0 <= kLtxVersionMajor) && (kLtxVersionMajor <= 9));
 	static_assert((0 <= kLtxVersionMinor) && (kLtxVersionMinor <= 9));
+	static_assert((0 <= kLtxVersionBuild) && (kLtxVersionBuild <= 9));
 
 	memcpy(magic, gLtxFileMagic, 12);
-	magic[5] = 48 + static_cast<unsigned char>(kLtxVersionMajor);
-	magic[6] = 48 + static_cast<unsigned char>(kLtxVersionMinor);
+	magic[4] = 48 + static_cast<unsigned char>(kLtxVersionMajor);
+	magic[5] = 48 + static_cast<unsigned char>(kLtxVersionMinor);
+	magic[6] = 48 + static_cast<unsigned char>(kLtxVersionBuild);
 }
 
 LTX_Bitmap::SharedConstPtr LTX_Bitmap::createFromFile(std::shared_ptr<Device> pDevice, const std::string& filename, bool isTopDown) {
@@ -190,12 +206,19 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 	switch (nchannels) {
 		case 1:
 			switch (BASETYPE(baseType)) {
+				//case BASETYPE::UCHAR:
 				case BASETYPE::UINT8:
 					return ResourceFormat::R8Unorm;
+				case BASETYPE::INT8:
+					return ResourceFormat::R8Snorm;
 				case BASETYPE::UINT16:
 					return ResourceFormat::R16Unorm;
+				case BASETYPE::INT16:
+					return ResourceFormat::R16Snorm;
 				case BASETYPE::UINT32:
 					return ResourceFormat::R32Uint;
+				case BASETYPE::INT32:
+					return ResourceFormat::R32Int;
 				case BASETYPE::HALF:
 					return ResourceFormat::R16Float;
 				case BASETYPE::FLOAT:
@@ -209,10 +232,16 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 			switch (BASETYPE(baseType)) {
 				case BASETYPE::UINT8:
 					return ResourceFormat::RG8Unorm;
+				case BASETYPE::INT8:
+					return ResourceFormat::RG8Snorm;
 				case BASETYPE::UINT16:
 					return ResourceFormat::RG16Uint;
+				case BASETYPE::INT16:
+					return ResourceFormat::RG16Snorm;
 				case BASETYPE::UINT32:
 					return ResourceFormat::RG32Uint;
+				case BASETYPE::INT32:
+					return ResourceFormat::RG32Int;
 				case BASETYPE::HALF:
 					return ResourceFormat::RG16Float;
 				case BASETYPE::FLOAT:
@@ -226,10 +255,16 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 			switch (BASETYPE(baseType)) {
 				case BASETYPE::UINT8:
 					return ResourceFormat::RGB8Unorm;
+				case BASETYPE::INT8:
+					return ResourceFormat::RGB8Snorm;
 				case BASETYPE::UINT16:
 					return ResourceFormat::RGB16Unorm;
+				case BASETYPE::INT16:
+					return ResourceFormat::RGB16Snorm;
 				case BASETYPE::UINT32:
 					return ResourceFormat::RGB32Uint;
+				case BASETYPE::INT32:
+					return ResourceFormat::RGB32Int;
 				case BASETYPE::HALF:
 					return ResourceFormat::RGB16Float;
 				case BASETYPE::FLOAT:
@@ -244,10 +279,16 @@ static ResourceFormat getFormatOIIO(unsigned char baseType, int nchannels) {
 			switch (BASETYPE(baseType)) {
 				case BASETYPE::UINT8:
 					return ResourceFormat::RGBA8Unorm;
+				case BASETYPE::INT8:
+					return ResourceFormat::RGBA8Snorm;
 				case BASETYPE::UINT16:
 					return ResourceFormat::RGBA16Uint;
+				case BASETYPE::INT16:
+					return ResourceFormat::RGBA16Snorm;
 				case BASETYPE::UINT32:
 					return ResourceFormat::RGBA32Uint;
+				case BASETYPE::INT32:
+					return ResourceFormat::RGBA32Int;
 				case BASETYPE::HALF:
 					return ResourceFormat::RGBA16Float;
 				case BASETYPE::FLOAT:
@@ -268,12 +309,20 @@ static ResourceFormat getDestFormat(const ResourceFormat &format) {
 	switch (format) {
 		case ResourceFormat::RGB8Unorm:
 			return ResourceFormat::RGBA8Unorm;  // this should force 24bit to 32bit conversion
+		case ResourceFormat::RGB8Snorm:
+			return ResourceFormat::RGBA8Snorm;  // this should force 24bit to 32bit conversion
 		case ResourceFormat::RGB16Uint:
 			return ResourceFormat::RGBA16Uint;  // this should force 48bit to 64bit conversion
+		case ResourceFormat::RGB16Int:
+			return ResourceFormat::RGBA16Int;  // this should force 48bit to 64bit conversion
 		case ResourceFormat::RGB32Uint:
 			return ResourceFormat::RGBA32Uint;  // this should force 96bit to 128bit conversion
+		case ResourceFormat::RGB32Int:
+			return ResourceFormat::RGBA32Int;  // this should force 96bit to 128bit conversion
 		case ResourceFormat::RGB16Unorm:
 			return ResourceFormat::RGBA16Unorm; // this should force 48bit to 64bit conversion
+		case ResourceFormat::RGB16Snorm:
+			return ResourceFormat::RGBA16Snorm; // this should force 48bit to 64bit conversion
 		case ResourceFormat::RGB16Float:
 			return ResourceFormat::RGBA16Float; // this should force 48bit to 64bit float conversion
 		case ResourceFormat::RGB32Float:
@@ -313,26 +362,35 @@ static uint3 getPageDims(const ResourceFormat &format) {
 static LTX_MipInfo calcMipInfo(const uint3& imgDims, const ResourceFormat &format) {
 	LTX_MipInfo info;
 
+	uint32_t bytesPerPixel = getFormatBytesPerBlock(format);
+
 	info.mipLevelsCount = Texture::getMaxMipCount(imgDims);
-	info.mipTailStart = info.mipLevelsCount;
+	info.mipTailStart = info.mipLevelsCount - 1; // Default is last mip level
 	info.pageDims = getPageDims(format);
 	info.mipLevelsDims = std::vector<uint3>(info.mipLevelsCount);
 
-	// pre calculate image dimensions for each mip level (mipLevelDims)
+	// Pre calculate image dimensions for each mip level (mipLevelDims)
 	for( uint mipLevel = 0; mipLevel < info.mipLevelsCount; mipLevel++) {
 		info.mipLevelsDims[mipLevel].x = std::max(uint32_t(imgDims.x / pow(2, mipLevel)), 1u);
 		info.mipLevelsDims[mipLevel].y = std::max(uint32_t(imgDims.y / pow(2, mipLevel)), 1u);
 		info.mipLevelsDims[mipLevel].z = 1u;//std::max(imgDims.z / pow(2, mipLevel), 1);
 	}
 
-	// find mip tail starting mip level
-	uint8_t cMipLevel = 0;
-	for( auto const& mipDims: info.mipLevelsDims) {
-		if( (info.pageDims.x > mipDims.x) && (info.pageDims.y > mipDims.y)) {
-			info.mipTailStart = cMipLevel;
-			break;
+	// Find mip tail starting mip level. This and all smaller layers (higher indices) combined memory footprint should be equal or less than kLtxPageSize 
+	uint8_t mipTailStart = info.mipLevelsCount - 1;
+	for( uint8_t currentMipLevel = 0; currentMipLevel < info.mipLevelsCount; currentMipLevel++) {
+		// Find cumulative mip levels footprint
+		uint32_t currentMemCumulativeFootprint = 0;
+		for(uint8_t i = currentMipLevel; i < info.mipLevelsCount; i++) {
+			auto const& mipDims = info.mipLevelsDims[i];
+			currentMemCumulativeFootprint += mipDims.x * mipDims.y * bytesPerPixel;
 		}
-		cMipLevel += 1;
+
+		if (currentMemCumulativeFootprint <= kLtxPageSize) {
+			// Mip tail start level found
+			info.mipTailStart = currentMipLevel;
+			return info;
+		}
 	}
 
 	return info;
@@ -499,13 +557,14 @@ bool LTX_Bitmap::convertToLtxFile(std::shared_ptr<Device> pDevice, const std::st
 bool LTX_Bitmap::readPageData(size_t pageNum, void *pData) const {
 	bool result = false;
 	auto pFile = fopen(mFilePath.string().c_str(), "rb");
-	result = readPageData(pageNum, pData, pFile);
+	std::array<uint8_t, kLtxPageSize> scratchBuffer;
+	result = readPageData(pageNum, pData, pFile, scratchBuffer.data());
 	fclose(pFile);
 	return result;
 }
 
-// This version uses previously opened file. On large scenes this saves us at least 50% time
-bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
+// This version uses previously opened file. On large scenes this saves us approx. 50% of texture pages data loading time
+bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile, uint8_t *pScratchBuffer) const {
 	assert(pFile);
 
 	if (pageNum >= mHeader.pagesCount ) {
@@ -522,17 +581,15 @@ bool LTX_Bitmap::readPageData(size_t pageNum, void *pData, FILE *pFile) const {
 		}
 	} else {
 		// read compressed page data
-		std::vector<unsigned char> tmp(kLtxPageSize);
-
 		size_t page_data_offset = mHeader.dataOffset + mCompressedPageDataOffset[pageNum];
 
 		fseek(pFile, page_data_offset, SEEK_SET);
-		fread(tmp.data(), 1, mCompressedPageDataSize[pageNum], pFile);
+		fread(pScratchBuffer, 1, mCompressedPageDataSize[pageNum], pFile);
 
 		int nbytes = 0;
 
-		//nbytes = blosc_decompress(tmp.data(), pData, kLtxPageSize);
-		nbytes = blosc_decompress_ctx(tmp.data(), pData, kLtxPageSize, 1);
+		//nbytes = blosc_decompress(pScratchBuffer, pData, kLtxPageSize);
+		nbytes = blosc_decompress_ctx(pScratchBuffer, pData, kLtxPageSize, 1);
 		if(nbytes < 0) {
 			LLOG_ERR << "Error decompressing page " << std::to_string(pageNum) << "!";
 			return false;

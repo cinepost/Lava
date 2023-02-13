@@ -35,18 +35,21 @@ namespace {
 
     const std::string kInputColor = "color";
     const std::string kInputVBuffer = "vbuffer";
+    const std::string kInputDepth = "depth";
     const std::string kInputTexGrads = "texGrads";
     const std::string kInputMotionVectors = "mvec";
 
     const std::string kShaderModel = "6_5";
 
     const ChannelList kExtraInputChannels = {
+        { kInputDepth,              "gDepth",                   "Depth buffer",      true /* optional */, ResourceFormat::Unknown },
         { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */, ResourceFormat::Unknown },
         //{ kInputMotionVectors,      "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
     };
 
     const ChannelList kExtraOutputChannels = {
-        { "posW",             "gOutPosition",       "World position buffer",         true /* optional */, ResourceFormat::RGBA32Float },
+        { "Pz",               "gOutPz",             "Shading depth",                 true /* optional */, ResourceFormat::R32Float },
+        { "posW",             "gOutPosition",       "Shading position",              true /* optional */, ResourceFormat::RGBA32Float },
         { "albedo",           "gOutAlbedo",         "Albedo color buffer",           true /* optional */, ResourceFormat::RGBA16Float },
         { "normals",          "gOutNormals",        "Normals buffer",                true /* optional */, ResourceFormat::RGBA16Float },
         { "shadows",          "gOutShadows",        "Shadows buffer",                true /* optional */, ResourceFormat::RGBA16Float },

@@ -1,7 +1,5 @@
 set(DEPS_DIR "${EXTERNALS_INSTALL_DIR}/")
 
-set(BACKEND_TYPE Vulkan)
-
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
 )
@@ -109,7 +107,7 @@ if(ZLIB_FOUND)
 endif()
 
 if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
-  if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set( ZLIB_LIBRARY ${ZLIB_LIBRARY_DBG} )
   else()
     set( ZLIB_LIBRARY ${ZLIB_LIBRARY_RELEASE} )
@@ -129,11 +127,6 @@ find_package( OpenEXR ${EXTERNAL_OPENEXR_VERSION} EXACT REQUIRED )
 # OpenImageIO
 set(OPENIMAGEIO_ROOT ${DEPS_DIR})
 find_package( OpenImageIO ${EXTERNAL_OIIO_VERSION} EXACT REQUIRED )
-if (OpenImageIO_FOUND)
-    message( "OpenImageIO root: ${OPENIMAGEIO_ROOT}")   
-    message( "OpenImageIO version: ${OpenImageIO_VERSION}" )
-    message( "OpenImageIO libs: ${OPENIMAGEIO_LIBRARIES}")
-endif()
 include_directories( ${OPENIMAGEIO_INCLUDES} )
 
 # Use FindVulkan module added with CMAKE 3.7
@@ -210,14 +203,6 @@ if(USE_MEGALIB)
         PUBLIC
             mega_lib
             stdc++fs
-            #OpenSSL::SSL
-            #${SLANG_LIBRARY}
-            #${Vulkan_LIBRARY}
-            #${GTK3_LIBRARIES}
-            #${TIFF_LIBRARIES}
-            #${ZLIB_LIBRARY}
-            #${LZ4_LIBRARY}
-            #Python3::Python
     )
 else()
     add_definitions( -DBOOST_LOG_DYN_LINK )
@@ -244,7 +229,6 @@ else()
             ${LZ4_LIBRARY}
             Python3::Python
             FreeImage::FreeImage
-            #${FreeImage_LIBRARIES}
             ${OIDN_LIBRARIES}
     )
 endif()

@@ -536,7 +536,7 @@ bool Session::cmdRaytrace() {
 	std::vector<uint8_t> textureData;
 
     // Frame rendering
-
+	LLOG_INF << "Rendering image started...";
 	setUpCamera(mpRenderer->currentCamera());
     for(const auto& tile: tiles) {
     	LLOG_DBG << "Rendering " << to_string(tile);
@@ -571,7 +571,8 @@ bool Session::cmdRaytrace() {
 			}
 		}
 
-		LLOG_DBG << "Rendering image samples done !";
+		mpRenderer->device()->getRenderContext()->flush(true);
+		LLOG_INF << "Rendering image done !";
 
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);
 		// Send image region

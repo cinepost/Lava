@@ -4,10 +4,14 @@ message("Render passes build dir: ${PASS_LIBRARY_OUTPUT_DIRECTORY}")
 
 add_definitions(-DPROJECT_DIR="${CMAKE_SOURCE_DIR}")
 
+# Python
+find_package( Python3 REQUIRED COMPONENTS Development )
+
 include_directories( 
     ${EXTERNALS_INSTALL_DIR}
-
+    ${Python3_INCLUDE_DIRS}
 )
+
 # external passes (can also be made built-in)
 add_definitions(-DBUILD_DEPTH_PASS=TRUE)
 add_definitions(-DBUILD_GAUSSIAN_PASS=TRUE)

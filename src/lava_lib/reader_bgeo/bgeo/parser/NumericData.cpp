@@ -233,6 +233,7 @@ void NumericData::load(UT_JSONParser &parser)
         else if (key == "rawpagedata")
         {
             if (storage != storage::Fpreal32 &&
+                storage != storage::Fpreal64 &&
                 storage != storage::Int32)
             {
                 std::cerr << "Warning: unsupported format " << toString(storage)
@@ -275,6 +276,10 @@ void NumericData::load(UT_JSONParser &parser)
             if (storage == storage::Fpreal32)
             {
                 handle.reset(new TupleFlattener<fpreal32>(data));
+            }
+            else if (storage == storage::Fpreal64)
+            {
+                handle.reset(new TupleFlattener<fpreal64>(data));
             }
             else if (storage == storage::Int32)
             {

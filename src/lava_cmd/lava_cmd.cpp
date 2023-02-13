@@ -148,7 +148,6 @@ int main(int argc, char** argv){
     std::vector<std::string> inputFilenames;
     po::options_description input("Input");
     input.add_options()
-      ("stdin,C", po::bool_switch(&stdin_mode), "stdin compatibility mode")
       ("echo-input,e", po::bool_switch(&echo_input), "Echo input scene")
       ("input-files,f", po::value< std::vector<std::string> >(&inputFilenames), "Input files")
       ;
@@ -226,11 +225,10 @@ int main(int argc, char** argv){
       app_config.set<bool>("fconv", true);
     }
 
-    // Early termination
-    if(!vm.count("input-files") && !stdin_mode) {
-      std::cout << "No input (scene) specified!\n";
-      exit(EXIT_SUCCESS);
-    }
+    // Early termination ...
+
+    // ---------------------
+    
 
     // Populate Renderer_IO_Registry with internal and external scene translators
     SceneReadersRegistry::getInstance().addReader(
@@ -263,7 +261,7 @@ int main(int argc, char** argv){
 
     Renderer::SharedPtr pRenderer = Renderer::create(pDevice);
 
-    if (vm.count("input-files") && !stdin_mode) {
+    if (vm.count("input-files")) {
       // Reading scenes from files...
       for (const std::string& inputFilename: inputFilenames) {
         std::ifstream in_file(inputFilename, std::ifstream::binary);

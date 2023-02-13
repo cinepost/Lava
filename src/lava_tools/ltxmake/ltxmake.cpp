@@ -130,7 +130,7 @@ int main(int argc, char** argv){
     }
 
     if (vm.count("version")) {
-      std::cout << "Ltxmake, version " << lava::versionString() << "\n";
+      std::cout << "Ltxmake, version: " << lava::versionString() << "\n";
       exit(EXIT_SUCCESS);
     }
 
@@ -212,7 +212,7 @@ int main(int argc, char** argv){
 
           std::cout << "Data page size: "  << std::to_string(header.pageDataSize) << " bytes" << std::endl;
 
-          std::cout << "Mip tail start: "  << std::to_string(header.mipTailStart) << std::endl;
+          std::cout << "Mip tail starts at level: "  << std::to_string(header.mipTailStart) << std::endl;
 
           for (uint mipLevel = 0; mipLevel < header.mipLevelsCount; mipLevel++) {
             uint32_t numPagesInMipLevel = (mipLevel == (header.mipLevelsCount-1)) ? 1 : (header.mipBases[mipLevel + 1] - header.mipBases[mipLevel]);

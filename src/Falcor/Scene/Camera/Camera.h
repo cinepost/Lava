@@ -214,6 +214,10 @@ public:
     */
     const glm::mat4& getProjMatrix() const;
 
+    /** Get the inverse projection matrix.
+    */
+    const glm::mat4& getInvProjMatrix() const;
+
     /** Get the view-projection matrix.
     */
     const glm::mat4& getViewProjMatrix() const;

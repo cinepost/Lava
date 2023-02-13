@@ -26,6 +26,7 @@ enum Storage
     UnknownStorage = 0,
     Int32,
     Fpreal32,
+    Fpreal64,
     NumStorage,
 };
 

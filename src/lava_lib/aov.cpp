@@ -91,7 +91,7 @@ bool AOVPlane::getProcessedImageData(uint8_t* pData) const {
     auto start = std::chrono::high_resolution_clock::now();
 
     if (!mpInternalRenderGraph || mProcessedPassOutputName.empty() || !mpInternalRenderGraph->isGraphOutput(mProcessedPassOutputName)) {
-        LLOG_WRN << "No AOV plane " << mInfo.name << " post effects exist. Reading raw image data.";
+        LLOG_DBG << "No AOV plane " << mInfo.name << " post effects exist. Reading raw image data.";
         return getImageData(pData);
     }
 
@@ -274,6 +274,17 @@ OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContex
 
     mpInternalRenderGraph->addPass(mpDenoiserPass, denoiserPassName);
     mpInternalRenderGraph->addEdge(mProcessedPassOutputName, denoiserPassName + ".input");
+
+    // Auxiliary albedo and normal
+    {
+        auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+            auto pTex = pResource ? pResource->asTexture() : nullptr;
+            if(pTex) {
+                mpImageLoaderPass->setSourceTexture(pTex);
+            } else {
+                LLOG_WRN << "No accumulation pass texture exist for processing !";
+            }
+    }
 
     mProcessedPassOutputName = denoiserPassName + ".output";
     mpInternalRenderGraph->markOutput(mProcessedPassOutputName);

@@ -241,20 +241,18 @@ struct MaterialSystem
         \return Sampled color.
     */
     float4 sampleTexture<L:ITextureSampler>(const TextureHandle handle, SamplerState s, const float2 uv, const float4 uniformValue, L lod) {
-        
         switch (handle.getMode()) {
             case TextureHandle::Mode::Texture:
                 return lod.sampleTexture(materialTextures[handle.getTextureID()], s, float2(uv.x , 1.0f - uv.y));
             case TextureHandle::Mode::Uniform:
                 return uniformValue;
             case TextureHandle::Mode::UDIM_Texture:
+                //return float4(1.0, 0.1, 0.5, 1.0);
+
                 float2 udim_uv = float2(uv.x - floor(uv.x), 1.0f - (uv.y - floor(uv.y)));
                 uint tileID = udimTextureTilesTable[handle.udimID * 100 + (uint)floor(uv.x) + (uint)floor(uv.y) * 10];
-                //return float4(tileID, 0, 0, 1);
-
                 //ExplicitLodTextureSampler explicitLOD = { 4.0 };
                 //return explicitLOD.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
-                
                 return lod.sampleTexture(materialTextures[tileID], udimTileSampler, udim_uv);
             default:
                 return float4(1.0f, 0.f, 0.f, 1.f);
