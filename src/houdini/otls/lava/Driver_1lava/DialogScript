@@ -998,6 +998,27 @@
                 parmtag { "script_callback_language" "python" }
             }
             parm {
+                name    "lv_quickplane_emission"
+                label   "Emission"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_emission"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_emission == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+            
+            parm {
                 name    "lv_quickplane_shadow"
                 label   "Shadow"
                 type    toggle

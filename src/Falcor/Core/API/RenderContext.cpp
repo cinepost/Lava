@@ -391,15 +391,15 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     blitData.pPass->addDefine("FORMAT_TYPE", std::to_string(formatType));
     blitData.pPass->addDefine("PIXEL_STRIDE_BYTES", std::to_string(outputPixelStrideBytes));
 
-    LLOG_WRN << "DST INT " << ( isIntegerFormat(dstFormat) ? "1" : "0");
-    LLOG_WRN << "DST FORMAT " << to_string(dstFormat);
-    LLOG_WRN << "SAMPLE COUNT " << std::to_string(sampleCount);
-    LLOG_WRN << "PIXEL_STRIDE_BYTES " << std::to_string(outputPixelStrideBytes);
-    LLOG_WRN << "FORMAT_TYPE " << std::to_string(formatType);
+    LLOG_TRC << "DST INT " << ( isIntegerFormat(dstFormat) ? "1" : "0");
+    LLOG_TRC << "DST FORMAT " << to_string(dstFormat);
+    LLOG_TRC << "SAMPLE COUNT " << std::to_string(sampleCount);
+    LLOG_TRC << "PIXEL_STRIDE_BYTES " << std::to_string(outputPixelStrideBytes);
+    LLOG_TRC << "FORMAT_TYPE " << std::to_string(formatType);
 
     if (complexBlit) {
 
-        LLOG_WRN << "complexBlit";
+        LLOG_DBG << "complexBlit";
         assert(sampleCount <= 1);
 
         Sampler::SharedPtr usedSampler[4];
@@ -424,7 +424,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
             }
         }
     } else {
-        LLOG_WRN << "non complexBlit";
+        LLOG_DBG << "non complexBlit";
         blitData.pPass->getVars()->setSampler("gSampler", (filter == Sampler::Filter::Linear) ? blitData.pLinearSampler : blitData.pPointSampler);
     }
     
@@ -452,7 +452,7 @@ void RenderContext::blitToBuffer(const ShaderResourceView::SharedPtr& pSrc, cons
     blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
     blitData.pPass->getVars()->setBuffer(blitData.buffBindLoc, pBuffer);
     
-    LLOG_WRN << "blitToBuffer::execute()";
+    LLOG_TRC << "blitToBuffer::execute()";
     blitData.pPass->execute(this, dstSize.x, dstSize.y);
 
     // Release the resources we bound

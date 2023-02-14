@@ -377,6 +377,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 					}
 				}
 				break;
+			case AOVBuiltinName::EMISSION:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
+						mpRenderGraph->addEdge("ShadingPass.emission", pPlane->accumulationPassInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::OCCLUSION:
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);

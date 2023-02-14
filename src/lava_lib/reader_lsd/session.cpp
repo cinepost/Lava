@@ -571,7 +571,7 @@ bool Session::cmdRaytrace() {
 			}
 		}
 
-		mpRenderer->device()->getRenderContext()->flush(true);
+		mpRenderer->device()->getRenderContext()->flush(false);
 		LLOG_INF << "Rendering image done !";
 
 		LLOG_DBG << "Sending MAIN output " << std::string(pMainAOVPlane->name()) << " data to image handle " << std::to_string(hImage);

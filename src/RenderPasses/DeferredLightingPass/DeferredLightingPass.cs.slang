@@ -37,6 +37,7 @@ Texture2D<float4> gTextureGrads;
 RasterizerOrderedTexture2D<float>  gOutPz;
 RasterizerOrderedTexture2D<float4> gOutPosition;
 RasterizerOrderedTexture2D<float4> gOutAlbedo;
+RasterizerOrderedTexture2D<float4> gOutEmission;
 RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
@@ -81,6 +82,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOutAlbedo)
         gOutAlbedo[ipos] = float4(d.albedo, .0);
 #endif  // gOutAlbedo
+
+#if is_valid(gOutEmission)
+        gOutEmission[ipos] = float4(d.emission, .0);
+#endif  // gOutEmission
 
 #if is_valid(gOutNormals)
         gOutNormals[ipos] = float4(d.normal, .0f);
@@ -565,6 +570,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         aov_data.depth = -(viewP.z / viewP.w);
     }
 #endif  // gOutPz
+
+#if is_valid(gOutEmission)
+    {
+        let bsdf = gScene.materials.getBSDF(primaryShadingData, lod);
+        aov_data.emission = bsdf.getProperties(primaryShadingData).emission;
+    }
+#endif  // gOutEmission
 
 #if is_valid(gOutShadows)
     #ifdef _SHADING_RATE

@@ -79,7 +79,7 @@ bool AOVPlane::getTextureData(Texture* pTexture, uint8_t* pData) const {
         // Requested and available resource formats are the same
         pTexture->readTextureData(0, 0, pData);
     } else {
-        LLOG_WRN << "Do blit !";
+        LLOG_DBG << "Do blit !";
         // Requested and available resource formats are different. Do conversion/blit here
         pTexture->readConvertedTextureData(0, 0, pData, mInfo.format);
     }
@@ -389,6 +389,7 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::Op_Id)) return AOVBuiltinName::Op_Id;
     if(str == to_string(AOVBuiltinName::CRYPTOMATTE_MAT)) return AOVBuiltinName::CRYPTOMATTE_MAT;
     if(str == to_string(AOVBuiltinName::CRYPTOMATTE_OBJ)) return AOVBuiltinName::CRYPTOMATTE_OBJ;
+    if(str == to_string(AOVBuiltinName::EMISSION)) return AOVBuiltinName::EMISSION;
 
     return AOVBuiltinName::UNKNOWN;
 }
