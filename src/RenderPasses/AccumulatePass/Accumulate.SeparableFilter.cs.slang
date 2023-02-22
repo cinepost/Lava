@@ -1,0 +1,196 @@
+/***************************************************************************
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+
+/** Temporal accumulation render pass.
+
+    pass.
+*/
+
+#define DO_EXPAND(VAL)  VAL ## 1
+#define EXPAND(VAL)     DO_EXPAND(VAL)
+
+cbuffer PerFrameCB
+{
+    uint2   gResolution;
+    uint2   gFilterSize;            // Filter size in pixels
+    uint2   gKernelTextureSize;     // Kernel texture size in texels
+    float2  gSampleDistanceLocal;   // Uniform sample distance from pixel center (rasterizer input only)
+    float2  gMaxSampleDistance;     // Maximum sample distance from cetral pixel center
+}
+
+#define is_valid(name) (is_valid_##name != 0)
+
+// Input data to accumulate and accumulated output.
+Texture2D<float4>   gInputSamplePlane;
+
+// Optional inputs
+Texture2D<float>    gKernelTexture;   // optional kernel texture
+Texture2D<float2>   gSampleDistances; // optional per-pixel sample distances
+
+// Ouput sample plane
+RWTexture2D<float4> gOutputSamplePlane;
+
+SamplerState gImageSampler;
+SamplerState gKernelSampler;
+
+
+/** Horizontal filtering pass.
+*/
+[numthreads(16, 16, 1)]
+void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadId.xy >= gResolution)) return;
+    const uint2 pixelPos = dispatchThreadId.xy;
+    float2 currentSampleDistance = float2(0.f);
+
+    // Central sample
+    float4 s = gInputSamplePlane[pixelPos];
+
+    //currentSampleDistance.x = abs(gSampleDistanceLocal.x);
+    //currentSampleDistance.y = abs(gSampleDistanceLocal.y);
+    //if(any(currentSampleDistance >= gMaxSampleDistance)) s = float4(0.f);
+
+    #if defined(_FILTER_HALF_SIZE_H) && (EXPAND(_FILTER_HALF_SIZE_H) > 0)
+    const uint2 pixelPosF = float2(pixelPos);
+    const int2 pixelPosI = int2(pixelPos);
+
+    int2 pixelPosR;
+    float W = 1.f;
+
+    // First half
+    [[unroll]]
+    for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
+        pixelPosR = pixelPos + int2(i, 0);
+        
+        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
+
+        currentSampleDistance.x = abs(float(i) - gSampleDistanceLocal.x);
+        if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
+
+        s += gInputSamplePlane[pixelPosR];
+        W += 1.f;
+
+        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
+    }
+
+    // Second half
+    [[unroll]]
+    for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
+        pixelPosR = pixelPos - int2(i, 0);
+        
+        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
+
+        currentSampleDistance.x = abs(float(i) + gSampleDistanceLocal.x);
+        if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
+
+        s += gInputSamplePlane[pixelPosR];
+        W += 1.f;
+
+        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
+    }
+
+    s /= W;
+    #endif
+
+    // Write filtered data
+    gOutputSamplePlane[pixelPos] = s;// + float4(1.f, 0.f, 0.f, 1.f);
+}
+
+/** Vertical filtering pass.
+*/
+[numthreads(16, 16, 1)]
+void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadId.xy >= gResolution)) return;
+    const uint2 pixelPos = dispatchThreadId.xy;
+    float2 currentSampleDistance = float2(0.f);
+
+    // Central sample
+    float4 s = gInputSamplePlane[pixelPos];
+
+    #if defined(_FILTER_HALF_SIZE_V) && (EXPAND(_FILTER_HALF_SIZE_V) > 0)
+    const uint2 pixelPosF = float2(pixelPos);
+    const int2 pixelPosI = int2(pixelPos);
+
+    int2 pixelPosR;
+    float W = 1.f;
+
+    // First half
+    [[unroll]]
+    for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
+        pixelPosR = pixelPos + int2(0, i);
+        
+        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
+        
+        currentSampleDistance.y = abs(float(i) + gSampleDistanceLocal.y);
+        if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
+
+        s += gInputSamplePlane[pixelPosR];
+        W += 1.f;
+
+        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
+    }
+
+    // Second half
+    [[unroll]]
+    for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
+        pixelPosR = pixelPos - int2(0, i);
+        
+        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
+        
+        currentSampleDistance.y = abs(float(i) - gSampleDistanceLocal.y);
+        if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
+
+        s += gInputSamplePlane[pixelPosR];
+        W += 1.f;
+
+        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
+    }
+
+    s /= W;
+    #endif
+
+    // Write filtered data
+    gOutputSamplePlane[pixelPos] = s;// + float4(0.f, 1.f, 0.f, 1.f);
+}
+
+/** Ground truth filtering pass (for quality/speed tests).
+*/
+[numthreads(16, 16, 1)]
+void filterG(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadId.xy >= gResolution)) return;
+    const uint2 pixelPos = dispatchThreadId.xy;
+    
+    // Central sample
+    float4 s = gInputSamplePlane[pixelPos];
+
+
+    // Write filtered data
+    gOutputSamplePlane[pixelPos] = s;
+}
