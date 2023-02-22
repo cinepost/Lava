@@ -29,6 +29,7 @@
 #define SRC_FALCOR_RENDERPASSES_ACCUMULATEPASS_ACCUMULATEPASS_H_
 
 #include "Falcor/Falcor.h"
+#include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
@@ -48,6 +49,34 @@ class AccumulatePass : public RenderPass {
     using SharedPtr = std::shared_ptr<AccumulatePass>;
     using SharedConstPtr = std::shared_ptr<const AccumulatePass>;
 
+    enum class Precision : uint32_t {
+        Double,                 ///< Standard summation in double precision.
+        Single,                 ///< Standard summation in single precision.
+        SingleCompensated,      ///< Compensated summation (Kahan summation) in single precision.
+    };
+
+    enum class PixelFilterType: uint32_t {
+        Point,
+        Box,
+        Gaussian,
+        Blackman,
+        Mitchell,
+        Catmullrom,
+        Triangle,
+        Sinc,
+        Closest,
+        Farthest,
+        Min,
+        Max,
+        Additive
+    };
+
+    struct FilterPass {
+        ComputeProgram::SharedPtr pProgram;
+        ComputeVars::SharedPtr    pVars;
+        ComputeState::SharedPtr   pState;
+    };
+
     static const Info kInfo;
     
     virtual ~AccumulatePass() = default;
@@ -61,30 +90,39 @@ class AccumulatePass : public RenderPass {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void onHotReload(HotReloadFlags reloaded) override;
 
+
+    void setScene(const Scene::SharedPtr& pScene);
     void enableAccumulation(bool enable = true);
 
     void setOutputFormat(ResourceFormat format);
 
+    void setPixelFilterSize(uint2 size);
+    void setPixelFilterSize(uint32_t width, uint32_t height);
+    void setPixelFilterType(PixelFilterType type);
+    void setPixelFilterType(const std::string& typeName);
+
     inline Falcor::ResourceFormat format() const { return mOutputFormat; }
 
-    // Scripting functions
     void reset() { mFrameCount = 0; }
 
-    enum class Precision : uint32_t {
-        Double,                 ///< Standard summation in double precision.
-        Single,                 ///< Standard summation in single precision.
-        SingleCompensated,      ///< Compensated summation (Kahan summation) in single precision.
-    };
+    // Get the number of singular values of a filter according to SVD theorem. This might be an overenginered for our use case.. 
+    static size_t pixelFilterSingularValueCountSVD(PixelFilterType pixelFilterType, uint32_t width, uint32_t height);
 
  protected:
     AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict);
     void prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height);
+    void preparePixelFilterKernelTexture(RenderContext* pRenderContext);
+    void prepareFilteredTextures(const Texture::SharedPtr& pSrc);
+    void prepareImageSampler(RenderContext* pContext);
 
     // Internal state
     Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
+    Camera::SharedPtr           mpCamera;                       ///< Current scene camera;
     std::map<Precision, ComputeProgram::SharedPtr> mpProgram;   ///< Accumulation programs, one per mode.
     ComputeVars::SharedPtr      mpVars;                         ///< Program variables.
     ComputeState::SharedPtr     mpState;
+    std::array<FilterPass, 2>   mFilterPasses;                  ///< Horizontal and vertical sample plane filtering passes data
+    
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
     uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
@@ -93,29 +131,60 @@ class AccumulatePass : public RenderPass {
     Texture::SharedPtr          mpLastFrameSumLo;               ///< Last frame running sum (lo bits). Used in Double mode.
     Texture::SharedPtr          mpLastFrameSumHi;               ///< Last frame running sum (hi bits). Used in Double mode.
 
-    // UI variables
+    Texture::SharedPtr          mpFilteredImage;                ///< We store filtered image here instead fo modifying original as it might be used elsewhere.
+    Texture::SharedPtr          mpTmpFilteredImage;             ///< Temporary image data used for two pass filtering
+    Texture::SharedPtr          mpKernelTexture;                ///< Filter kernel texture;
+    Sampler::SharedPtr          mpKernelSampler;                ///< Filter kernel texture sampler;
+    Sampler::SharedPtr          mpImageSampler;                 ///< Unnormalized image reading sampler;
+    Texture::SharedPtr          (*mpFilterCreateKernelTextureFunc)(Device::SharedPtr, uint32_t, bool) = NULL;
+
+    bool                        mDoHorizontalFiltering = false;
+    bool                        mDoVerticalFiltering = false;
     bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
-    bool                        mAutoReset = true;              ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
+    bool                        mAutoReset = false;             ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
     uint32_t                    mSubFrameCount = 0;             ///< Number of frames to accumulate before reset. Useful for generating references.
 
     ResourceFormat              mOutputFormat = ResourceFormat::RGBA16Float;
 
+    PixelFilterType             mPixelFilterType = PixelFilterType::Box;
+    uint2                       mPixelFilterSize = {1, 1};
+
+    bool                        mDirty = true;
+
 };
 
 #define enum2str(a) case  AccumulatePass::Precision::a: return #a
-inline std::string to_string(AccumulatePass::Precision mode)
-{
-    switch (mode)
-    {
+inline std::string to_string(AccumulatePass::Precision mode) {
+    switch (mode) {
         enum2str(Double);
         enum2str(Single);
         enum2str(SingleCompensated);
     default:
-        should_not_get_here();
-        return "";
+        should_not_get_here(); return "";
     }
 }
 #undef enum2str
+
+#define pftype2str(a) case AccumulatePass::PixelFilterType::a: return #a
+inline std::string to_string(AccumulatePass::PixelFilterType a) {
+    switch (a) {
+        pftype2str(Point);
+        pftype2str(Box);
+        pftype2str(Gaussian);
+        pftype2str(Blackman);
+        pftype2str(Mitchell);
+        pftype2str(Catmullrom);
+        pftype2str(Triangle);
+        pftype2str(Sinc);
+        pftype2str(Closest);
+        pftype2str(Farthest);
+        pftype2str(Min);
+        pftype2str(Max);
+        pftype2str(Additive);
+        default: should_not_get_here(); return "";
+    }
+}
+#undef pftype2str
 
 #endif  // SRC_FALCOR_RENDERPASSES_ACCUMULATEPASS_ACCUMULATEPASS_H_

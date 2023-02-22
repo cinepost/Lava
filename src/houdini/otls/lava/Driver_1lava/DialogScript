@@ -695,7 +695,7 @@
             parm {
                 name    "lv_filter_size"
                 label   "Filter Size"
-                type    float
+                type    int
                 joinnext
                 size    2
                 default { "1" "1" }
@@ -1169,6 +1169,7 @@
                     type    toggle
                     joinnext
                     default { "0" }
+                    disablewhen "{ 1 == 1 }"
                     parmtag { "spare_category" "Extra Image Planes" }
                 }
                 parm {

@@ -46,7 +46,8 @@ cbuffer PerFrameCB
 
 // Input data to accumulate and accumulated output.
 Texture2D<float4>   gCurFrame;
-Texture2D<float>    gDepth;
+Texture2D<float>    gDepth;  // optional z-buffer
+
 RWTexture2D<float4> gOutputFrame;
 
 // Last frame data, format depends on accumulation mode.
@@ -55,6 +56,10 @@ RWTexture2D<float4> gLastFrameCorr;     // If mode is SingleKahan
 RWTexture2D<uint4>  gLastFrameSumLo;    // If mode is Double
 RWTexture2D<uint4>  gLastFrameSumHi;    // If mode is Double
 
+RWTexture2D<float>  gLastFrameDepth;    // If gDepth provided and depth dependent filter type used
+
+SamplerState gKernelSampler;
+
 
 /** Single precision standard summation.
 */
@@ -62,7 +67,7 @@ RWTexture2D<uint4>  gLastFrameSumHi;    // If mode is Double
 void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
-    const uint2 pixelPos = dispatchThreadId.xy;
+    const uint2 pixelPos = dispatchThreadId.xy;    
     const float4 curColor = gCurFrame[pixelPos];
 
     // Fetch previous sum and compute the new sum.

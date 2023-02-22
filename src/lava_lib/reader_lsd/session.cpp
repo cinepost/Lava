@@ -189,9 +189,9 @@ void Session::setUpCamera(Falcor::Camera::SharedPtr pCamera, Falcor::float4 crop
 	if(segments.size()) {
 		const auto& pSegment = segments[0];
 
-		float 	camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
-		float   camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
-		float   camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
+		float camera_focus_distance = pSegment->getPropertyValue(ast::Style::CAMERA, "focus", 10000.0f);
+		float camera_fstop = pSegment->getPropertyValue(ast::Style::CAMERA, "fstop", 5.6f);
+		float camera_focal = pSegment->getPropertyValue(ast::Style::CAMERA, "focal", 50.0f);
 	
 		float apertureRadius = 0.0f;
 		{

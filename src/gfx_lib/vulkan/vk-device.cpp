@@ -1423,7 +1423,7 @@ Result DeviceImpl::createTextureResource(
 
 			
 			if ((!pTexture->mMipTailInfo.singleMipTail) && (sparseMemoryReq.imageMipTailFirstLod < pTexture->mMipLevels)) {	
-				LLOG_DBG << "Layer " << layer << "single mip tail";
+				LLOG_DBG << "Layer " << layer << " single mip tail";
 				// Allocate memory for the layer mip tail
 				VkMemoryAllocateInfo memAllocInfo = {};
 				memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1897,7 +1897,7 @@ Result DeviceImpl::createSamplerState(ISamplerState::Desc const& desc, ISamplerS
 	// TODO: support translation of border color...
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.unnormalizedCoordinates = desc.unnormalizedCoordinates ? VK_TRUE : VK_FALSE;
 	samplerInfo.compareEnable = desc.reductionOp == TextureReductionOp::Comparison;
 	samplerInfo.compareOp = VulkanUtil::translateComparisonFunc(desc.comparisonFunc);
 	samplerInfo.mipmapMode = VulkanUtil::translateMipFilterMode(desc.mipFilter);

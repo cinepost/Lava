@@ -97,27 +97,41 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
                 component=None,
                 lightexport=None,
                 showrelightingbuffer=False,
-                excludedcm=False):
+                excludedcm=False,
+                pfiltertype=None,
+                pfiltersize=None):
     if len(variable):
-        if LSDhooks.call('pre_defplane', variable, lsdtype, idx,
-                    wrangler, cam, now, filename, lightexport):
+        if LSDhooks.call('pre_defplane', variable, lsdtype, idx, wrangler, cam, now, filename, lightexport):
             return
 
         if not channel:
             channel = variable
+
         cmd_start('plane')
         cmd_property('plane', 'variable', [variable])
         cmd_property('plane', 'type', [lsdtype])
+
+        if pfiltertype:
+            cmd_property('plane', 'pfilter', [pfiltertype])
+
+        if pfiltersize:
+            cmd_property('plane', 'pfiltersize',pfiltersize)
+
         if filename:
             soho.makeFilePathDirsIfEnabled(filename)
             cmd_property('plane', 'planefile', [filename])
+        
         cmd_property('plane', 'channel', [channel])
+        
         if lightexport is not None:
             cmd_property('plane', 'lightexport', [lightexport])
+        
         if component:
             cmd_property('plane', 'component', [component])
+        
         if showrelightingbuffer:
             cmd_property('plane', 'showrelightingbuffer', [showrelightingbuffer])
+        
         if excludedcm:
             cmd_property('plane', 'excludedcm', [excludedcm])
 
@@ -138,7 +152,7 @@ def iprplane(channel):
         cmd_property('plane', 'type', ['float'])
         cmd_property('plane', 'channel', [channel])
         cmd_property('plane', 'sfilter', ['closest'])
-        cmd_property('plane', 'pfilter', ['minmax idcover'])
+        cmd_property('plane', 'pfilter', ['closest'])
         if LSDhooks.call('post_iprplane', channel):
             return
         cmd_end()
@@ -148,6 +162,8 @@ displayParms = {
     'lv_foptions':SohoParm('lv_foptions', 'string',     [''], False),
     'lv_numaux'  :SohoParm('lv_numaux',   'int',        [0], False),
     'lv_exportcomponents'  :SohoParm('lv_exportcomponents',   'string',        [''], False),
+    'lv_filter_type' :SohoParm('lv_filter_type',   'string',     [''], False),
+    'lv_filter_size' :SohoParm('lv_filter_size',   'int',        [1, 1], False),
 }
 
 planeDisplayParms = {
@@ -272,7 +288,7 @@ def lightDisplay(wrangler, light, now):
         cmd_property('plane', 'variable', ['Z-Far'])
         cmd_property('plane', 'type', ['float'])
         cmd_property('plane', 'quantize', ['float'])
-    cmd_property('plane', 'pfilter', ['ubox'])      # Unit box pixel filter
+        cmd_property('plane', 'pfilter', ['box'])      # Unit box pixel filter
     cmd_end()
     if deep:
         # Make intermdiate directories
@@ -407,6 +423,8 @@ def cameraDisplay(wrangler, cam, now):
     foptions    = plist['lv_foptions'].Value[0]
     numaux      = plist['lv_numaux'].Value[0]
     components  = plist['lv_exportcomponents'].Value[0]
+    pfiltertype = plist['lv_filter_type'].Value[0]
+    pfiltersize = plist['lv_filter_size'].Value
 
     flipbook = cam.wrangleInt(wrangler, 'flipbook_output', now, [0])[0]
     if flipbook:
@@ -441,11 +459,13 @@ def cameraDisplay(wrangler, cam, now):
     LSDsettings.outputImageFormatOptions(wrangler, cam, now)
 
     # uv render may have Cf+Af disabled for performance reasons
-    skipCf = cam.wrangleInt(wrangler, 'lv_bake_skipcf', now, [0])[0]
-    if not skipCf:
-        defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now)
-    else:
-        defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
+    #skipCf = cam.wrangleInt(wrangler, 'lv_bake_skipcf', now, [0])[0]
+    #if not skipCf:
+    #    defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now)
+    #else:
+    #    defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
+
+    defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize)
 
     lv_relightingbuffer = [0]
     soho.evalInt("lv_relightingbuffer", lv_relightingbuffer)
@@ -454,8 +474,7 @@ def cameraDisplay(wrangler, cam, now):
     soho.evalInt("lv_stylesheets", lv_stylesheets)
 
     if is_preview and lv_relightingbuffer[0]:
-        defplane("C_Relighting", 'Cf+Af', 'vector4', -1,
-                 wrangler, cam, now, showrelightingbuffer=True)
+        defplane("C_Relighting", 'Cf+Af', 'vector4', -1, wrangler, cam, now, showrelightingbuffer=True)
 
     # Initialize property for Op_Id generation
     LSDsettings._Settings.GenerateOpId = cam.getDefaultedInt('lv_generate_opid', now, [0])[0] or cam.getDefaultedInt('lv_quickplane_op_id', now, [0])[0]

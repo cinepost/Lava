@@ -640,7 +640,8 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
 	// Read port from .mplay_lock
     const char* env_hih = std::getenv("HIH");
     const char* env_hostname = std::getenv("HOSTNAME");
-    
+    const char* env_hipname = std::getenv("HIPNAME");
+
     // Check if iprsocket port provided
     if (g_mplayPortNumber == 0) {
     	std::regex r("socket:([0-9]*)");
@@ -655,7 +656,14 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
     // Check if mplay already opened using lock file
     if (g_mplayPortNumber == 0 ) {
     	std::string mplay_lock_filename = "";
-    	if ( env_hih && env_hostname ) mplay_lock_filename += std::string(env_hih) + "/.mplay_lock." + std::string(env_hostname);
+    	if ( env_hih ) {
+    		mplay_lock_filename += std::string(env_hih) + "/.mplay_lock";
+    	} else {
+    		mplay_lock_filename += std::string(std::getenv("HOME")) + "/.mplay_lock";
+    	}
+    	if ( env_hostname ) mplay_lock_filename += "." + std::string(env_hostname);
+    	if ( env_hipname ) mplay_lock_filename += "-" + std::string(env_hipname);
+    	log(0, "Mplay lock file to test: '%s'\n", mplay_lock_filename.c_str());
 
     	std::ifstream mplay_lock_file(mplay_lock_filename);
     	if (mplay_lock_file.is_open()) {

@@ -821,6 +821,7 @@ public:
 		float                   borderColor[4]  = { 1.0f, 1.0f, 1.0f, 1.0f };
 		float                   minLOD          = -FLT_MAX;
 		float                   maxLOD          = FLT_MAX;
+		bool                    unnormalizedCoordinates = false;
 	};
 
 	/// Returns a native API handle representing this sampler state object.

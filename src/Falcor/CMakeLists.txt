@@ -36,6 +36,7 @@ file( GLOB SOURCES
     ./Utils/Image/*.cpp
     ./Utils/Image/TextureDataCacheLRU.cpp
     ./Utils/Textures/*.cpp
+    ./Utils/Textures/FilterKernelsLUT.cpp
     ./Utils/Perception/*.cpp
     
     # CPU sample generators
@@ -146,9 +147,6 @@ endif()
 # FreeImage
 set(FreeImage_ROOT ${DEPS_DIR})
 find_package( FreeImage ${EXTERNAL_FREEIMAGE_VERSION} EXACT REQUIRED )
-if(FreeImage_FOUND)
-    message( "FreeImage version: ${FreeImage_VERSION}")
-endif()
 include_directories( ${FreeImage_INCLUDE_DIRS} )
 
 # TIFF

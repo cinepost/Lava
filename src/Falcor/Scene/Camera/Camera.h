@@ -196,6 +196,12 @@ public:
     float getJitterX() const { return mData.jitterX; }
     float getJitterY() const { return mData.jitterY; }
 
+    /** Get camera subpixel jitter in [-0.5, 0.5] range both directions.
+    */
+    float2 getSubpixelJitter() const { return {getSubpixelJitterX(), getSubpixelJitterY()}; }
+    float  getSubpixelJitterX() const { return mData.jitterX / mJitterPattern.scale[0]; }
+    float  getSubpixelJitterY() const { return mData.jitterY / mJitterPattern.scale[1]; }
+
     /** Compute pixel spread in screen space -- to be used with RayCones for texture level-of-detail.
         \param[in] winHeightPixels Window height in pixels
         \return the pixel spread angle in screen space

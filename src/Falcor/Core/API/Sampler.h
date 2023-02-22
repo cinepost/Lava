@@ -121,6 +121,10 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         */
         Desc& setBorderColor(const float4& borderColor);
 
+        /** Set unnormalized coonrdinates addressing.
+        */
+        Desc& setUnnormalizedCoordinates(bool state = false);
+
         /** Returns true if sampler descs are identical.
         */
         bool operator==(const Desc& other) const;
@@ -143,6 +147,7 @@ class dlldecl Sampler : public std::enable_shared_from_this<Sampler> {
         AddressMode mModeV = AddressMode::Clamp; //Wrap;
         AddressMode mModeW = AddressMode::Clamp; //Wrap;
         float4 mBorderColor = float4(0, 0, 0, 0);
+        bool mUnnormalizedCoordinates = false;
     };
 
     ~Sampler();

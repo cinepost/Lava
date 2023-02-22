@@ -109,6 +109,8 @@ Sampler::SharedPtr Sampler::create(Device::SharedPtr pDevice, const Desc& desc) 
     gfxDesc.mipLODBias = desc.mLodBias;
     gfxDesc.reductionOp = (desc.mComparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.mReductionMode);
 
+    gfxDesc.unnormalizedCoordinates = desc.mUnnormalizedCoordinates;
+
     Sampler::SharedPtr result = Sampler::SharedPtr(new Sampler(pDevice, desc));
     FALCOR_GFX_CALL(pDevice->getApiHandle()->createSamplerState(gfxDesc, result->mApiHandle.writeRef()));
     return result;

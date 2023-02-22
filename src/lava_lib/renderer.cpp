@@ -326,9 +326,11 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 
 	// Create MAIN (beauty) plane accumulation pass and bind with render graph output
-	pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
-	mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassInputName());
-	//mpRenderGraph->addEdge("RTXDIPass.color", pMainAOV->accumulationPassInputName());
+	auto pMainAOVAccumulationPass = pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
+	if(pMainAOVAccumulationPass) {
+		pMainAOVAccumulationPass->setScene(pScene);
+		mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassInputName());
+	}
 
 	// Create and bind additional AOV planes
 	for (const auto &entry: mAOVPlanes) {
@@ -336,7 +338,9 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		switch(pPlane->name()) {
 			case AOVBuiltinName::DEPTH:
 				{
-					if(pPlane->createAccumulationPass(pRenderContext, mpRenderGraph)) {
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						pPlane->setOutputFormat(ResourceFormat::R32Float);
 						mpRenderGraph->addEdge("ShadingPass.Pz", pPlane->accumulationPassInputName());
 					}
@@ -346,6 +350,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.posW", pPlane->accumulationPassInputName());
 					}
 				}
@@ -354,6 +359,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.normals", pPlane->accumulationPassInputName());
 					}
@@ -363,6 +369,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.shadows", pPlane->accumulationPassInputName());
 					}
@@ -372,6 +379,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.albedo", pPlane->accumulationPassInputName());
 					}
@@ -381,6 +389,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.emission", pPlane->accumulationPassInputName());
 					}
@@ -390,6 +399,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						mpRenderGraph->addEdge("ShadingPass.occlusion", pPlane->accumulationPassInputName());
 					}
 				}
@@ -398,6 +408,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.prim_id", pPlane->accumulationPassInputName());
 					}
@@ -407,6 +418,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("ShadingPass.op_id", pPlane->accumulationPassInputName());
 					}
@@ -416,6 +428,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("CryptomattePass.material_color", pPlane->accumulationPassInputName());
 					}
@@ -425,6 +438,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
 					if(pAccPass) {
+						pAccPass->setScene(pScene);
 						//pAccPass->setOutputFormat(ResourceFormat::RGBA16Float);
 						mpRenderGraph->addEdge("CryptomattePass.object_color", pPlane->accumulationPassInputName());
 					}

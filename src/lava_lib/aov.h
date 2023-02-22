@@ -100,14 +100,6 @@ struct AOVName : boost::variant< AOVBuiltinName, std::string > {
 };
 
 struct AOVPlaneInfo {
-  enum class AccumulationMode {
-    MEDIAN, // Average value calculation. Good for color/color+alpha image data
-    MIN,    // Keep minum value
-    MAX,    // Keep maximum value
-    CLOSEST,// Closest surface value. Good for Depth/Normal type aovs 
-    NONE    // Last sample value written
-  };
-
   enum class Precision {
     SINGLE,
     DOUBLE,
@@ -118,7 +110,8 @@ struct AOVPlaneInfo {
   Falcor::ResourceFormat  format;
   AOVName                 name;                                         // AOVBuiltinName::MAIN is a reserved name for beauty pass
   std::string             variableName;
-  AccumulationMode        accumulationMode = AccumulationMode::MEDIAN;  // Default.
+  std::string             pfilterTypeName;                              // Pixel filter type name e.g "Box" or "box"
+  Falcor::uint2           pfilterSize;                                  // Pixel filter kernel size (in pixels)
   Precision               precision = Precision::AUTO;                  // Keep it on AUTO
 };
 

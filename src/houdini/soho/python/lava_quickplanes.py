@@ -8,14 +8,15 @@ QuickPlane = collections.namedtuple(
     "QuickPlane",
     ["channel", "lsdtype", "quantize", "percomp", "opts"])
 
+
 # Define a dictionary of standard planes with the relevant parameters.
 __quickplanes = {
     # channel name                 pass builtin name        type             quantize      percomp     opts
-    "position":         QuickPlane("POSITION",              "vector3",       "float32",    False,      {'pfilter':['minmax omedian']}),
+    "position":         QuickPlane("POSITION",              "vector3",       "float32",    False,      {'pfilter':['closest']}),
     
-    "depth":            QuickPlane("DEPTH",                 "float",         "float32",    False,      {'pfilter':['minmax omedian']}),
+    "depth":            QuickPlane("DEPTH",                 "float",         "float32",    False,      {'pfilter':['min']}),
     
-    "normals":          QuickPlane("NORMAL",                "vector3",       "float32",    False,      {'pfilter':['minmax omedian']}),
+    "normals":          QuickPlane("NORMAL",                "vector3",       "float32",    False,      {'pfilter':['closest']}),
 
     "albedo":           QuickPlane("ALBEDO",                "vector3",       "float16",    False,      {}),
 
