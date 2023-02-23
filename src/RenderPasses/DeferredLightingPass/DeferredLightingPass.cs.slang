@@ -42,6 +42,7 @@ RasterizerOrderedTexture2D<float4> gOutShadows;
 RasterizerOrderedTexture2D<float4> gOutNormals;
 RasterizerOrderedTexture2D<float2> gOutMotionVecs;
 RasterizerOrderedTexture2D<float>  gOutOcclusion;
+RasterizerOrderedTexture2D<float>  gOutFresnel;
 RasterizerOrderedTexture2D<float>  gPrimID;
 RasterizerOrderedTexture2D<float>  gOpID;
 
@@ -102,6 +103,10 @@ void writeAOV(uint2 ipos, const AOVData d) {
 #if is_valid(gOutOcclusion)
         gOutOcclusion[ipos] = 1.f - d.occlusion;
 #endif  // gOutOcclusion
+
+#if is_valid(gOutFresnel)
+        gOutFresnel[ipos] = d.fresnel;
+#endif  // gOutFresnel
 }
 
 struct RayData {
@@ -570,6 +575,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
         aov_data.depth = -(viewP.z / viewP.w);
     }
 #endif  // gOutPz
+
+#if is_valid(gOutFresnel)
+    {
+        aov_data.fresnel = evalFresnelSchlick(0.f, 1.f, dot(primaryShadingData.V, primaryShadingData.N));
+        //aov_data.fresnel = evalFresnelDielectric(primaryShadingData.IoR, dot(primaryShadingData.N, -rayDir));
+    }
+#endif
 
 #if is_valid(gOutEmission)
     {

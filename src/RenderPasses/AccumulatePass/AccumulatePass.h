@@ -33,6 +33,9 @@
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
+#include "Accumulate.SeparableFilter.slangh"
+
+
 using namespace Falcor;
 
 /** Temporal accumulation render pass.
@@ -49,26 +52,12 @@ class AccumulatePass : public RenderPass {
     using SharedPtr = std::shared_ptr<AccumulatePass>;
     using SharedConstPtr = std::shared_ptr<const AccumulatePass>;
 
+    using PixelFilterType = Falcor::PixelFilterType;
+
     enum class Precision : uint32_t {
         Double,                 ///< Standard summation in double precision.
         Single,                 ///< Standard summation in single precision.
         SingleCompensated,      ///< Compensated summation (Kahan summation) in single precision.
-    };
-
-    enum class PixelFilterType: uint32_t {
-        Point,
-        Box,
-        Gaussian,
-        Blackman,
-        Mitchell,
-        Catmullrom,
-        Triangle,
-        Sinc,
-        Closest,
-        Farthest,
-        Min,
-        Max,
-        Additive
     };
 
     struct FilterPass {
@@ -103,16 +92,16 @@ class AccumulatePass : public RenderPass {
 
     inline Falcor::ResourceFormat format() const { return mOutputFormat; }
 
-    void reset() { mFrameCount = 0; }
+    void reset();
 
     // Get the number of singular values of a filter according to SVD theorem. This might be an overenginered for our use case.. 
     static size_t pixelFilterSingularValueCountSVD(PixelFilterType pixelFilterType, uint32_t width, uint32_t height);
 
  protected:
     AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict);
-    void prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height);
+    void prepareAccumulation(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void preparePixelFilterKernelTexture(RenderContext* pRenderContext);
-    void prepareFilteredTextures(const Texture::SharedPtr& pSrc);
+    void prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void prepareImageSampler(RenderContext* pContext);
 
     // Internal state
@@ -126,16 +115,20 @@ class AccumulatePass : public RenderPass {
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
     uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
+    
     Texture::SharedPtr          mpLastFrameSum;                 ///< Last frame running sum. Used in Single and SingleKahan mode.
     Texture::SharedPtr          mpLastFrameCorr;                ///< Last frame running compensation term. Used in SingleKahan mode.
     Texture::SharedPtr          mpLastFrameSumLo;               ///< Last frame running sum (lo bits). Used in Double mode.
     Texture::SharedPtr          mpLastFrameSumHi;               ///< Last frame running sum (hi bits). Used in Double mode.
+    Texture::SharedPtr          mpLastFrameDepth;               ///< Last frame image depth channel.
 
-    Texture::SharedPtr          mpFilteredImage;                ///< We store filtered image here instead fo modifying original as it might be used elsewhere.
-    Texture::SharedPtr          mpTmpFilteredImage;             ///< Temporary image data used for two pass filtering
-    Texture::SharedPtr          mpKernelTexture;                ///< Filter kernel texture;
-    Sampler::SharedPtr          mpKernelSampler;                ///< Filter kernel texture sampler;
-    Sampler::SharedPtr          mpImageSampler;                 ///< Unnormalized image reading sampler;
+    Texture::SharedPtr          mpFilteredImage;                ///< We store filtered image data here instead fo modifying original as it might be used somewhere else.
+    Texture::SharedPtr          mpFilteredDepth;                ///< We store filtered image depth data here instead fo modifying original as it might be used somewhere else.
+    Texture::SharedPtr          mpTmpFilteredImage;             ///< Temporary image data used for two pass filtering.
+    Texture::SharedPtr          mpTmpFilteredDepth;             ///< Temporary image depth data used for two pass filtering.
+    Texture::SharedPtr          mpKernelTexture;                ///< Filter kernel texture.
+    Sampler::SharedPtr          mpKernelSampler;                ///< Filter kernel texture sampler.
+    Sampler::SharedPtr          mpImageSampler;                 ///< Unnormalized image reading sampler.
     Texture::SharedPtr          (*mpFilterCreateKernelTextureFunc)(Device::SharedPtr, uint32_t, bool) = NULL;
 
     bool                        mDoHorizontalFiltering = false;

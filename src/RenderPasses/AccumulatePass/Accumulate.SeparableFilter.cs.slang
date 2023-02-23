@@ -31,6 +31,9 @@
     pass.
 */
 
+#include "Accumulate.SeparableFilter.slangh"
+
+
 #define DO_EXPAND(VAL)  VAL ## 1
 #define EXPAND(VAL)     DO_EXPAND(VAL)
 
@@ -46,14 +49,16 @@ cbuffer PerFrameCB
 #define is_valid(name) (is_valid_##name != 0)
 
 // Input data to accumulate and accumulated output.
-Texture2D<float4>   gInputSamplePlane;
+Texture2D<float4>   gInput;
 
 // Optional inputs
+Texture2D<float>    gDepth;           // optional depth texture (used for CLOSEST ans FARTHEST filters)
 Texture2D<float>    gKernelTexture;   // optional kernel texture
 Texture2D<float2>   gSampleDistances; // optional per-pixel sample distances
 
 // Ouput sample plane
-RWTexture2D<float4> gOutputSamplePlane;
+RWTexture2D<float4> gOutputFilteredImage;
+RWTexture2D<float>  gOutputFilteredDepth;
 
 SamplerState gImageSampler;
 SamplerState gKernelSampler;
@@ -69,11 +74,11 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
     float2 currentSampleDistance = float2(0.f);
 
     // Central sample
-    float4 s = gInputSamplePlane[pixelPos];
+    float4 outColor = gInput[pixelPos];
 
     //currentSampleDistance.x = abs(gSampleDistanceLocal.x);
     //currentSampleDistance.y = abs(gSampleDistanceLocal.y);
-    //if(any(currentSampleDistance >= gMaxSampleDistance)) s = float4(0.f);
+    //if(any(currentSampleDistance >= gMaxSampleDistance)) outColor = float4(0.f);
 
     #if defined(_FILTER_HALF_SIZE_H) && (EXPAND(_FILTER_HALF_SIZE_H) > 0)
     const uint2 pixelPosF = float2(pixelPos);
@@ -92,10 +97,8 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
         currentSampleDistance.x = abs(float(i) - gSampleDistanceLocal.x);
         if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
 
-        s += gInputSamplePlane[pixelPosR];
+        outColor += gInput[pixelPosR];
         W += 1.f;
-
-        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
     }
 
     // Second half
@@ -108,17 +111,15 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
         currentSampleDistance.x = abs(float(i) + gSampleDistanceLocal.x);
         if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
 
-        s += gInputSamplePlane[pixelPosR];
+        outColor += gInput[pixelPosR];
         W += 1.f;
-
-        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
     }
 
-    s /= W;
+    outColor /= W;
     #endif
 
     // Write filtered data
-    gOutputSamplePlane[pixelPos] = s;// + float4(1.f, 0.f, 0.f, 1.f);
+    gOutputFilteredImage[pixelPos] = outColor;
 }
 
 /** Vertical filtering pass.
@@ -131,7 +132,7 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
     float2 currentSampleDistance = float2(0.f);
 
     // Central sample
-    float4 s = gInputSamplePlane[pixelPos];
+    float4 outColor = gInput[pixelPos];
 
     #if defined(_FILTER_HALF_SIZE_V) && (EXPAND(_FILTER_HALF_SIZE_V) > 0)
     const uint2 pixelPosF = float2(pixelPos);
@@ -150,10 +151,8 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
         currentSampleDistance.y = abs(float(i) + gSampleDistanceLocal.y);
         if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
 
-        s += gInputSamplePlane[pixelPosR];
+        outColor += gInput[pixelPosR];
         W += 1.f;
-
-        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
     }
 
     // Second half
@@ -166,17 +165,15 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
         currentSampleDistance.y = abs(float(i) - gSampleDistanceLocal.y);
         if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
 
-        s += gInputSamplePlane[pixelPosR];
+        outColor += gInput[pixelPosR];
         W += 1.f;
-
-        //s += gInputSamplePlane.SampleLevel(gImageSampler, pixelPosF + float2(i, 0.f), 0.f);
     }
 
-    s /= W;
+    outColor /= W;
     #endif
 
     // Write filtered data
-    gOutputSamplePlane[pixelPos] = s;// + float4(0.f, 1.f, 0.f, 1.f);
+    gOutputFilteredImage[pixelPos] = outColor;
 }
 
 /** Ground truth filtering pass (for quality/speed tests).
@@ -188,9 +185,8 @@ void filterG(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint2 pixelPos = dispatchThreadId.xy;
     
     // Central sample
-    float4 s = gInputSamplePlane[pixelPos];
-
+    float4 outColor = gInput[pixelPos];
 
     // Write filtered data
-    gOutputSamplePlane[pixelPos] = s;
+    gOutputFilteredImage[pixelPos] = outColor;
 }

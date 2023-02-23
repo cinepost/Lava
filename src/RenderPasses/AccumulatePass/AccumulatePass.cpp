@@ -205,7 +205,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     Texture::SharedPtr pSrc = renderData[kInputChannel]->asTexture();
     Texture::SharedPtr pDst = renderData[kOutputChannel]->asTexture();
 
-    Texture::SharedPtr pDepth = renderData[kInputDepthChannel]->asTexture();
+    Texture::SharedPtr pSrcDepth = renderData[kInputDepthChannel]->asTexture();
 
     assert(pSrc && pDst);
     assert(pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight());
@@ -214,16 +214,17 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     // Setup filtering passes if needed.
     Texture::SharedPtr pFilteredImage = pSrc;
+    Texture::SharedPtr pFilteredDepth = pSrcDepth;
 
     preparePixelFilterKernelTexture(pRenderContext);
 
     // Look... For now we use fixed size filter kernel 1D texture used for both vertical and horizontal filtering with fixed 64 elements size
     if(mPixelFilterSize[0] > 1u || 
-        (mpKernelTexture && pixelFilterSingularValueCountSVD(mPixelFilterType, kPixelFilterKernelTextureHalfSize, kPixelFilterKernelTextureHalfSize))) mDoHorizontalFiltering = true;
+        (pixelFilterSingularValueCountSVD(mPixelFilterType, kPixelFilterKernelTextureHalfSize, kPixelFilterKernelTextureHalfSize) > 1)) mDoHorizontalFiltering = true;
     if(mPixelFilterSize[1] > 1u || 
-        (mpKernelTexture && pixelFilterSingularValueCountSVD(mPixelFilterType, kPixelFilterKernelTextureHalfSize, kPixelFilterKernelTextureHalfSize))) mDoVerticalFiltering = true;
+        (pixelFilterSingularValueCountSVD(mPixelFilterType, kPixelFilterKernelTextureHalfSize, kPixelFilterKernelTextureHalfSize) > 1)) mDoVerticalFiltering = true;
     
-    prepareFilteredTextures(pSrc);
+    prepareFilteredTextures(pSrc, pSrcDepth);
     prepareImageSampler(pRenderContext);
 
     float2 maxSampleDistance = {float(mPixelFilterSize[0])*0.5, float(mPixelFilterSize[1])*0.5};
@@ -239,8 +240,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         auto& filterPass = mFilterPasses[0];
 
         auto pProgram = filterPass.pProgram;
-        pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
-        pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
         
         auto pVars = filterPass.pVars;
         pVars["PerFrameCB"]["gResolution"] = resolution;
@@ -248,13 +247,24 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["PerFrameCB"]["gSampleDistanceLocal"] = sampleDistanceLocal;
         pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
         pVars["PerFrameCB"]["gMaxSampleDistance"] = maxSampleDistance;
+        
+        pVars["gInput"] = pSrc;
+        pVars["gDepth"] = pSrcDepth;
         pVars["gKernelTexture"] = mpKernelTexture;
         pVars["gKernelSampler"] = mpKernelSampler;
         pVars["gImageSampler"] = mpImageSampler;
-        pVars["gInputSamplePlane"] = pSrc;
 
         pFilteredImage = mDoVerticalFiltering ? mpTmpFilteredImage : mpFilteredImage;
-        pVars["gOutputSamplePlane"] = pFilteredImage;
+        pFilteredDepth = mDoVerticalFiltering ? mpTmpFilteredDepth : mpFilteredDepth;
+        pVars["gOutputFilteredImage"] = pFilteredImage;
+        pVars["gOutputFilteredDepth"] = pFilteredDepth;
+
+        if(mDirty || mFrameCount == 0) {
+            pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+            pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
+            pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
+            pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+        }
 
         filterPass.pState->setProgram(pProgram);
 
@@ -267,8 +277,6 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         auto& filterPass = mFilterPasses[1];
 
         auto pProgram = filterPass.pProgram;
-        pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
-        pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
 
         auto pVars = filterPass.pVars;
         pVars["PerFrameCB"]["gResolution"] = resolution;
@@ -276,13 +284,24 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["PerFrameCB"]["gSampleDistanceLocal"] = sampleDistanceLocal;
         pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
         pVars["PerFrameCB"]["gMaxSampleDistance"] = maxSampleDistance;
+        
+        pVars["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
+        pVars["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
         pVars["gKernelTexture"] = mpKernelTexture;
         pVars["gKernelSampler"] = mpKernelSampler;
         pVars["gImageSampler"] = mpImageSampler;
-        pVars["gInputSamplePlane"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
 
         pFilteredImage = mpFilteredImage;
-        pVars["gOutputSamplePlane"] = pFilteredImage;
+        pFilteredDepth = mpFilteredDepth;
+        pVars["gOutputFilteredImage"] = pFilteredImage;
+        pVars["gOutputFilteredDepth"] = pFilteredDepth;
+
+        if(mDirty || mFrameCount == 0) {
+            pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+            pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
+            pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
+            pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+        }
 
         filterPass.pState->setProgram(pProgram);
 
@@ -299,7 +318,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
     
     // Setup accumulation.
-    prepareAccumulation(pRenderContext, resolution.x, resolution.y);
+    prepareAccumulation(pRenderContext, pSrc, pSrcDepth);
 
     // Set shader parameters.
     mpVars["PerFrameCB"]["gResolution"] = resolution;
@@ -308,21 +327,23 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     mpVars["gOutputFrame"] = pDst;
 
     // Additional channels /samplers
-    mpVars["gDepth"] = pDepth;
+    mpVars["gDepth"] = pSrcDepth;
 
     // Bind accumulation buffers. Some of these may be nullptr's.
     mpVars["gLastFrameSum"] = mpLastFrameSum;
     mpVars["gLastFrameCorr"] = mpLastFrameCorr;
     mpVars["gLastFrameSumLo"] = mpLastFrameSumLo;
     mpVars["gLastFrameSumHi"] = mpLastFrameSumHi;
+    mpVars["gLastFrameDepth"] = mpLastFrameDepth;
 
     // Run the accumulation program.
     auto pAccProgram = mpProgram[mPrecisionMode];
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
-    if(mFrameCount == 0) {
+    if(mDirty) {
         pAccProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
+        pAccProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
     }
 
     assert(pAccProgram);
@@ -335,12 +356,16 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
 }
 
-void AccumulatePass::setScene(const Scene::SharedPtr& pScene) {
-    // Reset accumulation when the scene changes.
+void AccumulatePass::reset() { 
     mFrameCount = 0;
-    mpScene = pScene;
+}
 
+void AccumulatePass::setScene(const Scene::SharedPtr& pScene) {
+    mpScene = pScene;
     if(mpScene) mpCamera = mpScene->getCamera();
+
+    // Reset accumulation when the scene changes.
+    reset();
 }
 
 void AccumulatePass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
@@ -357,31 +382,54 @@ void AccumulatePass::onHotReload(HotReloadFlags reloaded) {
     if (is_set(reloaded, HotReloadFlags::Program)) mFrameCount = 0;
 }
 
-void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height) {
+void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
     // Allocate/resize/clear buffers for intermedate data. These are different depending on accumulation mode.
     // Buffers that are not used in the current mode are released.
-    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, ResourceFormat format, bool bufUsed) {
+    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool isDepth = false) {
         if (!bufUsed) {
             pBuf = nullptr;
             return;
         }
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
+            if (isDepth) format = depthToColorFormat(format);
             pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             assert(pBuf);
             mFrameCount = 0;
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
         if (mFrameCount == 0) {
-            if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
-            else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
+            if (!isDepth) {
+                if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
+                else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
+            } else {
+                if(mPixelFilterType == PixelFilterType::Closest) {
+                    pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f, 0.f, 0.f, 0.f));
+                } else {
+                    pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f, 0.f, 0.f, 0.f));
+                }
+            }
         }
     };
 
-    prepareBuffer(mpLastFrameSum, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::Single || mPrecisionMode == Precision::SingleCompensated);
-    prepareBuffer(mpLastFrameCorr, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::SingleCompensated);
-    prepareBuffer(mpLastFrameSumLo, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
-    prepareBuffer(mpLastFrameSumHi, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
+    if(pSrc) {
+        uint32_t width = pSrc->getWidth(0);
+        uint32_t height = pSrc->getHeight(0);
+
+        prepareBuffer(mpLastFrameSum, width, height, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::Single || mPrecisionMode == Precision::SingleCompensated);
+        prepareBuffer(mpLastFrameCorr, width, height, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::SingleCompensated);
+        prepareBuffer(mpLastFrameSumLo, width, height, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
+        prepareBuffer(mpLastFrameSumHi, width, height, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
+    }
+
+    // Depth part
+    if(pDepthSrc && (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest)) {
+        ResourceFormat format = pDepthSrc->getFormat();
+        uint32_t width = pDepthSrc->getWidth(0);
+        uint32_t height = pDepthSrc->getHeight(0);
+
+        prepareBuffer(mpLastFrameDepth, width, height, format, (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest), true);
+    }
 }
 
 void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderContext) {
@@ -405,25 +453,55 @@ void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderConte
     }
 }
 
-void AccumulatePass::prepareFilteredTextures(const Texture::SharedPtr& pSrc) {
+void AccumulatePass::prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
     if (!mDirty || !pSrc || (!mDoHorizontalFiltering && !mDoVerticalFiltering)) return;
-    
-    auto srcFormat = pSrc->getFormat();
-    auto srcWidth = pSrc->getWidth(0);
-    auto srcHeight = pSrc->getHeight(0);
 
     auto pDevice = pSrc->device();
 
-    if (mDoHorizontalFiltering && mDoVerticalFiltering ) {
-        if(!mpTmpFilteredImage || mpTmpFilteredImage->getFormat() != srcFormat && mpTmpFilteredImage->getWidth(0) != srcWidth && mpTmpFilteredImage->getWidth(0) != srcHeight) {
-            mpTmpFilteredImage = Texture::create2D(pDevice, srcWidth, srcHeight, srcFormat, 1, 1, nullptr, 
+    // Filtered spatial color data buffers
+    if (mDoHorizontalFiltering || mDoVerticalFiltering ) {
+        
+        auto format = pSrc->getFormat();
+        auto width = pSrc->getWidth(0);
+        auto height = pSrc->getHeight(0);
+
+        // Intermediate spatial filtered color data buffer
+        if (mDoHorizontalFiltering && mDoVerticalFiltering ) {
+            // Create/Recreate itermediate image data buffer
+            if(!mpTmpFilteredImage || mpTmpFilteredImage->getFormat() != format && mpTmpFilteredImage->getWidth(0) != width && mpTmpFilteredImage->getWidth(0) != height) {
+                mpTmpFilteredImage = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, 
+                    Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            }
+        }
+
+        // Create/Recreate final filtered color data buffer
+        if(!mpFilteredImage || mpFilteredImage->getFormat() != format && mpFilteredImage->getWidth(0) != width || mpFilteredImage->getWidth(0) == height) {
+            mpFilteredImage = Texture::create2D(pDevice, width, height, format, 1, 1, nullptr, 
                 Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         }
     }
+ 
+    if(pDepthSrc && (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest)) {
+        auto depthFormat = depthToColorFormat(pDepthSrc->getFormat());
 
-    if(!mpFilteredImage || mpFilteredImage->getFormat() != srcFormat && mpFilteredImage->getWidth(0) != srcWidth || mpFilteredImage->getWidth(0) == srcHeight) {
-        mpFilteredImage = Texture::create2D(pDevice, srcWidth, srcHeight, srcFormat, 1, 1, nullptr, 
-            Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        auto depthWidth = pDepthSrc->getWidth(0);
+        auto depthHeight = pDepthSrc->getHeight(0);
+
+        // Spatial depth dependent part
+        if (mDoHorizontalFiltering || mDoVerticalFiltering ) {
+
+            if(!mpFilteredDepth || mpFilteredDepth->getFormat() != depthFormat && mpFilteredDepth->getWidth(0) != depthWidth && mpFilteredDepth->getWidth(0) != depthHeight) {
+                mpFilteredDepth = Texture::create2D(pDevice, depthWidth, depthHeight, depthFormat, 1, 1, nullptr, 
+                    Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            }
+
+            if (mDoHorizontalFiltering && mDoVerticalFiltering ) {
+                if(!mpTmpFilteredDepth || mpTmpFilteredDepth->getFormat() != depthFormat && mpTmpFilteredDepth->getWidth(0) != depthWidth && mpTmpFilteredDepth->getWidth(0) != depthHeight) {
+                    mpTmpFilteredDepth = Texture::create2D(pDevice, depthWidth, depthHeight, depthFormat, 1, 1, nullptr, 
+                        Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                }
+            }
+        }
     }
 }
 

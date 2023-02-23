@@ -30,14 +30,15 @@ enum class AOVBuiltinName: uint8_t {
   ALBEDO      = 5,
   SHADOW      = 6,
   OCCLUSION   = 7,
-  OBJECT_ID   = 8,
-  MATERIAL_ID = 9,
-  INSTANCE_ID = 10,
-  Prim_Id     = 11,
-  Op_Id       = 12,
-  CRYPTOMATTE_MAT     = 13,
-  CRYPTOMATTE_OBJ     = 14,
-  EMISSION    = 15,
+  FRESNEL     = 8,
+  OBJECT_ID   = 9,
+  MATERIAL_ID = 10,
+  INSTANCE_ID = 11,
+  Prim_Id     = 12,
+  Op_Id       = 13,
+  CRYPTOMATTE_MAT = 14,
+  CRYPTOMATTE_OBJ = 15,
+  EMISSION    = 16,
 
   UNKNOWN     = 0
 };
@@ -52,6 +53,7 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(ALBEDO);
     type_2_string(SHADOW);
     type_2_string(OCCLUSION);
+    type_2_string(FRESNEL);
     type_2_string(OBJECT_ID);
     type_2_string(MATERIAL_ID);
     type_2_string(INSTANCE_ID);
@@ -167,8 +169,9 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     inline OpenDenoisePass::SharedPtr       denoisingPass() { return mpDenoiserPass; }
     inline OpenDenoisePass::SharedConstPtr  denoisingPass() const { return mpDenoiserPass; }
 
-    inline const std::string&               accumulationPassInputName() const { return mAccumulatePassInputName; }
-    inline const std::string&               accumulationPassOutputName() const { return mAccumulatePassOutputName; }
+    inline const std::string&               accumulationPassColorInputName() const { return mAccumulatePassColorInputName; }
+    inline const std::string&               accumulationPassDepthInputName() const { return mAccumulatePassDepthInputName; }
+    inline const std::string&               accumulationPassColorOutputName() const { return mAccumulatePassColorOutputName; }
 
     void createInternalRenderGraph(Falcor::RenderContext* pContext, bool force = false);
     bool compileInternalRenderGraph(Falcor::RenderContext* pContext);
@@ -191,8 +194,9 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     OpenDenoisePass::SharedPtr          mpDenoiserPass = nullptr;
 
     std::string                         mAccumulatePassName;
-    std::string                         mAccumulatePassInputName;
-    std::string                         mAccumulatePassOutputName;
+    std::string                         mAccumulatePassColorInputName;
+    std::string                         mAccumulatePassDepthInputName;
+    std::string                         mAccumulatePassColorOutputName;
 
     std::string                         mProcessedPassOutputName;
 

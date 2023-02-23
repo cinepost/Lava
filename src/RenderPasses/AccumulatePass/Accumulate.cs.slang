@@ -36,6 +36,8 @@
     output texture. The intermediate buffers are internal to the pass.
 */
 
+#include "Accumulate.SeparableFilter.slangh"
+
 cbuffer PerFrameCB
 {
     uint2   gResolution;
@@ -70,16 +72,33 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint2 pixelPos = dispatchThreadId.xy;    
     const float4 curColor = gCurFrame[pixelPos];
 
-    // Fetch previous sum and compute the new sum.
-    float4 sum = gLastFrameSum[pixelPos] + curColor;
-    float4 output = sum / (gAccumCount + 1);
 
-    gLastFrameSum[pixelPos] = sum;
-    gOutputFrame[pixelPos] = output;
+    #if is_valid(gDepth) && ((_FILTER_TYPE == SF_TYPE_CLOSEST) || (_FILTER_TYPE == SF_TYPE_FARTHEST))
+    
+        const float prevDepth = gLastFrameDepth[pixelPos]; 
+        const float currDepth = gDepth[pixelPos];
 
-    if (is_valid(gDepth)){
-        gOutputFrame[pixelPos] = float4(0.0f, 1.0f, 0.0f, 1.0f);
-    }
+        #if (_FILTER_TYPE == SF_TYPE_CLOSEST)
+            if(currDepth < prevDepth) gOutputFrame[pixelPos] = curColor;
+            return;
+        #else
+            if(currDepth > prevDepth) gOutputFrame[pixelPos] = curColor;
+            return;
+        #endif
+        
+    #elif (_FILTER_TYPE == SF_TYPE_MIN) || (_FILTER_TYPE == SF_TYPE_MAX)
+    
+        gOutputFrame[pixelPos] = float4(0.f, 1.f, 0.f, 1.f);
+        return;
+        
+    #else // Standard accumulation
+
+        // Fetch previous sum and compute the new sum.
+        float4 sum = gLastFrameSum[pixelPos] + curColor;
+        float4 output = sum / (gAccumCount + 1);
+        gLastFrameSum[pixelPos] = sum;
+        gOutputFrame[pixelPos] = output;    
+    #endif
 
 }
 

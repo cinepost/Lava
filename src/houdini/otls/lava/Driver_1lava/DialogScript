@@ -699,7 +699,7 @@
                 joinnext
                 size    2
                 default { "1" "1" }
-                range   { 0 10 }
+                range   { 1 10 }
                 parmtag { "script_callback_language" "python" }
             }
             parm {
@@ -714,7 +714,7 @@
                     "3 3" "3 x 3"
                     "5 5" "5 x 5" 
                 }
-                parmtag { "script_callback" "opparm . lv_filter_size ( `arg(\"$script_value\", 0)` `arg(\"$script_value\", 1)`)" }
+                parmtag { "script_callback" "opparm . lv_filter_size ( `max(arg(\"$script_value\", 0),1)` `max(arg(\"$script_value\", 1),1)`)" }
             }
             parm {
                 name    "lv_filter_type"
@@ -1053,6 +1053,27 @@
                 type    string
                 default { "float16" }
                 hidewhen "{ lv_quickplane_occlusion == 0 }"
+                menu {
+                    [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
+                    language python
+                }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_quickplane_fresnel"
+                label   "Fresnel"
+                type    toggle
+                joinnext
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+            parm {
+                name    "lv_quantize_fresnel"
+                label   "Quantize"
+                type    string
+                default { "float16" }
+                hidewhen "{ lv_quickplane_fresnel == 0 }"
                 menu {
                     [ "__import__('toolutils').parseDialogScriptMenu('LavaTypeFormats', forhscript=False)" ]
                     language python

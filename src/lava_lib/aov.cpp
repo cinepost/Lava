@@ -150,7 +150,7 @@ bool AOVPlane::getAOVPlaneGeometry(AOVPlaneGeometry& aov_plane_geometry) const {
 }
 
 void AOVPlane::setFormat(Falcor::ResourceFormat format) {
-    auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+    auto pResource = mpRenderGraph->getOutput(mAccumulatePassColorOutputName);
     if(!pResource) {
         LLOG_ERR << "AOV plane \"" << mInfo.name << "\" is not bound to resource !!!";
         return;
@@ -191,11 +191,12 @@ AccumulatePass::SharedPtr AOVPlane::createAccumulationPass( Falcor::RenderContex
     mpAccumulatePass->setOutputFormat(mFormat);
 
     mAccumulatePassName = "AccumulatePass_" + mInfo.name;
-    mAccumulatePassInputName  = mAccumulatePassName + ".input";
-    mAccumulatePassOutputName = mAccumulatePassName + ".output";
+    mAccumulatePassColorInputName  = mAccumulatePassName + ".input";
+    mAccumulatePassDepthInputName  = mAccumulatePassName + ".depth";
+    mAccumulatePassColorOutputName = mAccumulatePassName + ".output";
 
     mpRenderGraph->addPass(mpAccumulatePass, mAccumulatePassName);
-    mpRenderGraph->markOutput(mAccumulatePassOutputName);
+    mpRenderGraph->markOutput(mAccumulatePassColorOutputName);
 
     return mpAccumulatePass;
 }
@@ -279,7 +280,7 @@ OpenDenoisePass::SharedPtr AOVPlane::createOpenDenoisePass( Falcor::RenderContex
 
     // Auxiliary albedo and normal
     {
-        auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+        auto pResource = mpRenderGraph->getOutput(mAccumulatePassColorOutputName);
             auto pTex = pResource ? pResource->asTexture() : nullptr;
             if(pTex) {
                 mpImageLoaderPass->setSourceTexture(pTex);
@@ -312,8 +313,8 @@ void AOVPlane::createInternalRenderGraph(Falcor::RenderContext* pContext, bool f
 
     if(!mpImageLoaderPass) {
         mpImageLoaderPass = ImageLoaderPass::create(pContext);
-        if(!mAccumulatePassOutputName.empty() && mpRenderGraph->isGraphOutput(mAccumulatePassOutputName)) {
-            auto pResource = mpRenderGraph->getOutput(mAccumulatePassOutputName);
+        if(!mAccumulatePassColorOutputName.empty() && mpRenderGraph->isGraphOutput(mAccumulatePassColorOutputName)) {
+            auto pResource = mpRenderGraph->getOutput(mAccumulatePassColorOutputName);
             auto pTex = pResource ? pResource->asTexture() : nullptr;
             if(pTex) {
                 mpImageLoaderPass->setSourceTexture(pTex);
@@ -384,6 +385,7 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::ALBEDO)) return AOVBuiltinName::ALBEDO;
     if(str == to_string(AOVBuiltinName::SHADOW)) return AOVBuiltinName::SHADOW;
     if(str == to_string(AOVBuiltinName::OCCLUSION)) return AOVBuiltinName::OCCLUSION;
+    if(str == to_string(AOVBuiltinName::FRESNEL)) return AOVBuiltinName::FRESNEL;
     if(str == to_string(AOVBuiltinName::OBJECT_ID)) return AOVBuiltinName::OBJECT_ID;
     if(str == to_string(AOVBuiltinName::MATERIAL_ID)) return AOVBuiltinName::MATERIAL_ID;
     if(str == to_string(AOVBuiltinName::INSTANCE_ID)) return AOVBuiltinName::INSTANCE_ID;

@@ -6,6 +6,7 @@ struct AOVData {
     float3 shadow;
     float3 normal;
     float  occlusion;
+    float  fresnel;
 
     /** Create AOVData with default parameters.
     */
@@ -19,6 +20,7 @@ struct AOVData {
         d.shadow = float3(0.f);
         d.normal = float3(0.f);
         d.occlusion = 0.f;
+        d.fresnel = 0.f;
 
         return d;
     }
