@@ -102,7 +102,7 @@ void GBufferBase::compile(RenderContext* pContext, const CompileData& compileDat
 
     if (mpScene) {
         auto pCamera = mpScene->getCamera();
-        pCamera->setPatternGenerator(pCamera->getPatternGenerator(), mInvFrameDim);
+        //pCamera->setPatternGenerator(pCamera->getPatternGenerator(), mInvFrameDim);
     }
 }
 
@@ -159,11 +159,14 @@ static CPUSampleGenerator::SharedPtr createSamplePattern(GBufferBase::SamplePatt
 
 void GBufferBase::updateFrameDim(const uint2 frameDim) {
     assert(frameDim.x > 0 && frameDim.y > 0);
+    
+    if(mFrameDim == frameDim) return;
+
     mFrameDim = frameDim;
     mInvFrameDim = 1.f / float2(frameDim);
 
     // Update sample generator for camera jitter.
-    if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
+    //if (mpScene) mpScene->getCamera()->setPatternGenerator(mpSampleGenerator, mInvFrameDim);
 }
 
 void GBufferBase::updateSamplePattern() {

@@ -312,6 +312,10 @@ void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator
 	}
 }
 
+void Camera::setJitter(float2 jitter) {
+	setJitter(jitter.x, jitter.y);
+}
+
 void Camera::setJitter(float jitterX, float jitterY) {
 	if (mJitterPattern.pGenerator) {
 		LLOG_WRN << "Camera::setJitter() called when a pattern-generator object was attached to the camera. Detaching the pattern-generator";

@@ -230,7 +230,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	depthPassDictionary["disableAlphaTest"] = false; // take texture alpha into account
 
 	mpDepthPass = DepthPass::create(pRenderContext, depthPassDictionary);
-	mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
+	//mpDepthPass->setDepthBufferFormat(ResourceFormat::D32Float);
 	mpDepthPass->setScene(pRenderContext, pScene);
 	mpDepthPass->setCullMode(cullMode);
 	mpRenderGraph->addPass(mpDepthPass, "DepthPass");
@@ -267,7 +267,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	pVBufferPass->setCullMode(cullMode);
 
 	mpRenderGraph->addPass(pVBufferPass, "VBufferPass");
-	mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
+	//mpRenderGraph->addEdge("DepthPass.depth", "VBufferPass.depth");
 
 	// RTXDIPass
 	//Falcor::Dictionary rtxdiPassDictionary(mRenderPassesDictionary);
@@ -285,7 +285,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	mpRenderGraph->addPass(mpSkyBoxPass, "SkyBoxPass");
 	
 	//mpRenderGraph->addEdge("VBufferPass.vbuffer", "RTXDIPass.vbuffer");
-	mpRenderGraph->addEdge("DepthPass.depth", "SkyBoxPass.depth");
+	mpRenderGraph->addEdge("VBufferPass.depth", "SkyBoxPass.depth");
 
 #ifdef USE_FORWARD_LIGHTING_PASS
 	// Forward lighting pass
@@ -607,6 +607,8 @@ void Renderer::finalizeScene(const FrameInfo& frame_info) {
 		mpSampleGenerator = createSamplePattern(SamplePattern::Stratified, frame_info.imageSamples);
 		mpCamera->setPatternGenerator(mpSampleGenerator, mInvRegionDim);
 	}
+
+	//mpCamera->setJitter({0.0f, 0.0f}); // TODO: remove!!!
 
 	mpSceneBuilder->getScene()->update(mpDevice->getRenderContext(), frame_info.frameNumber);
 }

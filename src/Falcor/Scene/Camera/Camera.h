@@ -188,11 +188,19 @@ public:
     */
     const CPUSampleGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
 
+    float2 getPatternGeneratorScale() const { return mJitterPattern.scale; }
+
     /** Set the camera's jitter.
         \param[in] jitterX Subpixel offset along X axis divided by screen width (positive value shifts the image right).
         \param[in] jitterY Subpixel offset along Y axis divided by screen height (positive value shifts the image up).
     */
     void setJitter(float jitterX, float jitterY);
+    
+    /** Set the camera's jitter.
+        \param[in] jitter Subpixel offset along X and Y axis divided by screen width (positive value shifts the image right).
+    */
+    void setJitter(float2 jitter);
+
     float getJitterX() const { return mData.jitterX; }
     float getJitterY() const { return mData.jitterY; }
 

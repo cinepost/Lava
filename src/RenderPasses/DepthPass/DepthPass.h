@@ -88,13 +88,13 @@ class dllpassdecl DepthPass : public RenderPass, public inherit_shared_from_this
     GraphicsState::SharedPtr    mpState;
     GraphicsVars::SharedPtr     mpVars;
     RasterizerState::SharedPtr  mpRsState;
-    ResourceFormat              mDepthFormat = ResourceFormat::D32Float;
+    ResourceFormat              mDepthFormat = ResourceFormat::D32Float; //ResourceFormat::D32FloatS8X24
     RasterizerState::CullMode   mCullMode = RasterizerState::CullMode::None;
     Scene::SharedPtr            mpScene;
     uint2 mOutputSize = {};
     bool mUseAlphaTest = false;
 
-    bool mDirty = false;
+    bool mDirty = true;
 };
 
 #endif  // SRC_FALCOR_RENDERPASSES_DEPTHPASS_DEPTHPASS_H_

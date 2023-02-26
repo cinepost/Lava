@@ -147,6 +147,29 @@ namespace Falcor {
                 encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
                 encoder->setViewports((uint32_t)pState->getViewports().size(), reinterpret_cast<const gfx::Viewport*>(pState->getViewports().data()));
                 encoder->setScissorRects((uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data()));
+
+                /*
+                auto pFbo = pState->getFbo().get();
+                if (pFbo && pFbo) {
+                    const std::vector<Fbo::SamplePosition>& samplePositions = pFbo->getSamplePositions();
+                    uint32_t pixelCount = pFbo->getSamplePositionsPixelCount();
+                    uint32_t samplesPerPixel = pFbo->getSamplePositionsPerPixel();
+                
+                    assert(samplePositions.size() == pixelCount * samplesPerPixel);
+                    if(pixelCount > 0 && samplesPerPixel > 0) {
+                        if(samplePositions.size() == pixelCount * samplesPerPixel) {
+                            LLOG_DBG << "!!! Setting sample positions...";
+                            if(encoder->setSamplePositions(samplesPerPixel, pixelCount, reinterpret_cast<const gfx::SamplePosition*>(samplePositions.data())) == SLANG_E_NOT_AVAILABLE) {
+                                LLOG_ERR << "Sample positions not available!";
+                            } else {
+                                LLOG_DBG << "!!! Sample positions set ! :)";
+                            }
+                        } else {
+                            LLOG_ERR << "Unable to set sample positions! Wrong pixelCount " << pixelCount << " and samplesPerPixel " << samplesPerPixel << " combination!";
+                        }
+                    }
+                }
+                */
             }
 
             return encoder;

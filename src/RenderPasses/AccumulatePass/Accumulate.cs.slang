@@ -79,10 +79,16 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
         const float currDepth = gDepth[pixelPos];
 
         #if (_FILTER_TYPE == SF_TYPE_CLOSEST)
-            if(currDepth < prevDepth) gOutputFrame[pixelPos] = curColor;
+            if(currDepth < prevDepth) {
+                gOutputFrame[pixelPos] = curColor;
+                gLastFrameDepth[pixelPos] = currDepth;
+            }
             return;
         #else
-            if(currDepth > prevDepth) gOutputFrame[pixelPos] = curColor;
+            if(currDepth > prevDepth) {
+                gOutputFrame[pixelPos] = curColor;
+                gLastFrameDepth[pixelPos] = currDepth;
+            }
             return;
         #endif
         
@@ -90,7 +96,7 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
     
         gOutputFrame[pixelPos] = float4(0.f, 1.f, 0.f, 1.f);
         return;
-        
+
     #else // Standard accumulation
 
         // Fetch previous sum and compute the new sum.

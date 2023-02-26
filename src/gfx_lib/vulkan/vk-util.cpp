@@ -91,6 +91,7 @@ namespace gfx {
         case Format::R8_SNORM:                  return VK_FORMAT_R8_SNORM;
 
         case Format::D32_FLOAT:                 return VK_FORMAT_D32_SFLOAT;
+        case Format::D32_FLOAT_S8_UINT:         return VK_FORMAT_D32_SFLOAT_S8_UINT;
         case Format::D16_UNORM:                 return VK_FORMAT_D16_UNORM;
 
         case Format::B4G4R4A4_UNORM:            return VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT;

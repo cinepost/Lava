@@ -249,6 +249,10 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     */
     uint32_t getSamplePositionsPixelCount() const { return mSamplePositionsPixelCount; }
 
+    /** Get the number of sample positions per one pixels
+    */
+    uint32_t getSamplePositionsPerPixel() const { return mSamplePositionsPerPixel; }
+
     struct Attachment {
         Texture::SharedPtr pTexture = nullptr;
         uint32_t mipLevel = 0;
@@ -278,7 +282,9 @@ class dlldecl Fbo : public std::enable_shared_from_this<Fbo> {
     Fbo(std::shared_ptr<Device> pDevice);
     std::vector<Attachment> mColorAttachments;
     std::vector<SamplePosition> mSamplePositions;
+    
     uint32_t mSamplePositionsPixelCount = 0;
+    uint32_t mSamplePositionsPerPixel = 0;
 
     Attachment mDepthStencil;
 

@@ -176,7 +176,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 		VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 		applicationInfo.pApplicationName = "slang-gfx";
 		applicationInfo.pEngineName = "slang-gfx";
-		applicationInfo.apiVersion = VK_API_VERSION_1_1;
+		applicationInfo.apiVersion = VK_API_VERSION_1_3;
 		applicationInfo.engineVersion = 1;
 		applicationInfo.applicationVersion = 1;
 
@@ -252,7 +252,7 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 				instanceCreateInfo.ppEnabledLayerNames = layerNames;
 			}
 		}
-		uint32_t apiVersionsToTry[] = { VK_API_VERSION_1_2, VK_API_VERSION_1_1, VK_API_VERSION_1_0 };
+		uint32_t apiVersionsToTry[] = { VK_API_VERSION_1_3, VK_API_VERSION_1_2, VK_API_VERSION_1_1, VK_API_VERSION_1_0 };
 		for (auto apiVersion : apiVersionsToTry) {
 			applicationInfo.apiVersion = apiVersion;
 			if (m_api.vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS) {
@@ -562,9 +562,27 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 			m_features.add("robustness2");
 		}
 
+		if (m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT) {
+			VkMultisamplePropertiesEXT multisampleProperties;
+			m_api.vkGetPhysicalDeviceMultisamplePropertiesEXT(m_api.m_physicalDevice, VK_SAMPLE_COUNT_1_BIT, &multisampleProperties);
+			auto maxSampleLocationGridSize = multisampleProperties.maxSampleLocationGridSize;
+		}
+
 		VkPhysicalDeviceProperties2 extendedProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+
 		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
+
+		VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationsProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT };
+		sampleLocationsProps.sampleLocationSampleCounts = VK_SAMPLE_COUNT_1_BIT; //metalFeatures.supportedSampleCounts;
+		sampleLocationsProps.maxSampleLocationGridSize = {4, 4};
+		sampleLocationsProps.sampleLocationCoordinateRange[0] = 0.f;
+		sampleLocationsProps.sampleLocationCoordinateRange[1] = 15.f / 16.f;
+		sampleLocationsProps.sampleLocationSubPixelBits = 4;
+		sampleLocationsProps.variableSampleLocations = VK_TRUE;
+
+		rtProps.pNext = &sampleLocationsProps;
 		extendedProps.pNext = &rtProps;
+
 		m_api.vkGetPhysicalDeviceProperties2(m_api.m_physicalDevice, &extendedProps);
 		m_api.m_rtProperties = rtProps;
 
@@ -591,6 +609,11 @@ Result DeviceImpl::initVulkanInstanceAndDevice(const InteropHandle* handles, boo
 		}
 
 		// New stuff
+		if(extensionNames.Contains(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)) {
+			deviceExtensions.add(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
+			m_features.add("sample_locations");
+		}
+
 		if(extensionNames.Contains(VK_IMG_FILTER_CUBIC_EXTENSION_NAME)) {
 			deviceExtensions.add(VK_IMG_FILTER_CUBIC_EXTENSION_NAME);
 			m_features.add("sampler_filter_cubic");
@@ -1205,6 +1228,7 @@ Result DeviceImpl::createTextureResource(
 		{
 			imageInfo.imageType = VK_IMAGE_TYPE_2D;
 			imageInfo.extent = VkExtent3D{ uint32_t(descIn.size.width), uint32_t(descIn.size.height), 1 };
+			imageInfo.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 			break;
 		}
 		case IResource::Type::TextureCube:

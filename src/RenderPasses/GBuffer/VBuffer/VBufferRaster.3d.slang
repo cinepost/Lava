@@ -95,16 +95,13 @@ VBufferVSOut vsMain(VSIn vsIn) {
     return vsOut;
 }
 
-#if _USE_EXTERNAL_DEPTH_BUFFER
+
 [earlydepthstencil]
-#endif
 VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) {
     VBufferPSOut psOut;
 
-#if _USE_INTERNAL_DEPTH_BUFFER
     // Early camera range out
     if((vsOut.posH.z < 0.0) || (vsOut.posH.z > 1.0)) discard;
-#endif    
 
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);

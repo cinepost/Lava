@@ -51,20 +51,36 @@ class VBufferRaster : public GBufferBase {
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
   private:
+    struct SubPass {
+      Fbo::SharedPtr pFbo;
+      Texture::SharedPtr pVBuff;
+      Texture::SharedPtr pDepth;
+      float2 cameraJitterOffset;
+      CPUSampleGenerator::SharedPtr pSampleGenerator;
+    };
+
     VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
 
     void initDepth(RenderContext* pContext, const RenderData& renderData);
+    void initQuarterBuffers(RenderContext* pContext, const RenderData& renderData);
 
     // Internal state
-    Fbo::SharedPtr                  mpFbo;
-    Texture::SharedPtr              mpDepth;
+    Fbo::SharedPtr                mpFbo;
+    Texture::SharedPtr            mpDepth;
 
-    bool mDirty = true;
+    // Quad view rendering (fake per-pixel jitter)
+    bool mDoJitteredRendering = false;
+    uint2  mQuarterFrameDim   = {0, 0};
+    std::array<SubPass, 4>        mSubPasses;
+    ComputeProgram::SharedPtr     mpCombineQuadsProgram;
+    ComputeVars::SharedPtr        mpCombineQuadsVars;
+    ComputeState::SharedPtr       mpCombineQuadsState;
+    CPUSampleGenerator::SharedPtr mpSampleGenerator;
 
     struct {
-        GraphicsState::SharedPtr pState;
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pVars;
+      GraphicsState::SharedPtr pState;
+      GraphicsProgram::SharedPtr pProgram;
+      GraphicsVars::SharedPtr pVars;
     } mRaster;
 
     static const char* kDesc;

@@ -31,6 +31,7 @@
 #include "Falcor/Falcor.h"
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Scene/Scene.h"
+#include "Falcor/Utils/Sampling/SampleGenerator.h"
 #include "Falcor/RenderGraph/RenderPass.h"
 
 #include "Accumulate.SeparableFilter.slangh"
@@ -99,19 +100,19 @@ class AccumulatePass : public RenderPass {
 
  protected:
     AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict);
-    void prepareAccumulation(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
+    void prepareBuffers(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void preparePixelFilterKernelTexture(RenderContext* pRenderContext);
     void prepareFilteredTextures(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc);
     void prepareImageSampler(RenderContext* pContext);
 
     // Internal state
     Scene::SharedPtr            mpScene;                        ///< The current scene (or nullptr if no scene).
-    Camera::SharedPtr           mpCamera;                       ///< Current scene camera;
+    Camera::SharedPtr           mpCamera;                       ///< Current scene camera.
     std::map<Precision, ComputeProgram::SharedPtr> mpProgram;   ///< Accumulation programs, one per mode.
     ComputeVars::SharedPtr      mpVars;                         ///< Program variables.
     ComputeState::SharedPtr     mpState;
-    std::array<FilterPass, 2>   mFilterPasses;                  ///< Horizontal and vertical sample plane filtering passes data
-    
+    std::array<FilterPass, 2>   mFilterPasses;                  ///< Horizontal and vertical sample plane filtering passes data.
+    SampleGenerator::SharedPtr  mpSampleGenerator;              ///< GPU random sample generator.
 
     uint32_t                    mFrameCount = 0;                ///< Number of accumulated frames. This is reset upon changes.
     uint2                       mFrameDim = { 0, 0 };           ///< Current frame dimension in pixels.
@@ -133,6 +134,7 @@ class AccumulatePass : public RenderPass {
 
     bool                        mDoHorizontalFiltering = false;
     bool                        mDoVerticalFiltering = false;
+    bool                        mDoFakeJitter = false;          ///< Fake subpixel sample jittering (used for rasterization only).
     bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
     bool                        mAutoReset = false;             ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;

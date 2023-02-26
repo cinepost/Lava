@@ -340,11 +340,13 @@ void Fbo::finalize() const {
 }
 
 void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]) {
-	if (positions) {
+	if (positions && pixelCount > 0 && samplesPerPixel > 0) {
 		mSamplePositions = std::vector<SamplePosition>(positions, positions + (samplesPerPixel * pixelCount));
 		mSamplePositionsPixelCount = pixelCount;
+		mSamplePositionsPerPixel = samplesPerPixel;
 	} else {
 		mSamplePositionsPixelCount = 0;
+		mSamplePositionsPerPixel = 0;
 		mSamplePositions.clear();
 	}
 }

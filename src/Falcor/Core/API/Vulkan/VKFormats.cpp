@@ -56,7 +56,7 @@ const VkFormatDesc kVkFormatDesc[] = {
     { ResourceFormat::RG16Float,                     VK_FORMAT_R16G16_SFLOAT },
     { ResourceFormat::RGB16Float,                    VK_FORMAT_R16G16B16_SFLOAT },
     { ResourceFormat::RGBA16Float,                   VK_FORMAT_R16G16B16A16_SFLOAT },
-    { ResourceFormat::R32Float,                      VK_FORMAT_R32_SFLOAT },
+    { ResourceFormat::R32Float,                      VK_FORMAT_R32G32_SFLOAT }, //VK_FORMAT_R32_SFLOAT },
     { ResourceFormat::R32FloatX32,                   VK_FORMAT_UNDEFINED },
     { ResourceFormat::RG32Float,                     VK_FORMAT_R32G32_SFLOAT },
     { ResourceFormat::RGB32Float,                    VK_FORMAT_R32G32B32_SFLOAT },

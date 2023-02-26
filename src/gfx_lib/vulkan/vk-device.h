@@ -209,6 +209,7 @@ public:
 	Desc m_desc;
 
 	VkPhysicalDeviceProperties m_basicProps;
+	VkPhysicalDeviceProperties m_deviceProps2;
 	VkPhysicalDeviceMemoryProperties m_memoryProperties;
 
 	DescriptorSetAllocator descriptorSetAllocator;

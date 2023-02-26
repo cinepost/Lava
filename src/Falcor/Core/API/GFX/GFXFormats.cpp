@@ -83,7 +83,7 @@ namespace Falcor
 		case ResourceFormat::D32Float:
 			return gfx::Format::D32_FLOAT;
 		case ResourceFormat::D32FloatS8X24:
-			return gfx::Format::Unknown;
+			return gfx::Format::D32_FLOAT_S8_UINT;
 		case ResourceFormat::R11G11B10Float:
 			return gfx::Format::R11G11B10_FLOAT;
 		case ResourceFormat::R16Float:
@@ -101,7 +101,7 @@ namespace Falcor
 		case ResourceFormat::R32Float:
 			return gfx::Format::R32_FLOAT;
 		case ResourceFormat::R32FloatX32:
-			return gfx::Format::Unknown;
+			return gfx::Format::R32G32_FLOAT; //Unknown;
 		case ResourceFormat::R32Int:
 			return gfx::Format::R32_SINT;
 		case ResourceFormat::R32Uint:

@@ -88,10 +88,14 @@ namespace {
     const char kSubFrameCount[] = "subFrameCount";
 }
 
-static float hMinDbg = 1.f;
-static float hMaxDbg = 0.f;
-static float vMinDbg = 1.f;
-static float vMaxDbg = 0.f;
+static const float hMinDbg = 1.f;
+static const float hMaxDbg = 0.f;
+static const float vMinDbg = 1.f;
+static const float vMaxDbg = 0.f;
+
+static bool isDepthDependentFilterType(AccumulatePass::PixelFilterType filterType) {
+    return (filterType == PixelFilterType::Farthest || filterType == PixelFilterType::Closest) ? true : false;
+}
 
 AccumulatePass::SharedPtr AccumulatePass::create(RenderContext* pRenderContext, const Dictionary& dict) {
     return SharedPtr(new AccumulatePass(pRenderContext->device(), dict));
@@ -106,6 +110,8 @@ AccumulatePass::AccumulatePass(Device::SharedPtr pDevice, const Dictionary& dict
         else if (key == kSubFrameCount) mSubFrameCount = value;
         else LLOG_WRN << "Unknown field '" << key << "' in AccumulatePass dictionary";
     }
+
+    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 
     setPixelFilterType(PixelFilterType::Box);
     setPixelFilterSize({1u, 1u});
@@ -224,15 +230,16 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
     if(mPixelFilterSize[1] > 1u || 
         (pixelFilterSingularValueCountSVD(mPixelFilterType, kPixelFilterKernelTextureHalfSize, kPixelFilterKernelTextureHalfSize) > 1)) mDoVerticalFiltering = true;
     
-    prepareFilteredTextures(pSrc, pSrcDepth);
+    // Setup buffers, samplers...
+    prepareBuffers(pRenderContext, pSrc, pSrcDepth);
     prepareImageSampler(pRenderContext);
 
     float2 maxSampleDistance = {float(mPixelFilterSize[0])*0.5, float(mPixelFilterSize[1])*0.5};
     uint2 halfFilterSize = {mPixelFilterSize[0] >> 1, mPixelFilterSize[1] >> 1};
     float2 sampleDistanceLocal = mpCamera ? float2({mpCamera->getSubpixelJitterX(), mpCamera->getSubpixelJitterY()}) : float2({0.f, 0.f});
 
-    LLOG_DBG << "AccumulatePass maximum sample distance " << to_string(maxSampleDistance);
-    LLOG_DBG << "AccumulatePass filter size " << to_string(mPixelFilterSize) << ". Half size " << to_string(halfFilterSize);
+    //LLOG_DBG << "AccumulatePass maximum sample distance " << to_string(maxSampleDistance);
+    //LLOG_DBG << "AccumulatePass filter size " << to_string(mPixelFilterSize) << ". Half size " << to_string(halfFilterSize);
     LLOG_DBG << "AccumulatePass sample local distance " << to_string(sampleDistanceLocal);
 
     // Horizontal filtering pass
@@ -247,7 +254,8 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["PerFrameCB"]["gSampleDistanceLocal"] = sampleDistanceLocal;
         pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
         pVars["PerFrameCB"]["gMaxSampleDistance"] = maxSampleDistance;
-        
+        pVars["PerFrameCB"]["gSampleNumber"] = mFrameCount;
+
         pVars["gInput"] = pSrc;
         pVars["gDepth"] = pSrcDepth;
         pVars["gKernelTexture"] = mpKernelTexture;
@@ -259,11 +267,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["gOutputFilteredImage"] = pFilteredImage;
         pVars["gOutputFilteredDepth"] = pFilteredDepth;
 
-        if(mDirty || mFrameCount == 0) {
+        if(mDirty) {
             pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
             pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
             pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
             pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+            pProgram->addDefine("_FAKE_JITTER", mDoFakeJitter ? "1" : "0");
+            if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());
         }
 
         filterPass.pState->setProgram(pProgram);
@@ -284,6 +294,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["PerFrameCB"]["gSampleDistanceLocal"] = sampleDistanceLocal;
         pVars["PerFrameCB"]["gFilterSize"] = mPixelFilterSize;
         pVars["PerFrameCB"]["gMaxSampleDistance"] = maxSampleDistance;
+        pVars["PerFrameCB"]["gSampleNumber"] = mFrameCount;
         
         pVars["gInput"] = mDoHorizontalFiltering ? mpTmpFilteredImage : pSrc;
         pVars["gDepth"] = mDoHorizontalFiltering ? mpTmpFilteredDepth : pSrcDepth;
@@ -296,11 +307,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         pVars["gOutputFilteredImage"] = pFilteredImage;
         pVars["gOutputFilteredDepth"] = pFilteredDepth;
 
-        if(mDirty || mFrameCount == 0) {
+        if(mDirty) {
             pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
             pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
             pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
             pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
+            pProgram->addDefine("_FAKE_JITTER", mDoFakeJitter ? "1" : "0");
+            if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());
         }
 
         filterPass.pState->setProgram(pProgram);
@@ -316,9 +329,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         return;
     }
 
-    
-    // Setup accumulation.
-    prepareAccumulation(pRenderContext, pSrc, pSrcDepth);
+    // Accumulation
 
     // Set shader parameters.
     mpVars["PerFrameCB"]["gResolution"] = resolution;
@@ -382,53 +393,69 @@ void AccumulatePass::onHotReload(HotReloadFlags reloaded) {
     if (is_set(reloaded, HotReloadFlags::Program)) mFrameCount = 0;
 }
 
-void AccumulatePass::prepareAccumulation(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
+void AccumulatePass::prepareBuffers(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDepthSrc) {
     // Allocate/resize/clear buffers for intermedate data. These are different depending on accumulation mode.
     // Buffers that are not used in the current mode are released.
-    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool isDepth = false) {
+    auto prepareBuffer = [&](Texture::SharedPtr& pBuf, uint32_t width, uint32_t height, ResourceFormat format, bool bufUsed, bool clearAsDepth = false) {
         if (!bufUsed) {
             pBuf = nullptr;
             return;
         }
+
         // (Re-)create buffer if needed.
         if (!pBuf || pBuf->getWidth() != width || pBuf->getHeight() != height) {
-            if (isDepth) format = depthToColorFormat(format);
             pBuf = Texture::create2D(pRenderContext->device(), width, height, format, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
             assert(pBuf);
             mFrameCount = 0;
         }
         // Clear data if accumulation has been reset (either above or somewhere else).
         if (mFrameCount == 0) {
-            if (!isDepth) {
+            if (clearAsDepth) {
+                bool isDepth = isDepthStencilFormat(format);
+                if(mPixelFilterType == PixelFilterType::Closest) {
+                    if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 1.f, 0);
+                    else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f));
+                } else {
+                    if (isDepth) pRenderContext->clearDsv(pBuf->getDSV().get(), 0.f, 0);
+                    else pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
+                }
+            } else {
                 if (getFormatType(format) == FormatType::Float) pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f));
                 else pRenderContext->clearUAV(pBuf->getUAV().get(), uint4(0));
-            } else {
-                if(mPixelFilterType == PixelFilterType::Closest) {
-                    pRenderContext->clearUAV(pBuf->getUAV().get(), float4(1.f, 0.f, 0.f, 0.f));
-                } else {
-                    pRenderContext->clearUAV(pBuf->getUAV().get(), float4(0.f, 0.f, 0.f, 0.f));
-                }
             }
         }
     };
 
+    // Color
     if(pSrc) {
         uint32_t width = pSrc->getWidth(0);
         uint32_t height = pSrc->getHeight(0);
+        ResourceFormat format = pSrc->getFormat();
 
+        // Separable filtering buffers
+        prepareBuffer(mpTmpFilteredImage, width, height, format, mDoHorizontalFiltering && mDoVerticalFiltering);
+        prepareBuffer(mpFilteredImage, width, height, format, mDoHorizontalFiltering || mDoVerticalFiltering);
+
+        // Accumulation buffers
         prepareBuffer(mpLastFrameSum, width, height, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::Single || mPrecisionMode == Precision::SingleCompensated);
         prepareBuffer(mpLastFrameCorr, width, height, ResourceFormat::RGBA32Float, mPrecisionMode == Precision::SingleCompensated);
         prepareBuffer(mpLastFrameSumLo, width, height, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
         prepareBuffer(mpLastFrameSumHi, width, height, ResourceFormat::RGBA32Uint, mPrecisionMode == Precision::Double);
     }
 
-    // Depth part
+    // Depth
     if(pDepthSrc && (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest)) {
         ResourceFormat format = pDepthSrc->getFormat();
         uint32_t width = pDepthSrc->getWidth(0);
         uint32_t height = pDepthSrc->getHeight(0);
 
-        prepareBuffer(mpLastFrameDepth, width, height, format, (mPixelFilterType == PixelFilterType::Closest || mPixelFilterType == PixelFilterType::Farthest), true);
+        // Separable filtering buffers
+        bool depthRequired = isDepthDependentFilterType(mPixelFilterType);
+        prepareBuffer(mpTmpFilteredDepth, width, height, ResourceFormat::R32Float, depthRequired && (mDoHorizontalFiltering && mDoVerticalFiltering), true);
+        prepareBuffer(mpFilteredDepth, width, height, ResourceFormat::R32Float, depthRequired && (mDoHorizontalFiltering || mDoVerticalFiltering), true);
+
+        // Depth buffers
+        prepareBuffer(mpLastFrameDepth, width, height, ResourceFormat::R32Float, depthRequired, true);
     }
 }
 

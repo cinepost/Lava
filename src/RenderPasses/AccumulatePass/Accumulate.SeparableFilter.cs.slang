@@ -26,16 +26,25 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Temporal accumulation render pass.
-
-    pass.
+/** Sample accumulation render pass.
 */
 
 #include "Accumulate.SeparableFilter.slangh"
 
+import Utils.Sampling.SampleGenerator;
 
-#define DO_EXPAND(VAL)  VAL ## 1
-#define EXPAND(VAL)     DO_EXPAND(VAL)
+//#define DO_EXPAND(VAL)  VAL ## 1
+//#define EXPAND(VAL)     DO_EXPAND(VAL)
+
+#define is_valid(name) (is_valid_##name != 0)
+
+#ifndef _FILTER_HALF_SIZE_H
+#define _FILTER_HALF_SIZE_H 0
+#endif
+
+#ifndef _FILTER_HALF_SIZE_V
+#define _FILTER_HALF_SIZE_V 0
+#endif
 
 cbuffer PerFrameCB
 {
@@ -44,9 +53,8 @@ cbuffer PerFrameCB
     uint2   gKernelTextureSize;     // Kernel texture size in texels
     float2  gSampleDistanceLocal;   // Uniform sample distance from pixel center (rasterizer input only)
     float2  gMaxSampleDistance;     // Maximum sample distance from cetral pixel center
+    uint    gSampleNumber;
 }
-
-#define is_valid(name) (is_valid_##name != 0)
 
 // Input data to accumulate and accumulated output.
 Texture2D<float4>   gInput;
@@ -70,17 +78,26 @@ SamplerState gKernelSampler;
 void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
+
     const uint2 pixelPos = dispatchThreadId.xy;
     float2 currentSampleDistance = float2(0.f);
+
+    #if (_FAKE_JITTER == 1)
+        // Sample generator
+        SampleGenerator sg = SampleGenerator.create(pixelPos, gSampleNumber);
+        float2 sampleDistance = sampleNext2D(sg) - float2(0.5f, 0.5f);
+    #else
+        float2 sampleDistance = gSampleDistanceLocal;
+    #endif
 
     // Central sample
     float4 outColor = gInput[pixelPos];
 
-    //currentSampleDistance.x = abs(gSampleDistanceLocal.x);
-    //currentSampleDistance.y = abs(gSampleDistanceLocal.y);
+    //currentSampleDistance.x = abs(sampleDistance.x);
+    //currentSampleDistance.y = abs(sampleDistance.y);
     //if(any(currentSampleDistance >= gMaxSampleDistance)) outColor = float4(0.f);
 
-    #if defined(_FILTER_HALF_SIZE_H) && (EXPAND(_FILTER_HALF_SIZE_H) > 0)
+    #if _FILTER_HALF_SIZE_H != 0
     const uint2 pixelPosF = float2(pixelPos);
     const int2 pixelPosI = int2(pixelPos);
 
@@ -94,7 +111,7 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
         
         if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
 
-        currentSampleDistance.x = abs(float(i) - gSampleDistanceLocal.x);
+        currentSampleDistance.x = abs(float(i) - sampleDistance.x);
         if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
 
         outColor += gInput[pixelPosR];
@@ -108,7 +125,7 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
         
         if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
 
-        currentSampleDistance.x = abs(float(i) + gSampleDistanceLocal.x);
+        currentSampleDistance.x = abs(float(i) + sampleDistance.x);
         if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
 
         outColor += gInput[pixelPosR];
@@ -131,10 +148,18 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
     const uint2 pixelPos = dispatchThreadId.xy;
     float2 currentSampleDistance = float2(0.f);
 
+    #if (_FAKE_JITTER == 1)
+        // Sample generator
+        SampleGenerator sg = SampleGenerator.create(pixelPos, gSampleNumber);
+        float2 sampleDistance = sampleNext2D(sg) - float2(0.5f, 0.5f);
+    #else
+        float2 sampleDistance = gSampleDistanceLocal;
+    #endif
+
     // Central sample
     float4 outColor = gInput[pixelPos];
 
-    #if defined(_FILTER_HALF_SIZE_V) && (EXPAND(_FILTER_HALF_SIZE_V) > 0)
+    #if _FILTER_HALF_SIZE_V != 0
     const uint2 pixelPosF = float2(pixelPos);
     const int2 pixelPosI = int2(pixelPos);
 
@@ -148,7 +173,7 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
         
         if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
         
-        currentSampleDistance.y = abs(float(i) + gSampleDistanceLocal.y);
+        currentSampleDistance.y = abs(float(i) + sampleDistance.y);
         if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
 
         outColor += gInput[pixelPosR];
@@ -162,7 +187,7 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
         
         if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
         
-        currentSampleDistance.y = abs(float(i) - gSampleDistanceLocal.y);
+        currentSampleDistance.y = abs(float(i) - sampleDistance.y);
         if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
 
         outColor += gInput[pixelPosR];

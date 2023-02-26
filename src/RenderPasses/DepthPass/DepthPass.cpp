@@ -79,9 +79,13 @@ DepthPass::DepthPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderP
     // Create a GPU sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     assert(mpSampleGenerator);
-    pProgram->addDefines(mpSampleGenerator->getDefines());
 
     mpState = GraphicsState::create(pDevice);
+    
+    DepthStencilState::Desc dsDesc;
+    dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
+    mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
+
     mpState->setProgram(pProgram);
     mpFbo = Fbo::create(pDevice);
 
@@ -107,24 +111,27 @@ RenderPassReflection DepthPass::reflect(const CompileData& compileData) {
 
 void DepthPass::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) {
     mpScene = pScene;
-    mpVars = nullptr;
-
-    if (mpScene) {
-        auto pProgram = mpState->getProgram();
-        pProgram->addDefines(mpScene->getSceneDefines());
-        //mpState->getProgram()->addDefine("DISABLE_RAYTRACING", "");
-        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
-        pProgram->setTypeConformances(mpScene->getTypeConformances());
-        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
-    }
+    mDirty = true;
 }
 
 void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderData) {
     const auto& pDepth = renderData[kDepth]->asTexture();
     mpFbo->attachDepthStencilTarget(pDepth);
 
+    if(mDirty || !mpVars) {
+        auto pProgram = mpState->getProgram();
+        pProgram->addDefines(mpScene->getSceneDefines());
+        pProgram->addDefines(mpSampleGenerator->getDefines());
+        pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
+        pProgram->setTypeConformances(mpScene->getTypeConformances());            
+        mpVars = GraphicsVars::create(pRenderContext->device(), mpState->getProgram()->getReflector());
+    }
+
     mpState->setFbo(mpFbo);
-    pRenderContext->clearDsv(pDepth->getDSV().get(), 1, 0);
+
+    bool clearDepth = true;
+    bool clearStencil = false;
+    pRenderContext->clearDsv(pDepth->getDSV().get(), .0f, 1, clearDepth, clearStencil);
 
     //mpVars["PerFrameCB"]["gSamplesPerFrame"]  = mFrameSampleCount;
     //mpVars["PerFrameCB"]["gSampleNumber"] = mSampleNumber++;
@@ -132,6 +139,7 @@ void DepthPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     if (mpScene) {
         mpScene->rasterize(pRenderContext, mpState.get(), mpVars.get(), mCullMode);
     }
+    mDirty = false;
 }
 
 DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format) {

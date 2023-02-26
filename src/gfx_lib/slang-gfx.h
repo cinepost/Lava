@@ -264,6 +264,7 @@ public:
 	x(R8_SNORM, 1, 1) \
 	\
 	x(D32_FLOAT, 4, 1) \
+	x(D32_FLOAT_S8_UINT, 8, 1) \
 	x(D16_UNORM, 2, 1) \
 	\
 	x(B4G4R4A4_UNORM, 2, 1) \
@@ -384,6 +385,7 @@ enum class Format
 	R8_SNORM,
 
 	D32_FLOAT,
+	D32_FLOAT_S8_UINT,
 	D16_UNORM,
 
 	B4G4R4A4_UNORM,

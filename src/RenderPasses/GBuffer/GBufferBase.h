@@ -91,6 +91,8 @@ class GBufferBase : public RenderPass {
     RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::None;    ///< Cull mode to use for when mForceCullMode is true.
     bool                            mOptionsChanged = false;
 
+    bool                            mDirty = true; ///< Pass parameters/resources changed
+
     static void registerBindings(pybind11::module& m);
     friend void getPasses(Falcor::RenderPassLibrary& lib);
 };
