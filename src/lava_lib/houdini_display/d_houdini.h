@@ -48,20 +48,21 @@ public:
 
 	void	 init();
 	void	 destroy();
-	int      open(const string& channel_name,	// Name of channel
-	const int channel_size,	// Size in bytes of channel
-	const int channel_count,	// Number of channels
-	const int off[4]);	// Offsets of each component
+	int      open(const std::string& channel_name,	// Name of channel
+					const int channel_size,	// Size in bytes of channel
+					const int channel_count,	// Number of channels
+					const int off[4]);	// Offsets of each component
 	void	 startTile(const int xres, const int yres);
-	int		 writePixel(const char* data, const int pixelOffset);
+	int		 writePixel(const char* pData, const int pixelOffset);
 	int		 closeTile(FILE* fp, const int id, const int x0, const int y0, const int x1, const int y1);
 
-	const string& getName() const {return myName;}
-	int getFormat() const {return myFormat;}
-	int getArraySize() const {return myCount;}
+	const std::string& getName() const {return myName;}
+	inline int getFormat() const {return myFormat;}
+	inline int getArraySize() const {return myCount;}
+	inline int getPixelSize() const {return myPixelSize;}
 
 private:
-	string myName;
+	std::string myName;
 	vector< char > myData;
 	int		mySize, myFormat, myCount;
 	int		myDSize, myOffset;
@@ -72,17 +73,17 @@ private:
 class H_Image {
 public:
 	 H_Image() {init("", 0, 0);}
-	 H_Image(const string& filename, const int xres, const int yres) {init(filename, xres, yres);}
+	 H_Image(const std::string& filename, const int xres, const int yres) {init(filename, xres, yres);}
 	~H_Image() {destroy();}
 
-	void	init(const string& filename, const int xres, const int yres);
+	void	init(const std::string& filename, const int xres, const int yres);
 	void	destroy();
-	int		addChannel(const string& name, const int size, const int count, const int off[4]);
+	int		addChannel(const std::string& name, const int size, const int count, const int off[4]);
     
     int 	writeChannelHeader(void);
 
 	int		writeData(const int x0, const int x1, const int y0, const int y1,
-                      const char* data, const int bytes_per_pixel,
+                      const char* pData, const int bytes_per_pixel,
                       const float tileScaleX, const float tileScaleY);
     
     int		getXres() const {return myXres;}
@@ -94,11 +95,11 @@ public:
     // returns 1 for success.
 	static int openPipe(void);
 
-	void	parseOptions(const int paramCount, const UserParameter *parameters);
+	void   parseOptions(const int paramCount, const UserParameter *parameters);
 
 	inline bool isHalfFloat() const { return mHalfFloat; }
 
-	inline const string& getIMDisplayOptions() const { return myIMDisplayOptions; }
+	inline const std::string& getIMDisplayOptions() const { return myIMDisplayOptions; }
 
     inline char const* getDisplayOptions(void) const { return myIMDisplayOptions.c_str(); }
     
@@ -115,11 +116,13 @@ public:
     inline void setChannelOffset(int id) { myChannelOffset = id; }
 
     inline size_t getChannelCount(void) const { return myChannels.size(); }
+
+    int getEntrySize(void) const;
     
 private:
     
-	string myName;
-	string myIMDisplayOptions;
+	std::string myName;
+	std::string myIMDisplayOptions;
 	vector< h_shared_ptr < H_Channel > > myChannels;
     
     bool    mHalfFloat = false; // Indicates that pixel data is 16 bit float (half)

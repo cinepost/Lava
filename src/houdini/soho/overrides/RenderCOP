@@ -7,5 +7,5 @@
 
     // Force the render to go to the "ip" device
     lv_picture		[ $imagefile ]
-    //lv_device		[ Houdini ]
+    lv_device		[ Houdini ]
 }

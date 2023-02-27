@@ -50,6 +50,8 @@ class VBufferRaster : public GBufferBase {
     void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
+    VBufferRaster& setPerPixelJitterRaster(bool state=false);
+
   private:
     struct SubPass {
       Fbo::SharedPtr pFbo;
@@ -61,6 +63,7 @@ class VBufferRaster : public GBufferBase {
 
     VBufferRaster(Device::SharedPtr pDevice, const Dictionary& dict);
 
+    virtual void parseDictionary(const Dictionary& dict) override;
     void initDepth(RenderContext* pContext, const RenderData& renderData);
     void initQuarterBuffers(RenderContext* pContext, const RenderData& renderData);
 
@@ -69,7 +72,7 @@ class VBufferRaster : public GBufferBase {
     Texture::SharedPtr            mpDepth;
 
     // Quad view rendering (fake per-pixel jitter)
-    bool mDoJitteredRendering = false;
+    bool mPerPixelJitterRaster = false;
     uint2  mQuarterFrameDim   = {0, 0};
     std::array<SubPass, 4>        mSubPasses;
     ComputeProgram::SharedPtr     mpCombineQuadsProgram;

@@ -66,6 +66,8 @@ class GBufferBase : public RenderPass {
     virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     
+    GBufferBase& setDepthBufferFormat(ResourceFormat format);
+    
  protected:
     GBufferBase(Device::SharedPtr pDevice, Info info);
     virtual void parseDictionary(const Dictionary& dict);
@@ -80,6 +82,7 @@ class GBufferBase : public RenderPass {
     uint32_t                        mFrameCount = 0;
     uint2                           mFrameDim = {};
     float2                          mInvFrameDim = {};
+    ResourceFormat                  mDepthFormat = ResourceFormat::D32Float;
     ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
 
     // UI variables

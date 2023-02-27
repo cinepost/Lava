@@ -481,7 +481,7 @@ bool Session::cmdRaytrace() {
     if(!mIPR) pDisplay->closeAll(); // close previous frame display images (if still opened) 
 
 	std::string imageFileName = mCurrentDisplayInfo.outputFileName;
-	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "renderlabel", std::string(""));
+	std::string renderLabel = mpGlobal->getPropertyValue(ast::Style::RENDERER, "renderlabel", std::string(""));
 
 	{
 		std::vector<Display::UserParm> userParams;
@@ -492,13 +492,15 @@ bool Session::cmdRaytrace() {
 			int mplayPortNum = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.socketport", int(0));
 			std::string mplayHostname = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.sockethost", std::string("localhost"));
 			std::string mplayRendermode = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendermode", std::string(""));
+			std::string mplayLabel = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.label", renderLabel);
 			std::string mplayFrange = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.framerange", std::string("1 1"));
 			int  mplayCframe = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.currentframe", int(1));
 
 			imageFileName = mpGlobal->getPropertyValue(ast::Style::PLANE, "IPlay.rendersource", std::string(mCurrentDisplayInfo.outputFileName));
 			
-			if (renderLabel != "") userParams.push_back(Display::makeStringsParameter("label", {renderLabel}));
 			
+			if (mplayLabel != "") userParams.push_back(Display::makeStringsParameter("label", {mplayLabel}));
+
 			if (mplayRendermode != "") userParams.push_back(Display::makeStringsParameter("numbering", {mplayRendermode}));
 
 			userParams.push_back(Display::makeStringsParameter("frange", {std::to_string(mplayCframe) + " " + mplayFrange}));

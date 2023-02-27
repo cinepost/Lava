@@ -6,7 +6,6 @@
     override.name	    lava
 
     // Force the render to go to the "ip" device
-    //lv_picture			[ $over_file ]
-    lv_picture          [ "huy2" ]
+    lv_picture			[ $over_file ]
     lv_device			[ $over_device ]
 }

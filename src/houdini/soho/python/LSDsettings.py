@@ -765,6 +765,7 @@ def outputMPlayFormatOptions(wrangler, cam, now):
     rendermode = plist['rendermode'].Value[0]
     framemode  = plist['framemode'].Value[0]
     trange     = plist['trange'].Value[0]
+
     curframe = hou.timeToFrame(now)
     if trange:
         frange = cam.wrangleInt(wrangler, 'f', now, [curframe, curframe])

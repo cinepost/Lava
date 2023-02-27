@@ -38,6 +38,9 @@
 #include <fstream>
 #include <cstdlib>
 
+#include <thread>
+#include <mutex>
+
 #include <string>
 #include <regex>
 
@@ -68,8 +71,12 @@ vector<ImagePtr> g_masterImages;
 // at different LOD's.
 vector<MultiResPtr> g_multiRes;
 
-int g_mplayPortNumber = 0;
- 
+uint8_t g_zeroData[64]; // Global zero data buffer. Used for sending dummy data to MPlay. 
+int  	g_mplayPortNumber = 0;
+bool 	g_mplayAppOpened = false; 
+
+std::mutex g_openpipe_mutex;
+std::mutex g_writedata_mutex;
 
 static void
 log(const int level, const char* fmt, ...) {
@@ -637,10 +644,15 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
 
 	PtDspyError ret;
 
+
 	// Read port from .mplay_lock
     const char* env_hih = std::getenv("HIH");
-    const char* env_hostname = std::getenv("HOSTNAME");
-    const char* env_hipname = std::getenv("HIPNAME");
+    const char* hostname = std::getenv("HOSTNAME");
+
+    char* label;
+    if (DspyFindStringInParamList("label", &label, paramCount, parameters) != PkDspyErrorNone || ((label == NULL) || (label[0] == '\0'))) {
+		label = std::getenv("HIPNAME");
+	}
 
     // Check if iprsocket port provided
     if (g_mplayPortNumber == 0) {
@@ -661,23 +673,26 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
     	} else {
     		mplay_lock_filename += std::string(std::getenv("HOME")) + "/.mplay_lock";
     	}
-    	if ( env_hostname ) mplay_lock_filename += "." + std::string(env_hostname);
-    	if ( env_hipname ) mplay_lock_filename += "-" + std::string(env_hipname);
+    	if ((hostname != NULL) && (hostname[0] != '\0')) mplay_lock_filename += "." + std::string(hostname);
+
+
+    	if ((label != NULL) && (label[0] != '\0')) mplay_lock_filename += "-" + std::string(label);
+    	
     	log(0, "Mplay lock file to test: '%s'\n", mplay_lock_filename.c_str());
 
     	std::ifstream mplay_lock_file(mplay_lock_filename);
-    	if (mplay_lock_file.is_open()) {
+    	if (mplay_lock_file.good() && mplay_lock_file.is_open()) {
         	mplay_lock_file >> g_mplayPortNumber;
         	mplay_lock_file >> g_mplayPortNumber; // We need second int value
     		log(0, "Mplay lock file port: '%s'\n", std::to_string(g_mplayPortNumber).c_str());
     	}
-    }
 
-    // If we still dont have MPlay port, we should try to open MPlay first
-    if (g_mplayPortNumber == 0) {
-		std::string cmd = "exec bash -c 'cd $H; . houdini_setup; mplay -K' > /dev/null";
-		int status = system(cmd.c_str());
-	}
+    	// No running MPlay application so far. Call to open pipe by imdiplay-bin
+    	if (g_mplayPortNumber == 0) {
+    		memset(g_zeroData, 0, sizeof(g_zeroData)); // zero buffer so we can send empty pixel data to MPlay
+			g_mplayAppOpened = false;
+		}
+    }
 	
 	log(0, "DspyImageOpen() drivername(%s) filename(%s) width(%d) height(%d) paramCount(%d) nformats(%d)\n", "drivername", filename, width, height, paramCount, nformats);
 
@@ -724,8 +739,6 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
             log(0, "Failed creaiting main image. Name=%s", filename);
             return PkDspyErrorNoResource;
         }
-
-		log(0, "Create: %p\n", img.get());
         g_masterImages.push_back(img);
     /*
         if (g_masterImages.size() == 1) {
@@ -736,6 +749,7 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
         }
     */
         img->parseOptions(paramCount, parameters);
+        
     } else {
         // a LOD image
         vector<ImagePtr>::const_iterator i;
@@ -772,6 +786,20 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
     // H_Image
 	*pvImage = (void*)multiRes;
 	log(0, "Done Open %d\n", ret);
+
+	// send display init data
+	if(!g_mplayAppOpened) {
+		std::thread t([](int width, int height, ImagePtr img, float scale_x, float scale_y){
+			if (H_Image::openPipe() == 1) {
+        		log(0, "Trying to send dummy data in order to open MPlay app for the first time.");
+				if(!img->writeData(0, width, 0, height, NULL, img->getEntrySize(), scale_x, scale_y)) {
+					log(0, "Error sending init data to open MPlay app. Not critical...");
+				}
+			}
+		}, width, height, img, multiRes->getXscale(), multiRes->getYscale());
+		t.detach();
+	}
+	//
 
 	return ret;
 }
@@ -954,18 +982,18 @@ H_Channel::startTile(const int xres, const int yres)
 }
 
 int
-H_Channel::writePixel(const char* data, const int pixelOffset)
+H_Channel::writePixel(const char* pData, const int pixelOffset)
 {
 	int ch = pixelOffset * myCount;
 	switch (myCount) {
 		case 4:
-			memcpy(&(myData[0]) + (ch+3)*mySize, data+myMap[3], mySize);
+			memcpy(&(myData[0]) + (ch+3)*mySize, pData+myMap[3], mySize);
 		case 3:
-			memcpy(&(myData[0]) + (ch+2)*mySize, data+myMap[2], mySize);
+			memcpy(&(myData[0]) + (ch+2)*mySize, pData+myMap[2], mySize);
 		case 2:
-			memcpy(&(myData[0]) + (ch+1)*mySize, data+myMap[1], mySize);
+			memcpy(&(myData[0]) + (ch+1)*mySize, pData+myMap[1], mySize);
 		case 1:
-			memcpy(&(myData[0]) + (ch+0)*mySize, data+myMap[0], mySize);
+			memcpy(&(myData[0]) + (ch+0)*mySize, pData+myMap[0], mySize);
 	}
 
 	return myPixelSize;
@@ -1066,7 +1094,6 @@ H_Image::addChannel(const std::string& name, const int format, const int count, 
 	return 1;
 }
 
-
 //
 // openPipe must be called before any writes to the imdisplay program but after
 // all of the DspyOpen's have occured. To ensure this it is called in
@@ -1081,12 +1108,13 @@ int H_Image::openPipe(void) {
         return 0;
     }
 
-    //
+    const std::lock_guard<std::mutex> lock1(g_openpipe_mutex);
+
     // base the image name and options off of the first Display call
     ImagePtr img = g_masterImages[0];
     
     if (img->getIMDisplay()) {
-        return 1; // already open
+        return 1; // Everything is fine. Pipe already opened.
     }
     
     std::string cmd;
@@ -1112,13 +1140,15 @@ int H_Image::openPipe(void) {
        // cmdss << " -s localhost:" << -img->getPort();
     }
 
-    cmd = cmdss.str();
-
     if (img->hasDisplayOptions()) {
-        cmd += img->getIMDisplayOptions();
-        //cmd.append(img->getDisplayOptions());
+        cmdss << img->getIMDisplayOptions();
     }
 
+    if(!g_mplayAppOpened) {
+    	//cmdss << " " << std::to_string(img->getXres()) << " " << std::to_string(img->getYres()) << " 4";
+    }
+
+    cmd = cmdss.str();
     log(0, "popen: '%s'\n", cmd.c_str());
 	
     IMDisplayPtr imp = IMDisplay::Singleton(cmd.c_str());
@@ -1126,6 +1156,8 @@ int H_Image::openPipe(void) {
     	log(0, "IMDisplayPtr is invalid !!!\n");
         return 0;
     }
+
+    log(0, "1\n");
 
     // hand a copy of the imp to each H_Image - when the last H_Image is deleted
     // that will cause the FILE* to be closed.
@@ -1137,6 +1169,8 @@ int H_Image::openPipe(void) {
         (*ip)->setChannelOffset(totalChannels);
         totalChannels += (int)(*ip)->getChannelCount();
     }
+
+    log(0, "2\n");
     
     //
     // Now write the image header considering all H_Images and their channels
@@ -1149,10 +1183,14 @@ int H_Image::openPipe(void) {
 	
     FILE* fp = imp->GetFile();
     
+	log(0, "3\n");
+
     if (fwrite(header, sizeof(int), 8, fp) != 8) {
     	log(0, "Failed to write channel header !!!\n");
         return 0;
     }
+
+    log(0, "4\n");
 
     for (ip = g_masterImages.begin() ; ip != g_masterImages.end() ; ip++) {
         if ((*ip)->writeChannelHeader() != 1) {
@@ -1163,6 +1201,14 @@ int H_Image::openPipe(void) {
 
     log(0, "openPipe done\n");
     return 1;
+}
+
+int H_Image::getEntrySize(void) const {
+	int entrysize = 0;
+	for(const auto& channel : myChannels) {
+		entrysize += channel->getPixelSize();
+	}
+	return entrysize;
 }
 
 int H_Image::writeChannelHeader() {
@@ -1188,7 +1234,9 @@ int H_Image::writeChannelHeader() {
     return 1; // succcess
 }
 
-int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_base, int bpp, float tileScaleX, float tileScaleY) {
+int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pData, int bpp, float tileScaleX, float tileScaleY) {
+    const std::lock_guard<std::mutex> lock2(g_writedata_mutex);
+
 	int xres, yres;
 	int ch;
 
@@ -1200,7 +1248,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 
 	// since we are going to move through the data based on per pixel information
 	// we store a reference back to the original memory base address here....
-	//const char* data_curr = data_base;
+	//const char* pDataCurr = pData;
 
 	// scale into the current tile lod, assume tile scale of 1 to start with
 	int x0 = a_x0;
@@ -1209,7 +1257,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 	int y1 = a_y1;
 
 	// for the special case of LOD we need to scale things up....
-	if ((tileScaleX != 1) && (tileScaleY != 1)) {
+	if ((tileScaleX != 1.0f) && (tileScaleY != 1.0f)) {
 		x0 = int(float(a_x0) * tileScaleX);
 		x1 = int(float(a_x1) * tileScaleX);
 		y0 = int(float(a_y0) * tileScaleY);
@@ -1242,7 +1290,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 	int nProcessors = std::max(1, omp_get_max_threads() - 1);
 	omp_set_num_threads(nProcessors);
 
-//	#pragma omp parallel for collapse(2) private(sy, sx, data_curr, destPixelOffset)
+//	#pragma omp parallel for collapse(2) private(sy, sx, pDataCurr, destPixelOffset)
 	#pragma omp parallel for
 	for (int sy = 0; sy < yres; ++sy) {
 		// for each x pixel of the destination tile
@@ -1255,22 +1303,23 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* data_
 			int sourceX = int(float(sx) / tileScaleX);
 			int sourceY = int(float(sy) / tileScaleY);
 
-			const char* data_curr = data_base + (sourceX + a_xres * sourceY) * bpp;
+			const char* pDataCurr = pData ? pData + (sourceX + a_xres * sourceY) * bpp : NULL;
 
 			// copy the data for each channel....
 			if(isHalfFloat() & isFloatFormat) {
-				// Our data is in float16 format. We have to convert it to float32 for now (idisplay libitation)
+				// Our data is in float16 format. We have to convert it to float32 for now (idisplay limitation)
 				float f[4]; //buffer
 				for (int ch = 0; ch < myChannels.size(); ++ch) {
 					for(int _i = 0; _i < myChannels[ch]->getArraySize(); _i++) {
-						f[_i] = glm::detail::toFloat32(*reinterpret_cast<const short*>(data_curr + _i*2));
+						f[_i] = pDataCurr ? glm::detail::toFloat32(*reinterpret_cast<const short*>(pDataCurr + _i*2)) : 0.f;
 					}
 					myChannels[ch]->writePixel(reinterpret_cast<const char*>(&f[0]), destPixelOffset);
 				}
 			} else {
 				// Just send data as it is
+				const char* ptr = pDataCurr ? pDataCurr : reinterpret_cast<const char*>(g_zeroData);
 				for (int ch = 0; ch < myChannels.size(); ++ch)
-					myChannels[ch]->writePixel(data_curr, destPixelOffset);
+					myChannels[ch]->writePixel(ptr, destPixelOffset);
 			}
 		}
 	}
@@ -1344,7 +1393,9 @@ H_Image::parseOptions(int paramCount, const UserParameter* parameters) {
 	err = DspyFindStringInParamList("label", &str_ptr, paramCount, parameters);
 	if (err == PkDspyErrorNone) {
 		strcat(options, " -Y ");
+		strcat(options, "\"");
 		strcat(options, str_ptr);
+		strcat(options, "\"");
 	}
 
 	err = DspyFindStringInParamList("numbering", &str_ptr, paramCount, parameters);

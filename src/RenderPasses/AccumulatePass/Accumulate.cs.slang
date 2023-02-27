@@ -70,11 +70,10 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;    
-    const float4 curColor = gCurFrame[pixelPos];
-
 
     #if is_valid(gDepth) && ((_FILTER_TYPE == SF_TYPE_CLOSEST) || (_FILTER_TYPE == SF_TYPE_FARTHEST))
     
+        const float4 curColor = gCurFrame[pixelPos];
         const float prevDepth = gLastFrameDepth[pixelPos]; 
         const float currDepth = gDepth[pixelPos];
 
@@ -83,24 +82,33 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
                 gOutputFrame[pixelPos] = curColor;
                 gLastFrameDepth[pixelPos] = currDepth;
             }
-            return;
         #else
             if(currDepth > prevDepth) {
                 gOutputFrame[pixelPos] = curColor;
                 gLastFrameDepth[pixelPos] = currDepth;
             }
-            return;
         #endif
+        return;
         
     #elif (_FILTER_TYPE == SF_TYPE_MIN) || (_FILTER_TYPE == SF_TYPE_MAX)
-    
-        gOutputFrame[pixelPos] = float4(0.f, 1.f, 0.f, 1.f);
+        
+        const float4 curColor = gCurFrame[pixelPos];
+        const float4 savedColor = gOutputFrame[pixelPos];
+
+        #if (_FILTER_TYPE == SF_TYPE_MIN)
+            if(gAccumCount == 0 || any(curColor < savedColor)) {
+                gOutputFrame[pixelPos] = curColor;
+            }
+        #else
+            if(gAccumCount == 0 || any(curColor > savedColor)) {
+                gOutputFrame[pixelPos] = curColor;
+            }
+        #endif
         return;
 
     #else // Standard accumulation
-
         // Fetch previous sum and compute the new sum.
-        float4 sum = gLastFrameSum[pixelPos] + curColor;
+        float4 sum = gLastFrameSum[pixelPos] + gCurFrame[pixelPos];
         float4 output = sum / (gAccumCount + 1);
         gLastFrameSum[pixelPos] = sum;
         gOutputFrame[pixelPos] = output;    

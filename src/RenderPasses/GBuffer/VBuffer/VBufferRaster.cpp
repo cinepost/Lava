@@ -46,10 +46,22 @@ namespace {
     const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
     const std::string kDepthName   = "depth";
 
+    // Scripting options.
+    const char perPixelJitterRaster[] = "perPixelJitterRaster";
+
+    // Extra output channels.
     const ChannelList kVBufferExtraOutputChannels = {
         { "mvec",             "gMotionVector",      "Motion vectors",                   true /* optional */, ResourceFormat::RG16Float   },
         { "texGrads",         "gTextureGrads",      "Texture coordiante gradients",     true /* optional */, ResourceFormat::RGBA16Float },
     };
+}
+
+void VBufferRaster::parseDictionary(const Dictionary& dict) {
+    GBufferBase::parseDictionary(dict);
+
+    for (const auto& [key, value] : dict) {
+        if (key == perPixelJitterRaster) setPerPixelJitterRaster(value);
+    }
 }
 
 RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
@@ -61,7 +73,7 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData) {
     //    .format(ResourceFormat::Unknown).bindFlags(Resource::BindFlags::DepthStencil).flags(RenderPassReflection::Field::Flags::Optional);
 
     reflector.addOutput(kDepthName, "Depth-buffer")
-        .format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);
+        .format(mDepthFormat).bindFlags(Resource::BindFlags::DepthStencil).texture2D(texDims);
 
     reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(texDims);
 
@@ -196,7 +208,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Create program vars.
     if (!mRaster.pVars) mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
 
-    if(mDoJitteredRendering) {
+    if(mPerPixelJitterRaster) {
         // 4 quads jittered rendering
 
         initQuarterBuffers(pRenderContext, renderData);
@@ -293,12 +305,11 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
 }
 
 void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData& renderData) {
-    if(!mDoJitteredRendering) return;
-
     const auto& pOutput = renderData[kVBufferName]->asTexture();
-    if(!pOutput) return;
+    const auto& pDepth = renderData[kDepthName]->asTexture();
 
-    const auto& pDepth = renderData[kDepthName]->asTexture();    
+    if(!pOutput || !pDepth) return;
+
     auto depthFormat = pDepth->getFormat();
     auto pDevice = pContext->device();
 
@@ -337,16 +348,24 @@ void VBufferRaster::initQuarterBuffers(RenderContext* pContext, const RenderData
     mQuarterFrameDim.y = mFrameDim.y >> 1;
 
     for(auto& subPass: mSubPasses) {
-        if(!subPass.pFbo) subPass.pFbo = Fbo::create(pDevice);
+        if(!subPass.pFbo && mPerPixelJitterRaster) subPass.pFbo = Fbo::create(pDevice);
         
-        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mDoJitteredRendering);
+        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pVBuff, mQuarterFrameDim.x, mQuarterFrameDim.y, mVBufferFormat, mPerPixelJitterRaster);
 
-        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mDoJitteredRendering);
-        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mDoJitteredRendering);
+        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mPerPixelJitterRaster);
+        prepareBuffer(subPass.pDepth, mQuarterFrameDim.x, mQuarterFrameDim.y, depthFormat, mPerPixelJitterRaster);
     }
+}
+
+VBufferRaster& VBufferRaster::setPerPixelJitterRaster(bool state) {
+    if(mPerPixelJitterRaster != state) {
+        mPerPixelJitterRaster = state;
+        mDirty = true;
+    }
+    return *this;
 }

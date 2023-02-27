@@ -174,6 +174,14 @@ void GBufferBase::updateSamplePattern() {
     if (mpSampleGenerator) mSampleCount = mpSampleGenerator->getSampleCount();
 }
 
+GBufferBase& GBufferBase::setDepthBufferFormat(ResourceFormat format) {
+    if(mDepthFormat != format) { 
+        mDepthFormat = format;
+        mDirty = true;
+    }
+    return *this;
+}
+
 Texture::SharedPtr GBufferBase::getOutput(const RenderData& renderData, const std::string& name) const {
     // This helper fetches the render pass output with the given name and verifies it has the correct size.
     assert(mFrameDim.x > 0 && mFrameDim.y > 0);
