@@ -691,6 +691,8 @@ PtDspyError DspyImageOpen(PtDspyImageHandle* pvImage,
     	if (g_mplayPortNumber == 0) {
     		memset(g_zeroData, 0, sizeof(g_zeroData)); // zero buffer so we can send empty pixel data to MPlay
 			g_mplayAppOpened = false;
+		} else {
+			g_mplayAppOpened = true;
 		}
     }
 	
