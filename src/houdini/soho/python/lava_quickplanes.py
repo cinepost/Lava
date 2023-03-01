@@ -14,7 +14,7 @@ __quickplanes = {
     # channel name                 pass builtin name        type             quantize      percomp     opts
     "position":         QuickPlane("POSITION",              "vector3",       "float32",    False,      {'pfilter':['closest']}),
     
-    "depth":            QuickPlane("DEPTH",                 "float",         "float32",    False,      {}),
+    "depth":            QuickPlane("DEPTH",                 "float",         "float32",    False,      {'pfilter':['min']}),
     
     "normals":          QuickPlane("NORMAL",                "vector3",       "float32",    False,      {'pfilter':['closest']}),
 

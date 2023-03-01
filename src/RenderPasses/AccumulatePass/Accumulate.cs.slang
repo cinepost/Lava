@@ -42,6 +42,8 @@ cbuffer PerFrameCB
 {
     uint2   gResolution;
     uint    gAccumCount;
+    float   gSampleDistanceUniform;     // Uniform sample distance from the pixel center (rasterizer input only)
+    float   gLastSampleDistaceUniform; 
 }
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -59,6 +61,7 @@ RWTexture2D<uint4>  gLastFrameSumLo;    // If mode is Double
 RWTexture2D<uint4>  gLastFrameSumHi;    // If mode is Double
 
 RWTexture2D<float>  gLastFrameDepth;    // If gDepth provided and depth dependent filter type used
+Texture2D<float2>   gSampleOffsets;     // Optional per-pixel sample offsets
 
 SamplerState gKernelSampler;
 
@@ -88,7 +91,6 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
                 gLastFrameDepth[pixelPos] = currDepth;
             }
         #endif
-        return;
         
     #elif (_FILTER_TYPE == SF_TYPE_MIN) || (_FILTER_TYPE == SF_TYPE_MAX)
         
@@ -104,9 +106,18 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
                 gOutputFrame[pixelPos] = curColor;
             }
         #endif
-        return;
+
+    #elif (_FILTER_TYPE == SF_TYPE_POINT )
+
+        const float lastSampleDistance = gLastSampleDistaceUniform;
+        const float currSampleDistance = gSampleDistanceUniform;
+
+        if(currSampleDistance < lastSampleDistance || gAccumCount == 0) {
+            gOutputFrame[pixelPos] = gCurFrame[pixelPos];
+        }
 
     #else // Standard accumulation
+
         // Fetch previous sum and compute the new sum.
         float4 sum = gLastFrameSum[pixelPos] + gCurFrame[pixelPos];
         float4 output = sum / (gAccumCount + 1);

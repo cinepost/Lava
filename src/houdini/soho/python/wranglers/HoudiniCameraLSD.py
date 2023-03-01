@@ -28,12 +28,14 @@ def lv_image_mplay_socketport(obj, now, value):
     return True    
 
 def lv_image_mplay_label(obj, now, value):
-    rop = soho.getOutputDriver()
-    plist = rop.evaluate(headerParms, now)
-    hipname = plist.get('hipname', None)
-    if hipname:
-        value[0] = hipname.Value[0]
-        return True    
+    value[0] = obj.getDefaultedString('lv_image_mplay_label', now, [''])[0]
+    
+    #rop = soho.getOutputDriver()
+    #plist = rop.evaluate(headerParms, now)
+    #hipname = plist.get('hipname', None)
+    #if hipname:
+    #    value[0] = hipname.Value[0]
+    #    return True    
 
     return False
 

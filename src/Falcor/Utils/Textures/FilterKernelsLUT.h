@@ -35,14 +35,89 @@
 
 namespace Falcor {
 
+namespace Kernels {
+
+enum class NormalizationMode: uint8_t {
+  None = 0,
+  Area = 1,
+  Peak = 2
+};
+
 namespace Gaussian {
-  Texture::SharedPtr createKernelTexture1D(Device::SharedPtr pDevice, uint32_t lutWidth, bool halfSizeTable = true);
-  Texture::SharedPtr createKernelTexture2D(Device::SharedPtr pDevice, uint32_t lutWidth, uint32_t lutHeight, bool quarterSizeTable = true);
+  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float sigma= 6.f, bool generateHalfTable = true, NormalizationMode normalization = NormalizationMode::Peak);
+  
+  Texture::SharedPtr createKernelTexture1D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    float sigma = 6.f, 
+    bool generateHalfTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+  
+  Texture::SharedPtr createKernelTexture2D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    uint32_t kernelHalfHeight, 
+    bool generateQuarterTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
 }
 
 namespace Blackman {
-  Texture::SharedPtr createKernelTexture1D(Device::SharedPtr pDevice, uint32_t lutWidth, bool halfSizeTable = true);
-  Texture::SharedPtr createKernelTexture2D(Device::SharedPtr pDevice, uint32_t lutWidth, uint32_t lutHeight, bool quarterSizeTable = true);
+  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, bool generateHalfTable = true, bool normalize = true);
+  
+  Texture::SharedPtr createKernelTexture1D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    bool generateHalfTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+  
+  Texture::SharedPtr createKernelTexture2D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    uint32_t kernelHalfHeight, 
+    bool generateQuarterTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+}
+
+namespace Mitchell {
+  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float B, float C, bool generateHalfTable = true, bool normalize = true);
+  
+  Texture::SharedPtr createKernelTexture1D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    float B, 
+    float C, 
+    bool generateHalfTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+  
+  Texture::SharedPtr createKernelTexture2D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    uint32_t kernelHalfHeight, 
+    float B, 
+    float C, 
+    bool generateQuarterTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+}
+
+namespace Sinc {
+  std::vector<float> createKernelData1D(uint32_t kernelHalfWidth, float T = 3.f, bool generateHalfTable = true, bool normalize = true);
+  
+  Texture::SharedPtr createKernelTexture1D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    float T = 3.f, 
+    bool generateHalfTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+  
+  Texture::SharedPtr createKernelTexture2D(
+    Device::SharedPtr pDevice, 
+    uint32_t kernelHalfWidth, 
+    uint32_t kernelHalfHeight, 
+    float T, 
+    bool generateQuarterTable = true, 
+    NormalizationMode normalization = NormalizationMode::Peak);
+}
+
 }
 
 }  // namespace Falcor

@@ -51,8 +51,9 @@ cbuffer PerFrameCB
     uint2   gResolution;
     uint2   gFilterSize;            // Filter size in pixels
     uint2   gKernelTextureSize;     // Kernel texture size in texels
-    float2  gSampleDistanceLocal;   // Uniform sample distance from pixel center (rasterizer input only)
-    float2  gMaxSampleDistance;     // Maximum sample distance from cetral pixel center
+    float2  gSampleOffsetUniform;   // Uniform sample offset from pixel center (rasterizer input only)
+    float   gSampleDistanceUniform; // Uniform sample distance from the pixel center (rasterizer input only)
+    float2  gMaxSampleOffset;       // Maximum sample offset from cetral pixel center
     uint    gSampleNumber;
 }
 
@@ -62,7 +63,7 @@ Texture2D<float4>   gInput;
 // Optional inputs
 Texture2D<float>    gDepth;           // optional depth texture (used for CLOSEST ans FARTHEST filters)
 Texture2D<float>    gKernelTexture;   // optional kernel texture
-Texture2D<float2>   gSampleDistances; // optional per-pixel sample distances
+Texture2D<float2>   gSampleOffsets;   // optional per-pixel sample offsets
 
 // Ouput sample plane
 RWTexture2D<float4> gOutputFilteredImage;
@@ -80,42 +81,74 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
     if (any(dispatchThreadId.xy >= gResolution)) return;
 
     const uint2 pixelPos = dispatchThreadId.xy;
-    float2 currentSampleDistance = float2(0.f);
+    float2 currentSampleOffset = float2(0.f);
+    float W = 1.f; // total samples weight
 
-    #if (_FAKE_JITTER == 1)
-        // Sample generator
-        SampleGenerator sg = SampleGenerator.create(pixelPos, gSampleNumber);
-        float2 sampleDistance = sampleNext2D(sg) - float2(0.5f, 0.5f);
+    #if is_valid(gSampleOffsets)
+    float2 sampleOffset = gSampleOffsetUniform;
     #else
-        float2 sampleDistance = gSampleDistanceLocal;
+    float2 sampleOffset = gSampleOffsets[pixelPos];
     #endif
 
     // Central sample
     float4 outColor = gInput[pixelPos];
+    #if (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+        #if is_valid(gKernelTexture)
+            const float dist = abs(currentSampleOffset.x / gMaxSampleOffset.x);
+            W = gKernelTexture.SampleLevel(gKernelSampler, float2(dist, 0.5f), 0);
+            outColor *= W;
+        #endif
+    #elif (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+            W = 1.f - abs(currentSampleOffset.x / gMaxSampleOffset.x);
+            outColor *= W;
+    #endif
 
-    //currentSampleDistance.x = abs(sampleDistance.x);
-    //currentSampleDistance.y = abs(sampleDistance.y);
-    //if(any(currentSampleDistance >= gMaxSampleDistance)) outColor = float4(0.f);
+    //currentSampleOffset.x = abs(sampleOffset.x);
+    //currentSampleOffset.y = abs(sampleOffset.y);
+    //if(any(currentSampleOffset >= gMaxSampleOffset)) outColor = float4(0.f);
 
     #if _FILTER_HALF_SIZE_H != 0
     const uint2 pixelPosF = float2(pixelPos);
     const int2 pixelPosI = int2(pixelPos);
 
     int2 pixelPosR;
-    float W = 1.f;
+
+    // Kernel testing part
+    #if is_valid(gKernelTexture)
+    //outColor = gKernelTexture.SampleLevel(gKernelSampler, float2(pixelPos) * 0.015625f, 0); // float4(0.f, 1.f, 0.f, 1.f);
+    #endif
 
     // First half
     [[unroll]]
     for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
         pixelPosR = pixelPos + int2(i, 0);
         
-        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
+        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outsize viewport
 
-        currentSampleDistance.x = abs(float(i) - sampleDistance.x);
-        if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
+        currentSampleOffset.x = abs(float(i) - sampleOffset.x);
+        if(currentSampleOffset.x > gMaxSampleOffset.x) continue; // sample outside max offset
 
-        outColor += gInput[pixelPosR];
-        W += 1.f;
+        #if (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+        
+            const float w = 1.f - currentSampleOffset.x / gMaxSampleOffset.x;
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+        
+        #elif (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+            
+            #if is_valid(gKernelTexture)
+            const float nd = currentSampleOffset.x / gMaxSampleOffset.x;
+            const float w = gKernelTexture.SampleLevel(gKernelSampler, float2(nd, .5f), 0);
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+            #endif
+        
+        #else // Box filter
+        
+            outColor += gInput[pixelPosR];
+            W += 1.f;
+        
+        #endif
     }
 
     // Second half
@@ -123,13 +156,34 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
     for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
         pixelPosR = pixelPos - int2(i, 0);
         
-        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) {W += 1.f; continue;}
+        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outside viewport
 
-        currentSampleDistance.x = abs(float(i) + sampleDistance.x);
-        if(currentSampleDistance.x > gMaxSampleDistance.x) continue;
+        currentSampleOffset.x = abs(float(i) + sampleOffset.x);
+        if(currentSampleOffset.x > gMaxSampleOffset.x) continue; // sample outside max offset
 
-        outColor += gInput[pixelPosR];
-        W += 1.f;
+        #if (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+        
+            const float w = 1.f - currentSampleOffset.x / gMaxSampleOffset.x;
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+        
+        #elif (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+
+            #if is_valid(gKernelTexture)
+            const float nd = currentSampleOffset.x / gMaxSampleOffset.x;
+            const float w = gKernelTexture.SampleLevel(gKernelSampler, float2(nd, .5f), 0);
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+            #endif
+
+        #elif (_FILTER_TYPE == SF_TYPE_SINC)
+
+        #else // Box filter
+        
+            outColor += gInput[pixelPosR];
+            W += 1.f;
+        
+        #endif
     }
 
     outColor /= W;
@@ -146,38 +200,67 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     if (any(dispatchThreadId.xy >= gResolution)) return;
     const uint2 pixelPos = dispatchThreadId.xy;
-    float2 currentSampleDistance = float2(0.f);
+    float2 currentSampleOffset = float2(0.f);
+    float W = 1.f; // total samples weight
 
-    #if (_FAKE_JITTER == 1)
-        // Sample generator
-        SampleGenerator sg = SampleGenerator.create(pixelPos, gSampleNumber);
-        float2 sampleDistance = sampleNext2D(sg) - float2(0.5f, 0.5f);
+    #if is_valid(gSampleOffsets)
+    float2 sampleOffset = gSampleOffsetUniform;
     #else
-        float2 sampleDistance = gSampleDistanceLocal;
+    float2 sampleOffset = gSampleOffsets[pixelPos];
     #endif
 
     // Central sample
     float4 outColor = gInput[pixelPos];
+    #if (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+        #if is_valid(gKernelTexture)
+            const float dist = abs(currentSampleOffset.y / gMaxSampleOffset.y);
+            W = gKernelTexture.SampleLevel(gKernelSampler, float2(dist, 0.5f), 0);
+            outColor *= W;
+        #endif
+    #elif (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+            W = 1.f - abs(currentSampleOffset.y / gMaxSampleOffset.y);
+            outColor *= W;
+    #endif
 
     #if _FILTER_HALF_SIZE_V != 0
     const uint2 pixelPosF = float2(pixelPos);
     const int2 pixelPosI = int2(pixelPos);
 
     int2 pixelPosR;
-    float W = 1.f;
 
     // First half
     [[unroll]]
     for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
         pixelPosR = pixelPos + int2(0, i);
         
-        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
+        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
         
-        currentSampleDistance.y = abs(float(i) + sampleDistance.y);
-        if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
+        currentSampleOffset.y = abs(float(i) + sampleOffset.y);
+        if(currentSampleOffset.y > gMaxSampleOffset.y) continue; // sample outside max offset
 
-        outColor += gInput[pixelPosR];
-        W += 1.f;
+        #if (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+        
+            const float w = 1.f - currentSampleOffset.y / gMaxSampleOffset.y;
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+        
+        #elif (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+
+            #if is_valid(gKernelTexture)
+            const float nd = currentSampleOffset.y / gMaxSampleOffset.y;
+            const float w = gKernelTexture.SampleLevel(gKernelSampler, float2(nd, .5f), 0);
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+            #endif
+
+        #elif (_FILTER_TYPE == SF_TYPE_SINC)
+
+        #else // Box filter
+        
+            outColor += gInput[pixelPosR];
+            W += 1.f;
+        
+        #endif
     }
 
     // Second half
@@ -185,13 +268,34 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
     for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
         pixelPosR = pixelPos - int2(0, i);
         
-        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) {W += 1.f; continue;}
+        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
         
-        currentSampleDistance.y = abs(float(i) - sampleDistance.y);
-        if(currentSampleDistance.y > gMaxSampleDistance.y) continue;
+        currentSampleOffset.y = abs(float(i) - sampleOffset.y);
+        if(currentSampleOffset.y > gMaxSampleOffset.y) continue; // sample outside max offset
 
-        outColor += gInput[pixelPosR];
-        W += 1.f;
+        #if (_FILTER_TYPE == SF_TYPE_TRIANGLE)
+        
+            const float w = 1.f - currentSampleOffset.y / gMaxSampleOffset.y;
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+        
+        #elif (_FILTER_TYPE == SF_TYPE_GAUSSIAN) || (_FILTER_TYPE == SF_TYPE_MITCHELL) || (_FILTER_TYPE == SF_TYPE_SINC)
+            
+            #if is_valid(gKernelTexture)
+            const float nd = currentSampleOffset.y / gMaxSampleOffset.y;
+            const float w = gKernelTexture.SampleLevel(gKernelSampler, float2(nd, .5f), 0);
+            outColor += gInput[pixelPosR] * w;
+            W += w;
+            #endif
+
+        #elif (_FILTER_TYPE == SF_TYPE_SINC)
+
+        #else // Box filter
+        
+            outColor += gInput[pixelPosR];
+            W += 1.f;
+        
+        #endif
     }
 
     outColor /= W;

@@ -32,13 +32,14 @@ BEGIN_NAMESPACE_FALCOR
 
 #define SF_TYPE_POINT    0
 #define SF_TYPE_BOX      1
-#define SF_TYPE_GAUSSIAN 2
-#define SF_TYPE_BLACKMAN 3
-#define SF_TYPE_MITCHELL 4
+#define SF_TYPE_TRIANGLE 2
 
-#define SF_TYPE_CATROM   5
-#define SF_TYPE_TRIANGLE 6
+#define SF_TYPE_GAUSSIAN 3
+#define SF_TYPE_BLACKMAN 4
+#define SF_TYPE_MITCHELL 5
+#define SF_TYPE_CATROM   6
 #define SF_TYPE_SINC     7
+
 #define SF_TYPE_CLOSEST  8
 #define SF_TYPE_FARTHEST 9
 
@@ -58,11 +59,11 @@ enum class PixelFilterType
 {
     Point       = SF_TYPE_POINT,
     Box         = SF_TYPE_BOX,
+    Triangle    = SF_TYPE_TRIANGLE,
     Gaussian    = SF_TYPE_GAUSSIAN,
     Blackman    = SF_TYPE_BLACKMAN,
     Mitchell    = SF_TYPE_MITCHELL,
     Catmullrom  = SF_TYPE_CATROM,
-    Triangle    = SF_TYPE_TRIANGLE,
     Sinc        = SF_TYPE_SINC,
     Closest     = SF_TYPE_CLOSEST,
     Farthest    = SF_TYPE_FARTHEST,

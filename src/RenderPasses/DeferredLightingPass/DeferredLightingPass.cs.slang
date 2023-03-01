@@ -567,12 +567,13 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     {
     #if is_valid(gDepth)
         float2 _screenUV = screenUV * 2.0 - float2(1.f);
-        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[ipos].r, 1.0);
+        float4 screenP = float4(_screenUV.x, _screenUV.y, gDepth[ipos], 1.0);
     #else
         float4 screenP = mul(float4(primaryShadingData.posW, 1.f), gScene.camera.getViewProj());
     #endif  // gDepth
         float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
         aov_data.depth = -(viewP.z / viewP.w);
+
     }
 #endif  // gOutPz
 

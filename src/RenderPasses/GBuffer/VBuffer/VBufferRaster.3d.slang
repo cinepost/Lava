@@ -101,7 +101,7 @@ VBufferPSOut psMain(VBufferVSOut vsOut, uint triangleIndex : SV_PrimitiveID, flo
     VBufferPSOut psOut;
 
     // Early camera range out
-    if((vsOut.posH.z < 0.0) || (vsOut.posH.z > 1.0)) discard;
+    //if((vsOut.posH.z < 0.0) || (vsOut.posH.z > 1.0)) discard; // TODO: proper camera clip planes check here!
 
     // Using vsOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);

@@ -32,6 +32,7 @@
 #include "Falcor/Core/API/Sampler.h"
 #include "Falcor/Scene/Scene.h"
 #include "Falcor/Utils/Sampling/SampleGenerator.h"
+#include "Falcor/Utils/Math/MathConstants.slangh"
 #include "Falcor/RenderGraph/RenderPass.h"
 
 #include "Accumulate.SeparableFilter.slangh"
@@ -68,7 +69,7 @@ class AccumulatePass : public RenderPass {
     };
 
     static const Info kInfo;
-    
+
     virtual ~AccumulatePass() = default;
 
     static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
@@ -130,11 +131,9 @@ class AccumulatePass : public RenderPass {
     Texture::SharedPtr          mpKernelTexture;                ///< Filter kernel texture.
     Sampler::SharedPtr          mpKernelSampler;                ///< Filter kernel texture sampler.
     Sampler::SharedPtr          mpImageSampler;                 ///< Unnormalized image reading sampler.
-    Texture::SharedPtr          (*mpFilterCreateKernelTextureFunc)(Device::SharedPtr, uint32_t, bool) = NULL;
 
     bool                        mDoHorizontalFiltering = false;
     bool                        mDoVerticalFiltering = false;
-    bool                        mDoFakeJitter = false;          ///< Fake subpixel sample jittering (used for rasterization only).
     bool                        mEnableAccumulation = true;     ///< UI control if accumulation is enabled.
     bool                        mAutoReset = false;             ///< Reset accumulation automatically upon scene changes, refresh flags, and/or subframe count.
     Precision                   mPrecisionMode = Precision::Single;
@@ -144,6 +143,7 @@ class AccumulatePass : public RenderPass {
 
     PixelFilterType             mPixelFilterType = PixelFilterType::Box;
     uint2                       mPixelFilterSize = {1, 1};
+    float                       mLastSampleDistanceUniform = M_SQRT2;
 
     bool                        mDirty = true;
 

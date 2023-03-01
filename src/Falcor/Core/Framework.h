@@ -95,6 +95,14 @@ namespace fs = boost::filesystem;
 #undef assert
 #endif
 
+#ifndef __FUNCTION_NAME__
+    #ifdef WIN32   //WINDOWS
+        #define __FUNCTION_NAME__   __FUNCTION__  
+    #else          //*NIX
+        #define __FUNCTION_NAME__   __func__ 
+    #endif
+#endif
+
 #ifdef _DEBUG
 #define assert(a) \
     if (!(a)) { \
