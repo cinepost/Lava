@@ -27,6 +27,7 @@ import LSDhooks
 from LSDapi import *
 from hutil.file import insertFileSuffix
 import lava_quickplanes as quickplanes
+import lava_renderpasses as renderpasses
 from future.utils import iteritems
 
 _OutputObjects = set()
@@ -99,7 +100,9 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
                 showrelightingbuffer=False,
                 excludedcm=False,
                 pfiltertype=None,
-                pfiltersize=None):
+                pfiltersize=None,
+                sourcepass=None):
+
     if len(variable):
         if LSDhooks.call('pre_defplane', variable, lsdtype, idx, wrangler, cam, now, filename, lightexport):
             return
@@ -122,6 +125,9 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
             cmd_property('plane', 'planefile', [filename])
         
         cmd_property('plane', 'channel', [channel])
+
+        if sourcepass not in [None, '', 'MAIN']:
+            cmd_property('plane', 'sourcepass', [sourcepass])
         
         if lightexport is not None:
             cmd_property('plane', 'lightexport', [lightexport])
@@ -417,6 +423,7 @@ def cameraDisplay(wrangler, cam, now):
         return True
 
     filename = cam.wrangleString(wrangler, 'lv_picture', now, ['ip'])[0]
+    sourcepass = cam.wrangleString(wrangler, 'lv_main_output_source', now, [''])[0]
     
     plist       = cam.wrangle(wrangler, displayParms, now)
     device      = plist['lv_device'].Value[0]
@@ -465,8 +472,17 @@ def cameraDisplay(wrangler, cam, now):
     #else:
     #    defplane("C", 'Of', 'vector', -1, wrangler, cam, now)
 
-    defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize)
+    # Main/Beauty output channel
+    #defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize)
 
+    rpassesdict = renderpasses.getRenderPassesDict()
+
+    if sourcepass in rpassesdict:
+        rpass = rpassesdict[sourcepass]
+        defplane("MAIN", rpass[0], rpass[1], -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize, sourcepass=sourcepass)
+    else:
+        defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize, sourcepass=sourcepass)
+    
     lv_relightingbuffer = [0]
     soho.evalInt("lv_relightingbuffer", lv_relightingbuffer)
 

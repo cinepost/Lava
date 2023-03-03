@@ -29,6 +29,7 @@ target_link_libraries(
     lava_utils_lib
     TexturesResolvePass
     AccumulatePass
+    EdgeDetectPass
     DepthPass
     ForwardLightingPass
     DeferredLightingPass

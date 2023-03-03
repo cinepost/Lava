@@ -73,7 +73,7 @@ class VBufferRaster : public GBufferBase {
 
     // Quad view rendering (fake per-pixel jitter)
     bool mPerPixelJitterRaster = false;
-    uint2  mQuarterFrameDim   = {0, 0};
+    uint2  mQuarterFrameDim    = {0, 0};
     std::array<SubPass, 4>        mSubPasses;
     ComputeProgram::SharedPtr     mpCombineQuadsProgram;
     ComputeVars::SharedPtr        mpCombineQuadsVars;

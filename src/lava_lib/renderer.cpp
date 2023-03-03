@@ -23,6 +23,7 @@
 #include "RenderPasses/DeferredLightingPass/DeferredLightingPass.h"
 #include "RenderPasses/DeferredLightingCachedPass/DeferredLightingCachedPass.h"
 #include "RenderPasses/CryptomattePass/CryptomattePass.h"
+#include "RenderPasses/EdgeDetectPass/EdgeDetectPass.h"
 
 #include "lava_utils_lib/logging.h"
 
@@ -156,6 +157,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	assert(pScene);
 
+	// Get one of possible main output channels
 	auto pMainAOV = getAOVPlane(AOVBuiltinName::MAIN);
 	assert(pMainAOV);
 	
@@ -301,22 +303,17 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 #endif
 
-	// Optional cryptomatte pass
-	bool createCryptomattePass = false;
-	
-	for (const auto &entry: mAOVPlanes) {
-		auto &pPlane = entry.second;
-		switch(pPlane->name()) {
-			case AOVBuiltinName::CRYPTOMATTE_MAT:
-			case AOVBuiltinName::CRYPTOMATTE_OBJ:
-				createCryptomattePass = true;
-				break;
-			default:
-				break;
-		}
+	// Optional edgedetect pass
+	if(pMainAOV->sourcePassName() == "EdgeDetectPass" || hasAOVPlane(AOVBuiltinName::EDGE_DETECT_PASS)) {
+		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, {});
+		pEdgeDetectPass->setScene(pRenderContext, pScene);
+		mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
+		mpRenderGraph->addEdge("VBufferPass.depth", "EdgeDetectPass.depth");
+		mpRenderGraph->addEdge("VBufferPass.vbuffer", "EdgeDetectPass.vbuffer");
 	}
 
-	if (createCryptomattePass) {
+	// Optional cryptomatte pass
+	if (hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_MAT) || hasAOVPlane(AOVBuiltinName::CRYPTOMATTE_OBJ)) {
 		auto pCryptomattePass = CryptomattePass::create(pRenderContext, {});
 		pCryptomattePass->setScene(pRenderContext, pScene);
 
@@ -329,7 +326,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	auto pMainAOVAccumulationPass = pMainAOV->createAccumulationPass(pRenderContext, mpRenderGraph);
 	if(pMainAOVAccumulationPass) {
 		pMainAOVAccumulationPass->setScene(pScene);
-		mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassColorInputName());
+		if(pMainAOV->sourcePassName() == "EdgeDetectPass") {
+			mpRenderGraph->addEdge("EdgeDetectPass.output", pMainAOV->accumulationPassColorInputName());	
+		} else if (pMainAOV->sourcePassName() == "OcclusionPass"){
+			assert(false);
+			LLOG_ERR << "OCCLUSION_PASS output not implemented !!!";
+		} else {
+			mpRenderGraph->addEdge("ShadingPass.color", pMainAOV->accumulationPassColorInputName());
+		}
+
 		mpRenderGraph->addEdge("VBufferPass.depth", pMainAOV->accumulationPassDepthInputName());
 	}
 
@@ -337,6 +342,15 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
 		switch(pPlane->name()) {
+			case AOVBuiltinName::EDGE_DETECT_PASS:
+				{
+					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);
+					if(pAccPass) {
+						pAccPass->setScene(pScene);
+						mpRenderGraph->addEdge("EdgeDetectPass.output", pPlane->accumulationPassColorInputName());
+					}
+				}
+				break;
 			case AOVBuiltinName::DEPTH:
 				{
 					auto pAccPass = pPlane->createAccumulationPass(pRenderContext, mpRenderGraph);

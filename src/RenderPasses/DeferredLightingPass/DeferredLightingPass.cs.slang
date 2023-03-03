@@ -573,7 +573,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     #endif  // gDepth
         float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
         aov_data.depth = -(viewP.z / viewP.w);
-
     }
 #endif  // gOutPz
 

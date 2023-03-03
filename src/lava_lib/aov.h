@@ -40,6 +40,11 @@ enum class AOVBuiltinName: uint8_t {
   CRYPTOMATTE_OBJ = 15,
   EMISSION    = 16,
 
+
+  EDGE_DETECT_PASS = 100,
+  OCCLUSION_PASS   = 101,
+
+
   UNKNOWN     = 0
 };
 
@@ -62,6 +67,9 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(CRYPTOMATTE_MAT);
     type_2_string(CRYPTOMATTE_OBJ);
     type_2_string(EMISSION);
+
+    type_2_string(EDGE_DETECT_PASS);
+    type_2_string(OCCLUSION_PASS);
   default:
     should_not_get_here();
     return "unknown";
@@ -115,6 +123,7 @@ struct AOVPlaneInfo {
   std::string             pfilterTypeName;                              // Pixel filter type name e.g "Box" or "box"
   Falcor::uint2           pfilterSize;                                  // Pixel filter kernel size (in pixels)
   Precision               precision = Precision::AUTO;                  // Keep it on AUTO
+  std::string             sourcePassName;                               // Render pass name to bind. If empty main output pass used.
 };
 
 struct AOVPlaneGeometry {
@@ -140,6 +149,7 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     void setOutputFormat(Falcor::ResourceFormat format);
 
+    inline const std::string&      sourcePassName() const { return mInfo.sourcePassName; }
 
     bool getImageData(uint8_t* pData) const;
     bool getProcessedImageData(uint8_t* pData) const;

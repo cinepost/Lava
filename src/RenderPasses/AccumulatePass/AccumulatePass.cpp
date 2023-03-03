@@ -291,6 +291,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
             pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
             pProgram->addDefine("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
             pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
+            pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
             pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
             if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());
         }
@@ -335,6 +336,7 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
             pProgram->addDefines(getValidResourceDefines(kAccumulatePassExtraInputChannels, renderData));
             pProgram->addDefine("is_valid_gKernelTexture", mpKernelTexture ? "1" : "0");
             pProgram->addDefine("is_valid_gSampleOffsets", pSrcDepth ? "1" : "0");
+            pProgram->addDefine("_FILTER_HALF_SIZE_H", std::to_string(halfFilterSize[0]));
             pProgram->addDefine("_FILTER_HALF_SIZE_V", std::to_string(halfFilterSize[1]));
             pProgram->addDefine("_FILTER_TYPE", std::to_string((uint32_t)mPixelFilterType));
             if (mpSampleGenerator) pProgram->addDefines(mpSampleGenerator->getDefines());

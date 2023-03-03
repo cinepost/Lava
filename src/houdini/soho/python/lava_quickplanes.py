@@ -34,13 +34,17 @@ __quickplanes = {
 
     "instance_id":      QuickPlane("INSTANCE_ID",           "int",           "uint32",     False,      {}),
 
+    "crypto_mat":       QuickPlane("CRYPTOMATTE_MAT",       "vector3",       "float16",    False,      {}),
+
+    "crypto_obj":       QuickPlane("CRYPTOMATTE_OBJ",       "vector3",       "float16",    False,      {}),
+
     # ipr/diagnostics
 
     "op_id":            QuickPlane("Op_Id",                 "float",         "float32",    False,      {}),
     "prim_id":          QuickPlane("Prim_Id",               "float",         "float32",    False,      {}),
 
-    "crypto_mat":       QuickPlane("CRYPTOMATTE_MAT",       "vector3",       "float16",    False,      {}),
-    "crypto_obj":       QuickPlane("CRYPTOMATTE_OBJ",       "vector3",       "float16",    False,      {}),
+    # render passes as aovs
+    "edgedetect":       QuickPlane("EDGE_DETECT_PASS",      "vector4",       "float16",    False,      {'pfilter':['box']}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -63,6 +67,9 @@ __toggleplanedict = {
 
     'lv_quickplane_cryptomatte_mat':        ['crypto_mat'],
     'lv_quickplane_cryptomatte_obj':        ['crypto_obj'],
+
+    # render passes as aovs
+    'lv_plane_edgedetect':                  ['edgedetect'],
 }
 
 def getPlaneDict():

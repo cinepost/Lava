@@ -395,6 +395,9 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::CRYPTOMATTE_OBJ)) return AOVBuiltinName::CRYPTOMATTE_OBJ;
     if(str == to_string(AOVBuiltinName::EMISSION)) return AOVBuiltinName::EMISSION;
 
+    if(str == to_string(AOVBuiltinName::EDGE_DETECT_PASS)) return AOVBuiltinName::EDGE_DETECT_PASS;
+    if(str == to_string(AOVBuiltinName::OCCLUSION_PASS)) return AOVBuiltinName::OCCLUSION_PASS;
+
     return AOVBuiltinName::UNKNOWN;
 }
 
