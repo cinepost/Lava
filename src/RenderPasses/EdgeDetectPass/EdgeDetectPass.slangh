@@ -1,0 +1,14 @@
+#pragma once
+BEGIN_NAMESPACE_FALCOR
+
+enum class EdgeDetectPassFlags : uint32_t
+{
+    None    = 0x0,
+    Depth    = 0x1,  ///< Use camera depth for edge detection.
+    Normal   = 0x2,  ///< Use surface normal for edge detection.
+    Material = 0x4,  ///< Use surface material id for edge detection.
+    Instance = 0x8,  ///< Use instance id for edge detection.
+    Alpha    = 0x10, ///< Use alpha channel for edge detection.
+};
+
+END_NAMESPACE_FALCOR
