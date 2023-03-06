@@ -63,20 +63,10 @@ class dlldecl LowLevelContextData : public std::enable_shared_from_this<LowLevel
 
     const CommandListHandle& getCommandList() const { return mpList; }
     const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
-
-#ifdef FALCOR_D3D12
-    const D3D12CommandListHandle& getD3D12CommandList() const;
-    const D3D12CommandQueueHandle& getD3D12CommandQueue() const;
-#endif
-
     const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
     const GpuFence::SharedPtr& getFence() const { return mpFence; }
     LowLevelContextApiData* getApiData() const { return mpApiData; }
 
-#ifdef FALCOR_D3D12
-    // Used in DXR
-    void setCommandList(CommandListHandle pList) { mpList = pList; }
-#endif
 #ifdef FALCOR_GFX
     void closeCommandBuffer();
     void openCommandBuffer();

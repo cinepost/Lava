@@ -33,13 +33,13 @@
 #include "Falcor/RenderGraph/RenderPassLibrary.h"
 #include "Falcor/RenderGraph/RenderPassHelpers.h"
 
-#include "Falcor/Utils/Textures/FilterKernelsLUT.h"
 #include "Falcor/Utils/Debug/debug.h"
 #include "Falcor/Utils/Scripting/ScriptBindings.h"
 
 #include <boost/algorithm/string.hpp>
 
 #include "EdgeDetectPass.h"
+#include "EdgeDetectPass.slangh"
 
 
 const RenderPass::Info EdgeDetectPass::kInfo { "EdgeDetectPass", "Edge detection." };
@@ -88,6 +88,7 @@ EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict
     mpDevice = pDevice;
 
     setKernelSize({3, 3});
+    setEdgeDetectFlags(EdgeDetectFlags::TraceDepth | EdgeDetectFlags::TraceNormal);
 
     // Deserialize pass from dictionary.
     for (const auto& [key, value] : dict) {
@@ -139,8 +140,14 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
 
             auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();
             defines.add(getValidResourceDefines(kEdgeDetectPassExtraInputChannels, renderData));
-            defines.add("DEPTH_KERNEL_HALF_SIZE_U", std::to_string(halfKernelSize.x));
-            defines.add("DEPTH_KERNEL_HALF_SIZE_V", std::to_string(halfKernelSize.y));
+            defines.add("is_valid_gTmpDepth", mpTmpDepth != nullptr ? "1" : "0");
+            defines.add("is_valid_gTmpNormal", mpTmpNormal != nullptr ? "1" : "0");
+            defines.add("_DEPTH_KERNEL_HALF_SIZE_U", std::to_string(halfKernelSize.x));
+            defines.add("_DEPTH_KERNEL_HALF_SIZE_V", std::to_string(halfKernelSize.y));
+            defines.add("_TRACE_DEPTH", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceDepth) ? "1" : "0");
+            defines.add("_TRACE_NORMAL", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceNormal) ? "1" : "0");
+            defines.add("_TRACE_MATERIAL", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceMaterial) ? "1" : "0");
+            defines.add("_TRACE_INSTANCE", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceInstance) ? "1" : "0");
 
             mpPassU = ComputePass::create(mpDevice, desc, defines, true);
         
@@ -154,15 +161,20 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
             // Kernel textures
             mpPassU["gDepthKernelU"] = mpDepthKernelU;
             mpPassU["gDepthKernelV"] = mpDepthKernelV;
+            mpPassU["gNormalKernelU"] = mpNormalKernelU;
+            mpPassU["gNormalKernelV"] = mpNormalKernelV;
 
             // Output
             mpPassU["gTmpDepth"] = mpTmpDepth;
+            mpPassU["gTmpNormal"] = mpTmpNormal;
         }
 
         auto cb_vars = mpPassU["PerFrameCB"];
         cb_vars["gResolution"] = resolution;
         cb_vars["gDepthKernelCenter"] = uint2({1, 1});
+        cb_vars["gNormalKernelCenter"] = uint2({1, 1});
         cb_vars["gDepthDistanceRange"] = mDepthDistanceRange;
+        cb_vars["gNormalThresholdRange"] = mNormalThresholdRange;
 
         mpPassU->execute(pRenderContext, resolution.x, resolution.y);
     }
@@ -176,17 +188,27 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
 
             auto defines = mpScene ? mpScene->getSceneDefines() : Program::DefineList();
             defines.add(getValidResourceDefines(kEdgeDetectPassExtraInputChannels, renderData));
-            defines.add("DEPTH_KERNEL_HALF_SIZE_U", std::to_string(halfKernelSize.x));
-            defines.add("DEPTH_KERNEL_HALF_SIZE_V", std::to_string(halfKernelSize.y));
+            defines.add("is_valid_gTmpDepth", mpTmpDepth != nullptr ? "1" : "0");
+            defines.add("is_valid_gTmpNormal", mpTmpNormal != nullptr ? "1" : "0");
+            defines.add("_DEPTH_KERNEL_HALF_SIZE_U", std::to_string(halfKernelSize.x));
+            defines.add("_DEPTH_KERNEL_HALF_SIZE_V", std::to_string(halfKernelSize.y));
+            defines.add("_TRACE_DEPTH", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceDepth) ? "1" : "0");
+            defines.add("_TRACE_NORMAL", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceNormal) ? "1" : "0");
+            defines.add("_TRACE_MATERIAL", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceMaterial) ? "1" : "0");
+            defines.add("_TRACE_INSTANCE", is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceInstance) ? "1" : "0");
 
             mpPassV = ComputePass::create(mpDevice, desc, defines, true);
 
-            if (mpScene) mpPassU["gScene"] = mpScene->getParameterBlock();
+            if (mpScene) mpPassV["gScene"] = mpScene->getParameterBlock();
             mpPassV["gTmpDepth"] = mpTmpDepth;
+            mpPassV["gTmpNormal"] = mpTmpNormal;
+            mpPassV["gVBuffer"] = pSrcVBuffer;
 
             // Kernel textures
             mpPassV["gDepthKernelU"] = mpDepthKernelU;
             mpPassV["gDepthKernelV"] = mpDepthKernelV;
+            mpPassV["gNormalKernelU"] = mpNormalKernelU;
+            mpPassV["gNormalKernelV"] = mpNormalKernelV;
 
             // Output
             mpPassV["gOutput"] = pDst;
@@ -195,7 +217,9 @@ void EdgeDetectPass::execute(RenderContext* pRenderContext, const RenderData& re
         auto cb_vars = mpPassV["PerFrameCB"];
         cb_vars["gResolution"] = resolution;
         cb_vars["gDepthKernelCenter"] = uint2({1, 1});
+        cb_vars["gNormalKernelCenter"] = uint2({1, 1});
         cb_vars["gDepthDistanceRange"] = mDepthDistanceRange;
+        cb_vars["gNormalThresholdRange"] = mNormalThresholdRange;
         
         mpPassV->execute(pRenderContext, resolution.x, resolution.y);
     }
@@ -218,7 +242,10 @@ void EdgeDetectPass::prepareBuffers(RenderContext* pRenderContext, uint2 resolut
         }
     };
 
-    prepareBuffer(mpTmpDepth, resolution.x, resolution.y, ResourceFormat::RG32Float, true);
+    prepareBuffer(mpTmpDepth, resolution.x, resolution.y, ResourceFormat::RG32Float, is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceDepth));
+    prepareBuffer(mpTmpNormal, resolution.x, resolution.y, ResourceFormat::RG32Float, is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceNormal));
+    prepareBuffer(mpTmpMaterial, resolution.x, resolution.y, ResourceFormat::RG8Unorm, is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceMaterial));
+    prepareBuffer(mpTmpInstance, resolution.x, resolution.y, ResourceFormat::RG8Unorm, is_set(mEdgeDetectFlags, EdgeDetectFlags::TraceInstance));
 }
 
 void EdgeDetectPass::prepareKernelTextures() {
@@ -229,6 +256,10 @@ void EdgeDetectPass::prepareKernelTextures() {
 
     mpDepthKernelU = Texture::create2D(mpDevice, 3, 3, ResourceFormat::R32Float, 1, 1, du, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
     mpDepthKernelV = Texture::create2D(mpDevice, 3, 3, ResourceFormat::R32Float, 1, 1, dv, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+
+    mpNormalKernelU = mpDepthKernelU;
+    mpNormalKernelV = mpDepthKernelV;
+
     mDirty = true;
 }
 

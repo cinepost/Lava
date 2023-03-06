@@ -126,10 +126,6 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     */
     const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-#ifdef FALCOR_D3D12
-    const D3D12ResourceHandle& getD3D12Handle() const;
-#endif
-
 #ifdef FALCOR_GFX
     /** Get a shared resource API handle.
 
@@ -216,9 +212,6 @@ class dlldecl Resource : public std::enable_shared_from_this<Resource> {
     std::string mName;
 
 #if defined(FALCOR_GFX)
-#if defined(FALCOR_D3D12_AVAILABLE)
-    mutable D3D12ResourceHandle mpD3D12Handle;
-#endif
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
 #endif
 

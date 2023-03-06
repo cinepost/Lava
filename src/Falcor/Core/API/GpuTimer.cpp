@@ -44,9 +44,6 @@ GpuTimer::SharedPtr GpuTimer::create(std::shared_ptr<Device> pDevice) {
 }
 
 GpuTimer::GpuTimer(std::shared_ptr<Device> pDevice): mpDevice(pDevice) {
-#ifdef FALCOR_D3D12
-    mpResolveBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
-#endif
     // Create timestamp query heap upon first use.
     // We're allocating pairs of adjacent queries, so need our own heap to meet this requirement.
     if (spHeap.expired()) {

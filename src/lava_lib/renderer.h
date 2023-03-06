@@ -104,6 +104,8 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
     AOVPlane::SharedPtr addAOVPlane(const AOVPlaneInfo& info);
     AOVPlane::SharedPtr getAOVPlane(const AOVName& name);
+    bool deleteAOVPlane(const AOVName& name);
+    void setAOVPlaneState(const AOVName& name, AOVPlane::State state);
     AOVPlane::SharedConstPtr getAOVPlane(const AOVName& name) const { return getAOVPlane(name); };
     bool hasAOVPlane(const AOVName& name) const;
 
@@ -207,6 +209,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
 
     bool mMainAOVPlaneExist = false;
     bool mInited = false;
+    bool mDirty = true;
 
   private:
     // RenderFrame private

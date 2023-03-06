@@ -36,7 +36,6 @@ namespace Falcor {
 
 struct FenceApiData {
 	Slang::ComPtr<gfx::IFence> gfxFence;
-	D3D12FenceHandle d3d12Handle;
 };
 
 const GpuFence::ApiHandle& GpuFence::getApiHandle() const { return mApiHandle; }
@@ -54,16 +53,9 @@ GpuFence::SharedPtr GpuFence::create(Device::SharedPtr pDevice) {
 	if (SLANG_FAILED(pDevice->getApiHandle()->createFence(fenceDesc, pFence->mpApiData->gfxFence.writeRef()))) {
 		throw std::runtime_error("Failed to create a fence object");
 	}
+
 	pFence->mApiHandle = pFence->mpApiData->gfxFence;
-
 	pFence->mCpuValue++;
-
-#if FALCOR_D3D12_AVAILABLE
-	gfx::InteropHandle nativeHandle = {};
-	pFence->mpApiData->gfxFence->getNativeHandle(&nativeHandle);
-	FALCOR_ASSERT(nativeHandle.api == gfx::InteropHandleAPI::D3D12);
-	pFence->mpApiData->d3d12Handle = D3D12FenceHandle((ID3D12Fence*)nativeHandle.handleValue);
-#endif
 	return pFence;
 }
 
@@ -100,11 +92,5 @@ SharedResourceApiHandle GpuFence::getSharedApiHandle() const {
 	mpApiData->gfxFence->getSharedHandle(&sharedHandle);
 	return (SharedResourceApiHandle)sharedHandle.handleValue;
 }
-
-#if FALCOR_D3D12_AVAILABLE
-const D3D12FenceHandle& GpuFence::getD3D12Handle() const {
-	return mpApiData->d3d12Handle;
-}
-#endif
 
 }  // namespace Falcor

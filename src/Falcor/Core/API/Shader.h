@@ -272,12 +272,6 @@ class dlldecl Shader : public std::enable_shared_from_this<Shader> {
 	*/
 	const std::string& getEntryPoint() const { return mEntryPointName; }
 
-#if FALCOR_D3D12_AVAILABLE
-	ID3DBlobPtr getD3DBlob() const;
-	D3D12_SHADER_BYTECODE getD3D12ShaderByteCode() const {
-		return D3D12_SHADER_BYTECODE{ getD3DBlob()->GetBufferPointer(), getD3DBlob()->GetBufferSize() };
-	}
-#endif
 	BlobData getBlobData() const;
 
  protected:

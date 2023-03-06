@@ -50,22 +50,14 @@ class dlldecl ComputeStateObject {
             Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
 #endif
             Desc& setProgramKernels(const ProgramKernels::SharedConstPtr& pProgram) { mpProgram = pProgram; return *this; }
-#if FALCOR_D3D12_AVAILABLE
-             /** Set a D3D12 root signature to use instead of the one that comes with the program kernel.
-                 This function is supported on D3D12 only.
-                 \param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
-             */
-             Desc& setD3D12RootSignatureOverride(const D3D12RootSignature::SharedConstPtr& pRootSignature) { mpD3D12RootSignatureOverride = pRootSignature; return *this; }
-#endif
-         inline const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
-         inline ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
-         bool operator==(const Desc& other) const;
-     private:
-         friend class ComputeStateObject;
-         ProgramKernels::SharedConstPtr mpProgram;
-#if FALCOR_D3D12_AVAILABLE
-         D3D12RootSignature::SharedConstPtr mpD3D12RootSignatureOverride;
-#elif defined(FALCOR_VK)
+
+            inline const ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
+            inline ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram->getProgramVersion(); }
+            bool operator==(const Desc& other) const;
+        private:
+            friend class ComputeStateObject;
+            ProgramKernels::SharedConstPtr mpProgram;
+#if defined(FALCOR_VK)
          RootSignature::SharedPtr mpRootSignature;
 #endif
     };
@@ -79,11 +71,6 @@ class dlldecl ComputeStateObject {
     static SharedPtr create(std::shared_ptr<Device> pDevice, const Desc& desc);
 
     inline const ApiHandle& getApiHandle() { return mApiHandle; }
-
-#if FALCOR_D3D12_AVAILABLE
-    const D3D12ComputeStateHandle& getD3D12Handle();
-#endif
-
     inline const Desc& getDesc() const { return mDesc; }
 
   public:
@@ -96,10 +83,6 @@ class dlldecl ComputeStateObject {
     ApiHandle mApiHandle;
 
     std::shared_ptr<Device> mpDevice;
-
-    #if defined(FALCOR_GFX) && FALCOR_D3D12_AVAILABLE
-        D3D12ComputeStateHandle mpD3D12Handle;
-    #endif
 };
 
 }  // namespace Falcor

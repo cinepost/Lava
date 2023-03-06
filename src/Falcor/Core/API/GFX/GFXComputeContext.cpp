@@ -28,75 +28,65 @@
 #include "stdafx.h"
 
 #include "Falcor/Core/API/ComputeContext.h"
-
 #include "GFXLowLevelContextApiData.h"
 
-namespace Falcor
-{
-    ComputeContext::ComputeContext(Device::SharedPtr pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
-        : CopyContext(pDevice, type, queue)
-    {
-        FALCOR_ASSERT(queue);
-    }
+namespace Falcor {
 
-    ComputeContext::~ComputeContext()
-    {
-    }
+ComputeContext::ComputeContext(Device::SharedPtr pDevice, LowLevelContextData::CommandQueueType type, CommandQueueHandle queue): CopyContext(pDevice, type, queue) {
+    FALCOR_ASSERT(queue);
+}
 
-    void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize)
-    {
-        pVars->prepareDescriptorSets(this);
+ComputeContext::~ComputeContext() {}
 
-        auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
-        FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
-        computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
-        mCommandsPending = true;
-    }
+void ComputeContext::dispatch(ComputeState* pState, ComputeVars* pVars, const uint3& dispatchSize) {
+    pVars->prepareDescriptorSets(this);
 
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value)
-    {
-        resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+    auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
+    FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
+    computeEncoder->dispatchCompute((int)dispatchSize.x, (int)dispatchSize.y, (int)dispatchSize.z);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const float4& value) {
+    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+    auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
+    gfx::ClearValue clearValue = { };
+    memcpy(clearValue.color.floatValues, &value, sizeof(float) * 4);
+    resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value) {
+    resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
+
+    auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
+    gfx::ClearValue clearValue = { };
+    memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
+    resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
+    mCommandsPending = true;
+}
+
+void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value) {
+    if (pBuffer->getUAVCounter()) {
+        resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
 
         auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
         gfx::ClearValue clearValue = { };
-        memcpy(clearValue.color.floatValues, &value, sizeof(float) * 4);
-        resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::FloatClearValues);
-        mCommandsPending = true;
-    }
-
-    void ComputeContext::clearUAV(const UnorderedAccessView* pUav, const uint4& value)
-    {
-        resourceBarrier(pUav->getResource().get(), Resource::State::UnorderedAccess);
-
-        auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
-        gfx::ClearValue clearValue = { };
-        memcpy(clearValue.color.uintValues, &value, sizeof(uint32_t) * 4);
-        resourceEncoder->clearResourceView(pUav->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
-        mCommandsPending = true;
-    }
-
-    void ComputeContext::clearUAVCounter(const Buffer::SharedPtr& pBuffer, uint32_t value)
-    {
-        if (pBuffer->getUAVCounter())
-        {
-            resourceBarrier(pBuffer->getUAVCounter().get(), Resource::State::UnorderedAccess);
-
-            auto resourceEncoder = mpLowLevelData->getApiData()->getResourceCommandEncoder();
-            gfx::ClearValue clearValue = { };
-            clearValue.color.uintValues[0] = clearValue.color.uintValues[1] = clearValue.color.uintValues[2] = clearValue.color.uintValues[3] = value;
-            resourceEncoder->clearResourceView(pBuffer->getUAVCounter()->getUAV()->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
-            mCommandsPending = true;
-        }
-    }
-
-    void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset)
-    {
-        pVars->prepareDescriptorSets(this);
-        resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
-
-        auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
-        FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
-        computeEncoder->dispatchComputeIndirect(static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()), argBufferOffset);
+        clearValue.color.uintValues[0] = clearValue.color.uintValues[1] = clearValue.color.uintValues[2] = clearValue.color.uintValues[3] = value;
+        resourceEncoder->clearResourceView(pBuffer->getUAVCounter()->getUAV()->getApiHandle(), &clearValue, gfx::ClearResourceViewFlags::None);
         mCommandsPending = true;
     }
 }
+
+void ComputeContext::dispatchIndirect(ComputeState* pState, ComputeVars* pVars, const Buffer* pArgBuffer, uint64_t argBufferOffset) {
+    pVars->prepareDescriptorSets(this);
+    resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
+
+    auto computeEncoder = mpLowLevelData->getApiData()->getComputeCommandEncoder();
+    FALCOR_GFX_CALL(computeEncoder->bindPipelineWithRootObject(pState->getCSO(pVars)->getApiHandle(), pVars->getShaderObject()));
+    computeEncoder->dispatchComputeIndirect(static_cast<gfx::IBufferResource*>(pArgBuffer->getApiHandle().get()), argBufferOffset);
+    mCommandsPending = true;
+}
+
+}  // namespace Falcor

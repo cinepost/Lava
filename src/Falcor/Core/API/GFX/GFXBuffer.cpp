@@ -61,23 +61,6 @@ void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, Reso
 
 }  // namespace
 
-#if FALCOR_D3D12_AVAILABLE
-Buffer::SharedPtr Buffer::createFromD3D12Handle(std::shared_ptr<Device> pDevice, D3D12ResourceHandle handle, size_t size, Resource::BindFlags bindFlags, CpuAccess cpuAccess) {
-	gfx::IBufferResource::Desc bufDesc = {};
-	prepareGFXBufferDesc(bufDesc, size, bindFlags, cpuAccess);
-
-	gfx::InteropHandle existingHandle = {};
-	existingHandle.api = gfx::InteropHandleAPI::D3D12;
-	existingHandle.handleValue = (uint64_t)handle.GetInterfacePtr();
-	Slang::ComPtr<gfx::IBufferResource> gfxBuffer;
-	FALCOR_GFX_CALL(pDevice->getApiHandle()->createBufferFromNativeHandle(existingHandle, bufDesc, gfxBuffer.writeRef()));
-
-	Slang::ComPtr<gfx::IResource> apiHandle;
-	apiHandle = static_cast<gfx::IResource*>(gfxBuffer.get());
-	return Buffer::createFromApiHandle(pDevice, apiHandle, size, bindFlags, cpuAccess);
-}
-#endif
-
 Slang::ComPtr<gfx::IBufferResource> createBuffer(Device::SharedPtr pDevice, Buffer::State initState, size_t size, Buffer::BindFlags bindFlags, Buffer::CpuAccess cpuAccess) {
 	assert(pDevice);
 	Slang::ComPtr<gfx::IDevice> iDevice = pDevice->getApiHandle();

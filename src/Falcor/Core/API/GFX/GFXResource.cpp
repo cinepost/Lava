@@ -141,17 +141,5 @@ void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultS
 	allowedStates.add(gfx::ResourceState::CopyDestination);
 	allowedStates.add(gfx::ResourceState::CopySource);
 }
-
-#if FALCOR_D3D12_AVAILABLE
-const D3D12ResourceHandle& Resource::getD3D12Handle() const {
-	if (!mpD3D12Handle) {
-		gfx::InteropHandle handle = {};
-		FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
-		assert(handle.api == gfx::InteropHandleAPI::D3D12);
-		mpD3D12Handle = D3D12ResourceHandle(reinterpret_cast<ID3D12Resource*>(handle.handleValue));
-	}
-	return mpD3D12Handle;
-}
-#endif
 	
 } // namespace Falcor

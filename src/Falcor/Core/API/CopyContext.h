@@ -68,11 +68,6 @@ class dlldecl CopyContext {
         uint32_t mDepth;
 #endif
 
-#ifdef FALCOR_D3D12
-        ResourceFormat mTextureFormat;
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
-#endif
-
 #ifdef FALCOR_VK 
         size_t mDataSize;
 #endif

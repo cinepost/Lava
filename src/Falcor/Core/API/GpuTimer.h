@@ -97,10 +97,6 @@ class dlldecl GpuTimer : public std::enable_shared_from_this<GpuTimer> {
     void apiEnd();
     void apiResolve();
     void apiReadback(uint64_t result[2]);
-
-#ifdef FALCOR_D3D12
-    Buffer::SharedPtr mpResolveBuffer; // Yes, I know it's against my policy to put API specific code in common headers, but it's not worth the complications
-#endif
 };
 
 }  // namespace Falcor

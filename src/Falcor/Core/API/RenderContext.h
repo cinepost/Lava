@@ -243,10 +243,7 @@ private:
     Falcor::BlitContext& getBlitContext();
     Falcor::BlitToBufferContext& getBlitToBufferContext();
 
-#ifdef FALCOR_D3D12
-        void applyGraphicsVars(GraphicsVars* pVars, const ProgramKernels* pProgramKernels);
-        void prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
-#elif defined(FALCOR_VK)
+#if defined(FALCOR_VK)
         bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
         bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
 #endif
@@ -254,7 +251,7 @@ private:
         GraphicsVars* mpLastBoundGraphicsVars = nullptr;
 };
 
-FALCOR_ENUM_CLASS_OPERATORS(RenderContext::StateBindFlags);
+enum_class_operators(RenderContext::StateBindFlags);
 
 }  // namespace Falcor
 

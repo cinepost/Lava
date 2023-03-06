@@ -97,16 +97,6 @@ bool Device::init() {
     if (apiInit() == false) return false;
 
     mpFrameFence = GpuFence::create(shared_from_this());
-
-#if FALCOR_D3D12_AVAILABLE
-    // Create the descriptor pools
-    D3D12DescriptorPool::Desc poolDesc;
-    poolDesc.setDescCount(ShaderResourceType::TextureSrv, 1000000).setDescCount(ShaderResourceType::Sampler, 2048).setShaderVisible(true);
-    mpD3D12GpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
-    poolDesc.setShaderVisible(false).setDescCount(ShaderResourceType::Rtv, 16 * 1024).setDescCount(ShaderResourceType::Dsv, 1024);
-    mpD3D12CpuDescPool = D3D12DescriptorPool::create(poolDesc, mpFrameFence);
-#endif // FALCOR_D3D12
-
     mpUploadHeap = GpuMemoryHeap::create(shared_from_this(), GpuMemoryHeap::Type::Upload, 1024 * 1024 * 2, mpFrameFence);
 
     createNullViews();
@@ -195,8 +185,7 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
     ResourceHandle apiHandles[kSwapChainBuffersCount] = {};
     getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
-    {
+    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++) {
         // Create a texture object
         auto pColorTex = Texture::SharedPtr(new Texture(shared_from_this(), width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
         pColorTex->mApiHandle = apiHandles[i];
@@ -205,8 +194,7 @@ bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat co
         mpSwapChainFbos[i]->attachColorTarget(pColorTex, 0);
 
         // Create a depth texture
-        if (depthFormat != ResourceFormat::Unknown)
-        {
+        if (depthFormat != ResourceFormat::Unknown) {
             auto pDepth = Texture::create2D(shared_from_this(), width, height, depthFormat, 1, 1, nullptr, Texture::BindFlags::DepthStencil);
             mpSwapChainFbos[i]->attachDepthStencilTarget(pDepth);
         }
@@ -251,11 +239,6 @@ void Device::executeDeferredReleases() {
     while (mDeferredReleases.size() && mDeferredReleases.front().frameID <= gpuVal) {
         mDeferredReleases.pop();
     }
-
-#ifdef FALCOR_D3D12_AVAILABLE
-    mpD3D12CpuDescPool->executeDeferredReleases();
-    mpD3D12GpuDescPool->executeDeferredReleases();
-#endif // FALCOR_D3D12_AVAILABLE
 }
 
 void Device::toggleVSync(bool enable) {
@@ -285,12 +268,6 @@ void Device::cleanup() {
     releaseNullViews();
     mpRenderContext.reset();
     mpUploadHeap.reset();
-
-#ifdef FALCOR_D3D12
-        mpD3D12CpuDescPool.reset();
-        mpD3D12GpuDescPool.reset();
-#endif // FALCOR_D3D12
-
     mpFrameFence.reset();
 
     for (auto& heap : mTimestampQueryHeaps) heap.reset();
@@ -311,8 +288,7 @@ bool Device::isShaderModelSupported(ShaderModel shaderModel) const {
     return ((uint32_t)shaderModel <= (uint32_t)mSupportedShaderModel);
 }
 
-Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
-{
+Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height) {
     FALCOR_ASSERT(width > 0 && height > 0);
 
     mpRenderContext->flush(true);
@@ -326,46 +302,12 @@ Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
     // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
     // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
     // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
-
-#ifdef FALCOR_D3D12
-    // Save FBO resource states
-    std::array<Resource::State, kSwapChainBuffersCount> fboColorStates;
-    std::array<Resource::State, kSwapChainBuffersCount> fboDepthStates;
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
-    {
-        FALCOR_ASSERT(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
-        fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getGlobalState();
-
-        const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
-        if (pSwapChainDepth != nullptr)
-        {
-            FALCOR_ASSERT(pSwapChainDepth->isStateGlobal());
-            fboDepthStates[i] = pSwapChainDepth->getGlobalState();
-        }
-    }
-#endif
-
     FALCOR_ASSERT(mpSwapChainFbos[0]->getSampleCount() == 1);
 
     // Delete all the FBOs
     releaseFboData();
     apiResizeSwapChain(width, height, colorFormat);
     updateDefaultFBO(width, height, colorFormat, depthFormat);
-
-#ifdef FALCOR_D3D12
-    // Restore FBO resource states
-    for (uint32_t i = 0; i < kSwapChainBuffersCount; i++)
-    {
-        FALCOR_ASSERT(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
-        mpSwapChainFbos[i]->getColorTexture(0)->setGlobalState(fboColorStates[i]);
-        const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
-        if (pSwapChainDepth != nullptr)
-        {
-            FALCOR_ASSERT(pSwapChainDepth->isStateGlobal());
-            pSwapChainDepth->setGlobalState(fboDepthStates[i]);
-        }
-    }
-#endif
 
 #if !defined(FALCOR_D3D12) && !defined(FALCOR_GFX) && !defined(FALCOR_VK)
 #error Verify state handling on swapchain resize for this API

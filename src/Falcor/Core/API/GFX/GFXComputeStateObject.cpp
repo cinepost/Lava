@@ -34,24 +34,7 @@ namespace Falcor {
 void ComputeStateObject::apiInit() {
 	gfx::ComputePipelineStateDesc computePipelineDesc = {};
 	computePipelineDesc.program = mDesc.mpProgram->getApiHandle();
-#if FALCOR_D3D12_AVAILABLE
-	computePipelineDesc.d3d12RootSignatureOverride =
-		mDesc.mpD3D12RootSignatureOverride ? (void*)mDesc.mpD3D12RootSignatureOverride->getApiHandle().GetInterfacePtr() : nullptr;
-#endif
 	FALCOR_GFX_CALL(mpDevice->getApiHandle()->createComputePipelineState(computePipelineDesc, mApiHandle.writeRef()));
 }
-
-#if FALCOR_D3D12_AVAILABLE
-const D3D12ComputeStateHandle& ComputeStateObject::getD3D12Handle() {
-	if (!mpD3D12Handle) {
-		// Get back raw d3d12 pipeline state handle.
-		gfx::InteropHandle handle = {};
-		FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
-		assert(handle.api == gfx::InteropHandleAPI::D3D12);
-		mpD3D12Handle = D3D12ComputeStateHandle(reinterpret_cast<ID3D12PipelineState*>(handle.handleValue));
-	}
-	return mpD3D12Handle;
-}
-#endif
 
 }  // namespace Falcor

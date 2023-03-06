@@ -207,13 +207,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     inline VkPhysicalDevice getApiNativeHandle() const { return mVkPhysicalDevice; }
 #endif
 
-#ifdef FALCOR_D3D12_AVAILABLE
-    /** Get a D3D12 handle for user code that wants to call D3D12 directly.
-        \return A valid ID3D12Device* value for all backend that are using D3D12, otherwise nullptr.
-    */
-    const D3D12DeviceHandle getD3D12Handle();
-#endif
-
     /** Present the back-buffer to the window
     */
     void present();
@@ -245,11 +238,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
         \return New query heap.
     */
     std::weak_ptr<QueryHeap> createQueryHeap(QueryHeap::Type type, uint32_t count);
-
-#if FALCOR_D3D12_AVAILABLE
-        const D3D12DescriptorPool::SharedPtr& getD3D12CpuDescriptorPool() const { return mpD3D12CpuDescPool; }
-        const D3D12DescriptorPool::SharedPtr& getD3D12GpuDescriptorPool() const { return mpD3D12GpuDescPool; }
-#endif // FALCOR_D3D12_AVAILABLE
 
     DeviceApiData* getApiData() const { return mpApiData; }
 
@@ -335,10 +323,6 @@ class dlldecl Device: public std::enable_shared_from_this<Device> {
     ApiHandle mApiHandle;
     GpuMemoryHeap::SharedPtr mpUploadHeap;
 
-#if FALCOR_D3D12_AVAILABLE
-    D3D12DescriptorPool::SharedPtr mpD3D12CpuDescPool;
-    D3D12DescriptorPool::SharedPtr mpD3D12GpuDescPool;
-#endif
     bool mIsWindowOccluded = false;
     GpuFence::SharedPtr mpFrameFence;
 

@@ -49,7 +49,7 @@ enum class RtGeometryInstanceFlags {
 	ForceOpaque = 0x00000004,
 	NoOpaque = 0x00000008,
 };
-FALCOR_ENUM_CLASS_OPERATORS(RtGeometryInstanceFlags);
+enum_class_operators(RtGeometryInstanceFlags);
 
 
 enum class RtGeometryInstanceVisibilityFlags : uint32_t {
@@ -60,7 +60,7 @@ enum class RtGeometryInstanceVisibilityFlags : uint32_t {
   VisibleToReflectionRays = 0x00000008,
 	VisibleToRefractionRays = 0x00000010,
 };
-FALCOR_ENUM_CLASS_OPERATORS(RtGeometryInstanceVisibilityFlags);
+enum_class_operators(RtGeometryInstanceVisibilityFlags);
 
 
 // The layout of this struct is intentionally consistent with D3D12_RAYTRACING_INSTANCE_DESC
@@ -97,7 +97,7 @@ enum class RtAccelerationStructureBuildFlags {
 	MinimizeMemory = 16,
 	PerformUpdate = 32
 };
-FALCOR_ENUM_CLASS_OPERATORS(RtAccelerationStructureBuildFlags);
+enum_class_operators(RtAccelerationStructureBuildFlags);
 
 enum class RtGeometryType
 {
@@ -113,7 +113,7 @@ enum class RtGeometryFlags
 	Opaque = 1,
 	NoDuplicateAnyHitInvocation = 2
 };
-FALCOR_ENUM_CLASS_OPERATORS(RtGeometryFlags);
+enum_class_operators(RtGeometryFlags);
 
 struct RtTriangleDesc {
 	DeviceAddress transform3x4;
@@ -234,9 +234,6 @@ public:
 
 	const Desc& getDesc() const { return mDesc; }
 
-#ifdef FALCOR_D3D12
-	ShaderResourceView::SharedPtr getShaderResourceView();
-#endif
 	ApiHandle getApiHandle() const;
 
 protected:

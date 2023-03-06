@@ -273,7 +273,7 @@ class dlldecl Profiler {
 		uint64_t mFenceValue = uint64_t(-1);
 };
 
-//FALCOR_ENUM_CLASS_OPERATORS(Profiler::Flags);
+//enum_class_operators(Profiler::Flags);
 enum_class_operators(Profiler::Flags);
 
 /** Helper class for starting and ending profiling events using RAII.

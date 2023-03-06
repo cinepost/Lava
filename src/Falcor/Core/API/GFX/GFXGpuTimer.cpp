@@ -34,21 +34,21 @@
 
 namespace Falcor {
 
-    void GpuTimer::apiBegin() {
-        mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mStart);
-    }
+void GpuTimer::apiBegin() {
+    mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mStart);
+}
 
-    void GpuTimer::apiEnd() {
-        mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
-    }
+void GpuTimer::apiEnd() {
+    mpLowLevelData->getApiData()->getResourceCommandEncoder()->writeTimestamp(spHeap.lock()->getApiHandle(), mEnd);
+}
 
-    void GpuTimer::apiResolve() {
-        // TODO: Copy to staging buffer for readback.
-    }
+void GpuTimer::apiResolve() {
+    // TODO: Copy to staging buffer for readback.
+}
 
-    void GpuTimer::apiReadback(uint64_t result[2]) {
-        mpLowLevelData->flush();
-        FALCOR_GFX_CALL(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
-    }
+void GpuTimer::apiReadback(uint64_t result[2]) {
+    mpLowLevelData->flush();
+    FALCOR_GFX_CALL(spHeap.lock()->getApiHandle()->getResult(mStart, 2, result));
+}
 
 }  // namespace Falcor

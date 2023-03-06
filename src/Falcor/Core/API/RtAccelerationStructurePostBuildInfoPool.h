@@ -32,10 +32,6 @@
 #include "Falcor/Core/API/Device.h"
 #include "Falcor/Core/API/CopyContext.h"
 
-#ifdef FALCOR_D3D12
-#include "Core/API/Buffer.h"
-#endif
-
 #if defined(FALCOR_VK)
 #include "RtQueryPool.h"
 #endif
@@ -72,9 +68,7 @@ class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
     uint64_t getElement(CopyContext* pContext, uint32_t index);
     void reset(CopyContext* pContext);
 
-#if defined(FALCOR_D3D12)
-    uint64_t getBufferAddress(uint32_t index);
-#elif defined(FALCOR_GFX)
+#if defined(FALCOR_GFX)
     gfx::IQueryPool* getGFXQueryPool() const { return mpGFXQueryPool.get(); }
 #elif defined(FALCOR_VK)
     RtQueryPool* getRtQueryPool() const { return mpRtQueryPool.get(); }
@@ -87,14 +81,7 @@ class FALCOR_API RtAccelerationStructurePostBuildInfoPool {
     Device::SharedPtr mpDevice = nullptr;
     Desc mDesc;
 
-#if defined(FALCOR_D3D12)
-    size_t mElementSize = 0;
-    Buffer::SharedPtr mpPostbuildInfoBuffer;
-    Buffer::SharedPtr mpPostbuildInfoStagingBuffer;
-    const void* mMappedPostBuildInfo = nullptr;
-    bool mStagingBufferUpToDate = false;
-
-#elif defined(FALCOR_GFX)
+#if defined(FALCOR_GFX)
     Slang::ComPtr<gfx::IQueryPool> mpGFXQueryPool;
     bool mNeedFlush = true;
 #elif defined(FALCOR_VK)

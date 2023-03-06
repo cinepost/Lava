@@ -73,13 +73,6 @@ bool Shader::init(ComPtr<slang::IComponentType> slangEntryPoint, const std::stri
     return slangEntryPoint != nullptr;
 }
 
-#ifdef FALCOR_D3D12_AVAILABLE
-ID3DBlobPtr Shader::getD3DBlob() const {
-    ID3DBlobPtr result = mpPrivateData->getBlob();
-    return result;
-}
-#endif
-
 Shader::BlobData Shader::getBlobData() const {
     auto blob = mpPrivateData->getBlob();
 

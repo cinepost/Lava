@@ -81,10 +81,6 @@ class dlldecl RootSignature {
         Desc& addRootDescriptor(DescType type, uint32_t regIndex, uint32_t spaceIndex, ShaderVisibility visibility = ShaderVisibility::All);
         Desc& addRootConstants(uint32_t regIndex, uint32_t spaceIndex, uint32_t count);  // #SHADER_VAR Make sure this works with the reflectors
 
-#ifdef FALCOR_D3D12
-        Desc& setLocal(bool isLocal) { mIsLocal = isLocal; return *this; }
-#endif
-
         size_t getSetsCount() const { return mSets.size(); }
         const DescriptorSetLayout& getSet(size_t index) const { return mSets[index]; }
 
@@ -100,10 +96,6 @@ class dlldecl RootSignature {
         std::vector<DescriptorSetLayout> mSets;
         std::vector<RootDescriptorDesc> mRootDescriptors;
         std::vector<RootConstantsDesc> mRootConstants;
-
-#ifdef FALCOR_D3D12
-        bool mIsLocal = false;
-#endif
     };
 
     ~RootSignature();
@@ -151,10 +143,6 @@ class dlldecl RootSignature {
  protected:
     RootSignature(std::shared_ptr<Device> device, const Desc& desc);
     void apiInit();
-
-#ifdef FALCOR_D3D12
-    virtual void createApiHandle(ID3DBlobPtr pSigBlob);
-#endif
 
     ApiHandle mApiHandle;
     Desc mDesc;

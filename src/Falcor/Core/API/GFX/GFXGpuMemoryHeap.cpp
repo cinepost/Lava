@@ -72,6 +72,7 @@ void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size) {
         size,
         Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
         getCpuAccess(mType));
+    
     data.offset = 0;
     auto bufferResource = static_cast<gfx::IBufferResource*>(data.pResourceHandle.get());
     bufferResource->map(nullptr, (void**)&data.pData);

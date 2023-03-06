@@ -140,6 +140,11 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     using SharedPtr = std::shared_ptr<AOVPlane>;
     using SharedConstPtr = std::shared_ptr<const AOVPlane>;
 
+    enum class State: uint8_t {
+      Enabled,
+      Disabled,
+    };
+
     inline const std::string&      outputVariableName() const { return mInfo.variableName; }
     inline const AOVName&          name() const { return mInfo.name; }
     inline Falcor::ResourceFormat  format() const { return mInfo.format; }
@@ -187,6 +192,11 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool compileInternalRenderGraph(Falcor::RenderContext* pContext);
 
     bool getTextureData(Texture* pTexture, uint8_t* pData) const;
+    inline bool isEnabled() const { return (mState == State::Enabled); }
+    inline State getState() const { return mState; }
+
+  private:
+    void setState(State state) { mState = state; }         
 
   private:
     AOVPlaneInfo                        mInfo;
@@ -211,6 +221,8 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string                         mProcessedPassOutputName;
 
     Falcor::Resource::Type              mType;
+
+    State                               mState = State::Enabled;
 
   friend class Renderer;
 };

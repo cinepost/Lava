@@ -57,12 +57,6 @@ public:
     /** Get the internal API handle
     */
     const ApiHandle& getApiHandle() const;
-    
-#ifdef FALCOR_D3D12
-    /** Get the internal D3D12 handle. Available only when D3D12 is the underlying API.
-    */
-    const D3D12FenceHandle& getD3D12Handle() const;
-#endif
 
     /** Get the last value the GPU has signaled
     */

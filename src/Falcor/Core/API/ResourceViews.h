@@ -136,16 +136,6 @@ class dlldecl ShaderResourceView : public ResourceView<SrvHandle> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
     static SharedPtr create(std::shared_ptr<Device> pDevice, ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
-
-#ifdef FALCOR_D3D12
-    static SharedPtr createViewForAccelerationStructure(ConstBufferSharedPtrRef pBuffer);
-
-    /** Get the D3D12 CPU descriptor handle representing this resource view.
-        Valid only when D3D12 is the underlying API.
-    */
-    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
-#endif
-
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
 
 private:
@@ -169,13 +159,6 @@ class dlldecl DepthStencilView : public ResourceView<DsvHandle> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
 
-#ifdef FALCOR_D3D12    
-    /** Get the D3D12 CPU descriptor handle representing this resource view.
-        Valid only when D3D12 is the underlying API.
-    */
-    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
-#endif
-
  private:
     DepthStencilView(std::shared_ptr<Device> pDevice,ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
         ResourceView(pDevice, pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
@@ -191,13 +174,6 @@ class dlldecl UnorderedAccessView : public ResourceView<UavHandle> {
     static SharedPtr create(std::shared_ptr<Device> pDevice, Dimension dimension);
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
-
-#ifdef FALCOR_D3D12
-    /** Get the D3D12 CPU descriptor handle representing this resource view.
-        Valid only when D3D12 is the underlying API.
-    */
-    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
-#endif
 
  private:
     UnorderedAccessView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
@@ -216,13 +192,6 @@ class dlldecl RenderTargetView : public ResourceView<RtvHandle> {
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice, Dimension dimension);
 
-#ifdef FALCOR_D3D12
-    /** Get the D3D12 CPU descriptor handle representing this resource view.
-        Valid only when D3D12 is the underlying API.
-    */
-    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
-#endif
-
     ~RenderTargetView();
 
  private:
@@ -238,13 +207,6 @@ class dlldecl ConstantBufferView : public ResourceView<CbvHandle> {
     static SharedPtr create(std::shared_ptr<Device> pDevice);
 
     static SharedPtr getNullView(std::shared_ptr<Device> pDevice);
-
-#ifdef FALCOR_D3D12
-    /** Get the D3D12 CPU descriptor handle representing this resource view.
-        Valid only when D3D12 is the underlying API.
-    */
-    D3D12DescriptorCpuHandle getD3D12CpuHeapHandle() const;
-#endif
 
  private:
     ConstantBufferView(std::shared_ptr<Device> pDevice, ResourceWeakPtr pResource, ApiHandle handle) : ResourceView(pDevice, pResource, handle, 0, 1, 0, 1) {}

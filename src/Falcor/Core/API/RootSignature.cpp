@@ -188,12 +188,9 @@ RootSignature::SharedPtr RootSignature::createLocal(std::shared_ptr<Device> pDev
     addParamBlockSets(pReflector, d);
     addRootDescriptors(pReflector, d);
 
-#ifdef FALCOR_D3D12
-    d.setLocal(true);
-#else
-    logWarning("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
+
+    LLOG_WRN << "Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.";
     throw std::runtime_error("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
-#endif
 
     return RootSignature::create(pDevice, d);
 }

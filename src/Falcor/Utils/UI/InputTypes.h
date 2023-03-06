@@ -54,7 +54,7 @@ namespace Falcor
             Ctrl = 2,
             Alt = 4
         };
-        FALCOR_ENUM_CLASS_OPERATORS(ModifierFlags);
+        enum_class_operators(ModifierFlags);
 
         /** Enum for the different modifiers. Used for checking modifier state in the InputState class and for checking modifier status on the KeyboardEvent.
             For that to work these needs to have the same values as their flags.

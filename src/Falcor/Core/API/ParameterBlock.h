@@ -25,7 +25,8 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_PARAMETERBLOCK_H_
+#define SRC_FALCOR_CORE_API_PARAMETERBLOCK_H_
 
 #include "Falcor/Core/Framework.h"
 
@@ -326,13 +327,6 @@ public:
 
     bool prepareDescriptorSets(CopyContext* pCopyContext);
 
-#ifdef FALCOR_D3D12
-    uint32_t getD3D12DescriptorSetCount() const { return mpReflector->getD3D12DescriptorSetCount(); }
-    D3D12DescriptorSet::SharedPtr const& getD3D12DescriptorSet(uint32_t index) const { return mSets[index].pSet; }
-
-    std::pair<Resource::SharedPtr, bool> getRootDescriptor(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
-#endif // FALCOR_D3D12
-
     const ParameterBlock::SharedPtr& getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
 
     // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
@@ -413,117 +407,6 @@ protected:
 
     static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav);
 
-#ifdef FALCOR_D3D12
-    std::vector<uint8_t> mData;
-
-    virtual bool updateSpecializationImpl() const;
-
-    /** Get a constant buffer view for the underlying constant buffer for ordinary/uniform data.
-    */
-    ConstantBufferView::SharedPtr getUnderlyingConstantBufferView();
-
-    void validateUnderlyingConstantBuffer(
-        ParameterBlockReflection const*   pReflector);
-
-    void writeIntoBuffer(
-        ParameterBlockReflection const*   pReflector,
-        char*                           pBuffer,
-        size_t                          bufferSize);
-
-    bool prepareDescriptorSets(
-        CopyContext*                    pCopyContext,
-        const ParameterBlockReflection* pReflector);
-    bool prepareDefaultConstantBufferAndResources(
-        CopyContext*                        pContext,
-        ParameterBlockReflection const*     pReflector);
-    bool prepareResources(
-        CopyContext*                    pContext,
-        ParameterBlockReflection const* pReflector);
-
-    bool bindIntoD3D12DescriptorSet(
-        const ParameterBlockReflection*   pReflector,
-        D3D12DescriptorSet::SharedPtr        pDescSet,
-        uint32_t                        setIndex,
-        uint32_t&                       destRangeIndex);
-
-    bool bindResourcesIntoD3D12DescriptorSet(
-        const ParameterBlockReflection*   pReflector,
-        D3D12DescriptorSet::SharedPtr        pDescSet,
-        uint32_t                        setIndex,
-        uint32_t&                       destRangeIndex);
-
-    struct AssignedSRV {
-        ShaderResourceView::SharedPtr pView; // Can be a null view even when a valid resource is assigned, if the bind location is a root descriptor.
-        Resource::SharedPtr pResource;
-    };
-
-    struct AssignedUAV {
-        UnorderedAccessView::SharedPtr pView; // Can be a null view even when a valid resource is assigned, if the bind location is a root descriptor.
-        Resource::SharedPtr pResource;
-    };
-
-    struct AssignedParameterBlock {
-        ParameterBlock::SharedPtr pBlock;
-        mutable ChangeEpoch epochOfLastObservedChange = 0;
-    };
-
-    std::vector<AssignedParameterBlock>     mParameterBlocks;
-    std::vector<AssignedSRV>                mSRVs;              ///< All SRVs bound to descriptor sets or root descriptors.
-    std::vector<AssignedUAV>                mUAVs;              ///< All UAVs bound to descriptor sets or root descriptors.
-    std::vector<Sampler::SharedPtr>         mSamplers;
-
-    // Map from a flat Srv binding index to a bound Acceleration Structure object.
-    // Used by getAccelerationStructure().
-    std::map<size_t, RtAccelerationStructure::SharedPtr> mAccelerationStructures;
-
-    AssignedParameterBlock const& getAssignedParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
-    const AssignedParameterBlock& getAssignedParameterBlock(size_t index) const;
-    AssignedParameterBlock& getAssignedParameterBlock(size_t index);
-
-    size_t getFlatIndex(const BindLocation& bindLocation) const;
-
-    bool checkResourceIndices(const BindLocation& bindLocation, const char* funcName) const;
-    template<size_t N>
-    bool checkDescriptorType(const BindLocation& bindLocation, const std::array<ShaderResourceType, N>& allowedTypes, const char* funcName) const;
-    bool checkDescriptorSrvUavCommon(
-        const BindLocation& bindLocation,
-        const Resource::SharedPtr& pResource,
-        const std::variant<ShaderResourceView::SharedPtr, UnorderedAccessView::SharedPtr>& pView,
-        const char* funcName) const;
-    bool checkRootDescriptorResourceCompatibility(const Resource::SharedPtr& pResource, const std::string& funcName) const;
-
-    bool setResourceSrvUavCommon(const BindLocation& bindLoc, const Resource::SharedPtr& pResource, const char* funcName);
-    Resource::SharedPtr getResourceSrvUavCommon(const BindLocation& bindLoc, const char* funcName) const;
-
-    mutable ChangeEpoch mEpochOfLastUniformDataChange = 1;
-    mutable ChangeEpoch mEpochOfLastChange = 1;
-
-    static inline ChangeEpoch getEpochOfLastChange(ParameterBlock* pBlock) { return pBlock->mEpochOfLastChange; }
-    static ChangeEpoch computeEpochOfLastChange(ParameterBlock* pBlock);
-
-    void checkForIndirectChanges(ParameterBlockReflection const* pReflector) const;
-
-    mutable uint32_t mDescriptorSetResourceDataVersion = 0;
-
-    uint32_t getDescriptorSetIndex(const BindLocation& bindLocation);
-    void markDescriptorSetDirty(uint32_t index) const;
-    void markDescriptorSetDirty(const BindLocation& bindLocation);
-
-    struct UnderlyingConstantBuffer {
-        Buffer::SharedPtr pBuffer;
-        ConstantBufferView::SharedPtr pCBV;
-
-        mutable ChangeEpoch epochOfLastObservedChange = 0;
-    };
-    mutable UnderlyingConstantBuffer mUnderlyingConstantBuffer;
-
-    struct DescriptorSetInfo {
-        D3D12DescriptorSet::SharedPtr pSet;
-        ChangeEpoch epochOfLastChange;
-    };
-    mutable std::vector<DescriptorSetInfo> mSets;
-#endif // FALCOR_D3D12
-
 #ifdef FALCOR_GFX
     Slang::ComPtr<gfx::IShaderObject> mpShaderObject;
     std::map<gfx::ShaderOffset, ParameterBlock::SharedPtr> mParameterBlocks;
@@ -585,3 +468,5 @@ template<typename T> bool ShaderVar::setImpl(const T& val) const {
 }
 
 }  // namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_PARAMETERBLOCK_H_

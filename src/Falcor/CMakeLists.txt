@@ -57,16 +57,10 @@ file( GLOB SOURCES
 )
 
 string( TOLOWER ${FALCOR_API_BACKEND} backend_type )
-if(backend_type STREQUAL "vulkan")
-    file( GLOB BACKEND_API_SOURCES
-        ./Core/API/Vulkan/*.cpp
-    )
-elseif(backend_type STREQUAL "gfx")
+if(backend_type STREQUAL "gfx")
     add_definitions(-D_FLACOR_API_BACKEND_GFX)
     file( GLOB BACKEND_API_SOURCES 
         ./Core/API/GFX/*.cpp
-        ./Core/API/GFX_LIB/*.cpp
-        ./Core/API/GFX_LIB/vulkan/*.cpp
     )
 else()
      message( FATAL_ERROR "Unsupported backend type specified !!!" )

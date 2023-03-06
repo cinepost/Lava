@@ -61,17 +61,11 @@
 #undef Always
 #endif
 
-#if defined(FALCOR_GFX_D3D12) || defined (FALCOR_GFX_VK)
+#if defined (FALCOR_GFX_VK)
 #define FALCOR_GFX
 #endif
 
-#if FALCOR_GFX_D3D12
-// If we are building Falcor with GFX backend + D3D12 support, define `FALCOR_D3D12_AVAILABLE` so users
-// can know raw D3D12 API and helper classes are available.
-#define FALCOR_D3D12_AVAILABLE 1
-#endif
-
-#if FALCOR_ENABLE_NVAPI && FALCOR_D3D12_AVAILABLE
+#if FALCOR_ENABLE_NVAPI
 #define FALCOR_NVAPI_AVAILABLE 1
 #else
 #define FALCOR_NVAPI_AVAILABLE 0
@@ -90,21 +84,11 @@
 #define HRESULT uint32_t
 #endif
 
-#include "Core/API/Shared/D3D12Handles.h"
 #if FALCOR_GFX_VK
 #include <vulkan/vulkan.h>
 #endif
 
 #define FALCOR_GFX_CALL(a) {auto hr_ = a; if(SLANG_FAILED(hr_)) { reportError(#a); }}
-
-#if FALCOR_GFX_D3D12
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3d12.lib")
-#define FALCOR_D3D_CALL(_a) {HRESULT hr_ = _a; if (FAILED(hr_)) { reportError( #_a); }}
-#define FALCOR_GET_COM_INTERFACE(_base, _type, _var) FALCOR_MAKE_SMART_COM_PTR(_type); FALCOR_CONCAT_STRINGS(_type, Ptr) _var; FALCOR_D3D_CALL(_base->QueryInterface(IID_PPV_ARGS(&_var)));
-#define FALCOR_MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
-inline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
-#endif
 
 template<typename BlobType>
 inline std::string convertBlobToString(BlobType* pBlob)
@@ -116,16 +100,6 @@ inline std::string convertBlobToString(BlobType* pBlob)
 }
 
 #define UNSUPPORTED_IN_GFX(msg_) {LLOG_WRN << msg_ << " is not supported in GFX. Ignoring call.";}
-
-#if FALCOR_ENABLE_D3D12_AGILITY_SDK
- // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
-#define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                     \
-    extern "C" { FALCOR_API_EXPORT extern const UINT D3D12SDKVersion = 4;}              \
-    extern "C" { FALCOR_API_EXPORT extern const char* D3D12SDKPath = u8".\\D3D12\\"; }
-#else
-#define FALCOR_EXPORT_D3D12_AGILITY_SDK
-#endif
-
 
 #pragma comment(lib, "gfx.lib")
 
@@ -149,7 +123,7 @@ enum class RayFlags : uint32_t {
     SkipTriangles = 0x100,
     SkipProceduralPrimitives = 0x200,
 };
-FALCOR_ENUM_CLASS_OPERATORS(RayFlags);
+enum_class_operators(RayFlags);
 
 // Maximum raytracing attribute size.
 inline constexpr uint32_t getRaytracingMaxAttributeSize() { return 32; }
@@ -179,12 +153,11 @@ struct WindowHandle {
     using CommandSignatureHandle = void*;
     using FenceHandle = Slang::ComPtr<gfx::IFence>;
     using ResourceHandle = Slang::ComPtr<gfx::IResource>;
+
     using RtvHandle = Slang::ComPtr<gfx::IResourceView>;
     using DsvHandle = Slang::ComPtr<gfx::IResourceView>;
     using SrvHandle = Slang::ComPtr<gfx::IResourceView>;
-
-    class D3D12DescriptorSet;
-    using CbvHandle = std::shared_ptr<D3D12DescriptorSet>;
+    using CbvHandle = Slang::ComPtr<gfx::IResourceView>;
 
     using SamplerHandle = Slang::ComPtr<gfx::ISamplerState>;
     using UavHandle = Slang::ComPtr<gfx::IResourceView>;

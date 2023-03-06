@@ -60,7 +60,7 @@ public:
     struct Desc {
         uint32_t width = 1920;                  ///< The width of the client area size.
         uint32_t height = 1080;                 ///< The height of the client area size.
-        std::string title = "Falcor Sample";    ///< Window title.
+        std::string title = "Sample";           ///< Window title.
         WindowMode mode = WindowMode::Normal;   ///< Window mode. In full screen mode, width and height will be ignored.
         bool resizableWindow = true;            ///< Allow the user to resize the window.
     };

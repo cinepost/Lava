@@ -99,18 +99,6 @@ ShaderResourceView::SharedPtr ShaderResourceView::create(Device::SharedPtr pDevi
     return SharedPtr(new ShaderResourceView(pDevice, std::weak_ptr<Resource>(), nullptr, 0, 0));
 }
 
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorCpuHandle ShaderResourceView::getD3D12CpuHeapHandle() const {
-    gfx::InteropHandle handle;
-    FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
-    assert(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
-
-    D3D12DescriptorCpuHandle result;
-    result.ptr = handle.handleValue;
-    return result;
-}
-#endif
-
 DepthStencilView::SharedPtr DepthStencilView::create(Device::SharedPtr pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     auto gfxTexture = static_cast<gfx::ITextureResource*>(pTexture->getApiHandle().get());
 
@@ -131,18 +119,6 @@ DepthStencilView::SharedPtr DepthStencilView::create(Device::SharedPtr pDevice, 
 DepthStencilView::SharedPtr DepthStencilView::create(Device::SharedPtr pDevice, Dimension dimension) {
     return SharedPtr(new DepthStencilView(pDevice, std::weak_ptr<Resource>(), nullptr, 0, 0, 0));
 }
-
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorCpuHandle DepthStencilView::getD3D12CpuHeapHandle() const {
-    gfx::InteropHandle handle;
-    FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
-    assert(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
-
-    D3D12DescriptorCpuHandle result;
-    result.ptr = handle.handleValue;
-    return result;
-}
-#endif
 
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDevice, ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) {
     Slang::ComPtr<gfx::IResourceView> handle;
@@ -173,18 +149,6 @@ UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDe
 UnorderedAccessView::SharedPtr UnorderedAccessView::create(Device::SharedPtr pDevice, Dimension dimension) {
     return SharedPtr(new UnorderedAccessView(pDevice, std::weak_ptr<Resource>(), nullptr, 0, 0));
 }
-
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorCpuHandle UnorderedAccessView::getD3D12CpuHeapHandle() const {
-    gfx::InteropHandle handle;
-    FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
-    assert(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
-
-    D3D12DescriptorCpuHandle result;
-    result.ptr = handle.handleValue;
-    return result;
-}
-#endif
 
 RenderTargetView::~RenderTargetView() = default;
 
@@ -242,66 +206,20 @@ RenderTargetView::SharedPtr RenderTargetView::create(Device::SharedPtr pDevice, 
     return SharedPtr(new RenderTargetView(pDevice, std::weak_ptr<Resource>(), handle, 0, 0, 0));
 }
 
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorCpuHandle RenderTargetView::getD3D12CpuHeapHandle() const {
-    gfx::InteropHandle handle;
-    FALCOR_GFX_CALL(mApiHandle->getNativeHandle(&handle));
-    assert(handle.api == gfx::InteropHandleAPI::D3D12CpuDescriptorHandle);
-
-    D3D12DescriptorCpuHandle result;
-    result.ptr = handle.handleValue;
-    return result;
-}
-#endif
-
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorSet::SharedPtr createCbvDescriptor(Device::SharedPtr pDevice, const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc, Resource::ApiHandle resHandle) {
-    D3D12DescriptorSet::Layout layout;
-    layout.addRange(ShaderResourceType::Cbv, 0, 1);
-    D3D12DescriptorSet::SharedPtr handle = D3D12DescriptorSet::create(pDevice->getD3D12CpuDescriptorPool(), layout);
-    pDevice->getD3D12Handle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
-
-    return handle;
-}
-#endif // FALCOR_D3D12_AVAILABLE
-
 ConstantBufferView::SharedPtr ConstantBufferView::create(Device::SharedPtr pDevice, ConstBufferSharedPtrRef pBuffer) {
     // GFX doesn't need constant buffer view.
     // We provide a raw D3D12 implementation for applications
     // that wish to use the raw D3D12DescriptorSet API.
-#if FALCOR_D3D12_AVAILABLE
-    assert(pBuffer);
-    D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
-    desc.BufferLocation = pBuffer->getGpuAddress();
-    desc.SizeInBytes = (uint32_t)pBuffer->getSize();
-    Resource::ApiHandle resHandle = pBuffer->getApiHandle();
-
-    return SharedPtr(new ConstantBufferView(pDevice, pBuffer, createCbvDescriptor(desc, resHandle)));
-#else
     assert(pBuffer);
     throw std::runtime_error("ConstantBufferView is not supported in GFX.");
-#endif // FALCOR_D3D12_AVAILABLE
 }
 
 ConstantBufferView::SharedPtr ConstantBufferView::create(Device::SharedPtr pDevice) {
     // GFX doesn't support constant buffer view.
     // We provide a raw D3D12 implementation for applications
     // that wish to use the raw D3D12DescriptorSet API.
-#if FALCOR_D3D12_AVAILABLE
-    // Create a null view.
-    D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
-
-    return SharedPtr(new ConstantBufferView(pDevice, std::weak_ptr<Resource>(), createCbvDescriptor(desc, nullptr)));
-#else
     return SharedPtr(new ConstantBufferView(pDevice, std::weak_ptr<Resource>(), nullptr));
-#endif // FALCOR_D3D12_AVAILABLE
 }
-
-#if FALCOR_D3D12_AVAILABLE
-D3D12DescriptorCpuHandle ConstantBufferView::getD3D12CpuHeapHandle() const {
-    return mApiHandle->getCpuHandle(0);
-}
-#endif
 
 using ResourceViewImpl = ResourceView<Slang::ComPtr<gfx::IResourceView>>;
 template ResourceSharedPtr ResourceViewImpl::getResource() const;

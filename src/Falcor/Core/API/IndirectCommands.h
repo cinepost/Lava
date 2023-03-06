@@ -25,21 +25,20 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
+#ifndef SRC_FALCOR_CORE_API_INDIRECTCOMMANDS_H_
+#define SRC_FALCOR_CORE_API_INDIRECTCOMMANDS_H_
 
 #include <cstdint>
 
-namespace Falcor
-{
-    struct DispatchArguments
-    {
+namespace Falcor {
+
+    struct DispatchArguments {
         uint32_t ThreadGroupCountX;
         uint32_t ThreadGroupCountY;
         uint32_t ThreadGroupCountZ;
     };
 
-    struct DrawArguments
-    {
+    struct DrawArguments {
         uint32_t VertexCountPerInstance;
         uint32_t InstanceCount;
         uint32_t StartVertexLocation;
@@ -47,8 +46,7 @@ namespace Falcor
         uint32_t MaterialID;
     };
 
-    struct DrawIndexedArguments
-    {
+    struct DrawIndexedArguments {
         uint32_t IndexCountPerInstance;
         uint32_t InstanceCount;
         uint32_t StartIndexLocation;
@@ -56,4 +54,7 @@ namespace Falcor
         uint32_t StartInstanceLocation;
         uint32_t MaterialID;
     };
-}
+
+}  //namespace Falcor
+
+#endif  // SRC_FALCOR_CORE_API_INDIRECTCOMMANDS_H_

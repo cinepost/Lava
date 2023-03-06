@@ -132,7 +132,30 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 	mAOVPlanes[pAOVPlane->name()] = pAOVPlane;
 	if (info.name == AOVBuiltinName::MAIN) mMainAOVPlaneExist = true; 
 
+	mDirty = true;
 	return pAOVPlane;
+}
+
+bool Renderer::deleteAOVPlane(const AOVName& name) {
+	if (mAOVPlanes.find(name) == mAOVPlanes.end()) {
+		LLOG_WRN << "No AOVPlane " << name << " to delete.";
+		return false;
+	}
+
+	mAOVPlanes[name] = nullptr;
+	mDirty = true;
+	return true;
+}
+
+void Renderer::setAOVPlaneState(const AOVName& name, AOVPlane::State state) {
+	if (mAOVPlanes.find(name) == mAOVPlanes.end()) return;
+
+	auto& pPlane = mAOVPlanes[name];
+	AOVPlane::State prevAOVState = pPlane->getState();
+	pPlane->setState(state);
+	if (prevAOVState != pPlane->getState()) {
+		mDirty = true;
+	}
 }
 
 AOVPlane::SharedPtr Renderer::getAOVPlane(const AOVName& name) {
@@ -341,6 +364,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	// Create and bind additional AOV planes
 	for (const auto &entry: mAOVPlanes) {
 		auto &pPlane = entry.second;
+		if(!pPlane->isEnabled()) continue;
 		switch(pPlane->name()) {
 			case AOVBuiltinName::EDGE_DETECT_PASS:
 				{
@@ -513,6 +537,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 	}
 
 	LLOG_DBG << "createRenderGraph done";
+	mDirty = false;
 }
 
 bool Renderer::hasAOVPlane(const AOVName& name) const {
@@ -693,10 +718,15 @@ bool Renderer::prepareFrame(const FrameInfo& frame_info) {
 	}
 
 	mpDevice->getRenderContext()->flush(true);
+	mDirty = false;
 }
 
 void Renderer::renderSample() {
 	auto start = std::chrono::high_resolution_clock::now();
+
+	if (mDirty) {
+		prepareFrame(mCurrentFrameInfo);
+	}
 
 	if ((mCurrentFrameInfo.imageSamples > 0) && mCurrentSampleNumber >= mCurrentFrameInfo.imageSamples) return;
 
