@@ -23,29 +23,26 @@ namespace lava {
 class Renderer;
 
 enum class AOVBuiltinName: uint8_t {
-  MAIN        = 1,
-  POSITION    = 2,
-  DEPTH       = 3,
-  NORMAL      = 4,
-  ALBEDO      = 5,
-  SHADOW      = 6,
-  OCCLUSION   = 7,
-  FRESNEL     = 8,
-  OBJECT_ID   = 9,
-  MATERIAL_ID = 10,
-  INSTANCE_ID = 11,
-  Prim_Id     = 12,
-  Op_Id       = 13,
-  CRYPTOMATTE_MAT = 14,
-  CRYPTOMATTE_OBJ = 15,
-  EMISSION    = 16,
+  MAIN        = 0,
+  POSITION,
+  DEPTH,
+  NORMAL,
+  ALBEDO,
+  SHADOW,
+  FRESNEL,
+  OBJECT_ID,
+  MATERIAL_ID,
+  INSTANCE_ID,
+  Prim_Id,
+  Op_Id,
+  CRYPTOMATTE_MAT,
+  CRYPTOMATTE_OBJ,
+  EMISSION,
 
+  EdgeDetectPass,
+  AmbientOcclusionPass,
 
-  EDGE_DETECT_PASS = 100,
-  OCCLUSION_PASS   = 101,
-
-
-  UNKNOWN     = 0
+  UNKNOWN ,
 };
 
 inline std::string to_string(AOVBuiltinName name) {
@@ -57,7 +54,6 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(NORMAL);
     type_2_string(ALBEDO);
     type_2_string(SHADOW);
-    type_2_string(OCCLUSION);
     type_2_string(FRESNEL);
     type_2_string(OBJECT_ID);
     type_2_string(MATERIAL_ID);
@@ -68,8 +64,8 @@ inline std::string to_string(AOVBuiltinName name) {
     type_2_string(CRYPTOMATTE_OBJ);
     type_2_string(EMISSION);
 
-    type_2_string(EDGE_DETECT_PASS);
-    type_2_string(OCCLUSION_PASS);
+    type_2_string(EdgeDetectPass);
+    type_2_string(AmbientOcclusionPass);
   default:
     should_not_get_here();
     return "unknown";

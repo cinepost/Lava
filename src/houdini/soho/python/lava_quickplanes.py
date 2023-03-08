@@ -11,40 +11,40 @@ QuickPlane = collections.namedtuple(
 
 # Define a dictionary of standard planes with the relevant parameters.
 __quickplanes = {
-    # channel name                 pass builtin name        type             quantize      percomp     opts
-    "position":         QuickPlane("POSITION",              "vector3",       "float32",    False,      {'pfilter':['closest']}),
+    # channel name                  pass builtin name         lsdtype          quantize     percomp     opts
+    "position":         QuickPlane("POSITION",               "vector3",       "float32",    False,      {'pfilter':['closest']}),
     
-    "depth":            QuickPlane("DEPTH",                 "float",         "float32",    False,      {'pfilter':['min']}),
+    "depth":            QuickPlane("DEPTH",                  "float",         "float32",    False,      {'pfilter':['min']}),
     
-    "normals":          QuickPlane("NORMAL",                "vector3",       "float32",    False,      {'pfilter':['closest']}),
+    "normals":          QuickPlane("NORMAL",                 "vector3",       "float32",    False,      {'pfilter':['closest']}),
 
-    "albedo":           QuickPlane("ALBEDO",                "vector3",       "float16",    False,      {}),
+    "albedo":           QuickPlane("ALBEDO",                 "vector3",       "float16",    False,      {}),
 
-    "emission":         QuickPlane("EMISSION",              "vector3",       "float16",    False,      {}),
+    "emission":         QuickPlane("EMISSION",               "vector3",       "float16",    False,      {}),
 
-    "shadow":           QuickPlane("SHADOW",                "vector3",       "float16",    False,      {}),
+    "shadow":           QuickPlane("SHADOW",                 "vector3",       "float16",    False,      {}),
 
-    "occlusion":        QuickPlane("OCCLUSION",             "float",         "float16",    False,      {}),
+    "fresnel":          QuickPlane("FRESNEL",                "float",         "float16",    False,      {}),
 
-    "fresnel":          QuickPlane("FRESNEL",               "float",         "float16",    False,      {}),
+    "object_id":        QuickPlane("OBJECT_ID",              "int",           "uint16",     False,      {}),
 
-    "object_id":        QuickPlane("OBJECT_ID",             "int",           "uint16",     False,      {}),
+    "material_id":      QuickPlane("MATERIAL_ID",            "int",           "uint16",     False,      {}),
 
-    "material_id":      QuickPlane("MATERIAL_ID",           "int",           "uint16",     False,      {}),
+    "instance_id":      QuickPlane("INSTANCE_ID",            "int",           "uint32",     False,      {}),
 
-    "instance_id":      QuickPlane("INSTANCE_ID",           "int",           "uint32",     False,      {}),
+    "crypto_mat":       QuickPlane("CRYPTOMATTE_MAT",        "vector3",       "float16",    False,      {}),
 
-    "crypto_mat":       QuickPlane("CRYPTOMATTE_MAT",       "vector3",       "float16",    False,      {}),
-
-    "crypto_obj":       QuickPlane("CRYPTOMATTE_OBJ",       "vector3",       "float16",    False,      {}),
+    "crypto_obj":       QuickPlane("CRYPTOMATTE_OBJ",        "vector3",       "float16",    False,      {}),
 
     # ipr/diagnostics
 
-    "op_id":            QuickPlane("Op_Id",                 "float",         "float32",    False,      {}),
-    "prim_id":          QuickPlane("Prim_Id",               "float",         "float32",    False,      {}),
+    "op_id":            QuickPlane("Op_Id",                  "float",         "float32",    False,      {}),
+    "prim_id":          QuickPlane("Prim_Id",                "float",         "float32",    False,      {}),
 
     # render passes as aovs
-    "edgedetect":       QuickPlane("EDGE_DETECT_PASS",      "vector4",       "float16",    False,      {'pfilter':['box']}),
+    "edgedetect":       QuickPlane("EdgeDetectPass",         "vector4",       "float16",    False,      {'pfilter':['box']}),
+
+    "ambientocclusion": QuickPlane("AmbientOcclusionPass",   "float",         "float16",    False,      {'pfilter':['box']}),
 }
 
 # Define a list of quickplanes for each lv_quickplane toggle parameter.
@@ -55,7 +55,6 @@ __toggleplanedict = {
     'lv_quickplane_albedo':                 ['albedo'],
     'lv_quickplane_emission':               ['emission'],
     'lv_quickplane_shadow':                 ['shadow'],
-    'lv_quickplane_occlusion':              ['occlusion'],
     'lv_quickplane_fresnel':                ['fresnel'],
     'lv_quickplane_object_id':              ['object_id'],
     'lv_quickplane_material_id':            ['material_id'],
@@ -70,6 +69,7 @@ __toggleplanedict = {
 
     # render passes as aovs
     'lv_plane_edgedetect':                  ['edgedetect'],
+    'lv_plane_ambientocclusion':            ['ambientocclusion'],
 }
 
 def getPlaneDict():

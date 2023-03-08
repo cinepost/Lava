@@ -189,8 +189,7 @@ def addGeometry(token, storage, houdini, skipdefault=True):
 def addDeepResolver(driver, token, storage, houdini, default=None):
     if driver not in _Settings.DeepResolver:
         _Settings.DeepResolver[driver] = []
-    _Settings.DeepResolver[driver].append(SohoParm(houdini, storage, default,
-                                             default == None, token))
+    _Settings.DeepResolver[driver].append(SohoParm(houdini, storage, default, default == None, token))
 
 def addMeasure(driver, token, storage, houdini, skipdefault=True):
     if driver not in _Settings.Measure:

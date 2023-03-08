@@ -103,6 +103,7 @@ endfunction()
 
 
 makeRenderPassLib(NAME "AccumulatePass")
+makeRenderPassLib(NAME "AmbientOcclusionPass")
 makeRenderPassLib(NAME "DepthPass")
 makeRenderPassLib(NAME "TexturesResolvePass")
 makeRenderPassLib(NAME "ForwardLightingPass")

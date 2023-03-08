@@ -25,6 +25,7 @@ import LSDmisc
 import LSDsettings
 import LSDhooks
 from LSDapi import *
+from LSDmisc import lsdTypeStringFromSohoParm
 from hutil.file import insertFileSuffix
 import lava_quickplanes as quickplanes
 import lava_renderpasses as renderpasses
@@ -101,7 +102,8 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
                 excludedcm=False,
                 pfiltertype=None,
                 pfiltersize=None,
-                sourcepass=None):
+                sourcepass=None,
+                parms_map=None):
 
     if len(variable):
         if LSDhooks.call('pre_defplane', variable, lsdtype, idx, wrangler, cam, now, filename, lightexport):
@@ -144,8 +146,16 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
         plist = LSDsettings.evaluateImagePlane(idx, wrangler, cam, now)
         cmd_propertyV('plane', plist)
 
-        if LSDhooks.call('post_defplane', variable, lsdtype, idx,
-                    wrangler, cam, now, filename, lightexport):
+        if parms_map:
+            for rpass_parm_name, parm in iter(parms_map.items()):
+                if parm.Key != rpass_parm_name: 
+                    parm.Key = rpass_parm_name
+                
+            _plist = cam.wrangle(wrangler, parms_map, now) or {}
+            for rpass_parm_name, parm in iter(_plist.items()):
+                cmd_property('image', rpass_parm_name, parm.Value)
+
+        if LSDhooks.call('post_defplane', variable, lsdtype, idx, wrangler, cam, now, filename, lightexport):
             return
         cmd_end()
 
@@ -199,10 +209,6 @@ planeDisplayParms = {
                                 key='lightscope'),
     'lightselect':SohoParm('lv_lightexport_select%d', 'string', ['*'], False,
                                 key='lightselect'),
-
-    # Some parameters for backward compatibility with H9.0
-    'h9channel' : SohoParm('lv_picture_plane%d', 'string', [''], False,
-                                key='h9channel'),
 }
 
 stereoParms = {
@@ -363,7 +369,7 @@ def lightExportPlanes(wrangler, cam, now, lexport,
 
 def quickImagePlanes(wrangler, cam, now, components):
     def _quickPlane(wrangler, cam, now, variable, channel,
-                    lsdtype, quantize, opts):
+                    lsdtype, quantize, opts, parms_map=None):
         if LSDhooks.call('pre_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
 
@@ -377,6 +383,15 @@ def quickImagePlanes(wrangler, cam, now, components):
         
         for opt, optvalue in iteritems(opts):
             cmd_property('plane', opt, optvalue)
+
+        if parms_map:
+            for rpass_parm_name, parm in iter(parms_map.items()):
+                if parm.Key != rpass_parm_name: 
+                    parm.Key = rpass_parm_name
+                
+            _plist = cam.wrangle(wrangler, parms_map, now) or {}
+            for rpass_parm_name, parm in iter(_plist.items()):
+                cmd_declare('image', lsdTypeStringFromSohoParm(parm), rpass_parm_name, parm.Value)
 
         if LSDhooks.call('post_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return
@@ -392,6 +407,8 @@ def quickImagePlanes(wrangler, cam, now, components):
 
     plist = cam.wrangle(wrangler, plist, now)
 
+    rpassesdict = renderpasses.getRenderPassesDict()
+
     for parmname, varnames in iteritems(toggleplanedict):
         is_set = plist.get(parmname, None)
         if not is_set or is_set.Value[0] == 0:
@@ -401,6 +418,10 @@ def quickImagePlanes(wrangler, cam, now, components):
             channel = cam.wrangleString(wrangler, parmname+'_channel', now, [''])[0]
             quantize = cam.wrangleString(wrangler, 'lv_quantize_' + variable, now, [''])[0]
             
+            parms_map = None
+            if plane.channel in rpassesdict:
+                parms_map = rpassesdict[plane.channel].parms_map
+
             if not quantize:
                 quantize = plane.quantize
             
@@ -412,11 +433,11 @@ def quickImagePlanes(wrangler, cam, now, components):
                 for comp in components.split():
                     compvariable = re.sub('_comp$', "_" + comp, variable)
                     compchannel = re.sub('_comp$', "_" + comp, channel)
-                    _quickPlane(cam, wrangler, now, compvariable, compchannel,
+                    _quickPlane(wrangler, cam, now, compvariable, compchannel,
                                 plane.lsdtype, quantize, plane.opts)
             else:
-                _quickPlane(cam, wrangler, now, variable, channel,
-                            plane.lsdtype, quantize, plane.opts)
+                _quickPlane(wrangler, cam, now, variable, channel,
+                            plane.lsdtype, quantize, plane.opts, parms_map=parms_map)
 
 def cameraDisplay(wrangler, cam, now):
     if LSDhooks.call('pre_cameraDisplay', wrangler, cam, now):
@@ -479,7 +500,7 @@ def cameraDisplay(wrangler, cam, now):
 
     if sourcepass in rpassesdict:
         rpass = rpassesdict[sourcepass]
-        defplane("MAIN", rpass[0], rpass[1], -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize, sourcepass=sourcepass)
+        defplane("MAIN", rpass.output, rpass.lsdtype, -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize, sourcepass=sourcepass, parms_map=rpass.parms_map)
     else:
         defplane("MAIN", 'color', 'vector4', -1, wrangler, cam, now, pfiltertype=pfiltertype, pfiltersize=pfiltersize, sourcepass=sourcepass)
     
@@ -516,7 +537,6 @@ def cameraDisplay(wrangler, cam, now):
         cexport  = plist['componentexport'].Value[0]
         lscope   = plist['lightscope'].Value[0]
         lselect  = plist['lightselect'].Value[0]
-        h9channel = plist['h9channel'].Value[0]
 
         # Don't add the IPR planes again if they're explicitly listed.
         if is_preview and (variable == 'Op_Id' or variable == 'Prim_Id'):

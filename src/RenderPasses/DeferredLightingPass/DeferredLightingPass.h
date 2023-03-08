@@ -91,7 +91,7 @@ class DeferredLightingPass : public RenderPass {
 		float16_t3  mIndirectColorLimit = float16_t3(HLF_MAX, HLF_MAX, HLF_MAX);
 		bool     		mUseSTBN = false;
 		float    		mRayBias = 0.001f;
-		int      		mShadingRate = 1;
+		uint      	mShadingRate = 1;
 		uint 				mRayReflectLimit = 0;
 		uint 				mRayRefractLimit = 0;
 		uint      	mRayDiffuseLimit = 0;

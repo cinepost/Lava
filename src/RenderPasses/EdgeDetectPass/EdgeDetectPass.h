@@ -45,6 +45,9 @@ class EdgeDetectPass : public RenderPass {
 
 		void setEdgeDetectFlags(EdgeDetectFlags flags);
 
+		void setTraceDepth(bool state);
+		void setTraceNormal(bool state);
+
 		inline Falcor::ResourceFormat format() const { return mOutputFormat; }
 
 	protected:

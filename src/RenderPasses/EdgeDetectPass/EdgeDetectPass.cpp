@@ -76,12 +76,20 @@ namespace {
         { kInputVBufferChannel,          "gVBuffer",          "VBuffer",                       true /* optional */, HitInfo::kDefaultFormat },
     };
 
-    // Serialized parameters
+    const std::string kTraceDepth = "traceDepth";
+    const std::string kTraceNormal = "traceNormal";
     
 }
 
 EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
-    return SharedPtr(new EdgeDetectPass(pRenderContext->device(), dict));
+    auto pThis = SharedPtr(new EdgeDetectPass(pRenderContext->device(), dict));
+
+    for (const auto& [key, value] : dict) {
+        if (key == kTraceDepth) pThis->setTraceDepth(value);
+        else if (key == kTraceNormal) pThis->setTraceNormal(value);
+    }
+
+    return pThis;
 }
 
 EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict): RenderPass(pDevice, kInfo) {
@@ -307,4 +315,12 @@ void EdgeDetectPass::setEdgeDetectFlags(EdgeDetectFlags flags) {
         mEdgeDetectFlags = flags;
         mDirty = true;
     }
+}
+
+void EdgeDetectPass::setTraceDepth(bool state) {
+    setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceDepth);
+}
+
+void EdgeDetectPass::setTraceNormal(bool state) {
+    setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceNormal);
 }

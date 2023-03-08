@@ -701,7 +701,7 @@
                 menu {
                     "" "Beauty"
                     "EdgeDetectPass" "Edge Detect"
-                    "OcclusionPass" "Occlusion"
+                    "AmbientOcclusionPass" "Ambient Occlusion"
                 }
                 parmtag { "script_callback_language" "python" }
             }
@@ -1150,10 +1150,19 @@
 
                 parm {
                     name    "lv_plane_edgedetect"
-                    label   "Enable Edge Detection"
+                    label   "Edge Detect"
                     type    toggle
-                    joinnext
                     default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_edgedetect_pass_depth_distance_range"
+                    label   "Depth Distance Range"
+                    type    float
+                    size    2
+                    default { "5.0" "10.0" }
+                    disablewhen "{ lv_plane_edgedetect == 0 }"
                     parmtag { "script_callback_language" "python" }
                 }
 
@@ -1161,14 +1170,23 @@
 
             groupcollapsible {
                 name "output6_1_3"
-                label "Occlusion"
+                label "Ambient Occlusion"
 
                 parm {
-                    name    "lv_plane_occlusion"
-                    label   "Enable Occlusion"
+                    name    "lv_plane_ambientocclusion"
+                    label   "Ambient Occlusion"
                     type    toggle
-                    joinnext
                     default { "0" }
+                    parmtag { "script_callback_language" "python" }
+                }
+
+                parm {
+                    name    "lv_ambocc_pass_distance_range"
+                    label   "Distance Range"
+                    type    float
+                    size    2
+                    default { "1.0" "2.0" }
+                    disablewhen "{ lv_plane_ambientocclusion == 0 }"
                     parmtag { "script_callback_language" "python" }
                 }
 

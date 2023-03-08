@@ -378,13 +378,20 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(AOVBuiltinName name) const {
 }
 
 AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) const {
+
+    for (AOVBuiltinName name = AOVBuiltinName::MAIN; name < AOVBuiltinName::UNKNOWN; name = AOVBuiltinName((uint)name + 1)) {
+        if(str == to_string(name)) return name;
+    }
+
+    return AOVBuiltinName::UNKNOWN;
+
+/*
     if(str == to_string(AOVBuiltinName::MAIN)) return AOVBuiltinName::MAIN;
     if(str == to_string(AOVBuiltinName::NORMAL)) return AOVBuiltinName::NORMAL;
     if(str == to_string(AOVBuiltinName::POSITION)) return AOVBuiltinName::POSITION;
     if(str == to_string(AOVBuiltinName::DEPTH)) return AOVBuiltinName::DEPTH;
     if(str == to_string(AOVBuiltinName::ALBEDO)) return AOVBuiltinName::ALBEDO;
     if(str == to_string(AOVBuiltinName::SHADOW)) return AOVBuiltinName::SHADOW;
-    if(str == to_string(AOVBuiltinName::OCCLUSION)) return AOVBuiltinName::OCCLUSION;
     if(str == to_string(AOVBuiltinName::FRESNEL)) return AOVBuiltinName::FRESNEL;
     if(str == to_string(AOVBuiltinName::OBJECT_ID)) return AOVBuiltinName::OBJECT_ID;
     if(str == to_string(AOVBuiltinName::MATERIAL_ID)) return AOVBuiltinName::MATERIAL_ID;
@@ -396,9 +403,10 @@ AOVBuiltinName aov_builtin_name_visitor::operator()(const std::string& str) cons
     if(str == to_string(AOVBuiltinName::EMISSION)) return AOVBuiltinName::EMISSION;
 
     if(str == to_string(AOVBuiltinName::EDGE_DETECT_PASS)) return AOVBuiltinName::EDGE_DETECT_PASS;
-    if(str == to_string(AOVBuiltinName::OCCLUSION_PASS)) return AOVBuiltinName::OCCLUSION_PASS;
+    if(str == to_string(AOVBuiltinName::AMBIENT_OCCLUSION_PASS)) return AOVBuiltinName::AMBIENT_OCCLUSION_PASS;
 
     return AOVBuiltinName::UNKNOWN;
+*/
 }
 
 // HYDRA section end

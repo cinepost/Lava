@@ -2,7 +2,6 @@
 */
 
 import Scene.Raster;
-import Scene.Raster;
 import Scene.Shading;
 
 __exported import Scene.Scene;

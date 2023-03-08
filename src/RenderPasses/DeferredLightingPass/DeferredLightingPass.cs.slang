@@ -100,10 +100,6 @@ void writeAOV(uint2 ipos, const AOVData d) {
         gOutPosition[ipos] = float4(d.position, .0);
 #endif  // gOutPosition
 
-#if is_valid(gOutOcclusion)
-        gOutOcclusion[ipos] = 1.f - d.occlusion;
-#endif  // gOutOcclusion
-
 #if is_valid(gOutFresnel)
         gOutFresnel[ipos] = d.fresnel;
 #endif  // gOutFresnel
@@ -461,7 +457,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
     const HitInfo hit = HitInfo(gVbuffer[ipos]);
     AOVData aov_data = AOVData.create();
     
-    if (!(hit.isValid() && hit.getType() == HitType::Triangle)) {
+    if (!hit.isValid() || hit.getType() != HitType::Triangle) {
         writeAOV(ipos, aov_data);        
         return;
     }
@@ -521,31 +517,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 
         surfaceColor += calcIlluminance(_rayDir, _hit, _triangleHit, _shadingData, _sampleWeight, sg, aov_data, rnd, lod, rayLevel, maxRayLevel);
 
-        #if is_valid(gOutOcclusion)
-        if(rayLevel == 0) {
-            float3 rayShadowOrigin = primaryShadingData.posW;
-            if (gScene.doFixShadowTerminator(triangleHit.instanceID)) {
-                rayShadowOrigin = gScene.computeShadingPosition(primaryTriangleHit.instanceID, primaryTriangleHit.primitiveIndex, primaryShadingData.posW, 
-                    primaryShadingData.N, primaryTriangleHit.getBarycentricWeights());
-            }
-
-            RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayShadowQuery;
-            let rayFlags = RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH;
-
-            float pdf;
-            
-            RayDesc ray;
-            ray.Origin = rayShadowOrigin;
-            ray.Direction = normalize(sample_cosine_hemisphere_oriented(rnd.xy, primaryShadingData.N, pdf));
-            ray.TMin = .001f;
-            ray.TMax = 1.0f;
-
-            rayShadowQuery.TraceRayInline(gScene.rtAccel, rayFlags, 0x02, ray);
-            rayShadowQuery.Proceed();
-            aov_data.occlusion += (rayShadowQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 1.0f : 0.0f;
-        }
-        #endif  // gOutOcclusion
-
 #if _MAX_RAY_LEVEL != 0
         if(!_hit.isValid()) break;
     }
@@ -554,9 +525,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID) {
 #ifdef _SHADING_RATE
     }
     surfaceColor /= (float)_SHADING_RATE;
-    #if is_valid(gOutOcclusion)
-        aov_data.occlusion /= (float)_SHADING_RATE;
-    #endif  // gOutOcclusion
 #endif
 
     // Write main channel output color
