@@ -32,6 +32,8 @@
 #include <unordered_map>
 #include <any>
 
+#include "Falcor/Utils/Math/Vector.h"
+
 namespace Falcor {
 
     class InternalDictionary {
@@ -46,6 +48,8 @@ namespace Falcor {
 
             template<typename T>
             operator T() const { return std::any_cast<T>(mValue); }
+
+            operator std::string() const;
 
          private:
             std::any mValue;
@@ -104,6 +108,10 @@ namespace Falcor {
     private:
         Container mContainer;
     };
+
+inline std::string to_string(InternalDictionary::Value value) {
+    return value;
+}
 
 }  // namespace Falcor
 

@@ -100,7 +100,9 @@ def lsdTypeStringFromSohoParm(parm):
     
     elif parm.Type == 'float':
         if isinstance(value, list):
-            if all(isinstance(v, float) for v in value) and len(value) > 1 and len(value) < 5:
+            if len(value) == 1:
+                return 'float'
+            elif all(isinstance(v, float) for v in value) and len(value) > 1 and len(value) < 5:
                 return 'vector%d' % len(value)
             elif all(isinstance(v, float) for v in value) and (len(value) == 9 or len(value) == 16):
                 if len(value) == 9:
@@ -112,7 +114,9 @@ def lsdTypeStringFromSohoParm(parm):
     
     elif parm.Type == 'int':
         if isinstance(value, list):
-            if all(isinstance(v, int) for v in value) and len(value) > 1 and len(value) < 5:
+            if len(value) == 1:
+                return 'int'
+            elif all(isinstance(v, int) for v in value) and len(value) > 1 and len(value) < 5:
                 return 'int%d' % len(value)
             elif all(isinstance(v, float) for v in value) and (len(value) == 9 or len(value) == 16):
                 if len(value) == 9:

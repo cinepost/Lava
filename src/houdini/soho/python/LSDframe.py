@@ -25,7 +25,6 @@ import LSDmisc
 import LSDsettings
 import LSDhooks
 from LSDapi import *
-from LSDmisc import lsdTypeStringFromSohoParm
 from hutil.file import insertFileSuffix
 import lava_quickplanes as quickplanes
 import lava_renderpasses as renderpasses
@@ -153,7 +152,7 @@ def defplane(channel, variable, lsdtype, idx, wrangler, cam, now,
                 
             _plist = cam.wrangle(wrangler, parms_map, now) or {}
             for rpass_parm_name, parm in iter(_plist.items()):
-                cmd_property('image', rpass_parm_name, parm.Value)
+                cmd_declare('image', LSDmisc.lsdTypeStringFromSohoParm(parm), rpass_parm_name, parm.Value)
 
         if LSDhooks.call('post_defplane', variable, lsdtype, idx, wrangler, cam, now, filename, lightexport):
             return
@@ -391,7 +390,7 @@ def quickImagePlanes(wrangler, cam, now, components):
                 
             _plist = cam.wrangle(wrangler, parms_map, now) or {}
             for rpass_parm_name, parm in iter(_plist.items()):
-                cmd_declare('image', lsdTypeStringFromSohoParm(parm), rpass_parm_name, parm.Value)
+                cmd_declare('image', LSDmisc.lsdTypeStringFromSohoParm(parm), rpass_parm_name, parm.Value)
 
         if LSDhooks.call('post_defplane', variable, lsdtype, -1, wrangler, cam, now, '', 0):
             return

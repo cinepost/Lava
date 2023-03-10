@@ -124,6 +124,11 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 		return nullptr;
 	}
 
+	if(info.name != AOVBuiltinName::MAIN && !mMainAOVPlaneExist) {
+		LLOG_ERR << "Error creating AOV plane \"" << info.name << "\" without MAIN output plane!"; 
+		return nullptr;
+	}
+
 	auto pAOVPlane = AOVPlane::create(info);
 	if (!pAOVPlane) {
 		LLOG_ERR << "Error creating AOV plane \"" << pAOVPlane->name() << "\" !!!";
@@ -132,6 +137,12 @@ AOVPlane::SharedPtr Renderer::addAOVPlane(const AOVPlaneInfo& info) {
 
 	mAOVPlanes[pAOVPlane->name()] = pAOVPlane;
 	if (info.name == AOVBuiltinName::MAIN) mMainAOVPlaneExist = true; 
+
+	// Check if this output plane is the same as main place source render pass. If so then just disable it...
+	if (pAOVPlane->name() != AOVBuiltinName::MAIN) {
+		auto pMainAOV = getAOVPlane(AOVBuiltinName::MAIN);
+		if(pMainAOV->sourcePassName() == to_string(pAOVPlane->name())) pAOVPlane->setState(AOVPlane::State::Disabled);
+	}
 
 	mDirty = true;
 	return pAOVPlane;
@@ -329,7 +340,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// Optional edgedetect pass
 	if(pMainAOV->sourcePassName() == "EdgeDetectPass" || hasAOVPlane(AOVBuiltinName::EdgeDetectPass)) {
-		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, {});
+		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pMainAOV->getRenderPassesDict());
 		pEdgeDetectPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
 		mpRenderGraph->addEdge("VBufferPass.depth", "EdgeDetectPass.depth");
@@ -338,7 +349,7 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 
 	// Optional ambient occlusion pass
 	if(pMainAOV->sourcePassName() == "AmbientOcclusionPass" || hasAOVPlane(AOVBuiltinName::AmbientOcclusionPass)) {
-		auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, mRenderPassesDictionary);
+		auto pAmbientOcclusionPass = AmbientOcclusionPass::create(pRenderContext, pMainAOV->getRenderPassesDict());
 		pAmbientOcclusionPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pAmbientOcclusionPass, "AmbientOcclusionPass");
 		mpRenderGraph->addEdge("VBufferPass.vbuffer", "AmbientOcclusionPass.vbuffer");

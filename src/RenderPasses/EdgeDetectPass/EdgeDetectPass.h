@@ -43,6 +43,9 @@ class EdgeDetectPass : public RenderPass {
 		void setDepthDistanceRange(float2 range);
 		void setDepthDistanceRange(float distMin, float distMax) { setDepthDistanceRange(float2({distMin, distMax})); }
 
+		void setNormalThresholdRange(float2 range);
+		void setNormalThresholdRange(float distMin, float distMax) { setNormalThresholdRange(float2({distMin, distMax})); }
+
 		void setEdgeDetectFlags(EdgeDetectFlags flags);
 
 		void setTraceDepth(bool state);

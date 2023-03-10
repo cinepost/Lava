@@ -103,6 +103,8 @@ bool Property::create(Property::Type type, const Property::Value& value, Propert
     property.mValue = value;
     property.mOwner = owner;
 
+    if(type == Property::Type::BOOL) property.mValue = property.get<bool>();
+
     return true;
 }
 

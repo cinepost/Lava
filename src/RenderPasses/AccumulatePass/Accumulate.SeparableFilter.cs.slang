@@ -33,10 +33,12 @@
 
 import Utils.Sampling.SampleGenerator;
 
-//#define DO_EXPAND(VAL)  VAL ## 1
-//#define EXPAND(VAL)     DO_EXPAND(VAL)
 
 #define is_valid(name) (is_valid_##name != 0)
+
+#ifndef _FILTER_TYPE
+#define _FILTER_TYPE SF_TYPE_BOX
+#endif 
 
 #ifndef _FILTER_HALF_SIZE_H
 #define _FILTER_HALF_SIZE_H 0

@@ -99,6 +99,9 @@ struct AOVName : boost::variant< AOVBuiltinName, std::string > {
   inline bool operator==(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) == str); }
   inline bool operator==(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) == to_string(name)); }
   
+  inline bool operator!=(const std::string& str) const { return (boost::apply_visitor(aov_name_visitor(), *this) != str); }
+  inline bool operator!=(const AOVBuiltinName& name) const { return (boost::apply_visitor(aov_name_visitor(), *this) != to_string(name)); }
+
   inline AOVName operator=(const std::string& str) { return AOVName(str); }
   inline AOVName operator=(const AOVBuiltinName& name) { return AOVName(name); }
   
@@ -161,6 +164,12 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
 
     inline bool isBound() const;
 
+    inline Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+    inline const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
+
+    inline bool isEnabled() const { return (mState == State::Enabled); }
+    inline State getState() const { return mState; }
+
   private:
     AOVPlane(const AOVPlaneInfo& info);
     static SharedPtr create(const AOVPlaneInfo& info);
@@ -188,8 +197,6 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     bool compileInternalRenderGraph(Falcor::RenderContext* pContext);
 
     bool getTextureData(Texture* pTexture, uint8_t* pData) const;
-    inline bool isEnabled() const { return (mState == State::Enabled); }
-    inline State getState() const { return mState; }
 
   private:
     void setState(State state) { mState = state; }         
@@ -215,6 +222,8 @@ class AOVPlane: public std::enable_shared_from_this<AOVPlane> {
     std::string                         mAccumulatePassColorOutputName;
 
     std::string                         mProcessedPassOutputName;
+
+    Falcor::Dictionary              mRenderPassesDictionary;
 
     Falcor::Resource::Type              mType;
 

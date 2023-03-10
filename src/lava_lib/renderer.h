@@ -74,13 +74,16 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
       uint32_t frameNumber = 0;
       Falcor::uint4 renderRegion = {0, 0, 0, 0}; // default full frame {left, top, width, height}
 
-      Falcor::uint2 renderRegionDims() const {
+      inline Falcor::uint2 renderRegionDims() const {
         if ((renderRegion[2] == 0) || (renderRegion[3] == 0)) return {imageWidth, imageHeight};
         return {std::min(imageWidth, renderRegion[2] - renderRegion[0] + 1), std::min(imageHeight, renderRegion[3] - renderRegion[1] + 1)};
       }
-    
-      uint regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : (renderRegion[2] - renderRegion[0] + 1)); }
-      uint regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
+
+      inline uint32_t getImageHeight() const { return imageHeight; }
+      inline uint32_t getImageWidth() const { return imageWidth; }
+
+      inline uint32_t regionWidth() const { return (renderRegion[2] == 0 ? imageWidth : (renderRegion[2] - renderRegion[0] + 1)); }
+      inline uint32_t regionHeight() const { return (renderRegion[3] == 0 ? imageWidth : (renderRegion[3] - renderRegion[1] + 1)); }
     };
 
   public:
@@ -131,6 +134,7 @@ class Renderer: public std::enable_shared_from_this<Renderer> {
     */ 
 
     Falcor::Dictionary& getRenderPassesDict() { return mRenderPassesDictionary; };
+    const Falcor::Dictionary& getRenderPassesDict() const { return mRenderPassesDictionary; };
   
 #ifdef SCRIPTING
  	static void registerBindings(pybind11::module& m);

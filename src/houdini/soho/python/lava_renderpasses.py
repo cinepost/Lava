@@ -13,9 +13,11 @@ edgeDetectPassParms = {
     'traceDepth'                : SohoParm('lv_edgedetect_pass_trace_depth',             'bool',      [1], skipdefault=False),
     'traceNormal'               : SohoParm('lv_edgedetect_pass_trace_normal',            'bool',      [0], skipdefault=False),
     'depthDistanceRange'        : SohoParm('lv_edgedetect_pass_depth_distance_range',    'float',     [3.0, 5.0], skipdefault=False),
+    'normalThresholdRange'      : SohoParm('lv_edgedetect_pass_normal_thresold_range',   'float',     [3.0, 4.0], skipdefault=False),
 }
 
 ambienOcclusionPassParms = {
+    'shadingRate'               : SohoParm('lv_ambocc_pass_shading_rate',                'int',       [1], skipdefault=False),
     'distanceRange'             : SohoParm('lv_ambocc_pass_distance_range',              'float',     [1.0, 2.0], skipdefault=False),
 }
 

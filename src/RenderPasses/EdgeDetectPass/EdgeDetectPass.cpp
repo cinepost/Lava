@@ -78,7 +78,8 @@ namespace {
 
     const std::string kTraceDepth = "traceDepth";
     const std::string kTraceNormal = "traceNormal";
-    
+    const std::string kDepthDistanceRange = "depthDistanceRange";
+    const std::string kNormalThresholdRange = "normalThresholdRange";
 }
 
 EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, const Dictionary& dict) {
@@ -87,6 +88,8 @@ EdgeDetectPass::SharedPtr EdgeDetectPass::create(RenderContext* pRenderContext, 
     for (const auto& [key, value] : dict) {
         if (key == kTraceDepth) pThis->setTraceDepth(value);
         else if (key == kTraceNormal) pThis->setTraceNormal(value);
+        else if (key == kDepthDistanceRange) pThis->setDepthDistanceRange(value);
+        else if (key == kNormalThresholdRange) pThis->setNormalThresholdRange(value);
     }
 
     return pThis;
@@ -97,11 +100,6 @@ EdgeDetectPass::EdgeDetectPass(Device::SharedPtr pDevice, const Dictionary& dict
 
     setKernelSize({3, 3});
     setEdgeDetectFlags(EdgeDetectFlags::TraceDepth | EdgeDetectFlags::TraceNormal);
-
-    // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict) {
-
-    }
 }
 
 Dictionary EdgeDetectPass::getScriptingDictionary() {
@@ -310,6 +308,12 @@ void EdgeDetectPass::setDepthDistanceRange(float2 range) {
     mDepthDistanceRange.y = std::max(range.x, range.y); 
 }
 
+
+void EdgeDetectPass::setNormalThresholdRange(float2 range) { 
+    mNormalThresholdRange.x = std::min(range.x, range.y);
+    mNormalThresholdRange.y = std::max(range.x, range.y); 
+}
+
 void EdgeDetectPass::setEdgeDetectFlags(EdgeDetectFlags flags) {
     if(mEdgeDetectFlags != flags) {
         mEdgeDetectFlags = flags;
@@ -318,9 +322,17 @@ void EdgeDetectPass::setEdgeDetectFlags(EdgeDetectFlags flags) {
 }
 
 void EdgeDetectPass::setTraceDepth(bool state) {
-    setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceDepth);
+    if (state) {
+        setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceDepth);
+    } else {
+        setEdgeDetectFlags(mEdgeDetectFlags & ~EdgeDetectFlags::TraceDepth);
+    }
 }
 
 void EdgeDetectPass::setTraceNormal(bool state) {
-    setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceNormal);
+    if (state) {
+        setEdgeDetectFlags(mEdgeDetectFlags | EdgeDetectFlags::TraceNormal);
+    } else {
+        setEdgeDetectFlags(mEdgeDetectFlags & ~EdgeDetectFlags::TraceNormal);
+    } 
 }

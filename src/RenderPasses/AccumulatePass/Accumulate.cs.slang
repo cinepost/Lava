@@ -38,6 +38,10 @@
 
 #include "Accumulate.SeparableFilter.slangh"
 
+#ifndef _FILTER_TYPE
+#define _FILTER_TYPE SF_TYPE_BOX
+#endif
+
 cbuffer PerFrameCB
 {
     uint2   gResolution;

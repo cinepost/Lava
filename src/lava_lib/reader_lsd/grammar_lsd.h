@@ -696,6 +696,7 @@ namespace parser {
                 ("object"   , ast::Style::OBJECT)
                 ("material" , ast::Style::MATERIAL)
                 ("node"     , ast::Style::NODE)
+                ("image"    , ast::Style::IMAGE)
                 ("plane"    , ast::Style::PLANE);
         }
     } const declare_style;

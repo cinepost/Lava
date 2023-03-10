@@ -30,6 +30,7 @@ file( GLOB SOURCES
     ./Scene/Volume/*.cpp
     ./Scene/Importers/AssimpImporter.cpp
     ./Utils/*.cpp
+    ./Utils/InternalDictionary.cpp
     ./Utils/Cryptomatte/*.cpp
     ./Utils/Algorithm/*.cpp
     ./Utils/Debug/*.cpp

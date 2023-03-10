@@ -180,7 +180,7 @@ class PropertiesContainer: public std::enable_shared_from_this<PropertiesContain
     const PropertiesContainer filterProperties(ast::Style style) const;
     inline const PropertiesMap& properties() const { return mPropertiesMap; };
 
-    Falcor::Dictionary  to_dict(ast::Style style, bool recursive = true) const;
+    Falcor::Dictionary to_dict(ast::Style style, bool recursive = true) const;
 
     inline size_t size() const { return mPropertiesMap.size(); };
 
