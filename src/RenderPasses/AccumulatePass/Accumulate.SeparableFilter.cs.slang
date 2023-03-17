@@ -105,27 +105,18 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
             outColor *= W;
     #endif
 
-    //currentSampleOffset.x = abs(sampleOffset.x);
-    //currentSampleOffset.y = abs(sampleOffset.y);
-    //if(any(currentSampleOffset >= gMaxSampleOffset)) outColor = float4(0.f);
-
     #if _FILTER_HALF_SIZE_H != 0
     const uint2 pixelPosF = float2(pixelPos);
     const int2 pixelPosI = int2(pixelPos);
 
     int2 pixelPosR;
 
-    // Kernel testing part
-    #if is_valid(gKernelTexture)
-    //outColor = gKernelTexture.SampleLevel(gKernelSampler, float2(pixelPos) * 0.015625f, 0); // float4(0.f, 1.f, 0.f, 1.f);
-    #endif
-
     // First half
     [[unroll]]
     for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
         pixelPosR = pixelPos + int2(i, 0);
         
-        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outsize viewport
+        [[branch ]] if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outsize viewport
 
         currentSampleOffset.x = abs(float(i) - sampleOffset.x);
         if(currentSampleOffset.x > gMaxSampleOffset.x) continue; // sample outside max offset
@@ -158,7 +149,7 @@ void filterH(uint3 dispatchThreadId : SV_DispatchThreadID)
     for(uint i = 1; i <= _FILTER_HALF_SIZE_H; i++) {
         pixelPosR = pixelPos - int2(i, 0);
         
-        if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outside viewport
+        [[branch ]] if((pixelPosR.x < 0) || (pixelPosR.x >= gResolution.x)) continue; // sample outside viewport
 
         currentSampleOffset.x = abs(float(i) + sampleOffset.x);
         if(currentSampleOffset.x > gMaxSampleOffset.x) continue; // sample outside max offset
@@ -235,7 +226,7 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
     for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
         pixelPosR = pixelPos + int2(0, i);
         
-        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
+        [[branch ]] if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
         
         currentSampleOffset.y = abs(float(i) + sampleOffset.y);
         if(currentSampleOffset.y > gMaxSampleOffset.y) continue; // sample outside max offset
@@ -270,10 +261,10 @@ void filterV(uint3 dispatchThreadId : SV_DispatchThreadID)
     for(uint i = 1; i <= _FILTER_HALF_SIZE_V; i++) {
         pixelPosR = pixelPos - int2(0, i);
         
-        if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
+        [[branch ]] if((pixelPosR.y < 0) || (pixelPosR.y >= gResolution.y)) continue; // sample outside viewport
         
         currentSampleOffset.y = abs(float(i) - sampleOffset.y);
-        if(currentSampleOffset.y > gMaxSampleOffset.y) continue; // sample outside max offset
+        [[branch ]] if(currentSampleOffset.y > gMaxSampleOffset.y) continue; // sample outside max offset
 
         #if (_FILTER_TYPE == SF_TYPE_TRIANGLE)
         

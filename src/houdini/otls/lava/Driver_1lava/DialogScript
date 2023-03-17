@@ -1125,88 +1125,25 @@
 
             groupcollapsible {
                 name "output6_1_2"
-                label "Edge Detect"
+                label "Render Pases"
 
                 parm {
                     name    "lv_plane_edgedetect"
                     label   "Edge Detect"
                     type    toggle
                     default { "0" }
+                    disablewhen "{ lv_main_output_source == EdgeDetectPass }"
                     parmtag { "script_callback_language" "python" }
                 }
-
-                parm {
-                    name    "lv_edgedetect_pass_trace_depth"
-                    label   "Trace Depth"
-                    type    toggle
-                    default { 1 }
-                    disablewhen "{ lv_plane_edgedetect == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-
-                parm {
-                    name    "lv_edgedetect_pass_depth_distance_range"
-                    label   "Depth Distance Range"
-                    type    float
-                    size    2
-                    default { "5.0" "10.0" }
-                    disablewhen "{ lv_plane_edgedetect == 0} {lv_edgedetect_pass_trace_depth == 0}"
-                    parmtag { "script_callback_language" "python" }
-                }
-
-                parm {
-                    name    "lv_edgedetect_pass_trace_normal"
-                    label   "Trace Normal"
-                    type    toggle
-                    default { 1 }
-                    disablewhen "{ lv_plane_edgedetect == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-
-                parm {
-                    name    "lv_edgedetect_pass_normal_threshold_range"
-                    label   "Normal Threshold"
-                    type    float
-                    size    2
-                    default { "3.0" "4.0" }
-                    disablewhen "{ lv_plane_edgedetect == 0} {lv_edgedetect_pass_trace_normal == 0}"
-                    parmtag { "script_callback_language" "python" }
-                }
-
-            }
-
-            groupcollapsible {
-                name "output6_1_3"
-                label "Ambient Occlusion"
 
                 parm {
                     name    "lv_plane_ambientocclusion"
                     label   "Ambient Occlusion"
                     type    toggle
                     default { "0" }
+                    disablewhen "{ lv_main_output_source == AmbientOcclusionPass }"
                     parmtag { "script_callback_language" "python" }
                 }
-
-                parm {
-                    name    "lv_ambocc_pass_shading_rate"
-                    label   "Shading Rate"
-                    type    int
-                    default { "1" }
-                    range   { 1 64 }
-                    disablewhen "{ lv_plane_ambientocclusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-
-                parm {
-                    name    "lv_ambocc_pass_distance_range"
-                    label   "Distance Range"
-                    type    float
-                    size    2
-                    default { "1.0" "2.0" }
-                    disablewhen "{ lv_plane_ambientocclusion == 0 }"
-                    parmtag { "script_callback_language" "python" }
-                }
-
             }
 
             groupcollapsible {
@@ -1786,6 +1723,213 @@
             type    toggle
             default { "1" }
             disablewhen "{ sololight != \"\" }"
+        }
+    }
+
+    group {
+        name    "rpasses_1"
+        label   "Render Passes"
+
+        group {
+            name    "rpasses_1_1"
+            label   "Edge Detect"
+            disablewhen "{ lv_plane_edgedetect == 0 } { lv_main_output_source == \"\" }"
+
+            // EdgeDetectPass Depth
+
+            parm {
+                name    "lv_edgedetect_pass_trace_depth"
+                label   "Trace Depth"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_depth_distance_range"
+                label   "Depth Distance Range"
+                type    float
+                size    2
+                default { "5.0" "10.0" }
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_depth_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_1"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_depth == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Normals
+
+            parm {
+                name    "lv_edgedetect_pass_trace_normal"
+                label   "Trace Normal"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_normal_threshold_range"
+                label   "Normal Threshold"
+                type    float
+                size    2
+                default { "0.2" "0.5" }
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_normal_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_2"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_normal == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Materials
+
+            parm {
+                name    "lv_edgedetect_pass_trace_material_id"
+                label   "Trace Materials"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_material_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_3"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_material_id == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Instances
+
+            parm {
+                name    "lv_edgedetect_pass_trace_instance_id"
+                label   "Trace Objects"
+                type    toggle
+                default { 1 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_instance_kernel_size"
+                label   "Kernel Size"
+                type    integer
+                size    1
+                default { "3" }
+                menu usetokenvalue {
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "edge_detect_sepparm_4"
+                label   "Separator"
+                type    separator
+                hidewhen "{lv_edgedetect_pass_trace_instance_id == 0}"
+                default { "" }
+            }
+
+            // EdgeDetectPass Alpha
+
+            parm {
+                name    "lv_edgedetect_pass_ignore_alpha"
+                label   "Ignore Alpha"
+                type    toggle
+                default { 0 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_edgedetect_pass_lowpass_filter_size"
+                label   "Low Pass Filter"
+                type    integer
+                size    1
+                menu usetokenvalue {
+                    "0"   "Off"
+                    "3"   "3x3"
+                    "5"   "5x5"
+                }
+                default { "0" }
+                parmtag { "script_callback_language" "python" }
+            }
+        }
+
+        group {
+            name    "rpasses_1_1"
+            label   "Ambient Occlusion"
+            disablewhen "{ lv_plane_ambientocclusion == 0 } { lv_main_output_source == \"\" }"
+
+            parm {
+                name    "lv_ambocc_pass_shading_rate"
+                label   "Shading Rate"
+                type    int
+                default { "1" }
+                range   { 1 64 }
+                parmtag { "script_callback_language" "python" }
+            }
+
+            parm {
+                name    "lv_ambocc_pass_distance_range"
+                label   "Distance Range"
+                type    float
+                size    2
+                default { "1.0" "2.0" }
+                parmtag { "script_callback_language" "python" }
+            }
         }
     }
 

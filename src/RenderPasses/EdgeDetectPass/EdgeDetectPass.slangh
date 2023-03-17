@@ -5,12 +5,18 @@ BEGIN_NAMESPACE_FALCOR
 
 enum class EdgeDetectTraceFlags : uint32_t
 {
-    None          = 0x0,
-    TraceDepth    = 0x1,  ///< Use camera depth for edge detection.
-    TraceNormal   = 0x2,  ///< Use surface normal for edge detection.
-    TraceMaterial = 0x4,  ///< Use surface material id for edge detection.
-    TraceInstance = 0x8,  ///< Use instance id for edge detection.
-    TraceAlpha    = 0x10, ///< Use alpha channel for edge detection.
+    None            = 0x0,
+    TraceDepth      = 0x1,  ///< Use camera depth for edge detection.
+    TraceNormal     = 0x2,  ///< Use surface normal for edge detection.
+    TraceMaterialID = 0x4,  ///< Use surface material id for edge detection.
+    TraceInstanceID = 0x8,  ///< Use instance id for edge detection.
+    TraceAlpha      = 0x10, ///< Use alpha channel for edge detection.
+};
+
+enum class EdgeDetectKernelType : uint32_t
+{
+    Sobel           = 0,
+    Prewitt         = 1,
 };
 
 #ifdef HOST_CODE

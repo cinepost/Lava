@@ -496,7 +496,6 @@ void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderConte
     auto pDevice = pRenderContext->device();
     uint32_t kernelTextureLUTWidth = 64; // We opt for constant kernel texture size for now ...
     
-    LLOG_DBG << "Creating pixel fitler kernel of type " << to_string(mPixelFilterType) << " with LUT size " << std::to_string(kernelTextureLUTWidth);
     bool createHalfTable = true;
     Kernels::NormalizationMode normalization = Kernels::NormalizationMode::Peak;
 
@@ -522,6 +521,10 @@ void AccumulatePass::preparePixelFilterKernelTexture(RenderContext* pRenderConte
             // Pixel filter does not require LUT texture
             mpKernelTexture = nullptr;
             break;
+    }
+
+    if(mpKernelTexture) {
+        LLOG_DBG << "Created pixel fitler kernel of type " << to_string(mPixelFilterType) << " with LUT size " << std::to_string(kernelTextureLUTWidth);
     }
 
     // Create/recreate sampler if needed

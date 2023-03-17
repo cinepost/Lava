@@ -241,7 +241,7 @@ Display::SharedPtr createDisplay(const Session::DisplayInfo& display_info) {
 	return pDisplay;
 }
 
-void makeImageTiles(Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
+void makeImageTiles(const Renderer::FrameInfo& frameInfo, Falcor::uint2 tileSize, std::vector<Session::TileInfo>& tiles) {
 	assert(frameInfo.renderRegion[0] <= frameInfo.renderRegion[2]);
 	assert(frameInfo.renderRegion[1] <= frameInfo.renderRegion[3]);
 
@@ -394,6 +394,8 @@ bool sendImageRegionData(uint hImage, Display* pDisplay, const Renderer::FrameIn
 }
 
 void translateLSDPlanePropertiesToLavaDict(scope::Plane::SharedConstPtr pScope, Falcor::Dictionary& dict) {
+	pScope->printSummary(std::cout, 4);
+	
 	for (const auto& [key, value] : pScope->to_dict(ast::Style::IMAGE)) {
 		dict[key] = value;
 	}

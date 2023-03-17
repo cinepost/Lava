@@ -379,8 +379,6 @@ namespace Falcor {
 
 #if FALCOR_GFX_VK
 		desc.deviceType = DeviceType::Vulkan;
-#elif FALCOR_GFX_D3D12
-		desc.deviceType = DeviceType::DirectX12;
 #endif
 		
 		desc.slang.slangGlobalSession = getSlangGlobalSession();
@@ -521,21 +519,6 @@ namespace Falcor {
 	bool Device::isWindowOccluded() const {
 		return mCurrentBackBufferIndex == -1;
 	}
-
-#if FALCOR_D3D12_AVAILABLE
-	const D3D12DeviceHandle Device::getD3D12Handle() {
-		gfx::IDevice::InteropHandles interopHandles = {};
-		mApiHandle->getNativeDeviceHandles(&interopHandles);
-		FALCOR_ASSERT(interopHandles.handles[0].api == gfx::InteropHandleAPI::D3D12);
-		return reinterpret_cast<ID3D12Device*>(interopHandles.handles[0].handleValue);
-	}
-#endif
-
-//#else
-//	const D3D12DeviceHandle Device::getD3D12Handle() {
-//		return nullptr;
-//	}
-//#endif // FALCOR_D3D12_AVAILABLE
 
 	Device::~Device() { 
 	}

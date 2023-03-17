@@ -155,13 +155,6 @@ void Texture::apiInit(const void* pData, bool autoGenMips) {
 	if (pData) {
 		uploadInitData(pData, autoGenMips);
 	}
-
-#if FALCOR_D3D12_AVAILABLE
-	gfx::InteropHandle handle = {};
-	FALCOR_GFX_CALL(mApiHandle->getNativeResourceHandle(&handle));
-	FALCOR_ASSERT(handle.api == gfx::InteropHandleAPI::D3D12);
-	mpD3D12Handle = reinterpret_cast<ID3D12Resource*>(handle.handleValue);
-#endif
 }
 
 Texture::~Texture() {

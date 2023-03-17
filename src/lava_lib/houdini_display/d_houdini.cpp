@@ -1340,7 +1340,7 @@ int H_Image::writeData(int a_x0, int a_x1, int a_y0, int a_y1, const char* pData
 			return 0;
 	}
 
-	fflush(fp);
+	//fflush(fp);
 
 	log(0, "H_Image::writeData done.\n");
 

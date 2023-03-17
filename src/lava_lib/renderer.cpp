@@ -343,7 +343,6 @@ void Renderer::createRenderGraph(const FrameInfo& frame_info) {
 		auto pEdgeDetectPass = EdgeDetectPass::create(pRenderContext, pMainAOV->getRenderPassesDict());
 		pEdgeDetectPass->setScene(pRenderContext, pScene);
 		mpRenderGraph->addPass(pEdgeDetectPass, "EdgeDetectPass");
-		mpRenderGraph->addEdge("VBufferPass.depth", "EdgeDetectPass.depth");
 		mpRenderGraph->addEdge("VBufferPass.vbuffer", "EdgeDetectPass.vbuffer");
 	}
 

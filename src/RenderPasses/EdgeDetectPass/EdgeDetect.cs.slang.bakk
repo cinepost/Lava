@@ -1,0 +1,404 @@
+/** Edge detection render pass.
+*/
+#include "Utils/Math/MathConstants.slangh"
+
+import Scene.Raster;
+import Scene.Shading;
+
+__exported import Scene.Scene;
+__exported import Scene.Shading;
+__exported import Scene.HitInfo;
+
+import Experimental.Scene.Material.StandardMaterial;
+
+import Scene.Material.ShadingUtils;
+
+#ifndef _DEPTH_KERNEL_HALF_SIZE
+#define _DEPTH_KERNEL_HALF_SIZE 1
+#endif
+
+#ifndef _NORMAL_KERNEL_HALF_SIZE
+#define _NORMAL_KERNEL_HALF_SIZE 1
+#endif
+
+#ifndef _MATERIAL_KERNEL_HALF_SIZE
+#define _MATERIAL_KERNEL_HALF_SIZE 1
+#endif
+
+#ifndef _INSTANCE_KERNEL_HALF_SIZE
+#define _INSTANCE_KERNEL_HALF_SIZE 1
+#endif
+
+
+#define is_valid(name) (is_valid_##name != 0)
+
+cbuffer PerFrameCB
+{
+    uint2 gResolution;
+    uint gDepthKernelCenter = 1;
+    uint gNormalKernelCenter = 1;
+    uint gMaterialKernelCenter = 1;
+    uint gInstanceKernelCenter = 1;
+
+    float2 gDepthDistanceRange;   // min/max depth distance values
+    float2 gNormalThresholdRange; // normal threshold min/max range
+}
+
+// Input edge detection data.
+Texture2D<float>            gDepth;            // optional depth buffer
+Texture2D<float3>           gNormal;           // optional normal buffer
+Texture2D<uint>             gMaterialID;       // optional material id buffer
+Texture2D<uint>             gInstanceID;       // optional instance id buffer
+Texture2D<PackedHitInfo>    gVBuffer;          // optional visibility buffer
+
+// Temporary data.
+RWTexture2D<float2>         gTmpDepth;
+RWTexture2D<float2>         gTmpNormal;
+RWTexture2D<float2>         gTmpMaterialID;
+RWTexture2D<float2>         gTmpInstanceID;
+
+// Kernel textures
+Texture1D<float>            gDepthKernelU;
+Texture1D<float>            gDepthKernelV;
+
+Texture1D<float>            gNormalKernelU;
+Texture1D<float>            gNormalKernelV;
+
+Texture1D<float>            gMaterialKernelU;
+Texture1D<float>            gMaterialKernelV;
+
+Texture1D<float>            gInstanceKernelU;
+Texture1D<float>            gInstanceKernelV;
+
+// Ouput
+RWTexture2D<float4> gOutput;
+
+bool calcShadingData(const float3 rayDir, const HitInfo hit, out ShadingData sd) {
+    [[branch ]] if (hit.getType() != HitType::Triangle) return false;
+
+    sd = {};
+    ITextureSampler lod = ExplicitLodTextureSampler(0.f);
+    TriangleHit triangleHit = hit.getTriangleHit();
+
+    [[branch ]] if(gScene.isObjectMatteShaded(triangleHit.instanceID)) return false;
+
+    const VertexData v = gScene.getVertexData(triangleHit);
+    const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
+    sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    return true;
+}
+
+float _getDepth(const uint2 ipos) {
+    // Prefer VBuffer
+    #if is_valid(gVBuffer)
+        const HitInfo hit = HitInfo(gVBuffer[ipos]);
+        [[branch ]] if(!hit.isValid()) return -gDepthDistanceRange.y;
+        
+        const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gResolution).dir);
+        ShadingData sd;
+        
+        [[branch ]] if(!calcShadingData(rayDir, hit, sd)) return -gDepthDistanceRange.y;
+
+        const float4 screenP = mul(float4(sd.posW, 1.f), gScene.camera.getViewProj());
+        const float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
+        return -(viewP.z / viewP.w);
+      
+    #elif is_valid(gDepth)
+        const float2 screenUV = (float2(ipos) / float2(gResolution)) * 2.0 - float2(1.f);
+        const float4 screenP = float4(screenUV.x, screenUV.y, gDepth[ipos], 1.0);
+        const float4 viewP = mul(screenP, gScene.camera.data.invProjMat);
+        return -(viewP.z / viewP.w);
+    #else
+        return -gDepthDistanceRange.y;
+    #endif
+}
+
+// Get screen space normal
+float2 _getNormalSS(const uint2 ipos) {
+    // Prefer VBuffer
+    #if is_valid(gVBuffer)
+        const HitInfo hit = HitInfo(gVBuffer[ipos]);
+        [[branch ]] if(!hit.isValid()) return float2(FLT_MAX);
+
+        const float3 rayDir = normalize(gScene.camera.computeRayPinhole(ipos, gResolution).dir);
+        ShadingData sd;
+        
+        [[branch ]] if(!calcShadingData(rayDir, hit, sd)) return float2(FLT_MAX);
+
+        return normalize(mul(float4(sd.N, 0.f), gScene.camera.getViewProj()).xyz).xy;
+
+    #elif is_valid(gNormal)
+        return normalize(mul(float4(gNormal[ipos], 0.f), gScene.camera.getViewProj()).xyz);
+    #else
+        return float2(FLT_MAX);
+    #endif
+}
+
+uint _getMaterialID(const uint2 ipos) {
+    // Prefer VBuffer
+    #if is_valid(gVBuffer)
+        const HitInfo hit = HitInfo(gVBuffer[ipos]);
+        [[branch ]] if(!hit.isValid()) return 0;
+        [[branch ]] if(hit.getType() != HitType::Triangle) return 0;
+
+        TriangleHit triangleHit = hit.getTriangleHit();
+        return gScene.getMaterialID(triangleHit.instanceID);
+    #elif is_valid(gMaterialID)
+        return gMaterialID[ipos];
+    #else
+        return 0;
+    #endif
+}
+
+float _getInstanceID(const uint2 ipos) {
+    // Prefer VBuffer
+    #if is_valid(gVBuffer)
+        const HitInfo hit = HitInfo(gVBuffer[ipos]);
+        [[branch ]] if(!hit.isValid()) return -1.f;
+        return float(hit.getTriangleHit().instanceID.index);
+    #elif is_valid(gInstanceID)
+        return float(gInstanceID[ipos]);
+    #else
+        return -1.f;
+    #endif
+}
+
+/** U pass.
+*/
+[numthreads(16, 16, 1)]
+void passU(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadId.xy >= gResolution)) return;
+    const uint2 pixelPos = dispatchThreadId.xy;
+    const float2 screenUV = float2(pixelPos) / float2(gResolution);
+
+    const float cD = _getDepth(pixelPos); // central pixel depth
+    float2 d = float2(cD * gDepthKernelU[gDepthKernelCenter], cD * gDepthKernelV[gDepthKernelCenter]);
+
+    const float2 cN = _getNormalSS(pixelPos); // central pixel screen space normal
+    float2 n = float2(cN.x * gNormalKernelU[gNormalKernelCenter], cN.y * gNormalKernelV[gNormalKernelCenter]);
+
+    const uint cM = _getMaterialID(pixelPos); //central pixel material id
+    float2 m_id = 0.f; //float2(gMaterialKernelU[gMaterialKernelCenter], gMaterialKernelV[gMaterialKernelCenter]);
+    
+    const float cI = _getInstanceID(pixelPos); //central pixel instance id
+    float2 i_id = float2(cI * gInstanceKernelU[gNormalKernelCenter], cI * gInstanceKernelV[gNormalKernelCenter]);
+
+    #if defined(_TRACE_DEPTH) && (is_valid(gVBuffer) || is_valid(gDepth))
+    [[unroll]]
+    for(uint i = 1; i <= _DEPTH_KERNEL_HALF_SIZE; i++) {
+        const float dr = _getDepth(pixelPos + uint2(i, 0));
+        const float dl = _getDepth(pixelPos - uint2(i, 0));
+
+        // Horizontal part
+        d.x += dr * gDepthKernelU[gDepthKernelCenter + i];
+        d.x += dl * gDepthKernelU[gDepthKernelCenter - i];
+        
+        // Vertical part
+        d.y += dr * gDepthKernelV[gDepthKernelCenter + i];
+        d.y += dl * gDepthKernelV[gDepthKernelCenter - i];
+
+    }
+    #endif
+    
+    #if defined(_TRACE_NORMAL) && (is_valid(gVBuffer) || is_valid(gNormal))
+    [[unroll]]
+    for(uint i = 1; i <= _NORMAL_KERNEL_HALF_SIZE; i++) {
+        const float2 nr = _getNormalSS(pixelPos + uint2(i, 0));
+        const float2 nl = _getNormalSS(pixelPos - uint2(i, 0));
+        
+        // Horizontal part
+        n.x += nr.x * gNormalKernelU[gNormalKernelCenter + i];
+        n.x += nl.x * gNormalKernelU[gNormalKernelCenter - i];
+
+        // Vertical part
+        n.y += nr.y * gNormalKernelV[gNormalKernelCenter + i];
+        n.y += nl.y * gNormalKernelV[gNormalKernelCenter - i];
+    }
+    #endif
+
+    #if defined(_TRACE_MATERIAL_ID) && (is_valid(gVBuffer) || is_valid(gMaterialID))
+    [[unroll]]
+    for(uint i = 1; i <= _MATERIAL_KERNEL_HALF_SIZE; i++) {
+        // Horizontal part
+        m_id.x += (cM == _getMaterialID(pixelPos + uint2(i, 0))) ? 0.f : gMaterialKernelU[gMaterialKernelCenter + i];
+        m_id.x += (cM == _getMaterialID(pixelPos - uint2(i, 0))) ? 0.f : gMaterialKernelU[gMaterialKernelCenter - i];
+
+        // Vertical part
+        m_id.y += (cM == _getMaterialID(pixelPos + uint2(0, i))) ? 0.f : gMaterialKernelU[gMaterialKernelCenter + i];
+        m_id.y += (cM == _getMaterialID(pixelPos - uint2(0, i))) ? 0.f : gMaterialKernelU[gMaterialKernelCenter - i];
+    }
+    #endif
+
+    #if defined(_TRACE_INSTANCE_ID) && (is_valid(gVBuffer) || is_valid(gInstanceID))
+    [[unroll]]
+    for(uint i = 1; i <= _INSTANCE_KERNEL_HALF_SIZE; i++) {
+        const float ixr = _getInstanceID(pixelPos + uint2(i, 0));
+        const float ixl = _getInstanceID(pixelPos - uint2(i, 0));
+
+        // Horizontal part
+        i_id.x += ixr * gInstanceKernelU[gNormalKernelCenter + i];
+        i_id.x += ixl * gInstanceKernelU[gNormalKernelCenter - i];
+
+        // Vertical part
+        i_id.y += ixr * gInstanceKernelV[gNormalKernelCenter + i];
+        i_id.y += ixl * gInstanceKernelV[gNormalKernelCenter - i];
+    }
+    #endif
+
+    #if is_valid(gTmpDepth)
+        gTmpDepth[pixelPos] = d;
+    #endif
+
+    #if is_valid(gTmpNormal)
+        gTmpNormal[pixelPos] = n;
+    #endif
+
+    #if is_valid(gTmpMaterialID)
+        gTmpMaterialID[pixelPos] = m_id;
+    #endif
+
+    #if is_valid(gTmpInstanceID)
+        gTmpInstanceID[pixelPos] = i_id;
+    #endif
+}
+
+/** V pass.
+*/
+[numthreads(16, 16, 1)]
+void passV(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadId.xy >= gResolution)) return;
+    const uint2 pixelPos = dispatchThreadId.xy;
+    
+    #if is_valid(gTmpDepth)
+    const float2 tmpDepth = gTmpDepth[pixelPos];
+    #else
+    const float2 tmpDepth = float2(0.f);
+    #endif
+    float2 d = float2(tmpDepth.x * gDepthKernelV[gDepthKernelCenter], tmpDepth.y * gDepthKernelU[gDepthKernelCenter]);
+
+    #if is_valid(gTmpNormal)
+    const float2 tmpNormal = gTmpNormal[pixelPos];
+    #else 
+    const float2 tmpNormal = float2(0.f);
+    #endif
+    float2 n = float2(tmpNormal.x * gNormalKernelV[gNormalKernelCenter], tmpNormal.y * gNormalKernelU[gNormalKernelCenter]);
+
+    #if is_valid(gTmpMaterialID)
+    const float2 tmpMaterialID = gTmpMaterialID[pixelPos];
+    #else 
+    const float2 tmpMaterialID = float2(0.f);
+    #endif
+    float2 m_id = float2(tmpMaterialID.x * gMaterialKernelV[gMaterialKernelCenter], tmpMaterialID.y * gMaterialKernelV[gMaterialKernelCenter]);
+
+    #if is_valid(gTmpInstanceID)
+    const float2 tmpInstanceID = gTmpInstanceID[pixelPos];
+    #else 
+    const float2 tmpInstanceID = float2(0.f);
+    #endif
+    float2 i_id = float2(tmpInstanceID.x * gInstanceKernelV[gNormalKernelCenter], tmpInstanceID.y * gInstanceKernelU[gNormalKernelCenter]);
+
+
+    #if defined(_TRACE_DEPTH) && is_valid(gTmpDepth)
+    [[unroll]]
+    for(uint i = 1; i <= _DEPTH_KERNEL_HALF_SIZE; i++) {
+        const float2 du = gTmpDepth[pixelPos + uint2(0, i)];
+        const float2 dd = gTmpDepth[pixelPos - uint2(0, i)];
+        d.x += du.x * gDepthKernelV[gDepthKernelCenter + i];
+        d.x += dd.x * gDepthKernelV[gDepthKernelCenter - i];
+    
+        d.y += du.y * gDepthKernelU[gDepthKernelCenter + i];
+        d.y += dd.y * gDepthKernelU[gDepthKernelCenter - i];
+    }
+    #endif
+
+    #if defined(_TRACE_NORMAL) && is_valid(gTmpNormal)
+    [[unroll]]
+    for(uint i = 1; i <= _NORMAL_KERNEL_HALF_SIZE; i++) {
+        const float2 nu = gTmpNormal[pixelPos + uint2(0, i)];
+        const float2 nd = gTmpNormal[pixelPos - uint2(0, i)];
+        n.x += nu.x * gNormalKernelV[gNormalKernelCenter + i];
+        n.x += nd.x * gNormalKernelV[gNormalKernelCenter - i];
+    
+        n.y += nu.y * gNormalKernelU[gNormalKernelCenter + i];
+        n.y += nd.y * gNormalKernelU[gNormalKernelCenter - i];
+    }
+    #endif
+
+    #if defined(_TRACE_MATERIAL_ID) && is_valid(gTmpMaterialID)
+    [[unroll]]
+    for(uint i = 1; i <= _MATERIAL_KERNEL_HALF_SIZE; i++) {
+        const float2 mu = gTmpMaterialID[pixelPos + uint2(0, i)];
+        const float2 md = gTmpMaterialID[pixelPos - uint2(0, i)];
+
+        m_id.x += gTmpMaterialID[pixelPos + uint2(0, i)].x * gMaterialKernelV[gMaterialKernelCenter + i];
+        m_id.x += gTmpMaterialID[pixelPos - uint2(0, i)].x * gMaterialKernelV[gMaterialKernelCenter - i];
+    
+        m_id.y += gTmpMaterialID[pixelPos + uint2(i, 0)].y * gMaterialKernelV[gMaterialKernelCenter + i];
+        m_id.y += gTmpMaterialID[pixelPos + uint2(i, 0)].y * gMaterialKernelV[gMaterialKernelCenter - i];
+    }
+    #endif
+
+    #if defined(_TRACE_INSTANCE_ID) && is_valid(gTmpInstanceID)
+    [[unroll]]
+    for(uint i = 1; i <= _INSTANCE_KERNEL_HALF_SIZE; i++) {
+        const float2 iu = gTmpInstanceID[pixelPos + uint2(0, i)];
+        const float2 id = gTmpInstanceID[pixelPos - uint2(0, i)];
+
+        i_id.x += iu.x * gInstanceKernelV[gNormalKernelCenter + i];
+        i_id.x += id.x * gInstanceKernelV[gNormalKernelCenter - i];
+    
+        i_id.y += iu.y * gInstanceKernelU[gNormalKernelCenter + i];
+        i_id.y += id.y * gInstanceKernelU[gNormalKernelCenter - i];
+    }
+    #endif
+
+    // Compute Depth edge
+    #if is_valid(gTmpDepth)
+    d /= 8.0f;
+    const float depth_gradient_mag = sqrt(d.x*d.x + d.y*d.y);
+    #else
+    const float depth_gradient_mag = 0.f;
+    #endif
+    const float depth_dist_clamped = max(0.f, (depth_gradient_mag - gDepthDistanceRange.x) * (1.f / (gDepthDistanceRange.y - gDepthDistanceRange.x)));
+    const float depth_edge = min(1.f, depth_dist_clamped);
+
+
+    // Compute Normal edge
+    #if is_valid(gTmpNormal)
+    d /= 8.0f;
+    const float normal_gradient_mag = sqrt(n.x*n.x + n.y*n.y);
+    #else
+    const float normal_gradient_mag = 0.f;
+    #endif
+    const float normal_dist_clamped = max(0.f, (normal_gradient_mag - gNormalThresholdRange.x) * (1.f / (gNormalThresholdRange.y - gNormalThresholdRange.x)));
+    const float normal_edge = min(1.f, normal_dist_clamped);
+    
+    // Compute MaterialID edge
+    #if is_valid(gTmpMaterialID)
+    m_id /= 4.f;
+    const float m_id_gradient_mag = sqrt(m_id.x*m_id.x + m_id.y*m_id.y);
+    #else
+    const float m_id_gradient_mag = 0.f;
+    #endif
+    const float m_id_edge = (m_id_gradient_mag < 1.f) ? 0.f : 1.f;
+
+    // Compute InstanceID edge
+    #if is_valid(gTmpInstanceID)
+    i_id /= 8.0f;
+    const float i_id_gradient_mag = sqrt(i_id.x*i_id.x + i_id.y*i_id.y);
+    #else
+    const float i_id_gradient_mag = 0.f;
+    #endif
+    const float i_id_edge = (i_id_gradient_mag < 1.f) ? 0.f : 1.f;
+    
+
+    // Combined edge
+    const float edge_combined = max(max(max(depth_edge, normal_edge), m_id_edge), i_id_edge);
+
+    // Write detected edge data
+    //gOutput[pixelPos] = float4(edge_combined, edge_combined, edge_combined, 1.f);
+
+    gOutput[pixelPos] = float4(d.x, d.y, depth_gradient_mag, depth_edge);
+}

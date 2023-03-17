@@ -49,6 +49,8 @@ namespace Falcor {
             template<typename T>
             operator T() const { return std::any_cast<T>(mValue); }
 
+            operator uint() const;
+
             operator std::string() const;
 
          private:
